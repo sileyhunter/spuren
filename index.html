@@ -160,6 +160,24 @@ form.inline input, form.inline select { width: 132px; }
   .races { grid-template-columns: minmax(0, 1fr); }
 }
 
+
+/* Ebenen und Routenplaner */
+.layers { width: min(340px, 100%); background: rgba(20,24,27,.97); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; max-height: 60vh; overflow-y: auto; box-shadow: 0 6px 18px rgba(0,0,0,.45); }
+.lay-h { font: 600 12px var(--f-display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+.chip[aria-disabled="true"] { opacity: .45; text-decoration: line-through; cursor: not-allowed; }
+.planner { position: absolute; z-index: 4; left: 10px; right: 10px; bottom: calc(env(safe-area-inset-bottom, 0px) + 30px); margin: 0 auto; max-width: 560px; background: rgba(20,24,27,.97); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+.pl-head { display: flex; align-items: center; gap: 10px; }
+.pl-head b { font: 700 17px var(--f-display); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.pl-head .hint { flex: 1; min-width: 0; }
+.pl-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.pl-stats b { display: block; font: 700 20px/1.1 var(--f-display); font-variant-numeric: tabular-nums; }
+.pl-stats span { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.chart.pl-chart { height: 110px; }
+#pl-name { flex: 1; min-width: 120px; }
+#pl-sport { width: auto; }
+.map-wrap.planning .legend, .map-wrap.planning .mobile-filter { display: none; }
+.item .ed { background: none; border: 0; color: var(--muted); cursor: pointer; padding: 6px 4px; font-size: 12px; }
+.item .ed:hover { color: var(--fg); }
 /* Kalender */
 .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) 86px; border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
 .cal > div { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); min-height: 94px; padding: 4px 5px; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
@@ -286,28 +304,66 @@ form.inline input, form.inline select { width: 132px; }
       <div>
         <h3>Meine Routen</h3>
         <div class="list" id="r-list"></div>
-        <p class="hint" id="r-hint">Routen aus Garmin erscheinen nach dem Import. Eigene Routen kannst du als GPX laden.</p>
+        <p class="hint" id="r-hint">Plane eine Route mit «Route planen» in der Karte oder lade eine GPX-Datei.</p>
       </div>
     </aside>
     <div class="map-wrap">
       <div id="map"></div>
       <div class="map-ctrl">
-        <div class="seg" id="base-seg" role="group" aria-label="Kartengrundlage">
-          <button data-base="nacht" aria-pressed="true">Nacht</button>
-          <button data-base="farbe" aria-pressed="false">Landeskarte</button>
-          <button data-base="grau" aria-pressed="false">Grau</button>
-          <button data-base="luft" aria-pressed="false">Luftbild</button>
-        </div>
-        <div class="seg" id="ov-seg" role="group" aria-label="Zusätzliche Ebenen">
-          <button data-ov="wander" aria-pressed="false">Wanderwege</button>
-          <button data-ov="velo" aria-pressed="false">Veloland</button>
-          <button data-ov="mtb" aria-pressed="false">MTB</button>
-        </div>
-        <div class="seg" role="group" aria-label="Darstellung">
+        <div class="seg" role="group" aria-label="Spuren">
           <button id="mode-heat" aria-pressed="true">Heatmap</button>
           <button id="mode-sport" aria-pressed="false">Nach Sport</button>
-          <button id="btn-3d" aria-pressed="false">3D</button>
+          <button id="mode-off" aria-pressed="false">Spuren aus</button>
         </div>
+        <div class="seg" role="group" aria-label="Werkzeuge">
+          <button id="btn-layers" aria-pressed="false" aria-expanded="false" aria-controls="layers">Karten &amp; Ebenen</button>
+          <button id="btn-3d" aria-pressed="false">3D</button>
+          <button id="btn-plan" aria-pressed="false">Route planen</button>
+        </div>
+        <div class="layers" id="layers" hidden>
+          <div class="lay-h">Grundkarte</div>
+          <div class="chips" id="lay-base">
+            <button class="chip" data-base="nacht" aria-pressed="true">Nacht</button>
+            <button class="chip" data-base="farbe" aria-pressed="false">Landeskarte</button>
+            <button class="chip" data-base="winter" aria-pressed="false">Winterkarte</button>
+            <button class="chip" data-base="grau" aria-pressed="false">Grau</button>
+            <button class="chip" data-base="luft" aria-pressed="false">Luftbild</button>
+          </div>
+          <div class="lay-h">Sommer</div>
+          <div class="chips">
+            <button class="chip" data-ov="wander" aria-pressed="false">Wanderwege</button>
+            <button class="chip" data-ov="velo" aria-pressed="false">Veloland</button>
+            <button class="chip" data-ov="mtb" aria-pressed="false">MTB-Land</button>
+          </div>
+          <div class="lay-h">Winter</div>
+          <div class="chips">
+            <button class="chip" data-ov="skitouren" aria-pressed="false">Skitouren</button>
+            <button class="chip" data-ov="schneeschuh" aria-pressed="false">Schneeschuhrouten</button>
+            <button class="chip" data-ov="hang30" aria-pressed="false">Hangneigung über 30°</button>
+            <button class="chip" data-ov="wrz" aria-pressed="false">Wildruhezonen</button>
+            <button class="chip" data-ov="jbg" aria-pressed="false">Jagdbanngebiete</button>
+          </div>
+          <p class="hint" id="lay-msg">Karten: swisstopo. Wildruhezonen und Jagdbanngebiete gelten auch im Winter, bitte respektieren.</p>
+        </div>
+      </div>
+      <div class="planner" id="planner" hidden>
+        <div class="pl-head"><b>Route planen</b><span class="hint" id="pl-hint">Tippe in die Karte, um Punkte zu setzen.</span><button class="btn" id="pl-close" aria-label="Planer schliessen">✕</button></div>
+        <div class="pl-stats" id="pl-stats"></div>
+        <div class="chart pl-chart" id="pl-chartbox" hidden><canvas id="c-plan" aria-label="Höhenprofil der Route"></canvas></div>
+        <div class="row">
+          <select id="pl-sport" aria-label="Sportart für die Richtzeit">
+            <option value="wandern">Wandern</option><option value="skitour">Skitour</option><option value="laufen">Laufen</option>
+            <option value="mtb">Mountainbike</option><option value="rennrad">Rennrad</option>
+          </select>
+          <input type="text" id="pl-name" placeholder="Name der Route" aria-label="Name der Route">
+        </div>
+        <div class="row">
+          <button class="btn" id="pl-undo">Rückgängig</button>
+          <button class="btn" id="pl-new">Neu</button>
+          <button class="btn" id="pl-save">Speichern</button>
+          <button class="btn primary" id="pl-gpx">GPX exportieren</button>
+        </div>
+        <p class="hint" id="pl-msg" role="status"></p>
       </div>
       <div class="legend" id="legend">Häufigkeit<div class="bar"></div><div class="ends"><span>1×</span><span id="legend-max">oft</span></div></div>
       <div class="status" id="heat-status" hidden></div>
@@ -970,16 +1026,14 @@ function initMap() {
   });
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
   map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
-  map.on("load", () => { mapReady = true; rebuildTracks(true); });
+  map.on("load", () => { mapReady = true; initPlanLayers(); rebuildTracks(true); const m = store.get("sf.mode", "heat"); if (m !== "heat") setMode(m); });
   map.on("error", (e) => { if (e?.error && !String(e.error.message || "").match(/tile|Failed to fetch|404|400|AJAXError/i)) console.warn(e.error); });
 
-  document.querySelectorAll("#base-seg button").forEach((b) => b.addEventListener("click", () => setBase(b.dataset.base)));
-  document.querySelectorAll("#ov-seg button").forEach((b) => b.addEventListener("click", () => {
-    const on = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", String(on));
-    map.setLayoutProperty(b.dataset.ov, "visibility", on ? "visible" : "none");
-  }));
+  initLayerPanel();
+  initPlanner();
   document.getElementById("mode-heat").addEventListener("click", () => setMode("heat"));
   document.getElementById("mode-sport").addEventListener("click", () => setMode("sport"));
+  document.getElementById("mode-off").addEventListener("click", () => setMode("off"));
   document.getElementById("btn-3d").addEventListener("click", (e) => {
     const on = e.currentTarget.getAttribute("aria-pressed") !== "true"; e.currentTarget.setAttribute("aria-pressed", String(on));
     if (on) { map.setTerrain({ source: "dem", exaggeration: 1.25 }); map.easeTo({ pitch: 62, duration: 900 }); }
@@ -988,6 +1042,7 @@ function initMap() {
 
   const trackLayer = () => (mode === "heat" ? "heat-core" : "sport-line");
   map.on("click", (e) => {
+    if (plan.active) { planAdd(e.lngLat); return; }
     if (addMode) { addPointAt(e.lngLat); return; }
     const box = (r) => [[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]];
     const pf = map.queryRenderedFeatures(box(8), { layers: ["points"] });
@@ -1007,18 +1062,22 @@ function initMap() {
     map.on("mouseleave", l, () => { map.getCanvas().style.cursor = addMode ? "crosshair" : ""; });
   }
 }
-function setBase(b) {
+async function setBase(b) {
+  if (b === "winter" && !(await ensureExtra("winter"))) {
+    const c = document.querySelector('#lay-base [data-base="winter"]'); c.setAttribute("aria-disabled", "true");
+    document.getElementById("lay-msg").textContent = "Die Winterkarte ist im Moment nicht verfügbar."; return;
+  }
   base = b;
-  for (const k of ["nacht", "grau", "farbe", "luft"]) map.setLayoutProperty(k, "visibility", k === b ? "visible" : "none");
+  for (const k of ["nacht", "grau", "farbe", "luft", "winter"]) if (map.getLayer(k)) map.setLayoutProperty(k, "visibility", k === b ? "visible" : "none");
   map.setLayoutProperty("weltDunkel", "visibility", b === "nacht" ? "visible" : "none");
   map.setLayoutProperty("weltHell", "visibility", b === "nacht" ? "none" : "visible");
-  document.querySelectorAll("#base-seg button").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.base === b)));
+  document.querySelectorAll("#lay-base [data-base]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.base === b)));
 }
 function setMode(m) {
   mode = m;
-  document.getElementById("mode-heat").setAttribute("aria-pressed", String(m === "heat"));
-  document.getElementById("mode-sport").setAttribute("aria-pressed", String(m === "sport"));
+  for (const [id, v] of [["mode-heat", "heat"], ["mode-sport", "sport"], ["mode-off", "off"]]) document.getElementById(id).setAttribute("aria-pressed", String(m === v));
   document.getElementById("legend").hidden = m !== "heat";
+  store.set("sf.mode", m);
   if (!map) return;
   map.setLayoutProperty("heat-glow", "visibility", m === "heat" ? "visible" : "none");
   map.setLayoutProperty("heat-core", "visibility", m === "heat" ? "visible" : "none");
@@ -1044,6 +1103,189 @@ function selectActivity(id, fit) {
   if (fit) { const b = boundsOfCoords([a.coords]); if (b) map.fitBounds(b, { padding: 60, maxZoom: 15 }); }
 }
 
+const WMTS_EXTRA = {   // weitere swisstopo-Ebenen, werden beim ersten Einschalten geprüft
+  winter: { id: "ch.swisstopo.pixelkarte-farbe-winter", fmts: ["jpeg", "png"], base: true },
+  skitouren: { id: "ch.swisstopo-karto.skitouren", fmts: ["png"] },
+  schneeschuh: { id: "ch.swisstopo-karto.schneeschuhrouten", fmts: ["png"] },
+  hang30: { id: "ch.swisstopo.hangneigung-ueber_30", fmts: ["png"] },
+  wrz: { id: "ch.bafu.wrz-wildruhezonen_portal", fmts: ["png"] },
+  jbg: { id: "ch.bafu.bundesinventare-jagdbanngebiete", fmts: ["png"] },
+};
+const extraState = {};
+function probeTile(url) {
+  return new Promise((res) => { const im = new Image(); let done = false; const fin = (v) => { if (!done) { done = true; res(v); } };
+    im.crossOrigin = "anonymous"; im.onload = () => fin(true); im.onerror = () => fin(false); setTimeout(() => fin(false), 9000); im.src = url; });
+}
+async function ensureExtra(key) {
+  if (extraState[key]) return extraState[key];
+  const L = WMTS_EXTRA[key];
+  extraState[key] = (async () => {
+    for (const f of L.fmts) {
+      if (await probeTile(`https://wmts.geo.admin.ch/1.0.0/${L.id}/default/current/3857/8/134/90.${f}`)) {
+        map.addSource(key, { type: "raster", tiles: [WMTS(L.id, f)], tileSize: 256, maxzoom: 18, attribution: SWISSTOPO });
+        map.addLayer({ id: key, type: "raster", source: key, layout: { visibility: "none" }, paint: L.base ? {} : { "raster-opacity": 0.85 } }, L.base ? "wander" : "heat-glow");
+        return true;
+      }
+    }
+    return false;
+  })();
+  return extraState[key];
+}
+function initLayerPanel() {
+  const panel = document.getElementById("layers"), btn = document.getElementById("btn-layers");
+  btn.addEventListener("click", () => { const open = panel.hidden; panel.hidden = !open; btn.setAttribute("aria-pressed", String(open)); btn.setAttribute("aria-expanded", String(open)); });
+  panel.querySelectorAll("[data-base]").forEach((b) => b.addEventListener("click", () => setBase(b.dataset.base)));
+  panel.querySelectorAll("[data-ov]").forEach((b) => b.addEventListener("click", async () => {
+    if (b.getAttribute("aria-disabled") === "true") return;
+    const k = b.dataset.ov, on = b.getAttribute("aria-pressed") !== "true";
+    if (WMTS_EXTRA[k]) {
+      b.textContent = b.textContent.replace(/ …$/, "") + " …";
+      const ok = await ensureExtra(k);
+      b.textContent = b.textContent.replace(/ …$/, "");
+      if (!ok) { b.setAttribute("aria-disabled", "true"); b.setAttribute("aria-pressed", "false"); document.getElementById("lay-msg").textContent = `«${b.textContent}» ist im Moment nicht verfügbar.`; return; }
+    }
+    b.setAttribute("aria-pressed", String(on));
+    map.setLayoutProperty(k, "visibility", on ? "visible" : "none");
+  }));
+}
+/* ---------- Routenplaner ---------- */
+const plan = { active: false, pts: [], ele: null, dense: null, editId: null, job: 0 };
+const PLAN_SPORT = {
+  wandern: (km, up, dn) => din(km / 4, up / 300 + dn / 500),
+  skitour: (km, up, dn) => din(km / 4, up / 350 + dn / 1500),
+  laufen: (km, up) => km / 10 + up / 700,
+  mtb: (km, up) => km / 16 + up / 550,
+  rennrad: (km, up) => km / 26 + up / 750,
+};
+function din(th, tv) { return Math.max(th, tv) + Math.min(th, tv) / 2; }
+const llDist = (a, b) => Math.hypot((b[0] - a[0]) * 111320 * Math.cos(a[1] * Math.PI / 180), (b[1] - a[1]) * 110574);
+function densifyLL(pts, step) {
+  if (pts.length < 2) return pts.slice();
+  const out = [pts[0]];
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i], n = Math.max(1, Math.ceil(llDist(a, b) / step));
+    for (let k = 1; k <= n; k++) out.push([a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n]);
+  }
+  return out;
+}
+const demCache = new Map();
+function demTile(z, x, y) {
+  const k = `${z}/${x}/${y}`;
+  if (!demCache.has(k)) demCache.set(k, new Promise((res) => {
+    const im = new Image(); im.crossOrigin = "anonymous";
+    im.onload = () => { try { const c = document.createElement("canvas"); c.width = c.height = 256; const g = c.getContext("2d", { willReadFrequently: true }); g.drawImage(im, 0, 0); res(g.getImageData(0, 0, 256, 256).data); } catch (e) { res(null); } };
+    im.onerror = () => res(null);
+    im.src = `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`;
+  }));
+  return demCache.get(k);
+}
+async function elevations(pts) {
+  const z = 13, n = 2 ** z, out = [];
+  for (const [lon, lat] of pts) {
+    const xf = (lon + 180) / 360 * n, sn = Math.sin(lat * Math.PI / 180), yf = (0.5 - Math.log((1 + sn) / (1 - sn)) / (4 * Math.PI)) * n;
+    const tx = Math.floor(xf), ty = Math.floor(yf), d = await demTile(z, tx, ty);
+    if (!d) { out.push(null); continue; }
+    const px = Math.min(255, Math.floor((xf - tx) * 256)), py = Math.min(255, Math.floor((yf - ty) * 256)), i = (py * 256 + px) * 4;
+    out.push(d[i] * 256 + d[i + 1] + d[i + 2] / 256 - 32768);
+  }
+  return out;
+}
+function initPlanLayers() {
+  map.addSource("plan", { type: "geojson", data: EMPTY });
+  map.addSource("plan-pts", { type: "geojson", data: EMPTY });
+  map.addLayer({ id: "plan-case", type: "line", source: "plan", layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#000", "line-width": 7, "line-opacity": 0.6 } });
+  map.addLayer({ id: "plan-line", type: "line", source: "plan", layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#ff5a1f", "line-width": 4 } });
+  map.addLayer({ id: "plan-pts", type: "circle", source: "plan-pts", paint: { "circle-radius": 5, "circle-color": ["case", ["==", ["get", "i"], 0], "#3fd17f", "#ffffff"], "circle-stroke-color": "#ff5a1f", "circle-stroke-width": 2 } });
+}
+function planDraw() {
+  if (!map || !map.getSource("plan")) return;
+  map.getSource("plan").setData(plan.pts.length > 1 ? { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: plan.pts } } : EMPTY);
+  map.getSource("plan-pts").setData({ type: "FeatureCollection", features: plan.pts.map((c, i) => ({ type: "Feature", properties: { i }, geometry: { type: "Point", coordinates: c } })) });
+}
+const planStats = debounce(async () => {
+  const job = ++plan.job, box = document.getElementById("pl-stats");
+  const dense = densifyLL(plan.pts, 20), km = routeKm(plan.pts);
+  const show = (up, dn, t) => {
+    box.innerHTML = `<div><b>${fmt(km, 1)}</b><span>km</span></div><div><b>${up == null ? "…" : fmt(up)}</b><span>m Aufstieg</span></div><div><b>${dn == null ? "…" : fmt(dn)}</b><span>m Abstieg</span></div><div><b>${t == null ? "…" : hmm(t * 3600)}</b><span>Richtzeit</span></div>`;
+  };
+  if (plan.pts.length < 2) { show(0, 0, 0); document.getElementById("pl-chartbox").hidden = true; plan.ele = null; plan.dense = null; return; }
+  show(null, null, null);
+  const raw = await elevations(dense);
+  if (job !== plan.job) return;
+  const ok = raw.filter((v) => v != null).length > raw.length * 0.8;
+  if (!ok) { show(null, null, null); document.getElementById("pl-msg").textContent = "Höhendaten konnten nicht geladen werden. Distanz stimmt, Höhenmeter fehlen."; return; }
+  const filled = raw.map((v, i) => v ?? raw.slice(0, i).reverse().find((x) => x != null) ?? raw.find((x) => x != null));
+  const sm = filled.map((_, i) => { const w = filled.slice(Math.max(0, i - 2), i + 3); return w.reduce((a, b) => a + b, 0) / w.length; });
+  let up = 0, dn = 0, ref = sm[0];
+  for (const v of sm) { if (v - ref >= 3) { up += v - ref; ref = v; } else if (ref - v >= 3) { dn += ref - v; ref = v; } }
+  const t = PLAN_SPORT[document.getElementById("pl-sport").value](km, up, dn);
+  plan.ele = sm; plan.dense = dense;
+  show(up, dn, t);
+  document.getElementById("pl-msg").textContent = "";
+  const box2 = document.getElementById("pl-chartbox"); box2.hidden = false;
+  let acc = 0; const xs = dense.map((p, i) => (i ? (acc += llDist(dense[i - 1], p)) : 0) / 1000);
+  chart("c-plan", { type: "line", data: { labels: xs.map((x) => fmt(x, 1)), datasets: [{ data: sm.map((v) => Math.round(v)), borderColor: css("--accent"), backgroundColor: css("--accent") + "33", fill: true, pointRadius: 0, borderWidth: 2, tension: 0.2 }] },
+    options: { animation: false, plugins: { legend: { display: false }, tooltip: { callbacks: { title: (c) => c[0].label + " km", label: (c) => c.raw + " m ü. M." } } }, scales: { x: { ticks: { maxTicksLimit: 6 } }, y: { ticks: { maxTicksLimit: 4 } } } } });
+}, 300);
+function planChanged() { planDraw(); planStats(); }
+function planAdd(ll) { plan.pts.push([+ll.lng.toFixed(6), +ll.lat.toFixed(6)]); planChanged(); }
+function setPlanActive(on) {
+  plan.active = on;
+  if (on) setAddMode(false);
+  document.getElementById("planner").hidden = !on;
+  document.getElementById("btn-plan").setAttribute("aria-pressed", String(on));
+  document.querySelector(".map-wrap").classList.toggle("planning", on);
+  if (map) map.getCanvas().style.cursor = on ? "crosshair" : "";
+  if (on && innerWidth <= 760) document.getElementById("panel").classList.add("closed");
+  if (on) planChanged();
+}
+function gpxFor(name, pts, ele) {
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Spuren und Formkurve" xmlns="http://www.topografix.com/GPX/1/1">\n<metadata><name>${esc(name)}</name></metadata>\n<trk><name>${esc(name)}</name><trkseg>\n` +
+    pts.map(([lon, lat], i) => `<trkpt lat="${lat.toFixed(6)}" lon="${lon.toFixed(6)}">${ele && ele[i] != null ? `<ele>${ele[i].toFixed(1)}</ele>` : ""}</trkpt>`).join("\n") + `\n</trkseg></trk>\n</gpx>\n`;
+}
+async function shareOrDownload(filename, text) {
+  const blob = new Blob([text], { type: "application/gpx+xml" });
+  try {
+    const file = new File([blob], filename, { type: "application/gpx+xml" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: filename }); return "Geteilt."; }
+  } catch (e) { if (e && e.name === "AbortError") return ""; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  return "Heruntergeladen.";
+}
+function planLoad(id) {
+  const r = userRoutes.find((x) => x.id === id); if (!r) return;
+  plan.pts = r.coords.map((c) => [c[0], c[1]]); plan.editId = id;
+  document.getElementById("pl-name").value = r.name || "";
+  if (r.sport) document.getElementById("pl-sport").value = r.sport;
+  setPlanActive(true);
+  const bb = boundsOfCoords([plan.pts]); if (bb) map.fitBounds(bb, { padding: 80, maxZoom: 15 });
+}
+function initPlanner() {
+  const msg = (t) => (document.getElementById("pl-msg").textContent = t);
+  document.getElementById("btn-plan").addEventListener("click", () => setPlanActive(!plan.active));
+  document.getElementById("pl-close").addEventListener("click", () => setPlanActive(false));
+  document.getElementById("pl-undo").addEventListener("click", () => { plan.pts.pop(); planChanged(); });
+  document.getElementById("pl-new").addEventListener("click", () => { plan.pts = []; plan.editId = null; document.getElementById("pl-name").value = ""; msg(""); planChanged(); });
+  document.getElementById("pl-sport").addEventListener("change", planStats);
+  document.getElementById("pl-save").addEventListener("click", () => {
+    if (plan.pts.length < 2) { msg("Setze zuerst mindestens zwei Punkte."); return; }
+    const name = document.getElementById("pl-name").value.trim() || `Route ${dateCH(iso(today))}`;
+    const rec = { id: plan.editId || "u-r" + Date.now(), name, coords: plan.pts.slice(), sport: document.getElementById("pl-sport").value };
+    const i = userRoutes.findIndex((r) => r.id === rec.id);
+    if (i >= 0) userRoutes[i] = rec; else userRoutes.push(rec);
+    plan.editId = rec.id; saveRoutes(); renderRoutes(); msg(`«${name}» ist unter «Meine Routen» gespeichert.`);
+  });
+  document.getElementById("pl-gpx").addEventListener("click", async () => {
+    if (plan.pts.length < 2) { msg("Setze zuerst mindestens zwei Punkte."); return; }
+    const name = document.getElementById("pl-name").value.trim() || `Route ${dateCH(iso(today))}`;
+    const hasEle = plan.dense && plan.ele && plan.dense.length === plan.ele.length;
+    const dense = hasEle ? plan.dense : densifyLL(plan.pts, 20);
+    const ele = hasEle ? plan.ele : null;
+    const file = name.replace(/[^\wäöüÄÖÜ -]+/g, "").trim().replace(/\s+/g, "-") + ".gpx";
+    msg(await shareOrDownload(file, gpxFor(name, dense, ele)));
+  });
+}
 /* =====================================================================
    Punkte und Routen
    ===================================================================== */
@@ -1127,7 +1369,8 @@ function routeKm(c) { let s = 0; for (let i = 1; i < c.length; i++) s += Math.hy
 function renderRoutes() {
   const list = allRoutes(), el = document.getElementById("r-list");
   document.getElementById("r-hint").hidden = list.length > 0;
-  el.innerHTML = list.map((r) => `<div class="item"><button class="main" data-id="${esc(r.id)}"><span style="width:10px;height:3px;background:#7cc4ff;display:inline-block"></span><span>${esc(r.name)}<br><small>${fmt(routeKm(r.coords), 1)} km</small></span><small></small></button>${isUserItem(r.id) ? `<button class="del" data-id="${esc(r.id)}">Löschen</button>` : ""}</div>`).join("");
+  el.innerHTML = list.map((r) => `<div class="item"><button class="main" data-id="${esc(r.id)}"><span style="width:10px;height:3px;background:#7cc4ff;display:inline-block"></span><span>${esc(r.name)}<br><small>${fmt(routeKm(r.coords), 1)} km</small></span><small></small></button>${isUserItem(r.id) ? `<span><button class="ed" data-id="${esc(r.id)}">Bearbeiten</button><button class="del" data-id="${esc(r.id)}">Löschen</button></span>` : ""}</div>`).join("");
+  el.querySelectorAll(".ed").forEach((b) => b.addEventListener("click", () => planLoad(b.dataset.id)));
   el.querySelectorAll(".main").forEach((b) => b.addEventListener("click", () => {
     const r = allRoutes().find((x) => x.id === b.dataset.id); const bb = r && boundsOfCoords([r.coords]);
     if (bb && map) map.fitBounds(bb, { padding: 60, maxZoom: 15 });
