@@ -2,7 +2,7 @@
 <html lang="de-CH">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Spuren &amp; Formkurve</title>
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-192.png">
@@ -161,6 +161,24 @@ form.inline input, form.inline select { width: 132px; }
 }
 
 
+
+/* Objekt-Infos, Handy-Bedienung */
+html, body { touch-action: manipulation; }
+.idp { max-height: 52vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; min-width: 220px; max-width: 290px; }
+.idp h4 { margin: 0; font: 700 15px/1.2 var(--f-display); letter-spacing: .04em; }
+.idp .lay { font: 600 11px var(--f-display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.idp dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; margin: 4px 0 0; font-size: 12.5px; }
+.idp dt { color: var(--muted); }
+.idp dd { margin: 0; overflow-wrap: anywhere; }
+.idp .row { margin-top: 4px; }
+.idp a { color: var(--accent); }
+.idp + .idp, .idp section + section { border-top: 1px solid var(--line); padding-top: 8px; }
+.panel-head { display: none; }
+@media (max-width: 760px) {
+  .panel-head { display: flex; justify-content: space-between; align-items: center; position: sticky; top: -14px; margin: -14px -16px 0; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line); z-index: 2; border-radius: 14px 14px 0 0; }
+  .panel-head b { font: 700 16px var(--f-display); letter-spacing: .08em; text-transform: uppercase; }
+  input, select, textarea { font-size: 16px !important; }
+}
 /* Ebenen und Routenplaner */
 .layers { width: min(340px, 100%); background: rgba(20,24,27,.97); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; max-height: 60vh; overflow-y: auto; box-shadow: 0 6px 18px rgba(0,0,0,.45); }
 .lay-h { font: 600 12px var(--f-display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
@@ -249,6 +267,7 @@ form.inline input, form.inline select { width: 132px; }
   <!-- ================= KARTE ================= -->
   <section class="view" id="view-karte" role="tabpanel" aria-labelledby="tab-karte">
     <aside class="panel" id="panel">
+      <div class="panel-head"><b>Filter &amp; Punkte</b><button class="btn primary" id="panel-close">Karte zeigen</button></div>
       <div>
         <h3>Auswahl</h3>
         <div class="sum" id="sum"></div>
@@ -313,7 +332,6 @@ form.inline input, form.inline select { width: 132px; }
         <div class="seg" role="group" aria-label="Spuren">
           <button id="mode-heat" aria-pressed="true">Heatmap</button>
           <button id="mode-sport" aria-pressed="false">Nach Sport</button>
-          <button id="mode-off" aria-pressed="false">Spuren aus</button>
         </div>
         <div class="seg" role="group" aria-label="Werkzeuge">
           <button id="btn-layers" aria-pressed="false" aria-expanded="false" aria-controls="layers">Karten &amp; Ebenen</button>
@@ -565,6 +583,8 @@ form.inline input, form.inline select { width: 132px; }
       } catch (err) { msg.textContent = "Das Passwort stimmt nicht. Achte auf Gross- und Kleinschreibung."; }
     });
   }
+  // In der App nicht die ganze Seite zoomen (die Karte zoomt weiterhin selbst)
+  ["gesturestart", "gesturechange"].forEach((t) => document.addEventListener(t, (e) => e.preventDefault(), { passive: false }));
   window.addEventListener("DOMContentLoaded", init);
 })();
 </script>
@@ -1025,15 +1045,15 @@ function initMap() {
     },
   });
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
+  map.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showUserHeading: true }), "top-right");
   map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
   map.on("load", () => { mapReady = true; initPlanLayers(); rebuildTracks(true); const m = store.get("sf.mode", "heat"); if (m !== "heat") setMode(m); });
   map.on("error", (e) => { if (e?.error && !String(e.error.message || "").match(/tile|Failed to fetch|404|400|AJAXError/i)) console.warn(e.error); });
 
   initLayerPanel();
   initPlanner();
-  document.getElementById("mode-heat").addEventListener("click", () => setMode("heat"));
-  document.getElementById("mode-sport").addEventListener("click", () => setMode("sport"));
-  document.getElementById("mode-off").addEventListener("click", () => setMode("off"));
+  document.getElementById("mode-heat").addEventListener("click", () => setMode(mode === "heat" ? "off" : "heat"));
+  document.getElementById("mode-sport").addEventListener("click", () => setMode(mode === "sport" ? "off" : "sport"));
   document.getElementById("btn-3d").addEventListener("click", (e) => {
     const on = e.currentTarget.getAttribute("aria-pressed") !== "true"; e.currentTarget.setAttribute("aria-pressed", String(on));
     if (on) { map.setTerrain({ source: "dem", exaggeration: 1.25 }); map.easeTo({ pitch: 62, duration: 900 }); }
@@ -1041,7 +1061,7 @@ function initMap() {
   });
 
   const trackLayer = () => (mode === "heat" ? "heat-core" : "sport-line");
-  map.on("click", (e) => {
+  map.on("click", async (e) => {
     if (plan.active) { planAdd(e.lngLat); return; }
     if (addMode) { addPointAt(e.lngLat); return; }
     const box = (r) => [[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]];
@@ -1051,6 +1071,13 @@ function initMap() {
       if (p) new maplibregl.Popup({ offset: 8 }).setLngLat([p.lon, p.lat])
         .setHTML(`<b>${esc(p.name)}</b><br><small>${esc((POINT_CATS[p.cat] || POINT_CATS.sonst).label)} · ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</small>`).addTo(map);
       return;
+    }
+    const idn = identVisible();
+    if (idn.length) {
+      const pop = new maplibregl.Popup({ offset: 8, maxWidth: "310px" }).setLngLat(e.lngLat).setHTML('<div class="idp"><span class="hint">Lade Infos …</span></div>').addTo(map);
+      const res = await identifyAt(e, idn).catch(() => null);
+      if (res && res.length) { pop.setDOMContent(identContent(res)); return; }
+      pop.remove();
     }
     const ids = [...new Set(map.queryRenderedFeatures(box(7), { layers: [trackLayer()] }).map((f) => f.properties.id))];
     if (ids.length) { showHits(ids.map((id) => ACT_BY_ID.get(id)).filter(Boolean)); return; }
@@ -1075,7 +1102,7 @@ async function setBase(b) {
 }
 function setMode(m) {
   mode = m;
-  for (const [id, v] of [["mode-heat", "heat"], ["mode-sport", "sport"], ["mode-off", "off"]]) document.getElementById(id).setAttribute("aria-pressed", String(m === v));
+  for (const [id, v] of [["mode-heat", "heat"], ["mode-sport", "sport"]]) document.getElementById(id).setAttribute("aria-pressed", String(m === v));
   document.getElementById("legend").hidden = m !== "heat";
   store.set("sf.mode", m);
   if (!map) return;
@@ -1147,6 +1174,96 @@ function initLayerPanel() {
     b.setAttribute("aria-pressed", String(on));
     map.setLayoutProperty(k, "visibility", on ? "visible" : "none");
   }));
+}
+/* ---------- Objekt-Infos von geo.admin.ch ---------- */
+const IDENT = { skitouren: ["ch.swisstopo-karto.skitouren", "Skitour"], schneeschuh: ["ch.swisstopo-karto.schneeschuhrouten", "Schneeschuhroute"],
+  jbg: ["ch.bafu.bundesinventare-jagdbanngebiete", "Eidg. Jagdbanngebiet"], wrz: ["ch.bafu.wrz-wildruhezonen_portal", "Wildruhezone"] };
+function toLV95(lon, lat) {
+  const p = (lat * 3600 - 169028.66) / 10000, l = (lon * 3600 - 26782.5) / 10000;
+  return [2600072.37 + 211455.93 * l - 10938.51 * l * p - 0.36 * l * p * p - 44.54 * l ** 3,
+          1200147.07 + 308807.95 * p + 3745.25 * l * l + 76.63 * p * p - 194.56 * l * l * p + 119.79 * p ** 3];
+}
+function fromLV95(E, N) {
+  const y = (E - 2600000) / 1e6, x = (N - 1200000) / 1e6;
+  const l = 2.6779094 + 4.728982 * y + 0.791484 * y * x + 0.1306 * y * x * x - 0.0436 * y ** 3;
+  const p = 16.9023892 + 3.238272 * x - 0.270978 * y * y - 0.002528 * x * x - 0.0447 * y * y * x - 0.014 * x ** 3;
+  return [+(l * 100 / 36).toFixed(6), +(p * 100 / 36).toFixed(6)];
+}
+function identVisible() { return Object.keys(IDENT).filter((k) => map.getLayer(k) && map.getLayoutProperty(k, "visibility") === "visible"); }
+function jsonp(url) {
+  return new Promise((res, rej) => {
+    const cb = "geoCb" + Date.now() + Math.floor(Math.random() * 1e4), sc = document.createElement("script");
+    const done = () => { clearTimeout(t); try { delete window[cb]; } catch (e) { window[cb] = undefined; } sc.remove(); };
+    const t = setTimeout(() => { done(); rej(new Error("Zeitüberschreitung")); }, 9000);
+    window[cb] = (d) => { done(); res(d); };
+    sc.onerror = () => { done(); rej(new Error("nicht erreichbar")); };
+    sc.src = url + "&callback=" + cb; document.head.appendChild(sc);
+  });
+}
+async function getJSON(url) {
+  try {
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 8000);
+    const r = await fetch(url, { signal: ctl.signal }); clearTimeout(t);
+    if (!r.ok) throw new Error(String(r.status));
+    return await r.json();
+  } catch (e) { return jsonp(url); }
+}
+async function identifyAt(e, keys) {
+  const [E, N] = toLV95(e.lngLat.lng, e.lngLat.lat), b = map.getBounds();
+  const sw = toLV95(b.getWest(), b.getSouth()), ne = toLV95(b.getEast(), b.getNorth()), c = map.getCanvas();
+  const q = new URLSearchParams({ geometry: `${E.toFixed(1)},${N.toFixed(1)}`, geometryType: "esriGeometryPoint", layers: "all:" + keys.map((k) => IDENT[k][0]).join(","),
+    mapExtent: [sw[0], sw[1], ne[0], ne[1]].map((v) => v.toFixed(1)).join(","), imageDisplay: `${c.clientWidth || 800},${c.clientHeight || 600},96`,
+    tolerance: innerWidth <= 760 ? "16" : "10", returnGeometry: "true", geometryFormat: "geojson", sr: "2056", lang: "de" });
+  const d = await getJSON("https://api3.geo.admin.ch/rest/services/api/MapServer/identify?" + q);
+  return (d && d.results || []).slice(0, 6);
+}
+const NAME_KEYS = ["name", "name_de", "bezeichnung", "gebietsname", "titel", "route", "label", "jb_name", "wrz_name"];
+const HIDE_KEYS = /^(id|objectid|fid|gid|ogc_fid|shape.*|the_geom|geom.*|bgdi.*|label)$/i;
+function featName(props) {
+  for (const k of NAME_KEYS) { const v = props[k]; if (typeof v === "string" && v.trim()) return v.trim(); }
+  const s = Object.values(props).find((v) => typeof v === "string" && v.trim().length > 2 && v.length < 80);
+  return s ? s.trim() : "";
+}
+const prettyKey = (k) => k.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+function linesOf(g) {
+  if (!g) return [];
+  const conv = (line) => line.map((c) => fromLV95(c[0], c[1]));
+  if (g.type === "LineString") return [conv(g.coordinates)];
+  if (g.type === "MultiLineString") return g.coordinates.map(conv);
+  return [];
+}
+function identContent(results) {
+  const box = document.createElement("div"); box.className = "idp";
+  results.forEach((r) => {
+    const props = r.properties || r.attributes || {}, key = Object.keys(IDENT).find((k) => IDENT[k][0] === r.layerBodId);
+    const name = featName(props) || r.layerName || "Objekt", lines = linesOf(r.geometry);
+    const sec = document.createElement("section");
+    const rows = Object.entries(props).filter(([k, v]) => v != null && v !== "" && !HIDE_KEYS.test(k) && String(v).trim() !== name).slice(0, 14)
+      .map(([k, v]) => { const sv = String(v); const val = /^https?:\/\//.test(sv) ? `<a href="${esc(sv)}" target="_blank" rel="noopener">Link öffnen</a>` : esc(sv); return `<dt>${esc(prettyKey(k))}</dt><dd>${val}</dd>`; }).join("");
+    const [E, N] = (() => { try { const c = r.bbox ? [(r.bbox[0] + r.bbox[2]) / 2, (r.bbox[1] + r.bbox[3]) / 2] : null; return c || [0, 0]; } catch (e) { return [0, 0]; } })();
+    const geoLink = `https://map.geo.admin.ch/?lang=de&layers=${encodeURIComponent(r.layerBodId || "")}${E ? `&E=${Math.round(E)}&N=${Math.round(N)}&zoom=8` : ""}`;
+    sec.innerHTML = `<span class="lay">${esc(key ? IDENT[key][1] : r.layerName || "")}</span><h4>${esc(name)}</h4>${rows ? `<dl>${rows}</dl>` : ""}
+      <div class="row">${lines.length ? `<button class="btn primary" data-a="gpx">GPX herunterladen</button><button class="btn" data-a="save">Als Route speichern</button>` : ""}
+      <a class="hint" href="${geoLink}" target="_blank" rel="noopener">Auf map.geo.admin.ch ansehen</a></div>`;
+    if (lines.length) {
+      const fname = (name || "route").replace(/[^\wäöüÄÖÜ -]+/g, "").trim().replace(/\s+/g, "-").slice(0, 60) || "route";
+      sec.querySelector('[data-a="gpx"]').addEventListener("click", async (ev) => {
+        ev.target.textContent = "Erstelle GPX …";
+        const all = lines.flat(), ele = await elevations(all).catch(() => null);
+        let i = 0; const segs = lines.map((ln) => ln.map((pt) => [pt, ele ? ele[i++] : null]));
+        const gpx = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Spuren und Formkurve" xmlns="http://www.topografix.com/GPX/1/1">\n<metadata><name>${esc(name)}</name></metadata>\n<trk><name>${esc(name)}</name>\n` +
+          segs.map((sg) => "<trkseg>\n" + sg.map(([[lon, lat], z]) => `<trkpt lat="${lat}" lon="${lon}">${z != null ? `<ele>${z.toFixed(1)}</ele>` : ""}</trkpt>`).join("\n") + "\n</trkseg>").join("\n") + "\n</trk>\n</gpx>\n";
+        const m = await shareOrDownload(fname + ".gpx", gpx);
+        ev.target.textContent = m ? "GPX " + m.replace(".", "").toLowerCase() : "GPX herunterladen";
+      });
+      sec.querySelector('[data-a="save"]').addEventListener("click", (ev) => {
+        userRoutes.push({ id: "u-r" + Date.now(), name, coords: lines.flat(), sport: key === "skitouren" ? "skitour" : "wandern" });
+        saveRoutes(); renderRoutes(); ev.target.textContent = "Gespeichert"; ev.target.disabled = true;
+      });
+    }
+    box.appendChild(sec);
+  });
+  return box;
 }
 /* ---------- Routenplaner ---------- */
 const plan = { active: false, pts: [], ele: null, dense: null, editId: null, job: 0 };
@@ -1406,6 +1523,7 @@ function initKarte() {
     document.getElementById("imp-msg").textContent = bad ? `${bad} Datei(en) konnten nicht gelesen werden. ${np} Punkte, ${nr} Routen geladen.` : `${np} Punkte und ${nr} Routen geladen.`;
   });
   document.getElementById("mobile-filter").addEventListener("click", () => document.getElementById("panel").classList.toggle("closed"));
+  document.getElementById("panel-close").addEventListener("click", () => document.getElementById("panel").classList.add("closed"));
   if (innerWidth <= 760) document.getElementById("panel").classList.add("closed");
 }
 
