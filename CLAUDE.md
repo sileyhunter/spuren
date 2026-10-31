@@ -6,6 +6,8 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
 
 ## Dateien
 - `index.html` – die Seite (Passwortabfrage, Entschlüsselung im Browser, Karte, Tabs)
+- `demo.html`, `manifest-demo.webmanifest` – Demo mit erfundenen Beispieldaten zum Teilen (ohne Passwort, lädt keine echten Daten).
+  Wird aus `index.html` erzeugt: nach jeder Änderung an `index.html` `python3 -I tools/make_demo.py` ausführen und `demo.html` mitcommitten.
 - `data.enc.json` – verschlüsselte Daten (AES-256-GCM, PBKDF2-SHA256, Salz bleibt fix)
 - `tools/crypt.mjs` – ver-/entschlüsseln
 - `tools/merge_daily.py` – nächtliche Garmin-Daten einspielen

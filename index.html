@@ -611,7 +611,7 @@ html, body { touch-action: manipulation; }
   };
   const start = (data) => { window.SPUREN_DATEN = data; document.getElementById("lock").hidden = true; boot(); };
   async function init() {
-    if (window.SPUREN_DATEN) { boot(); return; }
+    if (window.SPUREN_DATEN || window.SPUREN_DEMO) { boot(); return; }
     try {
       const r = await fetch("data.enc.json?t=" + Date.now(), { cache: "no-store" });
       if (!r.ok) throw new Error(String(r.status));
@@ -648,10 +648,6 @@ if (!Array.prototype.at) Array.prototype.at = function (i) { i = Math.trunc(i) |
 /* =====================================================================
    Grundlagen
    ===================================================================== */
-const RACES = [
-  { name: "Ironman 70.3 Jesolo", short: "Jesolo", date: "2027-04-24" },
-  { name: "Ironman Hamburg", short: "Hamburg", date: "2027-06-06" },
-];
 const SPORTS = {
   rad: { label: "Rad", color: "#f2a33a" },
   lauf: { label: "Lauf", color: "#ef4b5c" },
@@ -678,13 +674,22 @@ const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 const today = new Date(); today.setHours(0, 0, 0, 0);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const IS_DEMO = !!window.SPUREN_DEMO || !window.SPUREN_DATEN;
+const RACES = IS_DEMO ? [
+  { name: "Halbdistanz (Beispiel)", short: "Halbdistanz", date: iso(addDays(today, 176)) },
+  { name: "Langdistanz (Beispiel)", short: "Langdistanz", date: iso(addDays(today, 218)) },
+] : [
+  { name: "Ironman 70.3 Jesolo", short: "Jesolo", date: "2027-04-24" },
+  { name: "Ironman Hamburg", short: "Hamburg", date: "2027-06-06" },
+];
 const dateCH = (s) => pd(s).toLocaleDateString("de-CH");
 const dLabel = (s) => pd(s).toLocaleDateString("de-CH", { day: "2-digit", month: "2-digit" });
 const hmm = (sec) => { const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return m === 60 ? `${h + 1}:00` : `${h}:${String(m).padStart(2, "0")}`; };
 const mmss = (s) => { const m = Math.floor(s / 60), r = Math.round(s % 60); return r === 60 ? `${m + 1}:00` : `${m}:${String(r).padStart(2, "0")}`; };
+const SKEY = window.SPUREN_DEMO ? "demo." : "";      // die Demo speichert getrennt von der echten Seite
 const store = {
-  get(k, def) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch { return def; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } },
+  get(k, def) { try { const v = localStorage.getItem(SKEY + k); return v ? JSON.parse(v) : def; } catch { return def; } },
+  set(k, v) { try { localStorage.setItem(SKEY + k, JSON.stringify(v)); return true; } catch { return false; } },
 };
 const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
 
@@ -709,79 +714,129 @@ function decodePoly(str) {
 function makeDemo() {
   let seed = 11;
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  const cosL = Math.cos(46.9 * Math.PI / 180);
+  const nrm = () => { let x = 0; for (let i = 0; i < 6; i++) x += rnd(); return (x - 3) / 0.7071; };
+  const pick = (l) => l[Math.floor(rnd() * l.length)];
+  const cosL = Math.cos(46.9 * Math.PI / 180), STEP = 0.15;
   const move = (p, h, km) => [p[0] + km * Math.sin(h) / (111.32 * cosL), p[1] + km * Math.cos(h) / 110.57];
   const HOME = [8.245, 46.896];               // erfundener Startort in der Zentralschweiz
   function path(from, heading, km, wig) {
-    const pts = [from]; let h = heading, p = from; const n = Math.max(2, Math.round(km / 0.08));
-    for (let i = 0; i < n; i++) { h += (rnd() - 0.5) * wig; p = move(p, h, km / n); pts.push(p); }
+    const pts = [from]; let h = heading, q = from; const n = Math.max(2, Math.round(km / STEP));
+    for (let i = 0; i < n; i++) { h += (rnd() - 0.5) * wig; q = move(q, h, km / n); pts.push(q); }
     return pts;
   }
   function loop(start, km) {                   // geschlossene, leicht unregelmässige Runde durch den Start
     const R = km / (2 * Math.PI), dir = rnd() * 2 * Math.PI, c = move(start, dir, R);
-    const ph = rnd() * 6.28, amp = 0.18 + rnd() * 0.15, k = 2 + Math.floor(rnd() * 3), n = Math.max(24, Math.round(km / 0.1));
+    const ph = rnd() * 6.28, amp = 0.18 + rnd() * 0.15, k = 2 + Math.floor(rnd() * 3), n = Math.max(24, Math.round(km / STEP));
     const pts = [];
     for (let i = 0; i <= n; i++) {
       const a = dir + Math.PI + (i / n) * 2 * Math.PI, w = Math.sin((i / n) * Math.PI) ** 2;
-      const r = R * (1 + amp * w * Math.sin(k * a + ph));
-      pts.push(move(c, a, r));
+      pts.push(move(c, a, R * (1 + amp * w * Math.sin(k * a + ph))));
     }
     return pts;
   }
   const corridors = [0.4, 2.3, 4.2].map((h) => path(HOME, h, 3.5, 0.3));
-  const routeFrom = (km) => { const cor = corridors[Math.floor(rnd() * corridors.length)]; return [...cor, ...loop(cor[cor.length - 1], km).slice(1), ...cor.slice().reverse().slice(1)]; };
+  const routeFrom = (km) => { const cor = pick(corridors); return [...cor, ...loop(cor[cor.length - 1], km).slice(1), ...cor.slice().reverse().slice(1)]; };
+  const outBack = (from, heading, km) => { const q = path(from, heading, km, 0.5); return [...q, ...q.slice().reverse().slice(1)]; };
+  const near = (p, dx, dy) => [p[0] + (rnd() - .5) * dx, p[1] + (rnd() - .5) * dy];
   const seeds = {
-    rad: Array.from({ length: 10 }, () => routeFrom(35 + rnd() * 80)),
-    lauf: Array.from({ length: 7 }, () => routeFrom(4 + rnd() * 12)),
-    schwimm: Array.from({ length: 3 }, () => loop([8.228, 46.884], 1.4 + rnd() * 2)),
-    wandern: Array.from({ length: 6 }, () => loop([8.31 + (rnd() - .5) * .08, 46.80 + (rnd() - .5) * .06], 7 + rnd() * 9)),
+    rennrad: Array.from({ length: 10 }, () => routeFrom(35 + rnd() * 80)),
+    mtb: Array.from({ length: 5 }, () => loop(near([8.29, 46.86], .06, .04), 18 + rnd() * 22)),
+    strasse: Array.from({ length: 7 }, () => loop(HOME, 6 + rnd() * 10)),
+    trail: Array.from({ length: 4 }, () => loop(near([8.32, 46.84], .06, .04), 9 + rnd() * 9)),
+    frei: Array.from({ length: 3 }, () => loop([8.228, 46.884], 1.4 + rnd() * 2)),
+    wandern: Array.from({ length: 6 }, () => loop(near([8.31, 46.80], .08, .06), 7 + rnd() * 9)),
+    ski: Array.from({ length: 4 }, () => outBack(near([8.33, 46.79], .08, .04), rnd() * 6.28, 4 + rnd() * 3)),
   };
-  const kmOf = (c) => { let s = 0; for (let i = 1; i < c.length; i++) s += Math.hypot((c[i][0] - c[i - 1][0]) * 111.32 * cosL, (c[i][1] - c[i - 1][1]) * 110.57); return s; };
-  const gears = { rad: ["Zeitfahrrad", "Rennrad", "Gravel"], lauf: ["Laufschuh A", "Laufschuh B"], schwimm: ["Neopren"], wandern: [null] };
+  const kmOf = (c) => { let x = 0; for (let i = 1; i < c.length; i++) x += Math.hypot((c[i][0] - c[i - 1][0]) * 111.32 * cosL, (c[i][1] - c[i - 1][1]) * 110.57); return x; };
+  const jitter = (sd) => { const ox = (rnd() - .5) * 0.00004, oy = (rnd() - .5) * 0.00003; return sd.map(([x, y]) => [+(x + ox + (rnd() - .5) * 0.00006).toFixed(5), +(y + oy + (rnd() - .5) * 0.00005).toFixed(5)]); };
+  const hist = (avg, dur, hard) => {          // Pulsverteilung in 5er-Schritten ab 60 bpm, wie im Garmin-Export
+    const bins = new Array(30).fill(0), n = 40;
+    for (let i = 0; i < n; i++) { const h = hard && i % 5 < 2 ? avg + 17 + nrm() * 4 : avg - (hard ? 9 : 0) + nrm() * 5; bins[Math.max(0, Math.min(29, Math.floor((h - 60) / 5)))] += dur / n; }
+    while (bins.length && !bins[bins.length - 1]) bins.pop();
+    return bins.map(Math.round);
+  };
+  const zonesOf = (hh) => { const z = [0, 0, 0, 0, 0]; hh.forEach((x, i) => { const h = 62.5 + 5 * i; z[h < 117 ? 0 : h < 137 ? 1 : h < 156 ? 2 : h < 176 ? 3 : 4] += x; }); return z; };
+  const T0 = new Date(today.getFullYear() - 3, 0, 1), N = Math.round((today - T0) / DAY);
   const acts = []; let id = 1;
-  for (let back = 420; back >= 0; back--) {
-    const date = addDays(today, -back), wd = date.getDay(), m = date.getMonth(), winter = m < 3 || m > 9;
-    const plan = { 1: ["schwimm", "lauf"], 2: ["rad"], 3: ["lauf", "schwimm"], 4: ["rad"], 5: ["schwimm"], 6: ["rad", "lauf"], 0: ["lauf", "wandern"] }[wd];
-    for (const s of plan) {
-      if (rnd() < 0.18 || (s === "wandern" && rnd() < 0.65)) continue;
-      const indoor = (s === "rad" && winter && rnd() < 0.75) || (s === "schwimm" && (winter || rnd() < 0.5));
-      const sd = seeds[s][Math.floor(rnd() * seeds[s].length)];
-      const ox = (rnd() - .5) * 0.00004, oy = (rnd() - .5) * 0.00003;
-      const coords = indoor ? null : sd.map(([x, y]) => [+(x + ox + (rnd() - .5) * 0.00006).toFixed(5), +(y + oy + (rnd() - .5) * 0.00005).toFixed(5)]);
-      const km = indoor ? (s === "rad" ? 30 + rnd() * 40 : 2 + rnd() * 2) : kmOf(sd);
-      const hard = rnd() < 0.22;
-      const speed = { rad: 29, lauf: 11.8, schwimm: 3.3, wandern: 4.4 }[s] * (0.9 + rnd() * 0.15) * (hard ? 1.05 : 1);
-      const dur = km / speed * 3600;
-      const hm = indoor ? 0 : Math.round(km * ({ rad: 13, lauf: 16, schwimm: 0, wandern: 75 }[s]) * (0.6 + rnd() * 0.8));
-      const z = hard ? [0.28, 0.32, 0.14, 0.18, 0.08] : [0.40, 0.46, 0.10, 0.03, 0.01];
-      const zones = z.map((p) => Math.round(p * dur * (0.85 + rnd() * 0.3)));
-      const IF = hard ? 0.83 + rnd() * 0.07 : 0.62 + rnd() * 0.1;
-      acts.push({
-        id: "demo" + id++, sport: s, typ: (indoor ? "Indoor " : "") + SPORTS[s].label, indoor, date: iso(date),
-        name: (indoor ? "Indoor " : "") + SPORTS[s].label + (hard ? " Intervalle" : s === "wandern" ? "tour" : " locker"),
-        km: +km.toFixed(2), hm, dur: Math.round(dur),
-        hr: Math.round((hard ? 151 : 131) + rnd() * 10), watt: s === "rad" ? Math.round((hard ? 238 : 186) + rnd() * 22) : null,
-        gear: gears[s][Math.floor(rnd() * gears[s].length)], tss: Math.round(dur / 3600 * IF * IF * 100), zones, coords,
-      });
+  for (let back = N; back >= 0; back--) {
+    const date = addDays(today, -back), wd = date.getDay(), m = date.getMonth(), winter = m < 3 || m > 9, summer = m >= 4 && m <= 8;
+    const prog = 1 - back / N, unfit = 1 - prog, long = wd === 6 || wd === 0;
+    const plan = { 1: ["schwimm", "lauf"], 2: ["rad"], 3: ["lauf", "schwimm"], 4: ["rad"], 5: ["schwimm"], 6: ["rad"], 0: ["lauf", "draussen"] }[wd];
+    for (const slot of plan) {
+      if (rnd() > 0.6 + 0.28 * prog) continue;                 // früher etwas weniger Training
+      let sport = slot, typ, sys = null, indoor = false;
+      if (slot === "draussen") { if (rnd() < 0.45) continue; sport = winter ? "ski" : "wandern"; }
+      if (sport === "rad") { indoor = winter ? rnd() < 0.8 : rnd() < 0.12; sys = indoor ? "indoor" : wd === 6 && rnd() < 0.45 ? "mtb" : "rennrad"; typ = indoor ? (rnd() < 0.8 ? "Zwift" : "Indoor Rad") : sys === "mtb" ? "Mountainbike" : "Rennrad"; }
+      else if (sport === "lauf") { indoor = winter && rnd() < 0.15; sys = indoor ? "band" : wd === 0 && summer && rnd() < 0.4 ? "trail" : "strasse"; typ = indoor ? "Laufband" : sys === "trail" ? "Trail Run" : "Laufen"; }
+      else if (sport === "schwimm") { indoor = !(summer && rnd() < 0.35); typ = indoor ? "Schwimmbad" : "Freiwasser"; }
+      else typ = sport === "ski" ? "Skitouren" : "Wandern";
+      const hard = (sport === "rad" || sport === "lauf") && !long && rnd() < 0.25;
+      let km, dur, hm = 0, hr, watt = null, np = null, coords = null, tss, name;
+      if (sport === "rad") {
+        const ftp = 255 + 33 * prog;
+        np = Math.round(ftp * (hard ? 0.8 + rnd() * 0.08 : 0.58 + rnd() * 0.12) * (sys === "mtb" ? 1.1 : 1));   // im Gelände treiben Spitzen die NP hoch
+        watt = Math.round(np / (sys === "mtb" ? 1.12 + rnd() * 0.06 : sys === "indoor" ? 1.02 : 1.04 + rnd() * 0.03));
+        hr = Math.round(74 + 0.33 * np + (sys === "indoor" ? 4 : sys === "mtb" ? -3 : 0) + 5 * unfit + nrm() * 3.5);
+        if (indoor) { dur = (hard ? 3300 : 3900) + rnd() * 2400; km = dur / 3600 * (30 + rnd() * 4); hm = Math.round(km * (5 + rnd() * 10)); }
+        else {
+          const sd = sys === "mtb" ? pick(seeds.mtb) : long ? pick(seeds.rennrad) : pick(seeds.rennrad.filter((r) => r.length < 500)) || pick(seeds.rennrad);
+          coords = jitter(sd); km = kmOf(sd); dur = km / (sys === "mtb" ? 15 + rnd() * 4 : 27 + rnd() * 4) * 3600; hm = Math.round(km * (sys === "mtb" ? 28 : 12) * (0.6 + rnd() * 0.8));
+        }
+        tss = Math.round(dur / 3600 * (np / ftp) ** 2 * 100);
+        name = indoor ? (typ === "Zwift" ? (hard ? "Zwift Intervalle" : "Zwift Ausdauer") : hard ? "Rolle Intervalle" : "Rolle locker") : sys === "mtb" ? "MTB-Runde" : hard ? "Rennrad Intervalle" : long ? "Lange Ausfahrt" : "Rennrad locker";
+      } else if (sport === "lauf") {
+        const easy = 345 - 18 * prog;                               // lockeres Tempo in s/km, wird schneller
+        let pace = hard ? easy - 50 - rnd() * 20 : easy + (rnd() - 0.5) * 30;
+        if (sys === "band") pace -= 10;
+        if (indoor) km = 6 + rnd() * 5;
+        else { const sd = pick(seeds[sys]); coords = jitter(sd); km = kmOf(sd); }
+        const terrain = sys === "trail" ? 75 + rnd() * 35 : 0;
+        dur = km * (pace + terrain); hm = indoor ? 0 : Math.round(km * (sys === "trail" ? 45 : 12) * (0.6 + rnd() * 0.8));
+        hr = Math.round(146 - 0.17 * (pace - 330) + 6 * unfit + (sys === "trail" ? 3 : 0) + nrm() * 4);
+        tss = Math.round(dur / 3600 * Math.min(1.15, hr / 178) ** 2 * 100);
+        name = indoor ? "Laufband" : sys === "trail" ? "Trailrun" : hard ? "Tempolauf" : long ? "Langer Lauf" : "Lauf locker";
+      } else if (sport === "schwimm") {
+        km = 1.8 + rnd() * 1.8; dur = km * 10 * (125 - 8 * prog + rnd() * 10); hr = Math.round(118 + rnd() * 12);
+        if (!indoor) { coords = jitter(pick(seeds.frei)); km = kmOf(coords); dur = km * 10 * (120 + rnd() * 10); }
+        tss = Math.round(dur / 3600 * 55); name = indoor ? (rnd() < 0.5 ? "Schwimmen Technik" : "Schwimmen Ausdauer") : "Freiwasser See";
+      } else {
+        const sd = pick(seeds[sport]); coords = jitter(sd); km = kmOf(sd);
+        dur = km / (sport === "ski" ? 3.4 : 4.3) * 3600; hm = Math.round(km * (sport === "ski" ? 115 : 70) * (0.7 + rnd() * 0.6));
+        hr = Math.round((sport === "ski" ? 120 : 104) + rnd() * 12); tss = Math.round(dur / 3600 * (sport === "ski" ? 60 : 35));
+        name = sport === "ski" ? "Skitour" : "Wanderung";
+      }
+      const hh = hist(hr, dur, hard);
+      acts.push({ id: "demo" + id++, sport, typ, indoor: indoor || undefined, date: iso(date), start: `${String(long ? 8 + Math.floor(rnd() * 3) : sport === "schwimm" ? 6 : 18).padStart(2, "0")}:${String(Math.floor(rnd() * 60)).padStart(2, "0")}`,
+        name, km: +km.toFixed(2), hm, dur: Math.round(dur), hr, watt, np, tss, hh, zones: zonesOf(hh), coords });
     }
   }
   const days = []; let hrv = 62;
-  for (let back = 420; back >= 0; back--) {
-    hrv = Math.max(42, Math.min(84, hrv + (rnd() - .5) * 6));
-    const sleepH = +(6.3 + rnd() * 1.9).toFixed(1);
-    days.push({ date: iso(addDays(today, -back)), hrv: Math.round(hrv), rhr: Math.round(51 - (hrv - 62) / 5 + rnd() * 3), sleepH,
-      sleepScore: Math.round(55 + (sleepH - 6.3) * 15 + rnd() * 12), bodyBattery: Math.round(45 + rnd() * 50), readiness: Math.round(35 + rnd() * 60),
-      kcalIn: Math.round(2450 + rnd() * 700), kcalOut: Math.round(2550 + rnd() * 900), protein: Math.round(115 + rnd() * 50), carbs: Math.round(290 + rnd() * 120), fat: Math.round(65 + rnd() * 30) });
+  for (let back = N; back >= 0; back--) {
+    const prog = 1 - back / N, base = 62 + 10 * prog;
+    hrv = Math.max(40, Math.min(95, hrv + (rnd() - .5) * 7 + (base - hrv) * 0.08));
+    const sleepH = +(6.2 + rnd() * 2).toFixed(1);
+    const d = { date: iso(addDays(today, -back)), hrv: Math.round(hrv), rhr: Math.round(53 - 4 * prog - (hrv - base) / 5 + rnd() * 3), sleepH,
+      sleepScore: Math.round(Math.min(98, 52 + (sleepH - 6.2) * 15 + rnd() * 14)), bodyBattery: Math.round(45 + rnd() * 50), readiness: Math.round(35 + rnd() * 60),
+      kcalOut: Math.round(2550 + rnd() * 900) };
+    if (back <= 45) Object.assign(d, { kcalIn: Math.round(2450 + rnd() * 700), protein: Math.round(120 + rnd() * 50), carbs: Math.round(290 + rnd() * 120), fat: Math.round(60 + rnd() * 30) });
+    days.push(d);
   }
-  const weights = []; let w = 81.8;
-  for (let back = 400; back >= 0; back--) { if (rnd() < 0.18) continue; w = Math.max(76, w + (rnd() - 0.535) * 0.3); weights.push({ date: iso(addDays(today, -back)), kg: +(w + (rnd() - .5) * 0.5).toFixed(1) }); }
-  const ftp = [["2025-09-10", 258], ["2025-11-10", 262], ["2026-01-20", 268], ["2026-03-15", 275], ["2026-05-20", 281], ["2026-08-02", 286], ["2026-10-01", 284]].map(([date, w]) => ({ date, w }));
+  const weights = []; let w = 82.4;
+  for (let back = 420; back >= 0; back--) { if (rnd() < 0.2) continue; w = Math.max(77, w + (rnd() - 0.53) * 0.3); weights.push({ date: iso(addDays(today, -back)), kg: +(w + (rnd() - .5) * 0.5).toFixed(1) }); }
+  const ftp = []; for (let back = N - 30; back >= 0; back -= 61) { const prog = 1 - back / N; ftp.push({ date: iso(addDays(today, -back)), w: Math.round(255 + 33 * prog + (rnd() - .5) * 6) }); }
   const pdc = { dur: [5, 15, 30, 60, 300, 600, 1200, 3600, 7200], now: [985, 862, 718, 522, 362, 321, 302, 281, 247], prev: [1012, 871, 702, 503, 344, 306, 287, 268, 233] };
+  const ago = (n) => iso(addDays(today, -n));
   const lactate = [
-    { date: "2026-02-14", sport: "Rad", lt1: "205", lt2: "278", hr: 166, note: "Beispiel" },
-    { date: "2026-02-14", sport: "Lauf", lt1: "5:10", lt2: "4:18", hr: 171, note: "Beispiel" },
-    { date: "2026-06-20", sport: "Rad", lt1: "214", lt2: "289", hr: 167, note: "Beispiel" },
+    ...[300, 250, 200, 150, 100, 45].map((n, i) => ({ kind: "check", date: ago(n), sport: "rad", block: "10 min @ 220 W", w: 220, np: 221 + (i % 2), hr_avg: 148 - i, hr_max: 154 - i,
+      drift: +(4.2 - i * 0.4).toFixed(1), lactate: +(2.1 - i * 0.12).toFixed(1), note: "Beispiel" })),
+    { kind: "stufentest", date: ago(330), sport: "rad", note: "Beispiel", stages: [[160, 122, 1.0], [190, 132, 1.1], [220, 143, 1.4], [250, 154, 2.0], [280, 165, 3.2], [310, 174, 5.1]].map(([x, h, la]) => ({ w: x, hr: h, la })) },
+    { kind: "stufentest", date: ago(160), sport: "rad", note: "Beispiel", stages: [[160, 118, 0.9], [190, 128, 1.0], [220, 139, 1.2], [250, 150, 1.7], [280, 161, 2.6], [310, 171, 4.3], [340, 179, 6.4]].map(([x, h, la]) => ({ w: x, hr: h, la })) },
+    { kind: "stufentest", date: ago(210), sport: "lauf", note: "Beispiel", stages: [[360, 140, 1.1], [330, 150, 1.3], [300, 160, 1.8], [280, 168, 2.6], [260, 176, 4.0], [245, 182, 5.8]].map(([x, h, la]) => ({ pace_s: x, hr: h, la })) },
   ];
+  const tests = [{ date: iso(addDays(today, 18)), kind: "check", note: "Kurzcheck 10 min @ 220 W, gleicher Block wie bisher", status: "vorschlag" },
+    { date: iso(addDays(today, 61)), kind: "stufentest", note: "Stufentest Rad vor dem nächsten Trainingsblock", status: "vorschlag" }];
+  const PLAN = { 1: ["Schwimmen Technik", "schwimm", 2700], 2: ["Rad Grundlage", "rad", 5400], 3: ["Lauf locker", "lauf", 3000], 4: ["Rad Sweet Spot", "rad", 4500], 6: ["Lange Ausfahrt", "rad", 10800], 0: ["Langer Lauf", "lauf", 5400] };
+  const planned = []; for (let i = 1; i <= 14; i++) { const d = addDays(today, i), q = PLAN[d.getDay()]; if (q) planned.push({ date: iso(d), title: q[0], sport: q[1], dur_s: q[2] }); }
   const points = [
     { id: "demo-p1", name: "Jagdposten Waldrand (Beispiel)", cat: "jagd", lat: 46.8742, lon: 8.2911 },
     { id: "demo-p2", name: "Jagdposten Lichtung (Beispiel)", cat: "jagd", lat: 46.8611, lon: 8.3127 },
@@ -789,7 +844,7 @@ function makeDemo() {
     { id: "demo-p4", name: "Badestelle See (Beispiel)", cat: "bad", lat: 46.884, lon: 8.228 },
   ];
   const routes = [{ id: "demo-r1", name: "Passfahrt (Beispielroute)", coords: path([8.252, 46.905], 1.2, 22, 0.4).map(([x, y]) => [+x.toFixed(5), +y.toFixed(5)]) }];
-  return { demo: true, activities: acts, days, weights, ftp, pdc, lactate, points, routes };
+  return { demo: true, activities: acts, days, weights, ftp, pdc, lactate, points, routes, tests, planned };
 }
 
 /* =====================================================================
@@ -2159,7 +2214,7 @@ const TABS = {
       const v = document.getElementById("z-verdict"); let cls = "", msg;
       if (!T) msg = "Noch keine Zonendaten im gewählten Zeitraum.";
       else if (mid > 20) { cls = "bad"; msg = `Zu viel im mittleren Bereich: ${fmt(mid)} % deiner Zeit. Für die Langdistanz sind etwa 75–80 % locker und höchstens 10–15 % im mittleren Bereich sinnvoll. Lockere Einheiten lockerer gestalten.`; }
-      else if (low < 70) { cls = "warn"; msg = `Nur ${fmt(low)} % locker (Ziel 75–80 %). Für Jesolo und Hamburg bringt mehr Grundlage mehr als zusätzliche Intensität.`; }
+      else if (low < 70) { cls = "warn"; msg = `Nur ${fmt(low)} % locker (Ziel 75–80 %). Für ${RACES.map((r) => r.short).join(" und ")} bringt mehr Grundlage mehr als zusätzliche Intensität.`; }
       else msg = `Passt: ${fmt(low)} % locker, ${fmt(mid)} % mittel, ${fmt(hi)} % hart. Das entspricht einer polarisierten bis pyramidalen Verteilung, wie sie für die Langdistanz empfohlen wird.`;
       v.className = "verdict" + (cls ? " " + cls : ""); v.textContent = msg;
       chart("c-zones", { type: "bar", data: { labels: weeks.map((w) => "KW " + isoWeek(w)), datasets: [
