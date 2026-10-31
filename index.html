@@ -173,6 +173,14 @@ html, body { touch-action: manipulation; }
 .idp .row { margin-top: 4px; }
 .idp a { color: var(--accent); }
 .idp + .idp, .idp section + section { border-top: 1px solid var(--line); padding-top: 8px; }
+.idp section { border-left: 3px solid transparent; padding-left: 8px; cursor: pointer; }
+.idp section.on { border-left-color: #19e3ff; }
+.idp section.on h4 { color: #19e3ff; }
+.idp p.hint { margin: 4px 0 0; }
+.idp .pre { white-space: pre-line; }
+.idp .lnk { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-size: 12.5px; cursor: pointer; text-decoration: underline; }
+#lay-msg a { color: var(--accent); }
+.wms-ov { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; opacity: .75; max-width: none; max-height: none; user-select: none; -webkit-user-select: none; }
 .panel-head { display: none; }
 @media (max-width: 760px) {
   .panel-head { display: flex; justify-content: space-between; align-items: center; position: sticky; top: -14px; margin: -14px -16px 0; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line); z-index: 2; border-radius: 14px 14px 0 0; }
@@ -358,10 +366,14 @@ html, body { touch-action: manipulation; }
             <button class="chip" data-ov="skitouren" aria-pressed="false">Skitouren</button>
             <button class="chip" data-ov="schneeschuh" aria-pressed="false">Schneeschuhrouten</button>
             <button class="chip" data-ov="hang30" aria-pressed="false">Hangneigung über 30°</button>
-            <button class="chip" data-ov="wrz" aria-pressed="false">Wildruhezonen</button>
-            <button class="chip" data-ov="jbg" aria-pressed="false">Jagdbanngebiete</button>
           </div>
-          <p class="hint" id="lay-msg">Karten: swisstopo. Wildruhezonen und Jagdbanngebiete gelten auch im Winter, bitte respektieren.</p>
+          <div class="lay-h">Wild &amp; Jagd</div>
+          <div class="chips">
+            <button class="chip" data-ov="wrz" aria-pressed="false">Wildruhezonen</button>
+            <button class="chip" data-ov="jbg" aria-pressed="false">Eidg. Jagdbanngebiete</button>
+            <button class="chip" data-ov="wsg_gr" aria-pressed="false">Wildschutzgebiete GR</button>
+          </div>
+          <p class="hint" id="lay-msg">Karten: swisstopo und Kanton Graubünden. Wildruhezonen und Schutzgebiete bitte respektieren.</p>
         </div>
       </div>
       <div class="planner" id="planner" hidden>
@@ -1064,6 +1076,7 @@ function initMap() {
   map.on("click", async (e) => {
     if (plan.active) { planAdd(e.lngLat); return; }
     if (addMode) { addPointAt(e.lngLat); return; }
+    if (hlOwner === "list") hlClear("list");
     const box = (r) => [[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]];
     const pf = map.queryRenderedFeatures(box(8), { layers: ["points"] });
     if (pf.length) {
@@ -1072,17 +1085,27 @@ function initMap() {
         .setHTML(`<b>${esc(p.name)}</b><br><small>${esc((POINT_CATS[p.cat] || POINT_CATS.sonst).label)} · ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</small>`).addTo(map);
       return;
     }
-    const idn = identVisible();
-    if (idn.length) {
+    const idn = identVisible(), wv = wmsVisible();
+    if (idn.length || wv.length) {
       const pop = new maplibregl.Popup({ offset: 8, maxWidth: "310px" }).setLngLat(e.lngLat).setHTML('<div class="idp"><span class="hint">Lade Infos …</span></div>').addTo(map);
-      const res = await identifyAt(e, idn).catch(() => null);
-      if (res && res.length) { pop.setDOMContent(identContent(res)); return; }
+      pop.on("close", () => hlClear(pop));
+      const [r1, r2] = await Promise.all([
+        idn.length ? identifyAt(e, idn).catch(() => []) : [],
+        wv.length ? Promise.all(wv.map((k) => wmsInfo(k, e).catch(() => []))).then((a) => a.flat()) : [],
+      ]);
+      const res = [...(r1 || []), ...(r2 || [])];
+      if (!pop.isOpen()) return;          // inzwischen woanders hingetippt
+      if (res.length) { pop.setDOMContent(identContent(res, pop)); return; }
       pop.remove();
     }
     const ids = [...new Set(map.queryRenderedFeatures(box(7), { layers: [trackLayer()] }).map((f) => f.properties.id))];
     if (ids.length) { showHits(ids.map((id) => ACT_BY_ID.get(id)).filter(Boolean)); return; }
     const rf = map.queryRenderedFeatures(box(6), { layers: ["routes"] });
-    if (rf.length) new maplibregl.Popup({ offset: 8 }).setLngLat(e.lngLat).setHTML(`<b>${esc(rf[0].properties.name)}</b><br><small>Route</small>`).addTo(map);
+    if (rf.length) {
+      const r = allRoutes().find((x) => x.id === rf[0].properties.id);
+      const pop = new maplibregl.Popup({ offset: 8 }).setLngLat(e.lngLat).setHTML(`<b>${esc(rf[0].properties.name)}</b><br><small>Route${r ? " · " + fmt(routeKm(r.coords), 1) + " km" : ""}</small>`).addTo(map);
+      if (r) { hlSet([{ type: "LineString", coordinates: r.coords }], pop); pop.on("close", () => hlClear(pop)); }
+    }
   });
   for (const l of ["heat-core", "sport-line", "points", "routes"]) {
     map.on("mouseenter", l, () => { if (!addMode) map.getCanvas().style.cursor = "pointer"; });
@@ -1165,14 +1188,19 @@ function initLayerPanel() {
   panel.querySelectorAll("[data-ov]").forEach((b) => b.addEventListener("click", async () => {
     if (b.getAttribute("aria-disabled") === "true") return;
     const k = b.dataset.ov, on = b.getAttribute("aria-pressed") !== "true";
-    if (WMTS_EXTRA[k]) {
+    if (WMTS_EXTRA[k] || WMS_EXTRA[k]) {
       b.textContent = b.textContent.replace(/ …$/, "") + " …";
-      const ok = await ensureExtra(k);
+      const ok = WMTS_EXTRA[k] ? await ensureExtra(k) : await ensureWms(k);
       b.textContent = b.textContent.replace(/ …$/, "");
-      if (!ok) { b.setAttribute("aria-disabled", "true"); b.setAttribute("aria-pressed", "false"); document.getElementById("lay-msg").textContent = `«${b.textContent}» ist im Moment nicht verfügbar.`; return; }
+      if (!ok) {
+        b.setAttribute("aria-disabled", "true"); b.setAttribute("aria-pressed", "false");
+        const m = document.getElementById("lay-msg");
+        if (WMS_EXTRA[k]) m.innerHTML = wmsFailMsg(k); else m.textContent = `«${b.textContent}» ist im Moment nicht verfügbar.`;
+        return;
+      }
     }
     b.setAttribute("aria-pressed", String(on));
-    map.setLayoutProperty(k, "visibility", on ? "visible" : "none");
+    if (WMS_EXTRA[k]) wmsShow(k, on); else map.setLayoutProperty(k, "visibility", on ? "visible" : "none");
   }));
 }
 /* ---------- Objekt-Infos von geo.admin.ch ---------- */
@@ -1217,53 +1245,347 @@ async function identifyAt(e, keys) {
   const d = await getJSON("https://api3.geo.admin.ch/rest/services/api/MapServer/identify?" + q);
   return (d && d.results || []).slice(0, 6);
 }
-const NAME_KEYS = ["name", "name_de", "bezeichnung", "gebietsname", "titel", "route", "label", "jb_name", "wrz_name"];
-const HIDE_KEYS = /^(id|objectid|fid|gid|ogc_fid|shape.*|the_geom|geom.*|bgdi.*|label)$/i;
+const NAME_KEYS = ["name", "name_de", "bezeichnung", "gebietsname", "objektname", "wsg_name", "gebiet", "titel", "route", "label", "jb_name", "wrz_name"];
+const HIDE_KEYS = /^(id|objectid|fid|gid|ogc_fid|shape.*|the_geom|geom.*|geometry|msgeometry|bgdi.*|label|boundedby)$/i;
 function featName(props) {
-  for (const k of NAME_KEYS) { const v = props[k]; if (typeof v === "string" && v.trim()) return v.trim(); }
-  const s = Object.values(props).find((v) => typeof v === "string" && v.trim().length > 2 && v.length < 80);
+  const low = {}; for (const [k, v] of Object.entries(props)) low[k.toLowerCase()] = v;
+  for (const k of NAME_KEYS) { const v = low[k]; if (typeof v === "string" && v.trim()) return v.trim(); }
+  const s = Object.values(props).find((v) => typeof v === "string" && v.trim().length > 2 && v.length < 80 && !/^https?:/.test(v));
   return s ? s.trim() : "";
 }
 const prettyKey = (k) => k.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
-function linesOf(g) {
+
+/* Koordinaten umrechnen (Web-Mercator, LV95, LV03, WGS84 werden erkannt) */
+const merc = (lon, lat) => [lon * 20037508.34 / 180, Math.log(Math.tan((90 + lat) * Math.PI / 360)) * 20037508.34 / Math.PI];
+const unmerc = (x, y) => [+(x * 180 / 20037508.34).toFixed(6), +(Math.atan(Math.exp(y * Math.PI / 20037508.34)) * 360 / Math.PI - 90).toFixed(6)];
+function autoLL(c) {
+  const x = +c[0], y = +c[1];
+  if (!isFinite(x) || !isFinite(y)) return null;
+  if (Math.abs(x) <= 180 && Math.abs(y) <= 90) return x > 30 && y < 30 ? [y, x] : [x, y];   // auch lat/lon vertauscht
+  if (x > 2.3e6 && x < 3.0e6 && y > 1.0e6 && y < 1.4e6) return fromLV95(x, y);
+  if (y > 2.3e6 && y < 3.0e6 && x > 1.0e6 && x < 1.4e6) return fromLV95(y, x);
+  if (x > 4.0e5 && x < 9.0e5 && y > 0 && y < 4.0e5) return fromLV95(x + 2e6, y + 1e6);
+  if (Math.abs(x) < 2.1e7 && Math.abs(y) < 2.1e7) return unmerc(x, y);
+  return null;
+}
+function mapCoords(g, f) {
+  if (!g || !Array.isArray(g.coordinates)) return null;
+  let bad = false;
+  const deep = (c) => { if (typeof c[0] === "number" || typeof c[0] === "string") { const r = f(c); if (!r) bad = true; return r; } return c.map(deep); };
+  const out = { type: g.type, coordinates: deep(g.coordinates) };
+  return bad ? null : out;
+}
+function geomWgs(r) {          // Geometrie eines Treffers in WGS84 (geo.admin liefert LV95)
+  if (!r.geometry) return null;
+  return r._wgs ? r.geometry : mapCoords(r.geometry, (c) => fromLV95(+c[0], +c[1]));
+}
+function linesOf(g) {           // Linien bzw. Umrisse für GPX und Zoom
   if (!g) return [];
-  const conv = (line) => line.map((c) => fromLV95(c[0], c[1]));
-  if (g.type === "LineString") return [conv(g.coordinates)];
-  if (g.type === "MultiLineString") return g.coordinates.map(conv);
+  if (g.type === "LineString") return [g.coordinates];
+  if (g.type === "MultiLineString" || g.type === "Polygon") return g.coordinates;
+  if (g.type === "MultiPolygon") return g.coordinates.flat();
   return [];
 }
-function identContent(results) {
+
+/* Markierung des angeklickten Objekts */
+let hlOwner = null;
+function hlSet(geoms, owner) {
+  hlOwner = geoms.length ? (owner === undefined ? null : owner) : null;
+  const src = map && map.getSource("hl"); if (!src) return;
+  const feats = [];
+  for (const g of geoms) {
+    if (!g) continue;
+    if (g.type === "MultiPolygon") g.coordinates.forEach((c) => feats.push({ type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: c } }));
+    else if (/LineString|Polygon/.test(g.type)) feats.push({ type: "Feature", properties: {}, geometry: g });
+  }
+  src.setData({ type: "FeatureCollection", features: feats });
+}
+function hlClear(owner) { if (owner === undefined || owner === hlOwner) hlSet([]); }
+
+function identContent(results, owner) {
   const box = document.createElement("div"); box.className = "idp";
+  if (results.length > 1) box.insertAdjacentHTML("beforeend", `<span class="hint">${results.length} Treffer · antippen zum Markieren</span>`);
+  const secs = [];
+  const pick = (sec) => { secs.forEach((x) => x.classList.toggle("on", x === sec)); hlSet(sec._g ? [sec._g] : [], owner); };
   results.forEach((r) => {
     const props = r.properties || r.attributes || {}, key = Object.keys(IDENT).find((k) => IDENT[k][0] === r.layerBodId);
-    const name = featName(props) || r.layerName || "Objekt", lines = linesOf(r.geometry);
-    const sec = document.createElement("section");
-    const rows = Object.entries(props).filter(([k, v]) => v != null && v !== "" && !HIDE_KEYS.test(k) && String(v).trim() !== name).slice(0, 14)
+    const name = featName(props) || r.layerName || "Objekt", g = geomWgs(r), lines = linesOf(g), area = !!g && /Polygon/.test(g.type);
+    const sec = document.createElement("section"); sec._g = g; secs.push(sec);
+    const rows = Object.entries(props).filter(([k, v]) => v != null && v !== "" && typeof v !== "object" && !HIDE_KEYS.test(k) && String(v).trim() !== name).slice(0, 14)
       .map(([k, v]) => { const sv = String(v); const val = /^https?:\/\//.test(sv) ? `<a href="${esc(sv)}" target="_blank" rel="noopener">Link öffnen</a>` : esc(sv); return `<dt>${esc(prettyKey(k))}</dt><dd>${val}</dd>`; }).join("");
-    const [E, N] = (() => { try { const c = r.bbox ? [(r.bbox[0] + r.bbox[2]) / 2, (r.bbox[1] + r.bbox[3]) / 2] : null; return c || [0, 0]; } catch (e) { return [0, 0]; } })();
-    const geoLink = `https://map.geo.admin.ch/?lang=de&layers=${encodeURIComponent(r.layerBodId || "")}${E ? `&E=${Math.round(E)}&N=${Math.round(N)}&zoom=8` : ""}`;
-    sec.innerHTML = `<span class="lay">${esc(key ? IDENT[key][1] : r.layerName || "")}</span><h4>${esc(name)}</h4>${rows ? `<dl>${rows}</dl>` : ""}
-      <div class="row">${lines.length ? `<button class="btn primary" data-a="gpx">GPX herunterladen</button><button class="btn" data-a="save">Als Route speichern</button>` : ""}
-      <a class="hint" href="${geoLink}" target="_blank" rel="noopener">Auf map.geo.admin.ch ansehen</a></div>`;
+    const [E, N] = Array.isArray(r.bbox) ? [(r.bbox[0] + r.bbox[2]) / 2, (r.bbox[1] + r.bbox[3]) / 2] : [0, 0];
+    const link = r.link || `https://map.geo.admin.ch/?lang=de&layers=${encodeURIComponent(r.layerBodId || "")}${E ? `&E=${Math.round(E)}&N=${Math.round(N)}&zoom=8` : ""}`;
+    sec.innerHTML = `<span class="lay">${esc(key ? IDENT[key][1] : r.layerName || "")}</span><h4>${esc(name)}</h4>${rows ? `<dl>${rows}</dl>` : ""}${r.text ? `<p class="hint pre">${esc(r.text)}</p>` : ""}${r.note ? `<p class="hint">${esc(r.note)}</p>` : ""}
+      ${lines.length ? `<div class="row"><button class="btn primary" data-a="gpx">${area ? "Grenze als GPX" : "GPX herunterladen"}</button>${area ? "" : `<button class="btn" data-a="save">Als Route speichern</button>`}</div>` : ""}
+      <div class="row">${lines.length ? `<button class="lnk" data-a="fit">${area ? "Ganzes Gebiet zeigen" : "Ganze Route zeigen"}</button>` : ""}<a class="hint" href="${esc(link)}" target="_blank" rel="noopener">${esc(r.linkText || "Auf map.geo.admin.ch ansehen")}</a></div>`;
+    sec.addEventListener("click", (ev) => { if (!ev.target.closest("a")) pick(sec); });
     if (lines.length) {
+      sec.querySelector('[data-a="fit"]').addEventListener("click", () => { const b = boundsOfCoords(lines); if (b) map.fitBounds(b, { padding: 50, maxZoom: 15 }); });
       const fname = (name || "route").replace(/[^\wäöüÄÖÜ -]+/g, "").trim().replace(/\s+/g, "-").slice(0, 60) || "route";
       sec.querySelector('[data-a="gpx"]').addEventListener("click", async (ev) => {
-        ev.target.textContent = "Erstelle GPX …";
+        const btn = ev.currentTarget, label = btn.textContent; btn.textContent = "Erstelle GPX …";
         const all = lines.flat(), ele = await elevations(all).catch(() => null);
         let i = 0; const segs = lines.map((ln) => ln.map((pt) => [pt, ele ? ele[i++] : null]));
         const gpx = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Spuren und Formkurve" xmlns="http://www.topografix.com/GPX/1/1">\n<metadata><name>${esc(name)}</name></metadata>\n<trk><name>${esc(name)}</name>\n` +
           segs.map((sg) => "<trkseg>\n" + sg.map(([[lon, lat], z]) => `<trkpt lat="${lat}" lon="${lon}">${z != null ? `<ele>${z.toFixed(1)}</ele>` : ""}</trkpt>`).join("\n") + "\n</trkseg>").join("\n") + "\n</trk>\n</gpx>\n";
         const m = await shareOrDownload(fname + ".gpx", gpx);
-        ev.target.textContent = m ? "GPX " + m.replace(".", "").toLowerCase() : "GPX herunterladen";
+        btn.textContent = m ? "GPX " + m.replace(".", "").toLowerCase() : label;
       });
-      sec.querySelector('[data-a="save"]').addEventListener("click", (ev) => {
+      sec.querySelector('[data-a="save"]')?.addEventListener("click", (ev) => {
         userRoutes.push({ id: "u-r" + Date.now(), name, coords: lines.flat(), sport: key === "skitouren" ? "skitour" : "wandern" });
-        saveRoutes(); renderRoutes(); ev.target.textContent = "Gespeichert"; ev.target.disabled = true;
+        saveRoutes(); renderRoutes(); ev.currentTarget.textContent = "Gespeichert"; ev.currentTarget.disabled = true;
       });
     }
     box.appendChild(sec);
   });
+  if (secs.length) pick(secs[0]);
   return box;
+}
+
+/* ---------- Kantonale Kartendienste (WMS): Wildschutzgebiete GR ---------- */
+const WMS_EXTRA = {
+  wsg_gr: {
+    url: "https://wms.geo.gr.ch/wildschutzgebiete", short: "Wildschutzgebiete GR",
+    guess: ["Wildschutzgebiete", "wildschutzgebiete", "WMS_Wildschutzgebiete", "WFS_Wildschutzgebiete", "WSG", "0"],
+    wfs: { url: "https://wfs.geo.gr.ch/wildschutzgebiete", types: ["WFS_Wildschutzgebiete", "Wildschutzgebiete"] },
+    label: "Kantonales Wildschutzgebiet GR",
+    note: "Jagdverbot je nach Jagdart. Massgebend sind die Verordnung über die Wildschutzgebiete (BR 740.200) und die offiziellen Jagdkarten, diese Karte dient der Orientierung.",
+    viewer: (E, N) => `https://map.geo.gr.ch/theme/Wildschutzgebiete?lang=de&theme=Wildschutzgebiete${E ? `&map_x=${Math.round(E)}&map_y=${Math.round(N)}&map_zoom=8&map_crosshair=true` : ""}`,
+    viewerText: "Im Kartenviewer GR ansehen",
+    attr: "© Kanton Graubünden, Amt für Jagd und Fischerei",
+  },
+};
+const wmsP = {}, wmsS = {};
+async function fetchText(url, ms = 8000) {
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms);
+  try {
+    const r = await fetch(url, { signal: ctl.signal });
+    if (!r.ok) { const e = new Error("HTTP " + r.status); e.http = true; throw e; }
+    return await r.text();
+  } finally { clearTimeout(t); }
+}
+function probeImg(url, cors) {
+  return new Promise((res) => { const im = new Image(); let done = false; const fin = (v) => { if (!done) { done = true; res(v); } };
+    if (cors) im.crossOrigin = "anonymous";
+    im.onload = () => fin(im.naturalWidth > 0); im.onerror = () => fin(false); setTimeout(() => fin(false), 9000); im.src = url; });
+}
+function wmsUrl(st, box, W, H, req = "GetMap", extra = "") {     // box: [West, Süd, Ost, Nord] in Grad
+  const v = st.v, bb = v.merc ? [...merc(box[0], box[1]), ...merc(box[2], box[3])].map((x) => x.toFixed(1)) : box.map((x) => (+x).toFixed(7));
+  return `${st.url}?SERVICE=WMS&VERSION=${v.ver}&REQUEST=${req}&LAYERS=${encodeURIComponent(st.layers)}&STYLES=&${v.ver === "1.3.0" ? "CRS" : "SRS"}=${v.crs}&BBOX=${bb.join(",")}&WIDTH=${W}&HEIGHT=${H}&FORMAT=image/png&TRANSPARENT=true${extra}`;
+}
+function parseCaps(text) {
+  const x = new DOMParser().parseFromString(text, "text/xml");
+  if (x.getElementsByTagName("parsererror").length) return null;
+  const kids = (el, n) => [...el.children].filter((c) => c.localName === n);
+  const cap = [...x.getElementsByTagName("*")].find((e) => e.localName === "Capability");
+  const root = cap && kids(cap, "Layer")[0]; if (!root) return null;
+  const nm = (l) => ((kids(l, "Name")[0] || {}).textContent || "").trim();
+  const leaves = [], query = [];
+  const walk = (l) => { const sub = kids(l, "Layer"); if (!sub.length && nm(l)) { leaves.push(nm(l)); if (l.getAttribute("queryable") === "1") query.push(nm(l)); } sub.forEach(walk); };
+  walk(root);
+  const crs = [...root.getElementsByTagName("*")].filter((e) => e.localName === "CRS" || e.localName === "SRS").map((e) => e.textContent.trim().toUpperCase());
+  const gfi = [...cap.getElementsByTagName("*")].find((e) => e.localName === "GetFeatureInfo");
+  return { root: nm(root), leaves, query, crs: [...new Set(crs)], fmts: gfi ? kids(gfi, "Format").map((f) => f.textContent.trim()) : [] };
+}
+function ensureWms(key) {
+  if (!wmsP[key]) wmsP[key] = (async () => {
+    const W = WMS_EXTRA[key], st = (wmsS[key] = { key, url: W.url, on: false, req: 0 });
+    let caps = null;
+    try { caps = parseCaps(await fetchText(`${W.url}?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0`)); } catch (e) { /* gesperrt oder nicht erreichbar */ }
+    const names = caps ? [...new Set([caps.root, caps.leaves.join(",")].filter(Boolean))] : W.guess;
+    const has = (c) => !caps || !caps.crs.length || caps.crs.includes(c);
+    const mc = ["EPSG:3857", "EPSG:900913", "EPSG:102100"].find(has), vars = [];
+    if (mc) vars.push({ ver: "1.3.0", crs: mc, merc: true });
+    if (has("EPSG:4326") || has("CRS:84")) vars.push({ ver: "1.1.1", crs: "EPSG:4326", merc: false });
+    if (!vars.length) vars.push({ ver: "1.3.0", crs: "EPSG:3857", merc: true });
+    const combos = names.flatMap((n) => vars.map((v) => ({ n, v }))), box = [9.2, 46.55, 9.8, 46.95];
+    const ok = await Promise.all(combos.map((c) => probeImg(wmsUrl({ url: W.url, layers: c.n, v: c.v }, box, 64, 64), false)));
+    const i = ok.indexOf(true);
+    if (i < 0) { st.fail = caps ? "Die Ebene wurde im Kartendienst des Kantons nicht gefunden." : "Der Kartendienst des Kantons ist im Moment nicht erreichbar."; return false; }
+    Object.assign(st, { layers: combos[i].n, v: combos[i].v, qlayers: caps && caps.query.length ? caps.query.join(",") : combos[i].n, fmts: caps ? caps.fmts : null });
+    st.cors = !!caps || (await probeImg(wmsUrl(st, box, 64, 64) + "&_cors=1", true));
+    st.mode = st.cors && st.v.merc ? "tiles" : "overlay";
+    if (st.mode === "tiles") {
+      const t = `${W.url}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${encodeURIComponent(st.layers)}&STYLES=&CRS=${st.v.crs}&BBOX={bbox-epsg-3857}&WIDTH=512&HEIGHT=512&FORMAT=image/png&TRANSPARENT=true`;
+      map.addSource(key, { type: "raster", tiles: [t], tileSize: 256, minzoom: 7, attribution: W.attr });
+      map.addLayer({ id: key, type: "raster", source: key, layout: { visibility: "none" }, paint: { "raster-opacity": 0.8 } }, "heat-glow");
+    } else wmsOverlayInit(st);
+    console.info("Kantonsdienst", key, st.mode, st.layers, st.v.crs, st.cors ? "mit CORS" : "ohne CORS");
+    return true;
+  })();
+  return wmsP[key];
+}
+/* Ohne Freigabe für fremde Seiten (CORS) kann MapLibre die Bilder nicht zeichnen:
+   dann ein einzelnes Kartenbild über die Karte legen und bei jeder Bewegung mitführen (nur 2D). */
+function wmsOverlayInit(st) {
+  const cont = map.getCanvasContainer(), cv = map.getCanvas();
+  const flat = () => map.getPitch() < 1 && map.getZoom() >= 7;
+  const place = () => {
+    const el = st.el; if (!el) return;
+    if (!st.on || !flat() || !st.view) { el.style.display = "none"; return; }
+    const [w, s, e, n] = st.view.box, a = map.project([w, n]), b = map.project([e, n]), c = map.project([w, s]);
+    el.style.display = "block";
+    el.style.transform = `matrix(${(b.x - a.x) / st.view.cw},${(b.y - a.y) / st.view.cw},${(c.x - a.x) / st.view.ch},${(c.y - a.y) / st.view.ch},${a.x},${a.y})`;
+  };
+  const load = () => {
+    if (!st.on || !flat()) { place(); return; }
+    const bb = map.getBounds(), box = [bb.getWest(), bb.getSouth(), bb.getEast(), bb.getNorth()];
+    const ws = 512 * 2 ** map.getZoom(), mx = (lon) => (lon + 180) / 360 * ws, my = (lat) => (1 - Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)) / Math.PI) / 2 * ws;
+    const cw = mx(box[2]) - mx(box[0]), ch = my(box[1]) - my(box[3]);
+    if (!(cw > 0 && ch > 0)) return;
+    const r = Math.min(2, window.devicePixelRatio || 1, 2000 / cw, 2000 / ch);
+    const id = ++st.req, im = new Image();
+    im.className = "wms-ov"; im.alt = ""; im.draggable = false; im.style.width = cw + "px"; im.style.height = ch + "px"; im.style.display = "none";
+    im.onload = () => {
+      if (id !== st.req) return;
+      if (st.el) st.el.remove();
+      st.el = im; st.view = { box, cw, ch }; cont.insertBefore(im, cv.nextSibling); place();
+    };
+    im.src = wmsUrl(st, box, Math.max(1, Math.round(cw * r)), Math.max(1, Math.round(ch * r)));
+  };
+  map.on("move", place); map.on("moveend", load); map.on("resize", load);
+  st.refresh = () => { if (st.on) load(); else { st.req++; place(); } };
+}
+function wmsShow(key, on) {
+  const st = wmsS[key]; if (!st || !st.mode) return;
+  st.on = on;
+  if (st.mode === "tiles") map.setLayoutProperty(key, "visibility", on ? "visible" : "none");
+  else st.refresh();
+  if (on && st.mode === "overlay") {
+    const W = WMS_EXTRA[key];
+    document.getElementById("lay-msg").innerHTML = `${esc(W.short)}: Anzeige nur in der 2D-Ansicht${st.cors ? "" : `. Details zu einem Gebiet im <a href="${esc(W.viewer())}" target="_blank" rel="noopener">Kartenviewer GR</a>`}.`;
+  }
+}
+function wmsFailMsg(key) {
+  const W = WMS_EXTRA[key], st = wmsS[key] || {};
+  return `${esc(st.fail || "Der Kartendienst des Kantons ist im Moment nicht erreichbar.")} <a href="${esc(W.viewer())}" target="_blank" rel="noopener">Kartenviewer GR öffnen</a>`;
+}
+function wmsVisible() { return Object.keys(wmsS).filter((k) => wmsS[k].on && wmsS[k].mode); }
+
+/* Antworten der Kantonsdienste lesen: GeoJSON, GML (MapServer, GeoServer, WFS), QGIS-XML oder Text */
+function wktGeom(w) {
+  const m = /^\s*(MULTIPOLYGON|POLYGON|MULTILINESTRING|LINESTRING)\s*(?:ZM|Z|M)?\s*(\(.*\))\s*$/is.exec(w || ""); if (!m) return null;
+  const src = m[2]; let i = 0;
+  const read = () => {
+    i++; const out = []; let buf = "";
+    while (i < src.length) {
+      const ch = src[i];
+      if (ch === "(") { buf = ""; out.push(read()); }
+      else if (ch === ")") { i++; return out.length ? out : buf.split(",").map((q) => q.trim().split(/\s+/).slice(0, 2).map(Number)); }
+      else { buf += ch; i++; }
+    }
+    return out;
+  };
+  const T = m[1].toUpperCase();
+  return { type: { MULTIPOLYGON: "MultiPolygon", POLYGON: "Polygon", MULTILINESTRING: "MultiLineString", LINESTRING: "LineString" }[T], coordinates: read() };
+}
+function gmlGeom(f) {
+  const inBox = (e) => { for (let q = e; q && q !== f; q = q.parentNode) if (q.localName === "boundedBy") return true; return false; };
+  const all = [...f.getElementsByTagName("*")].filter((e) => !inBox(e));
+  const nums = (t) => t.trim().split(/[\s,]+/).map(Number);
+  const pts = (el) => {
+    const d = [...el.getElementsByTagName("*")];
+    const pl = d.find((e) => e.localName === "posList");
+    if (pl) { const dim = +(pl.getAttribute("srsDimension") || 2) || 2, n = nums(pl.textContent), o = []; for (let k = 0; k + 1 < n.length; k += dim) o.push([n[k], n[k + 1]]); return o; }
+    const cs = d.find((e) => e.localName === "coordinates");
+    if (cs) return cs.textContent.trim().split(/\s+/).map((q) => q.split(",").map(Number));
+    return d.filter((e) => e.localName === "pos").map((q) => nums(q.textContent).slice(0, 2));
+  };
+  const polys = all.filter((e) => e.localName === "Polygon" || e.localName === "PolygonPatch")
+    .map((pg) => [...pg.getElementsByTagName("*")].filter((e) => e.localName === "LinearRing").map(pts).filter((r) => r.length > 3)).filter((r) => r.length);
+  if (polys.length) return polys.length === 1 ? { type: "Polygon", coordinates: polys[0] } : { type: "MultiPolygon", coordinates: polys };
+  const lines = all.filter((e) => e.localName === "LineString" || e.localName === "LineStringSegment").map(pts).filter((l) => l.length > 1);
+  if (lines.length) return lines.length === 1 ? { type: "LineString", coordinates: lines[0] } : { type: "MultiLineString", coordinates: lines };
+  return null;
+}
+function parseXmlFeatures(t) {
+  const x = new DOMParser().parseFromString(t, "text/xml");
+  if (x.getElementsByTagName("parsererror").length) return null;
+  const root = x.documentElement, els = [...x.getElementsByTagName("*")], kids = (el) => [...el.children], out = [];
+  if (!/GMLOutput|FeatureCollection|FeatureInfoResponse/i.test(root.localName)) return null;
+  if (root.localName === "GetFeatureInfoResponse") {          // QGIS Server
+    for (const f of els.filter((e) => e.localName === "Feature")) {
+      const props = {}; let g = null;
+      for (const a of kids(f)) if (a.localName === "Attribute") {
+        const n = a.getAttribute("name") || "", v = a.getAttribute("value") || "";
+        if (/^geometry$/i.test(n)) g = wktGeom(v); else props[n] = v;
+      }
+      out.push({ properties: props, geometry: g ? mapCoords(g, autoLL) : null });
+    }
+    return out;
+  }
+  const isFeat = (e) => /_feature$/.test(e.localName) || (e.parentNode && /^(featureMember|featureMembers|member)$/.test(e.parentNode.localName || ""));
+  for (const f of els.filter(isFeat)) {
+    const props = {};
+    for (const c of kids(f)) if (!c.children.length && c.localName !== "boundedBy") { const v = c.textContent.trim(); if (v) props[c.localName] = v; }
+    const g = gmlGeom(f);
+    out.push({ properties: props, geometry: g ? mapCoords(g, autoLL) : null });
+  }
+  return out;
+}
+function parsePlain(t) {
+  const out = [];
+  for (const b of t.split(/\n\s*Feature\b[^\n]*\n/i).slice(1)) {
+    const props = {};
+    for (const ln of b.split("\n")) { const m = /^\s*([^=\n]{1,60}?)\s*=\s*'?(.*?)'?\s*$/.exec(ln); if (m && !/^Layer\b/i.test(m[1])) props[m[1].trim()] = m[2]; }
+    if (Object.keys(props).length) out.push({ properties: props, geometry: null });
+  }
+  return out;
+}
+function parseFeatures(t) {      // → [{properties, geometry}] oder null, wenn die Antwort unbrauchbar ist
+  t = (t || "").trim(); if (!t) return null;
+  if (/ServiceException|ExceptionReport|ows:Exception/i.test(t.slice(0, 800))) return null;
+  if (t[0] === "{") {
+    try {
+      const d = JSON.parse(t); if (!Array.isArray(d.features)) return null;
+      return d.features.map((f) => ({ properties: f.properties || {}, geometry: f.geometry ? mapCoords(f.geometry, autoLL) : null }));
+    } catch (e) { return null; }
+  }
+  if (t[0] === "<") return parseXmlFeatures(t);
+  if (/^GetFeatureInfo/i.test(t)) return parsePlain(t);
+  return null;
+}
+const GFI_PREF = ["application/geo+json", "application/json", "application/vnd.geo+json", "geojson", "application/vnd.ogc.gml", "application/vnd.ogc.gml/3.1.1", "text/xml", "application/vnd.ogc.wms_xml", "text/plain"];
+async function wmsGfi(st, e) {
+  const p = e.point, a = map.unproject([p.x - 50, p.y + 50]), b = map.unproject([p.x + 50, p.y - 50]);
+  const box = [Math.min(a.lng, b.lng), Math.min(a.lat, b.lat), Math.max(a.lng, b.lng), Math.max(a.lat, b.lat)];
+  const P = (lon, lat) => (st.v.merc ? merc(lon, lat) : [lon, lat]);
+  const [x0, y0] = P(box[0], box[1]), [x1, y1] = P(box[2], box[3]), [cx, cy] = P(e.lngLat.lng, e.lngLat.lat);
+  const I = Math.round((cx - x0) / (x1 - x0) * 100), J = Math.round((y1 - cy) / (y1 - y0) * 100);
+  const fmts = st.gfi ? [st.gfi] : st.fmts && st.fmts.length ? GFI_PREF.filter((f) => st.fmts.some((g) => g.toLowerCase() === f)) : ["application/json", "application/vnd.ogc.gml", "text/xml", "text/plain"];
+  for (const f of fmts) {
+    const url = wmsUrl(st, box, 101, 101, "GetFeatureInfo", `&QUERY_LAYERS=${encodeURIComponent(st.qlayers)}&INFO_FORMAT=${encodeURIComponent(f)}&FEATURE_COUNT=5&${st.v.ver === "1.3.0" ? `I=${I}&J=${J}` : `X=${I}&Y=${J}`}&FI_POINT_TOLERANCE=16&FI_LINE_TOLERANCE=8&FI_POLYGON_TOLERANCE=4&WITH_GEOMETRY=TRUE`);
+    let t;
+    try { t = await fetchText(url); } catch (err) { if (err.http || err.name === "AbortError") continue; throw err; }
+    const feats = parseFeatures(t);
+    if (feats) { st.gfi = f; return feats; }
+  }
+  if (!st.gfi) st.gfi = false;
+  return null;
+}
+async function wfsAt(st, F, E, N) {
+  const r = 4, bb = [E - r, N - r, E + r, N + r].map((v) => v.toFixed(1)).join(",");
+  const tries = st.wfsOk ? [st.wfsOk] : F.types.flatMap((t) => [
+    `SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=${encodeURIComponent(t)}&COUNT=5&SRSNAME=urn:ogc:def:crs:EPSG::2056&BBOX=${bb},urn:ogc:def:crs:EPSG::2056&OUTPUTFORMAT=application/json`,
+    `SERVICE=WFS&VERSION=1.1.0&REQUEST=GetFeature&TYPENAME=${encodeURIComponent(t)}&MAXFEATURES=5&SRSNAME=EPSG:2056&BBOX=${bb},EPSG:2056`]);
+  for (const q of tries) {
+    let t;
+    try { t = await fetchText(`${F.url}?${q}`); } catch (err) { if (err.http || err.name === "AbortError") continue; st.wfs = false; throw err; }
+    const feats = parseFeatures(t);
+    if (feats) { st.wfsOk = q; return feats; }
+  }
+  if (!st.wfsOk) st.wfs = false;
+  return null;
+}
+async function wmsInfo(key, e) {
+  const st = wmsS[key], W = WMS_EXTRA[key], [E, N] = toLV95(e.lngLat.lng, e.lngLat.lat);
+  let feats = st.cors && st.gfi !== false ? await wmsGfi(st, e).catch(() => null) : null;
+  if ((!feats || (feats.length && !feats.some((f) => f.geometry))) && W.wfs && st.wfs !== false) {
+    const wf = await wfsAt(st, W.wfs, E, N).catch(() => null);
+    if (wf && wf.length) feats = wf;            // WFS liefert Umriss und Angaben
+    else if (!feats && wf) feats = [];
+  }
+  return (feats || []).map((f) => ({ layerName: W.label, properties: f.properties, geometry: f.geometry, _wgs: true, note: W.note, link: W.viewer(E, N), linkText: W.viewerText }));
 }
 /* ---------- Routenplaner ---------- */
 const plan = { active: false, pts: [], ele: null, dense: null, editId: null, job: 0 };
@@ -1308,6 +1630,10 @@ async function elevations(pts) {
   return out;
 }
 function initPlanLayers() {
+  map.addSource("hl", { type: "geojson", data: EMPTY });
+  map.addLayer({ id: "hl-fill", type: "fill", source: "hl", filter: ["==", ["geometry-type"], "Polygon"], paint: { "fill-color": "#19e3ff", "fill-opacity": 0.16 } }, "points");
+  map.addLayer({ id: "hl-case", type: "line", source: "hl", layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#000", "line-width": 8, "line-opacity": 0.7 } }, "points");
+  map.addLayer({ id: "hl-line", type: "line", source: "hl", layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#19e3ff", "line-width": 4.5 } }, "points");
   map.addSource("plan", { type: "geojson", data: EMPTY });
   map.addSource("plan-pts", { type: "geojson", data: EMPTY });
   map.addLayer({ id: "plan-case", type: "line", source: "plan", layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#000", "line-width": 7, "line-opacity": 0.6 } });
@@ -1348,7 +1674,7 @@ function planChanged() { planDraw(); planStats(); }
 function planAdd(ll) { plan.pts.push([+ll.lng.toFixed(6), +ll.lat.toFixed(6)]); planChanged(); }
 function setPlanActive(on) {
   plan.active = on;
-  if (on) setAddMode(false);
+  if (on) { setAddMode(false); hlClear(); }
   document.getElementById("planner").hidden = !on;
   document.getElementById("btn-plan").setAttribute("aria-pressed", String(on));
   document.querySelector(".map-wrap").classList.toggle("planning", on);
@@ -1490,7 +1816,7 @@ function renderRoutes() {
   el.querySelectorAll(".ed").forEach((b) => b.addEventListener("click", () => planLoad(b.dataset.id)));
   el.querySelectorAll(".main").forEach((b) => b.addEventListener("click", () => {
     const r = allRoutes().find((x) => x.id === b.dataset.id); const bb = r && boundsOfCoords([r.coords]);
-    if (bb && map) map.fitBounds(bb, { padding: 60, maxZoom: 15 });
+    if (bb && map) { map.fitBounds(bb, { padding: 60, maxZoom: 15 }); hlSet([{ type: "LineString", coordinates: r.coords }], "list"); }
   }));
   el.querySelectorAll(".del").forEach((b) => b.addEventListener("click", () => armDelete(b, () => {
     userRoutes = userRoutes.filter((r) => r.id !== b.dataset.id); saveRoutes(); renderRoutes();
