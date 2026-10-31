@@ -7,8 +7,12 @@ Aufruf: python3 -I tools/import_export.py data.json acts_raw.json
 import collections
 import datetime as dt
 import json
+import os
 import sys
 import zoneinfo
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ftp_model  # noqa: E402
 
 ZRH = zoneinfo.ZoneInfo("Europe/Zurich")
 KEEP = ("id", "sport", "typ", "indoor", "name", "date", "start", "km", "hm", "dur", "hr", "watt", "np", "tss", "zones", "hh", "poly")
@@ -96,8 +100,10 @@ def main(data_path, raw_path):
     D["pdc"] = {"dur": PDC_D, "now": [best[year].get(d) for d in PDC_D], "prev": [best[year - 1].get(d) for d in PDC_D]}
     if ftp:
         D.setdefault("config", {})["ftp"] = ftp[-1]["w"]
+    n_ftp = ftp_model.apply(D, A)       # geschätzte FTP je Fahrt (ftp_e) und Verlauf (ftp_est), Original-TSS bleibt
     D["updated"] = dt.datetime.now(ZRH).strftime("%d.%m.%Y %H:%M")
     json.dump(D, open(data_path, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+    print(f"FTP-Schätzung für {n_ftp} Fahrten")
     print(f"FIT-Aktivitäten: {len(new)} (Doppel entfernt: {removed}), behaltene Nacht-Einträge: {len(rest)}, gesamt: {len(D['activities'])}")
 
 

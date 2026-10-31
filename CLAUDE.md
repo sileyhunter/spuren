@@ -12,6 +12,7 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
 - `tools/crypt.mjs` – ver-/entschlüsseln
 - `tools/merge_daily.py` – nächtliche Garmin-Daten einspielen
 - `tools/classify.py`, `tools/parse_activities.py`, `tools/fitlib.py`, `tools/import_export.py` – monatlicher FIT-Export
+- `tools/ftp_model.py` – FTP-Schätzung aus Leistungsdaten (wird von `import_export.py` aufgerufen)
 
 ## Nächtliches Update (nur Garmin-Verbindung)
 1. `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json data.json`
@@ -55,6 +56,14 @@ Silas lädt `UploadedFiles_0-_Part*.zip` hoch. Jedes ZIP in einen eigenen, leere
 1. `python3 -I tools/classify.py <rohordner> work/files.json`
 2. `python3 -I tools/parse_activities.py work/files.json work/acts_raw.json`
 3. entschlüsseln, `python3 -I tools/import_export.py data.json work/acts_raw.json`, verschlüsseln, pushen.
+   Dabei rechnet `tools/ftp_model.py` die FTP-Schätzung neu (`ftp_est`, pro Fahrt `ftp_e` und `ftp_dev`).
+
+## FTP und Trainingslast
+- `tss` ist die ursprüngliche Trainingslast (Rad mit der in Garmin eingestellten FTP). Sie wird nie überschrieben.
+- Die Seite rechnet daneben eine Probe aus NP und `ftp_e` (geschätzte FTP des Radsystems zum damaligen Datum,
+  neue Fahrten ohne `ftp_e` mit `ftp_est.now`). `config.load_model` steuert, was die Seite verwendet:
+  `"garmin"` (Standard) oder `"ftp_est"`. Auf `"ftp_est"` erst umstellen, wenn Silas die Probe bestätigt.
+- `config.ftp` bleibt der Garmin-Wert (für die bisherige Berechnung im Nacht-Update).
 
 ## Laktat (kommt über den Chat)
 - **Kurzcheck** (meist Zwift, Block z. B. 10 min @ 220 W, Laktat am Ende des Blocks): Einheit finden, Block über Runden

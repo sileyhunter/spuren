@@ -476,10 +476,20 @@ html, body { touch-action: manipulation; }
       </div>
       <div class="card w12">
         <div class="card-head">
-          <div><h2>Fitness, Ermüdung, Form</h2><div class="sub">Fitness = Belastung der letzten 42 Tage, Ermüdung = letzte 7 Tage, Form = Differenz</div></div>
+          <div><h2>Fitness, Ermüdung, Form</h2><div class="sub" id="pmc-sub">Fitness = Belastung der letzten 42 Tage, Ermüdung = letzte 7 Tage, Form = Differenz</div></div>
           <div class="kv" id="pmc-kv" style="min-width:min(320px,100%)"></div>
         </div>
         <div class="chart tall"><canvas id="c-pmc" aria-label="Fitness, Ermüdung und Form"></canvas></div>
+      </div>
+      <div class="card w12" id="load-card">
+        <div class="card-head">
+          <div><h2>Trainingslast: Garmin-FTP oder geschätzte FTP</h2><div class="sub" id="load-sub"></div></div>
+          <select id="load-range" aria-label="Zeitraum"><option value="365">12 Monate</option><option value="730" selected>24 Monate</option><option value="all">Alles</option></select>
+        </div>
+        <div class="kv" id="load-kv"></div>
+        <div class="chart"><canvas id="c-load" aria-label="Fitness mit Garmin-FTP und mit geschätzter FTP"></canvas></div>
+        <div class="tablewrap"><table class="t" id="t-load"></table></div>
+        <p class="hint" id="load-note"></p>
       </div>
       <div class="card w12">
         <div class="card-head">
@@ -514,8 +524,11 @@ html, body { touch-action: manipulation; }
     <div class="dash">
       <div class="card">
         <h2>Rad: FTP und Watt/kg</h2>
+        <div class="sub" id="ftp-sub">In Garmin eingestellte FTP</div>
         <div class="kv" id="ftp-kv"></div>
-        <div class="chart"><canvas id="c-ftp" aria-label="FTP-Verlauf"></canvas></div>
+        <div class="chart"><canvas id="c-ftp" aria-label="FTP-Verlauf: geschätzt und in Garmin eingestellt"></canvas></div>
+        <div class="tablewrap"><table class="t" id="t-ftp"></table></div>
+        <p class="hint" id="ftp-note"></p>
       </div>
       <div class="card">
         <h2>Rad: Leistungskurve</h2>
@@ -772,9 +785,9 @@ function makeDemo() {
       else if (sport === "schwimm") { indoor = !(summer && rnd() < 0.35); typ = indoor ? "Schwimmbad" : "Freiwasser"; }
       else typ = sport === "ski" ? "Skitouren" : "Wandern";
       const hard = (sport === "rad" || sport === "lauf") && !long && rnd() < 0.25;
-      let km, dur, hm = 0, hr, watt = null, np = null, coords = null, tss, name;
+      let km, dur, hm = 0, hr, watt = null, np = null, coords = null, tss, name, fe = null, fd = null;
       if (sport === "rad") {
-        const ftp = 255 + 33 * prog;
+        const ftp = 255 + 33 * prog, since = N - back, gftp = since < 400 ? 270 : since < 900 ? 285 : 300;   // Garmin-Einstellung hinkt hinterher
         np = Math.round(ftp * (hard ? 0.8 + rnd() * 0.08 : 0.58 + rnd() * 0.12) * (sys === "mtb" ? 1.1 : 1));   // im Gelände treiben Spitzen die NP hoch
         watt = Math.round(np / (sys === "mtb" ? 1.12 + rnd() * 0.06 : sys === "indoor" ? 1.02 : 1.04 + rnd() * 0.03));
         hr = Math.round(74 + 0.33 * np + (sys === "indoor" ? 4 : sys === "mtb" ? -3 : 0) + 5 * unfit + nrm() * 3.5);
@@ -783,7 +796,8 @@ function makeDemo() {
           const sd = sys === "mtb" ? pick(seeds.mtb) : long ? pick(seeds.rennrad) : pick(seeds.rennrad.filter((r) => r.length < 500)) || pick(seeds.rennrad);
           coords = jitter(sd); km = kmOf(sd); dur = km / (sys === "mtb" ? 15 + rnd() * 4 : 27 + rnd() * 4) * 3600; hm = Math.round(km * (sys === "mtb" ? 28 : 12) * (0.6 + rnd() * 0.8));
         }
-        tss = Math.round(dur / 3600 * (np / ftp) ** 2 * 100);
+        tss = Math.round(dur / 3600 * (np / gftp) ** 2 * 100);
+        fe = Math.round(ftp * (sys === "indoor" ? 0.96 : sys === "mtb" ? 0.99 : 1)); fd = indoor ? null : gftp;
         name = indoor ? (typ === "Zwift" ? (hard ? "Zwift Intervalle" : "Zwift Ausdauer") : hard ? "Rolle Intervalle" : "Rolle locker") : sys === "mtb" ? "MTB-Runde" : hard ? "Rennrad Intervalle" : long ? "Lange Ausfahrt" : "Rennrad locker";
       } else if (sport === "lauf") {
         const easy = 345 - 18 * prog;                               // lockeres Tempo in s/km, wird schneller
@@ -808,7 +822,7 @@ function makeDemo() {
       }
       const hh = hist(hr, dur, hard);
       acts.push({ id: "demo" + id++, sport, typ, indoor: indoor || undefined, date: iso(date), start: `${String(long ? 8 + Math.floor(rnd() * 3) : sport === "schwimm" ? 6 : 18).padStart(2, "0")}:${String(Math.floor(rnd() * 60)).padStart(2, "0")}`,
-        name, km: +km.toFixed(2), hm, dur: Math.round(dur), hr, watt, np, tss, hh, zones: zonesOf(hh), coords });
+        name, km: +km.toFixed(2), hm, dur: Math.round(dur), hr, watt, np, tss, hh, zones: zonesOf(hh), coords, ...(fe ? { ftp_e: fe } : {}), ...(fd ? { ftp_dev: fd } : {}) });
     }
   }
   const days = []; let hrv = 62;
@@ -824,7 +838,17 @@ function makeDemo() {
   }
   const weights = []; let w = 82.4;
   for (let back = 420; back >= 0; back--) { if (rnd() < 0.2) continue; w = Math.max(77, w + (rnd() - 0.53) * 0.3); weights.push({ date: iso(addDays(today, -back)), kg: +(w + (rnd() - .5) * 0.5).toFixed(1) }); }
-  const ftp = []; for (let back = N - 30; back >= 0; back -= 61) { const prog = 1 - back / N; ftp.push({ date: iso(addDays(today, -back)), w: Math.round(255 + 33 * prog + (rnd() - .5) * 6) }); }
+  const ftp = [{ date: iso(T0), w: 270 }, { date: iso(addDays(T0, 400)), w: 285 }, { date: iso(addDays(T0, 900)), w: 300 }];   // in Garmin eingestellt
+  const estAt = (d) => Math.round(255 + 33 * Math.max(0, Math.min(1, (d - T0) / (today - T0))));
+  const ftp_est = { series: [], ratio: { rennrad: 1, indoor: 0.96, mtb: 0.99 } };
+  const row = (d) => { const e = estAt(d); return { date: iso(d), ref: { est: e, lo: e - 9, hi: e + 5, von: "rennrad" }, rennrad: { ftp: e, eigen: e }, indoor: { ftp: Math.round(e * 0.96), eigen: Math.round(e * 0.94) }, mtb: { ftp: Math.round(e * 0.99), eigen: Math.round(e * 0.97) } }; };
+  for (let m = new Date(T0.getFullYear(), T0.getMonth() + 1, 0); m < today; m = new Date(m.getFullYear(), m.getMonth() + 2, 0)) ftp_est.series.push(row(m));
+  ftp_est.series.push(row(today));
+  const E = estAt(today), src = (n, w, nm) => ({ date: iso(addDays(today, -n)), name: nm, w20: w });
+  ftp_est.now = { ref: { est: E, lo: E - 9, hi: E + 5, von: "rennrad" }, sys: {
+    rennrad: { ftp: E, eigen: { est: E, src: src(40, Math.round(E / 0.95), "Lange Ausfahrt"), unsicher: false } },
+    indoor: { ftp: Math.round(E * 0.96), eigen: { est: Math.round(E * 0.94), src: src(150, Math.round(E * 0.94 / 0.95), "Zwift Intervalle"), unsicher: true } },
+    mtb: { ftp: Math.round(E * 0.99), eigen: { est: Math.round(E * 0.97), src: src(70, Math.round(E * 0.97 / 0.95), "MTB-Runde"), unsicher: false } } } };
   const pdc = { dur: [5, 15, 30, 60, 300, 600, 1200, 3600, 7200], now: [985, 862, 718, 522, 362, 321, 302, 281, 247], prev: [1012, 871, 702, 503, 344, 306, 287, 268, 233] };
   const ago = (n) => iso(addDays(today, -n));
   const lactate = [
@@ -845,7 +869,7 @@ function makeDemo() {
     { id: "demo-p4", name: "Badestelle See (Beispiel)", cat: "bad", lat: 46.884, lon: 8.228 },
   ];
   const routes = [{ id: "demo-r1", name: "Passfahrt (Beispielroute)", coords: path([8.252, 46.905], 1.2, 22, 0.4).map(([x, y]) => [+x.toFixed(5), +y.toFixed(5)]) }];
-  return { demo: true, activities: acts, days, weights, ftp, pdc, lactate, points, routes, tests, planned };
+  return { demo: true, activities: acts, days, weights, ftp, ftp_est, pdc, lactate, points, routes, tests, planned };
 }
 
 /* =====================================================================
@@ -860,6 +884,22 @@ for (const a of D.activities) {
   const d = pd(a.date); a._t = d.getTime(); a._wd = d.getDay();
 }
 D.activities.sort((a, b) => a._t - b._t);
+/* Trainingslast: «bisher» = wie geliefert (Rad mit der in Garmin eingestellten FTP),
+   «Probe» = Rad mit der geschätzten FTP zum damaligen Zeitpunkt (ftp_e, siehe tools/ftp_model.py).
+   Übernommen wird die Probe erst, wenn config.load_model = "ftp_est" gesetzt ist. */
+const FTPE = D.ftp_est || null;
+function ftpTrial(a) {
+  if (a.ftp_e) return a.ftp_e;
+  const s = bikeSys(a), v = s && FTPE && FTPE.now && FTPE.now.sys && FTPE.now.sys[s];
+  return v && v.ftp ? v.ftp : null;
+}
+for (const a of D.activities) {
+  a.tss0 = a.tss;
+  const f = a.sport === "rad" && a.np && a.dur ? ftpTrial(a) : null;
+  a.tssP = f ? Math.round(a.dur / 3600 * (a.np / f) ** 2 * 100) : a.tss;
+}
+const LOAD_MODE = (D.config && D.config.load_model) || "garmin";
+if (LOAD_MODE === "ftp_est") for (const a of D.activities) a.tss = a.tssP;
 for (const r of D.routes) if (!r.coords && r.poly) r.coords = decodePoly(r.poly);
 D.days.sort((a, b) => a.date.localeCompare(b.date));
 const ACT_BY_ID = new Map(D.activities.map((a) => [a.id, a]));
@@ -2004,19 +2044,19 @@ function recovery(i) {                                                          
   const b = baseline(i), sl = Math.min(1, (d.sleepH || 0) / 8);
   return Math.max(1, Math.min(99, Math.round(((d.hrv / b.hrv - 0.8) / 0.4) * 55 + ((b.rhr / d.rhr - 0.9) / 0.2) * 20 + sl * 25)));
 }
-let _pmc = null;
-function pmc() {
-  if (_pmc) return _pmc;
-  _pmc = [];
-  if (!D.activities.length) return _pmc;
-  const byDay = new Map(); D.activities.forEach((a) => byDay.set(a.date, (byDay.get(a.date) || 0) + (a.tss || 0)));
+const _pmc = {};
+function pmc(key = "tss") {           // Fitness (42 Tage), Ermüdung (7 Tage), Form
+  if (_pmc[key]) return _pmc[key];
+  const out = (_pmc[key] = []);
+  if (!D.activities.length) return out;
+  const byDay = new Map(); D.activities.forEach((a) => byDay.set(a.date, (byDay.get(a.date) || 0) + (a[key] || 0)));
   let d = pd(D.activities[0].date), ctl = 0, atl = 0;
   while (d <= today) {
     const ds = iso(d), tss = byDay.get(ds) || 0, tsb = ctl - atl;
     ctl += (tss - ctl) / 42; atl += (tss - atl) / 7;
-    _pmc.push({ date: ds, ctl, atl, tsb }); d = addDays(d, 1);
+    out.push({ date: ds, ctl, atl, tsb }); d = addDays(d, 1);
   }
-  return _pmc;
+  return out;
 }
 const mondayOf = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
 const lastWeeks = (n) => { const m = mondayOf(today); return Array.from({ length: n }, (_, i) => addDays(m, -7 * (n - 1 - i))); };
@@ -2226,8 +2266,37 @@ const TABS = {
       document.getElementById("y-year").innerHTML = yy.map((y) => `<option value="${y}">${y}</option>`).join("");
       document.getElementById("y-year").addEventListener("change", () => this.years());
       document.getElementById("y-metric").addEventListener("change", () => this.yearChart());
+      document.getElementById("load-range").addEventListener("change", () => this.load());
     },
-    draw() { this.zones(); this.pmc(); this.volume(); this.years(); this.yearChart(); },
+    draw() { this.zones(); this.pmc(); this.load(); this.volume(); this.years(); this.yearChart(); },
+    load() {
+      const card = document.getElementById("load-card");
+      if (!D.activities.some((a) => a.tssP !== a.tss0)) { card.hidden = true; return; }
+      const adopted = LOAD_MODE === "ftp_est", r = document.getElementById("load-range").value;
+      document.getElementById("load-sub").textContent = adopted
+        ? "Übernommen: Die Seite rechnet mit der geschätzten FTP. Zum Vergleich die frühere Berechnung mit der in Garmin eingestellten FTP."
+        : "Probe, noch nicht übernommen. Bisher rechnet die Seite die Rad-Trainingslast mit der in Garmin eingestellten FTP. Die Probe nimmt für jede Fahrt die geschätzte FTP zum damaligen Zeitpunkt (Tab Leistung).";
+      const A = pmc("tss0"), B = pmc("tssP"), n = r === "all" ? A.length : Math.min(A.length, +r);
+      const a = A.slice(-n), b = B.slice(-n), la = A.at(-1) || {}, lb = B.at(-1) || {};
+      const since = addDays(today, -365).getTime(), rides = D.activities.filter((x) => x.sport === "rad" && x.np);
+      const sum = (l, k) => l.reduce((x, y) => x + (y[k] || 0), 0), pct = (o, q) => (o ? (q / o - 1) * 100 : null);
+      const sg = (v) => (v == null ? "–" : (v >= 0 ? "+" : "") + fmt(v) + " %");
+      const r12 = rides.filter((x) => x._t > since), d12 = pct(sum(r12, "tss0"), sum(r12, "tssP"));
+      document.getElementById("load-kv").innerHTML = [["Fitness heute", `${fmt(la.ctl)} → ${fmt(lb.ctl)}`], ["Ermüdung heute", `${fmt(la.atl)} → ${fmt(lb.atl)}`],
+        ["Form heute", `${fmt(la.tsb)} → ${fmt(lb.tsb)}`], ["Rad-Last 12 Monate", sg(d12)]].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
+      chart("c-load", { type: "line", data: { labels: a.map((x) => dLabel(x.date)), datasets: [
+        { label: "Fitness mit Garmin-FTP", data: a.map((x) => +x.ctl.toFixed(1)), borderColor: css("--muted"), backgroundColor: css("--muted"), borderDash: [5, 4], pointRadius: 0, tension: 0.3 },
+        { label: "Fitness mit geschätzter FTP", data: b.map((x) => +x.ctl.toFixed(1)), borderColor: css("--strain"), backgroundColor: css("--strain"), pointRadius: 0, tension: 0.3, borderWidth: 2.5 },
+      ] }, options: { interaction: { mode: "index", intersect: false }, scales: { x: { ticks: { maxTicksLimit: 12 } }, y: { title: { display: true, text: "Fitness (Trainingslast pro Tag)" } } }, plugins: legendBottom } });
+      const years = [...new Set(rides.map((x) => x.date.slice(0, 4)))].sort();
+      let html = `<tr><th>Rad-Last</th><th>Fahrten</th><th>mit Garmin-FTP</th><th>mit Schätzung</th><th>Unterschied</th></tr>`;
+      for (const y of years) { const l = rides.filter((x) => x.date.startsWith(y)); html += `<tr><td>${y}</td><td>${fmt(l.length)}</td><td>${fmt(sum(l, "tss0"))}</td><td>${fmt(sum(l, "tssP"))}</td><td>${sg(pct(sum(l, "tss0"), sum(l, "tssP")))}</td></tr>`; }
+      html += `<tr class="total"><td>Letzte 12 Monate</td><td>${fmt(r12.length)}</td><td>${fmt(sum(r12, "tss0"))}</td><td>${fmt(sum(r12, "tssP"))}</td><td>${sg(d12)}</td></tr>`;
+      for (const b2 of BIKE_SYS) { const l = r12.filter((x) => bikeSys(x) === b2.k); if (l.length) html += `<tr class="subrow"><td>${b2.label}</td><td>${fmt(l.length)}</td><td>${fmt(sum(l, "tss0"))}</td><td>${fmt(sum(l, "tssP"))}</td><td>${sg(pct(sum(l, "tss0"), sum(l, "tssP")))}</td></tr>`; }
+      document.getElementById("t-load").innerHTML = html;
+      document.getElementById("load-note").textContent = "Lauf, Schwimmen und übrige Sportarten bleiben gleich. Bei Zwift-Fahrten war die bisherige Last teils pulsbasiert oder mit der FTP aus Zwift gerechnet, die Probe rechnet alle Fahrten einheitlich aus NP und FTP. "
+        + (adopted ? "" : "Übernommen wird die Probe erst, wenn du sie bestätigst.");
+    },
     zones() {
       const n = +document.getElementById("z-range").value, sp = document.getElementById("z-sport").value, weeks = lastWeeks(n);
       const agg = weeks.map((w) => { const z = [0, 0, 0]; D.activities.filter((a) => inWeek(a, w) && (!sp || a.sport === sp)).forEach((a) => { const q = zone3(a); if (q) q.forEach((v, j) => (z[j] += v)); }); return z; });
@@ -2249,6 +2318,7 @@ const TABS = {
     },
     pmc() {
       const p = pmc().slice(-180), last = p.at(-1) || {};
+      document.getElementById("pmc-sub").textContent = "Fitness = Belastung der letzten 42 Tage, Ermüdung = letzte 7 Tage, Form = Differenz. Rad-Trainingslast " + (LOAD_MODE === "ftp_est" ? "mit der geschätzten FTP." : "mit der in Garmin eingestellten FTP.");
       document.getElementById("pmc-kv").innerHTML = `<div><span>Fitness</span><b>${fmt(last.ctl)}</b></div><div><span>Ermüdung</span><b>${fmt(last.atl)}</b></div><div><span>Form</span><b>${fmt(last.tsb)}</b></div>`;
       chart("c-pmc", { type: "line", data: { labels: p.map((x) => dLabel(x.date)), datasets: [
         { label: "Fitness", data: p.map((x) => +x.ctl.toFixed(1)), borderColor: css("--strain"), backgroundColor: css("--strain") + "26", fill: true, pointRadius: 0, tension: 0.3 },
@@ -2322,11 +2392,7 @@ const TABS = {
       sel.addEventListener("change", () => this.hr());
     },
     draw() {
-      const kg = weights().at(-1)?.kg, f = D.ftp, cur = f.at(-1);
-      document.getElementById("ftp-kv").innerHTML = `<div><span>FTP aktuell</span><b>${cur ? cur.w + " W" : "–"}</b></div><div><span>Watt pro kg</span><b>${cur && kg ? fmt(cur.w / kg, 2) : "–"}</b></div><div><span>Gewicht</span><b>${kg ? fmt(kg, 1) + " kg" : "–"}</b></div>`;
-      chart("c-ftp", { type: "line", data: { labels: f.map((x) => pd(x.date).toLocaleDateString("de-CH", { month: "short", year: "2-digit" })), datasets: [
-        { label: "FTP", data: f.map((x) => x.w), borderColor: SPORTS.rad.color, backgroundColor: SPORTS.rad.color, stepped: true, pointRadius: 4 }] },
-        options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: "Watt" } } } } });
+      this.ftp();
       if (D.pdc) {
         const lab = D.pdc.dur.map((s) => s < 60 ? s + " s" : s < 3600 ? s / 60 + " min" : s / 3600 + " h");
         chart("c-pdc", { type: "line", data: { labels: lab, datasets: [
@@ -2346,6 +2412,40 @@ const TABS = {
         options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => mmss(c.raw) + " pro 100 m" } } }, scales: { x: { ticks: { maxTicksLimit: 10 } }, y: { reverse: true, ticks: { callback: (v) => mmss(v) } } } } });
       this.hr();
       renderChecks(); renderSteps();
+    },
+    ftp() {
+      const kg = weights().at(-1)?.kg, f = D.ftp || [], cur = f.at(-1), mon = (s) => pd(s).toLocaleDateString("de-CH", { month: "short", year: "2-digit" });
+      const now = FTPE && FTPE.now && FTPE.now.ref, ser = (FTPE && FTPE.series) || [];
+      if (!now || !ser.length) {                     // ohne Schätzung wie bisher: nur die Garmin-Einstellung
+        document.getElementById("ftp-kv").innerHTML = `<div><span>FTP in Garmin</span><b>${cur ? cur.w + " W" : "–"}</b></div><div><span>Watt pro kg</span><b>${cur && kg ? fmt(cur.w / kg, 2) : "–"}</b></div><div><span>Gewicht</span><b>${kg ? fmt(kg, 1) + " kg" : "–"}</b></div>`;
+        chart("c-ftp", { type: "line", data: { labels: f.map((x) => mon(x.date)), datasets: [{ label: "FTP in Garmin", data: f.map((x) => x.w), borderColor: SPORTS.rad.color, backgroundColor: SPORTS.rad.color, stepped: true, pointRadius: 4 }] },
+          options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: "Watt" } } } } });
+        return;
+      }
+      document.getElementById("ftp-sub").textContent = "Geschätzt aus deinen Leistungsdaten (0,95 × beste 20 Minuten der letzten 180 Tage, Massstab Rennrad) mit Bandbreite, daneben der in Garmin eingestellte Wert.";
+      document.getElementById("ftp-kv").innerHTML = [["Geschätzt", `${now.est} W`, `${now.lo}–${now.hi} W`], ["In Garmin eingestellt", cur ? cur.w + " W" : "–", cur ? "seit " + mon(cur.date) : ""],
+        ["Watt pro kg", kg ? fmt(now.est / kg, 2) : "–", kg ? "bei " + fmt(kg, 1) + " kg" : ""]].map(([k, v, x]) => `<div><span>${k}</span><b>${v}</b>${x ? `<small class="hint" style="display:block">${x}</small>` : ""}</div>`).join("");
+      const gAt = (ds) => { let w = null; for (const x of f) if (x.date <= ds) w = x.w; return w; };
+      const rc = BIKE_SYS[0].color;
+      chart("c-ftp", { type: "line", data: { labels: ser.map((x) => mon(x.date)), datasets: [
+        { label: "Bandbreite unten", data: ser.map((x) => x.ref.lo), borderColor: "transparent", backgroundColor: "transparent", pointRadius: 0, _hide: true },
+        { label: "Bandbreite", data: ser.map((x) => x.ref.hi), borderColor: "transparent", backgroundColor: rc + "38", fill: "-1", pointRadius: 0 },
+        { label: "Geschätzte FTP", data: ser.map((x) => x.ref.est), borderColor: rc, backgroundColor: rc, pointRadius: 0, borderWidth: 2.5, tension: 0.2 },
+        { label: "In Garmin eingestellt", data: ser.map((x) => gAt(x.date)), borderColor: css("--muted"), backgroundColor: css("--muted"), borderDash: [5, 4], stepped: true, pointRadius: 0 },
+      ] }, options: { interaction: { mode: "index", intersect: false }, scales: { x: { ticks: { maxTicksLimit: 10 } }, y: { title: { display: true, text: "Watt" } } },
+        plugins: { legend: { position: "bottom", labels: { filter: (it, data) => !data.datasets[it.datasetIndex]._hide } },
+          tooltip: { filter: (it) => !it.dataset._hide, callbacks: { label: (c) => c.dataset.label === "Bandbreite" ? `Bandbreite: ${ser[c.dataIndex].ref.lo}–${ser[c.dataIndex].ref.hi} W` : `${c.dataset.label}: ${c.raw == null ? "–" : c.raw + " W"}` } } } } });
+      const sys = FTPE.now.sys || {}, rat = FTPE.ratio || {};
+      document.getElementById("t-ftp").innerHTML = `<tr><th>Radsystem</th><th>FTP für die Last</th><th>eigene Schätzung</th><th>Bestwert 20 min</th></tr>` + BIKE_SYS.map((b) => {
+        const v = sys[b.k] || {}, e = v.eigen;
+        const src = e && e.src ? `${e.src.w20} W · ${dateCH(e.src.date)}` : "–";
+        return `<tr><td><span class="dot" style="background:${b.color};margin-right:8px"></span>${b.label}</td><td>${v.ftp ? v.ftp + " W" : "–"}</td><td>${e ? e.est + " W" + (e.unsicher ? " *" : "") : "–"}</td><td>${src}</td></tr>`;
+      }).join("");
+      const notes = [];
+      notes.push(`Massstab Rennrad aus Rennrad und Indoor; Indoor erreichst du typischerweise ${fmt((rat.indoor || 0.95) * 100)} %, am MTB ${fmt((rat.mtb || 1) * 100)} % des Rennrad-Werts. Liegt die eigene Schätzung eines Systems tiefer (keine harten Fahrten darauf), gilt der umgerechnete Rennrad-Wert.`);
+      if (BIKE_SYS.some((b) => sys[b.k] && sys[b.k].eigen && sys[b.k].eigen.unsicher)) notes.push("* In den letzten 90 Tagen keine vergleichbar harte 20-Minuten-Belastung: Die Schätzung beruht auf älteren Fahrten.");
+      notes.push("Ohne maximale Belastungen im Zeitraum ist die Schätzung eher zu tief. Deine Stufentests nehme ich als zusätzliche Stützpunkte dazu, sobald sie erfasst sind.");
+      document.getElementById("ftp-note").textContent = notes.join(" ");
     },
     hr() {
       const v = document.getElementById("hp-range").value || "12m";
