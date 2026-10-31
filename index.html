@@ -379,6 +379,7 @@ html, body { touch-action: manipulation; }
           </div>
           <div class="lay-h">Wild &amp; Jagd</div>
           <div class="chips">
+            <button class="chip" data-pt="jagd" aria-pressed="false"><span class="dot" style="background:#c08a4a"></span>Jagdposten</button>
             <button class="chip" data-ov="wrz" aria-pressed="false">Wildruhezonen</button>
             <button class="chip" data-ov="jbg" aria-pressed="false">Eidg. Jagdbanngebiete</button>
             <button class="chip" data-ov="wsg_gr" aria-pressed="false">Wildschutzgebiete GR</button>
@@ -1097,6 +1098,7 @@ function fitActivities(acts) {
    ===================================================================== */
 let map = null, mapReady = false, mode = "heat", addMode = false, base = "nacht";
 const pointCats = new Set(Object.keys(POINT_CATS));
+if (!store.get("sf.jagd", false)) pointCats.delete("jagd");      // Jagdposten nur auf Wunsch (Karten & Ebenen)
 const WMTS = (layer, ext) => `https://wmts.geo.admin.ch/1.0.0/${layer}/default/current/3857/{z}/{x}/{y}.${ext}`;
 const SWISSTOPO = '© <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a>';
 const HEAT_RAMP = ["interpolate", ["linear"], ["get", "h"], 0, "#5e0b18", 0.2, "#9a1a1c", 0.4, "#d8401c", 0.6, "#f78a1d", 0.8, "#fcd34d", 1, "#fffdf0"];
@@ -1293,10 +1295,29 @@ async function ensureExtra(key) {
   })();
   return extraState[key];
 }
+function focusPoints(cat) {      // keine dieser Punkte im Bild: zur grössten Gruppe springen (ohne Ausreisser weit weg)
+  if (!map) return;
+  const pts = allPoints().filter((p) => (p.cat in POINT_CATS ? p.cat : "sonst") === cat);
+  if (!pts.length) return;
+  const b = map.getBounds();
+  if (pts.some((p) => p.lon >= b.getWest() && p.lon <= b.getEast() && p.lat >= b.getSouth() && p.lat <= b.getNorth())) return;
+  const med = (a) => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)];
+  const c = [med(pts.map((p) => p.lon)), med(pts.map((p) => p.lat))];
+  const near = pts.filter((p) => Math.hypot((p.lon - c[0]) * 76, (p.lat - c[1]) * 111) < 30);
+  const bb = boundsOfCoords([near.map((p) => [p.lon, p.lat])]);
+  if (bb) map.fitBounds(bb, { padding: 60, maxZoom: 14 });
+}
 function initLayerPanel() {
   const panel = document.getElementById("layers"), btn = document.getElementById("btn-layers");
   btn.addEventListener("click", () => { const open = panel.hidden; panel.hidden = !open; btn.setAttribute("aria-pressed", String(open)); btn.setAttribute("aria-expanded", String(open)); });
   panel.querySelectorAll("[data-base]").forEach((b) => b.addEventListener("click", () => setBase(b.dataset.base)));
+  panel.querySelectorAll("[data-pt]").forEach((b) => b.addEventListener("click", () => {
+    const k = b.dataset.pt, on = !pointCats.has(k);
+    on ? pointCats.add(k) : pointCats.delete(k);
+    if (k === "jagd") store.set("sf.jagd", on);
+    renderPoints();
+    if (on) focusPoints(k);
+  }));
   panel.querySelectorAll("[data-ov]").forEach((b) => b.addEventListener("click", async () => {
     if (b.getAttribute("aria-disabled") === "true") return;
     const k = b.dataset.ov, on = b.getAttribute("aria-pressed") !== "true";
@@ -1855,8 +1876,11 @@ function renderPoints() {
   const cats = document.getElementById("p-cats");
   cats.innerHTML = Object.entries(POINT_CATS).map(([k, c]) => `<button class="chip" data-k="${k}" aria-pressed="${pointCats.has(k)}"><span class="dot" style="background:${c.color}"></span>${c.label}</button>`).join("");
   cats.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
-    const k = b.dataset.k; pointCats.has(k) ? pointCats.delete(k) : pointCats.add(k); renderPoints();
+    const k = b.dataset.k; pointCats.has(k) ? pointCats.delete(k) : pointCats.add(k);
+    if (k === "jagd") store.set("sf.jagd", pointCats.has(k));
+    renderPoints();
   }));
+  document.querySelectorAll("#layers [data-pt]").forEach((b) => b.setAttribute("aria-pressed", String(pointCats.has(b.dataset.pt))));
   const q = document.getElementById("p-search").value.trim().toLowerCase();
   const list = allPoints().filter((p) => pointCats.has(p.cat in POINT_CATS ? p.cat : "sonst") && (!q || p.name.toLowerCase().includes(q)));
   const el = document.getElementById("p-list");
