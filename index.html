@@ -128,6 +128,15 @@ table.t th, table.t td { text-align: right; padding: 7px 8px; border-bottom: 1px
 table.t th:first-child, table.t td:first-child { text-align: left; }
 table.t th { font: 600 12px var(--f-display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .up { color: var(--good); } .down { color: var(--bad); }
+.mini-h { margin: 0; font: 600 12px var(--f-display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+table.t tr.subrow td { color: var(--muted); font-size: 12.5px; }
+table.t tr.subrow td:first-child { padding-left: 26px; }
+table.t tr.total td { font-weight: 600; border-top: 1px solid var(--muted); }
+.tablewrap table.t th:first-child, .tablewrap table.t td:first-child { position: sticky; left: 0; background: var(--surface); z-index: 1; }
+@media (max-width: 520px) { table.t th, table.t td { padding: 6px 5px; font-size: 12px; } table.t tr.subrow td:first-child { padding-left: 16px; } }
+.hp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 22px; }
+.hp-col { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+@media (max-width: 980px) { .hp-grid { grid-template-columns: minmax(0, 1fr); } }
 .kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap: 10px 14px; }
 .kv div { min-width: 0; }
 .kv span { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
@@ -291,6 +300,7 @@ html, body { touch-action: manipulation; }
           <button class="btn" data-q="12m">12 Monate</button>
           <button class="btn" data-q="saison">Saison Apr–Okt</button>
           <button class="btn" data-q="alles">Alles</button>
+          <select id="f-year" aria-label="Jahr wählen" style="width:auto"><option value="">Jahr …</option></select>
         </div>
         <div class="range"><label for="f-von">Von / bis</label><input class="flt" type="date" id="f-von"><input class="flt" type="date" id="f-bis" aria-label="Bis"></div>
       </div>
@@ -470,18 +480,30 @@ html, body { touch-action: manipulation; }
         </div>
         <div class="chart tall"><canvas id="c-pmc" aria-label="Fitness, Ermüdung und Form"></canvas></div>
       </div>
-      <div class="card w8">
+      <div class="card w12">
         <div class="card-head">
           <div><h2>Wochenumfang</h2><div class="sub">Letzte 16 Wochen nach Sportart</div></div>
           <select id="v-metric" aria-label="Messgrösse"><option value="h">Stunden</option><option value="km">Kilometer</option><option value="hm">Höhenmeter</option></select>
         </div>
         <div class="chart"><canvas id="c-volume" aria-label="Wochenumfang"></canvas></div>
       </div>
+      <div class="card w8">
+        <div class="card-head">
+          <div><h2>Jahresstatistik</h2><div class="sub" id="y-sub"></div></div>
+          <select id="y-year" aria-label="Jahr"></select>
+        </div>
+        <div class="kv" id="y-kv"></div>
+        <div class="tablewrap"><table class="t" id="t-year"></table></div>
+        <h3 class="mini-h">Erholung und Körper</h3>
+        <div class="kv" id="y-kv2"></div>
+        <p class="hint" id="y-note"></p>
+      </div>
       <div class="card w4">
-        <h2>Dieses Jahr</h2>
-        <div class="sub" id="ytd-sub"></div>
-        <div class="kv" id="ytd-kv"></div>
-        <div class="tablewrap"><table class="t" id="t-ytd"></table></div>
+        <div class="card-head">
+          <div><h2>Jahre im Vergleich</h2><div class="sub">Laufendes Jahr bis heute</div></div>
+          <select id="y-metric" aria-label="Messgrösse"><option value="h">Stunden</option><option value="km">Kilometer</option><option value="hm">Höhenmeter</option></select>
+        </div>
+        <div class="chart tall"><canvas id="c-years" aria-label="Umfang pro Jahr nach Sportart"></canvas></div>
       </div>
     </div>
   </section>
@@ -498,6 +520,25 @@ html, body { touch-action: manipulation; }
         <h2>Rad: Leistungskurve</h2>
         <div class="sub">Beste Leistung je Dauer, dieses Jahr gegen Vorjahr</div>
         <div class="chart"><canvas id="c-pdc" aria-label="Leistungskurve"></canvas></div>
+      </div>
+      <div class="card w12">
+        <div class="card-head">
+          <div><h2>Puls zu Watt und Pace</h2><div class="sub">Jeder Punkt ist eine Einheit: Ø Puls gegen Leistung (NP) bzw. Ø Pace. Die Linien zeigen den Trend je Radsystem bzw. Laufart. Liegt eine Linie tiefer, brauchst du für die gleiche Leistung weniger Puls.</div></div>
+          <select id="hp-range" aria-label="Zeitraum"></select>
+        </div>
+        <div class="hp-grid">
+          <div class="hp-col">
+            <h3 class="mini-h">Rad · Puls zu Watt</h3>
+            <div class="chart tall"><canvas id="c-hrw" aria-label="Puls zu Watt nach Radsystem"></canvas></div>
+            <div class="tablewrap"><table class="t" id="t-hrw"></table></div>
+          </div>
+          <div class="hp-col">
+            <h3 class="mini-h">Lauf · Puls zu Pace</h3>
+            <div class="chart tall"><canvas id="c-hrp" aria-label="Puls zu Pace nach Laufart"></canvas></div>
+            <div class="tablewrap"><table class="t" id="t-hrp"></table></div>
+          </div>
+        </div>
+        <p class="hint">Rad: Fahrten mit Leistungsmesser ab 20 Minuten. Lauf: ab 15 Minuten und 2 km. Die Tabellen lesen den Puls an der Trendlinie ab, nur wenn genug Einheiten in diesem Bereich liegen (sonst –).</p>
       </div>
       <div class="card">
         <h2>Lauf: Effizienz</h2>
@@ -820,9 +861,16 @@ function filtered() {
     && inR(a.hr, r.hrmin, r.hrmax) && inR(a.watt, r.wmin, r.wmax)
     && (!typ || a.typ === typ) && (!q || (a.name || "").toLowerCase().includes(q)));
 }
+function wavg(list, k) {         // nach Dauer gewichteter Schnitt, nur Einheiten mit Wert
+  let t = 0, s = 0;
+  for (const a of list) if (a[k] && a.dur) { t += a.dur; s += a[k] * a.dur; }
+  return t ? s / t : null;
+}
 function renderSummary(list) {
   const km = list.reduce((s, a) => s + (a.km || 0), 0), hm = list.reduce((s, a) => s + (a.hm || 0), 0), h = list.reduce((s, a) => s + (a.dur || 0), 0) / 3600;
-  document.getElementById("sum").innerHTML = `<div><b>${fmt(list.length)}</b><span>Aktivitäten</span></div><div><b>${fmt(km)}</b><span>km</span></div><div><b>${fmt(hm)}</b><span>Höhenmeter</span></div><div><b>${fmt(h)}</b><span>Stunden</span></div>`;
+  const nw = list.filter((a) => a.watt).length;
+  document.getElementById("sum").innerHTML = `<div><b>${fmt(list.length)}</b><span>Aktivitäten</span></div><div><b>${fmt(km)}</b><span>km</span></div><div><b>${fmt(hm)}</b><span>Höhenmeter</span></div><div><b>${fmt(h)}</b><span>Stunden</span></div>` +
+    `<div><b>${fmt(wavg(list, "hr"))}</b><span>Ø Puls</span></div><div title="${nw} Einheiten mit Leistungsmesser"><b>${fmt(wavg(list, "watt"))}</b><span>Ø Watt${nw && nw < list.length ? ` · ${fmt(nw)} mit Messer` : ""}</span></div>`;
 }
 const scheduleRebuild = debounce(() => rebuildTracks(false), 220);
 function buildFilterUI() {
@@ -849,10 +897,19 @@ function buildFilterUI() {
        "12m": () => { von.value = iso(addDays(today, -365)); bis.value = ""; },
        saison: () => { von.value = `${sy}-04-01`; bis.value = `${sy}-10-31`; },
        alles: () => { von.value = ""; bis.value = ""; } })[b.dataset.q]();
+    document.getElementById("f-year").value = "";
     scheduleRebuild();
   }));
+  const fy = document.getElementById("f-year");
+  fy.innerHTML += [...new Set(D.activities.map((a) => a.date.slice(0, 4)))].sort().reverse().map((y) => `<option value="${y}">${y}</option>`).join("");
+  fy.addEventListener("change", () => {
+    if (!fy.value) return;
+    document.getElementById("f-von").value = `${fy.value}-01-01`; document.getElementById("f-bis").value = `${fy.value}-12-31`;
+    scheduleRebuild();
+  });
+  ["f-von", "f-bis"].forEach((id) => document.getElementById(id).addEventListener("input", () => (fy.value = "")));
   document.getElementById("f-reset").addEventListener("click", () => {
-    document.querySelectorAll(".flt").forEach((i) => (i.value = ""));
+    document.querySelectorAll(".flt").forEach((i) => (i.value = "")); document.getElementById("f-year").value = "";
     filt.sports = new Set(Object.keys(SPORTS)); filt.wd = new Set([0, 1, 2, 3, 4, 5, 6]);
     document.querySelectorAll("#f-sport .chip, #f-wd .chip").forEach((c) => c.setAttribute("aria-pressed", "true"));
     scheduleRebuild();
@@ -1914,6 +1971,84 @@ function ringSVG(frac, color, big, unit, label) {
 const recColor = (r) => r == null ? css("--muted") : r >= 67 ? css("--good") : r >= 34 ? css("--warn") : css("--bad");
 const legendBottom = { legend: { position: "bottom" } };
 
+/* Radsysteme und Laufarten (Farben geprüft auf dem dunklen Hintergrund, auch bei Farbsehschwäche unterscheidbar) */
+const BIKE_SYS = [{ k: "rennrad", label: "Rennrad", color: "#c98500" }, { k: "mtb", label: "MTB", color: "#199e70" }, { k: "indoor", label: "Indoor", color: "#9085e9" }];
+const RUN_SYS = [{ k: "strasse", label: "Strasse", color: "#d95926" }, { k: "trail", label: "Trail", color: "#199e70" }, { k: "band", label: "Laufband", color: "#9085e9" }];
+function bikeSys(a) {
+  if (a.sport !== "rad") return null;
+  const t = (a.typ || "").toLowerCase();
+  if (a.indoor || /zwift|indoor|rolle|trainer|virtu/.test(t)) return "indoor";
+  if (/mountain|mtb/.test(t)) return "mtb";
+  if (/e-bike|ebike/.test(t)) return null;
+  return "rennrad";
+}
+function runSys(a) {
+  if (a.sport !== "lauf") return null;
+  const t = (a.typ || "").toLowerCase();
+  if (a.indoor || /laufband|treadmill|indoor|virtu/.test(t)) return "band";
+  if (/trail|ultra|berg/.test(t)) return "trail";
+  return "strasse";
+}
+function hrPoints(kind, from, to) {        // Punkte {x, y} je System im Zeitraum
+  const out = {};
+  for (const a of D.activities) {
+    if (a.date < from || a.date > to || !a.hr || a.hr < 80 || a.hr > 205 || !a.dur) continue;
+    if (kind === "rad") {
+      const s = bikeSys(a), w = a.np || a.watt;
+      if (!s || !w || w < 60 || a.dur < 1200) continue;
+      (out[s] ||= []).push({ x: w, y: a.hr, n: a.name, d: a.date, t: a.dur });
+    } else {
+      const s = runSys(a);
+      if (!s || !(a.km >= 2) || a.dur < 900) continue;
+      const pc = a.dur / a.km; if (pc < 170 || pc > 560) continue;
+      (out[s] ||= []).push({ x: Math.round(pc), y: a.hr, n: a.name, d: a.date, t: a.dur });
+    }
+  }
+  return out;
+}
+function linFit(pts) {                      // y = a + b·x, Ausreisser über 2,5 Standardabweichungen werden weggelassen
+  if (!pts || pts.length < 6) return null;
+  const fit = (q) => {
+    const n = q.length, mx = q.reduce((s, p) => s + p.x, 0) / n, my = q.reduce((s, p) => s + p.y, 0) / n;
+    let sxx = 0, sxy = 0; for (const p of q) { sxx += (p.x - mx) ** 2; sxy += (p.x - mx) * (p.y - my); }
+    const b = sxx ? sxy / sxx : 0; return { a: my - b * mx, b };
+  };
+  let f = fit(pts);
+  const res = pts.map((p) => p.y - (f.a + f.b * p.x)), sd = Math.sqrt(res.reduce((s, r) => s + r * r, 0) / res.length);
+  const keep = sd ? pts.filter((p, i) => Math.abs(res[i]) <= 2.5 * sd) : pts;
+  if (keep.length >= 6 && keep.length < pts.length) f = fit(keep);
+  let x0 = Infinity, x1 = -Infinity; for (const p of keep) { if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x; }
+  return { ...f, n: pts.length, x0, x1 };
+}
+const fitAt = (f, x) => (f && f.x1 > f.x0 && x >= f.x0 - (f.x1 - f.x0) * 0.1 && x <= f.x1 + (f.x1 - f.x0) * 0.1 ? f.a + f.b * x : null);
+function hrScatter(id, sys, pts, xTitle, isPace) {
+  const ds = sys.map((s) => ({ label: `${s.label} (${(pts[s.k] || []).length})`, data: pts[s.k] || [], backgroundColor: s.color + "d9", borderColor: css("--surface"), borderWidth: 1,
+    pointRadius: 4, pointHoverRadius: 6, pointHitRadius: 10 }));
+  sys.forEach((s) => {
+    const f = linFit(pts[s.k]);
+    ds.push({ label: "Trend " + s.label, _trend: true, showLine: true, borderColor: s.color, backgroundColor: s.color, borderWidth: 2.5, pointRadius: 0, pointHitRadius: 0, pointHoverRadius: 0,
+      data: f && f.x1 > f.x0 ? [{ x: f.x0, y: +(f.a + f.b * f.x0).toFixed(1) }, { x: f.x1, y: +(f.a + f.b * f.x1).toFixed(1) }] : [] });
+  });
+  chart(id, { type: "scatter", data: { datasets: ds }, options: {
+    interaction: { mode: "nearest", intersect: false },
+    scales: { x: { reverse: !!isPace, title: { display: true, text: xTitle }, ticks: isPace ? { callback: (v) => mmss(v) } : {} }, y: { title: { display: true, text: "Ø Puls (bpm)" } } },
+    plugins: {
+      legend: { position: "bottom", labels: { filter: (it, data) => !data.datasets[it.datasetIndex]._trend },
+        onClick: (e, it, lg) => { const c = lg.chart, i = it.datasetIndex, v = !c.isDatasetVisible(i); c.setDatasetVisibility(i, v); c.setDatasetVisibility(i + sys.length, v); c.update(); } },
+      tooltip: { filter: (it) => !it.dataset._trend, callbacks: { label: (c) => { const r = c.raw; return `${r.n} · ${dateCH(r.d)}: ${isPace ? mmss(r.x) + " /km" : r.x + " W"}, ${r.y} bpm, ${hmm(r.t)} h`; } } },
+    } } });
+}
+function hrRefTable(tid, kind, sys, ref, refLabel) {   // Puls an der Trendlinie bei einem festen Wert, je Jahr
+  const ys = [...new Set(D.activities.filter((a) => (kind === "rad" ? bikeSys(a) : runSys(a))).map((a) => +a.date.slice(0, 4)))].sort().slice(-4);
+  const cols = [...ys.map((y) => ({ label: String(y), from: `${y}-01-01`, to: `${y}-12-31` })), { label: "12 Mt.", from: iso(addDays(today, -365)), to: iso(today) }];
+  const P = cols.map((c) => hrPoints(kind, c.from, c.to));
+  document.getElementById(tid).innerHTML = `<tr><th>Puls bei ${refLabel}</th>${cols.map((c) => `<th>${c.label}</th>`).join("")}</tr>` + sys.map((s) =>
+    `<tr><td><span class="dot" style="background:${s.color};margin-right:8px"></span>${s.label}</td>` + P.map((p) => {
+      const f = linFit(p[s.k]), v = fitAt(f, ref);
+      return `<td title="${f ? f.n + " Einheiten" : "zu wenig Einheiten"}">${v == null ? "–" : Math.round(v)}</td>`;
+    }).join("") + "</tr>").join("");
+}
+
 /* =====================================================================
    Tabs
    ===================================================================== */
@@ -2007,8 +2142,13 @@ const TABS = {
       document.getElementById("z-sport").addEventListener("change", () => this.zones());
       document.getElementById("z-range").addEventListener("change", () => this.zones());
       document.getElementById("v-metric").addEventListener("change", () => this.volume());
+      const yy = [...new Set(D.activities.map((a) => a.date.slice(0, 4)))].sort().reverse();
+      if (!yy.includes(String(today.getFullYear()))) yy.unshift(String(today.getFullYear()));
+      document.getElementById("y-year").innerHTML = yy.map((y) => `<option value="${y}">${y}</option>`).join("");
+      document.getElementById("y-year").addEventListener("change", () => this.years());
+      document.getElementById("y-metric").addEventListener("change", () => this.yearChart());
     },
-    draw() { this.zones(); this.pmc(); this.volume(); this.ytd(); },
+    draw() { this.zones(); this.pmc(); this.volume(); this.years(); this.yearChart(); },
     zones() {
       const n = +document.getElementById("z-range").value, sp = document.getElementById("z-sport").value, weeks = lastWeeks(n);
       const agg = weeks.map((w) => { const z = [0, 0, 0]; D.activities.filter((a) => inWeek(a, w) && (!sp || a.sport === sp)).forEach((a) => { const q = zone3(a); if (q) q.forEach((v, j) => (z[j] += v)); }); return z; });
@@ -2045,23 +2185,63 @@ const TABS = {
         data: weeks.map((w) => +D.activities.filter((a) => a.sport === k && inWeek(a, w)).reduce((s, a) => s + (val(a) || 0), 0).toFixed(1)) })) },
         options: { scales: { x: { stacked: true }, y: { stacked: true, title: { display: true, text: { h: "Stunden", km: "Kilometer", hm: "Höhenmeter" }[m] } } }, plugins: legendBottom } });
     },
-    ytd() {
-      const y = today.getFullYear(), y0 = new Date(y, 0, 1).getTime(), p0 = new Date(y - 1, 0, 1).getTime();
-      const pEnd = new Date(y - 1, today.getMonth(), today.getDate()).getTime();
-      document.getElementById("ytd-sub").textContent = `1. Januar bis heute, verglichen mit dem gleichen Zeitraum ${y - 1}`;
-      const cur = D.activities.filter((a) => a._t >= y0);
-      document.getElementById("ytd-kv").innerHTML = `<div><span>Kilometer</span><b>${fmt(cur.reduce((s, a) => s + a.km, 0))}</b></div><div><span>Höhenmeter</span><b>${fmt(cur.reduce((s, a) => s + a.hm, 0))}</b></div><div><span>Stunden</span><b>${fmt(cur.reduce((s, a) => s + a.dur, 0) / 3600)}</b></div>`;
-      const row = (k) => {
-        const c = cur.filter((a) => a.sport === k), pr = D.activities.filter((a) => a.sport === k && a._t >= p0 && a._t <= pEnd);
-        const km = c.reduce((s, a) => s + a.km, 0), kmp = pr.reduce((s, a) => s + a.km, 0), d = kmp ? (km / kmp - 1) * 100 : null;
-        return `<tr><td>${SPORTS[k].label}</td><td>${fmt(km)}</td><td>${fmt(c.reduce((s, a) => s + a.hm, 0))}</td><td>${fmt(c.reduce((s, a) => s + a.dur, 0) / 3600)}</td><td class="${d == null ? "" : d >= 0 ? "up" : "down"}">${d == null ? "–" : (d >= 0 ? "+" : "") + fmt(d) + " %"}</td></tr>`;
+    years() {
+      const Y = +document.getElementById("y-year").value || today.getFullYear(), cur = Y === today.getFullYear();
+      const from = `${Y}-01-01`, to = cur ? iso(today) : `${Y}-12-31`;
+      const pFrom = `${Y - 1}-01-01`, pTo = cur ? iso(new Date(Y - 1, today.getMonth(), today.getDate())) : `${Y - 1}-12-31`;
+      const L = D.activities.filter((a) => a.date >= from && a.date <= to), Lp = D.activities.filter((a) => a.date >= pFrom && a.date <= pTo);
+      const sum = (l, k) => l.reduce((x, a) => x + (a[k] || 0), 0);
+      document.getElementById("y-sub").textContent = cur ? `1. Januar bis heute, verglichen mit dem gleichen Zeitraum ${Y - 1}` : `Ganzes Jahr, verglichen mit ${Y - 1}`;
+      document.getElementById("y-kv").innerHTML = [["Einheiten", fmt(L.length)], ["Stunden", fmt(sum(L, "dur") / 3600)], ["Kilometer", fmt(sum(L, "km"))],
+        ["Höhenmeter", fmt(sum(L, "hm"))], ["Trainingslast", fmt(sum(L, "tss"))], ["Ø Puls", fmt(wavg(L, "hr"))]].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
+      const pace = (l) => { const k = sum(l, "km"); return k ? sum(l, "dur") / k : null; };
+      const extra = (k, l) => k === "rad" ? (wavg(l, "watt") ? fmt(wavg(l, "watt")) + " W" : "–")
+        : k === "lauf" ? (pace(l) ? mmss(pace(l)) + " /km" : "–") : k === "schwimm" ? (pace(l) ? mmss(pace(l) / 10) + " /100 m" : "–") : "–";
+      const row = (label, l, lp, k, cls) => {
+        if (!l.length && !lp.length) return "";
+        const km = sum(l, "km"), kmp = sum(lp, "km"), h = sum(l, "dur"), hp = sum(lp, "dur");
+        // Vergleich nach km, wenn beide Jahre genug Distanz haben (beim Total nach Stunden), sonst nach Stunden
+        const useKm = cls !== "total" && km >= 20 && kmp >= 20, d = useKm ? (km / kmp - 1) * 100 : hp >= 3 * 3600 ? (h / hp - 1) * 100 : null;
+        const cmp = d != null ? `<td class="${d >= 0 ? "up" : "down"}" title="Vergleich nach ${useKm ? "Kilometern" : "Stunden"}">${(d >= 0 ? "+" : "") + fmt(d)} %</td>` : `<td>${h >= 3 * 3600 ? "neu" : "–"}</td>`;
+        return `<tr class="${cls || ""}"><td>${label}</td><td>${fmt(l.length)}</td><td>${fmt(h / 3600)}</td><td>${fmt(km)}</td><td>${fmt(sum(l, "hm"))}</td><td>${fmt(wavg(l, "hr"))}</td><td>${extra(k, l)}</td>${cmp}</tr>`;
       };
-      document.getElementById("t-ytd").innerHTML = `<tr><th>Sport</th><th>km</th><th>hm</th><th>h</th><th>km Vj.</th></tr>` + ["schwimm", "rad", "lauf", "ski", "wandern"].map(row).join("");
+      const dot = (c) => `<span class="dot" style="background:${c};margin-right:8px"></span>`;
+      let html = `<tr><th>Sport</th><th>Anzahl</th><th>h</th><th>km</th><th>hm</th><th>Ø Puls</th><th>Ø Watt / Pace</th><th>ggü. ${Y - 1}</th></tr>`;
+      for (const k of ["schwimm", "rad", "lauf", "ski", "wandern", "andere"]) {
+        const l = L.filter((a) => a.sport === k), lp = Lp.filter((a) => a.sport === k);
+        html += row(dot(SPORTS[k].color) + SPORTS[k].label, l, lp, k);
+        if (k === "rad") for (const b of BIKE_SYS) html += row(b.label, l.filter((a) => bikeSys(a) === b.k), lp.filter((a) => bikeSys(a) === b.k), "rad", "subrow");
+      }
+      html += row("Total", L, Lp, "", "total");
+      document.getElementById("t-year").innerHTML = html;
+      const dl = D.days.filter((d) => d.date >= from && d.date <= to);
+      const mean = (k) => { const v = dl.map((d) => d[k]).filter((x) => x != null); return v.length ? { v: v.reduce((x, y) => x + y, 0) / v.length, n: v.length } : null; };
+      const rhr = mean("rhr"), hrv = mean("hrv"), sl = mean("sleepH"), wl = weights().filter((w) => w.date >= from && w.date <= to);
+      document.getElementById("y-kv2").innerHTML = [["Ruhepuls Ø", rhr ? fmt(rhr.v) : "–"], ["HRV Ø", hrv ? fmt(hrv.v) + " ms" : "–"], ["Schlaf Ø", sl ? fmt(sl.v, 1) + " h" : "–"],
+        ["Gewicht Ø", wl.length ? fmt(wl.reduce((x, w) => x + w.kg, 0) / wl.length, 1) + " kg" : "–"]].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
+      const first = D.days[0] && D.days[0].date;
+      document.getElementById("y-note").textContent = first && first > from
+        ? `Ruhepuls, HRV und Schlaf liegen bisher ab ${dateCH(first)} vor${rhr ? ` (${rhr.n} Tage)` : ""}. Die älteren Werte holt das nächtliche Update nach und nach von Garmin.`
+        : rhr ? `Aus ${rhr.n} Tagen mit Garmin-Werten.` : "";
+    },
+    yearChart() {
+      const m = document.getElementById("y-metric").value, ys = [...new Set(D.activities.map((a) => a.date.slice(0, 4)))].sort();
+      const val = (a) => m === "h" ? a.dur / 3600 : m === "km" ? a.km : a.hm;
+      chart("c-years", { type: "bar", data: { labels: ys, datasets: ["schwimm", "rad", "lauf", "ski", "wandern"].map((k) => ({
+        label: SPORTS[k].label, backgroundColor: SPORTS[k].color, borderRadius: 2,
+        data: ys.map((y) => +D.activities.filter((a) => a.sport === k && a.date.startsWith(y)).reduce((x, a) => x + (val(a) || 0), 0).toFixed(1)) })) },
+        options: { scales: { x: { stacked: true }, y: { stacked: true, title: { display: true, text: { h: "Stunden", km: "Kilometer", hm: "Höhenmeter" }[m] } } },
+          plugins: { ...legendBottom, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${fmt(c.raw)} ${{ h: "h", km: "km", hm: "hm" }[m]}` } } } } });
     },
   },
 
   leistung: {
-    init() {},
+    init() {
+      const ys = [...new Set(D.activities.filter((a) => bikeSys(a) || runSys(a)).map((a) => a.date.slice(0, 4)))].sort().reverse();
+      const sel = document.getElementById("hp-range");
+      sel.innerHTML = `<option value="12m">Letzte 12 Monate</option>` + ys.map((y) => `<option value="${y}">${y}</option>`).join("") + `<option value="alle">Alle Jahre</option>`;
+      sel.addEventListener("change", () => this.hr());
+    },
     draw() {
       const kg = weights().at(-1)?.kg, f = D.ftp, cur = f.at(-1);
       document.getElementById("ftp-kv").innerHTML = `<div><span>FTP aktuell</span><b>${cur ? cur.w + " W" : "–"}</b></div><div><span>Watt pro kg</span><b>${cur && kg ? fmt(cur.w / kg, 2) : "–"}</b></div><div><span>Gewicht</span><b>${kg ? fmt(kg, 1) + " kg" : "–"}</b></div>`;
@@ -2085,7 +2265,16 @@ const TABS = {
       chart("c-swim", { type: "line", data: { labels: sw.map((a) => dLabel(a.date)), datasets: [
         { label: "Pace pro 100 m", data: sw.map((a) => +(a.dur / (a.km * 10)).toFixed(1)), borderColor: SPORTS.schwimm.color, backgroundColor: SPORTS.schwimm.color, pointRadius: 3, tension: 0.3 }] },
         options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => mmss(c.raw) + " pro 100 m" } } }, scales: { x: { ticks: { maxTicksLimit: 10 } }, y: { reverse: true, ticks: { callback: (v) => mmss(v) } } } } });
+      this.hr();
       renderChecks(); renderSteps();
+    },
+    hr() {
+      const v = document.getElementById("hp-range").value || "12m";
+      const [from, to] = v === "12m" ? [iso(addDays(today, -365)), iso(today)] : v === "alle" ? ["0000-01-01", "9999-12-31"] : [`${v}-01-01`, `${v}-12-31`];
+      hrScatter("c-hrw", BIKE_SYS, hrPoints("rad", from, to), "Watt (NP)", false);
+      hrScatter("c-hrp", RUN_SYS, hrPoints("lauf", from, to), "Pace min/km (rechts schneller)", true);
+      hrRefTable("t-hrw", "rad", BIKE_SYS, 200, "200 W");
+      hrRefTable("t-hrp", "lauf", RUN_SYS, 330, "5:30 /km");
     },
   },
 

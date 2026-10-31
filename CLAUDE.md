@@ -17,6 +17,12 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
    - `get_activities_by_date` von (letztes Datum − 2 Tage) bis heute, alle Seiten.
    - pro Einheit `get_activity` (Leistung, NP, Höhenmeter, Dauer) und `get_activity_hr_in_timezones` (Zeit in Zone 1–5).
    - `get_sleep_summary_range` letzte 7 Nächte; `get_stats_range` letzte 7 Tage; `get_nutrition_summary_between_dates` letzte 7 Tage; `get_weigh_ins` letzte 14 Tage; `get_scheduled_workouts` heute bis +14 Tage.
+   - **Tageswerte rückwirkend nachholen** (bis sie ab 2020 vorhanden sind): Startpunkt ist `config.days_backfill` in `data.json`,
+     fehlt der Wert, das früheste Datum in `days`. Liegt er nach 2020-01-01, mit `get_sleep_summary_range` die 180 Nächte davor holen
+     (zwei Abfragen à 90 Nächte, nie vor 2020-01-01) und als zusätzliche Einträge in `days` aufnehmen, nur `hrv`, `rhr`, `sleepH`,
+     `sleepScore` (Nächte ohne Werte weglassen). Dann in `work/new.json` `"config": {"days_backfill": "<frühestes abgefragtes Datum>"}` setzen.
+     Liefern beide Abfragen keine einzige Nacht, `"days_backfill": "2020-01-01"` setzen (fertig). Schlägt das Nachholen fehl,
+     einfach weglassen: kein Abbruch, keine Nachricht, nächste Nacht erneut.
 3. `work/new.json` schreiben (Format unten), dann `python3 -I tools/merge_daily.py data.json work/new.json`.
 4. `SPUREN_PW=… node tools/crypt.mjs encrypt data.json data.enc.json`, dann nur `data.enc.json` committen («Nacht-Update JJJJ-MM-TT») und auf `main` pushen.
 
@@ -30,9 +36,11 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
             "kcalIn": 0, "protein": 0, "carbs": 0, "fat": 0}],
   "weights": [{"date": "2026-10-30", "kg": 0, "ts_gmt": 0}],
   "planned": [{"date": "2026-11-02", "title": "", "sport": "rad", "dur_s": 3600}],
-  "planned_range": ["2026-10-31", "2026-11-14"]
+  "planned_range": ["2026-10-31", "2026-11-14"],
+  "config": {"days_backfill": "2026-04-04"}
 }
 ```
+`config` ist optional und wird in `data.json` übernommen (nur die angegebenen Schlüssel).
 Zuordnung: `type` = Garmin-Typ aus `get_activity`; `start_local` = `start_time_local`; `duration_s` = `duration_seconds`;
 `elev_gain_m` = `elevation_gain_meters`; `avg_hr` = `avg_hr_bpm`; `avg_power` = `avg_power_watts`; `np` = `normalized_power_watts`;
 Tage: `hrv` = `avg_overnight_hrv`, `rhr` = `resting_heart_rate_bpm`, `sleepH` = `sleep_hours`, `sleepScore` = `sleep_score`,
