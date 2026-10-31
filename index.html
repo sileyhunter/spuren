@@ -1194,7 +1194,7 @@ function initMap() {
     if (pf.length) {
       const p = allPoints().find((x) => x.id === pf[0].properties.id);
       if (p) new maplibregl.Popup({ offset: 8 }).setLngLat([p.lon, p.lat])
-        .setHTML(`<b>${esc(p.name)}</b><br><small>${esc((POINT_CATS[p.cat] || POINT_CATS.sonst).label)} · ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</small>`).addTo(map);
+        .setHTML(`<b>${esc(p.name)}</b><br><small>${esc((POINT_CATS[p.cat] || POINT_CATS.sonst).label)}${p.ele ? " · " + fmt(p.ele) + " m ü. M." : ""} · ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}${p.date ? "<br>gespeichert am " + dateCH(p.date) : ""}</small>`).addTo(map);
       return;
     }
     const idn = identVisible(), wv = wmsVisible();
@@ -1860,7 +1860,7 @@ function renderPoints() {
   const q = document.getElementById("p-search").value.trim().toLowerCase();
   const list = allPoints().filter((p) => pointCats.has(p.cat in POINT_CATS ? p.cat : "sonst") && (!q || p.name.toLowerCase().includes(q)));
   const el = document.getElementById("p-list");
-  el.innerHTML = list.length ? list.map((p) => `<div class="item"><button class="main" data-id="${esc(p.id)}"><span class="dot" style="background:${(POINT_CATS[p.cat] || POINT_CATS.sonst).color}"></span><span>${esc(p.name)}<br><small>${esc((POINT_CATS[p.cat] || POINT_CATS.sonst).label)}</small></span><small></small></button>${isUserItem(p.id) ? `<button class="del" data-id="${esc(p.id)}">Löschen</button>` : ""}</div>`).join("")
+  el.innerHTML = list.length ? list.map((p) => `<div class="item"><button class="main" data-id="${esc(p.id)}"><span class="dot" style="background:${(POINT_CATS[p.cat] || POINT_CATS.sonst).color}"></span><span>${esc(p.name)}<br><small>${esc((POINT_CATS[p.cat] || POINT_CATS.sonst).label)}${p.ele ? " · " + fmt(p.ele) + " m" : ""}${p.date ? " · " + dateCH(p.date) : ""}</small></span><small></small></button>${isUserItem(p.id) ? `<button class="del" data-id="${esc(p.id)}">Löschen</button>` : ""}</div>`).join("")
     : `<p class="hint">${allPoints().length ? "Keine Punkte passen zur Suche." : "Noch keine Punkte. Lade die GPX-Datei deiner Fenix oder setze einen Punkt in der Karte."}</p>`;
   el.querySelectorAll(".main").forEach((b) => b.addEventListener("click", () => {
     const p = allPoints().find((x) => x.id === b.dataset.id); if (!p || !map) return;

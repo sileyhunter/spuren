@@ -65,6 +65,10 @@ Silas lädt `UploadedFiles_0-_Part*.zip` hoch. Jedes ZIP in einen eigenen, leere
   Eintrag: `{"kind":"stufentest","date":"…","sport":"rad","stages":[{"w":180,"hr":132,"la":1.1}],"note":"…"}`; Lauf mit `"pace_s"` (s/km) statt `"w"`.
 - Einträge über `"lactate_add": [ … ]` in `work/new.json` einspielen (merge_daily.py), dann verschlüsseln und pushen.
 
+## Punkte (GPX kommt über den Chat)
+Wegpunkte, z. B. Jagdposten aus Garmin Explore: GPX in einen eigenen, leeren Ordner ausserhalb des Repos kopieren, entschlüsseln,
+`python3 -I tools/import_points.py data.json <datei.gpx>` (ersetzt früher importierte Punkte), verschlüsseln, nur `data.enc.json` committen.
+
 ## Testkalender
 `tests` in den Daten: `[{"date":"…","kind":"stufentest"|"check","note":"…","status":"vorschlag"}]`.
 Änderungen über `"tests": [ … ]` (ersetzt die ganze Liste) in `work/new.json`.
