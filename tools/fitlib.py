@@ -20,7 +20,7 @@ class _Def:
     __slots__ = ("gnum", "size", "st", "fields", "ts_off", "endian")
 
 
-def _build_def(gnum, endian, fields, devsize, want_fields):
+def _build_def(gnum, endian, fields, devsize, want_fields, devfields=None, devdesc=None):
     d = _Def()
     d.gnum = gnum
     d.endian = endian
@@ -49,7 +49,20 @@ def _build_def(gnum, endian, fields, devsize, want_fields):
             parts.append(f"{cnt}{ch}")
             mapping.append((fnum, cnt, inv))
     if devsize:
-        parts.append(f"{devsize}x")
+        if devfields and devdesc is not None and want_fields is None or (devfields and devdesc is not None and want_fields and "dev" in want_fields):
+            for didx, dnum, dsize in devfields:   # Entwicklerfelder (z. B. Zwift target_power) mit Typ aus field_description
+                bt, name = devdesc.get((didx, dnum), (13, f"dev{didx}_{dnum}"))
+                ch, bsize, inv = BASE.get(bt, ("s", 1, None))
+                key = "dev:" + name
+                if ch == "s" or dsize % bsize or dsize == 0:
+                    parts.append(f"{dsize}s")
+                    mapping.append((key, -1 if bt == 7 else -2, None))
+                else:
+                    cnt = dsize // bsize
+                    parts.append(f"{cnt}{ch}")
+                    mapping.append((key, cnt, inv))
+        else:
+            parts.append(f"{devsize}x")
     d.st = struct.Struct(endian + "".join(parts))
     d.fields = mapping
     return d
@@ -79,6 +92,11 @@ def messages(data, want, stop_when=None):
         start = pos + hsize
         end = min(n, start + data_size)
         defs = {}
+        devdesc = {}
+        want206 = want.get(206, False)
+        want = dict(want)
+        if any(v is None or (v and "dev" in v) for v in want.values()):
+            want.setdefault(206, None)         # Beschreibungen der Entwicklerfelder immer mitlesen
         last_ts = 0
         p = start
         while p < end:
@@ -118,14 +136,16 @@ def messages(data, want, stop_when=None):
                     fields.append((data[p], data[p + 1], data[p + 2] & 0x1F))
                     p += 3
                 devsize = 0
+                devfields = []
                 if dev:
                     nd = data[p]
                     p += 1
                     for _ in range(nd):
+                        devfields.append((data[p + 2], data[p], data[p + 1]))   # (Index, Feldnummer, Grösse)
                         devsize += data[p + 1]
                         p += 3
                 wf = want.get(gnum, False)
-                defs[local] = _build_def(gnum, endian, fields, devsize, wf)
+                defs[local] = _build_def(gnum, endian, fields, devsize, wf, devfields, devdesc)
             else:  # normale Datennachricht
                 local = h & 0x0F
                 d = defs.get(local)
@@ -138,6 +158,12 @@ def messages(data, want, stop_when=None):
                     t = msg.get(253)
                     if t is not None:
                         last_ts = t
+                    if d.gnum == 206:
+                        if msg.get(1) is not None:
+                            devdesc[(msg.get(0) or 0, msg[1])] = ((msg.get(2) & 0x1F) if msg.get(2) is not None else 13, msg.get(3) or f"dev{msg.get(0)}_{msg[1]}")
+                        if want206 is False:
+                            p += d.size
+                            continue
                     yield d.gnum, msg
                     if stop_when and stop_when(d.gnum, msg):
                         return

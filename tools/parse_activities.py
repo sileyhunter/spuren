@@ -11,6 +11,8 @@ from multiprocessing import Pool
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fitlib  # noqa: E402
+import kennzahlen  # noqa: E402
+import series  # noqa: E402
 
 WANT = {
     0: {1, 2, 4},
@@ -171,6 +173,10 @@ def process(path):
         return {"error": f"{os.path.basename(path)}: {e}"}
     if not sessions:
         return {"skip": "keine Session"}
+    try:                                   # Zeitbegriffe (A3) und Stufen (A5) aus den Sekundenreihen
+        sess_series = {S.start: S for S in series.from_fit(data)}
+    except Exception:
+        sess_series = {}
     manu = fid.get(1)
     base_id = os.path.basename(path).rsplit("_", 1)[-1].split(".")[0]
     offset = None
@@ -291,6 +297,15 @@ def process(path):
             "maxhr": (tz or {}).get(11), "rhr": (tz or {}).get(12), "zb": list((tz or {}).get(6) or []) or None,
             "pdc": pdc, "manu": manu, "multi": multi,
         })
+        S = sess_series.get(int(unix))
+        if S is not None:
+            zf, _ = kennzahlen.zeitfelder(S)
+            zf.pop("el", None)                     # Gesamtzeit bleibt wie bisher berechnet
+            out[-1].update(zf)
+            if out[-1]["sport"] in ("rad", "lauf"):
+                stf = kennzahlen.stufen.stufen(S)
+                if kennzahlen.stufen.relevant(stf):
+                    out[-1]["stufen"] = stf
     return {"acts": out}
 
 

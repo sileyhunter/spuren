@@ -2,7 +2,8 @@
 in data.json übernehmen. FIT-Daten sind genauer und ersetzen gleiche Einheiten aus dem nächtlichen Update;
 Garmin-Namen und -IDs aus dem nächtlichen Update bleiben erhalten.
 
-Aufruf: python3 -I tools/import_export.py data.json acts_raw.json
+Aufruf: python3 -I tools/import_export.py data.json acts_raw.json [--ftp-neu]
+--ftp-neu  FTP-Probe neu rechnen (sonst bleiben ftp_e, ftp_dev und ftp_est wie zuletzt berechnet)
 """
 import collections
 import datetime as dt
@@ -13,9 +14,11 @@ import zoneinfo
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ftp_model  # noqa: E402
+import kennzahlen  # noqa: E402
 
 ZRH = zoneinfo.ZoneInfo("Europe/Zurich")
-KEEP = ("id", "sport", "typ", "indoor", "name", "date", "start", "km", "hm", "dur", "hr", "watt", "np", "tss", "zones", "hh", "poly")
+KEEP = ("id", "sport", "typ", "indoor", "name", "date", "start", "km", "hm", "dur", "hr", "watt", "np", "tss", "zones", "hh", "poly",
+        "el", "mv", "st", "nst", "un", "rc", "ac", "us")      # Zeitbegriffe zeit-1.0 (A3)
 PDC_D = [5, 15, 30, 60, 300, 600, 1200, 3600, 7200]
 
 
@@ -82,6 +85,7 @@ def main(data_path, raw_path):
         a.setdefault("km", 0)
     # Namen/IDs aus dem nächtlichen Update übernehmen, Doppel vermeiden
     old = D.get("activities", [])
+    old_ftp = {o["id"]: {k: o[k] for k in ("ftp_e", "ftp_dev") if k in o} for o in old if o.get("ftp_e") or o.get("ftp_dev")}
     used = set()
     for a in new:
         for i, o in enumerate(old):
@@ -100,12 +104,36 @@ def main(data_path, raw_path):
     D["pdc"] = {"dur": PDC_D, "now": [best[year].get(d) for d in PDC_D], "prev": [best[year - 1].get(d) for d in PDC_D]}
     if ftp:
         D.setdefault("config", {})["ftp"] = ftp[-1]["w"]
-    n_ftp = ftp_model.apply(D, A)       # geschätzte FTP je Fahrt (ftp_e) und Verlauf (ftp_est), Original-TSS bleibt
+    # FTP-Probe: bisherige Berechnung bleibt, solange Silas keine neue verlangt (--ftp-neu); sie hängt vom Stichtag ab
+    if FTP_NEU or not D.get("ftp_est"):
+        n_ftp = ftp_model.apply(D, A)   # geschätzte FTP je Fahrt (ftp_e) und Verlauf (ftp_est), Original-TSS bleibt
+    else:
+        for a in D["activities"]:
+            o = old_ftp.get(a["id"])
+            if o:
+                a.update(o)
+        n_ftp = sum(1 for a in D["activities"] if a.get("ftp_e"))
+    # Stufentests aus den Sekundenwerten (A5); Laktat kommt nur über tools/laktat_vorschau.py dazu
+    old_st = {s["id"]: s for s in D.get("stufen", [])}
+    for a in A:
+        if a.get("stufen"):
+            st = a["stufen"]
+            e = {"id": a["id"], "date": a["date"], "sport": a["sport"], "name": a.get("name"), "quelle": "FIT-Sekundenwerte",
+                 **{k: v for k, v in st.items() if k != "stufen"},
+                 "stufen": [{k: v for k, v in s.items() if k not in ("t0", "t1")} |
+                            {"uhr": dt.datetime.fromtimestamp(s["t1"], ZRH).strftime("%H:%M:%S")} for s in st["stufen"]]}
+            if a["id"] in old_st and old_st[a["id"]].get("datei"):
+                e["datei"] = old_st[a["id"]]["datei"]
+            old_st[a["id"]] = e
+    D["stufen"] = sorted(old_st.values(), key=lambda s: s["date"])
+    D["versions"] = {**D.get("versions", {}), **kennzahlen.VERSIONS}
     D["updated"] = dt.datetime.now(ZRH).strftime("%d.%m.%Y %H:%M")
     json.dump(D, open(data_path, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
     print(f"FTP-Schätzung für {n_ftp} Fahrten")
     print(f"FIT-Aktivitäten: {len(new)} (Doppel entfernt: {removed}), behaltene Nacht-Einträge: {len(rest)}, gesamt: {len(D['activities'])}")
 
+
+FTP_NEU = "--ftp-neu" in sys.argv
 
 if __name__ == "__main__":
     main(sys.argv[1], sys.argv[2])

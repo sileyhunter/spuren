@@ -12,7 +12,13 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
 - `tools/crypt.mjs` – ver-/entschlüsseln
 - `tools/merge_daily.py` – nächtliche Garmin-Daten einspielen
 - `tools/classify.py`, `tools/parse_activities.py`, `tools/fitlib.py`, `tools/import_export.py` – monatlicher FIT-Export
-- `tools/ftp_model.py` – FTP-Schätzung aus Leistungsdaten (wird von `import_export.py` aufgerufen)
+- `tools/ftp_model.py` – FTP-Schätzung aus Leistungsdaten (wird von `import_export.py` nur mit `--ftp-neu` neu gerechnet)
+- `tools/series.py` – Sekundenreihen aus FIT-Datei oder Garmin-Verbindung (gleiche Struktur für beide Wege)
+- `tools/zeit.py`, `tools/stufen.py`, `tools/kennzahlen.py` – Zeitbegriffe (A3), Stufen (A5), gemeinsame Kennzahlen mit Versionen
+- `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
+- `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
+- `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)
+- `tools/workouts.py` – Test-Workouts für Zwift (.zwo) und Garmin (JSON), A9
 
 ## Nächtliches Update (nur Garmin-Verbindung)
 1. `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json data.json`
@@ -26,7 +32,17 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
      `sleepScore` (Nächte ohne Werte weglassen). Dann in `work/new.json` `"config": {"days_backfill": "<frühestes abgefragtes Datum>"}` setzen.
      Liefern beide Abfragen keine einzige Nacht, `"days_backfill": "2020-01-01"` setzen (fertig). Schlägt das Nachholen fehl,
      einfach weglassen: kein Abbruch, keine Nachricht, nächste Nacht erneut.
-3. `work/new.json` schreiben (Format unten), dann `python3 -I tools/merge_daily.py data.json work/new.json`.
+   - **FIT-Sekundenwerte je neue Aktivität (A2)**, also für jede Aktivität aus `get_activities_by_date`, die noch nicht in `data.json`
+     steht oder dort noch kein Feld `mv` hat:
+     a) `get_activity_fit_data(activity_id=<id>, include_records=true)`. Die Antwort ist gross und wird als Datei gespeichert;
+        der Pfad steht in der Meldung («Output has been saved to …»). Die Datei nicht lesen, nur den Pfad weitergeben.
+     b) `get_activity_fit_messages(activity_id=<id>, message_types=["file_id","lap","length","event"], message_limit=5000)`,
+        ebenfalls als Datei.
+     c) `python3 -I tools/fit_nacht.py <id> <pfad_a> <pfad_b> >> work/fit.jsonl`
+     Kommt eine Antwort direkt statt als Datei (sehr kurze Aktivität), sie unverändert als `work/fit_<id>_a.json` bzw.
+     `work/fit_<id>_b.json` speichern und diese Pfade nehmen. Schlägt ein Abruf fehl: ohne diese Datei weitermachen
+     (`fit_nacht.py <id> fehlt`); die Lücke steht dann im Protokoll `fit_log`. Kein Abbruch, keine Nachricht.
+3. `work/new.json` schreiben (Format unten), dann `python3 -I tools/merge_daily.py data.json work/new.json work/fit.jsonl`.
 4. `SPUREN_PW=… node tools/crypt.mjs encrypt data.json data.enc.json`, dann nur `data.enc.json` committen («Nacht-Update JJJJ-MM-TT») und auf `main` pushen.
 
 ### Format `work/new.json`
@@ -55,8 +71,12 @@ Leere Werte als `null`. Unbekannte Felder weglassen. Werte nie schätzen.
 Silas lädt `UploadedFiles_0-_Part*.zip` hoch. Jedes ZIP in einen eigenen, leeren Ordner ausserhalb des Repos entpacken.
 1. `python3 -I tools/classify.py <rohordner> work/files.json`
 2. `python3 -I tools/parse_activities.py work/files.json work/acts_raw.json`
-3. entschlüsseln, `python3 -I tools/import_export.py data.json work/acts_raw.json`, verschlüsseln, pushen.
-   Dabei rechnet `tools/ftp_model.py` die FTP-Schätzung neu (`ftp_est`, pro Fahrt `ftp_e` und `ftp_dev`).
+3. entschlüsseln, `python3 -I tools/import_export.py data.json work/acts_raw.json`.
+   Die FTP-Probe (`ftp_est`, `ftp_e`, `ftp_dev`) bleibt wie zuletzt berechnet; neu nur mit `--ftp-neu`, wenn Silas das will.
+   Neu je Aktivität: Zeitbegriffe `el mv st nst un rc ac us` (zeit-1.0); Stufentests aus den Sekundenwerten unter `stufen`.
+4. Prüfen: `python3 -I tools/check_referenz.py data.json --files work/files.json --raw-acts work/acts_raw.json`
+   (Referenzsatz, Handwerte, Stufen, alle Aktivitäten). «GESAMT: bestanden» muss dastehen; sonst Silas die Liste zeigen.
+5. verschlüsseln, nur `data.enc.json` committen, pushen.
 
 ## FTP und Trainingslast
 - `tss` ist die ursprüngliche Trainingslast (Rad mit der in Garmin eingestellten FTP). Sie wird nie überschrieben.
@@ -73,6 +93,12 @@ Silas lädt `UploadedFiles_0-_Part*.zip` hoch. Jedes ZIP in einen eigenen, leere
 - **Stufentest** (Laktat in der letzten Minute jeder Stufe): Puls je Stufe aus der letzten Minute.
   Eintrag: `{"kind":"stufentest","date":"…","sport":"rad","stages":[{"w":180,"hr":132,"la":1.1}],"note":"…"}`; Lauf mit `"pace_s"` (s/km) statt `"w"`.
 - Einträge über `"lactate_add": [ … ]` in `work/new.json` einspielen (merge_daily.py), dann verschlüsseln und pushen.
+- **Tabellen (Excel der SOMC-Vorlage), Laborberichte, Werte aus dem Chat: zuerst nur Vorschau (A5).**
+  Excel in einen eigenen Ordner ausserhalb des Repos kopieren, Rohdaten (FIT) wie beim Monatsexport bereitstellen, dann
+  `python3 -I tools/laktat_vorschau.py data.json --files work/files.json --xlsx <datei.xlsx> [--extra <werte.json>]`.
+  Jeder Wert trägt seine Quelle (Datei, Blatt, Zelle). Abweichung > 5 W bzw. 0,3 km/h oder keine Aktivität = «unklar».
+  Die Vorschau zeigt die Seite im Testzentrum. Übernommen (nach `lactate`) wird erst nach Silas' Bestätigung (Schritt B1).
+  Schwellen je Methode erst mit B1; nie eine Schwelle ausserhalb der gemessenen Stufen.
 
 ## Punkte (GPX kommt über den Chat)
 Wegpunkte, z. B. Jagdposten aus Garmin Explore: GPX in einen eigenen, leeren Ordner ausserhalb des Repos kopieren, entschlüsseln,
@@ -81,3 +107,14 @@ Wegpunkte, z. B. Jagdposten aus Garmin Explore: GPX in einen eigenen, leeren Ord
 ## Testkalender
 `tests` in den Daten: `[{"date":"…","kind":"stufentest"|"check","note":"…","status":"vorschlag"}]`.
 Änderungen über `"tests": [ … ]` (ersetzt die ganze Liste) in `work/new.json`.
+Protokoll-Vorlagen: `protokolle` (Liste mit `id name sport ablauf blut ende rahmen status`), ändern über `"protokolle": [ … ]` in `work/new.json`.
+
+## Test-Workouts (A9)
+`python3 -I tools/workouts.py <ordner>` erzeugt `.zwo` (Zwift, ftpOverride 100 → Power 1.2 = 120 W) und `.garmin.json`
+(für `upload_workout`, Leistungsbereich `power.between`, eine Runde je Stufe). **Nie ohne Silas' Freigabe hochladen,
+einplanen oder an ein Gerät senden.** Mit Freigabe: `upload_workout` → `schedule_workout(Datum)`; enduco-Workouts nie ändern.
+
+## Referenzsatz und Versionen (A1)
+Der Referenzsatz (10 Einheiten mit Handwerten) liegt nur verschlüsselt in `data.json` unter `referenz`, nie offen im Repo.
+Jede Kennzahl hat eine Version (`versions`). Ändert sich eine Regel: Version erhöhen, `check_referenz.py` laufen lassen,
+Abweichungen Silas zeigen, erst dann neue Werte speichern.

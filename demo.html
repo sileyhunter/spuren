@@ -132,6 +132,8 @@ table.t th { font: 600 12px var(--f-display); letter-spacing: .1em; text-transfo
 table.t tr.subrow td { color: var(--muted); font-size: 12.5px; }
 table.t tr.subrow td:first-child { padding-left: 26px; }
 table.t tr.total td { font-weight: 600; border-top: 1px solid var(--muted); }
+table.t td.wrap { white-space: normal; text-align: left; min-width: 220px; max-width: 520px; }
+table.t td.wrap small, table.t td .hint { white-space: normal; }
 .tablewrap table.t th:first-child, .tablewrap table.t td:first-child { position: sticky; left: 0; background: var(--surface); z-index: 1; }
 @media (max-width: 520px) { table.t th, table.t td { padding: 6px 5px; font-size: 12px; } table.t tr.subrow td:first-child { padding-left: 16px; } }
 .hp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 22px; }
@@ -505,6 +507,7 @@ html, body { touch-action: manipulation; }
         </div>
         <div class="kv" id="y-kv"></div>
         <div class="tablewrap"><table class="t" id="t-year"></table></div>
+        <p class="hint" id="y-zeit"></p>
         <h3 class="mini-h">Erholung und Körper</h3>
         <div class="kv" id="y-kv2"></div>
         <p class="hint" id="y-note"></p>
@@ -515,6 +518,14 @@ html, body { touch-action: manipulation; }
           <select id="y-metric" aria-label="Messgrösse"><option value="h">Stunden</option><option value="km">Kilometer</option><option value="hm">Höhenmeter</option></select>
         </div>
         <div class="chart tall"><canvas id="c-years" aria-label="Umfang pro Jahr nach Sportart"></canvas></div>
+      </div>
+      <div class="card w12" id="db-card">
+        <div class="card-head"><div><h2>Datenbasis und Prüfung</h2><div class="sub" id="db-sub"></div></div></div>
+        <div class="kv" id="db-kv"></div>
+        <div class="tablewrap"><table class="t" id="t-ref"></table></div>
+        <h3 class="mini-h">Regeln und Versionen</h3>
+        <div class="tablewrap"><table class="t" id="t-ver"></table></div>
+        <p class="hint" id="db-note"></p>
       </div>
     </div>
   </section>
@@ -569,10 +580,19 @@ html, body { touch-action: manipulation; }
         <div class="chart"><canvas id="c-checks" aria-label="Verlauf der Laktat-Kurzchecks"></canvas></div>
         <div class="tablewrap"><table class="t" id="t-checks"></table></div>
       </div>
-      <div class="card w12">
-        <div class="card-head"><div><h2>Stufentests</h2><div class="sub">Laktat in der letzten Minute jeder Stufe. LT1 = tiefster Wert plus 0,5 mmol/l, LT2 = 4 mmol/l, beide zwischen den Stufen interpoliert.</div></div></div>
-        <div class="chart tall"><canvas id="c-steps" aria-label="Laktatkurven der Stufentests"></canvas></div>
+      <div class="card w12" id="tz-card">
+        <div class="card-head">
+          <div><h2>Testzentrum: Stufentests</h2><div class="sub" id="tz-sub">Stufen aus den Sekundenwerten. Laktat steht nur mit Quelle da.</div></div>
+          <select id="tz-test" aria-label="Test"></select>
+        </div>
+        <div class="kv" id="tz-kv"></div>
+        <div class="chart tall"><canvas id="c-steps" aria-label="Laktat und Puls je Stufe"></canvas></div>
         <div class="tablewrap"><table class="t" id="t-steps"></table></div>
+        <p class="hint" id="tz-note"></p>
+        <h3 class="mini-h">Import-Vorschau</h3>
+        <div class="tablewrap"><table class="t" id="t-import"></table></div>
+        <h3 class="mini-h">Protokoll-Vorlagen</h3>
+        <div class="tablewrap"><table class="t" id="t-proto"></table></div>
       </div>
     </div>
   </section>
@@ -855,10 +875,30 @@ function makeDemo() {
   const lactate = [
     ...[300, 250, 200, 150, 100, 45].map((n, i) => ({ kind: "check", date: ago(n), sport: "rad", block: "10 min @ 220 W", w: 220, np: 221 + (i % 2), hr_avg: 148 - i, hr_max: 154 - i,
       drift: +(4.2 - i * 0.4).toFixed(1), lactate: +(2.1 - i * 0.12).toFixed(1), note: "Beispiel" })),
-    { kind: "stufentest", date: ago(330), sport: "rad", note: "Beispiel", stages: [[160, 122, 1.0], [190, 132, 1.1], [220, 143, 1.4], [250, 154, 2.0], [280, 165, 3.2], [310, 174, 5.1]].map(([x, h, la]) => ({ w: x, hr: h, la })) },
-    { kind: "stufentest", date: ago(160), sport: "rad", note: "Beispiel", stages: [[160, 118, 0.9], [190, 128, 1.0], [220, 139, 1.2], [250, 150, 1.7], [280, 161, 2.6], [310, 171, 4.3], [340, 179, 6.4]].map(([x, h, la]) => ({ w: x, hr: h, la })) },
-    { kind: "stufentest", date: ago(210), sport: "lauf", note: "Beispiel", stages: [[360, 140, 1.1], [330, 150, 1.3], [300, 160, 1.8], [280, 168, 2.6], [260, 176, 4.0], [245, 182, 5.8]].map(([x, h, la]) => ({ pace_s: x, hr: h, la })) },
   ];
+  // Zeitbegriffe (erfunden): Halte vor allem beim Wandern
+  acts.forEach((a) => { const f = a.sport === "wandern" ? 0.86 : a.sport === "ski" ? 0.92 : a.indoor ? 0.985 : 0.997; a.mv = Math.round(a.dur * f); a.st = a.dur - a.mv; a.el = a.dur + (a.indoor ? 0 : Math.round(a.dur * 0.04)); });
+  // Testzentrum (erfunden): zwei Rad-Stufentests 160–310 W, Laktat als Vorschau mit Quelle
+  const demoTest = (id, back, hrOff, la) => {
+    const stufen = la.map((v, i) => { const w = 160 + 30 * i; return { nr: i + 1, soll: w, unit: "W", x: w - (i % 3 === 1 ? 1 : 0), x3: w, hr: 118 + hrOff + i * 9, hr_vor: 121 + hrOff + i * 9.5, drift: +(1.5 + i * 0.4).toFixed(1), cad: 88, ride_s: 296, win_s: 296, pause_vor: i ? 18 : null, kj_vor: 40 + i * 52, uhr: `18:${String(10 + i * 5).padStart(2, "0")}:00`, entnahme: { vor_ende_s: 25, art: "Unterbruch, weitergefahren" } }; });
+    const st = { id, date: ago(back), sport: "rad", name: "Stufentest (Beispiel)", quelle: "FIT-Sekundenwerte", v: "stufen-1.0", erkennung: "zielleistung", unit: "W", start: 160, schritt: 30, stufe_s: 300, n: stufen.length, stufen, ende: { letzte: 310, naechste: 340, naechste_s: 8 } };
+    const pv = { id: "pv-" + id, v: "laktat-vorschau-1.0", status: "vorschau", art: "stufentest", sport: "rad", datum: ago(back), datei: "Beispieltabelle.xlsx", aktivitaet: id, zuordnung: "eindeutig", hinweise: ["Beispieldaten"],
+      regel: `${la.length} von ${la.length} Laktatwerten einer Stufe zugeordnet (Leistung ±5 W, Puls ±3 bpm)`,
+      zeilen: la.map((v, i) => ({ stufe: i + 1, x: 160 + 30 * i, la: v, hf: Math.round(121 + hrOff + i * 9.5) + (i === 2 ? 4 : 0), quelle: { blatt: "Stufentestdaten", la: `D${9 + i}` }, fit: { nr: i + 1 }, status: "eindeutig" })) };
+    return [st, pv];
+  };
+  const [st1, pv1] = demoTest("demo-test-1", 330, 6, [1.0, 1.1, 1.4, 2.0, 3.2, 5.1]), [st2, pv2] = demoTest("demo-test-2", 160, 0, [0.9, 1.0, 1.2, 1.7, 2.6, 4.3]);
+  const stufen = [st1, st2], laktat_vorschau = [pv1, pv2];
+  const protokolle = [
+    { id: "rad-stufen", name: "Stufentest Rad", ablauf: "Einfahren 10 min, dann je 5 min, +20 W", blut: "letzte 30 s der Stufe, ohne Anhalten", ende: "geplant oder bei Ausbelastung", rahmen: "Raumtemperatur, Ventilator, letzte Mahlzeit", status: "Entwurf" },
+    { id: "rad-check", name: "Kurzcheck Rad", ablauf: "10 min locker, 10 min fester Block", blut: "am Blockende", ende: "Block fertig", rahmen: "wie oben", status: "Entwurf" }];
+  const versions = { series: { v: "series-1.0", text: "Beispiel" }, zeit: { v: "zeit-1.0", text: "Beispiel: Halte ab 2 min (Rad), 1 min (Laufen), 3 min (Wandern)" }, stufen: { v: "stufen-1.0", text: "Beispiel" } };
+  const referenz = { v: "referenz-1.0", erstellt: ago(1), einheiten: [
+      { id: "demo-test-2", name: "Stufentest (Beispiel)", warum: "Stufentest", hand: { mv: 3480, wie: "Beispiel" } },
+      { id: "demo-hike", name: "Wanderung mit Halt (Beispiel)", warum: "Stillstand", hand: { mv: 9020, wie: "Beispiel" } }],
+    pruefung: { datum: ago(1), ok: true, einheiten: 2, abweichungen: [], laktat_ohne_quelle: 0, alle: { n: acts.length, gleich: acts.length, abweichungen: [] },
+      a3: [{ id: "demo-test-2", name: "Stufentest (Beispiel)", mv: 3480, hand: 3480, abw_pct: 0, ok: true }, { id: "demo-hike", name: "Wanderung mit Halt (Beispiel)", mv: 9032, hand: 9020, abw_pct: 0.13, ok: true }],
+      a5: [{ id: "demo-test-2", name: "Stufentest (Beispiel)", n: 6, soll_n: 6, dx: [0, -1, 0, 0, -1, 0], toleranz: 3, ok: true }] } };
   const tests = [{ date: iso(addDays(today, 18)), kind: "check", note: "Kurzcheck 10 min @ 220 W, gleicher Block wie bisher", status: "vorschlag" },
     { date: iso(addDays(today, 61)), kind: "stufentest", note: "Stufentest Rad vor dem nächsten Trainingsblock", status: "vorschlag" }];
   const PLAN = { 1: ["Schwimmen Technik", "schwimm", 2700], 2: ["Rad Grundlage", "rad", 5400], 3: ["Lauf locker", "lauf", 3000], 4: ["Rad Sweet Spot", "rad", 4500], 6: ["Lange Ausfahrt", "rad", 10800], 0: ["Langer Lauf", "lauf", 5400] };
@@ -870,7 +910,7 @@ function makeDemo() {
     { id: "demo-p4", name: "Badestelle See (Beispiel)", cat: "bad", lat: 46.884, lon: 8.228 },
   ];
   const routes = [{ id: "demo-r1", name: "Passfahrt (Beispielroute)", coords: path([8.252, 46.905], 1.2, 22, 0.4).map(([x, y]) => [+x.toFixed(5), +y.toFixed(5)]) }];
-  return { demo: true, activities: acts, days, weights, ftp, ftp_est, pdc, lactate, points, routes, tests, planned };
+  return { demo: true, activities: acts, days, weights, ftp, ftp_est, pdc, lactate, points, routes, tests, planned, stufen, laktat_vorschau, protokolle, versions, referenz };
 }
 
 /* =====================================================================
@@ -2269,7 +2309,38 @@ const TABS = {
       document.getElementById("y-metric").addEventListener("change", () => this.yearChart());
       document.getElementById("load-range").addEventListener("change", () => this.load());
     },
-    draw() { this.zones(); this.pmc(); this.load(); this.volume(); this.years(); this.yearChart(); },
+    draw() { this.zones(); this.pmc(); this.load(); this.volume(); this.years(); this.yearChart(); this.datenbasis(); },
+    datenbasis() {                      // Referenzsatz, Versionen und Nacht-Protokoll (Umsetzungsplan A1, A2)
+      const R = D.referenz, P = R && R.pruefung, V = D.versions || {}, card = document.getElementById("db-card");
+      if (!P && !Object.keys(V).length) { card.hidden = true; return; }
+      card.hidden = false;
+      const fl = D.fit_log || [], full = fl.filter((n) => !(n.fehlt || []).length).length;
+      document.getElementById("db-sub").textContent = P
+        ? `Letzte Prüfung ${dateCH(P.datum)}: ${P.ok ? "bestanden" : "nicht bestanden"}. ${P.einheiten} Referenz-Einheiten mit von Hand geprüften Werten; jede Kennzahl trägt die Version ihrer Regel.`
+        : "Noch keine Prüfung des Referenzsatzes.";
+      const a3ok = P && P.a3.every((x) => x.ok), a5ok = P && P.a5.every((x) => x.ok);
+      document.getElementById("db-kv").innerHTML = [
+        ["Referenzsatz neu gerechnet", P ? `${P.abweichungen.length} Abweichungen` : "–"],
+        ["Bewegungszeit ≤ 1 % vom Handwert", P ? `${P.a3.filter((x) => x.ok).length} von ${P.a3.length}` : "–"],
+        ["Stufentests vollständig erkannt", P ? `${P.a5.filter((x) => x.ok).length} von ${P.a5.length}` : "–"],
+        ["Aktivitäten unverändert", P && P.alle ? `${fmt(P.alle.gleich)} von ${fmt(P.alle.n)}` : "–"],
+        ["Laktatwerte ohne Quelle", P ? fmt(P.laktat_ohne_quelle) : "–"],
+        ["Nächte mit allen FIT-Dateien", fl.length ? `${full} von ${fl.length}` : "ab heute Nacht"]]
+        .map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
+      const st = (id) => (P ? P.a5.find((x) => x.id === id) : null);
+      document.getElementById("t-ref").innerHTML = `<tr><th>Referenz-Einheit und Handprüfung</th><th>Bewegungszeit</th><th>Handwert</th><th>Abweichung</th><th>Stufen erkannt</th></tr>` +
+        (R ? R.einheiten.map((u) => {
+          const a = P && P.a3.find((x) => x.id === u.id), s5 = st(u.id);
+          return `<tr><td class="wrap">${esc(u.name)}<small class="hint" style="display:block">${esc(u.warum || "")}. Geprüft: ${esc((u.hand || {}).wie || "")}</small></td><td>${a ? mmss(a.mv / 60) + " h" : "–"}</td><td>${a ? mmss(a.hand / 60) + " h" : "–"}</td>`
+            + `<td class="${a && !a.ok ? "down" : ""}">${a ? (a.abw_pct >= 0 ? "+" : "") + fmt(a.abw_pct, 2) + " %" : "–"}</td>`
+            + `<td>${s5 ? `${s5.n} von ${s5.soll_n}${s5.ok ? "" : " ⚠"}<small class="hint" style="display:block">Grenze ±${fmt(s5.toleranz, s5.toleranz < 1 ? 1 : 0)} ${s5.toleranz < 1 ? "km/h" : "W"}</small>` : "–"}</td></tr>`;
+        }).join("") : "");
+      const NAMES = { series: "Sekundenreihen", zeit: "Zeitbegriffe", stufen: "Stufen", hh_pdc: "Puls-Histogramm, Leistungskurve", laktat: "Laktat-Import" };
+      document.getElementById("t-ver").innerHTML = `<tr><th>Kennzahl</th><th>Version</th><th>Regel</th></tr>` +
+        Object.entries(V).map(([k, v]) => `<tr><td>${esc(NAMES[k] || k)}</td><td>${esc(v.v)}</td><td class="wrap"><small>${esc(v.text || "")}</small></td></tr>`).join("");
+      document.getElementById("db-note").textContent = "Referenz-Einheiten und Handwerte liegen verschlüsselt in den Daten. Ändert sich eine Regel, steigt ihre Version, und die Prüfung zeigt, welche gespeicherten Werte sich dadurch ändern würden."
+        + (fl.length && fl.at(-1).fehlt && fl.at(-1).fehlt.length ? ` Letzte Nacht ohne FIT: ${fl.at(-1).fehlt.map((x) => dateCH(x.date)).join(", ")}.` : "");
+    },
     load() {
       const card = document.getElementById("load-card");
       if (!D.activities.some((a) => a.tssP !== a.tss0)) { card.hidden = true; return; }
@@ -2342,7 +2413,8 @@ const TABS = {
       const L = D.activities.filter((a) => a.date >= from && a.date <= to), Lp = D.activities.filter((a) => a.date >= pFrom && a.date <= pTo);
       const sum = (l, k) => l.reduce((x, a) => x + (a[k] || 0), 0);
       document.getElementById("y-sub").textContent = cur ? `1. Januar bis heute, verglichen mit dem gleichen Zeitraum ${Y - 1}` : `Ganzes Jahr, verglichen mit ${Y - 1}`;
-      document.getElementById("y-kv").innerHTML = [["Einheiten", fmt(L.length)], ["Stunden", fmt(sum(L, "dur") / 3600)], ["Kilometer", fmt(sum(L, "km"))],
+      const movH = (l) => l.reduce((x, a) => x + (a.mv ?? a.dur ?? 0), 0) / 3600;
+      document.getElementById("y-kv").innerHTML = [["Einheiten", fmt(L.length)], ["Stunden (Timer)", fmt(sum(L, "dur") / 3600)], ["Stunden (Bewegung)", fmt(movH(L))], ["Kilometer", fmt(sum(L, "km"))],
         ["Höhenmeter", fmt(sum(L, "hm"))], ["Trainingslast", fmt(sum(L, "tss"))], ["Ø Puls", fmt(wavg(L, "hr"))]].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
       const pace = (l) => { const k = sum(l, "km"); return k ? sum(l, "dur") / k : null; };
       const extra = (k, l) => k === "rad" ? (wavg(l, "watt") ? fmt(wavg(l, "watt")) + " W" : "–")
@@ -2353,10 +2425,10 @@ const TABS = {
         // Vergleich nach km, wenn beide Jahre genug Distanz haben (beim Total nach Stunden), sonst nach Stunden
         const useKm = cls !== "total" && km >= 20 && kmp >= 20, d = useKm ? (km / kmp - 1) * 100 : hp >= 3 * 3600 ? (h / hp - 1) * 100 : null;
         const cmp = d != null ? `<td class="${d >= 0 ? "up" : "down"}" title="Vergleich nach ${useKm ? "Kilometern" : "Stunden"}">${(d >= 0 ? "+" : "") + fmt(d)} %</td>` : `<td>${h >= 3 * 3600 ? "neu" : "–"}</td>`;
-        return `<tr class="${cls || ""}"><td>${label}</td><td>${fmt(l.length)}</td><td>${fmt(h / 3600)}</td><td>${fmt(km)}</td><td>${fmt(sum(l, "hm"))}</td><td>${fmt(wavg(l, "hr"))}</td><td>${extra(k, l)}</td>${cmp}</tr>`;
+        return `<tr class="${cls || ""}"><td>${label}</td><td>${fmt(l.length)}</td><td>${fmt(h / 3600)}</td><td title="Bewegungszeit (zeit-1.0)">${fmt(movH(l))}</td><td>${fmt(km)}</td><td>${fmt(sum(l, "hm"))}</td><td>${fmt(wavg(l, "hr"))}</td><td>${extra(k, l)}</td>${cmp}</tr>`;
       };
       const dot = (c) => `<span class="dot" style="background:${c};margin-right:8px"></span>`;
-      let html = `<tr><th>Sport</th><th>Anzahl</th><th>h</th><th>km</th><th>hm</th><th>Ø Puls</th><th>Ø Watt / Pace</th><th>ggü. ${Y - 1}</th></tr>`;
+      let html = `<tr><th>Sport</th><th>Anzahl</th><th title="Timer-Zeit, wie bisher">h Timer</th><th title="Timer-Zeit ohne Halte">h Bewegung</th><th>km</th><th>hm</th><th>Ø Puls</th><th>Ø Watt / Pace</th><th>ggü. ${Y - 1}</th></tr>`;
       for (const k of ["schwimm", "rad", "lauf", "ski", "wandern", "andere"]) {
         const l = L.filter((a) => a.sport === k), lp = Lp.filter((a) => a.sport === k);
         html += row(dot(SPORTS[k].color) + SPORTS[k].label, l, lp, k);
@@ -2364,6 +2436,12 @@ const TABS = {
       }
       html += row("Total", L, Lp, "", "total");
       document.getElementById("t-year").innerHTML = html;
+      const withMv = L.filter((a) => a.mv != null).length, diffs = ["schwimm", "rad", "lauf", "ski", "wandern", "andere"]
+        .map((k) => { const l = L.filter((a) => a.sport === k); return [k, sum(l, "dur") / 3600 - movH(l)]; }).filter(([, d]) => d >= 0.5).sort((a, b) => b[1] - a[1]);
+      document.getElementById("y-zeit").textContent = (withMv ? "h Timer wie bisher. h Bewegung (Regel zeit-1.0) zieht Halte ab: Rad ab 2 min unter 2 km/h, Rolle jede Sekunde ohne Treten, Laufen ab 1 min unter 1 m/s, Wandern und Skitouren ab 3 min ohne Strecke und Höhe; geplante Pausen bleiben drin."
+        + (diffs.length ? ` Grösster Unterschied: ${diffs.slice(0, 2).map(([k, d]) => `${SPORTS[k].label} ${fmt(d)} h`).join(", ")}.` : "")
+        + (withMv < L.length ? ` ${L.length - withMv} Einheiten ohne Sekundenwerte zählen mit der Timer-Zeit.` : "")
+        + " Die Seite rechnet Umfang und Last weiter mit der Timer-Zeit, bis du die Umstellung freigibst." : "");
       const dl = D.days.filter((d) => d.date >= from && d.date <= to);
       const mean = (k) => { const v = dl.map((d) => d[k]).filter((x) => x != null); return v.length ? { v: v.reduce((x, y) => x + y, 0) / v.length, n: v.length } : null; };
       const rhr = mean("rhr"), hrv = mean("hrv"), sl = mean("sleepH"), wl = weights().filter((w) => w.date >= from && w.date <= to);
@@ -2527,9 +2605,12 @@ function zoneBasis(sp) {
 function renderChecks() {
   const list = (D.lactate || []).filter((l) => l.kind === "check").sort((a, b) => a.date.localeCompare(b.date));
   const t = document.getElementById("t-checks");
-  t.innerHTML = `<tr><th>Datum</th><th>Block</th><th>NP</th><th>Puls Ø</th><th>Puls max</th><th>Pulsanstieg</th><th>Laktat</th><th>Notiz</th></tr>` +
+  const pvc = (D.laktat_vorschau || []).filter((p) => p.art === "check" && p.status === "vorschau");
+  const pvRows = pvc.map((p) => { const z = p.zeilen[0] || {}, k = p.kandidaten || [];
+    return `<tr><td>${dateCH(p.datum)}</td><td>${fmt(z.x)} W <small class="hint" style="display:block">${k.length} mögliche Blöcke: ${k.map((b) => `${b.uhr} Uhr, Puls ${fmt(b.hr60)}`).join(" · ")}</small></td><td>–</td><td>${z.hf ?? "–"} <small class="hint">laut Chat</small></td><td>–</td><td>–</td><td><b>${fmt(z.la, 1)}</b> mmol/l</td><td><span class="badge next">Vorschau</span> Block offen</td></tr>`; }).join("");
+  t.innerHTML = `<tr><th>Datum</th><th>Block</th><th>NP</th><th>Puls Ø</th><th>Puls max</th><th>Pulsanstieg</th><th>Laktat</th><th>Notiz</th></tr>` + pvRows +
     (list.length ? list.slice().reverse().map((l) => `<tr><td>${dateCH(l.date)}</td><td>${esc(l.block || "")}</td><td>${l.np ? l.np + " W" : "–"}</td><td>${l.hr_avg ?? "–"}</td><td>${l.hr_max ?? "–"}</td><td>${l.drift != null ? (l.drift > 0 ? "+" : "") + fmt(l.drift, 1) + " %" : "–"}</td><td><b>${fmt(l.lactate, 1)}</b> mmol/l</td><td>${esc(l.note || "")}</td></tr>`).join("")
-      : `<tr><td colspan="8">Noch keine Kurzchecks. In dieser Demo sind keine weiteren Checks hinterlegt.</td></tr>`);
+      : pvRows ? "" : `<tr><td colspan="8">Noch keine Kurzchecks. In dieser Demo sind keine weiteren Checks hinterlegt.</td></tr>`);
   if (!list.length) { const c = document.getElementById("c-checks"); c.closest(".chart").hidden = true; return; }
   const groups = {}; list.forEach((l) => { const k = l.w ? l.w + " W" : (l.block || "Block"); (groups[k] ||= []).push(l); });
   const pal = [css("--accent"), SPORTS.schwimm.color, SPORTS.wandern.color, SPORTS.andere.color];
@@ -2542,18 +2623,90 @@ function renderChecks() {
   ds.forEach((d) => { const m = new Map(d.data.map((p) => [p.x, p.y])); d.data = labels.map((x) => m.get(x) ?? null); d.spanGaps = true; });
   chart("c-checks", { type: "line", data: { labels: labels.map(dLabel), datasets: ds }, options: { scales: { y: { title: { display: true, text: "mmol/l" } }, y2: { position: "right", grid: { display: false }, title: { display: true, text: "bpm" } } }, plugins: legendBottom } });
 }
-function renderSteps() {
-  const tests = (D.lactate || []).filter((l) => l.kind === "stufentest").sort((a, b) => a.date.localeCompare(b.date));
-  const t = document.getElementById("t-steps");
-  const fmtX = (sport, x) => sport === "lauf" ? mmss(3600 / x) + " /km" : Math.round(x) + " W";
-  t.innerHTML = `<tr><th>Datum</th><th>Disziplin</th><th>LT1</th><th>Puls LT1</th><th>LT2</th><th>Puls LT2</th><th>Notiz</th></tr>` +
-    (tests.length ? tests.slice().reverse().map((l) => { const r = ltOf(l) || {}; return `<tr><td>${dateCH(l.date)}</td><td>${l.sport === "lauf" ? "Lauf" : "Rad"}</td><td>${r.lt1 ? fmtX(l.sport, r.lt1.x) : "–"}</td><td>${r.lt1 && r.lt1.hr ? Math.round(r.lt1.hr) : "–"}</td><td>${r.lt2 ? fmtX(l.sport, r.lt2.x) : "–"}</td><td>${r.lt2 && r.lt2.hr ? Math.round(r.lt2.hr) : "–"}</td><td>${esc(l.note || "")}</td></tr>`; }).join("")
-      : `<tr><td colspan="7">Noch keine Stufentests. Schick mir nach dem Test pro Stufe Watt oder Pace und Laktat, Puls hole ich aus der Einheit.</td></tr>`);
-  const c = document.getElementById("c-steps");
-  if (!tests.length) { c.closest(".chart").hidden = true; return; }
-  const pal = [css("--accent"), SPORTS.schwimm.color, SPORTS.wandern.color, SPORTS.rad.color, SPORTS.andere.color];
-  const ds = tests.slice(-5).map((l, i) => { const r = ltOf(l); return { label: `${l.sport === "lauf" ? "Lauf" : "Rad"} ${dateCH(l.date)}`, data: (r ? r.st : []).map((s) => ({ x: s.x, y: s.la })), borderColor: pal[i], backgroundColor: pal[i], showLine: true, tension: 0.3 }; });
-  chart("c-steps", { type: "scatter", data: { datasets: ds }, options: { scales: { x: { title: { display: true, text: "Watt (Rad) bzw. km/h (Lauf)" } }, y: { title: { display: true, text: "Laktat mmol/l" }, min: 0 } }, plugins: legendBottom } });
+function renderSteps() {          // Testzentrum (Umsetzungsplan A5): Stufen aus Sekundenwerten, Laktat nur mit Quelle
+  const sel = document.getElementById("tz-test"), PV = D.laktat_vorschau || [];
+  const conf = (D.lactate || []).filter((l) => l.kind === "stufentest");
+  const items = [...(D.stufen || []).map((t) => ({ key: "s:" + t.id, date: t.date, sport: t.sport, t })),
+    ...conf.map((l, i) => ({ key: "c:" + i, date: l.date, sport: l.sport, c: l }))].sort((x, y) => y.date.localeCompare(x.date));
+  const isL = (sp) => sp === "lauf", unitOf = (sp) => (isL(sp) ? "km/h" : "W");
+  const fx = (sp, x) => x == null ? "–" : isL(sp) ? `${fmt(x, 2)} km/h <small class="hint">${mmss(3600 / x)}/km</small>` : `${fmt(x)} W`;
+  const pvFor = (it) => it.t ? PV.find((p) => p.aktivitaet === it.t.id && p.art === "stufentest" && p.status === "vorschau") : null;
+  if (!items.length) {
+    sel.hidden = true;
+    document.getElementById("tz-kv").innerHTML = "";
+    document.getElementById("t-steps").innerHTML = `<tr><td>Noch keine Stufentests erkannt. Nach dem nächsten Test erkenne ich die Stufen aus der FIT-Datei; die Laktatwerte schickst du mir als Tabelle oder Zeile im Chat.</td></tr>`;
+    document.getElementById("c-steps").closest(".chart").hidden = true;
+  } else {
+    if (!sel.dataset.ready) {
+      sel.innerHTML = items.map((it) => `<option value="${esc(it.key)}">${dateCH(it.date)} · ${isL(it.sport) ? "Lauf" : "Rad"}${it.t ? ` · ${it.t.n} Stufen` : " · bestätigt"}${pvFor(it) ? " · Laktat (Vorschau)" : ""}</option>`).join("");
+      sel.value = (items.find((it) => pvFor(it) && it.sport === "rad") || items[0]).key;
+      sel.addEventListener("change", () => renderSteps());
+      sel.dataset.ready = "1";
+    }
+    const it = items.find((x) => x.key === sel.value) || items[0], pv = pvFor(it), sp = it.sport, T = it.t;
+    // Zeilen: Tabelle (Vorschau) mit Stufe aus den Sekundenwerten, sonst Stufen ohne Laktat
+    let rows;
+    if (T) {
+      const byNr = new Map(T.stufen.map((s) => [s.nr, s]));
+      if (pv) {
+        const used = new Set();
+        rows = pv.zeilen.filter((z) => z.x != null || z.la != null).map((z) => { const s = z.fit ? byNr.get(z.fit.nr) : null; if (s) used.add(s.nr); return { s, z }; });
+        T.stufen.filter((s) => !used.has(s.nr)).forEach((s) => rows.push({ s, z: null }));
+        rows.sort((a, b) => ((a.s ? a.s.soll : a.z.x) - (b.s ? b.s.soll : b.z.x)));
+      } else rows = T.stufen.map((s) => ({ s, z: null }));
+    } else rows = (it.c.stages || []).map((g) => ({ s: null, z: { x: g.w ?? (g.pace_s ? 3600 / g.pace_s : null), la: g.la, hf: g.hr, status: "bestätigt", quelle: { stelle: "bestätigter Test" } } }));
+    const kv = [["Datum", dateCH(it.date)]];
+    if (T) {
+      kv.push(["Erkannt aus", T.erkennung === "zielleistung" ? "Zielleistung von Zwift" : isL(sp) ? "Tempo-Plateaus" : "Leistungs-Plateaus"]);
+      kv.push(["Stufen", `${T.n} · ab ${fmt(T.start, isL(sp) ? 1 : 0)} ${unitOf(sp)}, +${fmt(T.schritt, isL(sp) ? 1 : 0)} ${unitOf(sp)}, ${fmt(T.stufe_s / 60, 1)} min`]);
+      const nx = T.ende && T.ende.naechste != null && T.ende.naechste > T.ende.letzte && T.ende.naechste_s ? `, ${fmt(T.ende.naechste)} ${unitOf(sp)} nur ${T.ende.naechste_s} s` : "";
+      kv.push(["Ende", T.ende ? `nach ${fmt(T.ende.letzte, isL(sp) ? 1 : 0)} ${unitOf(sp)}${nx}` : "–"]);
+    }
+    kv.push(["Laktat", pv ? `Vorschau, ${pv.zuordnung === "eindeutig" ? "eindeutig zugeordnet" : "Zuordnung unklar"}` : it.c ? "bestätigt" : "keine Werte"]);
+    document.getElementById("tz-kv").innerHTML = kv.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
+    const dh = (z, s) => (z && z.hf != null && s && s.hr_vor != null ? s.hr_vor - z.hf : null);
+    document.getElementById("t-steps").innerHTML = `<tr><th>${isL(sp) ? "Tempo" : "Leistung"}</th><th title="Median der Stufe, letzte 3 min daneben">gemessen</th><th title="Puls in den 30 s vor der Blutentnahme">Puls Entnahme</th><th>Puls Tabelle</th><th>Puls Ø</th><th title="Ø 2. Hälfte gegen 1. Hälfte">Anstieg</th><th>${isL(sp) ? "Schritte" : "Kadenz"}</th><th title="gefahrene bzw. gelaufene Sekunden der Stufe">Dauer</th><th>Pause davor</th><th>Laktat</th><th>Quelle</th></tr>` +
+      rows.map(({ s, z }) => {
+        const d = dh(z, s), q = z && z.quelle ? (z.quelle.la ? `${esc(z.quelle.blatt || "")} ${esc(z.quelle.la)}` : esc(z.quelle.stelle || "")) : "";
+        const soll = s ? s.soll : z && z.x;
+        return `<tr><td>${fx(sp, soll)}</td><td>${s ? fx(sp, s.x) + (s.x3 != null ? `<small class="hint" style="display:block">3 min ${isL(sp) ? fmt(s.x3, 2) : fmt(s.x3)}</small>` : "") : `<small class="hint">${esc(z && z.regel || "keine Sekundenwerte")}</small>`}</td>`
+          + `<td>${s && s.hr_vor != null ? fmt(s.hr_vor) : "–"}</td><td class="${d != null && Math.abs(d) > 3 ? "down" : ""}" title="${d != null ? "FIT minus Tabelle " + fmt(d, 1) + " bpm" : ""}">${z && z.hf != null ? fmt(z.hf) : "–"}</td>`
+          + `<td>${s && s.hr != null ? fmt(s.hr) : "–"}</td><td>${s && s.drift != null ? (s.drift > 0 ? "+" : "") + fmt(s.drift, 1) + " %" : "–"}</td><td>${s && s.cad ? fmt(s.cad) : "–"}</td>`
+          + `<td title="${s && s.abschnitt_s && s.abschnitt_s !== s.win_s ? "ganzer Abschnitt mit dieser Zielleistung " + mmss(s.abschnitt_s) : ""}">${s ? mmss(s.win_s) : "–"}</td><td>${s && s.pause_vor != null ? (s.pause_vor ? mmss(s.pause_vor) : "0:00") + (s.zwischen_s ? `<small class="hint" style="display:block">+${s.zwischen_s} s gefahren</small>` : "") : "–"}</td>`
+          + `<td>${z && z.la != null ? `<b>${fmt(z.la, z.la >= 10 ? 1 : 2)}</b> <small class="hint">${pv ? "Vorschau" : ""}</small>` : "<small class=\"hint\">leer</small>"}</td><td><small>${q}</small></td></tr>`;
+      }).join("");
+    // Diagramm: Laktat und Puls je Stufe, frühere Tests derselben Sportart zum Vergleich
+    const sameProt = (x) => x.t && T && x.t.schritt === T.schritt && x.t.stufe_s === T.stufe_s && x.t.erkennung === T.erkennung;
+    const same = items.filter((x) => x.sport === sp && pvFor(x) && sameProt(x)).slice(0, 3);   // nur gleiches Protokoll übereinander
+    if (!same.some((x) => x.key === it.key) && pv) same.unshift(it);
+    const pal = [css("--accent"), SPORTS.schwimm.color, SPORTS.andere.color];
+    const ds = [];
+    same.forEach((x, i) => {
+      const p = pvFor(x), byNr = new Map(x.t.stufen.map((g) => [g.nr, g])), lab = dateCH(x.date), cur = x.key === it.key;
+      const pts = p.zeilen.filter((z) => z.la != null).map((z) => ({ x: z.fit ? byNr.get(z.fit.nr).x : z.x, y: z.la }));
+      ds.push({ label: `Laktat ${lab}`, data: pts, borderColor: pal[i], backgroundColor: pal[i], showLine: true, tension: 0.25, borderWidth: cur ? 2.5 : 1.5, pointRadius: cur ? 4 : 2.5, yAxisID: "y" });
+      ds.push({ label: `Puls ${lab}`, data: x.t.stufen.map((g) => ({ x: g.x, y: g.hr_vor })), borderColor: pal[i], backgroundColor: pal[i], borderDash: [5, 4], showLine: true, pointRadius: 0, borderWidth: 1.5, yAxisID: "y2" });
+    });
+    if (!ds.length && T) ds.push({ label: "Puls", data: T.stufen.map((g) => ({ x: g.x, y: g.hr_vor })), borderColor: css("--muted"), showLine: true, borderDash: [5, 4], yAxisID: "y2" });
+    const c = document.getElementById("c-steps"); c.closest(".chart").hidden = !ds.length;
+    if (ds.length) chart("c-steps", { type: "scatter", data: { datasets: ds }, options: { scales: {
+      x: { title: { display: true, text: isL(sp) ? "Tempo km/h" : "Leistung W (gemessen)" } },
+      y: { title: { display: true, text: "Laktat mmol/l (Vorschau)" }, min: 0 }, y2: { position: "right", grid: { display: false }, title: { display: true, text: "Puls bpm" } } }, plugins: legendBottom } });
+    const notes = [];
+    if (pv) { notes.push(`Zuordnung: ${pv.regel || ""}.`); (pv.hinweise || []).forEach((h) => notes.push(h + ".")); }
+    if (T && T.stufen.some((g) => g.entnahme)) { const e = T.stufen.filter((g) => g.entnahme), an = e.filter((g) => g.entnahme.art === "angehalten").length; notes.push(`Blutentnahme laut Sekundenwerten: ${an ? `${an}× angehalten` : ""}${an && an < e.length ? ", " : ""}${e.length - an ? `${e.length - an}× kurz unterbrochen und weitergefahren` : ""}.`); }
+    notes.push("Schwellen je Methode rechne ich erst, wenn du die Zuordnung bestätigt hast (Schritt B1); bis dahin gelten deine Zonen als vorläufig.");
+    document.getElementById("tz-note").textContent = notes.join(" ");
+  }
+  const ST = { vorschau: "Vorschau", verworfen: "verworfen", bestaetigt: "bestätigt" };
+  document.getElementById("t-import").innerHTML = `<tr><th>Datum</th><th>Art</th><th>Datei oder Quelle</th><th>Status</th><th>Zuordnung</th><th>Hinweise</th></tr>` +
+    (PV.length ? PV.slice().sort((a, b) => (b.datum || "").localeCompare(a.datum || "")).map((p) => `<tr><td>${p.datum ? dateCH(p.datum) : "–"}</td><td>${p.art === "check" ? "Kurzcheck" : "Stufentest"} ${p.sport === "lauf" ? "Lauf" : "Rad"}</td><td class="wrap"><small>${esc(p.datei || "")}</small></td>`
+      + `<td><span class="badge ${p.status === "verworfen" ? "" : "next"}">${ST[p.status] || esc(p.status)}</span></td><td>${p.zuordnung === "eindeutig" ? "eindeutig" : "<b>unklar</b>"}</td><td class="wrap"><small>${[p.regel, ...(p.hinweise || [])].filter(Boolean).map(esc).join(" · ")}</small></td></tr>`).join("")
+      : `<tr><td colspan="6">Keine Tabellen eingelesen.</td></tr>`);
+  const PR = D.protokolle || [];
+  document.getElementById("t-proto").innerHTML = `<tr><th>Vorlage</th><th>Ablauf</th><th>Blutentnahme</th><th>Ende</th><th>Rahmen</th><th>Stand</th></tr>` +
+    (PR.length ? PR.map((r) => `<tr><td>${esc(r.name)}</td><td class="wrap"><small>${esc(r.ablauf)}</small></td><td class="wrap"><small>${esc(r.blut)}</small></td><td class="wrap"><small>${esc(r.ende)}</small></td><td class="wrap"><small>${esc(r.rahmen || "")}</small></td><td><span class="badge${r.status === "freigegeben" ? " ok" : " next"}">${esc(r.status)}</span></td></tr>`).join("")
+      : `<tr><td colspan="6">Noch keine Vorlagen.</td></tr>`);
 }
 const KIND = { stufentest: "Stufentest", check: "Laktat-Check" };
 function testsWithStatus() {
