@@ -24,8 +24,8 @@ def main():
     try:
         S_list = series.from_garmin(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)
         S = S_list[0]
-        if len(S.ts) < 2:
-            raise ValueError("keine Sekundenwerte in der Antwort")
+        if len(S.ts) < 2 and not S.lengths:          # Becken ohne Puls: Bahnen reichen für die Zeitbegriffe
+            raise ValueError("keine Sekundenwerte und keine Bahnen in der Antwort")
         f, _ = kennzahlen.alles(S)
         if f.get("stufen"):
             st = f["stufen"]

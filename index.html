@@ -927,6 +927,8 @@ D.activities.sort((a, b) => a._t - b._t);
 /* Trainingslast: «bisher» = wie geliefert (Rad mit der in Garmin eingestellten FTP),
    «Probe» = Rad mit der geschätzten FTP zum damaligen Zeitpunkt (ftp_e, siehe tools/ftp_model.py).
    Übernommen wird die Probe erst, wenn config.load_model = "ftp_est" gesetzt ist. */
+const ZEITBASIS = (D.config && D.config.zeitbasis) || "timer";        // "bewegung" seit 3.11.2026 (Silas)
+const hrsOf = (a) => ((ZEITBASIS === "bewegung" ? (a.mv ?? a.dur) : a.dur) || 0) / 3600;
 const FTPE = D.ftp_est || null;
 function ftpTrial(a) {
   if (a.ftp_e) return a.ftp_e;
@@ -2399,7 +2401,7 @@ const TABS = {
     },
     volume() {
       const m = document.getElementById("v-metric").value, weeks = lastWeeks(16);
-      const val = (a) => m === "h" ? a.dur / 3600 : m === "km" ? a.km : a.hm;
+      const val = (a) => m === "h" ? hrsOf(a) : m === "km" ? a.km : a.hm;
       chart("c-volume", { type: "bar", data: { labels: weeks.map((w) => "KW " + isoWeek(w)), datasets: ["schwimm", "rad", "lauf", "ski", "wandern"].map((k) => ({
         label: SPORTS[k].label, backgroundColor: SPORTS[k].color, borderRadius: 2,
         data: weeks.map((w) => +D.activities.filter((a) => a.sport === k && inWeek(a, w)).reduce((s, a) => s + (val(a) || 0), 0).toFixed(1)) })) },
@@ -2420,7 +2422,7 @@ const TABS = {
         : k === "lauf" ? (pace(l) ? mmss(pace(l)) + " /km" : "–") : k === "schwimm" ? (pace(l) ? mmss(pace(l) / 10) + " /100 m" : "–") : "–";
       const row = (label, l, lp, k, cls) => {
         if (!l.length && !lp.length) return "";
-        const km = sum(l, "km"), kmp = sum(lp, "km"), h = sum(l, "dur"), hp = sum(lp, "dur");
+        const km = sum(l, "km"), kmp = sum(lp, "km"), h = l.reduce((x, a) => x + hrsOf(a), 0) * 3600, hp = lp.reduce((x, a) => x + hrsOf(a), 0) * 3600;
         // Vergleich nach km, wenn beide Jahre genug Distanz haben (beim Total nach Stunden), sonst nach Stunden
         const useKm = cls !== "total" && km >= 20 && kmp >= 20, d = useKm ? (km / kmp - 1) * 100 : hp >= 3 * 3600 ? (h / hp - 1) * 100 : null;
         const cmp = d != null ? `<td class="${d >= 0 ? "up" : "down"}" title="Vergleich nach ${useKm ? "Kilometern" : "Stunden"}">${(d >= 0 ? "+" : "") + fmt(d)} %</td>` : `<td>${h >= 3 * 3600 ? "neu" : "–"}</td>`;
@@ -2440,7 +2442,7 @@ const TABS = {
       document.getElementById("y-zeit").textContent = (withMv ? "h Timer wie bisher. h Bewegung (Regel zeit-1.0) zieht Halte ab: Rad ab 2 min unter 2 km/h, Rolle jede Sekunde ohne Treten, Laufen ab 1 min unter 1 m/s, Wandern und Skitouren ab 3 min ohne Strecke und Höhe; geplante Pausen bleiben drin."
         + (diffs.length ? ` Grösster Unterschied: ${diffs.slice(0, 2).map(([k, d]) => `${SPORTS[k].label} ${fmt(d)} h`).join(", ")}.` : "")
         + (withMv < L.length ? ` ${L.length - withMv} Einheiten ohne Sekundenwerte zählen mit der Timer-Zeit.` : "")
-        + " Die Seite rechnet Umfang und Last weiter mit der Timer-Zeit, bis du die Umstellung freigibst." : "");
+        + (ZEITBASIS === "bewegung" ? " Umfang, Wochenstunden und Jahresvergleich zählen seit 3.11.2026 die Bewegungszeit; die Trainingslast bleibt unverändert." : " Die Seite rechnet Umfang und Last weiter mit der Timer-Zeit, bis du die Umstellung freigibst.") : "");
       const dl = D.days.filter((d) => d.date >= from && d.date <= to);
       const mean = (k) => { const v = dl.map((d) => d[k]).filter((x) => x != null); return v.length ? { v: v.reduce((x, y) => x + y, 0) / v.length, n: v.length } : null; };
       const rhr = mean("rhr"), hrv = mean("hrv"), sl = mean("sleepH"), wl = weights().filter((w) => w.date >= from && w.date <= to);
@@ -2453,7 +2455,7 @@ const TABS = {
     },
     yearChart() {
       const m = document.getElementById("y-metric").value, ys = [...new Set(D.activities.map((a) => a.date.slice(0, 4)))].sort();
-      const val = (a) => m === "h" ? a.dur / 3600 : m === "km" ? a.km : a.hm;
+      const val = (a) => m === "h" ? hrsOf(a) : m === "km" ? a.km : a.hm;
       chart("c-years", { type: "bar", data: { labels: ys, datasets: ["schwimm", "rad", "lauf", "ski", "wandern"].map((k) => ({
         label: SPORTS[k].label, backgroundColor: SPORTS[k].color, borderRadius: 2,
         data: ys.map((y) => +D.activities.filter((a) => a.sport === k && a.date.startsWith(y)).reduce((x, a) => x + (val(a) || 0), 0).toFixed(1)) })) },
@@ -2606,7 +2608,7 @@ function renderChecks() {
   const t = document.getElementById("t-checks");
   const pvc = (D.laktat_vorschau || []).filter((p) => p.art === "check" && p.status === "vorschau");
   const pvRows = pvc.map((p) => { const z = p.zeilen[0] || {}, k = p.kandidaten || [];
-    return `<tr><td>${dateCH(p.datum)}</td><td>${fmt(z.x)} W <small class="hint" style="display:block">${k.length} mögliche Blöcke: ${k.map((b) => `${b.uhr} Uhr, Puls ${fmt(b.hr60)}`).join(" · ")}</small></td><td>–</td><td>${z.hf ?? "–"} <small class="hint">laut Chat</small></td><td>–</td><td>–</td><td><b>${fmt(z.la, 1)}</b> mmol/l</td><td><span class="badge next">Vorschau</span> Block offen</td></tr>`; }).join("");
+    return `<tr><td>${dateCH(p.datum)}</td><td>${fmt(z.x)} W <small class="hint" style="display:block">${k.length} mögliche Blöcke: ${k.map((b) => `${b.uhr} Uhr, Puls ${fmt(b.hr60)}`).join(" · ")}</small></td><td>–</td><td>${z.hf ?? "–"} <small class="hint">laut Chat</small></td><td>–</td><td>–</td><td><b>${fmt(z.la, 1)}</b> mmol/l</td><td><span class="badge next">Vorschau</span> ${p.block ? `Block bis ${esc(p.block)} Uhr (laut Erinnerung)` : "Block offen"}</td></tr>`; }).join("");
   t.innerHTML = `<tr><th>Datum</th><th>Block</th><th>NP</th><th>Puls Ø</th><th>Puls max</th><th>Pulsanstieg</th><th>Laktat</th><th>Notiz</th></tr>` + pvRows +
     (list.length ? list.slice().reverse().map((l) => `<tr><td>${dateCH(l.date)}</td><td>${esc(l.block || "")}</td><td>${l.np ? l.np + " W" : "–"}</td><td>${l.hr_avg ?? "–"}</td><td>${l.hr_max ?? "–"}</td><td>${l.drift != null ? (l.drift > 0 ? "+" : "") + fmt(l.drift, 1) + " %" : "–"}</td><td><b>${fmt(l.lactate, 1)}</b> mmol/l</td><td>${esc(l.note || "")}</td></tr>`).join("")
       : pvRows ? "" : `<tr><td colspan="8">Noch keine Kurzchecks. Schick mir nach dem nächsten Check im Chat Datum, Block und Laktatwert.</td></tr>`);
