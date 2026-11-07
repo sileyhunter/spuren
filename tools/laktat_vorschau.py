@@ -14,7 +14,8 @@ Regeln (Konzept Abschnitt 2, Excel-Import):
 - Der Puls kommt aus der FIT-Datei (30 s vor der Blutentnahme). Weicht die Tabelle mehr als 3 bpm ab, stehen beide da.
 - Jeder Wert speichert seine Herkunft (Datei, Blatt, Zelle). Fehlende Laktatwerte bleiben leer; nichts wird interpoliert.
 
-Format --extra: [{"id","art":"stufentest"|"check","sport","datum","quelle","aktivitaet_fit": "<FIT-Name>",
+Format --extra: [{"id","art":"stufentest"|"check","sport","datum","quelle","aktivitaet_fit": "<FIT-Name>"
+                  oder "aktivitaet_garmin": "<gespeicherte get_activity_fit_data-Antwort>", "aktivitaet_id": "g…",
                   "zeilen":[{"x":160,"la":1.11,"hf":141,"zelle":"S. 1, Tabelle 2, Zeile 3", …}], "hinweise":[…]}]
 """
 import argparse
@@ -192,7 +193,11 @@ def main():
             entry["status"] = "verworfen"
             entry["hinweise"].insert(0, f"Kopie von {t['duplikat_von']} mit Eingabefehlern; nicht verwendet")
         found = None
-        if t.get("aktivitaet_fit"):
+        if t.get("aktivitaet_garmin"):                 # Sekundenwerte aus der Garmin-Verbindung (Nacht-Update-Weg)
+            S = series.from_garmin(t["aktivitaet_garmin"], t.get("aktivitaet_garmin_msg"))[0]
+            act = next((a for a in D.get("activities", []) if a["id"] == t.get("aktivitaet_id")), None)
+            found = (act, stufen.stufen(S), S, None) if act else None
+        elif t.get("aktivitaet_fit"):
             S_list, p = load_sessions(raw_files, t["aktivitaet_fit"])
             S = S_list[0] if S_list else None
             r = stufen.stufen(S) if S else None
@@ -214,7 +219,13 @@ def main():
             if S is not None:                      # Kandidaten: Blöcke mit der Leistung des Checks
                 x = t["zeilen"][0]["x"]
                 cand = []
-                for r in stufen._runs_target(S):
+                runs = stufen._runs_target(S) or stufen._runs_plateau(S, "pw")   # ohne Zwift-Zielleistung: Plateaus
+                if t.get("fenster"):                   # Blockgrenzen aus der Quelle (Ortszeit), z. B. ["19:26:00", "19:33:00"]
+                    d0 = dt.date.fromisoformat(t["datum"])
+                    a, b = (dt.datetime.combine(d0, dt.time.fromisoformat(h), ZRH_TZ).timestamp() for h in t["fenster"])
+                    idx = [i for i, ts in enumerate(S.ts) if a <= ts <= b]
+                    runs = [{"idx": idx, "level": x}] if idx else []
+                for r in runs:
                     ride = [i for i in r["idx"] if stufen._ride(S, i)]
                     if abs(r["level"] - x) <= TOL["rad"] and len(ride) >= 300:
                         r["ride"] = ride
@@ -224,6 +235,12 @@ def main():
                         cand.append(b)
                 entry["kandidaten"] = cand
                 entry["regel"] = f"{len(cand)} Blöcke bei {x} W in der Aktivität; Zuordnung offen"
+                if t.get("block"):
+                    entry["block"] = t["block"]
+                if t.get("fenster"):
+                    entry["fenster"] = t["fenster"]
+                if t.get("zuordnung"):                 # von Silas angegeben (z. B. «letzter Block»)
+                    entry["zuordnung"], entry["regel"] = t["zuordnung"], t.get("zuordnung_regel", entry["regel"])
         else:
             n_ok = sum(1 for z in entry["zeilen"] if z.get("status") == "eindeutig")
             n_la = sum(1 for z in entry["zeilen"] if z.get("la") is not None and z.get("status") != "ohne Sekundenwerte")
@@ -232,6 +249,13 @@ def main():
         if found and st and stufen.relevant(st):
             stufen_list[found[0]["id"]] = stufen_entry(found[0], st, found[3])
         previews.append(entry)
+    prev = {p["id"]: p for p in D.get("laktat_vorschau", [])}
+    for e in previews:                             # Antworten von Silas aus früheren Läufen bleiben erhalten
+        for h in (prev.get(e["id"]) or {}).get("hinweise", []):
+            if "(Silas, " in h and h not in e["hinweise"]:
+                e["hinweise"].append(h)
+        if any(h.startswith("Feld Gewicht «") for h in e["hinweise"]):
+            e["hinweise"] = [h for h in e["hinweise"] if not h.startswith("Feld Gewicht enthält")]
     old = [p for p in D.get("laktat_vorschau", []) if p["id"] not in {e["id"] for e in previews}]
     D["laktat_vorschau"] = sorted(old + previews, key=lambda e: (e.get("datum") or "", e["id"]))
     D["stufen"] = sorted(stufen_list.values(), key=lambda s: s["date"])

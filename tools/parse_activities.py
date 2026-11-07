@@ -295,13 +295,14 @@ def process(path):
             "hr": hr, "hrmax": s.get(17), "watt": watt, "np": np_, "tss": int(round(tss)),
             "zones": zones, "hh": hh, "poly": poly, "ftp": ftp, "lthr": lthr,
             "maxhr": (tz or {}).get(11), "rhr": (tz or {}).get(12), "zb": list((tz or {}).get(6) or []) or None,
-            "pdc": pdc, "manu": manu, "multi": multi,
+            "pdc": pdc, "manu": manu, "multi": multi, "t0": int(unix),
         })
         S = sess_series.get(int(unix))
         if S is not None:
             zf, _ = kennzahlen.zeitfelder(S)
             zf.pop("el", None)                     # Gesamtzeit bleibt wie bisher berechnet
             out[-1].update(zf)
+            out[-1].update(kennzahlen.ausdauer(S))   # Drift und Lauf-Abschnitte (ausdauer-1.0)
             if out[-1]["sport"] in ("rad", "lauf"):
                 stf = kennzahlen.stufen.stufen(S)
                 if kennzahlen.stufen.relevant(stf):

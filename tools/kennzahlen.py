@@ -7,6 +7,8 @@ Felder je Aktivität (kurz, weil die Seite alles lädt):
   el  Gesamtzeit s · mv Bewegungszeit s · st Stopps s · nst Anzahl Stopps · un Unterbrechungen s
   rc  geplante Erholung s · ac aktive Belastungszeit s · us Uhr gestoppt s
   hh  Puls-Histogramm (5-bpm-Klassen ab 60, Sekunden) · pdc beste Leistung je Dauer · np
+  t0  Start (Unix-Sekunden, UTC, aus der Session) · dr Drift/Entkopplung 1. gegen 2. Hälfte der Bewegungszeit
+  sp  Lauf-Abschnitte ab Start 0–5, 5–10, 10–20 min und Rest (Pace, Puls, Schrittfrequenz)   [ausdauer-1.0]
 """
 import itertools
 import operator
@@ -26,7 +28,86 @@ VERSIONS = {
                                         "Strecke (< 12 m) und Höhe (< 3 m) je Minute ab 3 min, Becken: Ruhebahnen"},
     "stufen": {"v": stufen.VERSION, "text": "Stufen aus Zwift-Zielleistung oder Plateaus; Leistung = Median der Stufe; Puls = 30 s vor der Blutentnahme"},
     "hh_pdc": {"v": "hh-pdc-1.0", "text": "Puls-Histogramm 5 bpm ab 60, gewichtet bis zum nächsten Datensatz (max. 10 s); Leistungskurve aus 1-s-Reihe, Lücken bis 3 s gefüllt"},
+    "ausdauer": {"v": "ausdauer-1.0", "text": "Drift: Bewegungszeit halbiert, Leistung bzw. Tempo je Puls in beiden Hälften, Entkopplung in %; "
+                                              "Lauf-Abschnitte ab Start 0–5, 5–10, 10–20 min und Rest der Bewegungszeit; nur Sekunden mit Puls"},
 }
+SPLITS = [(0, 300), (300, 600), (600, 1200), (1200, None)]
+
+
+def _moving_idx(S):
+    """Indizes der Datensätze in Bewegung (gleiche Stillstand-Regel wie zeit.py) mit Gewicht in Sekunden."""
+    key = zeit.rule_key(S)
+    if key is None or len(S.ts) < 2:
+        return [], []
+    w = zeit._covered(S)
+    still = zeit._still_flags(S, key)
+    idx = [i for i in range(len(S.ts)) if not still[i]]
+    return idx, [w[i] for i in idx]
+
+
+def _avg(vals, ws):
+    num = den = 0.0
+    for v, x in zip(vals, ws):
+        if v is not None:
+            num += v * x
+            den += x
+    return (num / den) if den else None
+
+
+def ausdauer(S):
+    """Drift (Rad und Lauf ab 30 min Bewegung) und Lauf-Abschnitte. Ohne Puls: nichts (kein Schätzen)."""
+    out = {}
+    cat = S.category
+    if cat not in ("rad", "lauf") or not any(h for h in S.hr):
+        return out
+    idx, ws = _moving_idx(S)
+    if not idx:
+        return out
+    tot = sum(ws)
+    hr_cov = sum(x for i, x in zip(idx, ws) if S.hr[i]) / tot if tot else 0
+    if tot >= 1800:
+        cum, half = 0.0, tot / 2
+        a, b = [], []
+        for i, x in zip(idx, ws):
+            (a if cum < half else b).append((i, x))
+            cum += x
+        def part(lst):
+            hrv = _avg([S.hr[i] for i, _ in lst], [x for _, x in lst])
+            if cat == "rad":
+                xv = _avg([S.pw[i] for i, _ in lst], [x for _, x in lst]) if any(S.pw[i] for i, _ in lst) else None
+            else:
+                xv = _avg([(S.spd[i] * 3.6 if S.spd[i] is not None else None) for i, _ in lst], [x for _, x in lst])
+            return xv, hrv
+        x1, h1 = part(a)
+        x2, h2 = part(b)
+        if x1 and x2 and h1 and h2:
+            e1, e2 = x1 / h1, x2 / h2
+            out["dr"] = {"m": round(tot), "x1": round(x1, 2 if cat == "lauf" else 1), "x2": round(x2, 2 if cat == "lauf" else 1),
+                         "h1": round(h1, 1), "h2": round(h2, 1), "dec": round((e1 - e2) / e1 * 100, 1), "cov": round(hr_cov, 3),
+                         "unit": "km/h" if cat == "lauf" else "W"}
+    if cat == "lauf":
+        sp, cum = [], 0.0
+        bounds = [[] for _ in SPLITS]
+        for i, x in zip(idx, ws):
+            for k, (lo, hi) in enumerate(SPLITS):
+                if cum >= lo and (hi is None or cum < hi):
+                    bounds[k].append((i, x))
+                    break
+            cum += x
+        for (lo, hi), lst in zip(SPLITS, bounds):
+            if not lst:
+                sp.append({"von": lo, "bis": hi, "s": 0})
+                continue
+            secs = sum(x for _, x in lst)
+            d0, d1 = S.dist[lst[0][0]], S.dist[lst[-1][0]]
+            dist = (d1 - d0) if d0 is not None and d1 is not None else None
+            hrv = _avg([S.hr[i] for i, _ in lst], [x for _, x in lst])
+            cad = _avg([(S.cad[i] * 2 if S.cad[i] else None) for i, _ in lst], [x for _, x in lst])
+            sp.append({"von": lo, "bis": hi, "s": round(secs), "m": round(dist) if dist else None,
+                       "pace": round(secs / dist * 1000) if dist and dist > 50 else None,
+                       "hr": round(hrv, 1) if hrv else None, "cad": round(cad) if cad else None})
+        out["sp"] = sp
+    return out
 
 
 def hh(S):
@@ -97,4 +178,6 @@ def alles(S):
     f["pdc"] = pdc
     st = stufen.stufen(S) if S.category in ("rad", "lauf") else None
     f["stufen"] = st if stufen.relevant(st) else None
+    f["t0"] = int(S.start) if S.start else None
+    f.update(ausdauer(S))
     return f, z

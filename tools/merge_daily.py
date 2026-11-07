@@ -45,7 +45,7 @@ def minutes(hhmm):
     return int(h) * 60 + int(m)
 
 
-FIT_KEYS = ("el", "mv", "st", "nst", "un", "rc", "ac", "us", "hh", "pdc")
+FIT_KEYS = ("el", "mv", "st", "nst", "un", "rc", "ac", "us", "hh", "pdc", "t0", "dr", "sp")
 
 
 def load_fit(path):
@@ -60,6 +60,92 @@ def load_fit(path):
     except FileNotFoundError:
         pass
     return out
+
+
+def _upsert(D, key, items, idf=lambda e: e["id"], what=None):
+    """Einträge nach ID ersetzen oder anhängen; die alte Fassung bleibt im Audit (V5: Korrekturen nachvollziehbar)."""
+    lst = D.setdefault(key, [])
+    pos = {idf(e): i for i, e in enumerate(lst)}
+    n_new = n_rep = 0
+    for e in items:
+        k = idf(e)
+        if k in pos:
+            if lst[pos[k]] != e:
+                D.setdefault("audit", []).append({"zeit": dt.datetime.now(ZRH).isoformat(timespec="seconds"), "was": f"{what or key} ersetzt",
+                                                  "id": str(k), "alt": lst[pos[k]]})
+                lst[pos[k]] = e
+                n_rep += 1
+        else:
+            pos[k] = len(lst)
+            lst.append(e)
+            n_new += 1
+    return n_new, n_rep
+
+
+def laktat_uebernehmen(D, pid):
+    """Schritt B1: eine Vorschau nach Silas' Bestätigung als Laktatmessung übernehmen (Quelle bleibt je Wert)."""
+    p = next((x for x in D.get("laktat_vorschau", []) if x["id"] == pid), None)
+    if not p or p.get("status") != "vorschau":
+        return False
+    if p["art"] == "stufentest":
+        stages = []
+        for z in p["zeilen"]:
+            if z.get("la") is None or z.get("x") is None:
+                continue
+            f = z.get("fit") or {}
+            st = {"la": z["la"], "hr": f.get("hr_vor") if f.get("hr_vor") is not None else z.get("hf"), "hr_tab": z.get("hf"),
+                  "quelle": z.get("quelle")}
+            st["kmh" if p["sport"] == "lauf" else "w"] = z["x"]
+            stages.append(st)
+        e = {"id": pid, "kind": "stufentest", "date": p["datum"], "sport": p["sport"], "stages": stages, "activity": p.get("aktivitaet"),
+             "ausbelastet": "Ausbelastet" in " ".join(p.get("hinweise") or []), "note": "; ".join(p.get("hinweise") or []),
+             "quelle": p.get("datei"), "bestaetigt": dt.date.today().isoformat()}
+    else:
+        z = p["zeilen"][0]
+        k = (p.get("kandidaten") or [None])[-1] or {}
+        e = {"id": pid, "kind": "check", "date": p["datum"], "sport": p["sport"], "w": z.get("x"), "lactate": z.get("la"),
+             "hr_avg": k.get("hr"), "hr_max": k.get("hr_max"), "np": k.get("np"), "drift": k.get("drift"),
+             "block": p.get("block"), "activity": p.get("aktivitaet"), "zuordnung": p.get("zuordnung"),
+             "note": "; ".join(p.get("hinweise") or []), "quelle": (z.get("quelle") or {}).get("stelle") or p.get("datei"),
+             "bestaetigt": dt.date.today().isoformat()}
+    _upsert(D, "lactate", [e], what="Laktat")
+    p["status"] = "übernommen"
+    return True
+
+
+def v5_merge(D, N):
+    """V5-Einträge aus der Seite (Export «Eingaben») oder dem Chat: Fueling, Befinden, Koppelläufe, Pläne, Tests, B1."""
+    msg = []
+    for key, src, idf in (("fueling", "fueling_add", lambda e: e["id"]), ("befinden", "befinden_add", lambda e: e["date"]),
+                          ("langfahrt_plaene", "langfahrt_add", lambda e: e["id"]), ("test_entwuerfe", "test_entwurf_add", lambda e: e["id"]),
+                          ("koppel", "koppel_set", lambda e: (e["bike"], e["run"])), ("schwimm_analysen", "coach_add", lambda e: e["id"])):
+        if N.get(src):
+            a, b = _upsert(D, key, N[src], idf)
+            msg.append(f"{key}: {a} neu, {b} ersetzt")
+    if "fueling_produkte" in N:
+        D["fueling_produkte"] = N["fueling_produkte"]
+    if N.get("test_archiv"):
+        D["test_archiv"] = sorted(set(D.get("test_archiv", [])) | set(N["test_archiv"]))
+    if N.get("notizen_set"):
+        D.setdefault("notizen", {}).update(N["notizen_set"])
+    if N.get("quelle_eingaben"):
+        D.setdefault("audit", []).append({"zeit": dt.datetime.now(ZRH).isoformat(timespec="seconds"), "was": "Eingaben eingespielt", **N["quelle_eingaben"]})
+    for gid, w in (N.get("wx") or {}).items():          # Wetter je Aktivität (Garmin), nie überschreiben
+        for a in D.get("activities", []):
+            if (a.get("gid") == gid or a["id"] == gid) and not a.get("wx"):
+                a["wx"] = w
+    for z in N.get("zonen_add") or []:                  # neue Zonenversion nur mit Freigabe von Silas
+        if not (z.get("freigabe") or {}).get("datum"):
+            msg.append(f"Zonen {z.get('id')} ohne Freigabe nicht übernommen")
+            continue
+        for old in D.setdefault("zonen", []):
+            if old.get("status") == "aktiv":
+                old["status"], old["gueltig_bis"] = "ersetzt", z["gueltig_ab"]
+        _upsert(D, "zonen", [z], what="Zonenprofil")
+    for pid in N.get("laktat_bestaetigt") or []:
+        msg.append(f"B1 {pid}: {'übernommen' if laktat_uebernehmen(D, pid) else 'nicht gefunden oder schon übernommen'}")
+    if msg:
+        print("V5:", "; ".join(msg))
 
 
 def main(data_path, new_path, fit_path=None):
@@ -91,7 +177,7 @@ def main(data_path, new_path, fit_path=None):
             match["gid"] = gid
             if n.get("poly") and not match.get("poly"):
                 match["poly"] = n["poly"]
-            if fr and fr.get("ok") and "mv" not in match:      # Zeitbegriffe nachtragen, Exportwerte nie überschreiben
+            if fr and fr.get("ok") and ("mv" not in match or "t0" not in match):   # nachtragen, Exportwerte nie überschreiben
                 for k in FIT_KEYS:
                     if fr["fit"].get(k) is not None and match.get(k) is None:
                         match[k] = fr["fit"][k]
@@ -170,6 +256,7 @@ def main(data_path, new_path, fit_path=None):
         D["tests"] = N["tests"]
     if "protokolle" in N:                       # Protokoll-Vorlagen (ersetzt die ganze Liste)
         D["protokolle"] = N["protokolle"]
+    v5_merge(D, N)
 
     if fit_path:                               # Protokoll für die Abnahme A2 (14 Nächte ohne fehlende Datei)
         log = D.setdefault("fit_log", [])

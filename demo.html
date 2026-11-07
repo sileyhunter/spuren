@@ -10,21 +10,25 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Spuren Demo">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0c0f11">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f4f7f9">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.css">
 <style>
-/* Layout: dunkle Arbeitsfläche wie Strava-Nachtkarte und Whoop. Kopfzeile mit Tabs,
+/* Layout (V5): helle Arbeitsfläche, dünne Linien (1–1,5 px), Kopfzeile mit Tabs,
    Karte vollflächig mit Filterleiste links, übrige Tabs als 12-Spalten-Kachelraster. */
 :root {
-  --bg: #0c0f11; --surface: #14181b; --surface-2: #1c2226; --line: #283036;
-  --fg: #e9edf0; --muted: #8b969f; --accent: #ff5a1f; --accent-fg: #170700;
-  --good: #3fd17f; --warn: #f2c14e; --bad: #ff5d5d; --strain: #3a9dff; --sleep: #a08cff;
+  /* V5: helle, ruhige Fläche; Petrol als Akzent, Koralle als Zweitakzent (Konzept V4/V5) */
+  --bg: #f4f7f9; --surface: #ffffff; --surface-2: #f1f5f8; --line: #dde5eb; --line-2: #c9d4dd;
+  --fg: #1f3347; --muted: #627488; --accent: #148a7e; --accent-fg: #ffffff; --accent-2: #d9694a;
+  --good: #1d8f5e; --warn: #b7791f; --bad: #c0455a; --strain: #2f72c4; --sleep: #7a68d8; --info: #2f72c4;
+  --lt1: #148a7e; --lt2: #b8566a;
+  --z1: #d6e1ec; --z2: #c9e3e0; --z3: #f8e6da; --z4: #e2deed; --z5: #efdcdf;
+  --panel-glass: rgba(255,255,255,.96); --shadow: 0 2px 10px rgba(31,51,71,.08);
   --f-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
   --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
-  color-scheme: dark;
+  color-scheme: light;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -254,6 +258,117 @@ html, body { touch-action: manipulation; }
   .cal .ev.race { background: var(--accent); }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+/* ===================== V5: helles Design und neue Bausteine ===================== */
+.brand { color: var(--fg); } .brand .mark { box-shadow: none; }
+nav.tabs button { font: 600 14px/1 var(--f-body); letter-spacing: .01em; text-transform: none; }
+nav.tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.card { border-radius: 14px; box-shadow: 0 1px 2px rgba(31,51,71,.04); }
+.card h2 { font: 600 18px/1.25 var(--f-body); letter-spacing: 0; text-transform: none; }
+.card h2.big { font-size: 28px; line-height: 1.15; }
+.mini-h, .panel h3, .lay-h, .cal .hd, table.t th { font-family: var(--f-body); letter-spacing: .06em; font-size: 11.5px; }
+.chip[aria-pressed="true"] { color: var(--fg); border-color: var(--accent); background: #e4f3f0; }
+.btn { background: var(--surface); } .btn:hover { border-color: var(--line-2); } .btn.on { background: var(--fg); color: #fff; border-color: var(--fg); }
+.btn.primary { color: #fff; }
+.demo-banner { background: #fff4e5; color: #6b4513; border-bottom-color: #f1d9b5; } .demo-banner b { color: #8a4b10; }
+.map-wrap { background: #e8eef2; }
+.seg, .legend, .status, .layers, .planner { background: var(--panel-glass); box-shadow: var(--shadow); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.card .seg { box-shadow: none; }
+.cal .ev.test { background: #fff4e5; border-left-color: var(--warn); color: #7a4a10; }
+.idp section.on { border-left-color: var(--accent); } .idp section.on h4 { color: var(--accent); }
+@media (max-width: 760px) { aside.panel { box-shadow: 0 -8px 24px rgba(31,51,71,.18); } .btn { min-height: 40px; } .chip { min-height: 34px; } }
+.verdict.muted { border-left-color: var(--muted); }
+.badge.warn { background: rgba(183,121,31,.14); color: #8a5a12; } .badge.muted { background: var(--surface-2); color: var(--muted); border: 1px dashed var(--line-2); }
+.badge.info { background: rgba(47,114,196,.12); color: var(--info); } .badge.ok { background: rgba(29,143,94,.12); color: var(--good); } .badge.next { background: rgba(183,121,31,.14); color: #8a5a12; }
+.badge { text-transform: none; letter-spacing: .02em; font-family: var(--f-body); }
+.eyebrow { font: 600 11.5px/1.3 var(--f-body); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+.hero { font: 700 34px/1.05 var(--f-body); font-variant-numeric: tabular-nums; margin: 4px 0 2px; }
+.hero small { font-size: 15px; color: var(--muted); font-weight: 500; } .hero.muted { color: var(--muted); font-size: 22px; }
+.sub2 { font-weight: 600; margin: 2px 0 6px; }
+dl.dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 12px; margin: 8px 0; font-size: 13px; }
+dl.dl dt { color: var(--muted); } dl.dl dd { margin: 0; overflow-wrap: anywhere; }
+ul.flags { margin: 6px 0; padding-left: 18px; font-size: 12.5px; color: var(--muted); }
+.prov { display: inline-block; font: 600 10.5px/1.6 var(--f-body); border: 1px solid var(--line-2); border-radius: 4px; padding: 0 5px; color: var(--muted); background: var(--surface); white-space: nowrap; }
+.prov-fit { border-color: #9cc9c3; color: #116d63; } .prov-messung { border-color: #b7c8db; color: #2f5785; } .prov-wetter { border-color: #c9bfe7; color: #5b4bb0; } .prov-plan { border-color: #ecc0b0; color: #a24a2d; }
+.chip.static { cursor: default; } .dia { width: 9px; height: 9px; transform: rotate(45deg); display: inline-block; }
+.syncbar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; border: 1px dashed var(--line-2); border-radius: 10px; padding: 8px 12px; font-size: 13px; }
+.syncbar.pending { border-color: var(--warn); background: #fffaf1; }
+.syncbar .hint { flex-basis: 100%; }
+/* Zonen-Cockpit: vier unabhängige Skalen */
+.zc { display: flex; flex-direction: column; gap: 26px; padding-top: 4px; }
+.zhead { display: flex; gap: 6px 12px; align-items: baseline; flex-wrap: wrap; margin-bottom: 20px; }
+.zhead h3 { margin: 0; font: 700 13px var(--f-body); letter-spacing: .06em; text-transform: uppercase; }
+.zbar { position: relative; height: 36px; border-radius: 6px; background: var(--surface-2); }
+.zseg { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; font: 600 13px var(--f-body); color: var(--fg); border-right: 1px solid #fff; overflow: hidden; }
+.zseg.z1 { background: var(--z1); border-radius: 6px 0 0 6px; } .zseg.z2 { background: var(--z2); } .zseg.z3 { background: var(--z3); } .zseg.z4 { background: var(--z4); } .zseg.z5 { background: var(--z5); border-radius: 0 6px 6px 0; border-right: 0; }
+.zticks { position: relative; height: 18px; margin-top: 4px; font: 11.5px var(--f-mono); color: var(--muted); }
+.tick { position: absolute; transform: translateX(-50%); white-space: nowrap; } .tick.first { transform: none; } .tick.last { transform: translateX(-100%); }
+.ltm { position: absolute; top: -16px; bottom: -4px; border: 0; padding: 0; background: transparent; cursor: pointer; --c: var(--lt1); }
+.ltm::before { content: ""; position: absolute; left: 0; right: 0; top: 16px; bottom: 4px; background: rgba(20,138,126,.10); border-left: 2px dashed var(--c); border-right: 2px dashed var(--c); }
+.ltm::after { content: ""; position: absolute; left: -18px; right: -18px; top: 0; bottom: 0; }
+.ltm span { position: absolute; top: 0; left: 50%; transform: translateX(-50%); font: 700 11px var(--f-body); color: var(--c); white-space: nowrap; }
+.ltm.lt2 { --c: var(--lt2); } .ltm.lt2::before { background: rgba(184,86,106,.10); }
+.ltm.vorher::before { background: transparent; border-left-style: dotted; border-right-style: dotted; } .ltm.vorher span { top: auto; bottom: -19px; font-weight: 600; opacity: .85; }
+.zc.cmp .zticks { margin-top: 20px; }
+.ltm:focus-visible { outline: 2px solid var(--c); outline-offset: 2px; }
+.ltna { font: 600 12px var(--f-body); border: 1px dashed var(--line-2); background: var(--surface); border-radius: 999px; padding: 4px 10px; cursor: pointer; color: var(--muted); min-height: 30px; }
+.ltna.lt2 { border-color: var(--lt2); color: var(--lt2); } .ltna.lt1 { border-color: var(--lt1); color: var(--lt1); }
+.pop { position: absolute; z-index: 60; background: var(--surface); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: 0 10px 28px rgba(31,51,71,.2); padding: 12px 14px; font-size: 13px; }
+.pop h4 { margin: 0 0 6px; font: 700 14px var(--f-body); } .pop-x { margin-top: 6px; } .pop:focus { outline: none; }
+/* Bereitschaft */
+.rd-status { font: 700 22px/1.2 var(--f-body) !important; margin: 4px 0 2px; }
+.rd-bereit { color: var(--good); } .rd-normal { color: var(--info); } .rd-vorsichtig { color: var(--warn); } .rd-nicht-beurteilbar { color: var(--muted); }
+.rd-row { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.rd-row span { color: var(--muted); } .rd-row b { text-align: right; font-weight: 600; }
+.rd-form { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+.rd-form label { font-size: 12.5px; color: var(--muted); display: flex; flex-direction: column; gap: 3px; } .rd-form label.row { flex-direction: row; }
+fieldset.scale5 { border: 0; padding: 0; margin: 0; } .scale5 legend { font-size: 12.5px; color: var(--muted); margin-bottom: 4px; padding: 0; }
+.scale5 label { display: inline-flex; position: relative; } .scale5 input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.scale5 span { display: inline-grid; place-items: center; min-width: 44px; min-height: 40px; border: 1px solid var(--line-2); margin-right: 4px; border-radius: 8px; color: var(--fg); background: var(--surface); }
+.scale5 input:checked + span { background: var(--accent); color: #fff; border-color: var(--accent); } .scale5 input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+fieldset.checks { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; } fieldset.checks legend { font-size: 12.5px; color: var(--muted); padding: 0; }
+fieldset.checks label { flex-direction: row !important; align-items: center; color: var(--fg) !important; }
+details > summary { cursor: pointer; font-weight: 600; padding: 6px 0; } details > summary::marker { color: var(--accent); }
+/* Test erfassen (Handy) */
+.v5-overlay { position: fixed; inset: 0; z-index: 70; background: rgba(31,51,71,.38); display: grid; place-items: start center; overflow-y: auto;
+  padding: max(12px, env(safe-area-inset-top, 0px)) 12px calc(40px + env(safe-area-inset-bottom, 0px)); }
+.te-box { background: var(--surface); width: min(760px, 100%); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 12px 32px rgba(31,51,71,.22); }
+.te-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; } .te-head h2 { margin: 0; font: 700 19px var(--f-body); }
+.te-templates { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.te-tpl { text-align: left; border: 1px solid var(--line-2); background: var(--surface-2); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; min-height: 76px; font: inherit; color: inherit; }
+.te-tpl.on { border-color: var(--accent); background: #e6f3f1; } .te-tpl small { color: var(--muted); }
+.te-stages { display: flex; flex-direction: column; gap: 8px; }
+.te-stage { display: grid; grid-template-columns: 104px minmax(0, 1fr) auto; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+.te-stage.flag { border-color: var(--warn); } .te-lab { display: flex; flex-direction: column; } .te-lab span { color: var(--muted); font-size: 13px; }
+input.te-la { font: 600 26px var(--f-body) !important; padding: 8px 10px; min-height: 54px; }
+.te-more { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.te-more label, .te-note { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); gap: 3px; }
+.te-note textarea { font: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+.te-draft { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: center; border-bottom: 1px solid var(--line); padding: 6px 0; }
+td.shift input { width: 64px; margin-right: 4px; } body.noscroll { overflow: hidden; }
+/* Ausdauer */
+.lr-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.lr-box { background: var(--surface-2); border-radius: 10px; padding: 12px; min-width: 0; }
+@media (max-width: 980px) { .lr-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .lr-grid { grid-template-columns: minmax(0, 1fr); } }
+form.inline label.grow { flex: 1; min-width: 180px; } form.inline label.grow input { width: 100%; }
+table.t tr.on td { background: #eef7f5; } td.acts { white-space: nowrap; } td.acts .btn { margin-right: 4px; }
+.kv small { display: block; color: var(--muted); font-size: 11.5px; }
+.fu-form { display: flex; flex-direction: column; gap: 10px; }
+.fu-form label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); gap: 3px; }
+.fu-quick { display: flex; flex-wrap: wrap; gap: 6px; } .fu-quick .btn { min-height: 40px; }
+table.fu-ev input, table.fu-ev select { width: 80px; } table.fu-ev td:nth-child(2) input { width: 160px; }
+.fu-tot { font-size: 14px; margin: 0; }
+fieldset.seg2 { border: 0; padding: 0; margin: 0; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; } fieldset.seg2 legend { font-size: 12px; color: var(--muted); padding: 0; }
+fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 6px !important; color: var(--fg) !important; font-size: 13px !important; }
+/* Schwimmen */
+.sw-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 760px) { .sw-grid { grid-template-columns: minmax(0, 1fr); } }
+.sw-pane { display: flex; flex-direction: column; gap: 6px; min-width: 0; } .sw-lab { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-weight: 600; }
+.sw-lab input[type=number] { width: 76px; } .sw-v { position: relative; background: #0f1a24; border-radius: 10px; aspect-ratio: 16 / 9; overflow: hidden; }
+.sw-v video { width: 100%; height: 100%; object-fit: contain; display: block; } .sw-v canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.sw-ctl .btn { min-height: 40px; } .sw-rate { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+.sw-rate label { display: flex; flex-direction: column; font-size: 12.5px; color: var(--muted); gap: 3px; }
 </style>
 </head>
 <body>
@@ -273,8 +388,11 @@ html, body { touch-action: manipulation; }
     <button role="tab" id="tab-karte" data-tab="karte" aria-selected="true">Karte</button>
     <button role="tab" id="tab-heute" data-tab="heute" aria-selected="false">Heute</button>
     <button role="tab" id="tab-kalender" data-tab="kalender" aria-selected="false">Kalender</button>
-    <button role="tab" id="tab-training" data-tab="training" aria-selected="false">Training</button>
+    <button role="tab" id="tab-training" data-tab="training" aria-selected="false">Fortschritt</button>
+    <button role="tab" id="tab-laktat" data-tab="laktat" aria-selected="false">Laktat &amp; Zonen</button>
+    <button role="tab" id="tab-ausdauer" data-tab="ausdauer" aria-selected="false">Ausdauer</button>
     <button role="tab" id="tab-leistung" data-tab="leistung" aria-selected="false">Leistung</button>
+    <button role="tab" id="tab-schwimmen" data-tab="schwimmen" aria-selected="false">Schwimmen</button>
     <button role="tab" id="tab-koerper" data-tab="koerper" aria-selected="false">Körper</button>
   </nav>
   <div class="countdowns" id="countdowns"></div>
@@ -372,6 +490,7 @@ html, body { touch-action: manipulation; }
             <button class="chip" data-ov="wander" aria-pressed="false">Wanderwege</button>
             <button class="chip" data-ov="velo" aria-pressed="false">Veloland</button>
             <button class="chip" data-ov="mtb" aria-pressed="false">MTB-Land</button>
+            <button class="chip" data-ov="wanderland" aria-pressed="false">Wanderland</button>
           </div>
           <div class="lay-h">Winter</div>
           <div class="chips">
@@ -421,15 +540,16 @@ html, body { touch-action: manipulation; }
         <div class="card-head"><div><h2>Heute</h2><div class="sub" id="today-date"></div></div></div>
         <div class="rings" id="rings"></div>
       </div>
-      <div class="card w4">
-        <h2>Bereitschaft</h2>
+      <div class="card w4" id="rd-wrap">
+        <div id="rd-card"></div>
         <div class="verdict" id="today-verdict"></div>
         <div class="kv" id="today-kv"></div>
       </div>
       <div class="card w8">
-        <h2>Erholung, Belastung und Schlaf</h2>
-        <div class="sub">Letzte 30 Tage</div>
-        <div class="chart"><canvas id="c-recovery" aria-label="Verlauf Erholung, Belastung und Schlaf"></canvas></div>
+        <div class="card-head"><div><h2>Bereitschaft im Verlauf</h2><div class="sub">HRV gegen deine eigene Referenz, Ruhepuls und Schlaf</div></div>
+          <div class="seg" id="rd-range" role="group" aria-label="Zeitraum"><button data-n="21" aria-pressed="true">21 Tage</button><button data-n="42" aria-pressed="false">42 Tage</button></div></div>
+        <div class="chart"><canvas id="c-recovery" aria-label="Verlauf HRV, Ruhepuls und Schlaf"></canvas></div>
+        <p class="hint" id="rd-trend-note"></p>
       </div>
       <div class="card w4">
         <h2>Rennen</h2>
@@ -570,10 +690,55 @@ html, body { touch-action: manipulation; }
         <div class="sub">Meter pro Minute je Herzschlag bei lockeren Läufen. Steigt der Wert, läufst du bei gleichem Puls schneller.</div>
         <div class="chart"><canvas id="c-ef" aria-label="Laufeffizienz"></canvas></div>
       </div>
-      <div class="card">
-        <h2>Schwimmen: Pace pro 100 m</h2>
-        <div class="sub">Weiter oben ist schneller</div>
-        <div class="chart"><canvas id="c-swim" aria-label="Schwimmpace"></canvas></div>
+      <div class="card w12" id="eta-card">
+        <div class="card-head"><div><h2>Rad-Fahrzeit aus der Leistungsbilanz</h2><div class="sub">Watt, Gewicht, CdA, Rollwiderstand, Luftdichte und Wind je Abschnitt. Schätzung mit Spanne, kein Routing.</div></div></div>
+        <form class="inline" id="eta-form" onsubmit="return false"></form>
+        <div id="eta-out"></div>
+        <div class="chart"><canvas id="c-eta" aria-label="Tempo und Höhe entlang der Strecke"></canvas></div>
+        <details><summary>Prüffälle der Physik</summary><div class="tablewrap"><table class="t" id="t-eta"></table></div></details>
+      </div>
+      <div class="card w12" id="cda-card">
+        <div class="card-head"><div><h2>Aerotest: CdA im A-B-A-Vergleich</h2><div class="sub">Virtuelle Höhe nach Chung aus Leistung, Tempo und Höhe. Ergebnis immer «geschätzt».</div></div>
+          <label class="btn">FIT-Datei laden<input type="file" id="cda-file" accept=".fit,application/octet-stream" hidden></label></div>
+        <form class="inline" id="cda-par" onsubmit="return false"><label>Fahrer + Rad (kg)<input type="number" name="m" value="83"></label><label>Crr<input type="number" step="0.0005" name="crr" value="0.004"></label><label>Temperatur (°C)<input type="number" name="temp" value="15"></label><label>Höhe (m)<input type="number" name="alt" value="500"></label></form>
+        <div id="cda-out"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= LAKTAT & ZONEN (V5) ================= -->
+  <section class="view" id="view-laktat" role="tabpanel" aria-labelledby="tab-laktat" hidden>
+    <div class="dash">
+      <div class="card w12 v5-head" id="lz-head"></div>
+      <div class="card w8" id="lz-main">
+        <div class="card-head"><div><h2>Laktatkurven und Einzelmessungen</h2><div class="sub">Stufen eines Tests sind verbunden, Einzelwerte aus dem Training nie.</div></div>
+          <button class="btn primary" id="lz-start">Test starten</button></div>
+        <div class="chips" id="lz-legend"></div>
+        <div class="chart tall"><canvas id="c-lac" aria-label="Laktat gegen Leistung: Testkurven und Einzelmessungen"></canvas></div>
+        <p class="hint" id="lz-note"></p>
+        <details><summary>Messpunkte als Liste</summary><div class="tablewrap" id="lz-list"></div></details>
+      </div>
+      <div class="card w4" id="lz-detail" tabindex="-1" aria-live="polite"></div>
+      <div class="card w12" id="zc-card">
+        <div class="card-head"><div><h2>Trainingszonen: alle vier Skalen</h2><div class="sub" id="zc-meta"></div></div>
+          <div class="seg" id="zc-mode" role="group" aria-label="Ansicht"><button data-m="aktuell">Aktuell</button><button data-m="vorher">Voriger Test</button><button data-m="vergleich">Vergleichen</button></div></div>
+        <div class="zc" id="zc-box"></div>
+        <p class="hint">LT1/LT2 sind Werte des jeweiligen Tests und auf jeder Skala eigen. Antippen öffnet Grenzen, Methode, Quelle, Datum und Status. Zonen entstehen nie automatisch aus LT1/LT2.</p>
+      </div>
+      <div class="card" id="lt-card">
+        <div class="card-head"><div><h2>LT1 und LT2 im Verlauf</h2><div class="sub">Nur vergleichbare Tests: gleiche Sportart und gleiches Protokoll</div></div>
+          <div class="row"><select id="lt-m1" aria-label="Methode LT1"></select><select id="lt-m2" aria-label="Methode LT2"></select></div></div>
+        <div class="chart"><canvas id="c-ltt" aria-label="LT1 und LT2 über die Zeit mit Unsicherheit"></canvas></div>
+        <p class="hint" id="lt-note"></p>
+      </div>
+      <div class="card" id="lm-card">
+        <h2>Schwellen je Methode</h2><div class="sub">Grau: 2 und 4 mmol/l nur zur Orientierung, nie als Schwelle</div>
+        <div class="tablewrap"><table class="t" id="t-lmeth"></table></div>
+        <p class="hint" id="lm-note"></p>
+      </div>
+      <div class="card w12" id="lib-card">
+        <div class="card-head"><div><h2>Testbibliothek</h2><div class="sub">Tests, Einzelmessungen und Entwürfe vom Handy. «Bestätigen» ist Schritt B1 und geht mit dem nächsten Export an mich.</div></div><div class="row" id="lib-f"></div></div>
+        <div class="tablewrap"><table class="t" id="t-lib"></table></div>
       </div>
       <div class="card w12">
         <div class="card-head"><div><h2>Laktat-Kurzchecks</h2><div class="sub">Gleicher Block, zum Beispiel 10 Minuten bei 220 W. Sinken Laktat und Puls bei gleicher Leistung, bist du fitter. Laktat wird von Hand gemessen, Puls und Watt kommen aus der Einheit.</div></div></div>
@@ -593,6 +758,64 @@ html, body { touch-action: manipulation; }
         <div class="tablewrap"><table class="t" id="t-import"></table></div>
         <h3 class="mini-h">Protokoll-Vorlagen</h3>
         <div class="tablewrap"><table class="t" id="t-proto"></table></div>
+      </div>
+
+      <div class="card w12"><h2>Eingaben auf diesem Gerät</h2><div data-v5-sync></div></div>
+    </div>
+  </section>
+
+  <!-- ================= AUSDAUER (V5) ================= -->
+  <section class="view" id="view-ausdauer" role="tabpanel" aria-labelledby="tab-ausdauer" hidden>
+    <div class="dash">
+      <div class="card w12" id="lr-card">
+        <div class="card-head"><div><h2>Lange Ausfahrt: Watt- und Pulsband für 1–6 h</h2><div class="sub">Aus deinen Fahrten ähnlicher Dauer und mit gleichem System, keine pauschale FTP-Prozentzahl.</div></div>
+          <form class="inline" id="lr-ctl" onsubmit="return false"></form></div>
+        <div id="lr-out"></div>
+        <div class="chart"><canvas id="c-lr" aria-label="Watt-Band nach Dauer mit Fahrten"></canvas></div>
+        <p class="hint" id="lr-chart-note"></p>
+        <div id="lr-plan"></div>
+        <div id="lr-ist"></div>
+        <details><summary>Fahrten der Evidenz</summary><div class="tablewrap"><table class="t" id="t-lr"></table></div></details>
+      </div>
+      <div class="card w12" id="br-card">
+        <div class="card-head"><div><h2>Koppelläufe: Rad › Wechsel › Lauf</h2><div class="sub" id="br-note"></div></div>
+          <label class="row hint">Wechsel höchstens <input type="number" id="br-max" min="0" max="180" style="width:72px"> min</label></div>
+        <div class="tablewrap"><table class="t" id="t-br"></table></div>
+        <details id="br-man"></details>
+        <div id="br-detail"></div>
+        <div class="hp-grid"><div class="hp-col"><h3 class="mini-h">Lauf nach dem Rad: Abschnitte</h3><div class="chart"><canvas id="c-br" aria-label="Pace und Puls je Abschnitt"></canvas></div></div>
+          <div class="hp-col"><h3 class="mini-h">Pace 0–5 min über die Zeit</h3><div class="chart"><canvas id="c-br-trend" aria-label="Pace der ersten 5 Minuten nach dem Rad"></canvas></div></div></div>
+      </div>
+      <div class="card w12" id="fu-card">
+        <div class="card-head"><div><h2>Train your Gut: Kohlenhydrate und Verträglichkeit</h2><div class="sub">Was du wann eingenommen hast und wie der Magen reagiert hat.</div></div>
+          <div class="row"><select id="fu-sport" aria-label="Sportart"><option value="">Alle</option><option value="rad">Rad</option><option value="lauf">Lauf</option></select><label class="hint row">Planungsbereich g/h <input id="fu-ziel" placeholder="60–90" style="width:84px"></label></div></div>
+        <div class="hp-grid"><div class="hp-col"><h3 class="mini-h">KH/h und GI-Beschwerden je Einheit</h3><div class="chart"><canvas id="c-fu-gut" aria-label="Kohlenhydrate pro Stunde und Beschwerden"></canvas></div></div>
+          <div class="hp-col"><h3 class="mini-h">Verlauf einer Einheit (30-min-Blöcke)</h3><div class="chart"><canvas id="c-fu-time" aria-label="Kohlenhydrate je 30 Minuten und Beschwerden"></canvas></div><div id="fu-sel" class="hint"></div></div></div>
+        <div class="tablewrap"><table class="t" id="t-fu"></table></div>
+        <h3 class="mini-h">Eintrag erfassen</h3>
+        <div id="fu-edit"></div>
+        <details id="fu-prod"></details>
+        <div data-v5-sync></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SCHWIMMEN (V5) ================= -->
+  <section class="view" id="view-schwimmen" role="tabpanel" aria-labelledby="tab-schwimmen" hidden>
+    <div class="dash">
+      <div class="card w12">
+        <h2>Schwimmen: Pace pro 100 m</h2>
+        <div class="sub">Weiter oben ist schneller</div>
+        <div class="chart"><canvas id="c-swim" aria-label="Schwimmpace"></canvas></div>
+      </div>
+
+      <div class="card w12">
+        <div class="card-head"><div><h2>Schwimmtechnik-Coach</h2><div class="sub">Zwei Videos nebeneinander, Bild für Bild, mit eigenen Marken und Winkeln. Videos verlassen das Gerät nicht.</div></div></div>
+        <div id="sw-coach"></div>
+      </div>
+      <div class="card w12">
+        <h2>Lernbausteine im Verlauf</h2><div class="sub">Deine eigene Bewertung je Sitzung, keine automatische Analyse</div>
+        <div class="chart"><canvas id="c-sw-tech" aria-label="Bewertung der Lernbausteine über die Zeit"></canvas></div>
       </div>
     </div>
   </section>
@@ -626,9 +849,14 @@ html, body { touch-action: manipulation; }
     </div>
   </section>
 </main>
+<div class="v5-overlay" id="v5-test" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="js/formkurve.js"></script>
+<script src="js/v5-ui.js"></script>
+<script src="js/v5-ausdauer.js"></script>
+<script src="js/v5-extra.js"></script>
 <script>window.SPUREN_DEMO = true;</script>
 <script>
 (() => {
@@ -644,8 +872,13 @@ html, body { touch-action: manipulation; }
     const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64d(payload.iv) }, key, b64d(payload.ct));
     return JSON.parse(new TextDecoder().decode(pt));
   };
-  const start = (data) => { window.SPUREN_DATEN = data; document.getElementById("lock").hidden = true; boot(); };
+  const start = async (data, raw) => {
+    window.SPUREN_DATEN = data;
+    try { if (window.V5UI && raw) { window.SPUREN_VAULT = await window.V5UI.makeVault(raw); window.SPUREN_VAULT.salt = payload.salt; window.SPUREN_VAULT.iter = payload.iter; } } catch (e) {}
+    document.getElementById("lock").hidden = true; boot();
+  };
   async function init() {
+    if (window.SPUREN_DEMO && window.V5UI) { try { window.SPUREN_VAULT = await window.V5UI.makeVault(new TextEncoder().encode("spuren-demo-nur-beispieldaten-32")); } catch (e) {} }
     if (window.SPUREN_DATEN || window.SPUREN_DEMO) { boot(); return; }
     try {
       const r = await fetch("data.enc.json?t=" + Date.now(), { cache: "no-store" });
@@ -655,7 +888,7 @@ html, body { touch-action: manipulation; }
     let saved = null;
     try { saved = localStorage.getItem("sf.key"); } catch (e) {}
     if (saved) {
-      try { start(await open(b64d(saved))); return; } catch (e) { try { localStorage.removeItem("sf.key"); } catch (e2) {} }
+      try { start(await open(b64d(saved)), b64d(saved)); return; } catch (e) { try { localStorage.removeItem("sf.key"); } catch (e2) {} }
     }
     document.getElementById("lock").hidden = false;
     document.getElementById("lock-pw").focus();
@@ -667,13 +900,17 @@ html, body { touch-action: manipulation; }
         const raw = await derive(document.getElementById("lock-pw").value.trim());
         const data = await open(raw);
         if (document.getElementById("lock-keep").checked) { try { localStorage.setItem("sf.key", b64e(raw)); } catch (e2) {} }
-        start(data);
+        start(data, raw);
       } catch (err) { msg.textContent = "Das Passwort stimmt nicht. Achte auf Gross- und Kleinschreibung."; }
     });
   }
   // In der App nicht die ganze Seite zoomen (die Karte zoomt weiterhin selbst)
   ["gesturestart", "gesturechange"].forEach((t) => document.addEventListener(t, (e) => e.preventDefault(), { passive: false }));
   window.addEventListener("DOMContentLoaded", init);
+  // Offline (V5): Seite, Skripte und verschlüsselte Daten für unterwegs speichern
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  }
 })();
 </script>
 <script>
@@ -688,7 +925,7 @@ const SPORTS = {
   lauf: { label: "Lauf", color: "#ef4b5c" },
   schwimm: { label: "Schwimmen", color: "#3fb6e8" },
   wandern: { label: "Wandern", color: "#8ccf6b" },
-  ski: { label: "Ski & Skitour", color: "#d5e4f2" },
+  ski: { label: "Ski & Skitour", color: "#7fa6c9" },
   andere: { label: "Andere", color: "#a78bfa" },
 };
 const POINT_CATS = {
@@ -920,6 +1157,7 @@ const RAW = window.SPUREN_DATEN || null;
 const D = RAW
   ? Object.assign({ activities: [], days: [], weights: [], ftp: [], pdc: null, lactate: [], points: [], routes: [] }, RAW, { demo: false })
   : makeDemo();
+if (D.demo && window.V5UI && window.FK) V5UI.demoAugment(D, iso(today));
 for (const a of D.activities) {
   if (!a.coords && a.poly) a.coords = decodePoly(a.poly);
   const d = pd(a.date); a._t = d.getTime(); a._wd = d.getDay();
@@ -946,6 +1184,7 @@ if (LOAD_MODE === "ftp_est") for (const a of D.activities) a.tss = a.tssP;
 for (const r of D.routes) if (!r.coords && r.poly) r.coords = decodePoly(r.poly);
 D.days.sort((a, b) => a.date.localeCompare(b.date));
 const ACT_BY_ID = new Map(D.activities.map((a) => [a.id, a]));
+let V5_READY = Promise.resolve();          // V5-Module (js/v5-*.js) starten nach dem Laden der Eingaben auf dem Gerät
 
 const userWeights = store.get("sf.weights", []);
 const userLactate = store.get("sf.lactate", []);
@@ -969,7 +1208,7 @@ document.getElementById("banner").hidden = !D.demo;
 document.getElementById("countdowns").innerHTML = RACES.map((r) => `<div>${esc(r.short)} <b>${daysTo(r.date)}</b> Tage</div>`).join("");
 document.getElementById("stand").textContent = !D.demo && D.updated ? "Stand " + D.updated : "";
 
-const TAB_NAMES = ["karte", "heute", "kalender", "training", "leistung", "koerper"];
+const TAB_NAMES = ["karte", "heute", "kalender", "training", "laktat", "ausdauer", "leistung", "schwimmen", "koerper"];
 function showTab(name) {
   if (!TAB_NAMES.includes(name)) name = "karte";
   document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
@@ -977,6 +1216,7 @@ function showTab(name) {
   if (name === "karte") { map?.resize(); }
   const t = TABS[name];
   if (t && !t.done) { t.done = true; try { t.init?.(); t.draw(); } catch (e) { console.error(e); } }
+  document.querySelector(`nav.tabs button[data-tab="${name}"]`)?.scrollIntoView({ block: "nearest", inline: "nearest" });
   if (location.hash.slice(1) !== name) history.replaceState(null, "", "#" + name);
   store.set("sf.tab", name);
 }
@@ -1338,7 +1578,7 @@ function showHits(list) {
   document.getElementById("hits-hint").hidden = true;
   const el = document.getElementById("hits");
   el.innerHTML = list.map((a) => `<div class="item"><button class="main" data-id="${esc(a.id)}"><span class="dot" style="background:${(SPORTS[a.sport] || SPORTS.andere).color}"></span>
-    <span>${esc(a.name)}<br><small>${dateCH(a.date)} · ${fmt(a.km, 1)} km · ${fmt(a.hm)} hm · ${hmm(a.dur)}</small></span>
+    <span>${esc(a.name)}<br><small>${dateCH(a.date)} · ${fmt(a.km, 1)} km · ${fmt(a.hm)} hm · ${hmm(a.dur)}${a.wx && !a.indoor ? ` · ${fmt(a.wx.temperature)} °C, Wind ${fmt(a.wx.wind_speed)} km/h ${esc(String(a.wx.wind_direction_compass || "").toUpperCase())} <span class="prov prov-wetter" title="Garmin-Wetter um ${esc(String(a.wx.issue_time || "").slice(11, 16))} UTC. ${esc(window.FK ? FK.wxQuality(a.wx, a.coords && a.coords[0]).text : "")}. Wetterstation oder Modell, nicht am Ort gemessen.">Wetter ${esc(window.FK ? FK.wxQuality(a.wx, a.coords && a.coords[0]).stufe : "")}</span>` : ""}</small></span>
     <small>${a.watt ? a.watt + " W" : a.hr ? a.hr + " bpm" : ""}</small></button></div>`).join("");
   el.querySelectorAll(".main").forEach((b) => b.addEventListener("click", () => selectActivity(b.dataset.id, true)));
   document.getElementById("panel").classList.remove("closed");
@@ -1357,6 +1597,7 @@ const WMTS_EXTRA = {   // weitere swisstopo-Ebenen, werden beim ersten Einschalt
   hang30: { id: "ch.swisstopo.hangneigung-ueber_30", fmts: ["png"] },
   wrz: { id: "ch.bafu.wrz-wildruhezonen_portal", fmts: ["png"] },
   jbg: { id: "ch.bafu.bundesinventare-jagdbanngebiete", fmts: ["png"] },
+  wanderland: { id: "ch.astra.wanderland", fmts: ["png"] },
 };
 const extraState = {};
 function probeTile(url) {
@@ -1421,6 +1662,7 @@ function initLayerPanel() {
 }
 /* ---------- Objekt-Infos von geo.admin.ch ---------- */
 const IDENT = { skitouren: ["ch.swisstopo-karto.skitouren", "Skitour"], schneeschuh: ["ch.swisstopo-karto.schneeschuhrouten", "Schneeschuhroute"],
+  wander: ["ch.swisstopo.swisstlm3d-wanderwege", "Wanderweg"], velo: ["ch.astra.veloland", "Veloland-Route"], mtb: ["ch.astra.mountainbikeland", "Mountainbikeland-Route"], wanderland: ["ch.astra.wanderland", "Wanderland-Route"],
   jbg: ["ch.bafu.bundesinventare-jagdbanngebiete", "Eidg. Jagdbanngebiet"], wrz: ["ch.bafu.wrz-wildruhezonen_portal", "Wildruhezone"] };
 function toLV95(lon, lat) {
   const p = (lat * 3600 - 169028.66) / 10000, l = (lon * 3600 - 26782.5) / 10000;
@@ -2109,6 +2351,11 @@ function isoWeek(dt) { const d = new Date(dt); d.setHours(0, 0, 0, 0); d.setDate
 /* =====================================================================
    Diagramme
    ===================================================================== */
+function v5Start() {
+  if (!window.V5UI) return;
+  V5_READY = V5UI.init({ D, chart, css, fmt, esc, dateCH, dLabel, pd, iso, today, SPORTS, IS_DEMO, hrsOf, shareOrDownload, ACT_BY_ID, charts, mmss, hmm, ringSVG, weights,
+    planRoute: () => (plan.dense && plan.ele && plan.dense.length > 1 ? { ll: plan.dense, ele: plan.ele } : null) }).catch((e) => console.error(e));
+}
 const charts = {};
 if (window.Chart) {
   Chart.defaults.font.family = css("--f-body"); Chart.defaults.font.size = 12;
@@ -2223,27 +2470,20 @@ const TABS = {
       if (!d) {
         document.getElementById("rings").innerHTML = `<p class="hint">Noch keine Tageswerte. Sie kommen mit dem ersten Garmin-Update.</p>`;
         document.getElementById("today-verdict").textContent = "Noch keine Daten.";
+        if (window.V5UI) V5_READY.then(() => V5UI.heute());
       } else {
         const rec = recovery(i), tss = dayLoad(d.date), st = strain(tss), sl = d.sleepScore;
         document.getElementById("rings").innerHTML =
           `<div class="ring">${ringSVG((rec || 0) / 100, recColor(rec), rec == null ? "–" : rec + "%", "", "Erholung")}<div class="lbl" style="color:${recColor(rec)}">Erholung</div><div class="det">HRV ${d.hrv ?? "–"} ms · Ruhepuls ${d.rhr ?? "–"}</div></div>
            <div class="ring">${ringSVG(st / 21, css("--strain"), fmt(st, 1), "von 21", "Belastung")}<div class="lbl" style="color:${css("--strain")}">Belastung</div><div class="det">Trainingslast heute ${fmt(tss)}</div></div>
            <div class="ring">${ringSVG((sl || 0) / 100, css("--sleep"), sl == null ? "–" : sl + "%", "", "Schlaf")}<div class="lbl" style="color:${css("--sleep")}">Schlaf</div><div class="det">${fmt(d.sleepH, 1)} h geschlafen</div></div>`;
-        const v = document.getElementById("today-verdict");
-        v.className = "verdict" + (rec == null ? "" : rec < 34 ? " bad" : rec < 67 ? " warn" : "");
-        v.textContent = rec == null ? "Für eine Einschätzung fehlen HRV oder Ruhepuls." : rec >= 67 ? "Gut erholt. Harte oder lange Einheiten passen heute." : rec >= 34 ? "Mittel erholt. Geplantes Training ja, Intensität aber nicht erzwingen." : "Wenig erholt. Heute locker in Zone 1–2 oder Ruhetag.";
         const last = pmc().at(-1) || {};
         const s7 = D.days.slice(-7).filter((x) => x.sleepH != null);
         document.getElementById("today-kv").innerHTML = [["Form", fmt(last.tsb)], ["Fitness", fmt(last.ctl)], ["Body Battery", d.bodyBattery != null ? fmt(d.bodyBattery) : null],
           ["Garmin-Bereitschaft", d.readiness != null ? fmt(d.readiness) : null], ["HRV Ø 30 Tage", fmt(baseline(i).hrv)],
           ["Schlaf Ø 7 Tage", s7.length ? fmt(s7.reduce((s, x) => s + x.sleepH, 0) / s7.length, 1) + " h" : null]]
           .filter(([, v]) => v != null).map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
-        const idx = D.days.map((_, k) => k).slice(-30);
-        chart("c-recovery", { type: "bar", data: { labels: idx.map((k) => dLabel(D.days[k].date)), datasets: [
-          { type: "line", label: "Erholung %", data: idx.map((k) => recovery(k)), borderColor: css("--good"), backgroundColor: css("--good"), yAxisID: "y", tension: 0.3, pointRadius: 2 },
-          { type: "line", label: "Schlaf %", data: idx.map((k) => D.days[k].sleepScore ?? null), borderColor: css("--sleep"), backgroundColor: css("--sleep"), yAxisID: "y", tension: 0.3, pointRadius: 0, borderDash: [4, 3] },
-          { label: "Belastung (0–21)", data: idx.map((k) => +strain(dayLoad(D.days[k].date)).toFixed(1)), backgroundColor: css("--strain") + "99", yAxisID: "y2", borderRadius: 3 },
-        ] }, options: { interaction: { mode: "index", intersect: false }, scales: { x: { ticks: { maxTicksLimit: 10 } }, y: { min: 0, max: 100, title: { display: true, text: "%" } }, y2: { position: "right", min: 0, max: 21, grid: { display: false }, title: { display: true, text: "Belastung" } } }, plugins: legendBottom } });
+        if (window.V5UI) V5_READY.then(() => V5UI.heute());
       }
       const w0 = mondayOf(today), wk = D.activities.filter((a) => inWeek(a, w0));
       const rows = Object.entries(SPORTS).map(([k, s]) => {
@@ -2487,12 +2727,8 @@ const TABS = {
         { label: "Einzelne Läufe", data: ef.map((p) => p.y), borderColor: SPORTS.lauf.color, backgroundColor: SPORTS.lauf.color, showLine: false, pointRadius: 3 },
         { label: "Trend über 10 Läufe", data: ef.map((_, i) => { const w = ef.slice(Math.max(0, i - 9), i + 1); return +(w.reduce((s, p) => s + p.y, 0) / w.length).toFixed(3); }), borderColor: css("--fg"), pointRadius: 0, tension: 0.3 }] },
         options: { scales: { x: { ticks: { maxTicksLimit: 10 } }, y: { title: { display: true, text: "m/min pro Herzschlag" } } }, plugins: legendBottom } });
-      const sw = D.activities.filter((a) => a.sport === "schwimm" && a.km > 0 && a.dur).slice(-60);
-      chart("c-swim", { type: "line", data: { labels: sw.map((a) => dLabel(a.date)), datasets: [
-        { label: "Pace pro 100 m", data: sw.map((a) => +(a.dur / (a.km * 10)).toFixed(1)), borderColor: SPORTS.schwimm.color, backgroundColor: SPORTS.schwimm.color, pointRadius: 3, tension: 0.3 }] },
-        options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => mmss(c.raw) + " pro 100 m" } } }, scales: { x: { ticks: { maxTicksLimit: 10 } }, y: { reverse: true, ticks: { callback: (v) => mmss(v) } } } } });
       this.hr();
-      renderChecks(); renderSteps();
+      if (window.V5UI) V5_READY.then(() => { V5UI.eta(); V5UI.aero(); });
     },
     ftp() {
       const kg = weights().at(-1)?.kg, f = D.ftp || [], cur = f.at(-1), mon = (s) => pd(s).toLocaleDateString("de-CH", { month: "short", year: "2-digit" });
@@ -2538,6 +2774,22 @@ const TABS = {
     },
   },
 
+  laktat: {
+    init() { document.getElementById("lz-start").addEventListener("click", () => V5UI.testEntry.open()); },
+    draw() { renderChecks(); renderSteps(); if (window.V5UI) V5_READY.then(() => { V5UI.laktat(); V5UI.syncBar(); }); },
+  },
+  ausdauer: {
+    draw() { if (window.V5UI) V5_READY.then(() => { V5UI.langfahrt(); V5UI.koppel(); V5UI.fueling(); V5UI.syncBar(); }); },
+  },
+  schwimmen: {
+    draw() {
+      const sw = D.activities.filter((a) => a.sport === "schwimm" && a.km > 0 && a.dur).slice(-60);
+      chart("c-swim", { type: "line", data: { labels: sw.map((a) => dLabel(a.date)), datasets: [
+        { label: "Pace pro 100 m", data: sw.map((a) => +(a.dur / (a.km * 10)).toFixed(1)), borderColor: SPORTS.schwimm.color, backgroundColor: SPORTS.schwimm.color, pointRadius: 3, tension: 0.3 }] },
+        options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => mmss(c.raw) + " pro 100 m" } } }, scales: { x: { ticks: { maxTicksLimit: 10 } }, y: { reverse: true, ticks: { callback: (v) => mmss(v) } } } } });
+      if (window.V5UI) V5_READY.then(() => V5UI.schwimmen());
+    },
+  },
   koerper: {
     init() { document.getElementById("w-range").addEventListener("change", () => this.weight()); },
     draw() { this.weight(); this.food(); },
@@ -2573,22 +2825,19 @@ const TABS = {
     },
   },
 };
-function ltOf(t) {          // LT1/LT2 aus einem Stufentest: x = Watt (Rad) bzw. km/h (Lauf)
-  const st = (t.stages || []).map((s) => ({ x: t.sport === "lauf" ? (s.pace_s ? 3600 / s.pace_s : s.kmh) : s.w, hr: s.hr, la: s.la })).filter((s) => s.x && s.la != null).sort((a, b) => a.x - b.x);
-  if (st.length < 3) return null;
-  const minI = st.reduce((m, s, i) => (s.la < st[m].la ? i : m), 0), base = st[minI].la;
-  const cross = (level) => { for (let i = Math.max(1, minI + 1); i < st.length; i++) { const a = st[i - 1], b = st[i]; if (a.la < level && b.la >= level) { const f = (level - a.la) / (b.la - a.la); return { x: a.x + f * (b.x - a.x), hr: a.hr != null && b.hr != null ? a.hr + f * (b.hr - a.hr) : null }; } } return null; };
-  return { base, lt1: cross(base + 0.5), lt2: cross(4), st };
-}
-function lastTest(sport) { return (D.lactate || []).filter((l) => l.kind === "stufentest" && l.sport === sport).sort((a, b) => a.date.localeCompare(b.date)).at(-1); }
 const LT = {};
-function ltHr(sport) {
-  if (!(sport in LT)) { const t = lastTest(sport), r = t && ltOf(t); LT[sport] = r && r.lt1 && r.lt2 && r.lt1.hr && r.lt2.hr ? { lt1: r.lt1.hr, lt2: r.lt2.hr, date: t.date } : null; }
+function ltHr(sport) {           // Grenzen locker/mittel/hart aus dem aktiven Zonenprofil (Puls Z2 und Z3); nie aus fixen 2/4 mmol
+  if (!(sport in LT)) {
+    const P = window.FK ? FK.activeProfile(D.zonen || [], iso(today)) : null;
+    const sc = P && P.skalen.find((x) => x.disziplin === sport && x.metrik === "puls");
+    const z2 = sc && sc.zonen.find((z) => z.z === "Z2"), z3 = sc && sc.zonen.find((z) => z.z === "Z3");
+    LT[sport] = z2 && z3 && z2.bis && z3.bis ? { lt1: z2.bis, lt2: z3.bis, date: P.gueltig_ab, profil: P.name } : null;
+  }
   return LT[sport];
 }
 function zone3(a) {
   const th = ltHr(a.sport);
-  if (th && a.hh) {
+  if (th && a.hh && a.date >= th.date) {
     const z = [0, 0, 0];
     a.hh.forEach((sec, i) => {
       if (!sec) return;
@@ -2601,8 +2850,8 @@ function zone3(a) {
   return null;
 }
 function zoneBasis(sp) {
-  const parts = (sp ? [sp] : ["rad", "lauf"]).map((k) => { const t = ltHr(k); return t ? `${SPORTS[k].label}: Laktattest vom ${dateCH(t.date)} (LT1 ${Math.round(t.lt1)}, LT2 ${Math.round(t.lt2)} bpm)` : null; }).filter(Boolean);
-  return parts.length ? "Basis: " + parts.join(" · ") + ". Übrige Einheiten: Garmin-Pulszonen (Z1–2 locker, Z3 mittel, Z4–5 hart)." : "Basis: deine Garmin-Pulszonen (Z1–2 locker, Z3 mittel, Z4–5 hart). Nach deinem ersten Stufentest rechne ich mit deinen Laktatschwellen.";
+  const parts = (sp ? [sp] : ["rad", "lauf"]).map((k) => { const t = ltHr(k); return t ? `${SPORTS[k].label} ab ${dateCH(t.date)}: ${t.profil} (locker bis ${t.lt1} bpm, mittel bis ${t.lt2} bpm)` : null; }).filter(Boolean);
+  return parts.length ? "Basis: " + parts.join(" · ") + ". Ältere Einheiten: Garmin-Pulszonen (Z1–2 locker, Z3 mittel, Z4–5 hart)." : "Basis: deine Garmin-Pulszonen (Z1–2 locker, Z3 mittel, Z4–5 hart).";
 }
 function renderChecks() {
   const list = (D.lactate || []).filter((l) => l.kind === "check").sort((a, b) => a.date.localeCompare(b.date));
@@ -2731,8 +2980,9 @@ function calEvents(ds) {
 /* =====================================================================
    Start
    ===================================================================== */
+v5Start();
 initKarte();
-showTab(TAB_NAMES.includes(location.hash.slice(1)) ? location.hash.slice(1) : store.get("sf.tab", "karte"));
+V5_READY.finally(() => showTab(TAB_NAMES.includes(location.hash.slice(1)) ? location.hash.slice(1) : store.get("sf.tab", "karte")));
 }
 </script>
 </body>

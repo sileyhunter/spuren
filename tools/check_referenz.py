@@ -103,9 +103,18 @@ def main():
             else:
                 alle["gleich"] += 1
         alle["abweichungen"] = alle["abweichungen"][:50]
-    ok = not abw and all(x["ok"] for x in a3) and all(x["ok"] for x in a5) and not ohne and not alle["abweichungen"]
+    # V5: Schwellen je Methode gegen die dokumentierte Auswertung (Handwerte im Referenzsatz, nur verschlüsselt)
+    sch = []
+    S = {t["test"]: t for t in (D.get("schwellen") or {}).get("tests", [])}
+    for tid, soll in (R.get("schwellen_soll") or {}).items():
+        t = S.get(tid)
+        for mk, v in soll.items():
+            got = ((t or {}).get("methoden", {}).get(mk) or {}).get("x")
+            tol = 0.06 if (t or {}).get("sport") == "lauf" else 1.0
+            sch.append({"test": tid, "methode": mk, "soll": v, "neu": got, "ok": got is not None and abs(got - v) <= tol, "toleranz": tol})
+    ok = not abw and all(x["ok"] for x in a3) and all(x["ok"] for x in a5) and not ohne and not alle["abweichungen"] and all(x["ok"] for x in sch)
     R["pruefung"] = {"datum": today, "ok": ok, "einheiten": len(R["einheiten"]), "abweichungen": abw, "a3": a3, "a5": a5,
-                     "laktat_ohne_quelle": len(ohne), "alle": alle,
+                     "laktat_ohne_quelle": len(ohne), "alle": alle, "schwellen": sch,
                      "versionen": {k: v["v"] for k, v in kennzahlen.VERSIONS.items()}}
     json.dump(D, open(a.data, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
     print(f"Referenzsatz: {len(R['einheiten'])} Einheiten, Abweichungen: {len(abw)}")
@@ -118,6 +127,11 @@ def main():
     for x in a5:
         print(f"   {'ok ' if x['ok'] else 'NEIN'} {x['name']}: {x['n']}/{x['soll_n']} Stufen, gemessen minus Soll {x['dx']} (Grenze ±{x['toleranz']})")
     print(f"Laktatwerte ohne Quelle: {len(ohne)}")
+    if sch:
+        bad = [x for x in sch if not x["ok"]]
+        print(f"Schwellen gegen die Auswertung vom 2.11.2026: {len(sch) - len(bad)} von {len(sch)} innerhalb ±1 W bzw. ±0,06 km/h")
+        for x in bad:
+            print("   NEIN", x)
     print(f"Alle Aktivitäten: {alle['gleich']} von {alle['n']} gleich; Abweichungen: {len(alle['abweichungen'])}")
     for x in alle["abweichungen"][:10]:
         print("  ", x)
