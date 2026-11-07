@@ -76,7 +76,7 @@
     $("lr-ist").innerHTML = `<h3 class="mini-h">Plan gegen Ist</h3><label class="row">Fahrt <select id="lr-sel"><option value="">wählen …</option>${cands.map((a) => `<option value="${esc(a.id)}" ${a.id === LR.ist ? "selected" : ""}>${dch(a.date)} · ${esc(a.name)} · ${num((a.mv || a.dur) / 3600, 1)} h</option>`).join("")}</select></label>
       ${pi ? `<div class="kv"><div><span>Ø Watt</span><b>${num(pi.avg_w)}</b><small>${esc(pi.lage_avg)}</small></div><div><span>NP</span><b>${num(pi.np_w)}</b><small>${esc(pi.lage_np)}</small></div><div><span>Puls Ø</span><b>${num(pi.hr)}</b></div><div><span>Puls 1./2. Hälfte</span><b>${num(pi.h1)} / ${num(pi.h2)}</b></div><div><span>Entkopplung</span><b>${num(pi.entkopplung, 1)} %</b></div></div>${pi.hinweis ? `<p class="hint">${esc(pi.hinweis)}</p>` : ""}` : `<p class="hint">Wähle eine Fahrt, um sie mit dem Band zu vergleichen. Ø Watt und NP stehen getrennt.</p>`}`;
     $("lr-sel").onchange = (e) => { LR.ist = e.target.value || null; V.langfahrt(); };
-    $("t-lr").innerHTML = `<tr><th>Datum</th><th>Fahrt</th><th>h</th><th>Ø W</th><th>NP</th><th>Puls Ø</th><th>Puls 1./2.</th><th>Entkopplung</th><th>Wetter</th></tr>` + (r.basis.map((b) => `<tr><td>${dch(b.date)}</td><td class="wrap">${esc(b.name)}</td><td>${num(b.h, 1)}</td><td>${b.watt}</td><td>${num(b.np)}</td><td>${b.hr}</td><td>${num(b.h1)} / ${num(b.h2)}</td><td>${num(b.dec, 1)} %</td><td>${b.wx ? `${num(b.wx.temperature)} °C ${V.prov("wetter", (FK().wxQuality(b.wx, (C().ACT_BY_ID.get(b.id) || {}).coords && C().ACT_BY_ID.get(b.id).coords[0]) || {}).text || "Garmin-Wetter")}` : "–"}</td></tr>`).join("") || `<tr><td colspan="9">Keine passenden Fahrten.</td></tr>`);
+    $("t-lr").innerHTML = `<tr><th>Datum</th><th class="l">Fahrt</th><th>h</th><th>Ø W</th><th>NP</th><th>Puls Ø</th><th>Puls 1./2.</th><th>Entkopplung</th><th>Wetter</th></tr>` + (r.basis.map((b) => `<tr><td>${dch(b.date)}</td><td class="wrap">${esc(b.name)}</td><td>${num(b.h, 1)}</td><td>${b.watt}</td><td>${num(b.np)}</td><td>${b.hr}</td><td>${num(b.h1)} / ${num(b.h2)}</td><td>${num(b.dec, 1)} %</td><td>${b.wx ? `${num(b.wx.temperature)} °C ${V.prov("wetter", (FK().wxQuality(b.wx, (C().ACT_BY_ID.get(b.id) || {}).coords && C().ACT_BY_ID.get(b.id).coords[0]) || {}).text || "Garmin-Wetter")}` : "–"}</td></tr>`).join("") || `<tr><td colspan="9">Keine passenden Fahrten.</td></tr>`);
   };
 
   /* ======================= Koppelläufe ======================= */
@@ -90,7 +90,7 @@
     const A = C().ACT_BY_ID;
     const live = pairs.filter((p) => p.status !== "getrennt");
     if (!BR.sel && live.length) BR.sel = live[0].bike + "|" + live[0].run;
-    $("t-br").innerHTML = `<tr><th>Datum</th><th>Rad</th><th>Wechsel</th><th>Lauf</th><th>Status</th><th></th></tr>` + (pairs.slice(0, 60).map((p) => {
+    $("t-br").innerHTML = `<tr><th>Datum</th><th class="l">Rad</th><th>Wechsel</th><th class="l">Lauf</th><th class="l">Status</th><th></th></tr>` + (pairs.slice(0, 60).map((p) => {
       const b = A.get(p.bike), r = A.get(p.run), m = F.brickMetrics(b, r, p);
       return `<tr class="${BR.sel === p.bike + "|" + p.run ? "on" : ""}"><td>${dch(b.date)}</td><td class="wrap">${esc(b.typ)} ${C().hmm(m.rad.dauer_s || 0)} h · ${m.rad.watt ? m.rad.watt + " W" : "ohne Watt"}${m.rad.np ? " · NP " + m.rad.np : ""}</td>
         <td>${num(p.wechsel_min, 1)} min${p.genau ? "" : " <small>±1</small>"}${p.mehrsport ? " <small>Mehrsport</small>" : ""}${p.hinweis ? `<br><small>${esc(p.hinweis)}</small>` : ""}</td>
@@ -139,7 +139,7 @@
     const logs = V.merged("fueling", "fueling").sort((a, b) => (b.date || "").localeCompare(a.date || ""));
     const dur = (e) => { const a = A.get(e.activity_id); return e.dauer_s || (a ? a.mv || a.dur : null); };
     // Liste
-    $("t-fu").innerHTML = `<tr><th>Datum</th><th>Einheit</th><th>Status</th><th>KH</th><th>KH/h</th><th>ml/h</th><th>Na mg/h</th><th>GI max</th><th></th></tr>` + (logs.map((e) => {
+    $("t-fu").innerHTML = `<tr><th>Datum</th><th class="l">Einheit</th><th class="l">Status</th><th>KH</th><th>KH/h</th><th>ml/h</th><th>Na mg/h</th><th>GI max</th><th></th></tr>` + (logs.map((e) => {
       const t = F.fuelingTotals(e, dur(e)), a = A.get(e.activity_id), gi = Math.max(-1, ...(e.gi || []).map((g) => g.schwere ?? -1));
       return `<tr class="${FU.sel === e.id ? "on" : ""}"><td>${dch(e.date)}</td><td class="wrap">${esc(a ? a.name : e.titel || "ohne Aktivität")}${e._lokal ? " " + V.badge("nur hier") : ""}</td><td>${esc(t.status)}</td>
         <td>${t.kh_g != null ? num(t.kh_g) + " g" : t.status === "nicht protokolliert" ? "–" : `≥ ${num(t.kh_min_g)} g`}</td><td>${t.kh_g_h != null ? num(t.kh_g_h) : "–"}</td><td>${t.ml_h != null ? num(t.ml_h) : "–"}</td><td>${t.na_mg_h != null ? num(t.na_mg_h) : "–"}</td><td>${gi >= 0 ? gi + "/5" : "–"}</td>

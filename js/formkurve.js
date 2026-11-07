@@ -397,7 +397,8 @@
       else p.status = "vorschlag";
       if (!p.genau && Math.abs(p.wechsel_s - opt.maxMin * 60) <= 90 && !p.manuell) p.hinweis = "Startzeit nur auf die Minute genau: Grenze prüfen";
     }
-    return pairs.sort((x, y) => (x.bike < y.bike ? 1 : -1));
+    const t0 = new Map(A.map((x) => [x.a.id, x.t.t0]));
+    return pairs.sort((x, y) => (t0.get(y.bike) - t0.get(x.bike)) || (t0.get(x.run) - t0.get(y.run)));
   };
   /** Kennzahlen eines Koppellaufs; fehlende Werte bleiben null (z. B. kein NP ohne Leistungsmesser). */
   FK.brickMetrics = function (bike, run, pair) {

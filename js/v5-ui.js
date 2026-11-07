@@ -403,7 +403,7 @@
       f.querySelectorAll("[data-k]").forEach((el) => el.addEventListener("change", () => { LIB[el.dataset.k] = el.type === "checkbox" ? el.checked : el.value; V.library(); }));
     }
     const shown = rows.filter((r) => (!LIB.sport || r.sport === LIB.sport) && (!LIB.prot || r.prot === LIB.prot) && (!LIB.status || r.status === LIB.status) && (LIB.arch || !arch.has(r.id)));
-    $("t-lib").innerHTML = `<tr><th>Datum</th><th>Art</th><th>Sport</th><th>Protokoll</th><th>Werte</th><th>Quelle</th><th>Gerät</th><th>Status</th><th>Aktionen</th></tr>` + (shown.map((r) => `<tr>
+    $("t-lib").innerHTML = `<tr><th>Datum</th><th class="l">Art</th><th class="l">Sport</th><th class="l">Protokoll</th><th>Werte</th><th class="l">Quelle</th><th class="l">Gerät</th><th class="l">Status</th><th class="l">Aktionen</th></tr>` + (shown.map((r) => `<tr>
       <td>${dch(r.datum)}</td><td>${esc(r.art)}</td><td>${r.sport === "lauf" ? "Lauf" : "Rad"}</td><td>${esc(protName(r.prot))}</td><td>${r.n}</td><td class="wrap"><small>${esc(r.quelle)}</small></td><td>${esc(r.geraet)}</td>
       <td>${V.badge(conf.has(r.id) ? "bestätigt" : r.status, conf.has(r.id) ? "zum Export" : "")}${arch.has(r.id) ? " " + V.badge("archiviert") : ""}</td>
       <td class="acts">${r.art !== "Entwurf" ? `<button class="btn" data-a="show" data-id="${esc(r.id)}">Ansehen</button>` : `<button class="btn" data-a="open" data-id="${esc(r.id)}">Weiter</button>`}
