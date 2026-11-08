@@ -28,7 +28,7 @@
     data: null, vault: null, persistent: false,
     key() { return (C && C.IS_DEMO ? "demo." : "") + "sf.v5.eingaben"; },
     empty() { return { v: 1, fueling: [], befinden: [], test_entwuerfe: [], koppel: [], langfahrt: [], laktat_bestaetigt: [], archiv: [], coach: [], fueling_produkte: null, notizen: {},
-      pb: [], css: [], fehler: [] }; },
+      pb: [], css: [], fehler: [], rpe: [], intervalle: [], laktat_punkte: [], saison: [] }; },
     async ensureVault() {
       if (this.vault) return this.vault;
       if (window.SPUREN_VAULT) { this.vault = window.SPUREN_VAULT; this.persistent = true; return this.vault; }
@@ -57,14 +57,15 @@
       const D = C.D, same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
       const srv = (k, idf) => new Map((D[k] || []).map((e) => [idf(e), e]));
       const pairs = [["fueling", "fueling", (e) => e.id], ["befinden", "befinden", (e) => e.date], ["test_entwuerfe", "test_entwuerfe", (e) => e.id], ["langfahrt", "langfahrt_plaene", (e) => e.id], ["koppel", "koppel", (e) => e.bike + "|" + e.run],
-        ["pb", "pb_offiziell", (e) => e.id], ["css", "css_tests", (e) => e.id], ["fehler", "fehlerboard", (e) => e.id]];
+        ["pb", "pb_offiziell", (e) => e.id], ["css", "css_tests", (e) => e.id], ["fehler", "fehlerboard", (e) => e.id],
+        ["rpe", "rpe", (e) => e.id], ["intervalle", "intervall_korr", (e) => e.id], ["laktat_punkte", "laktat_punkte", (e) => e.id], ["saison", "saison_plan", (e) => e.id]];
       for (const [loc, key, idf] of pairs) { const m = srv(key, idf); this.data[loc] = (this.data[loc] || []).filter((e) => !(m.has(idf(e)) && same(m.get(idf(e)), stripLocal(e)))); }
       const conf = new Set((D.lactate || []).map((l) => l.id));
       this.data.laktat_bestaetigt = (this.data.laktat_bestaetigt || []).filter((id) => !conf.has(id));
     },
     upsert(list, item, idf) { idf = idf || ((e) => e.id); const L = this.data[list]; const i = L.findIndex((e) => idf(e) === idf(item)); if (i >= 0) L[i] = item; else L.push(item); return this.save(); },
     remove(list, id, idf) { idf = idf || ((e) => e.id); this.data[list] = this.data[list].filter((e) => idf(e) !== id); return this.save(); },
-    count() { const d = this.data || {}; return ["fueling", "befinden", "test_entwuerfe", "koppel", "langfahrt", "coach", "pb", "css", "fehler"].reduce((s, k) => s + (d[k] || []).length, 0) + (d.laktat_bestaetigt || []).length + (d.fueling_produkte ? 1 : 0); },
+    count() { const d = this.data || {}; return ["fueling", "befinden", "test_entwuerfe", "koppel", "langfahrt", "coach", "pb", "css", "fehler", "rpe", "intervalle", "laktat_punkte", "saison"].reduce((s, k) => s + (d[k] || []).length, 0) + (d.laktat_bestaetigt || []).length + (d.fueling_produkte ? 1 : 0); },
     async exportFile() {
       await this.ensureVault();
       const out = { format: "spuren-eingaben-1", erstellt: new Date().toISOString(), demo: !!C.IS_DEMO, salt: this.vault.salt || null, iter: this.vault.iter || null,
@@ -76,7 +77,7 @@
       const j = JSON.parse(await file.text());
       if (j.format !== "spuren-eingaben-1") throw new Error("keine Eingaben-Datei");
       const d = await this.vault.open(j.verschluesselt);
-      for (const k of ["fueling", "befinden", "test_entwuerfe", "koppel", "langfahrt", "coach", "pb", "css", "fehler"]) for (const e of d[k] || []) { const L = (this.data[k] = this.data[k] || []); const idf = k === "befinden" ? (x) => x.date : k === "koppel" ? (x) => x.bike + "|" + x.run : (x) => x.id; if (!L.some((x) => idf(x) === idf(e))) L.push(e); }
+      for (const k of ["fueling", "befinden", "test_entwuerfe", "koppel", "langfahrt", "coach", "pb", "css", "fehler", "rpe", "intervalle", "laktat_punkte", "saison"]) for (const e of d[k] || []) { const L = (this.data[k] = this.data[k] || []); const idf = k === "befinden" ? (x) => x.date : k === "koppel" ? (x) => x.bike + "|" + x.run : (x) => x.id; if (!L.some((x) => idf(x) === idf(e))) L.push(e); }
       for (const id of d.laktat_bestaetigt || []) if (!this.data.laktat_bestaetigt.includes(id)) this.data.laktat_bestaetigt.push(id);
       if (d.fueling_produkte && !this.data.fueling_produkte) this.data.fueling_produkte = d.fueling_produkte;
       await this.save();
@@ -89,6 +90,8 @@
     const b64d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
     return {
       async seal(obj) { const iv = crypto.getRandomValues(new Uint8Array(12)); const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, k, new TextEncoder().encode(JSON.stringify(obj)))); return b64e(iv) + "." + b64e(ct); },
+      /** V5.6: Binärdatei «SPS1 | IV | Chiffre+Tag» (Sekundenreihen) → Klartext-Bytes. */
+      async openBin(u8) { if (String.fromCharCode(u8[0], u8[1], u8[2], u8[3]) !== "SPS1") throw new Error("Unbekanntes Dateiformat"); return new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: u8.subarray(4, 16) }, k, u8.subarray(16))); },
       async open(s) { const [a, b] = String(s).split("."); const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64d(a) }, k, b64d(b)); return JSON.parse(new TextDecoder().decode(pt)); },
     };
   };

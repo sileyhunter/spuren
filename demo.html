@@ -627,6 +627,30 @@ table.t.rp-vt td:first-child { min-width: 64px; } .rp-vt .rp-vbtn { margin-top: 
 .v53-zbars .trk i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; filter: saturate(1.6) brightness(.92); }
 .v53-zbars .trk em { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--fg); transform: translateX(-1px); opacity: .75; }
 .v53-zbars span, .v53-zbars small { font-size: 12px; color: var(--muted); } .v53-zbars b { font-variant-numeric: tabular-nums; text-align: right; }
+/* V5.6 Explorer und Karten */
+body.ex-offen { overflow: hidden; }
+.ex-ov { grid-template-columns: minmax(0, 1fr); justify-items: center; }
+.ex-ov .te-box.ex { width: min(980px, 100%); min-width: 0; max-width: 100%; box-sizing: border-box; }
+.ex-ov .te-box.ex > * { min-width: 0; } .ex-charts canvas { max-width: 100%; }
+.ex-head h2 { font-size: 18px; } .ex-selbox { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.ex-selhead { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.ex-kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 6px 12px; margin: 0; }
+.ex-kv div { display: flex; flex-direction: column; } .ex-kv dt { font-size: 11.5px; color: var(--muted); } .ex-kv dd { margin: 0; font-weight: 650; font-variant-numeric: tabular-nums; }
+.ex-acts { flex-wrap: wrap; gap: 6px; } .ex-acts .btn { min-height: 44px; }
+.ex-charts { display: flex; flex-direction: column; gap: 2px; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.ex-ch { position: relative; } .ex-ch canvas { width: 100%; height: 92px; display: block; }
+.ex-lab { position: absolute; left: 44px; top: 2px; font-size: 11px; font-weight: 650; color: var(--muted); pointer-events: none; background: rgba(255,255,255,.7); padding: 0 4px; border-radius: 4px; }
+.ex-x { display: flex; justify-content: space-between; padding-left: 40px; font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ex-read { min-height: 20px; font-size: 13px; } .ex-tip { margin: 0; }
+.ex-btn { margin-left: 6px; } .cal-day .ex-btn { min-height: 36px; padding: 0 10px; }
+.rpe-skala { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; } .rpe-b { min-height: 44px; min-width: 0; padding: 0; justify-content: center; text-align: center; }
+@media (max-width: 520px) { .rpe-skala { grid-template-columns: repeat(5, minmax(0, 1fr)); } } .rpe-b[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+.v56-acts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.v56-acts li { display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+.v56-an { flex: 1; min-width: 0; display: flex; flex-direction: column; } .v56-an small { color: var(--muted); }
+.v56-svgwrap { width: 100%; } .v56-saison { width: 100%; height: auto; display: block; } .v56-rl { font-size: 15px; fill: #1f3347; font-weight: 700; } .v56-ax { font-size: 13px; fill: #6b7785; }
+.v56-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); } .v56-legend i { display: inline-block; width: 12px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.v56-legend i.dot { width: 8px; height: 8px; border-radius: 50%; }
 /* V5.5 Schwimmen: CSS-Test, Fehlerboard */
 .fu-empty { border: 1px dashed var(--line-2, #c4ccd3); border-radius: 12px; padding: 12px 14px; margin: 6px 0 10px; } .fu-empty p { margin: 0 0 8px; }
 .css-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 12px; }
@@ -807,6 +831,10 @@ table.t.rp-vt td:first-child { min-width: 64px; } .rp-vt .rp-vbtn { margin-top: 
         <div class="verdict" id="today-verdict"></div>
         <div class="kv" id="today-kv"></div>
       </div>
+      <div class="card w12" id="v56-rpe-card">
+        <div class="card-head"><div><h2>Letzte Einheiten bewerten</h2><div class="sub">RPE, Gefühl und Beschwerden – verbindet dein Empfinden mit Last, HRV, Ruhepuls und Schlaf</div></div></div>
+        <div id="v56-rpe"></div><div id="v56-kal"></div>
+      </div>
       <div class="card w8">
         <div class="card-head"><div><h2>Bereitschaft im Verlauf</h2><div class="sub">HRV gegen deine eigene Referenz, Ruhepuls und Schlaf</div></div>
           <div class="seg" id="rd-range" role="group" aria-label="Zeitraum"><button data-n="21" aria-pressed="true">21 Tage</button><button data-n="42" aria-pressed="false">42 Tage</button></div></div>
@@ -839,6 +867,14 @@ table.t.rp-vt td:first-child { min-width: 64px; } .rp-vt .rp-vbtn { margin-top: 
         <div class="cal-legend" id="cal-legend"></div>
       </div>
       <div class="card w12">
+        <div class="card-head"><div><h2>Geplant gegenüber absolviert</h2><div class="sub">Enduco-Workouts, wie sie auf der Uhr ausgeführt wurden: Dauer, Zielbereich, Hauptteil, Gefühl, gleiche Einheit früher</div></div></div>
+        <div id="v56-plan"></div>
+      </div>
+      <div class="card w12">
+        <div class="card-head"><div><h2>Saison bis Ironman Hamburg 2027</h2><div class="sub">Phasen, Erholung, Taper und Wochenstunden: Vorschlag gegenüber absolviert – Entscheidungshilfe, Enduco bleibt massgebend</div></div></div>
+        <div id="v56-saison"></div>
+      </div>
+      <div class="card w12">
         <h2>Testkalender</h2>
         <div class="sub">Wann ein Stufentest oder ein kurzer Laktat-Check Sinn macht. Kurz-Checks am besten am Ende einer lockeren Woche, damit die Werte vergleichbar sind. Die Vorschläge passe ich auf Wunsch an.</div>
         <div class="tablewrap"><table class="t" id="t-tests"></table></div>
@@ -850,7 +886,8 @@ table.t.rp-vt td:first-child { min-width: 64px; } .rp-vt .rp-vbtn { margin-top: 
   <section class="view" id="view-training" role="tabpanel" aria-labelledby="tab-training" hidden>
     <div class="dash">
       <div class="card w12" id="dev-card">
-        <div class="card-head"><div><h2>Meine Entwicklung</h2><div class="sub">Nur geprüfte Vergleiche aus vergleichbaren Messungen – kein Urteil aus Rohdaten</div></div></div>
+        
+      <div class="card-head"><div><h2>Meine Entwicklung</h2><div class="sub">Nur geprüfte Vergleiche aus vergleichbaren Messungen – kein Urteil aus Rohdaten</div></div></div>
         <div class="dev-ctl">
           <div class="seg" role="group" aria-label="Zeitraum"><button type="button" data-w="4">4 Wochen</button><button type="button" data-w="12">12 Wochen</button><button type="button" data-w="52">52 Wochen</button></div>
           <label class="dev-l">Vergleich mit <select id="dev-ref" aria-label="Referenzzeitraum"><option value="vorjahr">gleicher Zeitraum im Vorjahr</option><option value="vorher">Zeitraum direkt davor</option><option value="frei">frei wählen</option></select></label>
@@ -865,6 +902,10 @@ table.t.rp-vt td:first-child { min-width: 64px; } .rp-vt .rp-vbtn { margin-top: 
         </div>
         <div class="dev-metrics" id="dev-metrics"></div>
         <details class="more"><summary>So wurde gerechnet</summary><div id="dev-how"></div></details>
+      </div>
+      <div class="card w12" id="v56-konstanz-card">
+        <div class="card-head"><div><h2>Konstanz und Belastungsverträglichkeit</h2><div class="sub">Letzte 52 Wochen: wie regelmässig du trainierst und wie steil die Belastung stieg</div></div></div>
+        <div id="v56-konstanz"></div>
       </div>
       <div class="card w12">
         <div class="card-head">
@@ -1111,6 +1152,10 @@ table.t.rp-vt td:first-child { min-width: 64px; } .rp-vt .rp-vbtn { margin-top: 
   <!-- ================= AUSDAUER (V5) ================= -->
   <section class="view" id="view-ausdauer" role="tabpanel" aria-labelledby="tab-ausdauer" hidden>
     <div class="dash">
+      <div class="card w12" id="v56-ermuedung-card">
+        <div class="card-head"><div><h2>Ermüdungsresistenz</h2><div class="sub">Puls bei gleicher Leistung früh und spät in derselben Fahrt, Leistung nach 2–5 Stunden</div></div></div>
+        <div id="v56-ermuedung"></div>
+      </div>
       <div class="card w12" id="lr-card">
         <div class="card-head"><div><h2>Lange Ausfahrt: Watt- und Pulsband für 1–6 h</h2><div class="sub">Aus deinen Fahrten ähnlicher Dauer und mit gleichem System, keine pauschale FTP-Prozentzahl.</div></div>
           <form class="inline" id="lr-ctl" onsubmit="return false"></form></div>
@@ -1138,7 +1183,8 @@ table.t.rp-vt td:first-child { min-width: 64px; } .rp-vt .rp-vbtn { margin-top: 
         <details class="more"><summary>Pace 0–5 min über die Zeit (explorativ)</summary><div class="chart"><canvas id="c-br-trend" aria-label="Pace der ersten 5 Minuten nach dem Rad"></canvas></div><p class="hint" id="br-trend-note"></p></details>
       </div>
       <div class="card w12" id="fu-card">
-        <div class="card-head"><div><h2>Train your Gut: Kohlenhydrate und Verträglichkeit</h2><div class="sub">Was du wann eingenommen hast und wie der Magen reagiert hat.</div></div>
+        
+      <div class="card-head"><div><h2>Train your Gut: Kohlenhydrate und Verträglichkeit</h2><div class="sub">Was du wann eingenommen hast und wie der Magen reagiert hat.</div></div>
           <div class="row"><select id="fu-sport" aria-label="Sportart"><option value="">Alle</option><option value="rad">Rad</option><option value="lauf">Lauf</option></select><label class="hint row">Planungsbereich g/h <input id="fu-ziel" placeholder="60–90" style="width:84px"></label></div></div>
         <div id="fu-empty" class="fu-empty" hidden></div>
         <div class="hp-grid" id="fu-charts"><div class="hp-col"><h3 class="mini-h">KH/h und GI-Beschwerden je Einheit</h3><div class="chart"><canvas id="c-fu-gut" aria-label="Kohlenhydrate pro Stunde und Beschwerden"></canvas></div></div>
@@ -1148,6 +1194,10 @@ table.t.rp-vt td:first-child { min-width: 64px; } .rp-vt .rp-vbtn { margin-top: 
         <div id="fu-edit"></div>
         <details id="fu-prod"></details>
         <div data-v5-sync></div>
+      </div>
+      <div class="card w12" id="v56-energie-card">
+        <div class="card-head"><div><h2>Energie und Verpflegung langer Einheiten</h2><div class="sub">Aufgenommen, geschätzter Verbrauch und modellierter KH-Verbrauch – klar getrennt, Unbekanntes bleibt unbekannt</div></div></div>
+        <div id="v56-energie"></div>
       </div>
     </div>
   </section>
@@ -1234,6 +1284,9 @@ table.t.rp-vt td:first-child { min-width: 64px; } .rp-vt .rp-vbtn { margin-top: 
 <script src="js/v53-extra.js"></script>
 <script src="js/v55.js"></script>
 <script src="js/v55-schwimmen.js"></script>
+<script src="js/analyse.js"></script>
+<script src="js/explorer.js"></script>
+<script src="js/v56.js"></script>
 <script>window.SPUREN_DEMO = true;</script>
 <script>
 (() => {
@@ -1600,6 +1653,7 @@ function showTab(name) {
   if (name === "karte") { map?.resize(); }
   const t = TABS[name];
   if (t && !t.done) { t.done = true; try { t.init?.(); t.draw(); } catch (e) { console.error(e); } }
+  if (window.V56 && window.V5UI && typeof V5_READY !== "undefined") V5_READY.then(() => { try { V56.zeichnen(name, V5UI.C); } catch (e) { console.error(e); } });
   const tb = document.querySelector(`nav.tabs button[data-tab="${name}"]`), nav = document.querySelector("nav.tabs");
   if (tb && nav) nav.scrollTo({ left: Math.max(0, tb.offsetLeft - (nav.clientWidth - tb.offsetWidth) / 2), behavior: "smooth" });   // aktiven Bereich mittig zeigen
   if (location.hash.slice(1) !== name) history.replaceState(null, "", "#" + name);
@@ -1977,7 +2031,7 @@ function showHits(list) {
   const el = document.getElementById("hits");
   el.innerHTML = list.map((a) => `<div class="item"><button class="main" data-id="${esc(a.id)}"><span class="dot" style="background:${(SPORTS[a.sport] || SPORTS.andere).color}"></span>
     <span>${esc(a.name)}<br><small>${dateCH(a.date)} · ${fmt(a.km, 1)} km · ${fmt(a.hm)} hm · ${hmm(a.dur)}${a.wx && !a.indoor ? ` · ${fmt(a.wx.temperature)} °C, Wind ${fmt(a.wx.wind_speed)} km/h ${esc(String(a.wx.wind_direction_compass || "").toUpperCase())} <span class="prov prov-wetter" title="Garmin-Wetter um ${esc(String(a.wx.issue_time || "").slice(11, 16))} UTC. ${esc(window.FK ? FK.wxQuality(a.wx, a.coords && a.coords[0]).text : "")}. Wetterstation oder Modell, nicht am Ort gemessen.">Wetter ${esc(window.FK ? FK.wxQuality(a.wx, a.coords && a.coords[0]).stufe : "")}</span>` : ""}</small></span>
-    <small>${a.watt ? a.watt + " W" : a.hr ? a.hr + " bpm" : ""}</small></button>${a.wx && !a.indoor && window.V53 ? `<button class="del wxcopy" data-id="${esc(a.id)}" title="Wettertext für die Strava-Beschreibung kopieren">Wetter kopieren</button>` : ""}</div>`).join("");
+    <small>${a.watt ? a.watt + " W" : a.hr ? a.hr + " bpm" : ""}</small></button><button class="del ex-btn" data-ex="${esc(a.id)}">Analysieren</button>${a.wx && !a.indoor && window.V53 ? `<button class="del wxcopy" data-id="${esc(a.id)}" title="Wettertext für die Strava-Beschreibung kopieren">Wetter kopieren</button>` : ""}</div>`).join("");
   el.querySelectorAll(".main").forEach((b) => b.addEventListener("click", () => selectActivity(b.dataset.id, true)));
   el.querySelectorAll(".wxcopy").forEach((b) => b.addEventListener("click", async () => {
     const a = ACT_BY_ID.get(b.dataset.id); if (!a) return;
@@ -2905,7 +2959,7 @@ const TABS = {
       const ev = calEvents(ds);
       box.hidden = false;
       box.innerHTML = `<b>${pd(ds).toLocaleDateString("de-CH", { weekday: "long", day: "numeric", month: "long" })}</b>` + (ev.length ? ev.map((e) => e.a
-        ? `<div><span class="dot" style="background:${e.c}"></span> ${esc(e.a.name)} · ${fmt(e.a.km, 1)} km · ${fmt(e.a.hm)} hm · ${hmm(e.a.dur)}${e.a.hr ? " · Ø " + e.a.hr + " bpm" : ""}${e.a.watt ? " · " + e.a.watt + " W" : ""} · TL ${fmt(e.a.tss)}</div>`
+        ? `<div><span class="dot" style="background:${e.c}"></span> ${esc(e.a.name)} · ${fmt(e.a.km, 1)} km · ${fmt(e.a.hm)} hm · ${hmm(e.a.dur)}${e.a.hr ? " · Ø " + e.a.hr + " bpm" : ""}${e.a.watt ? " · " + e.a.watt + " W" : ""} · TL ${fmt(e.a.tss)}${e.a.wk ? `<br><small>Plan «${esc(e.a.wk.name || "")}»: ${e.a.wk.plan_s ? hmm(e.a.wk.plan_s) : e.a.wk.plan_m ? (e.a.wk.plan_m >= 2000 ? fmt(e.a.wk.plan_m / 1000, 1) + " km" : e.a.wk.plan_m + " m") : "Dauer offen"} geplant, ${hmm(e.a.wk.ist_s)} absolviert${e.a.wk.im_ziel != null ? `, ${e.a.wk.im_ziel} % im Ziel` : ""}</small>` : ""} <button class="btn ex-btn" data-ex="${esc(e.a.id)}">Analysieren</button></div>`
         : `<div>${esc(e.text)}${e.title && e.title !== e.text ? " – " + esc(e.title) : ""}</div>`).join("") : `<div class="hint">Kein Eintrag.</div>`);
       if (!keep) this.draw();
     },
