@@ -1,5 +1,49 @@
 # Änderungen
 
+## V5.7 · 8.11.2026 · Smart Training Routes (Trainingsroute aus dem geplanten Workout)
+Auftrag «Ironman Notebook V5.7 – Smart Training Routes». Der Planer bleibt mit allen Funktionen erhalten (Start/Ziel fest, Zwischenziele,
+Rennrad ohne Gravel, Varianten, andere Routen, Umfahrung, Umkehren, Profil/Belag/Wegart/Wetter synchron). Kein neuer Haupttab.
+Ergebnis je Punkt mit Teststand (implementiert / lokal getestet / produktiv getestet): `docs/AUDIT_V57.md`. Wiederherstellungspunkt: Branch `vor-v57` (ed42b3d).
+
+**Neu**
+- Kalender: «Passende Route finden» bei geplanten Rad-, Lauf- und Wandereinheiten; im Planer «Training → Route». Workout aus der
+  Garmin-Verbindung (Enduco): Schritte, Wiederholungen, Ziele (Watt, Pace, Puls), intensive Schritte nach deinem Zonenprofil, Art und Dauer;
+  sonst eigene Angaben.
+- Drei echte Vorschläge: A Training, B Wetter, C ruhig/velofreundlich bzw. laufgeeignet – mit Distanz, Zeit und Band, Höhenmetern, Belag,
+  Strassentypen, Wind 1./2. Hälfte, Seitenböen, Regen, Tageslicht, Eignung, Begründung; Regler für Grundlage und Intervalle.
+- Dauer auf das Workout abgestimmt (Ziel ±5 % bzw. ±10 % bei Intervallen); die Plandauer wird nie verändert, Abweichungen stehen da.
+- Intervalle auf der Route: Bänder im Höhenprofil, farbig auf der Karte, je Abschnitt gut/bedingt/ungeeignet mit Gründen.
+- Startorte (Zuhause, Arbeit oder eigener Name) verschlüsselt auf dem Gerät, mit «Exportieren» in die verschlüsselten Daten.
+- Vorschlag vs. Ist im Kalender nach dem Training; Modellgüte nur aus unabhängigen Einheiten.
+- Nacht-Update (nur lesend über Garmin): Workout-Schritte, neue Enduco-Workouts ohne Datum, GPS-Spur `poly`. Geschrieben wird weiter nur `data.enc.json`.
+
+**Rennrad-Routing geprüft und verbessert**
+- Pflaster eigener Belag (kein Gravel); unbekannt bleibt unbekannt.
+- Velofreundlich nur, wenn wirklich ruhiger; 10 % gelten der Fahrzeit (ohne Zeitprognose ausdrücklich der Distanz).
+- Profil: velofreundliche Variante meidet Hauptstrassen zusätzlich (`avoid_mainroads`), unabhängig von Verkehrsdaten des Servers.
+- Ersatzprofil fastbike immer sichtbar im Planer-Status; BRouter-Anfragen höchstens 2 gleichzeitig.
+
+**Behoben (im Browsertest gefunden)**
+- Planer-Status brach bei einem Abschnitt mit unbekanntem Zugang ab (seit V5.3 möglich): jetzt «Zugang unbekannt», erst ab 5 m gemeldet.
+- Regler der Trainingsvorschau: beim Ziehen wird nur der Vergleich darunter neu gezeichnet – vorher wurde der Regler selbst ersetzt und das
+  Ziehen brach nach einem Schritt ab.
+- Neuzeichnen der Trainingsvorschau, während ein Eingabefeld mit geändertem Wert aktiv war, löste einen Fehler aus (doppeltes Zeichnen über
+  das «change» beim Verlassen des Felds); jetzt wird das Feld vorher verlassen und nur einmal gezeichnet.
+
+| Regel | vorher | jetzt |
+|---|---|---|
+| Zeitmodell | `zeit-rt-1.2` (eine Intensität) | `zeit-rt-1.3` (Leistung bzw. Tempo je Workout-Schritt; Rollwiderstand Pflaster) |
+| Belag | Pflaster = «Anderer Hartbelag» | `belag-1.1` (Pflaster eigene Klasse) |
+| Varianten | `varianten-2.0` | `varianten-2.1` (nur ruhiger = velofreundlich; Distanz-Ersatz beschriftet) |
+| Rennradprofil | `gravel-rt-1.0` | `gravel-rt-1.1` (`avoid_mainroads`) |
+| Anfragen | alle Abschnitte gleichzeitig | `anfragen-1.0` (höchstens 2 gleichzeitig, Cache je URL) |
+| Neu | – | `workout-1.0`, `trainingsroute-1.0`, `dauer-1.0`, `intervall-rt-1.0`, `wetteroptimiert-1.0`, `ruhig-1.0`, `tageslicht-1.0`, `auswertung-rt-1.0` |
+
+Geprüft: `tests/test_training.cjs` 25 (neu; Enduco-Strukturen, Zeitplan, Dauerabstimmung, Intervalle, Wetter, Tageslicht, Suche mit lokal
+aufgezeichneten BRouter-Antworten Rennrad/Laufen/Gravel, Fehler, Auswertung), `test_route.cjs`, `test_formkurve.cjs`, `test_analyse.cjs`,
+`test_tools.py` (neu: Nacht-Update mit Schritten und Spur, Startorte, Vorschläge); Browser iPhone und Desktop gegen die lokale BRouter-Instanz;
+Zeitprognose an 42 echten Rennradfahrten (Median ±5,0 %). **Nicht getestet:** brouter.de, Open-Meteo, swisstopo, Routen in der Schweiz, echtes iPhone.
+
 ## V5.6 · Routenplaner · 8.11.2026 · Start/Ziel fest, Rennrad ohne Gravel, velofreundlich, andere Routen
 Wunsch von Silas (8.11.2026, Chat). Betrifft nur den Routenplaner; andere Sportarten routen wie bisher (zusätzlich «Andere Routen»).
 

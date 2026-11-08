@@ -1,4 +1,4 @@
-# Offen nach V5.5 und V5.6 (Stand 8.11.2026)
+# Offen nach V5.5, V5.6 und V5.7 (Stand 8.11.2026)
 
 Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 
@@ -23,7 +23,7 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
     vorhandenen (nie 0). Entscheid offen, ob das wie beim Wind streng «unbekannt» werden soll.
 
 ## Nach V5.6 (Stand 8.11.2026)
-12. **Reihen im Nacht-Update:** Der geplante Auftrag «Nacht-Update» erlaubt nur `data.enc.json` zu committen. Darum kommen Sekundenreihen
+12. **Reihen im Nacht-Update (Freigabe offen, am 8.11.2026 erneut gefragt):** Der geplante Auftrag «Nacht-Update» erlaubt nur `data.enc.json` zu committen. Darum kommen Sekundenreihen
     neuer Aktivitäten erst mit dem Monatsexport (Plan `wk` und Ermüdung `fr` rechnet das Nacht-Update schon). Mit Silas' Freigabe den
     Auftrag um «und `serien/` (verschlüsselt)» ergänzen.
 13. **Auf dem iPhone prüfen (hier nicht möglich):** Explorer in Safari (Wischen zum Markieren, Entpacken braucht iOS 16.4 oder neuer),
@@ -44,3 +44,19 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 21. **swisstopo-Suche:** Antwortformat nach Dokumentation (x = Nord, y = Ost, wahlweise lat/lon) umgesetzt, live ungeprüft; Orte ausserhalb
     der Schweiz (z. B. Milano) nur über die Karte.
 22. **Pässe benennen:** Alternativen tragen nur Nummer, Abweichung und höchsten Punkt; Passnamen bräuchten einen weiteren Dienst.
+
+## Smart Training Routes (V5.7)
+23. **Live in der Schweiz prüfen (hier gesperrt):** «Passende Route finden» ab deinen gespeicherten Startorten mit einer echten Enduco-Einheit;
+    2 h Grundlage @ 200 W (Dauer ±5 %?), Intervalle (liegen sie auf ruhigen, gleichmässigen Abschnitten?), Laufen 60 min, Gravel mit Schotter,
+    Wetter-Vorschlag B mit echter Open-Meteo-Prognose, Tageslicht abends. Chur–Lenzerheide über Paspels im Planer wie bei Punkt 19.
+24. **Rundtouren in Tälern:** Die Kandidaten liegen auf einem Kreis durch den Start (6 Richtungen). In engen Tälern (Domleschg, Schanfigg)
+    schiebt BRouter Zwischenziele auf den nächsten Weg – oft Hin und zurück auf derselben Strasse oder eine Stichstrasse. Ob die Auswahl dort
+    gute Runden findet, ist ohne Schweizer Kartendaten ungeprüft. Später: «Meine bewährten Trainingsstrecken» aus deinen Garmin-Spuren.
+25. **Verkehr:** `consider_traffic` wirkt nur mit der geschätzten Verkehrsklasse in den Kartendaten von brouter.de (ungeprüft); dafür neu
+    `avoid_mainroads` in der velofreundlichen Variante. Windschutz (Wald, Siedlung) wird nicht beurteilt, nur Böen quer zur Fahrtrichtung.
+26. **Workouts ohne Kalenderdatum:** Enduco legt nicht jede Einheit im Garmin-Kalender an; dann «neu von Enduco» (ohne Datum) oder eigene
+    Angaben. Ob das Nacht-Update die neuen Workouts zuverlässig findet, zeigt sich erst nach einigen Nächten.
+27. **Export zu Garmin:** GPX mit Intervall-Wegpunkten herunterladen und in Garmin Connect importieren; ein direktes Hochladen von der Seite
+    gibt es nicht (kein Server). Auf Wunsch lade ich eine GPX-Datei aus dem Chat als Strecke hoch – nur mit ausdrücklichem Ja.
+28. **Vorschläge im Speicher:** Je gewähltem Vorschlag ~10 kB (kompakte Linie) in den Eingaben bzw. `data.enc.json`. Nach einigen Monaten
+    alte, ausgewertete Vorschläge auf die Kennzahlen kürzen.
