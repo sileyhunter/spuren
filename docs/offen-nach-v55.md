@@ -1,4 +1,4 @@
-# Offen nach V5.5 (Stand 8.11.2026)
+# Offen nach V5.5 und V5.6 (Stand 8.11.2026)
 
 Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 
@@ -21,3 +21,17 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 10. **Undokumentierte FIT-Nachrichten:** nur nutzen, wenn Garmin sie beschreibt; bis dahin keine Einnahmen daraus.
 11. **Temperatur und Böen bei halben Lücken:** Fehlt nur einer von zwei Nachbarwerten (Stunde oder Stützpunkt), nimmt die Seite den
     vorhandenen (nie 0). Entscheid offen, ob das wie beim Wind streng «unbekannt» werden soll.
+
+## Nach V5.6 (Stand 8.11.2026)
+12. **Reihen im Nacht-Update:** Der geplante Auftrag «Nacht-Update» erlaubt nur `data.enc.json` zu committen. Darum kommen Sekundenreihen
+    neuer Aktivitäten erst mit dem Monatsexport (Plan `wk` und Ermüdung `fr` rechnet das Nacht-Update schon). Mit Silas' Freigabe den
+    Auftrag um «und `serien/` (verschlüsselt)» ergänzen.
+13. **Auf dem iPhone prüfen (hier nicht möglich):** Explorer in Safari (Wischen zum Markieren, Entpacken braucht iOS 16.4 oder neuer),
+    Offline-Verhalten bereits geöffneter Reihen, Saisongrafik und RPE-Eingabe.
+14. **Zwift-Workouts:** Zwift-Dateien enthalten keine Workout-Schritte. Plan vs. Ist nur, wenn das Workout auf der Uhr lief oder im
+    Garmin-Kalender steht; ein Abgleich über Zwift-Runden wäre eine Vermutung und ist nicht umgesetzt.
+15. **Garmin-Kalender spärlich:** Im Nacht-Update stehen nur einzelne geplante Einheiten (Enduco legt sie offenbar kurzfristig an).
+    Die Saisontabelle zeigt Enduco-Stunden nur, soweit sie dort stehen.
+16. **Laktatpunkte aus dem Explorer:** bleiben Vorschau; Übernahme als Kurzcheck erst nach Bestätigung im Chat (CLAUDE.md, Laktat).
+17. **Schwimmen im Explorer:** im Becken meist nur Puls; Bahnen (`len`) sind gespeichert, aber noch nicht als eigene Grafik dargestellt.
+18. **RPE-Kalibrierung:** braucht 20 bewertete Einheiten mit Morgenwerten; vorher nur Zähler.

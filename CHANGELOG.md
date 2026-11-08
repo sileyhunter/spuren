@@ -1,5 +1,45 @@
 # Änderungen
 
+## V5.6 · 8.11.2026 · Aktivitäts-Explorer, Geplant vs. Ist, Saison 2027, Ermüdungsresistenz, RPE, Energie
+Grundlage: Auftrag V5.6 («TrainingPeaks-Funktionen und intelligente Trainingssteuerung»). Ergebnis je Modul mit Teststand
+(im Code / lokal getestet / produktiv getestet): `docs/AUDIT_V56.md`. Offene Punkte: `docs/offen-nach-v55.md` (Abschnitt V5.6).
+Keine neuen Haupttabs; bestehende Module erweitert. Wiederherstellungspunkt: Git-Tag `v5.5.1-vor-v5.6` (Stand ea037c3).
+
+**Neu**
+- Aktivitäts-Explorer (Kalender «Analysieren», Karte, Heute): synchronisierte Kurven Leistung, Puls, Pace bzw. Tempo, Kadenz, Höhe;
+  Abschnitt mit dem Finger wählen, Block A/B vergleichen, Intervalle und Pausen mit Korrektur von Hand, Laktat einem Abschnitt zuordnen.
+  Sekundenwerte als verschlüsselte Dateien `serien/` (1774 Aktivitäten, 2-s-Raster), Dateinamen ohne Aktivitäts-IDs.
+- Geplant vs. Ist je Workout-Schritt aus dem Workout, das auf der Uhr lief (278 Einheiten: Rad 154, Lauf 92, Schwimmen 32), Zeit im
+  Zielbereich, gleiche Einheiten früher. Keine Enduco-Schnittstelle; Zwift-Dateien enthalten keine Workout-Schritte.
+- Saison 2027: Phasen rückwärts ab Ironman Hamburg mit Jesolo als B-Rennen, Vorschlag der Wochenstunden aus den eigenen Wochen
+  (änderbar, nur auf dem Gerät), Ist je Woche, Enduco-Stunden aus dem Garmin-Kalender.
+- Ermüdungsresistenz je lange Einheit und in «Meine Entwicklung»; Fortschrittsbericht mit Deutung und Zuverlässigkeit je Aussage.
+- RPE 1–10 mit Gefühl, Muskulatur, Bereich und Notiz je Einheit; persönliche Kalibrierung mit Morgenwerten ab 20 Paaren.
+- Konstanz und Belastungsverträglichkeit (Fortschritt); Energie und Kohlenhydrate getrennt nach aufgenommen / geschätzt / Modell / unbekannt.
+
+**Neue Regelversionen**
+
+| Bereich | Version | Regel |
+|---|---|---|
+| Sekundenreihe | `serie-1.0` | 2-s-Mittel aus FIT, Lücken > 30 s trennen Abschnitte, fehlende Werte bleiben leer; Formatversion unter `ver` |
+| Explorer-Kennzahlen | `explorer-1.0` | Ø, Max, NP (30-s-Mittel), Puls Anfang/Ende (je 30 s), Höhenmeter mit 2-m-Hysterese; HF-Drift nur bei gleichmässiger Belastung (VI ≤ 1,10 bzw. Tempo-CV ≤ 0,15) |
+| Intervalle | `intervalle-1.0` | Runden mit Workout-Schritt, sonst 30-s-Mittel > 115 % des Medians, mind. 60 s; Korrektur von Hand ersetzt die Erkennung |
+| Geplant vs. Ist | `plan-1.0` | Schritte aus FIT `workout`/`workout_step`, Runden über `wkt_step_index`; Rundenende aus Start + verstrichener Zeit, wenn die Uhr den Aktivitätsstart als Zeitstempel schreibt; Leistungsziele ≤ 1000 je Workout als Watt oder % FTP nach der gefahrenen Leistung (offen ausgewiesen); Plandauer nur, wenn jeder Schritt eine Zeit hat |
+| Ermüdungsresistenz | `ermuedung-1.0` | gleichmässige 10-min-Blöcke ab Minute 10; Puls früh (Start < 90 min) gegen spät (≥ 150 min) bei ±10 W bzw. gleicher Pace; beste 20 min ab Stunde 2/3/4/5 |
+| RPE | `rpe-1.0` | Borg CR-10; sRPE = RPE × Bewegungsminuten; Kalibrierung ab 20 Paaren, Spearman-Rangkorrelation, keine Prozentwerte |
+| Energie | `energie-1.0` | Rad: kJ = Ø W × Bewegungszeit, kcal mit Wirkungsgrad 22–25 % (Annahme); KH-Anteil je Garmin-Pulszone als Modell; Richtwert Jeukendrup 2014 |
+| Saison | `saison-1.0` | Taper 2 Wochen, wettkampfspezifisch 8, Aufbau 16, Erholung jede 4. Woche, B-Rennen mit Mini-Taper und Erholungswoche |
+| Entwicklung | `entwicklung-1.0` (unverändert) | neue Metriken `dauer_rad`, `p20_3h`, `dauer_lauf`, `lauf_hf150` mit derselben Urteilsregel |
+
+**Korrekturen während der Abnahme (vor der Veröffentlichung)**
+- Explorer brach bei Reihen ohne Tempo ab (Becken, Kraft, Rolle ohne Sensor; 353 von 1774): Versionstext lag unter dem Tempokanal `v`.
+- Workout-Abgleich fehlte für Läufe und Schwimmen von der Uhr (Rundenende = Aktivitätsstart): jetzt 278 statt 158 Einheiten.
+- Plandauer war bei Schritten nach Distanz eine Teilsumme: jetzt «Dauer offen» bzw. geplante Distanz.
+- Richtwert Kohlenhydrate für 1–2 h: ca. 30 g/h (vorher fälschlich 30–60 g/h).
+
+Geprüft: `tests/test_analyse.cjs` (12), `tests/test_tools.py` (60 Prüfungen), `tests/test_formkurve.cjs` (53), `tests/test_route.cjs` (28),
+`check_referenz.py` GESAMT bestanden; im Browser lokal (Chromium, iPhone-Emulation 375/390/430 px). Produktiv **nicht getestet**.
+
 ## V5.5 · 8.11.2026 · Prüfbare Aussagen statt Rohdaten-Urteile
 Grundlage: Auftrag V5.5 (Vorrang vor älteren Fassungen). Bestands- und Lückenmatrix sowie Ergebnis je Befund: `docs/AUDIT_V55.md`.
 Offene Punkte (nur diese gehen in die nächste Änderungsdatei): `docs/offen-nach-v55.md`.
