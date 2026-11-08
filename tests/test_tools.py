@@ -104,6 +104,62 @@ check("B1: Schwellen rechnen danach mit bestätigten Werten", S2["tests"][0]["da
 merge_daily.v5_merge(D, {"laktat_bestaetigt": ["demo-test"]})
 check("B1: zweite Bestätigung ohne Doppel", len(D["lactate"]) == 1)
 
+# --- Kalibrierung Routenplaner (kalibrierung-1.0) – synthetische Sekundenreihen ---
+import numpy as np  # noqa: E402
+import kalibrierung as KAL  # noqa: E402
+
+rng = np.random.default_rng(7)
+
+
+def fake_ride(watts, hr0=120.0, n=3600, hr_per_w=0.25):
+    t = np.arange(n, dtype=float)
+    pw = np.array([watts(i) for i in range(n)], float) + rng.normal(0, 8, n)
+    hr = hr0 + hr_per_w * pw + np.minimum(t, 300) / 300 * 2
+    return {"t": t, "pw": pw, "hr": hr, "spd": np.full(n, 9.0), "dist": t * 9.0, "alt": np.full(n, 500.0)}
+
+
+steady = KAL.bike_blocks(fake_ride(lambda i: 200))
+check("Kalibrierung: konstante Fahrt ergibt 10-min-Blöcke", len(steady) >= 4 and all(abs(b["w"] - 200) < 5 for b in steady), steady[:2])
+inter = KAL.bike_blocks(fake_ride(lambda i: 300 if (i // 60) % 2 else 120))
+check("Kalibrierung: Intervalle (1 min hart/locker) ergeben keine Blöcke", len(inter) == 0, len(inter))
+items = []
+for k in range(40):
+    w = 150 + 3 * k
+    items.append({"act": f"a{k}", "date": f"2026-{1 + k // 4:02d}-{1 + k % 4 * 7:02d}", "hr": (w + 60) / 1.75 + rng.normal(0, 2), "w": w})
+rep = KAL.regress_report(items, "hr", "w", 20, 5, "W")
+check("Kalibrierung: linearer Zusammenhang erkannt, Hold-out-Fehler klein", rep["ok"] and rep["mae"] < rep["mae_konstant"] and abs(rep["b"] - 1.75) < 0.2, {k: rep.get(k) for k in ("ok", "mae", "b")})
+check("Kalibrierung: Hold-out sind die jüngsten Einheiten", rep["hold_out"]["von"] >= max(i["date"] for i in items[:30]), rep["hold_out"])
+noise = [{"act": f"n{k}", "date": f"2026-{1 + k // 4:02d}-{1 + k % 4 * 7:02d}", "hr": float(rng.uniform(120, 170)), "w": float(rng.uniform(150, 250))} for k in range(40)]
+check("Kalibrierung: reines Rauschen wird nicht als Modell freigegeben", not KAL.regress_report(noise, "hr", "w", 20, 5, "W")["ok"])
+few = KAL.regress_report(items[:6], "hr", "w", 20, 5, "W")
+check("Kalibrierung: zu wenige Blöcke → nicht ok mit Grund", not few["ok"] and "wenige" in few["grund"], few)
+n = 2400
+t = np.arange(n, dtype=float)
+flat_run = {"t": t, "hr": np.full(n, 150.0), "dist": t * 3.0, "alt": np.full(n, 600.0), "spd": np.full(n, 3.0), "pw": np.full(n, np.nan)}
+hill_run = dict(flat_run, alt=600 + t * 3.0 * 0.06)
+check("Kalibrierung: flacher gleichmässiger Lauf ergibt Blöcke", len(KAL.run_blocks(flat_run)) >= 3)
+check("Kalibrierung: Lauf mit 6 % Steigung ergibt keine Flachblöcke", len(KAL.run_blocks(hill_run)) == 0)
+up, dn = KAL.climb_blocks({"t": t, "hr": np.full(n, 140.0), "dist": t * 0.8, "alt": 1500 + t * 0.8 * 0.15, "spd": np.full(n, 0.8), "pw": np.full(n, np.nan)}, 0.08)
+check("Kalibrierung: Aufstieg 15 % mit 0,8 m/s ≈ 432 Hm/h", up and abs(up[0]["vam"] - 432) < 5, up[:1])
+# gleiche Physik wie im Browser (js/formkurve.js + js/route.js)
+js = "const FK=require('./js/formkurve.js');const r=[];for(const [P,g] of [[200,0],[250,0.08],[0,-0.06],[180,-0.03]])" \
+     "r.push(FK.speedFromPower(P,{m:83,cda:0.3,crr:0.004,grade:g,rho:FK.rho(15,500),wind:0,eta:0.976,vmax:60/3.6}));console.log(JSON.stringify(r))"
+jsv = json.loads(subprocess.run(["node", "-e", js], cwd=ROOT, capture_output=True, text=True).stdout)
+pyv = [KAL.speed_from_power(P, g, 83, 0.3, 0.004, KAL.rho(15, 500), 60 / 3.6) for P, g in [(200, 0), (250, 0.08), (0, -0.06), (180, -0.03)]]
+check("Kalibrierung: Physik in Python = Physik im Browser", all(abs(a - b) < 0.01 for a, b in zip(jsv, pyv)), (jsv, pyv))
+jsm = json.loads(subprocess.run(["node", "-e", "const RT=require('./js/route.js');console.log(JSON.stringify([-0.2,0,0.1,0.3].map(RT.minetti)))"], cwd=ROOT, capture_output=True, text=True).stdout)
+check("Kalibrierung: Minetti in Python = im Browser", all(abs(a - KAL.minetti(g)) < 1e-9 for a, g in zip(jsm, [-0.2, 0, 0.1, 0.3])))
+
+# --- Bestleistungen Laufen (best-1.0) – synthetisch ---
+import bestleistungen as BL  # noqa: E402
+tt = np.arange(0, 1200.0)
+vv = np.where((tt >= 300) & (tt < 500), 5.0, 3.0)
+dd = np.concatenate([[0.0], np.cumsum(vv[1:])])
+check("Bestleistung: schnellster 1-km-Abschnitt gefunden", abs(BL.best_for(tt, dd, 1000) - 200.0) < 0.6, BL.best_for(tt, dd, 1000))
+dj = dd.copy(); dj[800:] += 400                       # GPS-Sprung um 400 m
+check("Bestleistung: Abschnitt mit GPS-Sprung wird nicht gewertet", abs(BL.best_for(tt, dj, 1000) - 200.0) < 0.6, BL.best_for(tt, dj, 1000))
+check("Bestleistung: zu kurze Strecke → keine Zeit", BL.best_for(tt[:100], dd[:100], 1000) is None)
+
 # --- Repo-Schutz: keine entschlüsselten Daten, keine Schlüssel im Repo ---
 tracked = subprocess.run(["git", "ls-files"], cwd=ROOT, capture_output=True, text=True).stdout.split()
 check("Repo: data.json und work/ nicht versioniert", "data.json" not in tracked and not any(f.startswith("work/") for f in tracked))

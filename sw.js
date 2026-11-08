@@ -1,8 +1,8 @@
-/* Spuren & Formkurve – Offline-Speicher (V5). Netz zuerst, bei fehlendem Netz die zuletzt geladene Fassung.
+/* Ironman Notebook – Offline-Speicher (V5.3). Netz zuerst, bei fehlendem Netz die zuletzt geladene Fassung.
    Gespeichert werden nur die Seite, die Skripte und die verschlüsselte data.enc.json; Kartenkacheln und Fremddienste nie. */
-const CACHE = "spuren-v5-2026-11-08";
-const SHELL = ["./", "index.html", "demo.html", "js/formkurve.js", "js/v5-ui.js", "js/v5-ausdauer.js", "js/v5-extra.js",
-  "manifest.webmanifest", "manifest-demo.webmanifest", "icon-180.png", "icon-192.png", "icon-512.png"];
+const CACHE = "notebook-v53-2026-11-08";
+const SHELL = ["./", "index.html", "demo.html", "js/formkurve.js", "js/v5-ui.js", "js/v5-ausdauer.js", "js/v5-extra.js", "js/route.js", "js/routen-ui.js", "js/v53-extra.js",
+  "manifest.webmanifest", "manifest-demo.webmanifest", "icon-180.png", "icon-192.png", "icon-512.png", "icon.svg"];
 const CDN = ["https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/", "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/"];
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => Promise.all(SHELL.map((u) => c.add(u).catch(() => null)))).then(() => self.skipWaiting()));

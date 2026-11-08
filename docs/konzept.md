@@ -1,4 +1,4 @@
-# Spuren & Formkurve – Gesamtkonzept V1–V5
+# Ironman Notebook (vormals Spuren & Formkurve) – Gesamtkonzept V1–V5.3
 
 Stand 8.11.2026. Dieses Dokument fasst die Masteraufträge V1–V5 und die Konzept-PDFs zusammen. Ältere Anforderungen werden nie
 gestrichen; V5 geht bei Widersprüchen vor. Beispielzahlen aus PDFs und Grafiken sind erfunden und gehören nie in echte Daten.
@@ -51,3 +51,29 @@ Karte · Heute · Kalender · Fortschritt · Laktat & Zonen · Ausdauer · Leist
 4. Nächster ausbelasteter Stufentest (Dmax gültig) und danach neue Zonenversion mit deiner Freigabe.
 
 Änderungen: `CHANGELOG.md`. Prüfbericht: `docs/abnahme-v5.md`.
+
+
+## V5.3 · Routenplaner wie Komoot, persönliche Zeitprognose
+
+**Domänen getrennt, je mit Herkunft:** Weggeometrie (BRouter, Abschnitt je Wegpunktpaar), Wege/Belag/Zugang (OSM-Merkmale der
+Routing-Antwort, fehlende = unbekannt), Wetter/Zeiten (Open-Meteo, nur nach Zustimmung), Tempo (Physik/Minetti/Tobler/Hm/h,
+persönlich kalibriert). Ein Kettenmass `distanceAlong_m`; Kartenpunkte werden auf die Linie projiziert, Profilpositionen entlang der
+echten Linie interpoliert.
+
+**Zustand (eine Quelle):** activeRouteId, cursorDistance_m, selectedSegmentIds, activeAnalysisTab, routeDirection, effortMode,
+effortValue (`RTUI.state()`).
+
+**Höhe und Anstiege (hoehe-1.0, anstiege-1.0):** 20-m-Abtastung, Mittel über 100 m, Auf-/Abstieg mit 3-m-Hysterese; Wendepunkte
+ab 15 m Umkehr; Anstieg ≥ 25 Hm und ≥ 2,5 %; Ränder an erste Ankunft auf Gipfel-/Talhöhe; Maximalsteigung über 100 m nur bei
+Höhenpunkten ≤ 60 m Abstand und Länge ≥ 300 m.
+
+**Tempo (zeit-rt-1.0):** Rad: Leistungsbilanz je 20 m (Crr je Belag, CdA, Masse, Luftdichte, Wind ×0,6 auf Fahrhöhe), bergab rollen
+(≤ −5 %: 0 W), Abfahrtsgrenze je Belag, Kurvengrenze √(a·r), Regen −15 %; empirische Korrektur aus echten Fahrten. Laufen: Flachtempo
+(Pace oder HF-Kalibrierung) × Minetti-Energiekosten, bergab begrenzt, steil gehen. Wandern: Tobler × persönlicher Faktor oder Hm/h.
+Skitour: Aufstieg aus Hm/h, Abfahrt nicht bestimmt. Band aus Hold-out-Fehler, Kalibrierfehler und Wind ±2 m/s (ohne Prognose).
+
+**Kalibrierung (kalibrierung-1.0, `tools/kalibrierung.py`):** siehe `docs/abnahme-v53.md`. Hold-out = jüngste 25 % der Einheiten,
+nie zum Anpassen verwendet; Anzeige-Modell danach mit den letzten drei Jahren neu angepasst.
+
+**Datenschutz:** Koordinaten gehen erst nach Zustimmung an brouter.de bzw. Open-Meteo; gespeicherte Routen bleiben im Browser;
+Kalibrierung und Bestleistungen nur verschlüsselt in `data.enc.json`.

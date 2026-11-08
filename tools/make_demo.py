@@ -18,9 +18,9 @@ def rep(a, b):
     s = s.replace(a, b)
 
 
-rep("<title>Spuren &amp; Formkurve</title>", "<title>Spuren &amp; Formkurve · Demo</title>")
+rep("<title>Ironman Notebook</title>", "<title>Ironman Notebook · Demo</title>")
 rep('<link rel="manifest" href="manifest.webmanifest">', '<link rel="manifest" href="manifest-demo.webmanifest">')
-rep('<meta name="apple-mobile-web-app-title" content="Spuren">', '<meta name="apple-mobile-web-app-title" content="Spuren Demo">')
+rep('<meta name="apple-mobile-web-app-title" content="Ironman Notebook">', '<meta name="apple-mobile-web-app-title" content="Notebook Demo">')
 rep('<b>Beispieldaten.</b> Alle Spuren und Zahlen sind erfunden, damit du Aufbau und Funktionen beurteilen kannst. Mit dem ersten Garmin-Import werden sie ersetzt.',
     '<b>Demo.</b> Alle Spuren, Orte und Zahlen sind erfunden. So sieht die Trainingsseite mit echten Garmin-Daten aus.')
 rep('Die Werte gibst du mir im Chat, ich hole Puls und Watt aus der Einheit.', 'Laktat wird von Hand gemessen, Puls und Watt kommen aus der Einheit.')
@@ -32,6 +32,6 @@ assert "data.enc.json" in s  # wird in der Demo nie abgerufen (SPUREN_DEMO start
 (ROOT / "demo.html").write_text(s, encoding="utf-8")
 
 man = json.loads((ROOT / "manifest.webmanifest").read_text(encoding="utf-8"))
-man.update({"name": "Spuren & Formkurve Demo", "short_name": "Spuren Demo", "start_url": "demo.html"})
+man.update({"name": "Ironman Notebook Demo", "short_name": "Notebook Demo", "start_url": "demo.html"})
 (ROOT / "manifest-demo.webmanifest").write_text(json.dumps(man, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 print("demo.html und manifest-demo.webmanifest erstellt")
