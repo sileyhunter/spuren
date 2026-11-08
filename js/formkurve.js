@@ -586,7 +586,22 @@
     lauf330: { name: "Laufen: Puls bei 5:30/km", unit: "bpm", besser: "tiefer", schwelle: 3, sport: "lauf", dec: 1 },
     laktat: { name: "Laktat bei fixer Leistung", unit: "mmol/l", besser: "tiefer", schwelle: 0.3, sport: "rad", dec: 1 },
     css: { name: "Schwimmen: CSS", unit: "s/100 m", besser: "tiefer", schwelle: 2, sport: "schwimm", dec: 0 },
+    // V5.6 (ermuedung-1.0): Ermüdungsresistenz – je Fahrt/Lauf derselbe Vergleich früh gegenüber spät, damit Tagesform und Gerät herausfallen
+    dauer_rad: { name: "Rad: Pulsanstieg bei gleicher Leistung nach ≥ 2.5 h", unit: "bpm", besser: "tiefer", schwelle: 3, sport: "rad", dec: 1,
+      deutung: "Das spricht bei vergleichbaren Bedingungen für eine bessere Ermüdungsresistenz" },
+    p20_3h: { name: "Rad: beste 20 min ab Stunde 3 (Anteil der frischen)", unit: "%", besser: "höher", schwelle: 3, sport: "rad", dec: 0,
+      deutung: "Du hältst nach drei Stunden mehr deiner frischen Leistung – aussagekräftig nur, wenn du spät auch hart gefahren bist" },
+    dauer_lauf: { name: "Laufen: Pulsanstieg bei gleicher Pace nach ≥ 60 min", unit: "bpm", besser: "tiefer", schwelle: 3, sport: "lauf", dec: 1,
+      deutung: "Das spricht für eine bessere Ermüdungsresistenz beim Laufen" },
+    lauf_hf150: { name: "Laufen: Pace bei 145–155 bpm (flach, gleichmässig)", unit: "s/km", besser: "tiefer", schwelle: 5, sport: "lauf", dec: 0,
+      deutung: "Bei gleichem Puls schneller – spricht bei vergleichbaren Bedingungen für eine verbesserte aerobe Effizienz" },
   };
+  FK.EW_METRIKEN.rad200.deutung = "Das spricht bei vergleichbaren Bedingungen für eine verbesserte aerobe Effizienz";
+  FK.EW_METRIKEN.lauf330.deutung = "Das spricht bei vergleichbaren Bedingungen für eine verbesserte aerobe Effizienz";
+  FK.EW_METRIKEN.laktat.deutung = "Bei gleicher Leistung weniger Laktat";
+  /** Zuverlässigkeit einer Aussage aus n und Intervall (für den Fortschrittsbericht). */
+  FK.zuverlaessigkeit = (r) => (!r || r.status === "nicht beurteilbar" ? "nicht beurteilbar" : r.status === "unklar" ? "gering (Intervall schliesst 0 ein)"
+    : r.vorlaeufig ? `vorläufig (nur ${Math.min(r.n.P, r.n.R)} Messungen in einem Zeitraum)` : `gut (je ≥ 6 Messungen, 90-%-Intervall ohne 0)`);
   const runSys = (a) => (a.indoor ? "band" : /trail/i.test(a.typ || "") ? "trail" : "strasse");
   /** Laktat bei fixer Leistung x: nur lineare Interpolation zwischen gemessenen Stufen, nie darüber hinaus. */
   FK.laInterp = function (punkte, x) {
@@ -714,8 +729,9 @@
     const fx = (r, v) => { const M = FK.EW_METRIKEN[r.metric] || { dec: 0 }; const k = 10 ** M.dec, x = Math.round(v * k) / k; return { s: x > 0 ? "+" : x < 0 ? "−" : "±", v: Math.abs(x).toFixed(M.dec) }; };
     for (const r of ergebnisse) {
       const lab = r.label || r.name, vl = r.vorlaeufig ? ", vorläufig" : "", d = r.diff != null ? fx(r, r.diff) : null;
-      if (r.status === "verbessert") a1.push(`${lab}: ${d.s}${d.v} ${r.unit} (n ${r.n.P} gegen ${r.n.R}${vl}), ${r.urteil}.`);
-      else if (r.status === "stabil") a2.push(`${lab}: stabil (${d.s}${d.v} ${r.unit}, n ${r.n.P} gegen ${r.n.R}${vl}).`);
+      const M = FK.EW_METRIKEN[r.metric] || {}, zv = ` Zuverlässigkeit: ${FK.zuverlaessigkeit(r)}.`;
+      if (r.status === "verbessert") a1.push(`${lab}: ${d.s}${d.v} ${r.unit} (n ${r.n.P} gegen ${r.n.R}${vl}), ${r.urteil}.${M.deutung ? " " + M.deutung + "." : ""}${zv}`);
+      else if (r.status === "stabil") a2.push(`${lab}: stabil (${d.s}${d.v} ${r.unit}, n ${r.n.P} gegen ${r.n.R}${vl}) – eine klare Veränderung ist derzeit nicht nachweisbar.`);
       else if (r.status === "unklar") a2.push(`${lab}: unklar (${d.s}${d.v} ${r.unit}, Intervall schliesst 0 ein; n ${r.n.P} gegen ${r.n.R}).`);
       else if (r.status === "verschlechtert") { a2.push(`${lab}: ${d.s}${d.v} ${r.unit} (n ${r.n.P} gegen ${r.n.R}${vl}), ${r.urteil}.`); a3.push(`${lab}: Kontext prüfen (Schlaf, Krankheit, Hitze, Belastung der letzten Wochen).`); }
       else { nb.push(`${r.kurz || lab} (${r.ausgeschlossen && r.ausgeschlossen.vorschau && !r.n.P && !r.n.R ? "Werte noch Vorschau" : r.n.P + r.n.R === 0 ? "keine Messung" : `${r.n.P} gegen ${r.n.R}`})`); if (r.naechstes) a3.push(r.naechstes); }

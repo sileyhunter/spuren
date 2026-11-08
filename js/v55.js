@@ -41,6 +41,28 @@
       r.naechstes = `Laufen: flache Strassenläufe mit 10 min gleichmässig bei 5:20–5:40/km – jetzt ${r.n.P} im Zeitraum, ${r.n.R} in der Referenz.`;
       out.push(r);
     }
+    // V5.6 Ermüdungsresistenz (ermuedung-1.0): je Einheit früh gegenüber spät, dann Zeitraum gegen Referenz wie oben
+    if (window.AN && (!sport || sport === "rad" || sport === "lauf")) {
+      const A = D.activities || [], wx = (a) => (a.wx && typeof a.wx.temperature === "number" ? a.wx.temperature : null);
+      const add = (id, pts, label, kurz, naechstes, extra) => { const r = F.entwicklung(id, pts, P, R); Object.assign(r, { label, kurz, alle: pts, naechstes }, extra || {}); out.push(r); };
+      if (!sport || sport === "rad") {
+        for (const [sys, name] of [["indoor", "Rolle"], ["draussen", "draussen"]]) {
+          const pts = A.filter((a) => a.sport === "rad" && a.fr && (F.bikeSys(a) === "indoor") === (sys === "indoor")).map((a) => ({ a, e: AN.ermuedungRad(a.fr) }))
+            .filter((x) => x.e && x.e.status === "ok").map(({ a, e }) => ({ date: a.date, v: e.dhr, id: a.id, name: a.name, x: e.spaet[1], q: { wx: wx(a), n: 1, alt: null, dhr: null } }));
+          if (pts.length) add("dauer_rad", pts, `Rad ${name}: Pulsanstieg bei gleicher Leistung nach ≥ 2.5 h`, `Ermüdungsresistenz Rad ${name}`,
+            `Rad ${name}: lange Fahrten (≥ 3 h) mit je einem gleichmässigen 10-min-Block früh und nach 2.5 h bei ähnlicher Leistung – jetzt ${pts.length} insgesamt.`, { sys });
+        }
+        const p3 = A.filter((a) => a.sport === "rad" && a.fr && a.fr.p20 && typeof a.fr.p20[2] === "number").map((a) => { const d = AN.dauerleistung(a.fr); return { date: a.date, v: Math.round(100 * d.rel[3]), id: a.id, name: a.name, x: d.nach[3], q: { wx: wx(a) } }; });
+        if (p3.length) add("p20_3h", p3, "Rad: beste 20 min ab Stunde 3 (Anteil der frischen 20 min)", "Leistung nach 3 h", `Rad: Fahrten über 3 h 20 min mit einem harten Block nach Stunde 3 – jetzt ${p3.length}.`);
+      }
+      if (!sport || sport === "lauf") {
+        const pl = A.filter((a) => a.sport === "lauf" && a.fr).map((a) => ({ a, e: AN.ermuedungLauf(a.fr) })).filter((x) => x.e && x.e.status === "ok")
+          .map(({ a, e }) => ({ date: a.date, v: e.dhr, id: a.id, name: a.name, x: e.spaet[1], q: { wx: wx(a) } }));
+        if (pl.length) add("dauer_lauf", pl, "Laufen: Pulsanstieg bei gleicher Pace nach ≥ 60 min", "Ermüdungsresistenz Laufen", `Laufen: lange flache Läufe mit gleichmässigem Tempo früh und nach 60 min – jetzt ${pl.length}.`);
+        const ph = A.filter((a) => a.sport === "lauf" && a.fr && a.fr.bl).map((a) => { const b = a.fr.bl.filter((x) => x[2] >= 145 && x[2] <= 155).map((x) => x[1]); return b.length ? { date: a.date, v: AN.util.median(b), id: a.id, name: a.name, q: { wx: wx(a) } } : null; }).filter(Boolean);
+        if (ph.length) add("lauf_hf150", ph, "Laufen: Pace bei 145–155 bpm (flach, gleichmässig, Läufe ≥ 60 min)", "Pace bei 150 bpm", `Laufen: lange flache Läufe im Bereich 145–155 bpm – jetzt ${ph.length}.`);
+      }
+    }
     if (!sport || sport === "rad") {
       const L = F.lactateData(D).tests.filter((t) => t.sport === "rad");
       const byP = {}; for (const t of L) (byP[t.protokoll] = byP[t.protokoll] || []).push(t);
