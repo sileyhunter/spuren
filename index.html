@@ -307,6 +307,27 @@ details.layer > .dash { margin-top: 12px; }
 .v53-pct small { grid-area: s; font-size: 11.5px; color: var(--muted); }
 .lr-orient { margin-top: 12px; border: 1.5px dashed var(--line-2); border-radius: 10px; padding: 12px 14px; background: var(--surface); }
 .lr-orient-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; } .lr-orient-head p { margin: 2px 0 0; }
+.dev-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 4px 0 2px; } .dev-l { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.dev-answers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 10px 0 14px; }
+.dev-a { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; border-top: 3px solid var(--line-2); }
+.dev-a.good { border-top-color: var(--good); } .dev-a.next { border-top-color: var(--accent); }
+.dev-a h3 { margin: 0 0 6px; font-size: 13.5px; } .dev-a ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.45; } .dev-a li + li { margin-top: 4px; } .dev-a li.muted { color: var(--muted); list-style: none; margin-left: -18px; }
+.dev-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.dev-tile { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.dev-th { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; } .dev-th h3 { margin: 0; font-size: 14px; }
+.dev-num { margin: 6px 0 0; font-size: 13px; } .dev-num b { font-size: 22px; font-variant-numeric: tabular-nums; } .dev-num .dev-vs { color: var(--muted); } .dev-num.muted { color: var(--muted); font-size: 14px; }
+.dev-chart { height: 150px; margin-top: 4px; } .dev-tile .seg { margin-top: 6px; }
+@media (max-width: 760px) { .dev-answers, .dev-metrics { grid-template-columns: minmax(0, 1fr); } }
+.tr-list { display: flex; flex-direction: column; gap: 10px; } .tr-row h3 { margin: 0 0 4px; font-size: 13.5px; }
+.tr-years { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.tr-years > div { background: var(--surface-2); border-radius: 8px; padding: 6px 8px; display: flex; flex-direction: column; } .tr-years span { font-size: 11.5px; color: var(--muted); }
+.tr-years b { font-size: 16px; font-variant-numeric: tabular-nums; } .tr-years b.muted { color: var(--muted); } .tr-years small { font-size: 11px; color: var(--muted); line-height: 1.3; font-variant-numeric: tabular-nums; }
+.tablewrap.scrollx { background: linear-gradient(to right, var(--surface) 30%, rgba(255,255,255,0)) left center / 32px 100% no-repeat local,
+  linear-gradient(to left, var(--surface) 30%, rgba(255,255,255,0)) right center / 32px 100% no-repeat local,
+  radial-gradient(farthest-side at 100% 50%, rgba(23,43,58,.22), transparent) right center / 12px 100% no-repeat scroll,
+  radial-gradient(farthest-side at 0 50%, rgba(23,43,58,.22), transparent) left center / 12px 100% no-repeat scroll; }
+.scroll-hint { margin: 2px 0 2px; font-size: 11.5px; color: var(--muted); text-align: right; }
+@media (max-width: 560px) { table.t td.wrap { min-width: 150px; } }
 .chart.mini { height: 128px; } .br-minis .chart.mini + .chart.mini { margin-top: 2px; }
 #t-br-sp td, #t-br-sp th { text-align: right; } #t-br-sp td:first-child, #t-br-sp th:first-child { text-align: left; } #t-br-sp tr.on td { background: var(--accent-soft, #e6f4f2); }
 tr.lang td { color: var(--muted); }
@@ -777,6 +798,23 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
   <!-- ================= TRAINING ================= -->
   <section class="view" id="view-training" role="tabpanel" aria-labelledby="tab-training" hidden>
     <div class="dash">
+      <div class="card w12" id="dev-card">
+        <div class="card-head"><div><h2>Meine Entwicklung</h2><div class="sub">Nur geprüfte Vergleiche aus vergleichbaren Messungen – kein Urteil aus Rohdaten</div></div></div>
+        <div class="dev-ctl">
+          <div class="seg" role="group" aria-label="Zeitraum"><button type="button" data-w="4">4 Wochen</button><button type="button" data-w="12">12 Wochen</button><button type="button" data-w="52">52 Wochen</button></div>
+          <label class="dev-l">Vergleich mit <select id="dev-ref" aria-label="Referenzzeitraum"><option value="vorjahr">gleicher Zeitraum im Vorjahr</option><option value="vorher">Zeitraum direkt davor</option><option value="frei">frei wählen</option></select></label>
+          <span id="dev-frei" class="dev-l" hidden><input type="date" id="dev-von" aria-label="Referenz von"> bis <input type="date" id="dev-bis" aria-label="Referenz bis"></span>
+          <select id="dev-sport" aria-label="Sportart"><option value="">Alle Sportarten</option><option value="rad">Rad</option><option value="lauf">Laufen</option><option value="schwimm">Schwimmen</option></select>
+        </div>
+        <p class="hint" id="dev-per"></p>
+        <div class="dev-answers">
+          <div class="dev-a good"><h3>Was hat sich verbessert?</h3><ul id="dev-a1"></ul></div>
+          <div class="dev-a"><h3>Was ist stabil oder unklar?</h3><ul id="dev-a2"></ul></div>
+          <div class="dev-a next"><h3>Was sollte ich als Nächstes prüfen?</h3><ul id="dev-a3"></ul></div>
+        </div>
+        <div class="dev-metrics" id="dev-metrics"></div>
+        <details class="more"><summary>So wurde gerechnet</summary><div id="dev-how"></div></details>
+      </div>
       <div class="card w12">
         <div class="card-head">
           <div><h2>Fitness, Ermüdung, Form</h2><div class="sub" id="pmc-sub">Fitness = Belastung der letzten 42 Tage, Ermüdung = letzte 7 Tage, Form = Differenz</div></div>
@@ -887,6 +925,11 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
   <!-- ================= LEISTUNG ================= -->
   <section class="view" id="view-leistung" role="tabpanel" aria-labelledby="tab-leistung" hidden>
     <div class="dash">
+      <div class="card w12" id="trend-card">
+        <div class="card-head"><div><h2>Ausdauertrend aus gleichmässigen Blöcken</h2><div class="sub">Primär: Puls bei gleicher Leistung bzw. gleichem Tempo, je Gerätesystem getrennt</div></div></div>
+        <div class="tr-list" id="trend-tab"></div>
+        <p class="hint" id="trend-note"></p>
+      </div>
       <div class="card" id="ftp-card" hidden data-ausgeblendet="FTP: auf Wunsch ausgeblendet, Daten bleiben">
         <h2>Rad: FTP und Watt/kg</h2>
         <div class="sub" id="ftp-sub">In Garmin eingestellte FTP</div>
@@ -902,7 +945,7 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
       </div>
       <div class="card w12">
         <div class="card-head">
-          <div><h2>Puls zu Watt und Pace</h2><div class="sub">Jeder Punkt ist eine Einheit: Ø Puls gegen Leistung (NP) bzw. Ø Pace. Die Linien zeigen den Trend je Radsystem bzw. Laufart. Liegt eine Linie tiefer, brauchst du für die gleiche Leistung weniger Puls.</div></div>
+          <div><h2>Puls zu Watt und Pace <span class="badge muted">explorativ</span></h2><div class="sub">Jeder Punkt ist eine ganze Einheit: Ø Puls gegen Leistung (NP) bzw. Ø Pace. Leistungsmesser, Strecke, Höhe, Temperatur, Wind, Intervalle und Pausen sind nicht herausgerechnet – Unterschiede sind deshalb kein Fortschrittsnachweis. Vergleichbare Blöcke: «Meine Entwicklung» im Fortschritt.</div></div>
           <select id="hp-range" aria-label="Zeitraum"></select>
         </div>
         <div class="hp-grid">
@@ -920,9 +963,10 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
         <p class="hint">Rad: Fahrten mit Leistungsmesser ab 20 Minuten. Lauf: ab 15 Minuten und 2 km. Die Tabellen lesen den Puls an der Trendlinie ab, nur wenn genug Einheiten in diesem Bereich liegen (sonst –).</p>
       </div>
       <div class="card">
-        <h2>Lauf: Effizienz</h2>
-        <div class="sub">Meter pro Minute je Herzschlag bei lockeren Läufen. Steigt der Wert, läufst du bei gleichem Puls schneller.</div>
-        <div class="chart"><canvas id="c-ef" aria-label="Laufeffizienz"></canvas></div>
+        <h2>Lauf: Effizienz <span class="badge muted">explorativ</span></h2>
+        <div class="sub">Meter pro Herzschlag (m/Schlag): Tempo in m/min geteilt durch Puls in Schlägen/min. Steigt der Wert, läufst du bei gleichem Puls weiter. Gelände, Wetter und Ermüdung sind nicht herausgerechnet; gesicherte Aussagen stehen unter «Meine Entwicklung».</div>
+        <div class="chart"><canvas id="c-ef" aria-label="Laufeffizienz in Meter pro Herzschlag"></canvas></div>
+        <p class="hint" id="ef-note"></p>
       </div>
       <div class="card w12" id="eta-card">
         <div class="card-head"><div><h2>Rad-Fahrzeit aus der Leistungsbilanz</h2><div class="sub">Watt, Gewicht, CdA, Rollwiderstand, Luftdichte und Wind je Abschnitt. Schätzung mit Spanne, kein Routing.</div></div></div>
@@ -1110,6 +1154,7 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
 <script src="js/v5-ausdauer.js"></script>
 <script src="js/v5-extra.js"></script>
 <script src="js/v53-extra.js"></script>
+<script src="js/v55.js"></script>
 <script>
 (() => {
   const b64d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
@@ -1236,8 +1281,9 @@ function decodePoly(str) {
    Beispieldaten – nur wenn noch keine echten Daten vorhanden sind
    ===================================================================== */
 function makeDemo() {
-  let seed = 11;
+  let seed = 11, seed2 = 7;
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const rnd2 = () => (seed2 = (seed2 * 48271) % 2147483647) / 2147483647;
   const nrm = () => { let x = 0; for (let i = 0; i < 6; i++) x += rnd(); return (x - 3) / 0.7071; };
   const pick = (l) => l[Math.floor(rnd() * l.length)];
   const cosL = Math.cos(46.9 * Math.PI / 180), STEP = 0.15;
@@ -1331,7 +1377,13 @@ function makeDemo() {
         name = sport === "ski" ? "Skitour" : "Wanderung";
       }
       const hh = hist(hr, dur, hard);
-      acts.push({ id: "demo" + id++, sport, typ, indoor: indoor || undefined, date: iso(date), start: `${String(long ? 8 + Math.floor(rnd() * 3) : sport === "schwimm" ? 6 : 18).padStart(2, "0")}:${String(Math.floor(rnd() * 60)).padStart(2, "0")}`,
+      // V5.5: erfundene gleichmässige Blöcke für «Meine Entwicklung» (eigener Zufall, damit die übrigen Demodaten gleich bleiben)
+      let eb = null;
+      if (!hard && sport === "rad" && rnd2() < 0.45) eb = { v: "eb-1.0", art: "rad200", n: 1 + Math.floor(rnd2() * 4), w: +(195 + rnd2() * 10).toFixed(1),
+        hr: +(140 + (sys === "indoor" ? 4 : sys === "mtb" ? -3 : 0) + 7 * unfit + (rnd2() - 0.5) * 5).toFixed(1), dhr: +(0.5 + rnd2() * 2).toFixed(1), t: null, alt: indoor ? null : Math.round(450 + rnd2() * 400) };
+      if (!hard && sport === "lauf" && sys === "strasse" && rnd2() < 0.4) eb = { v: "eb-1.0", art: "lauf330", n: 1 + Math.floor(rnd2() * 2), pace: +(325 + rnd2() * 10).toFixed(1),
+        hr: +(146 + 6 * unfit + (rnd2() - 0.5) * 5).toFixed(1), dhr: +(1 + rnd2() * 2).toFixed(1), t: null, alt: Math.round(450 + rnd2() * 100) };
+      acts.push({ id: "demo" + id++, sport, typ, indoor: indoor || undefined, ...(eb ? { eb } : {}), date: iso(date), start: `${String(long ? 8 + Math.floor(rnd() * 3) : sport === "schwimm" ? 6 : 18).padStart(2, "0")}:${String(Math.floor(rnd() * 60)).padStart(2, "0")}`,
         name, km: +km.toFixed(2), hm, dur: Math.round(dur), hr, watt, np, tss, hh, zones: zonesOf(hh), coords, ...(fe ? { ftp_e: fe } : {}), ...(fd ? { ftp_dev: fd } : {}) });
     }
   }
@@ -2780,7 +2832,7 @@ const TABS = {
       document.getElementById("y-metric").addEventListener("change", () => this.yearChart());
       document.getElementById("load-range").addEventListener("change", () => this.load());
     },
-    draw() { this.zones(); this.pmc(); this.load(); this.volume(); this.years(); this.yearChart(); this.datenbasis(); this.models(); if (window.V53 && window.V5UI) V5_READY.then(() => V53.training(V5UI.C)); },
+    draw() { this.zones(); this.pmc(); this.load(); this.volume(); this.years(); this.yearChart(); this.datenbasis(); this.models(); if (window.V53 && window.V5UI) V5_READY.then(() => { V53.training(V5UI.C); if (window.V55) V55.entwicklung(V5UI.C); }); },
     datenbasis() {                      // Referenzsatz, Versionen und Nacht-Protokoll (Umsetzungsplan A1, A2)
       const R = D.referenz, P = R && R.pruefung, V = D.versions || {}, card = document.getElementById("db-card");
       if (!P && !Object.keys(V).length) { card.hidden = true; return; }
@@ -2981,14 +3033,17 @@ const TABS = {
           { label: String(today.getFullYear() - 1), data: D.pdc.prev, borderColor: css("--muted"), backgroundColor: css("--muted"), borderDash: [5, 4], tension: 0.3, pointRadius: 0 }] },
           options: { scales: { y: { title: { display: true, text: "Watt" } } }, plugins: legendBottom } });
       }
-      const runs = D.activities.filter((a) => a.sport === "lauf" && a.hr && a.km > 4 && a.dur && (a.tss == null || a.tss / (a.dur / 3600) < 70)).slice(-60);
-      const ef = runs.map((a) => ({ x: a.date, y: +((a.km * 1000 / (a.dur / 60)) / a.hr).toFixed(3) }));
+      const LE = FK.laufEffizienz(D.activities), ef = LE.punkte.map((p) => ({ x: p.date, y: p.y, p }));     // laufeffizienz-1.0
       chart("c-ef", { type: "line", data: { labels: ef.map((p) => dLabel(p.x)), datasets: [
         { label: "Einzelne Läufe", data: ef.map((p) => p.y), borderColor: SPORTS.lauf.color, backgroundColor: SPORTS.lauf.color, showLine: false, pointRadius: 3 },
-        { label: "Trend über 10 Läufe", data: ef.map((_, i) => { const w = ef.slice(Math.max(0, i - 9), i + 1); return +(w.reduce((s, p) => s + p.y, 0) / w.length).toFixed(3); }), borderColor: css("--fg"), pointRadius: 0, tension: 0.3 }] },
-        options: { scales: { x: { ticks: { maxTicksLimit: 10 } }, y: { title: { display: true, text: "m/min pro Herzschlag" } } }, plugins: legendBottom } });
+        { label: "Mittel über 10 Läufe", data: ef.map((_, i) => { const w = ef.slice(Math.max(0, i - 9), i + 1); return +(w.reduce((s, p) => s + p.y, 0) / w.length).toFixed(3); }), borderColor: css("--fg"), borderWidth: 1.5, pointRadius: 0, tension: 0.3 }] },
+        options: { scales: { x: { ticks: { maxTicksLimit: innerWidth < 560 ? 5 : 10 } }, y: { ticks: { maxTicksLimit: 5 }, title: { display: true, text: "m pro Herzschlag" } } }, plugins: { ...legendBottom,
+          tooltip: { callbacks: { label: (c) => { const p = ef[c.dataIndex].p; return c.datasetIndex ? `Mittel: ${fmt(c.raw, 2)} m/Schlag` : `${fmt(p.y, 2)} m/Schlag = ${fmt(p.mpm)} m/min ÷ ${p.hr} Schläge/min`; },
+            footer: () => { const e = LE.ausgeschlossen, n = e.tempo + e.puls + e.ausreisser; return n ? `${n} Läufe entfernt: ${e.tempo} Tempo/GPS, ${e.puls} Puls, ${e.ausreisser} Ausreisser` : "keine Läufe entfernt"; } } } } } });
+      const e = LE.ausgeschlossen;
+      document.getElementById("ef-note").textContent = `${LE.punkte.length} von ${LE.n} lockeren, flachen Strassenläufen (letzte 60, über 4 km, höchstens 15 Hm/km). Entfernt: ${e.tempo} wegen Tempo/GPS, ${e.puls} wegen Puls, ${e.ausreisser} Ausreisser (mehr als 3 MAD vom Median). Regel ${LE.v}.`;
       this.hr();
-      if (window.V5UI) V5_READY.then(() => { V5UI.eta(); V5UI.aero(); });
+      if (window.V5UI) V5_READY.then(() => { V5UI.eta(); V5UI.aero(); if (window.V55) V55.trend(V5UI.C); });
     },
     ftp() {
       if (document.getElementById("ftp-card").dataset.ausgeblendet) return;     // FTP ausgeblendet, Daten bleiben

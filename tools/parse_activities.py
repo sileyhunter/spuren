@@ -303,6 +303,9 @@ def process(path):
             zf.pop("el", None)                     # Gesamtzeit bleibt wie bisher berechnet
             out[-1].update(zf)
             out[-1].update(kennzahlen.ausdauer(S))   # Drift und Lauf-Abschnitte (ausdauer-1.0)
+            eb = kennzahlen.bloecke(S)               # gleichmässige Blöcke für «Meine Entwicklung» (eb-1.0)
+            if eb:
+                out[-1]["eb"] = eb
             if out[-1]["sport"] in ("rad", "lauf"):
                 stf = kennzahlen.stufen.stufen(S)
                 if kennzahlen.stufen.relevant(stf):

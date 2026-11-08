@@ -455,3 +455,64 @@ test("5 h: Orientierung nie aus kurzen Fahrten; Rolle oben auf LT1 begrenzt", ()
   const q = FK.longRideOrientierung(rolle, { stunden: 4, system: "indoor", heute: "2026-06-01", lt1_w: 205 });
   assert.equal(q.watt.hi, 205); assert.ok(q.watt.lo <= 205); assert.match(q.bedingungen.join(" "), /LT1 205 W/);
 });
+
+/* ---------- V5.5: Meine Entwicklung (entwicklung-1.0) – A05, A06 ---------- */
+const blk = (date, hr, o) => ({ date, v: hr, id: "a" + date, x: 200, q: { wx: null, alt: 500, dhr: 1, n: 1, ...(o || {}) } });
+const per = (von, bis) => ({ von, bis });
+test("Entwicklung: Lauf 168 → 156 bpm bei 5:30/km = verbessert, aber vorläufig (wenige Messungen)", () => {
+  const pts = [blk("2023-05-02", 169), blk("2023-06-10", 167), blk("2023-07-01", 168), blk("2023-08-12", 170),
+    blk("2026-05-03", 155), blk("2026-06-11", 157), blk("2026-07-02", 156), blk("2026-08-13", 154)];
+  const r = FK.entwicklung("lauf330", pts, per("2026-01-01", "2026-12-31"), per("2023-01-01", "2023-12-31"));
+  assert.equal(r.status, "verbessert"); assert.equal(r.diff, -13); assert.equal(r.vorlaeufig, true);   // Median 155.5 gegen 168.5
+  assert.deepEqual(r.n, { P: 4, R: 4 });
+  assert.match(FK.entwicklungAntworten([r]).verbessert[0], /−13.0 bpm \(n 4 gegen 4, vorläufig\)/);
+});
+test("Entwicklung: Rennrad 143 → 143 bpm bei 200 W = stabil, nicht «besser»", () => {
+  const pts = [141, 143, 145, 143, 142].map((h, i) => blk(`2025-0${i + 4}-10`, h)).concat([142, 144, 143, 143, 145].map((h, i) => blk(`2026-0${i + 4}-10`, h)));
+  const r = FK.entwicklung("rad200", pts, per("2026-01-01", "2026-12-31"), per("2025-01-01", "2025-12-31"));
+  assert.equal(r.status, "stabil"); assert.equal(r.diff, 0);
+  assert.equal(FK.entwicklungAntworten([r]).verbessert.length, 0);
+  assert.match(FK.entwicklungAntworten([r]).stabil[0], /stabil/);
+});
+test("Entwicklung: Rolle und draussen nie gemischt (Punkte je System)", () => {
+  const act = (id, date, sys, hr) => ({ id, date, sport: "rad", typ: sys === "indoor" ? "Zwift" : "Rennrad", indoor: sys === "indoor", eb: { art: "rad200", w: 200, hr, n: 1, dhr: 1, alt: 400 } });
+  const D = { activities: [act("i1", "2025-03-01", "indoor", 139), act("i2", "2025-03-08", "indoor", 140), act("o1", "2025-03-09", "rennrad", 152)] };
+  assert.deepEqual(FK.entwicklungPunkte(D, "rad200", { sys: "indoor" }).map((p) => p.id), ["i1", "i2"]);
+  assert.deepEqual(FK.entwicklungPunkte(D, "rad200", { sys: "rennrad" }).map((p) => p.id), ["o1"]);
+});
+test("Entwicklung: Guards – Hitze, Höhe, Drift, Ausreisser, Vorschau, Mindest-n", () => {
+  const R = [140, 141, 142, 141, 140].map((h, i) => blk(`2025-05-0${i + 1}`, h));
+  const P = [139, 140, 141, 139, 140].map((h, i) => blk(`2026-05-0${i + 1}`, h))
+    .concat([blk("2026-05-10", 150, { wx: 29 }), blk("2026-05-11", 150, { alt: 1800 }), blk("2026-05-12", 150, { dhr: 12 }), blk("2026-05-13", 170), blk("2026-05-14", 150, { status: "vorschau" })]);
+  const r = FK.entwicklung("rad200", R.concat(P), per("2026-01-01", "2026-12-31"), per("2025-01-01", "2025-12-31"));
+  assert.deepEqual(r.ausgeschlossen, { hitze: 1, hoehe: 1, drift: 1, vorschau: 1, ausreisser: 1 });
+  assert.equal(r.n.P, 5); assert.equal(r.status, "stabil");
+  const k = FK.entwicklung("rad200", R.slice(0, 2).concat(P.slice(0, 5)), per("2026-01-01", "2026-12-31"), per("2025-01-01", "2025-12-31"));
+  assert.equal(k.status, "nicht beurteilbar"); assert.match(k.text, /keine ausreichenden vergleichbaren Daten/);
+});
+test("Entwicklung: deterministisch und Intervall enthält die Differenz", () => {
+  const pts = [150, 148, 152, 149, 151, 147].map((h, i) => blk(`2025-06-0${i + 1}`, h)).concat([146, 144, 147, 145, 143, 146].map((h, i) => blk(`2026-06-0${i + 1}`, h)));
+  const a = FK.entwicklung("rad200", pts, per("2026-01-01", "2026-12-31"), per("2025-01-01", "2025-12-31")), b = FK.entwicklung("rad200", pts, per("2026-01-01", "2026-12-31"), per("2025-01-01", "2025-12-31"));
+  assert.deepEqual(a.ci90, b.ci90); assert.ok(a.ci90[0] <= a.diff && a.diff <= a.ci90[1]);
+  assert.equal(a.status, "verbessert"); assert.equal(a.vorlaeufig, false);
+});
+test("Laktat: nur Interpolation zwischen Stufen; gemeinsamer Leistungswert; CSS 9:00 / 4:20 = 2:20 pro 100 m (A06)", () => {
+  const st = [{ x: 160, la: 1.0 }, { x: 180, la: 1.2 }, { x: 200, la: 1.6 }, { x: 220, la: 2.4 }];
+  assert.equal(FK.laInterp(st, 190), 1.4); assert.equal(FK.laInterp(st, 230), null); assert.equal(FK.laInterp(st, 150), null);
+  assert.equal(FK.laktatFixX([{ punkte: st }, { punkte: [{ x: 120, la: 1 }, { x: 240, la: 3 }] }]), 200);
+  assert.equal(FK.laktatFixX([{ punkte: [{ x: 120, la: 1 }, { x: 180, la: 2 }] }, { punkte: [{ x: 150, la: 1 }, { x: 190, la: 2 }] }]), 170);
+  assert.equal(FK.css(9 * 60, 4 * 60 + 20), 140); assert.equal(FK.pace(FK.css(540, 260)), "2:20");
+  assert.equal(FK.css(260, 540), null);
+});
+
+/* ---------- V5.5: Lauf-Effizienz laufeffizienz-1.0 – P0.5 ---------- */
+test("Lauf-Effizienz: Einheit m/Schlag, Ausreisser und Fehler werden entfernt und gezählt", () => {
+  const r = (i, o) => ({ id: "l" + i, sport: "lauf", typ: "Laufen", date: FK.addDays("2026-03-01", i), km: 10, hm: 50, dur: 3300, mv: 3300, hr: 150, tss: 50, ...o });
+  const acts = [0, 1, 2, 3, 4, 5].map((i) => r(i, { hr: 148 + i })).concat([r(7, { mv: 900, dur: 900, tss: 10 }), r(8, { hr: 60 }), r(9, { hr: 120 }), r(10, { typ: "Trail" }), r(11, { indoor: true })]);
+  const L = FK.laufEffizienz(acts);
+  assert.equal(L.einheit, "m/Schlag"); assert.equal(L.v, "laufeffizienz-1.0");
+  assert.equal(L.n, 9);                                                // Trail und Laufband gar nicht erst dabei
+  assert.deepEqual(L.ausgeschlossen, { tempo: 1, puls: 1, ausreisser: 1 });
+  const p = L.punkte[0];                                               // 10 km in 55 min = 181.8 m/min; / 148 = 1.2285 m/Schlag
+  assert.equal(p.y, 1.229); assert.equal(p.mpm, 181.8);
+});

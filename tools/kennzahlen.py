@@ -9,6 +9,7 @@ Felder je Aktivität (kurz, weil die Seite alles lädt):
   hh  Puls-Histogramm (5-bpm-Klassen ab 60, Sekunden) · pdc beste Leistung je Dauer · np
   t0  Start (Unix-Sekunden, UTC, aus der Session) · dr Drift/Entkopplung 1. gegen 2. Hälfte der Bewegungszeit
   sp  Lauf-Abschnitte ab Start 0–5, 5–10, 10–20 min und Rest (Pace, Puls, Schrittfrequenz)   [ausdauer-1.0]
+  eb  gleichmässige 10-min-Blöcke für «Meine Entwicklung»: Rad bei 200 W ± 10 W, Laufen bei 5:30/km ± 10 s   [eb-1.0]
 """
 import itertools
 import operator
@@ -30,7 +31,13 @@ VERSIONS = {
     "hh_pdc": {"v": "hh-pdc-1.0", "text": "Puls-Histogramm 5 bpm ab 60, gewichtet bis zum nächsten Datensatz (max. 10 s); Leistungskurve aus 1-s-Reihe, Lücken bis 3 s gefüllt"},
     "ausdauer": {"v": "ausdauer-1.0", "text": "Drift: Bewegungszeit halbiert, Leistung bzw. Tempo je Puls in beiden Hälften, Entkopplung in %; "
                                               "Lauf-Abschnitte ab Start 0–5, 5–10, 10–20 min und Rest der Bewegungszeit; nur Sekunden mit Puls"},
+    "entwicklung": {"v": "eb-1.0", "text": "Gleichmässige 10-min-Blöcke ab Minute 10: Rad Ø 190–210 W, 30-s-Mittel mit Variationskoeffizient ≤ 10 %, kein 30-s-Mittel "
+                                          "unter 75 %, höchstens 3 % Sekunden ohne Treten; Laufen Ø 5:20–5:40/km, 30-s-Tempo CV ≤ 8 %, kein 30-s-Tempo unter 80 %, "
+                                          "Steigung |≤ 2 %|, Anstieg ≤ 15 m; Puls in ≥ 95 % der Sekunden; je Aktivität Median der nicht überlappenden Blöcke"},
 }
+EB = {"v": "eb-1.0", "fenster": 600, "ab": 600, "schritt": 30,
+      "rad": {"lo": 190.0, "hi": 210.0, "cv": 0.10, "min_rel": 0.75, "zero": 0.03},
+      "lauf": {"lo": 320.0, "hi": 340.0, "cv": 0.08, "min_rel": 0.80, "steig": 0.02, "anstieg": 15.0}}
 SPLITS = [(0, 300), (300, 600), (600, 1200), (1200, None)]
 
 
@@ -110,6 +117,112 @@ def ausdauer(S):
     return out
 
 
+def _grid(S, vals, gap=3):
+    """1-s-Raster ab Start: Wert oder None; Lücken bis gap Sekunden mit dem letzten Wert gefüllt."""
+    import numpy as np
+    st = int(S.start or (S.ts[0] if S.ts else 0))
+    L = int((S.ts[-1] - st) if S.ts else 0) + 1
+    if L < 2 or L > 200000:
+        return None
+    arr = np.full(L, np.nan)
+    for t, v in zip(S.ts, vals):
+        if v is not None:
+            k = int(t - st)
+            if 0 <= k < L:
+                arr[k] = v
+    last, li = np.nan, -100
+    for i in range(L):
+        if not np.isnan(arr[i]):
+            last, li = arr[i], i
+        elif i - li <= gap:
+            arr[i] = last
+    return arr
+
+
+def bloecke(S):
+    """Gleichmässige 10-min-Blöcke (eb-1.0) für «Meine Entwicklung». Rad bei 200 W ± 10 W, Laufen bei 5:30/km ± 10 s.
+    Je Aktivität: Anzahl nicht überlappender Blöcke und Median von Leistung/Pace, Puls, Pulsanstieg im Block,
+    Temperatur und Höhe. Ohne Puls oder ohne Leistung/Tempo: nichts (kein Schätzen)."""
+    import numpy as np
+    cat = S.category
+    if cat not in ("rad", "lauf") or not any(h for h in S.hr) or len(S.ts) < 600:
+        return None
+    hr = _grid(S, S.hr)
+    if hr is None:
+        return None
+    W, A, step = EB["fenster"], EB["ab"], EB["schritt"]
+    L = len(hr)
+    if L < A + W:
+        return None
+    if cat == "rad":
+        if not any(p for p in S.pw if p):
+            return None
+        x = _grid(S, S.pw)
+        # Höhe nur draussen: Zwift und andere virtuelle Fahrten liefern eine virtuelle Höhe
+        alt = _grid(S, S.alt, gap=10) if not S.indoor and any(v is not None for v in S.alt) else None
+        cfg = EB["rad"]
+    else:
+        if S.indoor or not any(v for v in S.dist if v):
+            return None
+        x = _grid(S, S.spd, gap=5)
+        dist = _grid(S, S.dist, gap=10)
+        alt = _grid(S, S.alt, gap=10)
+        cfg = EB["lauf"]
+    temp = _grid(S, S.temp, gap=60)
+    hv = ~np.isnan(hr)
+    hrz = np.where(hv, hr, 0.0)
+    ch, cv_ = np.concatenate([[0], np.cumsum(hrz)]), np.concatenate([[0], np.cumsum(hv)])
+    found, t = [], A
+    while t + W <= L:
+        seg = x[t:t + W]
+        if np.isnan(seg).mean() > 0.03 or cv_[t + W] - cv_[t] < 0.95 * W:
+            t += step
+            continue
+        blocks = np.nanmean(seg.reshape(-1, 30), axis=1)
+        m = float(np.nanmean(seg))
+        ok = m > 0 and np.nanstd(blocks) / m <= cfg["cv"] and np.nanmin(blocks) >= cfg["min_rel"] * m
+        if ok and cat == "rad":
+            ok = cfg["lo"] <= m <= cfg["hi"] and float(np.mean(np.nan_to_num(seg) <= 0)) <= cfg["zero"]
+            val = m
+        elif ok:
+            d0, d1 = dist[t], dist[t + W - 1]
+            if np.isnan(d0) or np.isnan(d1) or d1 - d0 < 500:
+                ok = False
+            else:
+                pace = W / (d1 - d0) * 1000
+                a = alt[t:t + W]
+                if np.isnan(a).mean() > 0.2:
+                    ok = False
+                else:
+                    a30 = np.nanmean(a.reshape(-1, 30), axis=1)
+                    steig = (a30[-1] - a30[0]) / (d1 - d0)
+                    anst = float(np.sum(np.clip(np.diff(a30), 0, None)))
+                    ok = cfg["lo"] <= pace <= cfg["hi"] and abs(steig) <= cfg["steig"] and anst <= cfg["anstieg"]
+                    val = pace
+        if not ok:
+            t += step
+            continue
+        n1 = cv_[t + W // 2] - cv_[t]
+        n2 = cv_[t + W] - cv_[t + W // 2]
+        h1 = (ch[t + W // 2] - ch[t]) / n1 if n1 else None
+        h2 = (ch[t + W] - ch[t + W // 2]) / n2 if n2 else None
+        hm = (ch[t + W] - ch[t]) / (cv_[t + W] - cv_[t])
+        tp = temp[t:t + W] if temp is not None else None
+        tt = float(np.nanmean(tp)) if tp is not None and not np.isnan(tp).all() else None
+        al = float(np.nanmean(alt[t:t + W])) if alt is not None and not np.isnan(alt[t:t + W]).all() else None
+        found.append({"x": val, "hr": hm, "dhr": (h2 - h1) if h1 and h2 else None, "t": tt, "alt": al, "s0": t})
+        t += W
+    if not found:
+        return None
+    med = lambda k: (float(np.median([f[k] for f in found if f[k] is not None])) if any(f[k] is not None for f in found) else None)
+    out = {"v": EB["v"], "art": "rad200" if cat == "rad" else "lauf330", "n": len(found),
+           ("w" if cat == "rad" else "pace"): round(med("x"), 1), "hr": round(med("hr"), 1),
+           "dhr": round(med("dhr"), 1) if med("dhr") is not None else None,
+           "t": round(med("t"), 1) if med("t") is not None else None, "alt": round(med("alt")) if med("alt") is not None else None,
+           "s0": [f["s0"] for f in found]}
+    return out
+
+
 def hh(S):
     """Puls-Histogramm wie parse_activities.py (Version hh-pdc-1.0)."""
     hrs, ts = S.hr, S.ts
@@ -180,4 +293,7 @@ def alles(S):
     f["stufen"] = st if stufen.relevant(st) else None
     f["t0"] = int(S.start) if S.start else None
     f.update(ausdauer(S))
+    eb = bloecke(S)
+    if eb:
+        f["eb"] = eb
     return f, z

@@ -45,7 +45,7 @@ def minutes(hhmm):
     return int(h) * 60 + int(m)
 
 
-FIT_KEYS = ("el", "mv", "st", "nst", "un", "rc", "ac", "us", "hh", "pdc", "t0", "dr", "sp")
+FIT_KEYS = ("el", "mv", "st", "nst", "un", "rc", "ac", "us", "hh", "pdc", "t0", "dr", "sp", "eb")
 
 
 def load_fit(path):

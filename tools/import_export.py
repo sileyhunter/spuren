@@ -19,7 +19,7 @@ import kennzahlen  # noqa: E402
 ZRH = zoneinfo.ZoneInfo("Europe/Zurich")
 KEEP = ("id", "sport", "typ", "indoor", "name", "date", "start", "km", "hm", "dur", "hr", "watt", "np", "tss", "zones", "hh", "poly",
         "el", "mv", "st", "nst", "un", "rc", "ac", "us",      # Zeitbegriffe zeit-1.0 (A3)
-        "t0", "dr", "sp", "pdc")                              # Start (Unix), Drift, Lauf-Abschnitte (ausdauer-1.0, V5), beste Watt je Dauer (V5.3)
+        "t0", "dr", "sp", "pdc", "eb")                        # Start (Unix), Drift, Lauf-Abschnitte (ausdauer-1.0, V5), beste Watt je Dauer (V5.3), Blöcke (eb-1.0, V5.5)
 PDC_D = [5, 15, 30, 60, 300, 600, 1200, 3600, 7200]
 
 

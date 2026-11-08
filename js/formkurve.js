@@ -10,7 +10,7 @@
   FK.VERSIONS = {
     cockpit: "cockpit-1.0", readiness: "readiness-1.0", langfahrt: "langfahrt-1.0", koppel: "koppel-1.1",
     fueling: "fueling-1.0", eta: "eta-1.0", cda: "cda-1.0", fit: "fit-js-1.0", wetter: "wetter-1.0",
-    pmc: "pmc-2.0", zonen: "zonenverteilung-2.0", orientierung: "langfahrt-orientierung-1.0",
+    pmc: "pmc-2.0", zonen: "zonenverteilung-2.0", orientierung: "langfahrt-orientierung-1.0", entwicklung: "entwicklung-1.0", laufeffizienz: "laufeffizienz-1.0",
   };
   const DAY = 864e5;
   const isNum = (v) => typeof v === "number" && isFinite(v);
@@ -573,6 +573,155 @@
     if (vals.length < opt.minN || !isNum(p0(run))) return { status: "nicht vergleichbar", n: vals.length, grund: `nur ${vals.length} ähnliche Solo-Läufe (mindestens ${opt.minN})` };
     const m = median(vals);
     return { status: "vergleichbar", n: vals.length, solo_pace_0_5: Math.round(m), diff_s: Math.round(p0(run) - m) };
+  };
+
+  /* ---------------- Meine Entwicklung (entwicklung-1.0) ----------------
+     Belegkennzahlen nur aus vergleichbaren Messungen: Puls in gleichmässigen 10-min-Blöcken bei 200 W je Gerätesystem
+     bzw. bei 5:30/km auf flacher Strasse (eb-1.0, aus FIT), Laktat bei fixer Leistung aus bestätigten Stufentests desselben
+     Protokolls (nur Interpolation), CSS aus validierten 400/200-m-Tests. Guards vor jeder Aussage; Text deterministisch. */
+  const EW = { minN: 3, hitze: 25, hoehe: 1500, dhrMax: 6, madK: 3, boot: 2000 };
+  FK.EW = EW;
+  FK.EW_METRIKEN = {
+    rad200: { name: "Rad: Puls bei 200 W", unit: "bpm", besser: "tiefer", schwelle: 3, sport: "rad", dec: 1 },
+    lauf330: { name: "Laufen: Puls bei 5:30/km", unit: "bpm", besser: "tiefer", schwelle: 3, sport: "lauf", dec: 1 },
+    laktat: { name: "Laktat bei fixer Leistung", unit: "mmol/l", besser: "tiefer", schwelle: 0.3, sport: "rad", dec: 1 },
+    css: { name: "Schwimmen: CSS", unit: "s/100 m", besser: "tiefer", schwelle: 2, sport: "schwimm", dec: 0 },
+  };
+  const runSys = (a) => (a.indoor ? "band" : /trail/i.test(a.typ || "") ? "trail" : "strasse");
+  /** Laktat bei fixer Leistung x: nur lineare Interpolation zwischen gemessenen Stufen, nie darüber hinaus. */
+  FK.laInterp = function (punkte, x) {
+    const P = (punkte || []).filter((p) => isNum(p.x) && isNum(p.la)).sort((a, b) => a.x - b.x);
+    if (P.length < 2 || x < P[0].x || x > P[P.length - 1].x) return null;
+    for (let i = 0; i < P.length - 1; i++) if (x >= P[i].x && x <= P[i + 1].x) {
+      const f = P[i + 1].x === P[i].x ? 0 : (x - P[i].x) / (P[i + 1].x - P[i].x);
+      return +(P[i].la + f * (P[i + 1].la - P[i].la)).toFixed(2);
+    }
+    return null;
+  };
+  /** CSS in s/100 m aus 400-m- und 200-m-Zeit (s): (T400 − T200) / 2. */
+  FK.css = (t400, t200) => (isNum(t400) && isNum(t200) && t400 > t200 && t200 > 0 ? (t400 - t200) / 2 : null);
+  /**
+   * Messpunkte einer Kennzahl aus den Daten. art: rad200 (opt.sys: indoor|rennrad|mtb), lauf330, laktat (opt.protokoll, opt.x), css.
+   * Jeder Punkt: {date, v, id, name, x, q:{wx, alt, dhr, n, status}}.
+   */
+  FK.entwicklungPunkte = function (D, art, opt) {
+    opt = opt || {};
+    const A = (D && D.activities) || [];
+    if (art === "rad200") return A.filter((a) => a.sport === "rad" && a.eb && a.eb.art === "rad200" && (!opt.sys || FK.bikeSys(a) === opt.sys))
+      .map((a) => ({ date: a.date, v: a.eb.hr, id: a.id, name: a.name, x: a.eb.w, q: { wx: a.wx && isNum(a.wx.temperature) ? a.wx.temperature : null,
+        alt: FK.bikeSys(a) === "indoor" ? null : a.eb.alt ?? null, dhr: a.eb.dhr ?? null, n: a.eb.n } }));     // Rolle: virtuelle Höhe zählt nicht
+    if (art === "lauf330") return A.filter((a) => a.sport === "lauf" && a.eb && a.eb.art === "lauf330" && runSys(a) === "strasse")
+      .map((a) => ({ date: a.date, v: a.eb.hr, id: a.id, name: a.name, x: a.eb.pace, q: { wx: a.wx && isNum(a.wx.temperature) ? a.wx.temperature : null, alt: a.eb.alt ?? null, dhr: a.eb.dhr ?? null, n: a.eb.n } }));
+    if (art === "laktat") return FK.lactateData(D).tests.filter((t) => t.protokoll === opt.protokoll).map((t) => ({ date: t.datum, v: FK.laInterp(t.punkte, opt.x), id: t.id, name: t.id, x: opt.x,
+      q: { status: t.datenstatus === "bestätigt" ? "bestätigt" : "vorschau" } })).filter((p) => isNum(p.v));
+    if (art === "css") return ((D && D.css_tests) || []).concat(opt.lokal || []).filter((t) => isNum(FK.css(t.t400, t.t200)))
+      .map((t) => ({ date: t.datum, v: +FK.css(t.t400, t.t200).toFixed(1), id: t.id, name: t.becken ? `${t.becken} m Becken` : "CSS-Test", q: { status: t.validiert === false ? "vorschau" : "bestätigt", becken: t.becken || null } }));
+    return [];
+  };
+  /** Gemeinsamer Leistungswert zweier oder mehr Tests: 200 W, wenn alle ihn messen, sonst Mitte des gemeinsamen Bereichs (10-W-Raster). */
+  FK.laktatFixX = function (tests) {
+    const R = tests.map((t) => { const x = t.punkte.filter((p) => isNum(p.x) && isNum(p.la)).map((p) => p.x); return x.length >= 2 ? [Math.min(...x), Math.max(...x)] : null; });
+    if (!R.length || R.some((r) => !r)) return null;
+    const lo = Math.max(...R.map((r) => r[0])), hi = Math.min(...R.map((r) => r[1]));
+    if (lo > hi) return null;
+    return lo <= 200 && 200 <= hi ? 200 : Math.round((lo + hi) / 20) * 10;
+  };
+  function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  /**
+   * Vergleich Zeitraum P gegen Referenz R mit Guards. Ergebnis: {status: verbessert|stabil|verschlechtert|unklar|nicht beurteilbar,
+   * n, median, diff, ci90, streuung, ausgeschlossen, gruende, text, grenzen}. Deterministisch (fester Zufallsstartwert).
+   */
+  FK.entwicklung = function (metricId, punkte, P, R, opt) {
+    opt = Object.assign({}, EW, opt || {});
+    const M = FK.EW_METRIKEN[metricId] || { name: metricId, unit: "", besser: "tiefer", schwelle: 0, dec: 0 };
+    const ex = { hitze: 0, hoehe: 0, drift: 0, vorschau: 0, ausreisser: 0 };
+    const keep = (p) => {
+      if (p.q && p.q.status === "vorschau") { ex.vorschau++; return false; }
+      if (p.q && isNum(p.q.wx) && p.q.wx >= opt.hitze) { ex.hitze++; return false; }
+      if (p.q && isNum(p.q.alt) && p.q.alt >= opt.hoehe) { ex.hoehe++; return false; }
+      if (p.q && isNum(p.q.dhr) && Math.abs(p.q.dhr) > opt.dhrMax) { ex.drift++; return false; }
+      return isNum(p.v);
+    };
+    const robust = (L) => {                                     // Ausreisser: mehr als 3 MAD (×1,4826) vom Median, erst ab 5 Werten
+      if (L.length < 5) return L;
+      const m = median(L.map((p) => p.v)), mad = median(L.map((p) => Math.abs(p.v - m))) * 1.4826;
+      if (!mad) return L;
+      const out = L.filter((p) => Math.abs(p.v - m) <= opt.madK * mad);
+      ex.ausreisser += L.length - out.length;
+      return out;
+    };
+    const inR = (p, r) => p.date >= r.von && p.date <= r.bis;
+    const Pp = robust((punkte || []).filter((p) => inR(p, P)).filter(keep)), Rp = robust((punkte || []).filter((p) => inR(p, R)).filter(keep));
+    const res = { v: FK.VERSIONS.entwicklung, metric: metricId, name: M.name, unit: M.unit, zeitraum: P, referenz: R, n: { P: Pp.length, R: Rp.length },
+      punkte: { P: Pp, R: Rp }, ausgeschlossen: ex, schwelle: M.schwelle, gruende: [] };
+    const fx = (v) => (isNum(v) ? (Math.round(v * 10 ** M.dec) / 10 ** M.dec).toFixed(M.dec) : "–");
+    if (Pp.length < opt.minN || Rp.length < opt.minN) {
+      res.status = "nicht beurteilbar";
+      res.gruende.push(`zu wenige vergleichbare Messungen: ${Pp.length} im Zeitraum, ${Rp.length} in der Referenz (mindestens ${opt.minN} je Zeitraum)`);
+      if (ex.vorschau) res.gruende.push(`${ex.vorschau} ${ex.vorschau === 1 ? "Wert ist" : "Werte sind"} noch Vorschau (nicht bestätigt)`);
+      res.text = `${M.name}: keine ausreichenden vergleichbaren Daten (${Pp.length} gegen ${Rp.length}).`;
+      return res;
+    }
+    const vP = Pp.map((p) => p.v), vR = Rp.map((p) => p.v), mP = median(vP), mR = median(vR), d = mP - mR;
+    const r = rng(opt.seed || 20261108), boot = [];
+    const pick = (v) => { const s = []; for (let i = 0; i < v.length; i++) s.push(v[Math.floor(r() * v.length)]); return median(s); };
+    for (let b = 0; b < opt.boot; b++) boot.push(pick(vP) - pick(vR));
+    const lo = quant(boot, 0.05), hi = quant(boot, 0.95), nullIn = lo <= 0 && hi >= 0;
+    const besser = M.besser === "tiefer" ? d < 0 : d > 0;
+    res.median = { P: mP, R: mR }; res.diff = d; res.ci90 = [lo, hi];
+    res.streuung = { P: [quant(vP, 0.25), quant(vP, 0.75)], R: [quant(vR, 0.25), quant(vR, 0.75)] };
+    res.prozent = mR ? Math.round((100 * d) / mR) : null;
+    res.vorlaeufig = Math.min(Pp.length, Rp.length) < 6;           // wenige Messungen: Modellwert, nur vorläufig
+    if (Math.abs(d) < M.schwelle && nullIn) res.status = "stabil";
+    else if (!nullIn && Math.abs(d) >= M.schwelle) res.status = besser ? "verbessert" : "verschlechtert";
+    else res.status = "unklar";
+    const sg = (v) => (v > 0 ? "+" : v < 0 ? "−" : "±") + fx(Math.abs(v));
+    res.text = `${M.name}: Median ${fx(mP)} ${M.unit} (n = ${Pp.length}) gegenüber ${fx(mR)} ${M.unit} (n = ${Rp.length}), Unterschied ${sg(d)} ${M.unit} ` +
+      `(90-%-Intervall ${sg(lo)} bis ${sg(hi)}).`;
+    res.urteil = { verbessert: M.besser === "tiefer" ? `tiefer bei gleicher Belastung` : "höher", stabil: "keine klare Veränderung",
+      verschlechtert: "höher bei gleicher Belastung – mögliche Gründe: Ermüdung, Hitze, Krankheit, Messung (keine Diagnose)",
+      unklar: "Veränderung möglich, aber nicht gesichert" }[res.status];
+    if (Math.abs(d) >= M.schwelle && nullIn) res.gruende.push("Intervall schliesst 0 ein");
+    if (Math.abs(d) < M.schwelle) res.gruende.push(`Unterschied unter der Messschwelle ${fx(M.schwelle)} ${M.unit}`);
+    return res;
+  };
+  /**
+   * Lauf-Effizienz (laufeffizienz-1.0): Meter pro Herzschlag = Tempo (m/min) / Puls (Schläge/min), mit Bewegungszeit.
+   * Nur lockere Strassenläufe über opt.minKm, höchstens opt.maxHmKm Anstieg je km; GPS-/Pulsfehler und Ausreisser (> 3 MAD)
+   * werden entfernt und gezählt. Explorativ: kein Fortschrittsnachweis.
+   */
+  FK.laufEffizienz = function (acts, opt) {
+    opt = Object.assign({ n: 60, maxTssH: 70, minKm: 4, maxHmKm: 15 }, opt || {});
+    const cand = (acts || []).filter((a) => a.sport === "lauf" && !a.indoor && !/trail/i.test(a.typ || "") && isNum(a.hr) && a.km > opt.minKm && (a.mv || a.dur)
+      && (a.tss == null || !a.dur || a.tss / (a.dur / 3600) < opt.maxTssH) && (a.hm || 0) / a.km <= opt.maxHmKm).slice(-opt.n);
+    const ex = { tempo: 0, puls: 0, ausreisser: 0 }, pts = [];
+    for (const a of cand) {
+      const v = (a.km * 1000) / (a.mv || a.dur);
+      if (v < 1.8 || v > 5.5) { ex.tempo++; continue; }            // GPS-Sprung oder lange Gehpausen
+      if (a.hr < 90 || a.hr > 195) { ex.puls++; continue; }          // Pulsaussetzer, Kadenz statt Puls
+      pts.push({ date: a.date, id: a.id, name: a.name, y: +((v * 60) / a.hr).toFixed(3), mpm: +(v * 60).toFixed(1), hr: a.hr });
+    }
+    let keep = pts;
+    if (pts.length >= 5) {
+      const m = median(pts.map((p) => p.y)), mad = median(pts.map((p) => Math.abs(p.y - m))) * 1.4826;
+      if (mad) { keep = pts.filter((p) => Math.abs(p.y - m) <= 3 * mad); ex.ausreisser = pts.length - keep.length; }
+    }
+    return { v: FK.VERSIONS.laufeffizienz, einheit: "m/Schlag", punkte: keep, ausgeschlossen: ex, n: cand.length };
+  };
+  /** Antwortfelder aus den Ergebnissen: deterministisch, keine Diagnose, keine Trainingsanweisung. */
+  FK.entwicklungAntworten = function (ergebnisse) {
+    const a1 = [], a2 = [], a3 = [], nb = [];
+    const fx = (r, v) => { const M = FK.EW_METRIKEN[r.metric] || { dec: 0 }; const k = 10 ** M.dec, x = Math.round(v * k) / k; return { s: x > 0 ? "+" : x < 0 ? "−" : "±", v: Math.abs(x).toFixed(M.dec) }; };
+    for (const r of ergebnisse) {
+      const lab = r.label || r.name, vl = r.vorlaeufig ? ", vorläufig" : "", d = r.diff != null ? fx(r, r.diff) : null;
+      if (r.status === "verbessert") a1.push(`${lab}: ${d.s}${d.v} ${r.unit} (n ${r.n.P} gegen ${r.n.R}${vl}), ${r.urteil}.`);
+      else if (r.status === "stabil") a2.push(`${lab}: stabil (${d.s}${d.v} ${r.unit}, n ${r.n.P} gegen ${r.n.R}${vl}).`);
+      else if (r.status === "unklar") a2.push(`${lab}: unklar (${d.s}${d.v} ${r.unit}, Intervall schliesst 0 ein; n ${r.n.P} gegen ${r.n.R}).`);
+      else if (r.status === "verschlechtert") { a2.push(`${lab}: ${d.s}${d.v} ${r.unit} (n ${r.n.P} gegen ${r.n.R}${vl}), ${r.urteil}.`); a3.push(`${lab}: Kontext prüfen (Schlaf, Krankheit, Hitze, Belastung der letzten Wochen).`); }
+      else { nb.push(`${r.kurz || lab} (${r.ausgeschlossen && r.ausgeschlossen.vorschau && !r.n.P && !r.n.R ? "Werte noch Vorschau" : r.n.P + r.n.R === 0 ? "keine Messung" : `${r.n.P} gegen ${r.n.R}`})`); if (r.naechstes) a3.push(r.naechstes); }
+    }
+    if (nb.length) a2.push(`Nicht beurteilbar: ${nb.join(", ")}.`);
+    return { verbessert: a1, stabil: a2, pruefen: a3.slice(0, 3) };
   };
 
   /* ---------------- Fueling (fueling-1.0) ---------------- */

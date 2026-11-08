@@ -160,6 +160,46 @@ dj = dd.copy(); dj[800:] += 400                       # GPS-Sprung um 400 m
 check("Bestleistung: Abschnitt mit GPS-Sprung wird nicht gewertet", abs(BL.best_for(tt, dj, 1000) - 200.0) < 0.6, BL.best_for(tt, dj, 1000))
 check("Bestleistung: zu kurze Strecke → keine Zeit", BL.best_for(tt[:100], dd[:100], 1000) is None)
 
+# --- Meine Entwicklung: gleichmässige Blöcke (eb-1.0) – synthetische Sessions ---
+import kennzahlen as KZ  # noqa: E402
+import series as SER  # noqa: E402
+
+
+def sess(sport, n, pw=None, hr=None, spd=None, alt=None):
+    S = SER.Session()
+    S.sport, S.start, S.elapsed, S.timer = sport, 1_700_000_000, n, n
+    S.ts = [S.start + i for i in range(n)]
+    S.pw = [pw(i) if pw else None for i in range(n)]
+    S.hr = [hr(i) if hr else None for i in range(n)]
+    S.spd = [spd(i) if spd else None for i in range(n)]
+    d, S.dist = 0.0, []
+    for i in range(n):
+        d += S.spd[i] or 0.0
+        S.dist.append(d)
+    S.alt = [alt(i) if alt else 500.0 for i in range(n)]
+    S.cad, S.temp, S.target = [90] * n, [18] * n, [None] * n
+    return S
+
+
+r = rng
+ride = sess(2, 3600, pw=lambda i: 140 if i < 600 else 200 + float(r.normal(0, 6)), hr=lambda i: 120 if i < 600 else 142 + (i - 600) / 3000 * 2)
+eb = KZ.bloecke(ride)
+check("Blöcke: 50 min bei 200 W ab Minute 10 → Blöcke mit Ø Leistung und Puls", eb and eb["art"] == "rad200" and eb["n"] >= 4 and abs(eb["w"] - 200) < 3 and 141 < eb["hr"] < 145, eb)
+check("Blöcke: Aufwärmen (erste 10 min) zählt nie", eb and min(eb["s0"]) >= 600, eb and eb["s0"])
+inter = sess(2, 3600, pw=lambda i: 320 if (i // 60) % 2 else 80, hr=lambda i: 150)
+check("Blöcke: Intervalle (Ø 200 W, aber 1 min hart/locker) → kein Block", KZ.bloecke(inter) is None, KZ.bloecke(inter))
+low = sess(2, 3600, pw=lambda i: 170 + float(r.normal(0, 5)), hr=lambda i: 135)
+check("Blöcke: gleichmässig, aber 170 W (ausserhalb 190–210 W) → kein Block", KZ.bloecke(low) is None)
+nohr = sess(2, 3600, pw=lambda i: 200)
+check("Blöcke: ohne Puls → nichts (kein Schätzen)", KZ.bloecke(nohr) is None)
+run_flat = sess(1, 2700, hr=lambda i: 150, spd=lambda i: 1000 / 330)
+run_hill = sess(1, 2700, hr=lambda i: 150, spd=lambda i: 1000 / 330, alt=lambda i: 500 + i * (1000 / 330) * 0.05)
+ef = KZ.bloecke(run_flat)
+check("Blöcke: flacher Lauf 5:30/km → Block mit Pace 330 s/km", ef and ef["art"] == "lauf330" and abs(ef["pace"] - 330) < 2 and ef["hr"] == 150, ef)
+check("Blöcke: Lauf mit 5 % Steigung → kein Flachblock", KZ.bloecke(run_hill) is None)
+fast = sess(1, 2700, hr=lambda i: 160, spd=lambda i: 1000 / 290)
+check("Blöcke: Lauf 4:50/km (ausserhalb 5:20–5:40) → kein Block", KZ.bloecke(fast) is None)
+
 # --- Repo-Schutz: keine entschlüsselten Daten, keine Schlüssel im Repo ---
 tracked = subprocess.run(["git", "ls-files"], cwd=ROOT, capture_output=True, text=True).stdout.split()
 check("Repo: data.json und work/ nicht versioniert", "data.json" not in tracked and not any(f.startswith("work/") for f in tracked))
