@@ -45,6 +45,10 @@
   const SPEED_FUSS = [["p1", "langsamer als 8:00 /km", 0, 7.5, "#8c2d2d"], ["p2", "6:00–8:00 /km", 7.5, 10, "#d9824a"], ["p3", "5:00–6:00 /km", 10, 12, "#d9cf7f"], ["p4", "4:00–5:00 /km", 12, 15, "#6fa6c9"], ["p5", "schneller als 4:00 /km", 15, 999, "#2c6e9b"]];
   const SPEED_GEH = [["h1", "unter 2 km/h", 0, 2, "#8c2d2d"], ["h2", "2–3 km/h", 2, 3, "#d9824a"], ["h3", "3–4 km/h", 3, 4, "#d9cf7f"], ["h4", "4–5 km/h", 4, 5, "#6fa6c9"], ["h5", "über 5 km/h", 5, 99, "#2c6e9b"]];
   const UNK = { label: "Unbekannt", color: "#c3c8cd" };
+  // wetter-rt-1.2: unbekannt bleibt sichtbar unbekannt; 0 km/h nur bei gemeldeter Windstille
+  const windKurz = (w) => (!w || !isNum(w.speed) ? "Wind unbekannt" : w.speed < 1e-6 ? "windstill (0 km/h)" : `Wind ${fmt(w.speed * 3.6)} km/h ${isNum(w.dirFrom) ? "aus " + dirName(w.dirFrom) : "(Richtung unbekannt)"}`);
+  const tempKurz = (w) => (w && isNum(w.temp) ? `${fmt(w.temp, 0)} °C` : "Temperatur unbekannt");
+  const regenKurz = (w) => (w && isNum(w.regen) ? `${fmt(w.regen, 1)} mm/h` : "Regen unbekannt");
   const bin = (list, v) => { if (!isNum(v)) return "unbekannt"; const b = list.find((x) => v >= x[2] && v < x[3]); return b ? b[0] : "unbekannt"; };
   const defFrom = (list) => Object.fromEntries(list.map((x) => [x[0], { label: x[1], color: x[4] }]).concat([["unbekannt", UNK]]));
   const TABS = {
@@ -462,7 +466,7 @@
     const o = infoAt(ST.cursorDistance_m);
     const accTxt = o.acc && o.acc !== "ok" ? `<span class="rp-acc ${o.acc}">${esc(RT.ACCESS[o.acc].label)}${o.accNote ? ": " + esc(o.accNote) : ""}</span>` : "";
     const diff = [o.sac ? "SAC " + o.sac : "", o.mtb ? "MTB " + o.mtb : ""].filter(Boolean).join(" · ");
-    const wx = o.wx ? `<span>${fmt(o.wx.temp, 0)} °C · ${fmt(o.wx.regen || 0, 1)} mm/h · Wind ${fmt(o.wx.speed * 3.6)} km/h aus ${dirName(o.wx.dirFrom)}${isNum(o.wx.along) ? ` (${o.wx.along < -1.4 ? "Gegenwind " + fmt(-o.wx.along * 3.6) : o.wx.along > 1.4 ? "Rückenwind " + fmt(o.wx.along * 3.6) : "seitlich"}${Math.abs(o.wx.along) > 1.4 ? " km/h" : ""})` : ""}</span>` : "";
+    const wx = o.wx ? `<span>${tempKurz(o.wx)} · ${regenKurz(o.wx)} · ${windKurz(o.wx)}${isNum(o.wx.along) && isNum(o.wx.dirFrom) ? ` (${o.wx.along < -1.4 ? "Gegenwind " + fmt(-o.wx.along * 3.6) : o.wx.along > 1.4 ? "Rückenwind " + fmt(o.wx.along * 3.6) : "seitlich"}${Math.abs(o.wx.along) > 1.4 ? " km/h" : ""})` : ""}</span>` : "";
     const bandTxt = o.band && clock(ST.startUnix + o.band[0]) !== clock(ST.startUnix + o.band[1]) ? ` (${clock(ST.startUnix + o.band[0])}–${clock(ST.startUnix + o.band[1])})` : "";
     const eta = isNum(o.t) ? `<span>Ankunft <b>${clock(ST.startUnix + o.t)}</b>${bandTxt} · ${speedTxt(o.v)}</span>` : "";
     box.innerHTML = `<div class="rp-info-main"><b>km ${km(o.d)}</b> · ${fmt(o.ele)} m · ${o.grade >= 0 ? "↗" : "↘"} ${fmt(o.grade * 100, 1)} %${route.gezeichnet ? "" : ` · ${esc(o.surf)} · ${esc(o.way)}`}${diff ? " · " + esc(diff) : ""}</div>
@@ -534,7 +538,7 @@
       else {
         for (const v of ov.ticks || niceTicks(v0, v1, 2)) s += `<line x1="${pl}" x2="${pl + w}" y1="${Yo(v).toFixed(1)}" y2="${Yo(v).toFixed(1)}" class="${v === 0 ? "g0" : "g"}"/><text x="${pl - 6}" y="${(Yo(v) + 3.5).toFixed(1)}" class="ya">${fmt(v)}</text>`;
         if (ov.bars) for (const b of ov.pts) s += `<rect x="${X(b[0]).toFixed(1)}" y="${Yo(Math.max(0, b[1])).toFixed(1)}" width="${Math.max(1, (X(b[2]) - X(b[0]))).toFixed(1)}" height="${Math.abs(Yo(b[1]) - Yo(0)).toFixed(1)}" fill="${b[3] || "#4a7fc1"}" opacity=".85"/>`;
-        else s += `<path d="${ov.pts.map((q, i) => `${i ? "L" : "M"}${X(q[0]).toFixed(1)},${Yo(q[1]).toFixed(1)}`).join(" ")}" class="ov"/>`;
+        else { let pen = false; s += `<path d="${ov.pts.map((q) => { if (!isNum(q[1])) { pen = false; return ""; } const c = `${pen ? "L" : "M"}${X(q[0]).toFixed(1)},${Yo(q[1]).toFixed(1)}`; pen = true; return c; }).join(" ")}" class="ov"/>`; }
       }
     }
     // Zwischenziele
@@ -555,18 +559,20 @@
       return vs.length ? { pts: out.filter((q) => isNum(q[1])), min: 0, max: Math.max(...vs) * 1.05, label: "Tempo (km/h)" } : null;
     }
     if (!field || !TABS[tab].wetter) return null;
+    let unbekannt = 0;
     for (let i = 0; i < N; i++) {
-      const k = Math.floor(i * step), w = wxAt(k); if (!w) continue;
-      if (tab === "temp") out.push([P.d[k], w.temp]);
-      else if (tab === "regen") out.push([P.d[k], w.regen || 0, P.d[Math.min(P.n, Math.floor((i + 1) * step))], "#4a7fc1"]);
-      else if (tab === "wind") { const a = isNum(w.along) ? w.along * 3.6 : 0; out.push([P.d[k], a, P.d[Math.min(P.n, Math.floor((i + 1) * step))], a < 0 ? "#d9694a" : "#3d7fb3"]); }
+      const k = Math.floor(i * step), w = wxAt(k); if (!w) { unbekannt++; continue; }
+      if (tab === "temp") { if (!isNum(w.temp)) unbekannt++; out.push([P.d[k], isNum(w.temp) ? w.temp : null]); }
+      else if (tab === "regen") { if (isNum(w.regen)) out.push([P.d[k], w.regen, P.d[Math.min(P.n, Math.floor((i + 1) * step))], "#4a7fc1"]); else unbekannt++; }
+      else if (tab === "wind") { if (isNum(w.along)) { const a = w.along * 3.6; out.push([P.d[k], a, P.d[Math.min(P.n, Math.floor((i + 1) * step))], a < 0 ? "#d9694a" : "#3d7fb3"]); } else unbekannt++; }
     }
-    if (!out.length) return null;
-    const vs = out.map((q) => q[1]);
-    if (tab === "temp") return { pts: out, min: Math.floor(Math.min(...vs) - 1), max: Math.ceil(Math.max(...vs) + 1), label: "Temperatur (°C) zur Durchfahrtszeit" };
-    if (tab === "regen") return { pts: out, bars: true, min: 0, max: Math.max(1, ...vs), label: "Niederschlag (mm/h) zur Durchfahrtszeit", trocken: vs.every((v) => !v) };
+    const lueckeTxt = unbekannt ? ` · Lücken = unbekannt (${fmt(100 * unbekannt / N)} %)` : "";
+    const vs = out.map((q) => q[1]).filter(isNum);
+    if (!vs.length) return null;
+    if (tab === "temp") return { pts: out, min: Math.floor(Math.min(...vs) - 1), max: Math.ceil(Math.max(...vs) + 1), label: "Temperatur (°C) zur Durchfahrtszeit" + lueckeTxt };
+    if (tab === "regen") return { pts: out, bars: true, min: 0, max: Math.max(1, ...vs), label: "Niederschlag (mm/h) zur Durchfahrtszeit" + lueckeTxt, trocken: !unbekannt && vs.every((v) => !v) };
     const m = Math.max(5, Math.ceil(Math.max(...vs.map(Math.abs)) / 5) * 5);
-    return { pts: out, bars: true, min: -m, max: m, ticks: [-m, 0, m], label: "Wind längs (km/h): + Rückenwind, − Gegenwind" };
+    return { pts: out, bars: true, min: -m, max: m, ticks: [-m, 0, m], label: "Wind längs (km/h): + Rückenwind, − Gegenwind" + lueckeTxt };
   }
   function niceTicks(a, b, n) {
     const span = b - a; if (span <= 0) return [a];
@@ -719,9 +725,10 @@
       <p class="hint">Summe ${fmt(total, 0)} %. ${TABS[tab].netz ? "Quelle: OSM-Merkmale der Routing-Antwort; ohne Angabe = unbekannt (nicht geraten)." : TABS[tab].wetter ? `Quelle: Open-Meteo, je Abschnitt zur geschätzten Durchfahrtszeit.${tab === "wind" ? windText() : ""}` : tab === "tempo" ? "Quelle: Tempomodell unten." : "Steigung je 20 m aus der geglätteten Höhe."} Antippen hebt alle Abschnitte hervor.</p>`;
   }
   function windText() {
-    const A = windArrowsNow(); if (!A.length) return "";
+    const A = windArrowsNow(); if (!A.length) return field && sim && !sim.unzureichend ? " Karte: keine Windpfeile – Wind auf der ganzen Strecke unbekannt oder windstill." : "";
     const pick = A.length > 3 ? [A[0], A[Math.floor(A.length / 2)], A[A.length - 1]] : A;
-    return ` Karte: Pfeile zeigen, wohin der Wind weht (aus W → Pfeil nach Osten), grösser = stärker. ${pick.map((a) => `km ${km(a.d)}: ${fmt(a.speed * 3.6)} km/h aus ${a.aus}`).join(" · ")}.`;
+    const n = RT.windPositions(route).length, fehlt = n - A.length;
+    return ` Karte: Pfeile zeigen, wohin der Wind weht (aus W → Pfeil nach Osten), grösser = stärker. ${pick.map((a) => `km ${km(a.d)}: ${fmt(a.speed * 3.6)} km/h aus ${a.aus}`).join(" · ")}.${fehlt ? ` An ${fehlt} von ${n} Stellen kein Pfeil: Wind unbekannt oder windstill.` : ""}`;
   }
   function renderInt() {
     const box = $("rp-int");
@@ -742,7 +749,7 @@
       res = `<div class="rp-res"><div><span>Bewegungszeit</span><b>${dur(sim.moving_s)} h</b><small>${dur(band[0])}–${dur(band[1])} h</small></div>
         <div><span>Ankunft</span><b>${clock(arr)}</b><small>${clock(ST.startUnix + band[0] * (1 + pz.share) + pw)}–${clock(ST.startUnix + band[1] * (1 + pz.share) + pw)}</small></div>
         <div><span>Ø ${def.art === "fuss" && ST.sport !== "wandern" ? "Pace" : "Tempo"}</span><b>${def.art === "fuss" && ST.sport !== "wandern" ? FK.pace(sim.moving_s / route.L * 1000) : fmt(route.L / sim.moving_s * 3.6, 1)}</b><small>${def.art === "fuss" && ST.sport !== "wandern" ? "min/km" : "km/h"}</small></div></div>
-        <p class="hint">${esc(sim.info.modell)}${sim.info.korrektur ? " · " + esc(sim.info.korrektur.text) : ""} · Band: ${esc(sim.fehler.quelle)} ±${fmt(sim.fehler.rel * 100)} %${field ? ", Wind aus Prognose" : def.art === "rad" ? ", Wind ±7 km/h" : ""}. ${sim.info.hinweise.map(esc).join(" ")}</p>`;
+        <p class="hint">${esc(sim.info.modell)}${sim.info.korrektur ? " · " + esc(sim.info.korrektur.text) : ""} · Band: ${esc(sim.fehler.quelle)} ±${fmt(sim.fehler.rel * 100)} %${sim.wind && sim.wind.status === "Prognose" ? ", Wind aus Prognose" : ""}. ${sim.info.hinweise.map(esc).join(" ")}</p>${windHinweis(sim)}`;
     }
     const kOk = (m === "hf" && hfCal()) ? hfCal() : null;
     const calNote = m === "hf" ? (kOk && kOk.ok ? `<p class="hint">Kalibrierung: ${kOk.n} Blöcke aus ${kOk.n_aktiv} Einheiten, Hold-out-Fehler ±${fmt(kOk.mae)} ${esc(kOk.einheit_fehler)} (ohne Puls ±${fmt(kOk.mae_konstant)})${kOk.schwach ? " – schwacher Zusammenhang" : ""}. Bereich ${fmt(kOk.x_bereich[0])}–${fmt(kOk.x_bereich[1])} bpm.</p>` : `<p class="hint">Unzureichende Daten für eine persönliche Puls-Kalibrierung.</p>`) : "";
@@ -755,6 +762,13 @@
       ${outside ? `<p class="hint warn-t">Ausserhalb der kalibrierten Werte: grössere Unsicherheit.</p>` : ""}${calNote}
       ${res}`;
     bindInt();
+  }
+  /** Fahrzeit ohne (vollständigen) Wind: ausdrücklich sagen und das Band erklären (zeit-rt-1.2). */
+  function windHinweis(sim) {
+    const W = sim && sim.wind; if (!W || W.status === "Prognose") return "";
+    const grund = W.status === "keine Prognose" ? (ST.wetter && ST.wetter.status === "fehler" ? "Wetterdienst nicht erreichbar" : "keine Wetterprognose geladen")
+      : W.status === "unbekannt" ? "Prognose ohne Winddaten" : `Winddaten fehlen auf ${km(W.unbekannt_m)} km (${fmt(W.anteil * 100)} % der Strecke)`;
+    return `<p class="hint warn-t"><b>Wind ${W.status === "teilweise" ? "teilweise " : ""}nicht berücksichtigt</b> (${grund}): ${W.status === "teilweise" ? "dort ohne Wind gerechnet" : "ohne Wind gerechnet"}, vereinfachte Schätzung. Das Band enthält dafür ±7 km/h Gegen- bis Rückenwind (±2 m/s auf Fahrhöhe)${W.status === "teilweise" ? " auf diesen Abschnitten" : ""}.</p>`;
   }
   function pauseShareText() {
     const fam = sportDef().art === "rad" ? "rad" : ST.sport === "wandern" ? "wandern" : ST.sport === "skitour" ? "skitour" : "lauf";
@@ -877,7 +891,7 @@
       const pv = RT.pauseBefore(pl.filter((q) => q.i < i), v.d), t = tAt(v.d) * (1 + pz.share), lo = t * band[0] / sim.moving_s, hi = t * band[1] / sim.moving_s;
       const w = field ? field(v.d, ST.startUnix + tAt(v.d) + pv, P.head[Math.min(P.n - 1, Math.round(v.d / P.step))]) : null;
       const halt = ((ST.pausen || [])[i] || 0);
-      return `<li><span class="rp-pin sm${i === 0 ? " a" : i === route.vias.length - 1 ? " b" : ""}">${viaLabel(i, route.vias.length)}</span><span>km ${km(v.d)}</span><b>${clock(ST.startUnix + t + pv)}</b><small>${i ? clock(ST.startUnix + lo + pv) + "–" + clock(ST.startUnix + hi + pv) : tzd.format(new Date(ST.startUnix * 1000))}</small>${halt && i < route.vias.length - 1 && i > 0 ? `<small>Pause ${halt} min, weiter ${clock(ST.startUnix + t + pv + halt * 60)}</small>` : ""}${w ? `<small>${fmt(w.temp, 0)} °C · Wind ${fmt(w.speed * 3.6)} km/h aus ${dirName(w.dirFrom)}</small>` : ""}</li>`;
+      return `<li><span class="rp-pin sm${i === 0 ? " a" : i === route.vias.length - 1 ? " b" : ""}">${viaLabel(i, route.vias.length)}</span><span>km ${km(v.d)}</span><b>${clock(ST.startUnix + t + pv)}</b><small>${i ? clock(ST.startUnix + lo + pv) + "–" + clock(ST.startUnix + hi + pv) : tzd.format(new Date(ST.startUnix * 1000))}</small>${halt && i < route.vias.length - 1 && i > 0 ? `<small>Pause ${halt} min, weiter ${clock(ST.startUnix + t + pv + halt * 60)}</small>` : ""}${w ? `<small>${tempKurz(w)} · ${windKurz(w)}</small>` : ""}</li>`;
     }).join("")}</ol>${pz.share ? `<p class="hint">Inklusive Pausen ${esc(pz.text)}, gleichmässig verteilt.</p>` : pl.length ? `<p class="hint">Pausen an Wegpunkten verschieben die späteren Durchfahrtszeiten und das Wetter dort.</p>` : ""}`;
   }
   function renderWx() {

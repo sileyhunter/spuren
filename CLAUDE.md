@@ -144,7 +144,8 @@ Prüfung ersetzen; nie Einnahmen aus Garmin schätzen oder ergänzen.
   (mind. 3 je Zeitraum, Bootstrap-Intervall, Guards Hitze/Höhe/Drift/Ausreisser). Laktat zählt erst bestätigt (B1), CSS nur aus Tests.
 - Form `pmc-2.0` (Fitness − Ermüdung desselben Tages), Zonen `zonenverteilung-2.0` (je Sportart, Zonen je Datum, Garmin-Zonen nicht beurteilt).
 - Routenplaner: `varianten-1.0` nur über das erlaubte Rennradprofil (`fastbike`, `consider_traffic`), nie ein unzulässiger Weg;
-  `zeit-rt-1.1`/`wetter-rt-1.1` (Pausen je Zwischenziel); Fehlerband aus `kalibrierung-1.1` (Population, Steigungsklasse).
+  `zeit-rt-1.2`/`wetter-rt-1.2` (Pausen je Zwischenziel; fehlende Wetterwerte bleiben unbekannt, nie 0 – Fahrzeit dann mit
+  «Wind nicht berücksichtigt» und ±2 m/s im Band); Fehlerband aus `kalibrierung-1.1` (Population, Steigungsklasse).
 - Regel ändern = Version erhöhen, Test ergänzen, `CHANGELOG.md` nachführen. Offene Punkte nur in `docs/offen-nach-v55.md`.
 
 ## Prüfen vor jedem Push von Seite oder Werkzeugen

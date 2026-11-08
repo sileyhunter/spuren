@@ -329,3 +329,93 @@ test("Fehlerband nach Population: Bergstrecke nicht mit dem Band beliebiger Fahr
   assert.ok(eb.rel >= 0.15, "Bergstrecke: konservativ"); assert.match(eb.quelle, /nur 4 geprüfte Fahrten der Klasse «bergig»/);
   assert.match(eb.ausserhalb.join(" "), /kürzer als jede geprüfte Fahrt/);
 });
+
+/* ---------- V5.5 Korrektur F1: fehlende Wetterwerte bleiben unbekannt (wetter-rt-1.2, zeit-rt-1.2) – SYNTHETISCHE Antworten ---------- */
+const T0 = 1762600800 - (1762600800 % 3600);
+function meteo(n, wind, opt) {   // n Stützpunkte, 4 Stunden; wind(i, h) → [Geschwindigkeit m/s, Richtung] oder null-Werte
+  opt = opt || {};
+  return Array.from({ length: n }, (_, i) => ({ elevation: 450, latitude: 47, longitude: 8.5 + i * 0.05, hourly: { time: [0, 1, 2, 3].map((h) => T0 + h * 3600),
+    temperature_2m: [0, 1, 2, 3].map((h) => (opt.temp ? opt.temp(i, h) : 12)), precipitation: [0, 1, 2, 3].map((h) => (opt.regen ? opt.regen(i, h) : 0)),
+    precipitation_probability: [0, 0, 0, 0], wind_speed_10m: [0, 1, 2, 3].map((h) => wind(i, h)[0]), wind_direction_10m: [0, 1, 2, 3].map((h) => wind(i, h)[1]),
+    wind_gusts_10m: [0, 1, 2, 3].map((h) => (opt.gust ? opt.gust(i, h) : 9)) } }));
+}
+const PTS3 = (L) => [0, 0.5, 1].map((f) => ({ d: f * L, lon: 8.5, lat: 47, ele: 450 }));
+
+test("F1: 0 km/h mit gültiger Richtung = Windstille (gültiger Wert), nicht «unbekannt»", () => {
+  const W = RT.weatherField(PTS3(10000), meteo(3, () => [0, 270]));
+  const m = W(5000, T0 + 1800, 90);
+  assert.equal(m.speed, 0); assert.equal(m.along, 0, "Windstille ist ein Wert"); assert.equal(m.dirFrom, null, "Windstille hat keine Richtung");
+  const r = synthRoute(() => 450, 10000, "rennrad", 90);
+  const e = RT.etaWithWeather(r, { mode: "watt", value: 200, start_unix: T0 }, W);
+  assert.equal(e.wind.status, "Prognose"); assert.equal(e.info.luecke.wind_m, 0);
+  assert.equal(RT.windArrows(RT.windPositions(r), W, () => T0).length, 0, "kein Pfeil ohne Richtung");
+});
+
+test("F1: Geschwindigkeit vorhanden, Richtung fehlt → Tempo bekannt, Gegen-/Rückenwind unbekannt", () => {
+  const W = RT.weatherField(PTS3(10000), meteo(3, () => [5, null]));
+  const m = W(5000, T0 + 1800, 90);
+  near(m.speed, 5, 1e-9, "Geschwindigkeit bleibt"); assert.equal(m.dirFrom, null); assert.equal(m.along, null); assert.equal(m.cross, null);
+  const r = synthRoute(() => 450, 10000, "rennrad", 90);
+  const e = RT.etaWithWeather(r, { mode: "watt", value: 200, start_unix: T0 }, W);
+  assert.equal(e.wind.status, "unbekannt"); near(e.wind.anteil, 1, 0.01);
+});
+
+test("F1: Geschwindigkeit fehlt → unbekannt (vorher als 0 km/h gezählt); Fahrzeit mit Hinweis und breiterem Band", () => {
+  const W = RT.weatherField(PTS3(10000), meteo(3, () => [null, 270]));
+  const m = W(5000, T0 + 1800, 90);
+  assert.equal(m.speed, null); assert.equal(m.along, null); assert.equal(m.dirFrom, null);
+  const r = synthRoute(() => 450, 10000, "rennrad", 90);
+  const e = RT.etaWithWeather(r, { mode: "watt", value: 200, start_unix: T0 }, W);
+  const still = RT.etaWithWeather(r, { mode: "watt", value: 200, start_unix: T0 }, RT.weatherField(PTS3(10000), meteo(3, () => [0, 270])));
+  assert.equal(e.wind.status, "unbekannt"); assert.equal(e.wind.annahme_ms, 2);
+  near(e.moving_s, still.moving_s, 1, "Mittelwert = ohne Wind gerechnet");
+  assert.ok(e.band[0] < still.band[0] && e.band[1] > still.band[1], "Band breiter als bei gemeldeter Windstille");
+  assert.ok(e.band[1] - e.moving_s > e.moving_s - e.band[0], "Gegenwind kostet mehr, als Rückenwind bringt");
+});
+
+test("F1: Wetterdienst nicht erreichbar → ohne Wetter, Status «keine Prognose», Band mit ±2 m/s Wind", () => {
+  const r = synthRoute(() => 450, 10000, "rennrad", 90);
+  const e = RT.etaWithWeather(r, { mode: "watt", value: 200, start_unix: T0 }, null);
+  assert.equal(e.wind.status, "keine Prognose"); near(e.wind.anteil, 1, 1e-9);
+  const W0 = RT.etaWithWeather(r, { mode: "watt", value: 200, start_unix: T0 }, RT.weatherField(PTS3(10000), meteo(3, () => [0, 270])));
+  assert.ok(e.band[1] > W0.band[1], "unsicherer als mit Prognose");
+  const lauf = RT.etaWithWeather(synthRoute(() => 450, 10000, "laufen", 90), { mode: "pace", value: 330, start_unix: T0 }, null);
+  assert.ok(!lauf.unzureichend && Number.isFinite(lauf.moving_s), "Laufzeit gerechnet"); assert.equal(lauf.wind, undefined, "Laufen: Wind nicht Teil des Modells");
+});
+
+test("F1: nur einzelne Abschnitte ohne Winddaten → nur dort unbekannt, nie mit dem Nachbarn gefüllt", () => {
+  // Stützpunkt 2 (Mitte) ohne Wind: zwischen 0–5 km und 5–10 km fehlt je ein Nachbar → unbekannt; an Punkt 1 und 3 bekannt
+  const W = RT.weatherField(PTS3(10000), meteo(3, (i) => (i === 1 ? [null, null] : [6, 270])));
+  assert.ok(Number.isFinite(W(0, T0, 90).along), "am Start bekannt"); assert.ok(Number.isFinite(W(10000, T0, 90).along), "am Ziel bekannt");
+  assert.equal(W(2500, T0, 90).along, null); assert.equal(W(7500, T0, 90).along, null);
+  const W4 = RT.weatherField([0, 1, 2, 3].map((j) => ({ d: j * 4000, lon: 8.5, lat: 47, ele: 450 })), meteo(4, (i) => (i === 3 ? [null, null] : [6, 270])));
+  const r = synthRoute(() => 450, 12000, "rennrad", 90);
+  const e = RT.etaWithWeather(r, { mode: "watt", value: 200, start_unix: T0 }, W4);
+  assert.equal(e.wind.status, "teilweise"); near(e.wind.anteil, 1 / 3, 0.02, "letztes Drittel unbekannt");
+  const pos = RT.windArrows(RT.windPositions(r), W4, () => T0);
+  assert.ok(pos.length > 0 && pos.every((a) => a.d < 8000), "Pfeile nur, wo Wind bekannt");
+});
+
+test("F1: geänderte Startzeit rechnet neu – Lücke nur in einer Stunde betrifft nur Starts, die in sie fallen", () => {
+  const W = RT.weatherField(PTS3(10000), meteo(3, (i, h) => (h >= 2 ? [null, 270] : [6, 270])));
+  const r = synthRoute(() => 450, 10000, "rennrad", 90);
+  const frueh = RT.etaWithWeather(r, { mode: "watt", value: 200, start_unix: T0 }, W);
+  const spaet = RT.etaWithWeather(r, { mode: "watt", value: 200, start_unix: T0 + 2 * 3600 }, W);
+  assert.equal(frueh.wind.status, "Prognose", "Start 0:00, Fahrt < 1 h: Wind bekannt");
+  assert.equal(spaet.wind.status, "unbekannt", "Start in der Lücke: unbekannt");
+  assert.ok(Math.abs(frueh.moving_s - spaet.moving_s) > 5, "Westwind 6 m/s (Rückenwind) nur beim frühen Start");
+});
+
+test("F1: andere Werte – Temperatur, Niederschlag, Böen fehlen → unbekannt, nie 0; Fahrzeit mit 15 °C bzw. trocken und Hinweis", () => {
+  const W = RT.weatherField(PTS3(10000), meteo(3, () => [4, 270], { temp: () => null, regen: () => null, gust: () => null }));
+  const m = W(5000, T0 + 1800, 90);
+  assert.equal(m.temp, null); assert.equal(m.regen, null); assert.equal(m.gust, null);
+  const r = synthRoute(() => 450, 10000, "rennrad", 90);
+  const e = RT.etaWithWeather(r, { mode: "watt", value: 200, start_unix: T0 }, W);
+  assert.ok(Number.isFinite(e.moving_s));
+  assert.match(e.info.hinweise.join(" "), /Temperatur auf 10\.0 km unbekannt: Luftdichte dort mit 15 °C/);
+  assert.match(e.info.hinweise.join(" "), /Niederschlag auf 10\.0 km unbekannt: dort trocken gerechnet/);
+  // Temperatur: fehlt nur ein Nachbar, wird der vorhandene genommen (keine 0); bleibt so (nur gemeldet)
+  const T = RT.weatherField(PTS3(10000), meteo(3, () => [4, 270], { temp: (i) => (i === 1 ? null : 8) }));
+  assert.equal(T(2500, T0, 90).temp, 8);
+});

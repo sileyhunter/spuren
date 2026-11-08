@@ -14,7 +14,7 @@
 })(typeof self !== "undefined" ? self : this, function (FK) {
   "use strict";
   const RT = {};
-  RT.VERSIONS = { route: "route-1.0", hoehe: "hoehe-1.0", anstiege: "anstiege-1.0", zeit: "zeit-rt-1.1", wetter: "wetter-rt-1.1", varianten: "varianten-1.0" };
+  RT.VERSIONS = { route: "route-1.0", hoehe: "hoehe-1.0", anstiege: "anstiege-1.0", zeit: "zeit-rt-1.2", wetter: "wetter-rt-1.2", varianten: "varianten-1.0" };
   const isNum = (v) => typeof v === "number" && isFinite(v);
   const R_EARTH = 6371008.8, RAD = Math.PI / 180;
 
@@ -548,7 +548,8 @@
    *  Ergebnis: {t[] (s ab Start an jedem Stützpunkt), v[] (m/s je Schritt), moving_s, info, unzureichend?} */
   RT.simulate = function (route, inp) {
     const S = RT.SPORTS[route.sport] || RT.SPORTS.rennrad, P = route.profile, n = P.n;
-    const t = new Float64Array(n + 1), v = new Float64Array(n), wAlong = new Float64Array(n), cap = new Uint8Array(n);
+    const t = new Float64Array(n + 1), v = new Float64Array(n), wAlong = new Float64Array(n), cap = new Uint8Array(n), wUnk = new Uint8Array(n);
+    const luecke = { wind_m: 0, temp_m: 0, regen_m: 0 };
     const info = { modell: "", hinweise: [] };
     const segAt = (k) => (P.seg[k] >= 0 ? route.segs[P.seg[k]] : null);
     const wx = inp.wetter || null;
@@ -571,8 +572,12 @@
       for (let k = 0; k < n; k++) {
         const s = segAt(k), surf = s ? s.surface : "unbekannt", g = P.grade[k], ds = P.d[k + 1] - P.d[k];
         const w = wx ? wx(k, t[k]) : null;
-        const along = w ? w.along * RT.WIND_HEIGHT : 0; wAlong[k] = along;
-        const wet = w && w.regen > 0.2;
+        const windOk = !!w && isNum(w.along);
+        if (w && !windOk) luecke.wind_m += ds;                      // zeit-rt-1.2: dort ohne Wind gerechnet, im Band ±2 m/s
+        if (w && !isNum(w.temp)) luecke.temp_m += ds;               // Luftdichte dann mit 15 °C (wie ohne Prognose)
+        if (w && !isNum(w.regen)) luecke.regen_m += ds;             // dann trocken gerechnet
+        const along = windOk ? w.along * RT.WIND_HEIGHT : 0; wAlong[k] = along; wUnk[k] = w && !windOk ? 1 : 0;
+        const wet = !!w && isNum(w.regen) && w.regen > 0.2;
         // Pacing: volle Leistung bis −2 %, linear auf 30 % bei −5 %, darunter rollen (0 W)
         const Pk = g >= -0.02 ? P0 : g <= -0.05 ? 0 : P0 * (0.3 + 0.7 * (g + 0.05) / 0.03);
         const rmin = Math.min(P.radius[k], P.radius[k + 1]);
@@ -589,6 +594,11 @@
         v[k] = vk; t[k + 1] = t[k] + ds / vk;
       }
       if (schieb) info.hinweise.push("Abschnitte mit sehr geringem Tempo sind als Schieben (3,6 km/h) gerechnet.");
+      if (wx) {
+        info.luecke = luecke;
+        if (luecke.temp_m > 0) info.hinweise.push(`Temperatur auf ${(luecke.temp_m / 1000).toFixed(1)} km unbekannt: Luftdichte dort mit 15 °C gerechnet.`);
+        if (luecke.regen_m > 0) info.hinweise.push(`Niederschlag auf ${(luecke.regen_m / 1000).toFixed(1)} km unbekannt: dort trocken gerechnet.`);
+      }
       if (route.segs.some((s) => s.access === "schieben")) info.hinweise.push("Schiebestrecken (Velo nicht erlaubt) mit 4,3 km/h gerechnet.");
     } else if (S.art === "fuss" && route.sport !== "wandern") {
       let vflat;
@@ -655,7 +665,7 @@
       info.abfahrt_m = down;
       if (down > 0) info.hinweise.push("Abfahrt nicht bestimmbar (Schnee, Gelände, Sicht): nicht in der Zeit enthalten.");
     }
-    return { t, v, wAlong, cap, moving_s: t[n], info };
+    return { t, v, wAlong, wUnk, cap, moving_s: t[n], info };
   };
 
   /** Zeitband: Szenarien aus Kalibrier-/Modellfehler und (ohne Wetterprognose) Wind ±2 m/s. */
@@ -669,6 +679,11 @@
       const dP = inp.mode === "hf" ? (inp.kal.rad_hf_w.mae || 10) : 0;
       if (dP) { variants.push({ ...inp, mode: "watt", value: base.info.P - dP }); variants.push({ ...inp, mode: "watt", value: base.info.P + dP }); }
       if (!inp.wetter) for (const w of [-2, 2]) variants.push({ ...inp, mode: "watt", value: base.info.P, wetter: () => ({ along: w / RT.WIND_HEIGHT, temp: 15, regen: 0 }) });
+      else if (base.info.luecke && base.info.luecke.wind_m > 0) for (const w of [-2, 2]) variants.push({ ...inp, mode: "watt", value: base.info.P,
+        wetter: (k, tk) => { const x = inp.wetter(k, tk); return x && isNum(x.along) ? x : Object.assign({}, x || {}, { along: w / RT.WIND_HEIGHT }); } });
+      const unk = !inp.wetter ? route.L : Math.min(route.L, (base.info.luecke && base.info.luecke.wind_m) || 0);
+      base.wind = { status: !inp.wetter ? "keine Prognose" : unk >= route.L * 0.999 ? "unbekannt" : unk > 0 ? "teilweise" : "Prognose",
+        unbekannt_m: unk, anteil: route.L ? unk / route.L : 0, annahme_ms: unk > 0 ? 2 : 0 };
     } else if (S.art === "fuss" && route.sport !== "wandern" && inp.mode === "hf") {
       const pace = 1000 / base.info.vflat, e = inp.kal.lauf_hf_pace.mae || 15;
       variants.push({ ...inp, mode: "pace", value: pace - e }, { ...inp, mode: "pace", value: pace + e });
@@ -728,11 +743,17 @@
     if (arr.length !== pts.length) throw new Error("Wetterantwort passt nicht zu den Stützpunkten.");
     const series = arr.map((r) => {
       const h = r.hourly || {};
-      const uv = (h.wind_speed_10m || []).map((s, i) => {
-        const dirTo = ((h.wind_direction_10m[i] + 180) % 360) * RAD;   // meteorologisch: Richtung, AUS der der Wind kommt
-        return [s * Math.sin(dirTo), s * Math.cos(dirTo)];               // u = Ost-, v = Nordkomponente der Bewegung
+      // wetter-rt-1.2: fehlende Werte bleiben unbekannt (null), nie 0 – in JavaScript wäre null × sin(…) = 0 = «Windstille».
+      const ws = h.wind_speed_10m || [], wd = h.wind_direction_10m || [];
+      const spd = ws.map((x) => (isNum(x) ? x : null));
+      const uv = ws.map((x, i) => {
+        if (!isNum(x)) return null;                                      // Geschwindigkeit fehlt: unbekannt
+        if (x === 0) return [0, 0];                                      // gemeldete Windstille: gültig, ohne Richtung
+        if (!isNum(wd[i])) return null;                                  // Richtung fehlt: Gegen-/Rückenwind unbekannt
+        const dirTo = ((wd[i] + 180) % 360) * RAD;                       // meteorologisch: Richtung, AUS der der Wind kommt
+        return [x * Math.sin(dirTo), x * Math.cos(dirTo)];               // u = Ost-, v = Nordkomponente der Bewegung
       });
-      return { time: h.time || [], temp: h.temperature_2m || [], rain: h.precipitation || [], pop: h.precipitation_probability || [], gust: h.wind_gusts_10m || [], uv,
+      return { time: h.time || [], temp: h.temperature_2m || [], rain: h.precipitation || [], pop: h.precipitation_probability || [], gust: h.wind_gusts_10m || [], uv, spd,
         gridEle: r.elevation, lat: r.latitude, lon: r.longitude };
     });
     const at = (s, unix) => {
@@ -743,23 +764,31 @@
       return { i, f: (unix - T[i]) / (T[i + 1] - T[i]) };
     };
     const lerp = (a, b, f) => (isNum(a) && isNum(b) ? a + (b - a) * f : isNum(a) ? a : b);
+    // Wind streng: fehlt ein Nachbar mit Gewicht > 0, ist der Wert unbekannt (keine Lücke wird mit dem Nachbarn gefüllt)
+    const lerpS = (a, b, f) => (f <= 0 ? (isNum(a) ? a : null) : f >= 1 ? (isNum(b) ? b : null) : isNum(a) && isNum(b) ? a + (b - a) * f : null);
     const one = (s, unix) => {
       const p = at(s, unix); if (!p) return null;
       const j = Math.min(p.i + 1, s.time.length - 1);
       // Niederschlag: Summe der vorangehenden Stunde → Stunde, in der der Zeitpunkt liegt
       const iRain = Math.min(s.time.length - 1, p.f > 0 ? j : p.i);
       return { temp: lerp(s.temp[p.i], s.temp[j], p.f), regen: s.rain[iRain], pop: s.pop[iRain], gust: lerp(s.gust[p.i], s.gust[j], p.f),
-        u: lerp(s.uv[p.i] && s.uv[p.i][0], s.uv[j] && s.uv[j][0], p.f), v: lerp(s.uv[p.i] && s.uv[p.i][1], s.uv[j] && s.uv[j][1], p.f) };
+        u: lerpS(s.uv[p.i] ? s.uv[p.i][0] : null, s.uv[j] ? s.uv[j][0] : null, p.f), v: lerpS(s.uv[p.i] ? s.uv[p.i][1] : null, s.uv[j] ? s.uv[j][1] : null, p.f),
+        spd: lerpS(s.spd[p.i], s.spd[j], p.f) };
     };
     const field = function (dd, unix, headingDeg) {
       let a = 0; while (a < pts.length - 2 && pts[a + 1].d < dd) a++;
       const b = Math.min(a + 1, pts.length - 1), f = pts[b].d > pts[a].d ? Math.max(0, Math.min(1, (dd - pts[a].d) / (pts[b].d - pts[a].d))) : 0;
       const A = one(series[a], unix), Bv = one(series[b], unix);
       if (!A || !Bv) return null;
-      const u = lerp(A.u, Bv.u, f), v = lerp(A.v, Bv.v, f), speed = Math.hypot(u, v);
-      const dirFrom = (Math.atan2(u, v) / RAD + 180 + 360) % 360;
+      const u = lerpS(A.u, Bv.u, f), v = lerpS(A.v, Bv.v, f), vec = isNum(u) && isNum(v);
+      const sp = vec ? Math.hypot(u, v) : lerpS(A.spd, Bv.spd, f), still = isNum(sp) && sp < 1e-6;
+      const speed = isNum(sp) ? sp : null, dirFrom = vec && !still ? (Math.atan2(u, v) / RAD + 180 + 360) % 360 : null;   // Windstille hat keine Richtung
       const out = { temp: lerp(A.temp, Bv.temp, f), regen: f < 0.5 ? A.regen : Bv.regen, pop: f < 0.5 ? A.pop : Bv.pop, gust: lerp(A.gust, Bv.gust, f), speed, dirFrom };
-      if (isNum(headingDeg)) { const hr = headingDeg * RAD; out.along = u * Math.sin(hr) + v * Math.cos(hr); out.cross = u * Math.cos(hr) - v * Math.sin(hr); }
+      if (isNum(headingDeg)) {
+        const hr = headingDeg * RAD;
+        out.along = vec ? u * Math.sin(hr) + v * Math.cos(hr) : still ? 0 : null;     // Richtung unbekannt: Gegen-/Rückenwind unbekannt
+        out.cross = vec ? u * Math.cos(hr) - v * Math.sin(hr) : still ? 0 : null;
+      }
       return out;
     };
     field.quality = pts.map((p, i) => ({ d: p.d, ele: p.ele, gridEle: series[i].gridEle, diff: isNum(series[i].gridEle) ? series[i].gridEle - p.ele : null }));

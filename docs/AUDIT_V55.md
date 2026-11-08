@@ -96,3 +96,25 @@ Browser-Prüfungen mit echten Daten nur lokal (Ergebnisse im Chatbericht, nicht 
 | A13 | bestanden | Ebenen je Tab; Vorher/Nachher-Screenshots (nur im Chat, echte Daten) |
 | A14 | bestanden | `check_referenz.py`: 1759/1759 Aktivitäten, 21/21 Schwellen, Referenzsatz; Daten-Commits nur mit neuen Feldern, Sicherung und Rückweg |
 | A15 | bestanden | Befund dokumentiert; keine Einnahmen aus Garmin übernommen oder geschätzt |
+
+## Korrektur F1 (8.11.2026): fehlende Wetterwerte
+
+Gefunden bei der lokalen Prüfung des veröffentlichten Stands 7fdcada: Fehlende Windwerte wurden als Windstille gerechnet.
+Codeort `js/route.js` (`RT.weatherField`, `RT.simulate`, `RT.eta`), `js/routen-ui.js` (Infozeile, Ankunftsliste, Wetterstreifen,
+Hinweis zur Fahrzeit). Regeln `wetter-rt-1.2`, `zeit-rt-1.2`. Status: **behoben, lokal getestet, produktiv nicht getestet**.
+
+| Fall | Erwartung | Unit-Test | Browser lokal (Planer, Wetter synthetisch) |
+|---|---|---|---|
+| 0 km/h, Richtung gültig | Windstille = gültiger Wert, kein Hinweis | bestanden | bestanden: «windstill (0 km/h)», kein Hinweis, keine Pfeile |
+| Geschwindigkeit da, Richtung fehlt | Tempo bekannt, Gegen-/Rückenwind unbekannt | bestanden | bestanden: «Wind 18 km/h (Richtung unbekannt)», «Wind nicht berücksichtigt» |
+| Geschwindigkeit fehlt | unbekannt, nie 0 | bestanden | bestanden: «Wind unbekannt», Hinweis, Band mit ±7 km/h |
+| Wetterdienst nicht erreichbar | Hinweis mit Grund, Band mit ±7 km/h | bestanden | bestanden: «Wind nicht berücksichtigt (Wetterdienst nicht erreichbar)» |
+| Einzelne Abschnitte ohne Wind | nur dort unbekannt, nie mit Nachbarwert gefüllt | bestanden | bestanden: «teilweise nicht berücksichtigt (… km, … %)», Lücken im Streifen, Pfeile nur wo bekannt |
+| Startzeit geändert | neu gerechnet | bestanden | bestanden: Start 15:00 Wind bekannt, Start 19:00 in der Lücke → Hinweis |
+| Temperatur, Niederschlag, Böen fehlen | unbekannt, nie 0; Fahrzeit 15 °C bzw. trocken mit Hinweis | bestanden | bestanden: «Temperatur unbekannt», «Regen unbekannt», kein «trocken» |
+
+Weitere Parameter: Das 0-Problem betraf nur den Wind (Vektorrechnung) und in der Anzeige den Niederschlag (Infozeile «0.0 mm/h»,
+Streifen «trocken» bei fehlenden Werten) – beides behoben. Temperatur und Böen werden nie zu 0; fehlt nur einer von zwei
+Nachbarwerten (Stunde oder Stützpunkt), wird der vorhandene verwendet – unverändert, als offener Entscheid in `docs/offen-nach-v55.md`.
+Regression: Planer-Tests V5.3 (iPhone, Desktop) und V5.5 mit denselben Werten wie vorher bestanden.
+
