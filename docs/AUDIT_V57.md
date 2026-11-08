@@ -30,6 +30,7 @@ rückgängig machen (`git revert`). Persönliche Trainingsdaten wurden nicht ver
 | Neu | «Startorte verwalten» in der Trainingsvorschau: Zuhause, Arbeit oder eigener Name (weitere Orte mit eigenem Namen; der Name steht nur verschlüsselt in deinen Daten, nicht im öffentlichen Code) – auf der Karte tippen, aktueller Standort (GPS des Geräts) oder Adresssuche (swisstopo); zusätzlich jederzeit «Aktueller Standort», «Punkt auf der Karte», «Start im Planer» |
 | Datenschutz | Gespeichert mit dem Seitenschlüssel verschlüsselt auf dem Gerät (Eingaben); mit «Exportieren» in `data.enc.json` (verschlüsselt). Nichts davon im Repository oder offen im Browser-Speicher. Für die Berechnung gehen Koordinaten (ohne Namen) an BRouter/Open-Meteo, wie bei jeder Route |
 | Lokal getestet | Browser: Ort «Zuhause» auf der Karte gesetzt → gespeichert, ausgewählt; Browser-Speicher enthält weder Name noch Koordinaten im Klartext. `test_tools.py`: Startorte als ganze Liste ersetzt, alte Fassung im Audit |
+| Wiederherstellen (V5.7.1) | «Startorte sichern» erzeugt eine mit dem Seitenpasswort verschlüsselte Datei, «Sicherung laden» ergänzt fehlende Orte (keine Doppel). Browser (Test-Passwort, erfundene Daten): Browserdaten gelöscht (Speicher, Schlüssel, Service Worker) → Passwort → Orte weg → Sicherung geladen → gleicher Name und gleiche Koordinaten; zweimal geladen → keine Doppel; neues Gerät → Sicherung geladen → da; beschädigte Sicherung → Meldung, nichts verändert; Sicherung eingespielt (eingaben.mjs + merge_daily) → auf einem neuen Gerät ohne Sicherung da. Die Sicherungsdatei enthält weder Namen noch Koordinaten im Klartext |
 
 ## 3 · Datum, Startzeit, Wetter, Tageslicht
 | | |
@@ -90,10 +91,14 @@ rückgängig machen (`git revert`). Persönliche Trainingsdaten wurden nicht ver
 | Lokal getestet | `test_training.cjs` (Vergleich, Streckentreue, Modellgüte), `test_tools.py` (GPS-Spur draussen, drinnen keine). Browser mit gespeichertem Testvorschlag auf der echten Spur einer Oktober-Fahrt (nur Testkopie) |
 
 ## 11 · Datensicherheit und nächtlicher Import
-- Nacht-Update aktualisiert `serien/` **nicht** (Auftrag erlaubt nur `data.enc.json`). Nötige Änderung dokumentiert (CLAUDE.md, Schritt 4):
-  Text des geplanten Auftrags auf «data.enc.json und serien/» erweitern; `serien_crypt.mjs` schreibt nur neue/geänderte Reihen, Namen gehasht,
-  keine Duplikate. **Wartet auf deine Freigabe** – nicht geändert.
-- Neu im Nacht-Update (nur lesend über Garmin, geschrieben wird weiter nur `data.enc.json`): Workout-Schritte, neue Enduco-Workouts, GPS-Spur.
+- **V5.7.1 (Freigabe 8.11.2026):** Das Nacht-Update aktualisiert auch `serien/` – nur neue oder tatsächlich geänderte Reihen, nie löschen oder
+  umbenennen, danach `tools/serien_pruefen.mjs` (Konsistenz, Datenschutz). Nicht bestanden → bisherige Dateien bleiben, nur `data.enc.json`.
+  Geplanter Auftrag angepasst («data.enc.json und serien/», nur nach bestandener Prüfung). Regeln: CLAUDE.md «Sekundenreihen».
+- Lokal mit einer echten Aktivität (8.11.2026, Garmin-Verbindung) durch den ganzen Ablauf in einem frischen Klon: neu → 1 Datei (aufgefüllt,
+  16 KiB-Stufen); derselbe Import noch einmal → keine Datei geändert; Prüfung beide Male bestanden. Produktiv: erster Lauf heute Nacht.
+- Gefunden und behoben: Der Monatsexport hätte die Reihen der Nacht-Aktivitäten (neue ID nach dem Export) als verwaist gelöscht und mit
+  `--nur-fehlende` nicht neu angelegt. Jetzt Name aus der gid, die erhalten bleibt (2 Reihen einmalig umbenannt).
+- Neu im Nacht-Update (nur lesend über Garmin): Workout-Schritte, neue Enduco-Workouts, GPS-Spur.
 - Startorte und Vorschläge nur verschlüsselt (Gerät bzw. `data.enc.json`); keine Adressen, Zugangsdaten oder GPS-Daten offen im Repository.
 
 ## 12 · Tests

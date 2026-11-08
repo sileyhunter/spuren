@@ -13,6 +13,8 @@ Freigabe von Silas (8.11.2026): Das Nacht-Update aktualisiert neben `data.enc.js
   keine Klartext- oder Restdateien, keine Namen ohne Salz, keine Datendateien im Repository. Nicht bestanden → bisherige Dateien bleiben,
   nur `data.enc.json` wird übernommen.
 - Atomares Schreiben (temporäre Datei, dann umbenennen). Seite liest SPS1 und SPS2, sucht Reihen unter gid und (für ältere) unter der ID.
+- **Startorte wiederherstellen:** in «Startorte verwalten» neu «Startorte sichern» (verschlüsselte Datei, Seitenpasswort) und «Sicherung laden»
+  (ergänzt fehlende Orte, keine Doppel). Nach dem Einspielen über den Chat stehen sie in `data.enc.json` und sind auf jedem Gerät da.
 
 | Regel | vorher | jetzt |
 |---|---|---|
@@ -23,7 +25,8 @@ Freigabe von Silas (8.11.2026): Das Nacht-Update aktualisiert neben `data.enc.js
 Geprüft: `test_tools.py` (neu: neue Aktivität, wiederholter Import, geänderte Reihe, Fehler mit Wiederherstellung, falsches Passwort,
 Monatsexport mit neuer ID, Umbenennen, verwaiste Reihe im Nacht-Update, Prüfung erkennt Klartext, Restdatei und Namen ohne Salz);
 echte Aktivität vom 8.11.2026 lokal durch den ganzen Nacht-Ablauf (neu → 1 Datei; noch einmal → keine Änderung); Seite entschlüsselt SPS1
-und SPS2 im Browser, Manipulation wird erkannt.
+und SPS2 im Browser, Manipulation wird erkannt; Browser mit Test-Passwort und erfundenen Daten: Explorer lädt neue (gid) und ältere Reihen
+(ID), Startorte nach Löschen der Browserdaten und auf einem neuen Gerät aus der Sicherung wiederhergestellt, nach dem Einspielen ohne Sicherung.
 
 ## V5.7 · 8.11.2026 · Smart Training Routes (Trainingsroute aus dem geplanten Workout)
 Auftrag «Ironman Notebook V5.7 – Smart Training Routes». Der Planer bleibt mit allen Funktionen erhalten (Start/Ziel fest, Zwischenziele,

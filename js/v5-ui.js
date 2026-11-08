@@ -80,7 +80,11 @@
       const j = JSON.parse(await file.text());
       if (j.format !== "spuren-eingaben-1") throw new Error("keine Eingaben-Datei");
       const d = await this.vault.open(j.verschluesselt);
-      if (Array.isArray(d.startorte) && !Array.isArray(this.data.startorte)) this.data.startorte = d.startorte;
+      if (Array.isArray(d.startorte)) {      // V5.7.1: fehlende Startorte ergänzen (gleiche ID oder gleicher Name bleibt wie hier)
+        const L = (Array.isArray(this.data.startorte) ? this.data.startorte : (C && C.D && C.D.startorte) || []).slice();
+        for (const o of d.startorte) if (o && !L.some((x) => x.id === o.id || x.name === o.name)) L.push(o);
+        this.data.startorte = L;
+      }
       for (const k of ["fueling", "befinden", "test_entwuerfe", "koppel", "langfahrt", "coach", "pb", "css", "fehler", "rpe", "intervalle", "laktat_punkte", "saison", "trainingsrouten"]) for (const e of d[k] || []) { const L = (this.data[k] = this.data[k] || []); const idf = k === "befinden" ? (x) => x.date : k === "koppel" ? (x) => x.bike + "|" + x.run : (x) => x.id; if (!L.some((x) => idf(x) === idf(e))) L.push(e); }
       for (const id of d.laktat_bestaetigt || []) if (!this.data.laktat_bestaetigt.includes(id)) this.data.laktat_bestaetigt.push(id);
       if (d.fueling_produkte && !this.data.fueling_produkte) this.data.fueling_produkte = d.fueling_produkte;

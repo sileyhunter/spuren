@@ -23,9 +23,8 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
     vorhandenen (nie 0). Entscheid offen, ob das wie beim Wind streng «unbekannt» werden soll.
 
 ## Nach V5.6 (Stand 8.11.2026)
-12. **Reihen im Nacht-Update (Freigabe offen, am 8.11.2026 erneut gefragt):** Der geplante Auftrag «Nacht-Update» erlaubt nur `data.enc.json` zu committen. Darum kommen Sekundenreihen
-    neuer Aktivitäten erst mit dem Monatsexport (Plan `wk` und Ermüdung `fr` rechnet das Nacht-Update schon). Mit Silas' Freigabe den
-    Auftrag um «und `serien/` (verschlüsselt)» ergänzen.
+12. ~~Reihen im Nacht-Update~~ – **erledigt mit V5.7.1** (Freigabe 8.11.2026): Auftrag ergänzt, Reihen nur nach bestandener Prüfung
+    (`tools/serien_pruefen.mjs`). Nach den ersten Nächten prüfen: Commits «Nacht-Update …» mit neuen Dateien in `serien/`, keine «(Reihen nicht übernommen)».
 13. **Auf dem iPhone prüfen (hier nicht möglich):** Explorer in Safari (Wischen zum Markieren, Entpacken braucht iOS 16.4 oder neuer),
     Offline-Verhalten bereits geöffneter Reihen, Saisongrafik und RPE-Eingabe.
 14. **Zwift-Workouts:** Zwift-Dateien enthalten keine Workout-Schritte. Plan vs. Ist nur, wenn das Workout auf der Uhr lief oder im

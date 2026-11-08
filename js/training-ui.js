@@ -374,13 +374,14 @@
       <div class="row"><button class="btn primary" data-tr="ok">Zustimmen und berechnen</button><button class="btn" data-tr="ok-wx">Mit Wetter zustimmen</button></div></div>`;
   }
   function orteBox() {
-    const L = orte();
+    const L = orte(), ib = UI() && UI().Inbox && UI().Inbox.data, lokal = !!(ib && Array.isArray(ib.startorte) && ib.startorte.length);
     return `<details class="tr-orte" ${TS.orteOffen ? "open" : ""}><summary>Startorte verwalten (${L.length})</summary>
       ${L.length ? `<ul class="tr-ol">${L.map((o) => `<li><b>${esc(o.name)}</b> <small>${o.lat.toFixed(4)}, ${o.lon.toFixed(4)}</small> <button class="btn" data-ort-del="${esc(o.id)}" aria-label="${esc(o.name)} löschen">Löschen</button></li>`).join("")}</ul>` : `<p class="hint">Noch keine Startorte gespeichert.</p>`}
       <div class="tr-grid"><label>Name <select id="tr-on">${["Zuhause", "Arbeit", "Eigener Name"].map((n) => `<option>${n}</option>`).join("")}</select></label><label>Eigener Name <input id="tr-oe" maxlength="30" placeholder="z. B. Bahnhof"></label></div>
       <div class="row"><button class="btn" data-ort-neu="karte">Auf der Karte tippen</button><button class="btn" data-ort-neu="gps">Aktueller Standort</button>${R().state().vias.length ? `<button class="btn" data-ort-neu="planer">Start im Planer</button>` : ""}</div>
       <div class="row"><input type="search" id="tr-oq" placeholder="Adresse suchen (swisstopo)" aria-label="Adresse suchen"><button class="btn" data-ort-neu="suche">Suchen</button></div><ul class="rp-qres" id="tr-oqr" hidden></ul>
-      <p class="hint">Gespeichert verschlüsselt auf diesem Gerät (mit dem Seitenpasswort). Mit «Exportieren» in die verschlüsselten Daten übernehmen, dann auf allen Geräten. Nichts davon steht offen im Repository. Die Suche sendet nur den eingegebenen Text an swisstopo.</p></details>`;
+      <div class="row"><button class="btn" data-ort-sichern ${lokal ? "" : "disabled"}>Startorte sichern</button><label class="btn">Sicherung laden<input type="file" accept="application/json,.json" data-ort-laden hidden></label></div>${TS.ortHinweis ? `<p class="hint"><b>${esc(TS.ortHinweis)}</b></p>` : ""}
+      <p class="hint">${lokal ? "<b>Nur auf diesem Gerät</b> gespeichert (verschlüsselt mit dem Seitenpasswort). «Startorte sichern» erzeugt eine verschlüsselte Datei: auf einem anderen Gerät oder nach dem Löschen der Browserdaten mit «Sicherung laden» wiederherstellen – oder im Chat schicken, dann stehen sie in den verschlüsselten Daten und sind nach dem Entsperren auf jedem Gerät da." : L.length ? "In den verschlüsselten Daten gespeichert: nach dem Entsperren auf jedem Gerät da, auch nach dem Löschen der Browserdaten." : "Gespeichert wird verschlüsselt mit dem Seitenpasswort."} Nichts davon steht offen im Repository. Die Suche sendet nur den eingegebenen Text an swisstopo.</p></details>`;
   }
   const NOTE = { gut: "ok", bedingt: "warn", ungeeignet: "muted" };
   function eignung(K) {
@@ -521,6 +522,15 @@
     const det = box.querySelector(".tr-orte"); if (det) det.addEventListener("toggle", () => (TS.orteOffen = det.open));
     box.querySelectorAll("[data-ort-del]").forEach((b) => b.addEventListener("click", async () => { await orteSetzen(orte().filter((o) => o.id !== b.dataset.ortDel)); if (TS.ortId === b.dataset.ortDel) TS.ortId = null; render(); }));
     box.querySelectorAll("[data-ort-neu]").forEach((b) => b.addEventListener("click", () => ortNeu(b.dataset.ortNeu)));
+    // Sicherung der Startorte (V5.7.1): verschlüsselte Datei mit allen Eingaben dieses Geräts; laden ergänzt fehlende Orte
+    const sich = box.querySelector("[data-ort-sichern]"); if (sich) sich.addEventListener("click", () => UI().Inbox.exportFile());
+    const lad = box.querySelector("[data-ort-laden]");
+    if (lad) lad.addEventListener("change", async () => {
+      const f = lad.files && lad.files[0]; if (!f) return;
+      try { const n0 = orte().length; await UI().Inbox.importFile(f); TS.fehler = null; TS.orteOffen = true; TS.ortHinweis = `Sicherung geladen: ${orte().length - n0} Startort(e) ergänzt, ${orte().length} insgesamt.`; }
+      catch (e) { TS.fehler = "Sicherung nicht lesbar (" + (e.message || e) + "). Mit einem anderen Seitenpasswort verschlüsselte Dateien lassen sich nicht öffnen."; }
+      render();
+    });
   }
   /** Kopf der Ergebnisse: Wetter-Zustimmung und Regler (bleiben beim Ziehen bestehen). */
   function bindRes() {
