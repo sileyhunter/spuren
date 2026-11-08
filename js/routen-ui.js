@@ -15,8 +15,14 @@
     busy: false, error: null, legsOk: null, wetter: { status: "aus", t: null, msg: "" }, editId: null,
   };
   let route = null, sim = null, climbs = null, pieces = [], stats = [], field = null, wpts = null;
-  let job = 0, wjob = 0, history = [], markers = [], cursorMarker = null, dragCursor = false;
+  let job = 0, wjob = 0, history = [], markers = [], cursorMarker = null, dragCursor = false, altMarkers = [];
   const CACHE = new Map();
+  // V5.6 Routenplaner: Varianten automatisch (varianten-2.0), Gravel-Meldung und Umfahrung (gravel-rt-1.0), andere Routen (alternativen-1.0)
+  let VAR = { key: null, rows: null, wahl: null };                 // beide Rennrad-Varianten der aktuellen Wegpunkte
+  let GRV = { key: null, ok: false, busy: false, umf: null };       // Gravel: «für mich ok», Umfahrung (Route + Info)
+  let ALT = { key: null, busy: false, list: null, chosen: null };  // andere Routen
+  let PROF = { ep: null, id: null, busy: null, fehler: null };     // eigenes Rennradprofil auf dem BRouter-Server
+  const ALTPOS = new Map();                                          // Lage der Nummer je grauer Linie (Abweichung von der gewählten)
   const SNAP_WARN = 60, SNAP_ERR = 500;      // m zwischen gesetztem Punkt und erlaubtem Weg
 
   /* ---------------- Speicher (nur auf diesem Gerät) ---------------- */
@@ -99,6 +105,12 @@
         <div class="chips rp-sports" id="rp-sports" role="radiogroup" aria-label="Sportart"></div>
         <div class="rp-opts" id="rp-opts"></div>
         <div class="rp-consent" id="rp-consent" hidden></div>
+        <div class="rp-search" id="rp-search">
+          <div class="row"><input type="search" id="rp-q" placeholder="Ort suchen, z. B. Paspels" aria-label="Ort suchen" autocomplete="off" enterkeyhint="search">
+            <select id="rp-qrole" aria-label="Nächster Punkt aus Karte oder Suche wird"><option value="auto">automatisch</option><option value="start">als Start</option><option value="ziel">als Ziel</option><option value="via">als Zwischenziel</option></select></div>
+          <ul class="rp-qres" id="rp-qres" role="listbox" aria-label="Suchergebnisse" hidden></ul>
+          <p class="hint rp-qhint">Suche über swisstopo (api3.geo.admin.ch); gesendet wird nur der eingegebene Text.</p>
+        </div>
         <ol class="rp-vias" id="rp-vias" aria-label="Wegpunkte"></ol>
         <div class="row rp-tools">
           <button class="btn" id="rp-loop">Rundtour</button>
@@ -106,9 +118,11 @@
           <button class="btn" id="rp-new">Neu</button>
         </div>
         <div class="rp-status" id="rp-status" role="status" aria-live="polite"></div>
+        <div class="rp-gravel" id="rp-gravel" hidden></div>
         <div class="rp-kpis" id="rp-kpis"></div>
         <div class="row rp-when" id="rp-when" hidden></div>
         <div class="rp-var" id="rp-var" hidden></div>
+        <div class="rp-alt" id="rp-alt" hidden></div>
         <div class="rp-winter" id="rp-winter" hidden></div>
         <div class="rp-ana" id="rp-ana" hidden>
           <div class="rp-tabs" id="rp-tabs" role="tablist" aria-label="Analyse"></div>
@@ -181,6 +195,7 @@
     map.addSource("rt-draft", { type: "geojson", data: E });
     map.addSource("rt-cur", { type: "geojson", data: E });
     map.addSource("rt-wind", { type: "geojson", data: E });
+    map.addSource("rt-alt", { type: "geojson", data: E });
     // Richtungspfeile als kleines Bild (keine Schrift nötig)
     const cv = document.createElement("canvas"); cv.width = cv.height = 24;
     const g = cv.getContext("2d"); g.fillStyle = "#ffffff"; g.strokeStyle = "rgba(31,51,71,.85)"; g.lineWidth = 2;
@@ -193,6 +208,10 @@
     map.addImage("rt-wind", { width: 48, height: 48, data: wg.getImageData(0, 0, 48, 48).data }, { pixelRatio: 2 });
     const lay = { "line-join": "round", "line-cap": "round" };
     map.addLayer({ id: "rt-draft", type: "line", source: "rt-draft", layout: lay, paint: { "line-color": "#d9694a", "line-width": 3, "line-dasharray": [1.5, 1.5] } });
+    // Andere Routen und Umfahrung: grau unter der gewählten Route, antippen = wählen
+    map.addLayer({ id: "rt-alt-case", type: "line", source: "rt-alt", layout: lay, paint: { "line-color": "#ffffff", "line-width": 7, "line-opacity": 0.9 } });
+    map.addLayer({ id: "rt-alt-line", type: "line", source: "rt-alt", layout: lay, paint: { "line-color": ["case", ["==", ["get", "art"], "umfahrung"], "#6f8a5a", "#7f8c99"], "line-width": 4, "line-opacity": 0.85 } });
+    map.addLayer({ id: "rt-alt-hit", type: "line", source: "rt-alt", layout: lay, paint: { "line-color": "#000", "line-width": 22, "line-opacity": 0.001 } });
     map.addLayer({ id: "rt-case", type: "line", source: "rt", layout: lay, paint: { "line-color": "#ffffff", "line-width": 9, "line-opacity": 0.95 } });
     map.addLayer({ id: "rt-selcase", type: "line", source: "rt", layout: lay, filter: ["==", ["get", "sel"], 1], paint: { "line-color": "#14222e", "line-width": 11 } });
     map.addLayer({ id: "rt-line", type: "line", source: "rt", layout: lay,
@@ -244,8 +263,45 @@
     if (map.getSource("rt-wind")) map.getSource("rt-wind").setData({ type: "FeatureCollection", features: wf });
     const draft = !route && ST.vias.length > 1 && (drawn() || ST.error) ? ST.vias : null;
     map.getSource("rt-draft").setData(draft && drawn() ? { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: draft } } : { type: "FeatureCollection", features: [] });
+    renderAltMap();
     renderMarkers();
     renderCursorMap();
+  }
+  /** Graue Linien: nicht gewählte Variante, andere Routen, Umfahrung – mit Nummer (Bild-Marker, der Kartenstil hat keine Schrift). */
+  function altOptions() {
+    const out = [];
+    if (!route || route.gezeichnet) return out;
+    if (VAR.rows && VAR.key === sigOf()) for (const r of VAR.rows) if (r.route && r.route !== route && !r.doppelt) out.push({ id: "v:" + r.k, art: "variante", nr: r.k === "velo" ? "V" : "S", label: r.label, route: r.route });
+    if (ALT.list && ALT.key === sigOf()) ALT.list.forEach((a, i) => { if (a.route !== route) out.push({ id: "a:" + a.k, art: "alternative", nr: String(i + 2), label: a.label, route: a.route }); });
+    if (GRV.umf && GRV.umf.route && GRV.key === sigOf() && GRV.umf.route !== route) out.push({ id: "u", art: "umfahrung", nr: "U", label: "Umfahrung ohne Gravel", route: GRV.umf.route });
+    return out;
+  }
+  function renderAltMap() {
+    if (!map || !map.getSource("rt-alt")) return;
+    altMarkers.forEach((m) => m.remove()); altMarkers = [];
+    const opts = altOptions();
+    map.getSource("rt-alt").setData({ type: "FeatureCollection", features: opts.map((o) => ({ type: "Feature", properties: { id: o.id, art: o.art }, geometry: { type: "LineString", coordinates: o.route.lon.map((x, i) => [x, o.route.lat[i]]) } })) });
+    if (!window.maplibregl) return;
+    for (const o of opts) {
+      const ck = route.id + "|" + o.route.id;
+      if (!ALTPOS.has(ck)) { const v = RT.vergleicheRouten(route, o.route); ALTPOS.set(ck, v && v.ab ? (v.ab.d0 + v.ab.d1) / 2 : o.route.L / 2); }
+      const p = RT.at(o.route, ALTPOS.get(ck));
+      const el = document.createElement("button");
+      el.type = "button"; el.className = "rp-altpin " + o.art; el.textContent = o.nr; el.title = o.label + " – antippen zum Wählen";
+      el.setAttribute("aria-label", o.label + " wählen");
+      el.addEventListener("click", (ev) => { ev.stopPropagation(); waehleOption(o.id); });
+      altMarkers.push(new maplibregl.Marker({ element: el }).setLngLat([p.lon, p.lat]).addTo(map));
+    }
+  }
+  /** Eine graue Linie übernehmen (Variante, andere Route oder Umfahrung). */
+  function waehleOption(id) {
+    const o = altOptions().find((x) => x.id === id); if (!o) return;
+    if (o.art === "variante") ST.variantWahl = id.slice(2);
+    if (o.art === "alternative") ALT.chosen = id.slice(2);
+    if (o.art === "umfahrung") GRV.umf.gewaehlt = true;
+    route = o.route; ST.activeRouteId = route.id;
+    afterRoute(false);
+    live(`«${o.label}» gewählt.`);
   }
 
   function viaLabel(i, n) { return i === 0 ? "A" : i === n - 1 && n > 1 ? "B" : String(i); }
@@ -277,23 +333,42 @@
     if (!active()) return false;
     // Route antippen = Position im Profil (immer, auch im Punkt-Modus); daneben tippen = Punkt setzen (im Punkt-Modus)
     if (route) {
-      const f = map.queryRenderedFeatures([[e.point.x - 14, e.point.y - 14], [e.point.x + 14, e.point.y + 14]], { layers: ["rt-hit"] });
+      const box = [[e.point.x - 14, e.point.y - 14], [e.point.x + 14, e.point.y + 14]];
+      const own = map.queryRenderedFeatures(box, { layers: ["rt-hit"] });
+      const alt = own.length ? [] : map.queryRenderedFeatures(box, { layers: ["rt-alt-hit"] });
+      if (alt.length && alt[0].properties && alt[0].properties.id) { waehleOption(alt[0].properties.id); return true; }
+      const f = own;
       if (f.length) { const p = RT.project(route, e.lngLat.lng, e.lngLat.lat, { near_d: ST.cursorDistance_m }); if (p) { setCursor(p.d, "karte"); return true; } }
     }
-    if (ST.addMode || ST.vias.length < 2) { addPoint([+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)]); return true; }
+    if (ST.addMode || ST.vias.length < 2) { addPoint([+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)], null, takeRole()); return true; }
     if (route) setCursor(null, "karte");
     return true;
   }
-  function addPoint(ll) {
-    const v = ST.vias.slice(); v.push(ll);
-    // nach dem zweiten Punkt (erste Route) zum Ansehen umschalten; weitere Punkte mit «＋ Punkt»
+  /** wegpunkte-1.0: erster Punkt = Start, zweiter = Ziel; jeder weitere wird als Zwischenziel dort eingefügt, wo er den
+   *  kleinsten Umweg macht – Start und Ziel bleiben fest. role: "auto" | "start" | "ziel" | "via". */
+  function addPoint(ll, name, role) {
+    const v = ST.vias.slice(), nm = Array.from({ length: v.length }, (_, i) => (ST.names || [])[i] || null);
+    const pz = Array.from({ length: v.length }, (_, i) => (ST.pausen || [])[i] || 0);
+    role = role || "auto";
+    let i, why;
+    if (role === "start" && v.length) { v[0] = ll; nm[0] = name || null; i = 0; why = "Start gesetzt"; }
+    else if (role === "ziel" && v.length >= 2) { v[v.length - 1] = ll; nm[v.length - 1] = name || null; i = v.length - 1; why = "Ziel gesetzt"; }
+    else if (v.length < 2 || role === "ziel") { v.push(ll); nm.push(name || null); pz.push(0); i = v.length - 1; why = v.length === 1 ? "Start gesetzt" : "Ziel gesetzt"; }
+    else { i = RT.einfuegeIndex(v, ll); v.splice(i, 0, ll); nm.splice(i, 0, name || null); pz.splice(i, 0, 0); why = "Zwischenziel eingefügt"; }
+    ST.names = nm; ST.pausen = pz;
+    // nach dem zweiten Punkt (erste Route) zum Ansehen umschalten; weitere Zwischenziele mit «＋ Zwischenziel»
     if (v.length === 2 && ST.addMode) setAddMode(false);
-    setVias(v, "Punkt gesetzt", { fit: v.length === 2 });
+    setVias(v, why, { fit: v.length === 2 });
+    const n = v.length;
+    live(why === "Zwischenziel eingefügt" ? `Zwischenziel ${i} zwischen ${viaLabel(i - 1, n)} und ${viaLabel(i + 1, n)} eingefügt; Start und Ziel bleiben.` : why + ".");
   }
+  /** Rolle des nächsten Punkts (Karte oder Suche): automatisch, Start, Ziel oder Zwischenziel; gilt einmal, dann wieder automatisch. */
+  function takeRole() { const sel = $("rp-qrole"), r = sel ? sel.value : "auto"; if (sel && r !== "auto") sel.value = "auto"; return r; }
   function setAddMode(on) {
     ST.addMode = on;
+    const viaMode = ST.vias.length >= 2;
     $("rp-add").setAttribute("aria-pressed", String(on));
-    $("rp-add").textContent = on ? "＋ Punkt: tippen" : "＋ Punkt";
+    $("rp-add").textContent = on ? (viaMode ? "＋ Zwischenziel: tippen" : "＋ Punkt: tippen") : viaMode ? "＋ Zwischenziel" : "＋ Punkt";
     $("rp-add").classList.toggle("on", on);
     if (map) map.getCanvas().style.cursor = on ? "crosshair" : "";
     renderSub();
@@ -305,42 +380,101 @@
     if (!opt || !opt.keepCursor) ST.cursorDistance_m = null;
     clearSel(true);
     renderVias();
+    setAddMode(ST.addMode);              // Knopf «＋ Punkt» / «＋ Zwischenziel» nachführen
     reroute(opt && opt.fit);
   }
 
   /* ---------------- Routing ---------------- */
+  /** Alle Abschnitte mit einem Profil routen (Cache je Abschnitt). Wirft {i, e, n, ok} mit dem ersten fehlerhaften Abschnitt. */
+  async function legsFor(ep, eng, vias, opt) {
+    const legs = Array.from({ length: vias.length - 1 }, () => null), errs = [];
+    await Promise.all(legs.map(async (_, i) => {
+      const key = [ep, eng.engine, JSON.stringify(eng.params), vias[i].join(","), vias[i + 1].join(","), (opt && opt.alt) || 0].join("|");
+      try {
+        if (!CACHE.has(key)) CACHE.set(key, RT.fetchLeg(window.fetch.bind(window), ep, eng, vias[i], vias[i + 1], opt));
+        legs[i] = await CACHE.get(key);
+      } catch (e) { CACHE.delete(key); errs.push({ i, e }); }
+    }));
+    if (errs.length) { errs.sort((a, b) => a.i - b.i); throw { i: errs[0].i, e: errs[0].e, n: errs.length, ok: legs.map((l) => !!l) }; }
+    return legs;
+  }
+  /** Eigenes Rennradprofil (brouter/rennrad-asphalt.brf) beim Server hinterlegen – einmal je Endpunkt, ID 6 h wiederverwendet.
+   *  Nimmt der Server es nicht an, gilt das Standardprofil fastbike (mit Hinweis). Gesendet wird nur der Profiltext. */
+  async function profilId(sport, ep, neu) {
+    const def = RT.SPORTS[sport]; if (!def || !def.profil) return null;
+    if (!neu && PROF.ep === ep && PROF.fehler) return null;
+    if (!neu && PROF.ep === ep && PROF.id) return PROF.id;
+    const saved = S.get("profil", null);
+    if (!neu && saved && saved.ep === ep && saved.v === RT.VERSIONS.gravel && saved.id && Date.now() - saved.t < 6 * 3600e3) { PROF = { ep, id: saved.id }; return saved.id; }
+    if (!neu && PROF.ep === ep && PROF.busy) return PROF.busy;
+    const p = (async () => {
+      const res = await fetch("brouter/" + def.profil + ".brf", { cache: "no-cache" });
+      if (!res.ok) throw new Error("Profildatei nicht gefunden (HTTP " + res.status + ")");
+      const id = await RT.uploadProfile(window.fetch.bind(window), ep, await res.text());
+      PROF = { ep, id }; S.set("profil", { ep, id, v: RT.VERSIONS.gravel, t: Date.now() });
+      return id;
+    })().catch((e) => { PROF = { ep, id: null, fehler: (e && (e.detail || e.message)) || String(e) }; return null; });
+    PROF = { ep, id: null, busy: p };
+    return p;
+  }
+  /** Rennrad (varianten-2.0): beide Varianten mit dem eigenen Profil; fehlt es beim Server, einmal neu hinterlegen, sonst fastbike. */
+  async function routeVarianten(ep, vias) {
+    const vs = RT.VARIANTEN[ST.sport];
+    const run = (pid) => Promise.all(vs.map(async (v) => {
+      const e = RT.engineVariant(ST.sport, ST.opts, v.k); if (pid) e.engine = pid;
+      return { k: v.k, label: v.label, eng: e, legs: await legsFor(ep, e, vias) };
+    }));
+    let pid = await profilId(ST.sport, ep);
+    try { return await run(pid); }
+    catch (f) {
+      if (!pid || !f.e || !(f.e.status >= 500)) throw f;
+      pid = await profilId(ST.sport, ep, true);
+      if (pid) { try { return await run(pid); } catch (f2) { if (!(f2.e && f2.e.status >= 500)) throw f2; } }
+      PROF = { ep, id: null, fehler: "Der Server kennt das hinterlegte Rennradprofil nicht" };
+      return run(null);
+    }
+  }
   async function reroute(fit) {
     const my = ++job;
     ST.error = null; ST.legsOk = null;
     route = null; sim = null; climbs = null; pieces = []; field = null; ST.wetter = { status: consent().wetter ? "warte" : "aus", msg: "" };
-    if (ST.vias.length < 2) { ST.busy = false; renderAll(); return; }
-    if (drawn()) { await buildDrawnRoute(my); return; }
+    ALT = { key: null, busy: false, list: null, chosen: null }; GRV = { key: null, ok: false, busy: false, umf: null }; ALTPOS.clear();
+    if (ST.vias.length < 2) { ST.busy = false; VAR = { key: null, rows: null, wahl: null }; renderAll(); return; }
+    if (drawn()) { VAR = { key: null, rows: null, wahl: null }; await buildDrawnRoute(my); return; }
     const c = consent();
     if (!c.routing) { ST.busy = false; showConsent(); renderAll(); return; }
-    const eng = ST.variant && RT.VARIANTEN[ST.sport] ? RT.engineVariant(ST.sport, ST.opts, ST.variant) : RT.engineFor(ST.sport, ST.opts);
-    const ep = S.get("endpoint", RT.ENDPOINT);
-    ST.busy = true; renderStatus(`Route wird berechnet … (${ST.vias.length - 1} Abschnitt${ST.vias.length > 2 ? "e" : ""}, ${esc(sportDef().label)})`);
-    const legs = Array.from({ length: ST.vias.length - 1 }, () => null);
-    const errs = [];
-    await Promise.all(legs.map(async (_, i) => {
-      const key = [ep, eng.engine, JSON.stringify(eng.params), ST.vias[i].join(","), ST.vias[i + 1].join(",")].join("|");
-      try {
-        if (!CACHE.has(key)) CACHE.set(key, RT.fetchLeg(window.fetch.bind(window), ep, eng, ST.vias[i], ST.vias[i + 1]));
-        legs[i] = await CACHE.get(key);
-      } catch (e) { CACHE.delete(key); errs.push({ i, e }); }
-    }));
-    if (my !== job) return;
-    ST.busy = false;
-    if (errs.length) {
-      errs.sort((a, b) => a.i - b.i);
-      const e0 = errs[0];
-      ST.error = { abschnitt: e0.i, text: e0.e.message, detail: e0.e.detail || "", kind: e0.e.kind || "" , n: errs.length };
-      ST.legsOk = legs.map((l) => !!l);
+    const ep = S.get("endpoint", RT.ENDPOINT), vias = ST.vias.slice(), vs = RT.VARIANTEN[ST.sport];
+    ST.busy = true; renderStatus(`Route wird berechnet … (${vias.length - 1} Abschnitt${vias.length > 2 ? "e" : ""}, ${esc(sportDef().label)}${vs ? ", schnellste und velofreundliche Variante" : ""})`);
+    let res;
+    try { res = vs ? await routeVarianten(ep, vias) : [{ k: null, label: null, eng: RT.engineFor(ST.sport, ST.opts), legs: await legsFor(ep, RT.engineFor(ST.sport, ST.opts), vias) }]; }
+    catch (f) {
+      if (my !== job) return;
+      ST.busy = false;
+      const e0 = f && f.e ? f : { i: 0, e: f, n: 1, ok: [] };
+      ST.error = { abschnitt: e0.i, text: (e0.e && e0.e.message) || String(e0.e), detail: (e0.e && e0.e.detail) || "", kind: (e0.e && e0.e.kind) || "", n: e0.n };
+      ST.legsOk = e0.ok;
+      VAR = { key: null, rows: null, wahl: null };
       renderAll();
       return;
     }
+    if (my !== job) return;
+    ST.busy = false;
+    const meta = { sport: ST.sport, prov: { endpoint: ep.replace(/^https?:\/\//, ""), abgerufen: new Date().toISOString() } };
     try {
-      route = RT.buildRoute(legs, ST.vias, { sport: ST.sport, engine: eng.engine, prov: { endpoint: ep.replace(/^https?:\/\//, ""), abgerufen: new Date().toISOString() } });
+      const inp = effortInput();
+      const rows = res.map((x) => {
+        const r = RT.buildRoute(x.legs, vias, Object.assign({}, meta, { engine: x.eng.engine }));
+        if (x.k) r.variante = x.k;
+        const sv = RT.eta(r, inp), sh = RT.wayShare(r), g = RT.gravelAbschnitte(r);
+        return { k: x.k, label: x.label, eng: x.eng, route: r, t: sv.unzureichend ? null : sv.moving_s, L: r.L, up: r.profile.up, gravel_m: g.gravel_m, haupt_pct: sh.haupt_pct, radweg_pct: sh.radweg_pct };
+      });
+      if (vs) {
+        const auto = RT.waehleVariante(rows, toleranz());
+        const wahl = ST.variantWahl && ST.variantWahl !== "auto" && rows.some((r) => r.k === ST.variantWahl) ? ST.variantWahl : auto.k;
+        VAR = { key: sigOf(), rows, wahl, auto };
+        route = rows.find((r) => r.k === wahl).route;
+        for (const r of rows) r.doppelt = r.route !== route && (auto.gleich || RT.istDoppelt(route, r.route));   // gleiche Wege nicht doppelt grau zeigen
+      } else { VAR = { key: null, rows: null, wahl: null }; route = rows[0].route; }
     } catch (e) { ST.error = { text: "Antwort konnte nicht verarbeitet werden.", detail: String(e.message || e) }; renderAll(); return; }
     if (route.unvollstaendig) { ST.error = { text: `Ein Zwischenziel liegt neben dem Wegnetz (Sprung ${fmt(route.gapMax)} m). Punkt näher an einen Weg setzen.` }; route = null; renderAll(); return; }
     const far = route.vias.findIndex((v) => v.snap_m > SNAP_ERR);
@@ -486,6 +620,8 @@
     const a = RT.at(route, d);
     let i = 1; while (i < route.vias.length && route.vias[i].d < d) i++;
     const v = ST.vias.slice(); v.splice(i, 0, [+a.lon.toFixed(6), +a.lat.toFixed(6)]);
+    const nm = Array.from({ length: ST.vias.length }, (_, k) => (ST.names || [])[k] || null), pz = Array.from({ length: ST.vias.length }, (_, k) => (ST.pausen || [])[k] || 0);
+    nm.splice(i, 0, null); pz.splice(i, 0, 0); ST.names = nm; ST.pausen = pz;
     setVias(v, "Zwischenziel eingefügt", { fit: false });
   }
 
@@ -641,7 +777,9 @@
   function renderSub() {
     const n = ST.vias.length;
     $("rp-sub").textContent = drawn() ? (n < 2 ? "Skitour: Linie von Hand zeichnen – Tippen setzt Punkte." : "Von Hand gezeichnet, kein Wegnetz.")
-      : ST.addMode ? (n === 0 ? "Tippe in die Karte: Start setzen." : "Tippe in die Karte: neues Ziel anhängen.") : n >= 2 ? "Route antippen oder Profil ziehen. «+ Punkt setzen» für weitere Ziele." : "";
+      : ST.addMode ? (n === 0 ? "Tippe in die Karte oder suche einen Ort: Start setzen." : n === 1 ? "Tippe in die Karte oder suche einen Ort: Ziel setzen."
+        : "Tippe in die Karte: Zwischenziel einfügen – Start A und Ziel B bleiben fest.")
+      : n >= 2 ? "Route antippen oder Profil ziehen. «＋ Zwischenziel» fügt Punkte ein; A und B verschieben = Start bzw. Ziel ändern." : "";
   }
   function renderStatus(busyText) {
     const box = $("rp-status");
@@ -661,14 +799,14 @@
     if (!route.gezeichnet) {
       const acc = st("zugang"), surf = st("belag");
       for (const a of acc) if (a.cat !== "ok") warn.push(`${RT.ACCESS[a.cat].label}: ${km(a.len)} km`);
-      if (ST.sport === "rennrad") { const un = surf.filter((x) => /kies|natur|unbefestigt/.test(x.cat)).reduce((s, x) => s + x.len, 0); if (un > 0) warn.push(`Rennrad: ${km(un)} km unbefestigt`); }
+      if (ST.sport === "rennrad") { const G = RT.gravelAbschnitte(route); if (G.gravel_m >= 1 && !GRV.ok) warn.push(`Rennrad: ${km(G.gravel_m)} km Gravel – Abschnitte und Umfahrung siehe Meldung`); }
       const unk = surf.find((x) => x.cat === "unbekannt"); if (unk && unk.pct > 20) warn.push(`Belag zu ${fmt(unk.pct)} % unbekannt`);
       if (route.segs.some((s) => s.way === "autobahn")) warn.push("Autobahn in der Route – bitte melden, sollte nie vorkommen");
       route.vias.forEach((v, i) => { if (v.snap_m > SNAP_WARN) warn.push(`Punkt ${viaLabel(i, route.vias.length)} liegt ${fmt(v.snap_m)} m neben dem Weg (Route beginnt/endet am Weg)`); });
     } else warn.push("Von Hand gezeichnet: kein Wegnetz, keine Zugangsprüfung");
     if (route.hoehe_fehlt) warn.push("Höhendaten fehlen teilweise");
     box.className = "rp-status" + (warn.length ? " warn" : " ok");
-    box.innerHTML = warn.length ? `<b>Hinweise:</b> ${warn.map(esc).join(" · ")}` : `Route über laut OSM erlaubte Wege berechnet (${esc(route.prov.routing)}, Profil ${esc(route.engine || "")}). Das hängt von den Kartendaten ab und ist keine rechtliche Garantie.`;
+    box.innerHTML = warn.length ? `<b>Hinweise:</b> ${warn.map(esc).join(" · ")}` : `Route über laut OSM erlaubte Wege berechnet (${esc(route.prov.routing)}, Profil ${esc(RT.profilName(route.engine))}). Das hängt von den Kartendaten ab und ist keine rechtliche Garantie.`;
   }
   function renderMini() {
     const box = $("rp-mini"); if (!box) return;
@@ -798,52 +936,171 @@
     $("rp-num").onchange = (e) => { const t = e.target.value.trim(); const v = ST.effortMode === "pace" ? paceIn(t) : +t; if (isNum(v)) set(v, "force"); else e.target.value = ST.effortMode === "pace" ? FK.pace(ST.effortValue) : ST.effortValue; };
     $("rp-int").querySelectorAll("[data-m]").forEach((b) => (b.onclick = () => { ST.effortMode = b.dataset.m; const all = S.get("effort", {}); const mine = all[ST.sport] || {}; ST.effortValue = isNum(mine[ST.effortMode]) ? mine[ST.effortMode] : defaultValue(ST.effortMode); saveEffort(); effortChanged(); }));
   }
-  /* ---------- Variantenvergleich (varianten-1.0, A08) ---------- */
-  let VAR = { key: null, rows: null, busy: false };
+  /* ---------- Varianten (varianten-2.0): schnellste und velofreundliche, automatisch gewählt ---------- */
   const sigOf = () => [ST.sport, JSON.stringify(ST.opts || {}), ST.vias.map((v) => v.join(",")).join("|")].join("#");
+  const toleranz = () => { const t = +S.get("toleranz", RT.TOLERANZ_STANDARD); return isNum(t) && t >= 0 ? t : RT.TOLERANZ_STANDARD; };
+  const tdur = (x) => (isNum(x) ? dur(x) : "–");
   function renderVar() {
     const box = $("rp-var"); if (!box) return;
-    const vs = RT.VARIANTEN[ST.sport];
-    if (!route || route.gezeichnet || !vs) { box.hidden = true; return; }
+    if (!route || route.gezeichnet || !RT.VARIANTEN[ST.sport] || !VAR.rows || VAR.key !== sigOf()) { box.hidden = true; return; }
     box.hidden = false;
-    if (VAR.key !== sigOf()) VAR = { key: sigOf(), rows: null, busy: false };
-    const ws = RT.wayShare(route), cur = vs.find((v) => v.k === ST.variant);
-    const head = `<b>Hauptstrasse ${fmt(ws.haupt_pct)} %</b> der Route (${km(ws.haupt_m)} von ${km(route.L)} km; laut OSM «trunk/primary»)${cur ? ` · Variante «${esc(cur.label)}»` : ""}.`;
-    if (!VAR.rows) {
-      box.innerHTML = `<div class="rp-card">${head}<div class="row"><button class="btn" id="rp-var-go" ${VAR.busy ? "disabled" : ""}>${VAR.busy ? "Varianten werden berechnet …" : "Varianten vergleichen"}</button></div>
-        <p class="hint">Gleiche Wegpunkte mit «Schnell», «Weniger Verkehr» und «Ruhig»: dasselbe, für Velos erlaubte Rennradprofil (Asphalt bevorzugt), nur Verkehr anders gewichtet. Je Variante eine Anfrage an BRouter.</p></div>`;
-      const go = $("rp-var-go"); if (go) go.onclick = () => computeVariants();
+    const tol = toleranz(), auto = RT.waehleVariante(VAR.rows, tol), manuell = ST.variantWahl && ST.variantWahl !== "auto";
+    const on = (r) => route.variante === r.k && !ALT.chosen && !(GRV.umf && GRV.umf.gewaehlt && GRV.umf.route === route);
+    box.innerHTML = `<div class="rp-card"><b>Schnell oder velofreundlich?</b>
+      <div class="tbl-wrap"><table class="t rp-vt"><tr><th>Variante</th><th>Zeit</th><th>km</th><th>Hm</th><th title="Anteil Hauptstrasse laut OSM (trunk/primary)">Haupt&shy;str. %</th><th title="Anteil Radweg/offizieller Veloweg laut OSM">Rad&shy;weg %</th><th title="Gravel laut OSM">Gravel km</th></tr>${VAR.rows.map((r) =>
+        `<tr class="${on(r) ? "on" : ""}"><td>${esc(r.label)}<br>${on(r) ? `<span class="pill">gewählt${manuell ? "" : " (auto)"}</span>` : `<button class="btn rp-vbtn" data-var="${r.k}" aria-label="Variante «${esc(r.label)}» übernehmen">Wählen</button>`}</td>
+        <td>${tdur(r.t)}</td><td>${km(r.L)}</td><td>${fmt(r.up)}</td><td>${fmt(r.haupt_pct)}</td><td>${fmt(r.radweg_pct)}</td><td>${r.gravel_m >= 1 ? km(r.gravel_m) : "–"}</td></tr>`).join("")}</table></div>
+      <p class="hint">${esc(auto.text)}${manuell ? " Du hast von Hand gewählt." : ""}</p>
+      <div class="row"><label class="rp-opt">Velofreundlich bis <select id="rp-tol" aria-label="Toleranz in Prozent mehr Fahrzeit">${[0, 5, 10, 15, 20, 30].map((x) => `<option value="${x}" ${x === tol ? "selected" : ""}>+${x} %</option>`).join("")}</select> Zeit</label>
+        ${manuell ? `<button class="btn" id="rp-var-auto">Automatisch wählen</button>` : ""}</div>
+      <p class="hint">Beide Varianten nur über Wege, die laut OSM für Velos erlaubt sind, und mit dem Rennradprofil ohne Gravel. «Velofreundlich» gewichtet Verkehr stärker und nimmt asphaltierte Radwege und offizielle Velowege wie ruhige Nebenstrassen. Laut OSM erlaubt ist keine rechtliche Garantie – vor Ort gilt die Signalisation.</p></div>`;
+    box.querySelectorAll("[data-var]").forEach((b) => (b.onclick = () => waehleOption("v:" + b.dataset.var)));
+    $("rp-tol").onchange = (e) => {
+      S.set("toleranz", +e.target.value);
+      if (!ST.variantWahl || ST.variantWahl === "auto") { const k = RT.waehleVariante(VAR.rows, toleranz()).k, r = VAR.rows.find((x) => x.k === k); if (r && r.route !== route && !ALT.chosen) { route = r.route; ST.activeRouteId = route.id; afterRoute(false); return; } }
+      renderVar();
+    };
+    const a = $("rp-var-auto"); if (a) a.onclick = () => { ST.variantWahl = "auto"; const k = RT.waehleVariante(VAR.rows, toleranz()).k; ALT.chosen = null; route = VAR.rows.find((x) => x.k === k).route; ST.activeRouteId = route.id; afterRoute(false); };
+  }
+
+  /* ---------- Gravel beim Rennrad (gravel-rt-1.0): Meldung je Abschnitt, «für mich ok» oder Umfahrung ---------- */
+  function renderGravel() {
+    const box = $("rp-gravel"); if (!box) return;
+    if (!route || route.gezeichnet || sportDef().rad !== "rennrad" || ST.sport !== "rennrad") { box.hidden = true; return; }
+    const G = RT.gravelAbschnitte(route), sig = sigOf();
+    if (GRV.key !== sig) GRV = { key: sig, ok: false, busy: false, umf: null };
+    if (!G.abschnitte.length && !(GRV.umf && GRV.umf.route === route)) { box.hidden = true; return; }
+    box.hidden = false;
+    const istUmf = GRV.umf && GRV.umf.route === route;
+    if (!G.abschnitte.length && istUmf) {
+      box.innerHTML = `<div class="rp-card ok"><b>Umfahrung ohne Gravel gewählt.</b> <button class="btn" id="rp-g-zur">Zurück zur Route mit Gravel</button></div>`;
+      $("rp-g-zur").onclick = () => { const r = GRV.umf.vorher; GRV.umf.gewaehlt = false; if (r) { route = r; ST.activeRouteId = r.id; afterRoute(false); } };
       return;
     }
-    const fz = RT.variantFazit(VAR.rows), t = (x) => (isNum(x) ? dur(x) : "–");
-    const on = (r) => (ST.variant || "schnell") === r.k;
-    box.innerHTML = `<div class="rp-card">${head}<table class="t rp-vt"><tr><th>Variante</th><th>km</th><th>Hm</th><th title="Anteil Hauptstrasse">Haupt&shy;str.</th><th title="unbefestigt, km">unbef.</th><th>Zeit</th></tr>${VAR.rows.map((r) => r.fehler
-      ? `<tr><td colspan="6">${esc(r.label)}: <small>${esc(r.fehler)}</small></td></tr>`
-      : `<tr class="${on(r) ? "on" : ""}"><td>${esc(r.label)}<br>${on(r) ? '<span class="pill">aktiv</span>' : `<button class="btn rp-vbtn" data-var="${r.k}" aria-label="Variante «${esc(r.label)}» übernehmen">Wählen</button>`}</td><td>${km(r.share.L)}</td><td>${fmt(r.up)}</td><td>${fmt(r.share.haupt_pct)} %</td><td>${km(r.share.unbef_m)}</td><td>${t(r.t)}</td></tr>`).join("")}</table>
-      <p class="${fz.status === "keine" ? "verdict unsure" : "hint"}">${esc(fz.text)}</p>
-      <p class="hint">Nur Wege, die laut OSM für Velos erlaubt sind; «erlaubt laut OSM» hängt von den Kartendaten ab und ist keine rechtliche Garantie – vor Ort gilt die Signalisation.</p></div>`;
-    box.querySelectorAll("[data-var]").forEach((b) => (b.onclick = () => { ST.variant = b.dataset.var; reroute(false); }));
-  }
-  async function computeVariants() {
-    const vs = RT.VARIANTEN[ST.sport]; if (!vs || !route) return;
-    const sig = sigOf(), ep = S.get("endpoint", RT.ENDPOINT), vias = ST.vias.slice(), inp = effortInput();
-    VAR = { key: sig, rows: null, busy: true }; renderVar();
-    const rows = [];
-    for (const v of vs) {
-      const eng = RT.engineVariant(ST.sport, ST.opts, v.k);
-      try {
-        const legs = await Promise.all(Array.from({ length: vias.length - 1 }, (_, i) => {
-          const key = [ep, eng.engine, JSON.stringify(eng.params), vias[i].join(","), vias[i + 1].join(",")].join("|");
-          if (!CACHE.has(key)) CACHE.set(key, RT.fetchLeg(window.fetch.bind(window), ep, eng, vias[i], vias[i + 1]).catch((e) => { CACHE.delete(key); throw e; }));
-          return CACHE.get(key);
-        }));
-        const r = RT.buildRoute(legs, vias, { sport: ST.sport, engine: eng.engine });
-        const sv = RT.eta(r, inp);
-        rows.push({ k: v.k, label: v.label, share: RT.wayShare(r), up: r.profile.up, t: sv.unzureichend ? null : sv.moving_s });
-      } catch (e) { rows.push({ k: v.k, label: v.label, fehler: e.message || String(e) }); }
+    const artTxt = (a) => Object.entries(a.arten).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${RT.GRAVEL_ARTEN[k]} ${fmt(v)} m`).join(", ");
+    const wegTxt = (a) => Object.entries(a.wege).sort((x, y) => y[1] - x[1]).slice(0, 2).map(([k]) => (RT.WAY[k] || RT.WAY.unbekannt).label).join(", ");
+    const sicher = G.sicher_m >= 1, nurUnklar = !sicher && G.unklar_m >= 1;
+    if (GRV.ok) {
+      box.innerHTML = `<div class="rp-card"><b>Gravel für dich ok:</b> ${km(G.gravel_m)} km in ${G.abschnitte.length} Abschnitt${G.abschnitte.length === 1 ? "" : "en"}. <button class="btn" id="rp-g-undo">Wieder melden</button></div>`;
+      $("rp-g-undo").onclick = () => { GRV.ok = false; renderGravel(); };
+      return;
     }
-    if (VAR.key !== sig) return;
-    VAR = { key: sig, rows, busy: false }; renderVar();
+    const U = GRV.umf, uRoute = U && U.route;
+    let umfTxt = "";
+    if (GRV.busy) umfTxt = `<p class="hint"><span class="spin" aria-hidden="true"></span> Umfahrung wird gesucht (gesperrt werden nur die Gravel-Stücke) …</p>`;
+    else if (U && U.fehler && !uRoute) umfTxt = `<p class="verdict unsure">Umfahrung nicht möglich: ${esc(U.fehler)}</p>`;
+    else if (uRoute) {
+      const Gu = RT.gravelAbschnitte(uRoute), dt = isNum(U.t) && isNum(U.t0) ? U.t - U.t0 : null;
+      umfTxt = `<div class="rp-umf"><b>${Gu.gravel_m < 1 ? "Umfahrung ohne Gravel" : `Umfahrung mit weniger Gravel (${km(Gu.gravel_m)} km)`}:</b> ${uRoute.L >= route.L ? "+" : "−"}${km(Math.abs(uRoute.L - route.L))} km${isNum(dt) ? `, ${Math.abs(dt) < 60 ? "Zeit ±0 (unter 1 min)" : `${dt >= 0 ? "+" : "−"}${Math.round(Math.abs(dt) / 60)} min`}` : ""}, ↑ ${fmt(uRoute.profile.up)} m
+        <div class="row"><button class="btn primary" id="rp-g-take">Umfahrung übernehmen</button><button class="btn" id="rp-g-show">Auf der Karte zeigen</button></div>
+        ${uRoute.snapMax > route.snapMax + 20 ? `<p class="hint">Ein Wegpunkt liegt selbst auf Gravel: Die Umfahrung beginnt bzw. endet ${fmt(uRoute.snapMax)} m daneben am nächsten erlaubten Weg.</p>` : ""}
+        ${Gu.gravel_m >= 1 && U.info && U.info.amWegpunkt.length ? `<p class="hint">Rest-Gravel liegt direkt an einem Wegpunkt – nur vermeidbar, wenn du den Punkt verschiebst.</p>` : ""}</div>`;
+    } else if (U && U.keine) umfTxt = `<p class="verdict unsure">Keine Umfahrung gefunden: ${esc(U.keine)}</p>`;
+    box.innerHTML = `<div class="rp-card rp-warncard"><b>${sicher ? `Gravel auf der Route: ${km(G.sicher_m)} km` : "Möglicherweise Gravel"}${G.unklar_m >= 1 ? `${sicher ? ", dazu " : ": "}${km(G.unklar_m)} km Feldweg ohne Belagsangabe` : ""}</b>
+      <p class="hint">${nurUnklar ? "OSM nennt hier keinen Belag – es kann Asphalt oder Gravel sein." : "Das Rennradprofil meidet Gravel; hier gab es keine vernünftige asphaltierte Verbindung."} Pflaster zählt nicht als Gravel.</p>
+      <ol class="rp-glist">${G.abschnitte.map((a, i) => `<li><button class="rp-gsec" data-g="${i}">km ${km(a.d0)}–${km(a.d1)}</button> <b>${fmt(a.gravel_m)} m</b> · ${esc(artTxt(a))}${wegTxt(a) ? " · " + esc(wegTxt(a)) : ""}${RT.amWegpunkt(route, a) ? " · <small>am Wegpunkt</small>" : ""}</li>`).join("")}</ol>
+      ${G.kurz ? `<p class="hint">Dazu ${G.kurz} kurze Stück${G.kurz === 1 ? "" : "e"} unter 15 m (${fmt(G.kurz_m)} m).</p>` : ""}
+      <div class="row"><button class="btn" id="rp-g-ok">Für mich ok</button><button class="btn" id="rp-g-umf" ${GRV.busy || uRoute ? "disabled" : ""}>Umfahrung zeigen</button></div>${umfTxt}</div>`;
+    box.querySelectorAll("[data-g]").forEach((b) => (b.onclick = () => { const a = G.abschnitte[+b.dataset.g]; setCursor((a.d0 + a.d1) / 2, "liste"); fitCoords(RT.slice(route, Math.max(0, a.d0 - 150), Math.min(route.L, a.d1 + 150))); }));
+    $("rp-g-ok").onclick = () => { GRV.ok = true; renderGravel(); live("Gravel-Abschnitte als für dich ok markiert."); };
+    $("rp-g-umf").onclick = () => sucheUmfahrung();
+    const tk = $("rp-g-take"); if (tk) tk.onclick = () => waehleOption("u");
+    const sh = $("rp-g-show"); if (sh) sh.onclick = () => fitCoords(uRoute.lon.map((x, i) => [x, uRoute.lat[i]]).concat(route.lon.map((x, i) => [x, route.lat[i]])));
+  }
+  async function sucheUmfahrung() {
+    if (!route || GRV.busy) return;
+    const sig = sigOf(), vorher = route, ep = S.get("endpoint", RT.ENDPOINT), vias = ST.vias.slice();
+    const eng = Object.assign({}, (VAR.rows && (VAR.rows.find((r) => r.route === vorher) || VAR.rows[0]).eng) || RT.engineFor(ST.sport, ST.opts));
+    eng.engine = vorher.engine || eng.engine;
+    GRV.busy = true; GRV.umf = null; renderGravel();
+    let umf;
+    try {
+      const { legs, info } = await RT.umfahrung(window.fetch.bind(window), ep, eng, vias, vorher);
+      const r = RT.buildRoute(legs, vias, { sport: ST.sport, engine: eng.engine, prov: vorher.prov });
+      r.variante = vorher.variante;
+      const besser = RT.gravelAbschnitte(r).gravel_m < RT.gravelAbschnitte(vorher).gravel_m - 1;
+      const inp = effortInput(), t = RT.eta(r, inp), t0 = RT.eta(vorher, inp);
+      umf = besser ? { route: r, vorher, info, t: t.unzureichend ? null : t.moving_s, t0: t0.unzureichend ? null : t0.moving_s }
+        : { vorher, info, keine: info.fehler.length ? info.fehler[0].text : info.amWegpunkt.length ? "der Gravel liegt an einem Wegpunkt (Punkt verschieben)" : "ohne die gesperrten Stücke findet BRouter keine erlaubte Verbindung mit weniger Gravel" };
+    } catch (e) { umf = { vorher, fehler: e.message || String(e) }; }
+    if (GRV.key !== sig) return;
+    GRV.busy = false; GRV.umf = umf;
+    renderGravel(); renderAltMap();
+    if (umf.route) live("Umfahrung gefunden – grau auf der Karte (U).");
+  }
+
+  /* ---------- Andere Routen (alternativen-1.0), wie bei Google Maps ---------- */
+  function renderAlt() {
+    const box = $("rp-alt"); if (!box) return;
+    if (!route || route.gezeichnet) { box.hidden = true; return; }
+    box.hidden = false;
+    const sig = sigOf();
+    if (ALT.key !== sig) ALT = { key: sig, busy: false, list: null, chosen: null };
+    if (!ALT.list) {
+      box.innerHTML = `<div class="rp-card"><div class="row"><button class="btn" id="rp-alt-go" ${ALT.busy ? "disabled" : ""}>${ALT.busy ? '<span class="spin" aria-hidden="true"></span> Andere Routen werden gesucht …' : "Andere Routen"}</button></div>
+        <p class="hint">BRouter sucht bis zu zwei weitere Wege zwischen denselben Punkten (z. B. über einen anderen Pass) – gleiche Regeln wie oben.${RT.SPORTS[ST.sport].profil ? " Dazu zum Vergleich das Standard-Rennradprofil, falls es kürzer über Gravel führt." : ""}</p></div>`;
+      const go = $("rp-alt-go"); if (go) go.onclick = () => sucheAlternativen();
+      return;
+    }
+    const main = VAR.rows && VAR.key === sig ? (VAR.rows.find((r) => r.k === VAR.wahl) || {}).route : null;
+    const basis = ALT.basis || main || route;
+    const zeile = (o, nr, gew) => { const G = RT.gravelAbschnitte(o.route), sh = RT.wayShare(o.route), v = o.v;
+      return `<tr class="${gew ? "on" : ""}"><td><span class="rp-altnr ${o.art || ""}">${nr}</span> ${esc(o.label)}${v && v.ab ? `<br><small>anders km ${km(v.ab.d0)}–${km(v.ab.d1)}</small>` : ""}<br>${gew ? '<span class="pill">gewählt</span>' : `<button class="btn rp-vbtn" data-alt="${o.k}">Wählen</button>`}</td>
+        <td>${tdur(o.t)}</td><td>${km(o.route.L)}</td><td>${fmt(o.route.profile.up)}</td><td>${isNum(o.maxEle) ? fmt(o.maxEle) : "–"}</td><td>${fmt(sh.haupt_pct)}</td><td>${G.gravel_m >= 1 ? km(G.gravel_m) : "–"}</td></tr>`; };
+    const rows = [{ k: "0", label: "Vorschlag oben", route: basis, t: ALT.t0, maxEle: ALT.maxEle0, art: "haupt" }].concat(ALT.list);
+    box.innerHTML = `<div class="rp-card"><b>Andere Routen</b>${ALT.list.length ? "" : " – BRouter fand keine deutlich andere Route."}
+      <div class="tbl-wrap"><table class="t rp-vt"><tr><th>Route</th><th>Zeit</th><th>km</th><th>Hm</th><th title="höchster Punkt">max. m</th><th title="Anteil Hauptstrasse">Haupt&shy;str. %</th><th>Gravel km</th></tr>${rows.map((o, i) => zeile(o, i === 0 ? "1" : String(i + 1), o.route === route)).join("")}</table></div>
+      <p class="hint">Grau auf der Karte mit Nummer; antippen wählt. Doppelte Wege (≥ 85 % gleich) werden weggelassen. Je Route ${ST.vias.length - 1} Anfrage${ST.vias.length > 2 ? "n" : ""} an BRouter.</p></div>`;
+    box.querySelectorAll("[data-alt]").forEach((b) => (b.onclick = () => { const k = b.dataset.alt; if (k === "0") { ALT.chosen = null; route = basis; ST.activeRouteId = route.id; afterRoute(false); } else waehleOption("a:" + k); }));
+  }
+  async function sucheAlternativen() {
+    if (!route || ALT.busy) return;
+    const sig = sigOf(), basis = route, ep = S.get("endpoint", RT.ENDPOINT), vias = ST.vias.slice(), inp = effortInput();
+    const eng = Object.assign({}, (VAR.rows && (VAR.rows.find((r) => r.route === basis) || VAR.rows[0]).eng) || RT.engineFor(ST.sport, ST.opts));
+    eng.engine = basis.engine || eng.engine;
+    ALT = { key: sig, busy: true, list: null, chosen: null }; renderAlt();
+    const kand = [];
+    const bau = (legs, k, label, e, art) => { const r = RT.buildRoute(legs, vias, { sport: ST.sport, engine: e.engine, prov: basis.prov }); r.variante = basis.variante; r.alternative = k; const sv = RT.eta(r, inp); return { k, label, route: r, t: sv.unzureichend ? null : sv.moving_s, art: art || "alternative" }; };
+    for (const k of [1, 2]) { try { kand.push(bau(await legsFor(ep, eng, vias, { alt: k }), String(k), `Alternative ${k}`, eng)); } catch (e) { /* Alternative nicht gefunden: weglassen */ } }
+    if (RT.SPORTS[ST.sport].profil && /^custom_/.test(eng.engine)) {
+      const std = Object.assign({}, eng, { engine: "fastbike", params: Object.assign({}, eng.params) }); delete std.params.prefer_cycleways;
+      try { const c = bau(await legsFor(ep, std, vias), "std", "Standardprofil (mit Gravel)", std, "standard"); if (RT.gravelAbschnitte(c.route).gravel_m >= 1 && c.route.L < basis.L * 0.97) kand.push(c); } catch (e) { /* weglassen */ }
+    }
+    const liste = [];
+    for (const c of kand) {
+      if (RT.istDoppelt(basis, c.route) || liste.some((x) => RT.istDoppelt(x.route, c.route))) continue;
+      c.v = RT.vergleicheRouten(basis, c.route); c.maxEle = c.v.maxEleProfil;
+      liste.push(c);
+    }
+    if (ALT.key !== sig) return;
+    const sv0 = RT.eta(basis, inp);
+    ALT = { key: sig, busy: false, list: liste, chosen: null, basis, t0: sv0.unzureichend ? null : sv0.moving_s, maxEle0: RT.vergleicheRouten(basis, basis).maxEleProfil };
+    renderAlt(); renderAltMap();
+    live(liste.length ? `${liste.length} andere Route${liste.length === 1 ? "" : "n"} gefunden, grau auf der Karte.` : "Keine deutlich andere Route gefunden.");
+  }
+
+  /* ---------- Ortssuche (ortssuche-1.0, swisstopo): nur der eingegebene Text wird gesendet ---------- */
+  let qTimer = null, qJob = 0;
+  function sucheOrt(text) {
+    const list = $("rp-qres");
+    clearTimeout(qTimer);
+    if (!text || text.trim().length < 2) { list.hidden = true; list.innerHTML = ""; return; }
+    qTimer = setTimeout(async () => {
+      const my = ++qJob;
+      list.hidden = false; list.innerHTML = `<li class="hint"><span class="spin" aria-hidden="true"></span> Suche …</li>`;
+      let res = [];
+      try { const r = await fetch(RT.sucheUrl(text, S.get("suche", RT.SUCHE))); if (!r.ok) throw new Error("HTTP " + r.status); res = RT.sucheErgebnisse(await r.json()); }
+      catch (e) { if (my === qJob) list.innerHTML = `<li class="hint">Suche nicht erreichbar (${esc(String(e.message || e))}). Punkt in der Karte antippen.</li>`; return; }
+      if (my !== qJob) return;
+      list.innerHTML = res.length ? res.map((o, i) => `<li role="option"><button class="rp-qhit" data-q="${i}">${esc(o.label)}<small>${esc(o.origin === "gg25" ? "Gemeinde" : o.origin === "gazetteer" ? "Ort/Name" : o.origin === "zipcode" ? "PLZ" : o.origin === "address" ? "Adresse" : o.origin)}</small></button></li>`).join("")
+        : `<li class="hint">Nichts gefunden (nur Orte in der Schweiz). Punkt in der Karte antippen.</li>`;
+      list.querySelectorAll("[data-q]").forEach((b) => (b.onclick = () => {
+        const o = res[+b.dataset.q];
+        list.hidden = true; $("rp-q").value = "";
+        addPoint([o.lon, o.lat], o.label.replace(/\s*\(.*?\)\s*$/, "").slice(0, 40), takeRole());
+        if (map) map.easeTo({ center: [o.lon, o.lat], zoom: Math.max(map.getZoom(), 11), duration: reduce() ? 0 : 500 });
+      }));
+    }, 350);
   }
   /** Winter und Skitouren: Gelände, Lawinen, Wildruhezonen, Regeln – Navigation garantiert keine Sicherheit. */
   function renderWinter() {
@@ -938,11 +1195,13 @@
     const box = $("rp-src"); if (!route) { box.innerHTML = '<p class="hint">Noch keine Route.</p>'; return; }
     const B = RT.RAD[sportDef().rad || "rennrad"], inp = effortInput(), K = kal();
     const rows = [
-      ["Routing", route.gezeichnet ? "von Hand gezeichnet (kein Wegnetz, kein Zugangscheck)" : `${esc(route.prov.routing)} über ${esc(route.prov.endpoint || "")}, Profil «${esc(route.engine)}» (${esc(sportDef().label)}); Abschnitte einzeln berechnet; Stand ${new Date(route.created).toLocaleString("de-CH")}`],
+      ["Routing", route.gezeichnet ? "von Hand gezeichnet (kein Wegnetz, kein Zugangscheck)" : `${esc(route.prov.routing)} über ${esc(route.prov.endpoint || "")}, Profil «${esc(RT.profilName(route.engine))}»${/^custom_/.test(route.engine || "") ? " – Datei brouter/rennrad-asphalt.brf, abgeleitet von BRouter fastbike (MIT): Feinkies und Naturbelag gemieden, Pflaster ok" : RT.SPORTS[ST.sport].profil && PROF.fehler ? ` – <b>eigenes Rennradprofil nicht verfügbar</b> (${esc(PROF.fehler)}), darum Standardprofil fastbike (meidet Feinkies weniger)` : ""} (${esc(sportDef().label)}); Abschnitte einzeln berechnet; Stand ${new Date(route.created).toLocaleString("de-CH")}`],
       ["Wegdaten", route.gezeichnet ? "–" : `${esc(route.prov.osm)}; Belag/Wegart/Zugang aus den OSM-Merkmalen jedes Abschnitts, fehlende = unbekannt`],
       ["Höhe", route.gezeichnet ? "Höhenmodell Mapzen/AWS Terrain Tiles" : "BRouter (SRTM-Höhenmodell an den OSM-Knoten); 20-m-Abtastung, Mittel über 100 m, Auf-/Abstieg mit 3-m-Hysterese"],
       ["Tempo", sportDef().art === "rad" ? `Leistungsbilanz je 20 m: Fahrer ${fmt(inp.rad.rider, 1)} kg + Rad ${fmt(inp.rad.bikeKg, 1)} kg, CdA ${String(inp.rad.cda)}, Crr je Belag (Annahmen), Wirkungsgrad 97,6 %, Luftdichte aus Höhe und Temperatur; bergab rollen (≤ −5 %: 0 W), Abfahrt ≤ ${B.vmax.asphalt} km/h auf Asphalt und Kurven ≤ √(${B.alat}·r); bei Regen −15 %` :
         ST.sport === "wandern" ? "Tobler-Gehfunktion je 20 m × persönlicher Faktor; Hm/h-Modus: bergauf Vertikaltempo" : ST.sport === "skitour" ? "Aufstieg aus Hm/h, flach 4 km/h; Abfahrt nicht bestimmt" : "Flachtempo × Minetti-Energiekosten je Steigung; bergab höchstens +20 % (Trail +10 %, ab T3 0 %); über 20 % gehen"],
+      ...(RT.VARIANTEN[ST.sport] ? [["Varianten", `${esc(RT.VERSIONS.varianten)}: schnellste (Verkehr wenig gewichtet) und velofreundlich (Verkehr wichtig, asphaltierte Radwege bevorzugt); velofreundlich, solange höchstens ${toleranz()} % langsamer und nicht mehr Gravel`],
+        ["Gravel", `${esc(RT.VERSIONS.gravel)}: Belag laut OSM Kies/Feinkies, Naturweg oder unbefestigt, ohne Belag auch tracktype grade2–5; Feldweg ohne Angabe = «möglicherweise»; Umfahrung mit Sperrpunkten (5–10 m) auf den Gravel-Stücken, Abschnitte an Wegpunkten nicht gesperrt`]] : []),
       ["Kalibrierung", K.v ? `${esc(K.v)} vom ${esc(K.erstellt)} – ${esc(K.quelle)}` : "keine"],
       ["Wetter", field ? "Open-Meteo Forecast API (best_match), stündlich, linear in Zeit und Strecke interpoliert, Wind als Vektor" : "nicht geladen"],
       ["Nicht modelliert", "Ampeln, Kreuzungen, Verkehr, Bremsen vor Kurven ausser Kurvengrenze, Ermüdung, Schnee; Abfahrtsgrenzen sind Annahmen"],
@@ -968,7 +1227,7 @@
     $("rp-ana").hidden = !route;
     $("rp-saverow").hidden = !route && !ST.vias.length;
     $("pl-gpx").disabled = !route; $("pl-gpx").title = route ? "" : "Erst nach erfolgreichem Routing";
-    renderWhen(); renderVar(); renderWinter(); renderTabs(); renderLegend(); renderInt(); renderArr(); renderWx(); renderSrc();
+    renderGravel(); renderWhen(); renderVar(); renderAlt(); renderWinter(); renderTabs(); renderLegend(); renderInt(); renderArr(); renderWx(); renderSrc();
     renderMap();
     requestAnimationFrame(() => { drawChart(); renderInfo(); });
     if (C.onRouteChange) C.onRouteChange();
@@ -980,7 +1239,7 @@
     const box = $("rp-consent");
     box.hidden = false;
     box.innerHTML = `<div class="rp-card"><b>Echtes Routing über das Wegnetz</b>
-      <p class="hint">Die gesetzten Punkte (nur Koordinaten, ohne Namen oder Konto) werden an den öffentlichen BRouter-Server ${esc(S.get("endpoint", RT.ENDPOINT).replace(/^https?:\/\//, ""))} gesendet. Er berechnet die Route über erlaubte Wege (OpenStreetMap) – ohne Verfügbarkeitsgarantie. Ohne Zustimmung gibt es nur die von Hand gezeichnete Linie (Luftlinie).</p>
+      <p class="hint">Die gesetzten Punkte (nur Koordinaten, ohne Namen oder Konto) werden an den öffentlichen BRouter-Server ${esc(S.get("endpoint", RT.ENDPOINT).replace(/^https?:\/\//, ""))} gesendet. Er berechnet die Route über erlaubte Wege (OpenStreetMap) – ohne Verfügbarkeitsgarantie. Fürs Rennrad wird einmal das eigene Profil «ohne Gravel» hinterlegt (nur Text, keine Koordinaten); für eine Umfahrung gehen zusätzlich Sperrpunkte auf den Gravel-Stücken mit. Ohne Zustimmung gibt es nur die von Hand gezeichnete Linie (Luftlinie).</p>
       <div class="row"><button class="btn primary" id="rp-ok">Zustimmen und routen</button><button class="btn" id="rp-manual">Nur Luftlinie zeichnen</button></div></div>`;
     $("rp-ok").onclick = () => { S.set("consent", Object.assign(consent(), { routing: true, routing_am: new Date().toISOString() })); box.hidden = true; reroute(true); };
     $("rp-manual").onclick = () => { ST.manual = true; box.hidden = true; reroute(true); };
@@ -1040,7 +1299,7 @@
     chartEvents(); gripEvents();
     $("rp-sports").addEventListener("click", (e) => {
       const b = e.target.closest("[data-s]"); if (!b) return;
-      ST.sport = b.dataset.s; S.set("sport", ST.sport); ST.manual = false; ST.variant = null;
+      ST.sport = b.dataset.s; S.set("sport", ST.sport); ST.manual = false; ST.variantWahl = "auto";
       loadEffort(); renderSports(); renderOpts();
       clearSel(true);
       if (ST.vias.length >= 2) reroute(false); else renderAll();
@@ -1068,6 +1327,8 @@
       else if (b.dataset.z != null && map) map.easeTo({ center: ST.vias[+b.dataset.z], zoom: Math.max(map.getZoom(), 14), duration: reduce() ? 0 : 500 });
     });
     $("rp-add").onclick = () => setAddMode(!ST.addMode);
+    $("rp-q").addEventListener("input", (e) => sucheOrt(e.target.value));
+    $("rp-q").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); const b = $("rp-qres").querySelector("[data-q]"); if (b) b.click(); } if (e.key === "Escape") { $("rp-qres").hidden = true; } });
     $("rp-rev").onclick = () => {
       if (ST.vias.length < 2) return;
       ST.routeDirection = ST.routeDirection === "hin" ? "rueck" : "hin";
@@ -1195,7 +1456,7 @@
   }
   function planRoute() {
     if (!route) return null;
-    return { ll: route.lon.map((x, i) => [x, route.lat[i]]), ele: route.ele.map((e) => (isNum(e) ? e : null)), label: route.gezeichnet ? "von Hand gezeichnet" : `geroutet (${route.prov.routing}, Profil ${route.engine})` };
+    return { ll: route.lon.map((x, i) => [x, route.lat[i]]), ele: route.ele.map((e) => (isNum(e) ? e : null)), label: route.gezeichnet ? "von Hand gezeichnet" : `geroutet (${route.prov.routing}, Profil ${RT.profilName(route.engine)})` };
   }
 
   window.RTUI = { init, open, close, active, mapClick, loadSaved, planRoute, state: () => ST, route: () => route, sim: () => sim, climbs: () => climbs, pieces: () => pieces,
