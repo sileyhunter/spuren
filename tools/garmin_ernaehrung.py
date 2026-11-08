@@ -9,6 +9,7 @@ Regeln (fueling-garmin-1.0)
 - Zuordnung zu einer Aktivität nur über die Uhrzeit des Eintrags: zwischen Start und Ende (Startzeit + Gesamtzeit inkl. Pausen).
   Nachgewiesen = erst nach dieser Uhrzeit erfasst (nachträglich protokolliert). Vorher erfasst (geplant) oder ohne Uhrzeit = unsicher,
   wird angezeigt, aber nie mitgezählt. Tages- oder Mahlzeitensummen werden nie einer Aktivität zugeordnet.
+- Nur Rad und Laufen ab 40 min (wie das Fueling-Protokoll); z. B. ein Proteinshake am Ende eines Krafttrainings ist kein Fueling.
 - Ergebnis: Fueling-Eintrag «fg-<Aktivität>» (Quelle Garmin). Ein manueller Eintrag zur selben Aktivität hat Vorrang: der Garmin-Eintrag
   wird dann nicht angelegt (Hinweis). Ein auf der Seite bearbeiteter Garmin-Eintrag («geaendert») wird nie überschrieben.
 - Mengen werden nie geschätzt: fehlt ein Wert (z. B. Natrium beim Gel, Flüssigkeit), bleibt er unbekannt.
@@ -19,6 +20,7 @@ import zoneinfo
 
 ZRH = zoneinfo.ZoneInfo("Europe/Zurich")
 QUELLE = "Garmin Connect (Ernährungsprotokoll)"
+SPORTARTEN, MIN_DAUER_S = ("rad", "lauf"), 2400       # wie das Fueling-Protokoll der Seite (Train your Gut): Rad und Laufen ab 40 min
 V = "fueling-garmin-1.0"
 FELDER = ("logId", "foodName", "brandName", "servingQty", "numberOfUnits", "servingUnit", "calories", "carbs", "sodium", "mealName", "mealTime", "logTimestamp")
 
@@ -139,6 +141,12 @@ def fueling_ableiten(D):
     for a in D.get("activities") or []:
         tag = E.get(a.get("date"))
         if not tag:
+            continue
+        if a.get("sport") not in SPORTARTEN or (a.get("mv") or a.get("dur") or 0) < MIN_DAUER_S:
+            alt = next((e for e in fu if e.get("id") == "fg-" + str(a["id"])), None)
+            if alt and not alt.get("geaendert"):        # früher abgeleitet, Sportart/Dauer passt nicht → entfernen (Audit)
+                D.setdefault("audit", []).append({"zeit": dt.datetime.now(ZRH).isoformat(timespec="seconds"), "was": "Fueling aus Garmin entfernt (Sportart/Dauer)", "id": alt["id"], "alt": alt})
+                fu.remove(alt)
             continue
         w = fenster(a)
         if not w:

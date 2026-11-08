@@ -418,6 +418,12 @@ check("Reihen Nacht-Update: verwaiste Reihe wird nicht gelöscht, nur gemeldet",
 
 # ---------- V5.7.2 Garmin-Ernährungsprotokoll → Fueling (erfundene Werte) ----------
 import garmin_ernaehrung as GE  # noqa: E402
+_KR = {"id": "g88", "gid": "g88", "date": "2026-03-01", "start": "13:00", "sport": "andere", "el": 2700, "dur": 2700, "mv": 2700}
+_DK = {"activities": [_KR], "fueling": [{"id": "fg-g88", "activity_id": "g88", "date": "2026-03-01", "status": "protokolliert", "events": []}]}
+GE.einlesen(_DK, [{"date": "2026-03-01", "dailyCalories": 114, "dailyCarbs": 4.0, "items": [{"logId": "w", "foodName": "Whey", "brandName": None, "servingQty": 1.5,
+             "numberOfUnits": 30.0, "servingUnit": "G", "calories": 76, "carbs": 2.7, "sodium": None, "mealName": "SNACKS", "mealTime": "13:40:00", "logTimestamp": "2026-03-01T13:00:00.000Z"}]}])
+GE.fueling_ableiten(_DK)
+check("Garmin-Ernährung: nur Rad und Laufen ab 40 min (Shake am Ende eines Krafttrainings ist kein Fueling; früherer Eintrag entfernt)", _DK["fueling"] == [])
 def _it(lid, name, qty, kh, kc, zeit, erfasst_utc, units=1.0, unit="SERVING", na=None):
     return {"logId": lid, "foodName": name, "brandName": None, "servingQty": qty, "numberOfUnits": units, "servingUnit": unit, "calories": kc, "carbs": kh,
             "sodium": na, "mealName": "SNACKS", "mealTime": zeit, "logTimestamp": erfasst_utc}

@@ -7,7 +7,8 @@ keine Flüssigkeitsmenge je Eintrag und keine Verknüpfung mit einer Aktivität.
 
 - **Nacht-Update:** Tagesprotokoll und Trinken der letzten Tage (`food_logs`), verschlüsselt in `data.enc.json` (`ernaehrung_garmin`).
 - **Prüfung je Tag:** Summe der Einträge (gerundet wie bei Garmin) = Tageswerte (KH ±1 g, kcal ±2), sonst wird der Tag nicht verwendet.
-- **Zuordnung** `fueling-garmin-1.0`: nur Einträge, deren Uhrzeit zwischen Start und Ende (inkl. Pausen) liegt und die erst danach erfasst
+- **Zuordnung** `fueling-garmin-1.0` (nur Rad und Laufen ab 40 min, wie das Fueling-Protokoll – nach dem ersten Nachtlauf ergänzt, weil ein
+  Proteinshake am Ende eines Krafttrainings als Fueling erschien): nur Einträge, deren Uhrzeit zwischen Start und Ende (inkl. Pausen) liegt und die erst danach erfasst
   wurden; vorher erfasste (geplante) Einträge werden angezeigt, aber nicht gezählt; Tages- oder Mahlzeitensummen nie.
 - **Train your Gut:** Ergebnis als Fueling «fg-<Aktivität>» mit Herkunft «Garmin»; ein eigener Eintrag zur Einheit hat Vorrang (Hinweis, nichts
   überschrieben), ein auf der Seite bearbeiteter Garmin-Eintrag wird nie überschrieben, in Garmin gelöschte Einträge verschwinden (Audit).

@@ -163,7 +163,7 @@ Demo-Exporte (`"demo": true`) werden abgelehnt.
 V5.5: Der Export enthält auch `pb` (offizielle Bestzeiten → `pb_offiziell`), `css` (CSS-Tests → `css_tests`, Zeiten von Hand, Korrektur
 ersetzt mit Audit) und `fehler` (Fehlerboard → `fehlerboard`). `fueling_quellen` (geprüfte Garmin/FIT-Quellen, A15) nur nach einer neuen
 Prüfung ersetzen; nie Einnahmen aus Garmin schätzen oder ergänzen. V5.7.2: Einnahmen aus Garmin nur aus dem Ernährungsprotokoll mit Uhrzeit
-(`fueling-garmin-1.0`: Tag stimmt mit den Tageswerten, Uhrzeit zwischen Start und Ende, erst danach erfasst); eigene Fueling-Einträge haben
+(`fueling-garmin-1.0`: nur Rad/Laufen ab 40 min, Tag stimmt mit den Tageswerten, Uhrzeit zwischen Start und Ende, erst danach erfasst); eigene Fueling-Einträge haben
 Vorrang, auf der Seite bearbeitete Garmin-Einträge (`geaendert`) werden nie überschrieben.
 V5.6: zusätzlich `rpe` (→ `rpe`), `intervalle` (Korrekturen von Hand → `intervall_korr`), `laktat_punkte` (Laktat einem Abschnitt
 zugeordnet → `laktat_punkte`, Status «vorschau») und `saison` (Stunden «jetzt»/«Spitze» → `saison_plan`); gleiche ID ersetzt mit Audit.
