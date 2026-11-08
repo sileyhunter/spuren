@@ -14,8 +14,8 @@
 })(typeof self !== "undefined" ? self : this, function (FK) {
   "use strict";
   const RT = {};
-  RT.VERSIONS = { route: "route-1.0", hoehe: "hoehe-1.0", anstiege: "anstiege-1.0", zeit: "zeit-rt-1.2", wetter: "wetter-rt-1.2", varianten: "varianten-2.0",
-    gravel: "gravel-rt-1.0", alternativen: "alternativen-1.0", wegpunkte: "wegpunkte-1.0", ortssuche: "ortssuche-1.0" };
+  RT.VERSIONS = { route: "route-1.0", hoehe: "hoehe-1.0", anstiege: "anstiege-1.0", zeit: "zeit-rt-1.3", wetter: "wetter-rt-1.2", varianten: "varianten-2.1",
+    gravel: "gravel-rt-1.1", alternativen: "alternativen-1.0", wegpunkte: "wegpunkte-1.0", ortssuche: "ortssuche-1.0", belag: "belag-1.1", anfragen: "anfragen-1.0" };
   const isNum = (v) => typeof v === "number" && isFinite(v);
   const R_EARTH = 6371008.8, RAD = Math.PI / 180;
 
@@ -72,8 +72,8 @@
    *  Schnellste = wenig Gewicht auf Verkehr (consider_traffic 0,1); Velofreundlich = Verkehr wichtig (0,5) und asphaltierte
    *  Radwege bzw. offizielle Velowege so günstig wie Nebenstrassen (prefer_cycleways 1). Gewählt wird nach RT.waehleVariante. */
   RT.VARIANTEN = {
-    rennrad: [{ k: "schnell", label: "Schnellste", params: { consider_traffic: "0.1", prefer_cycleways: "0" } },
-      { k: "velo", label: "Velofreundlich", params: { consider_traffic: "0.5", prefer_cycleways: "1" } }],
+    rennrad: [{ k: "schnell", label: "Schnellste", params: { consider_traffic: "0.1", prefer_cycleways: "0", avoid_mainroads: "0" } },
+      { k: "velo", label: "Velofreundlich", params: { consider_traffic: "0.5", prefer_cycleways: "1", avoid_mainroads: "1" } }],
   };
   RT.TOLERANZ_STANDARD = 10;     // % mehr Fahrzeit, die die velofreundliche Variante kosten darf
   RT.engineVariant = function (sport, opts, k) {
@@ -84,10 +84,13 @@
   RT.wayShare = function (route) {
     const m = {}; for (const s of route.segs || []) m[s.way] = (m[s.way] || 0) + (s.d1 - s.d0);
     const L = route.L || 1, haupt = m.hauptstrasse || 0, rad = m.radweg || 0, unbef = (route.segs || []).filter((s) => /kies|natur|unbefestigt/.test(s.surface)).reduce((x, s) => x + s.d1 - s.d0, 0);
-    return { m, haupt_m: haupt, haupt_pct: (100 * haupt) / L, radweg_m: rad, radweg_pct: (100 * rad) / L, unbef_m: unbef, L };
+    const str = m.strasse || 0;
+    return { m, haupt_m: haupt, haupt_pct: (100 * haupt) / L, strasse_m: str, strasse_pct: (100 * str) / L, verkehr_pct: (100 * (haupt + 0.5 * str)) / L, radweg_m: rad, radweg_pct: (100 * rad) / L, unbef_m: unbef, L };
   };
-  /** Welche Variante gilt (varianten-2.0)? rows: [{k, label, t (s) oder null, L, gravel_m, haupt_pct}].
-   *  Velofreundlich, wenn höchstens tol % langsamer (ohne Zeit: länger) und nicht mehr Gravel; sonst die schnellste. */
+  /** Welche Variante gilt (varianten-2.1)? rows: [{k, label, t (s) oder null, L, gravel_m, haupt_pct, radweg_pct}].
+   *  Velofreundlich, wenn höchstens tol % langsamer (Fahrzeit; nur ohne Zeitprognose die Distanz, dann ausdrücklich so
+   *  beschriftet), nicht mehr Gravel und tatsächlich ruhiger: weniger Verkehrsstrassen (Hauptstrasse + ½ Verbindungsstrasse)
+   *  oder mehr Radweg, je ≥ 1 Prozentpunkt, und nicht mehr Verkehrsstrassen; sonst die schnellste. */
   RT.waehleVariante = function (rows, tolPct) {
     const tol = isNum(tolPct) ? tolPct : RT.TOLERANZ_STANDARD;
     const ok = (rows || []).filter((r) => r && !r.fehler && isNum(r.L));
@@ -99,9 +102,14 @@
     const gleich = Math.abs(v.L - s.L) < Math.max(30, s.L * 0.005) && Math.abs((v.haupt_pct || 0) - (s.haupt_pct || 0)) < 1;
     const diff = mass === "t" ? `${b >= a ? "+" : "−"}${Math.round(Math.abs(b - a) / 60)} min` : `${b >= a ? "+" : "−"}${(Math.abs(b - a) / 1000).toFixed(1)} km`;
     if (gleich) return { k: "velo", gleich: true, plus: 0, text: "Beide Varianten führen über dieselben Wege." };
-    if ((v.gravel_m || 0) > (s.gravel_m || 0) + 50) return { k: "schnell", plus, text: `Die velofreundliche Variante hätte mehr Gravel (${((v.gravel_m || 0) / 1000).toFixed(1)} km) – darum die schnellste.` };
-    if (plus <= tol) return { k: "velo", plus, text: `Velofreundlich gewählt: ${diff} (${plus >= 0 ? "+" : "−"}${Math.abs(plus).toFixed(0)} %), Hauptstrasse ${Math.round(v.haupt_pct || 0)} % statt ${Math.round(s.haupt_pct || 0)} %, Radweg ${Math.round(v.radweg_pct || 0)} %.` };
-    return { k: "schnell", plus, text: `Velofreundlich wäre ${diff} (+${plus.toFixed(0)} %) – mehr als deine Toleranz von ${tol} %, darum die schnellste.` };
+    const ohneZeit = mass === "L" ? " (ohne Zeitprognose: Toleranz ersatzweise auf die Distanz angewendet)" : "";
+    if ((v.gravel_m || 0) > (s.gravel_m || 0) + 50) return { k: "schnell", plus, mass, text: `Die velofreundliche Variante hätte mehr Gravel (${((v.gravel_m || 0) / 1000).toFixed(1)} km) – darum die schnellste.` };
+    const vk = (r) => (isNum(r.verkehr_pct) ? r.verkehr_pct : (r.haupt_pct || 0) + 0.5 * (r.strasse_pct || 0));
+    const hv = v.haupt_pct || 0, hs = s.haupt_pct || 0, rv = v.radweg_pct || 0, rs = s.radweg_pct || 0, kv = vk(v), ks = vk(s);
+    const ruhiger = (kv <= ks - 1 || rv >= rs + 1) && kv < ks + 1;
+    if (!ruhiger) return { k: "schnell", plus, mass, nicht_ruhiger: true, text: `Die velofreundliche Variante ist hier nicht ruhiger (Verkehrsstrassen ${Math.round(kv)} % statt ${Math.round(ks)} %, Radweg ${Math.round(rv)} % statt ${Math.round(rs)} %) – darum die schnellste.` };
+    if (plus <= tol) return { k: "velo", plus, mass, text: `Velofreundlich gewählt: ${diff} (${plus >= 0 ? "+" : "−"}${Math.abs(plus).toFixed(0)} %${ohneZeit}), Hauptstrasse ${Math.round(hv)} % statt ${Math.round(hs)} %, Radweg ${Math.round(rv)} %.` };
+    return { k: "schnell", plus, mass, text: `Velofreundlich wäre ${diff} (+${plus.toFixed(0)} %) – mehr als deine Toleranz von ${tol} %${ohneZeit}, darum die schnellste.` };
   };
 
   /* ---------------- Routing-Dienst (BRouter) ---------------- */
@@ -162,6 +170,80 @@
     return leg;
   };
 
+  /* ---------------- Anfragen schonen (anfragen-1.0) ----------------
+   * Öffentlicher Server: höchstens max Anfragen gleichzeitig (Warteschlange), gleiche URL nur einmal (Cache im Aufrufer). */
+  RT.gate = function (fetchFn, max) {
+    max = Math.max(1, max || 2);
+    let n = 0, total = 0;
+    const q = [];
+    const next = () => {
+      while (n < max && q.length) {
+        const job = q.shift(); n++; total++;
+        Promise.resolve().then(() => fetchFn.apply(null, job.args)).then(job.res, job.rej).finally(() => { n--; next(); });
+      }
+    };
+    const g = function () { const args = Array.from(arguments); return new Promise((res, rej) => { q.push({ args, res, rej }); next(); }); };
+    g.stats = () => ({ laufend: n, wartend: q.length, gesamt: total, max });
+    return g;
+  };
+  /** Mehrere Punkte in einer Anfrage (Rundtouren-Vorschläge): eine Antwort für die ganze Linie. */
+  RT.brouterUrlPts = function (endpoint, eng, pts, opt) {
+    const ll = pts.map((p) => `${(+p[0]).toFixed(6)},${(+p[1]).toFixed(6)}`).join("|");
+    const extra = Object.entries(eng.params || {}).map(([k, v]) => `&profile:${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("");
+    const alt = opt && isNum(opt.alt) ? Math.max(0, Math.min(3, Math.round(opt.alt))) : 0;
+    return `${endpoint || RT.ENDPOINT}?lonlats=${ll}&profile=${encodeURIComponent(eng.engine)}&alternativeidx=${alt}&format=geojson${opt && opt.nogos ? `&nogos=${opt.nogos}` : ""}${extra}`;
+  };
+  RT.fetchPts = async function (fetchFn, endpoint, eng, pts, opt) {
+    if (pts.length === 2) return RT.fetchLeg(fetchFn, endpoint, eng, pts[0], pts[1], opt);
+    const url = RT.brouterUrlPts(endpoint, eng, pts, opt);
+    const ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timer = ctl ? setTimeout(() => ctl.abort(), (opt && opt.timeout_ms) || 45000) : null;
+    let res;
+    try { res = await fetchFn(url, ctl ? { signal: ctl.signal } : {}); }
+    catch (e) { const ab = e && e.name === "AbortError"; throw new RouteError(ab ? "timeout" : "netz", ab ? "Zeitüberschreitung beim Routing-Server." : RT.explainError(0, ""), String(e && e.message || e)); }
+    finally { if (timer) clearTimeout(timer); }
+    const text = await res.text();
+    if (!res.ok) { const er = new RouteError("dienst", RT.explainError(res.status, text, eng.engine), `HTTP ${res.status}: ${text.slice(0, 300) || "(ohne Text)"}`); er.status = res.status; throw er; }
+    let gj; try { gj = JSON.parse(text); } catch (e) { throw new RouteError("format", "Antwort des Routing-Servers ist kein GeoJSON.", text.slice(0, 200)); }
+    const leg = RT.parseBRouter(gj);
+    leg.url = url.replace(/lonlats=[^&]*/, "lonlats=…").replace(/nogos=[^&]*/, "nogos=…");
+    return leg;
+  };
+  /** Eine Antwort über mehrere Punkte in Abschnitte je Punktpaar teilen (gleiche Form wie fetchLeg), damit der Planer sie
+   *  wie einzeln gerechnete Abschnitte verwenden kann. Teilstelle = erste Stelle der Linie, die dem Zwischenziel am
+   *  nächsten kommt (BRouter führt die Linie durch den auf den Weg geschobenen Punkt). null, wenn die Teilung nicht eindeutig ist. */
+  RT.splitLegs = function (leg, pts) {
+    const C = leg.coords, N = C.length, cut = [0], k = pts.length - 2;
+    if (N < pts.length) return null;
+    for (let v = 1; v <= k; v++) {
+      // nächster Punkt der Linie = auf den Weg geschobener Punkt (BRouter führt die Linie hindurch); je Abschnitt mindestens
+      // ein Linienstück, damit auch zwei auf denselben Punkt geschobene Zwischenziele eigene Abschnitte bleiben
+      const p = pts[v], from = cut[cut.length - 1] + 1, to = N - 1 - (k - v) - 1;
+      if (to < from) return null;
+      let best = Infinity;
+      const dist = [];
+      for (let j = from; j <= to; j++) { const h = RT.hav(p[0], p[1], C[j][0], C[j][1]); dist.push(h); if (h < best) best = h; }
+      if (!isFinite(best)) return null;
+      let pick = from;
+      for (let j = 0; j < dist.length; j++) if (dist[j] <= best + 15 && (j === dist.length - 1 || dist[j] <= dist[j + 1])) { pick = from + j; break; }
+      cut.push(pick);
+    }
+    cut.push(N - 1);
+    for (let i = 1; i < cut.length; i++) if (cut[i] < cut[i - 1]) return null;
+    const out = [];
+    for (let i = 0; i < cut.length - 1; i++) {
+      const a = cut[i], b = cut[i + 1];
+      if (b <= a) return null;
+      const edges = [];
+      for (const e of leg.edges) {
+        const i0 = Math.max(a, e.i0), i1 = Math.min(b, e.i1);
+        if (i1 > i0) edges.push(Object.assign({}, e, { i0: i0 - a, i1: i1 - a }));
+      }
+      out.push({ coords: C.slice(a, b + 1), edges: edges.length ? edges : [{ i0: 0, i1: b - a, tags: {}, nodeTags: {}, ohne_meldung: true }], props: Object.assign({}, leg.props, { geteilt: true }), url: leg.url });
+    }
+    return out;
+  };
+
   RT.parseTags = function (s) {
     const o = {};
     for (const kv of String(s || "").split(" ")) { if (!kv) continue; const i = kv.indexOf("="); if (i > 0) o[kv.slice(0, i)] = kv.slice(i + 1); }
@@ -209,7 +291,8 @@
   /* ---------------- Kategorien: Belag, Wegart, Zugang ---------------- */
   RT.SURFACE = {
     asphalt: { label: "Asphalt", color: "#3b5b7a" },
-    hart: { label: "Anderer Hartbelag", color: "#7a93ab" },
+    pflaster: { label: "Pflaster", color: "#8a6f9e" },
+    hart: { label: "Anderer Hartbelag (Beton, Holz, Metall)", color: "#7a93ab" },
     kies: { label: "Kies/Schotter", color: "#c9913f" },
     unbefestigt: { label: "Unbefestigt (ohne Angabe)", color: "#d9b36c" },
     natur: { label: "Naturweg", color: "#7b8f3a" },
@@ -217,8 +300,9 @@
   };
   const SURF_MAP = {
     asphalt: "asphalt", "chipseal": "asphalt",
-    concrete: "hart", "concrete:plates": "hart", "concrete:lanes": "hart", paving_stones: "hart", sett: "hart", cobblestone: "hart", unhewn_cobblestone: "hart",
-    metal: "hart", wood: "hart", paved: "hart", grass_paver: "hart", bricks: "hart",
+    concrete: "hart", "concrete:plates": "hart", "concrete:lanes": "hart", metal: "hart", wood: "hart", paved: "hart",
+    // belag-1.1: Pflaster getrennt (Pflastersteine, Kopfstein, Klinker, Rasengitter) – kein Gravel, beim Rennrad erlaubt
+    paving_stones: "pflaster", sett: "pflaster", cobblestone: "pflaster", unhewn_cobblestone: "pflaster", bricks: "pflaster", grass_paver: "pflaster",
     gravel: "kies", fine_gravel: "kies", compacted: "kies", pebblestone: "kies",
     unpaved: "unbefestigt",
     ground: "natur", dirt: "natur", earth: "natur", grass: "natur", mud: "natur", sand: "natur", clay: "natur", rock: "natur", stone: "natur", woodchips: "natur", snow: "natur", ice: "natur",
@@ -557,9 +641,9 @@
 
   /* ---------------- Tempo-Modelle (zeit-rt-1.0) ---------------- */
   RT.RAD = {   // Annahmen, nicht kalibriert: Rollwiderstand je Belag (Quelle: veröffentlichte Rollwiderstandsmessungen, gerundet), Abfahrtsgrenzen km/h
-    rennrad: { kg: 8.5, cda: 0.30, crr: { asphalt: 0.0040, hart: 0.0060, kies: 0.0120, unbefestigt: 0.0120, natur: 0.0200, unbekannt: 0.0050 }, vmax: { asphalt: 60, hart: 40, kies: 30, unbefestigt: 30, natur: 20, unbekannt: 45 }, alat: 3.5 },
-    gravel: { kg: 10, cda: 0.36, crr: { asphalt: 0.0050, hart: 0.0065, kies: 0.0090, unbefestigt: 0.0100, natur: 0.0140, unbekannt: 0.0070 }, vmax: { asphalt: 55, hart: 40, kies: 40, unbefestigt: 35, natur: 25, unbekannt: 40 }, alat: 3.0 },
-    mtb: { kg: 13, cda: 0.42, crr: { asphalt: 0.0070, hart: 0.0080, kies: 0.0100, unbefestigt: 0.0110, natur: 0.0140, unbekannt: 0.0100 }, vmax: { asphalt: 50, hart: 35, kies: 40, unbefestigt: 35, natur: 30, unbekannt: 35 }, alat: 3.0 },
+    rennrad: { kg: 8.5, cda: 0.30, crr: { asphalt: 0.0040, pflaster: 0.0080, hart: 0.0060, kies: 0.0120, unbefestigt: 0.0120, natur: 0.0200, unbekannt: 0.0050 }, vmax: { asphalt: 60, pflaster: 35, hart: 40, kies: 30, unbefestigt: 30, natur: 20, unbekannt: 45 }, alat: 3.5 },
+    gravel: { kg: 10, cda: 0.36, crr: { asphalt: 0.0050, pflaster: 0.0080, hart: 0.0065, kies: 0.0090, unbefestigt: 0.0100, natur: 0.0140, unbekannt: 0.0070 }, vmax: { asphalt: 55, pflaster: 35, hart: 40, kies: 40, unbefestigt: 35, natur: 25, unbekannt: 40 }, alat: 3.0 },
+    mtb: { kg: 13, cda: 0.42, crr: { asphalt: 0.0070, pflaster: 0.0090, hart: 0.0080, kies: 0.0100, unbefestigt: 0.0110, natur: 0.0140, unbekannt: 0.0100 }, vmax: { asphalt: 50, pflaster: 35, hart: 35, kies: 40, unbefestigt: 35, natur: 30, unbekannt: 35 }, alat: 3.0 },
   };
   RT.WIND_HEIGHT = 0.6;     // 10-m-Wind auf Fahrhöhe (logarithmisches Profil, Rauigkeit ~0,1 m): Faktor ≈ 0,6
   /** Minetti et al. (2002): Energiekosten Laufen J/(kg·m) je Steigung i (Bruch), gültig −0,45…0,45. */
@@ -587,6 +671,10 @@
         info.modell = `HF ${Math.round(inp.value)} → ${Math.round(P0)} W (persönliche Kalibrierung, Hold-out-Fehler ±${Math.round(k.mae)} W)`;
       } else info.modell = `${Math.round(P0)} W konstant, bergab rollen ab −2 %`;
       info.P = P0;
+      // zeit-rt-1.3: Workout-Verlauf (inp.plan: Bewegungszeit s → Watt bzw. Puls je Schritt); ohne Wert gilt der Grundwert
+      const kh = inp.kal && inp.kal.rad_hf_w;
+      const planW = typeof inp.plan === "function" ? (tt) => { const x = inp.plan(tt); return isNum(x) ? (inp.mode === "hf" ? kh.a + kh.b * x : x) : null; } : null;
+      if (planW) { info.planW = planW; info.modell += " · Leistung je Workout-Schritt"; }
       // empirische Korrektur aus echten Fahrten (Median Physik/Ist, kalibrierung-1.0), abschaltbar
       const kr = inp.kal && inp.kal.rad_modell && inp.kal.rad_modell[S.rad === "rennrad" ? "rennrad" : "mtb"];
       const corr = kr && kr.ok && inp.korrektur !== false ? 1 / kr.faktor : 1;
@@ -602,7 +690,8 @@
         const along = windOk ? w.along * RT.WIND_HEIGHT : 0; wAlong[k] = along; wUnk[k] = w && !windOk ? 1 : 0;
         const wet = !!w && isNum(w.regen) && w.regen > 0.2;
         // Pacing: volle Leistung bis −2 %, linear auf 30 % bei −5 %, darunter rollen (0 W)
-        const Pk = g >= -0.02 ? P0 : g <= -0.05 ? 0 : P0 * (0.3 + 0.7 * (g + 0.05) / 0.03);
+        const Pz = planW ? (() => { const x = planW(t[k]); return isNum(x) && x > 0 ? x : P0; })() : P0;
+        const Pk = g >= -0.02 ? Pz : g <= -0.05 ? 0 : Pz * (0.3 + 0.7 * (g + 0.05) / 0.03);
         const rmin = Math.min(P.radius[k], P.radius[k + 1]);
         const vCurve = Math.sqrt((wet ? B.alat * 0.7 : B.alat) * Math.max(5, rmin));
         let vmax = Math.min((B.vmax[surf] || 40) / 3.6 * (wet ? 0.85 : 1), vCurve);
@@ -632,6 +721,9 @@
         info.modell = `HF ${Math.round(inp.value)} → ${FK.pace(1000 / vflat)} min/km flach (Hold-out-Fehler ±${Math.round(k.mae)} s/km)`;
       } else { vflat = 1000 / inp.value; info.modell = `Pace ${FK.pace(inp.value)} min/km flach, Steigung nach Minetti`; }
       info.vflat = vflat;
+      const kp = inp.kal && inp.kal.lauf_hf_pace;
+      const planV = typeof inp.plan === "function" ? (tt) => { const x = inp.plan(tt); const v = isNum(x) && x > 0 ? (inp.mode === "hf" ? kp.a + kp.b * x : 1000 / x) : null; return isNum(v) && v > 0.5 ? v : null; } : null;
+      if (planV) { info.planV = planV; info.modell += " · Tempo je Workout-Schritt"; }
       const kg = inp.kal && inp.kal.lauf_gap;
       const corr = kg && kg.ok && inp.korrektur !== false ? 1 / kg.faktor : 1;
       if (corr !== 1) info.korrektur = { faktor: corr, n: kg.n, text: `Korrektur ×${corr.toFixed(2)} aus ${kg.n} echten Läufen` };
@@ -639,9 +731,10 @@
       const vamWalk = (inp.kal && inp.kal.wandern_vam && inp.kal.wandern_vam.ok ? inp.kal.wandern_vam.median : 900) / 3600;
       for (let k = 0; k < n; k++) {
         const s = segAt(k), g = P.grade[k], ds = P.d[k + 1] - P.d[k];
-        let vk = vflat * c0 / RT.minetti(g);
+        const vf = planV ? (planV(t[k]) || vflat) : vflat;
+        let vk = vf * c0 / RT.minetti(g);
         const techn = s && (s.surface === "natur" || s.way === "pfad" || (s.sac && s.sac >= "T2"));
-        if (g < 0) vk = Math.min(vk, vflat * (s && s.sac && s.sac >= "T3" ? 1.0 : techn ? 1.1 : 1.2));
+        if (g < 0) vk = Math.min(vk, vf * (s && s.sac && s.sac >= "T3" ? 1.0 : techn ? 1.1 : 1.2));
         if (g > 0.2) vk = Math.min(vk, Math.max(vamWalk / g, 0.6));       // steil: gehen (persönliche Hm/h, sonst 900 Hm/h)
         if (s && s.way === "fussweg" && s.tags.highway === "steps") vk = Math.min(vk, 1.0);
         vk /= corr;
@@ -700,16 +793,19 @@
     const variants = [];
     if (S.art === "rad") {
       const dP = inp.mode === "hf" ? (inp.kal.rad_hf_w.mae || 10) : 0;
-      if (dP) { variants.push({ ...inp, mode: "watt", value: base.info.P - dP }); variants.push({ ...inp, mode: "watt", value: base.info.P + dP }); }
-      if (!inp.wetter) for (const w of [-2, 2]) variants.push({ ...inp, mode: "watt", value: base.info.P, wetter: () => ({ along: w / RT.WIND_HEIGHT, temp: 15, regen: 0 }) });
-      else if (base.info.luecke && base.info.luecke.wind_m > 0) for (const w of [-2, 2]) variants.push({ ...inp, mode: "watt", value: base.info.P,
+      // Workout-Verlauf in Watt weitergeben (Szenarien rechnen im Modus Watt)
+      const pw = base.info.planW, planOf = (d) => (pw ? (tt) => { const x = pw(tt); return isNum(x) ? x + d : null; } : undefined);
+      if (dP) { variants.push({ ...inp, mode: "watt", value: base.info.P - dP, plan: planOf(-dP) }); variants.push({ ...inp, mode: "watt", value: base.info.P + dP, plan: planOf(dP) }); }
+      if (!inp.wetter) for (const w of [-2, 2]) variants.push({ ...inp, mode: "watt", value: base.info.P, plan: planOf(0), wetter: () => ({ along: w / RT.WIND_HEIGHT, temp: 15, regen: 0 }) });
+      else if (base.info.luecke && base.info.luecke.wind_m > 0) for (const w of [-2, 2]) variants.push({ ...inp, mode: "watt", value: base.info.P, plan: planOf(0),
         wetter: (k, tk) => { const x = inp.wetter(k, tk); return x && isNum(x.along) ? x : Object.assign({}, x || {}, { along: w / RT.WIND_HEIGHT }); } });
       const unk = !inp.wetter ? route.L : Math.min(route.L, (base.info.luecke && base.info.luecke.wind_m) || 0);
       base.wind = { status: !inp.wetter ? "keine Prognose" : unk >= route.L * 0.999 ? "unbekannt" : unk > 0 ? "teilweise" : "Prognose",
         unbekannt_m: unk, anteil: route.L ? unk / route.L : 0, annahme_ms: unk > 0 ? 2 : 0 };
     } else if (S.art === "fuss" && route.sport !== "wandern" && inp.mode === "hf") {
-      const pace = 1000 / base.info.vflat, e = inp.kal.lauf_hf_pace.mae || 15;
-      variants.push({ ...inp, mode: "pace", value: pace - e }, { ...inp, mode: "pace", value: pace + e });
+      const pace = 1000 / base.info.vflat, e = inp.kal.lauf_hf_pace.mae || 15, pv = base.info.planV;
+      const planOf = (d) => (pv ? (tt) => { const v = pv(tt); return isNum(v) ? 1000 / v + d : null; } : undefined);
+      variants.push({ ...inp, mode: "pace", value: pace - e, plan: planOf(-e) }, { ...inp, mode: "pace", value: pace + e, plan: planOf(e) });
     }
     for (const vInp of variants) { const r = RT.simulate(route, vInp); if (!r.unzureichend) scen.push(r.moving_s); }
     scen.push(base.moving_s * (1 - err.rel), base.moving_s * (1 + err.rel));
@@ -1036,10 +1132,12 @@
 
   /* ---------------- GPX ---------------- */
   const xmlEsc = (s) => String(s).replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
-  RT.gpx = function (route, name, viaNames) {
+  /** extra: weitere Wegpunkte [{lon, lat, name}] (V5.7: Beginn der geplanten Intervalle). */
+  RT.gpx = function (route, name, viaNames, extra) {
     if (!route || route.unvollstaendig) throw new Error("Route unvollständig: kein GPX.");
     const P = route.profile;
-    const wpts = route.vias.map((p, i) => `<wpt lat="${p.lat.toFixed(6)}" lon="${p.lon.toFixed(6)}"><name>${xmlEsc((viaNames && viaNames[i]) || (i === 0 ? "Start" : i === route.vias.length - 1 ? "Ziel" : "Zwischenziel " + i))}</name></wpt>`).join("\n");
+    const wpts = route.vias.map((p, i) => `<wpt lat="${p.lat.toFixed(6)}" lon="${p.lon.toFixed(6)}"><name>${xmlEsc((viaNames && viaNames[i]) || (i === 0 ? "Start" : i === route.vias.length - 1 ? "Ziel" : "Zwischenziel " + i))}</name></wpt>`)
+      .concat((extra || []).filter((w) => isNum(w.lon) && isNum(w.lat)).map((w) => `<wpt lat="${(+w.lat).toFixed(6)}" lon="${(+w.lon).toFixed(6)}"><name>${xmlEsc(w.name || "")}</name></wpt>`)).join("\n");
     const pts = route.lon.map((lo, i) => { const e = route.ele[i]; return `<trkpt lat="${route.lat[i].toFixed(6)}" lon="${lo.toFixed(6)}">${isNum(e) ? `<ele>${e.toFixed(1)}</ele>` : ""}</trkpt>`; }).join("\n");
     const desc = `${route.gezeichnet ? "Von Hand gezeichnet (kein Routing)" : "Geroutet mit " + route.prov.routing + (route.engine ? ", Profil " + RT.profilName(route.engine) : "")}; ${route.prov.osm}; ${(route.L / 1000).toFixed(1)} km, ${Math.round(P.up)} m Aufstieg`;
     return `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Ironman Notebook" xmlns="http://www.topografix.com/GPX/1/1">\n<metadata><name>${xmlEsc(name)}</name><desc>${xmlEsc(desc)}</desc></metadata>\n${wpts}\n<trk><name>${xmlEsc(name)}</name><trkseg>\n${pts}\n</trkseg></trk>\n</gpx>\n`;
