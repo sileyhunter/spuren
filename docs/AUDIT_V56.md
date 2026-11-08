@@ -87,3 +87,13 @@ Auf dem iPhone nicht geprüft.
   «Dauer offen»; Reihe ohne Tempo → kein Tempokanal; Runden mit falschem Zeitstempel → Ende aus verstrichener Zeit.
 - Gefunden und vor der Veröffentlichung behoben: Explorer bei Reihen ohne Tempo, Plan bei Läufen/Schwimmen von der Uhr, Plandauer als
   Teilsumme, Richtwert für 1–2 h (siehe `CHANGELOG.md`).
+
+## Nachtrag Routenplaner (Wunsch vom 8.11.2026)
+| | |
+|---|---|
+| Gab es schon | Routing über BRouter je Abschnitt, Wegpunkte mit ↑↓, «＋ Zwischenziel hier» im Profil, Variantenvergleich auf Knopfdruck, Hinweis «x km unbefestigt» |
+| Neu | Start/Ziel fest, neue Punkte als Zwischenziel mit kleinstem Umweg; Ortssuche (swisstopo); eigenes Rennradprofil ohne Gravel mit Rückfall; schnellste und velofreundliche Variante automatisch (Toleranz einstellbar); Gravel-Meldung mit «für mich ok» und Umfahrung; «Andere Routen» mit grauen Linien |
+| Lokal getestet | `test_route.cjs` 35 (echte Antworten einer lokalen BRouter-Instanz mit OSM-Testdaten: fastbike nimmt Feinkies, das eigene Profil nicht; Umfahrung entfernt Gravel; Alternativen verschieden; Doppel erkannt). Browser (iPhone-Emulation) gegen die lokale Instanz: Profil-Upload, Zwischenziel zwischen A und B, Variantentabelle, Alternativen wählen, Gravel-Meldung → Umfahrung übernehmen/zurück/«für mich ok», Suche (Antwort synthetisch), Rückfall bei abgelehntem Profil; frühere Planer-Tests (V5.3 iPhone/Desktop, V5.5) bestanden |
+| Produktiv | **nicht getestet** (brouter.de und api3.geo.admin.ch hier gesperrt) |
+| Einschränkungen | Gravel nur so gut wie OSM (fehlender Belag = unbekannt); Umfahrung über Sperrpunkte kann weite Umwege ergeben (wird angezeigt, nie automatisch übernommen); liegt ein Wegpunkt selbst auf Gravel, beginnt die Umfahrung am nächsten erlaubten Weg (angezeigt); pro Rennrad-Route doppelt so viele Anfragen an BRouter (zwei Varianten) |
+

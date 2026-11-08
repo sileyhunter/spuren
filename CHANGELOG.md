@@ -1,5 +1,34 @@
 # Änderungen
 
+## V5.6 · Routenplaner · 8.11.2026 · Start/Ziel fest, Rennrad ohne Gravel, velofreundlich, andere Routen
+Wunsch von Silas (8.11.2026, Chat). Betrifft nur den Routenplaner; andere Sportarten routen wie bisher (zusätzlich «Andere Routen»).
+
+**Neu**
+- Start und Ziel bleiben fest: Ein weiterer Punkt (Karte oder Suche) wird als Zwischenziel dort eingefügt, wo er den kleinsten Umweg macht
+  (Chur → Lenzerheide plus Paspels ergibt Chur → Paspels → Lenzerheide). Vorher wurde er als neues Ziel angehängt. Start bzw. Ziel ändern:
+  Punkt A/B ziehen, Liste ↑↓ oder «als Start/als Ziel» neben der Suche.
+- Ortssuche (Schweiz) über swisstopo; gesendet wird nur der eingegebene Text.
+- Rennrad mit eigenem BRouter-Profil «ohne Gravel» (`brouter/rennrad-asphalt.brf`, aus fastbike): Feinkies und Naturbelag werden gemieden,
+  auch auf Radwegen; Pflaster ist ok. Nimmt der Server das Profil nicht an: Standardprofil fastbike mit Hinweis.
+- Schnellste und velofreundliche Variante werden immer beide gerechnet; gewählt wird velofreundlich, solange sie höchstens 10 % langsamer ist
+  (einstellbar 0–30 %) und nicht mehr Gravel hat. Die andere ist grau auf der Karte und mit einem Tippen wählbar.
+- Gravel-Meldung beim Rennrad: Abschnitte mit km, Länge, Belag und Wegart; «für mich ok» oder «Umfahrung zeigen» (BRouter mit
+  Sperrpunkten auf den Gravel-Stücken) mit Mehr-km und Mehrzeit; übernehmen oder zurück.
+- «Andere Routen» wie bei Google Maps: bis zwei Alternativen (BRouter `alternativeidx`), grau mit Nummer, Tabelle mit Zeit, km, Hm,
+  höchstem Punkt, Hauptstrasse und Gravel; beim Rennrad zum Vergleich das Standardprofil, falls es kürzer über Gravel führt.
+
+| Regel | vorher | jetzt |
+|---|---|---|
+| Varianten | `varianten-1.0` (auf Knopfdruck Schnell/Weniger Verkehr/Ruhig, Fazit nach Hauptstrassenanteil) | `varianten-2.0` (immer Schnellste und Velofreundlich, Wahl nach Zeit-Toleranz und Gravel) |
+| Gravel | – (nur Summe «unbefestigt» im Hinweis) | `gravel-rt-1.0` |
+| Andere Routen | – | `alternativen-1.0` |
+| Wegpunkte | neuer Punkt = neues Ziel | `wegpunkte-1.0` |
+| Ortssuche | – | `ortssuche-1.0` |
+
+Geprüft: `tests/test_route.cjs` 35 (neu 7, mit echten Antworten einer lokalen BRouter-Instanz: Profilvergleich, Umfahrung, Alternativen,
+Varianten), Browser lokal (iPhone-Emulation) gegen die lokale BRouter-Instanz mit hochgeladenem Profil; bisherige Planer-Tests (V5.3, V5.5)
+bestanden. **Nicht getestet:** brouter.de (Profil-Upload, Routen in der Schweiz) und die swisstopo-Suche – beide hier gesperrt.
+
 ## V5.6 · 8.11.2026 · Aktivitäts-Explorer, Geplant vs. Ist, Saison 2027, Ermüdungsresistenz, RPE, Energie
 Grundlage: Auftrag V5.6 («TrainingPeaks-Funktionen und intelligente Trainingssteuerung»). Ergebnis je Modul mit Teststand
 (im Code / lokal getestet / produktiv getestet): `docs/AUDIT_V56.md`. Offene Punkte: `docs/offen-nach-v55.md` (Abschnitt V5.6).
