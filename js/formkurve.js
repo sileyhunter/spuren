@@ -258,7 +258,7 @@
     }
     if (G.n) gruende.push(`${G.n} ${G.n === 1 ? "Einheit" : "Einheiten"} nur mit Garmin-Pulszonen der Uhr: angezeigt, aber nicht beurteilt`);
     const ctx = [];
-    if (k.wettkampf && isNum(k.wettkampf.tage)) ctx.push(`Wettkampfnähe (${k.wettkampf.name}: ${k.wettkampf.tage < 14 ? k.wettkampf.tage + " Tage" : Math.round(k.wettkampf.tage / 7) + " Wochen"})`);
+    if (k.wettkampf && isNum(k.wettkampf.tage)) ctx.push(`Wettkampfnähe (${k.wettkampf.name}: ${k.wettkampf.tage < 14 ? k.wettkampf.tage + " Tage" : Math.floor(k.wettkampf.tage / 7) + " Wochen"})`);
     ctx.push("Blockziel");
     ctx.push(k.bereitschaft ? `Erholungsstand (heute: ${k.bereitschaft})` : "Erholungsstand");
     const sp = k.sportName ? k.sportName + "-" : "", r1 = (x) => String(Math.round(x * 10) / 10);

@@ -400,7 +400,7 @@ test("Zonen: wenig Daten → «Beurteilung unsicher», nie rote Pauschalwarnung"
   const V = FK.zoneVerdict(FK.zoneSummary(acts, Z, "rad", "2026-02-01", "2026-02-28"), { wettkampf: { name: "Testlauf", tage: 200 } });
   assert.equal(V.status, "unsicher");
   assert.doesNotMatch(V.text + V.hypothese, /zu viel|Zu viel|lockerer gestalten/);
-  assert.match(V.hypothese, /Hypothese/); assert.match(V.hypothese, /Wettkampfnähe \(Testlauf: 29 Wochen\)/);
+  assert.match(V.hypothese, /Hypothese/); assert.match(V.hypothese, /Wettkampfnähe \(Testlauf: 28 Wochen\)/);
 });
 test("Zonen: genug Daten → Beschreibung mit Zeit, Nenner und Kontext; Summe 101 % ist Rundung", () => {
   const Z = [ZP("neu", "2026-01-01", null, 135, 155)];

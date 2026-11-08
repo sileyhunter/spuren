@@ -43,4 +43,56 @@ Personenbezogene Zahlen stehen hier bewusst nicht (öffentliches Repository); Pr
 | P2 | Logo/App-Icon | neue Bilder von Silas | fehlt | `index.html`, Manifest | – |
 | – | Daten | 1759 Aktivitäten, Schwellen, Referenzsatz | ok | `check_referenz.py` | GESAMT bestanden (8.11.2026) |
 
-Ergebnis der Umsetzung je Befund: siehe Abschnitt «Ergebnis» (wird nach der Umsetzung ergänzt).
+## Ergebnis (8.11.2026, nach der Umsetzung)
+
+Status: **erledigt** · **teilweise** · **offen** (braucht Daten, Freigabe oder einen Live-Test, der hier nicht möglich ist).
+«Prüfung» nennt das Testprotokoll: `tests/test_formkurve.cjs` (53 Tests), `tests/test_route.cjs` (21), `tests/test_tools.py`,
+Browser-Prüfungen mit echten Daten nur lokal (Ergebnisse im Chatbericht, nicht im Repository). n = Anzahl geprüfter Fälle.
+
+| # | Status | Umsetzung · Codeort | Datenquelle · Methodik | Prüfung · n | Offen |
+|---|---|---|---|---|---|
+| P0.1 | erledigt | `FK.pmc`, `FK.pmcAnzeige`; `index.html` `pmc()`, Heute | Trainingslast `tss`; Form = Fitness − Ermüdung desselben Tages (`pmc-2.0`), alte Konvention als Zusatz | 3 Tests; echte Daten 10 von 10 Tagen gleich | – |
+| P0.2 | erledigt | `FK.zoneSummary`, `FK.zoneVerdict`; `index.html` `zones()` | Puls-Histogramm `hh` je Aktivität; nur freigegebene Zonenprofile je Datum, sonst Garmin-Zonen blass (`zonenverteilung-2.0`) | 4 Tests; Browser je Sportart 4/12 Wochen | Schwimmen ohne Pulsschwellen: bleibt «unsicher» |
+| P0.3 | erledigt | `js/v5-ausdauer.js` Koppel-Detail | FIT-Abschnitte `sp` (0–5, 5–10, 10–20 min, Rest); Fenster/lange Pause (`koppel-1.1`) | 2 Tests; 4 von 4 Abschnitten gleich den Rohwerten | – |
+| P0.4 | erledigt | `js/v53-extra.js` `goals()`, Jahresstatistik | Bewegungszeit `mv`, Timer `dur` getrennt; Ziele/Vorjahr in Bewegungszeit | Tests Zeitbegriff; Browser | – |
+| P0.4 | erledigt | `js/v53-extra.js` `bests()` | Lauf-Bestzeiten aus FIT als «aus FIT (Schätzung)», offizielle Zeiten als eigene Eingabe (`pb`) | Browser | offizielle Zeiten von Hand eintragen |
+| P0.5 | erledigt | `tools/kennzahlen.py` `bloecke()`, `FK.entwicklung*`, `js/v55.js` | gleichmässige 10-min-Blöcke `eb-1.0` je System; Urteil `entwicklung-1.0` mit Guards und Intervall | 5 + 8 Tests; Daten neu für die passenden Aktivitäten | – |
+| P0.5 | erledigt | `FK.laufEffizienz`, Leistung | m/Schlag, Ausreisser gezählt (`laufeffizienz-1.0`) | 1 Test | – |
+| P0.6 | erledigt | `FK.longRideOrientierung`, `v5-ausdauer.js` | eigene Fahrten ≥ 3 h als Orientierung, Prognose bleibt «nicht bestimmbar» | 2 Tests | – |
+| P1 Entwicklung | erledigt | `js/v55.js`, `index.html` Fortschritt | wie P0.5; drei Antworten, Kacheln, Rechennachweis-Export | Browser 6 Vergleiche (4/12/52 Wochen × Vorjahr/davor) | Laktat zählt erst nach B1; CSS erst mit Tests |
+| P1 Hierarchie/Navigation | erledigt | `index.html` (Ebenen, Tab-Leiste) | – | A10/A13 | untere Navigationsleiste nicht umgesetzt (siehe offen) |
+| P1 Tabellen 375 px | erledigt | `.tablewrap.scrollx`, `markScroll()` | – | A10: 0 Fehler bei 375/390/430 px | – |
+| P1 Jahresziele, Jahresvergleich, Wochenumfang | erledigt | `v53-extra.js`, `index.html` `volume()`, `years()` | kumuliert im gleichen Kalenderzeitraum; Anzahl Einheiten, 4-Wochen-Mittel | Browser | – |
+| P1 Bestleistungen/Radar | erledigt | `v53-extra.js` | Radar entfernt; Leistungskurve je System | Browser | – |
+| P1 Schwellen-Trend | erledigt | `js/v5-ui.js` `drawTrend` | je Protokoll eigene Linie, Tooltip mit Protokoll | Browser | – |
+| P1 Laktat-Einzelwerte | erledigt | `js/v5-ui.js` | Filter, Messkontext je Wert | Browser | – |
+| P1 Readiness/HRV | erledigt | `js/v55.js` `heute()`, `index.html` Heute | Datenqualität je Quelle; drei kleine Grafiken statt Ringe | A12 | – |
+| P1 Leistungssimulator | erledigt | `js/v5-extra.js` | Annahmen als Annahmen markiert | Browser | – |
+| P1 Routenplaner | erledigt / teilweise | `js/route.js`, `js/routen-ui.js` | BRouter (`fastbike` mit Verkehrsgewichtung), Open-Meteo; `varianten-1.0`, `zeit-rt-1.1`, `wetter-rt-1.1` | 21 Tests; lokale BRouter-Instanz, Wetter synthetisch | Live-Test Ilanz–Flims und Open-Meteo auf dem iPhone |
+| P1 Fehlerband | erledigt | `tools/kalibrierung.py` (`kalibrierung-1.1`), `RT.modelError` | Hold-out-Population, Fehler je Steigungsklasse, konservativ ausserhalb | 1 Test; Daten neu | – |
+| P1 Schwimmen | erledigt | `js/v55-schwimmen.js`, `v5-extra.js`, `v53-extra.js` | CSS (`css-1.0`), Fehlerboard, Rohpace als Rohdaten | 1 Test JS, 2 Tests Python; Browser | CSS-Test durchführen |
+| P1 Fueling | erledigt | `js/v5-ausdauer.js` | «nicht protokolliert» ≠ 0 g; leerer Zustand | Browser | Einträge erfassen |
+| P1 Fueling aus Garmin (A15) | erledigt | `fueling_quellen` (Daten), «Import prüfen» | 1773 FIT-Dateien (Nachrichten- und Ereignistypen gezählt), Garmin Ernährung/Trinken (Stichprobe) | 1 Test; Befund in den Daten | undokumentierte Herstellernachrichten bleiben ungenutzt |
+| P1 Mahlzeiten mit Uhrzeit | offen | – | Garmin liefert je Eintrag eine Uhrzeit, teils vorab geplant | – | Regel «echte Uhrzeit» und Nacht-Abruf nötig |
+| P2 | erledigt / teilweise | `index.html`, `js/v5-ui.js` | Kopfzeile, Serie nachrangig, Rennen kompakt, Pillen einheitlich, Markenhinweis | Browser | lange Auswahllisten nur teilweise gekürzt |
+| Daten | erledigt | `check_referenz.py` | 1759 Aktivitäten, Schwellen, Referenzsatz | GESAMT bestanden nach jedem Daten-Commit | – |
+
+## Abnahme A01–A15
+
+| Test | Ergebnis | Nachweis |
+|---|---|---|
+| A01 | bestanden | Form-Formel erklärt (Regel `pmc-2.0`, Hinweis unter der Grafik); 10 zusätzliche Tage mit echten Daten gleich |
+| A02 | bestanden | Rad/Lauf/Schwimmen getrennt, Zonen je Datum, Nenner sichtbar, keine starre Warnung (Tests + Browser) |
+| A03 | bestanden | Pace und Puls in getrennten Grafiken; Tabelle = FIT-Abschnitte (4 von 4 gleich) |
+| A04 | bestanden | Timer und Bewegungszeit getrennt; Ziel und Vorjahr in Bewegungszeit |
+| A05 | bestanden (Methode geändert) | Aussagen nur aus gleichmässigen Blöcken mit n, Status und Intervall; frühere Einzelaussagen aus ungleichen Ganz-Aktivitäten werden nicht mehr gezeigt |
+| A06 | bestanden | 9:00 und 4:20 → 2:20/100 m (Test); Korrektur bleibt nach Neuladen gespeichert; Rohpace «nicht validiert» |
+| A07 | bestanden | ohne Einträge kein g/h-Plot; «nicht protokolliert» ohne 0-g-Verlauf; «nichts eingenommen» = 0 g |
+| A08 | teilweise | Logik, Fazit und Varianten mit lokaler BRouter-Instanz geprüft; Ilanz–Flims nicht live (brouter.de hier gesperrt) |
+| A09 | bestanden (lokal) | Pause 20 min → Ankunft +20 min, Wetterzeit verschoben, 3 Windpfeile richtig gedreht; Wetter synthetisch, Open-Meteo nicht live |
+| A10 | bestanden | 375/390/430 px: keine Elemente < 44 px, nichts übersteht, breite Tabellen mit Hinweis; Planer-Varianten passen bei 375 px |
+| A11 | bestanden | Schwellentrend je Protokoll eigene Linie |
+| A12 | bestanden | fehlende Nacht als «fehlt», Datenqualität sichtbar, keine Schlafprozente |
+| A13 | bestanden | Ebenen je Tab; Vorher/Nachher-Screenshots (nur im Chat, echte Daten) |
+| A14 | bestanden | `check_referenz.py`: 1759/1759 Aktivitäten, 21/21 Schwellen, Referenzsatz; Daten-Commits nur mit neuen Feldern, Sicherung und Rückweg |
+| A15 | bestanden | Befund dokumentiert; keine Einnahmen aus Garmin übernommen oder geschätzt |

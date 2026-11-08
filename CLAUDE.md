@@ -29,8 +29,11 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   (Jahresziele, Serie, Tagebuch, Bestleistungen, Leistungsfähigkeiten, Zonen, Protein/KH pro kg, Schwimmübungen, Wetter kopieren)
 - `tools/kalibrierung.py` – persönliche Kalibrierung aus FIT (HF→Watt, Physik-Korrektur, HF→Pace, Tobler-Faktor, Hm/h, Pausen) mit Hold-out
 - `tools/bestleistungen.py` – Lauf-Bestleistungen aus FIT (400 m … Marathon), GPS-Sprünge ausgeschlossen
+- **V5.5:** `js/v55.js` («Meine Entwicklung», Heute mit Datenqualität, Ausdauertrend, Wischhinweis für breite Tabellen, Rechennachweis),
+  `js/v55-schwimmen.js` (CSS-Test, Fehlerboard, Rohpace-Hinweis); `tools/entwicklung.py` – gleichmässige 10-min-Blöcke `eb` (eb-1.0)
+  aus FIT nachrechnen (`--nur-fehlende`); das Nacht-Update rechnet `eb` über `kennzahlen.alles()` mit
 - `tests/test_formkurve.cjs`, `tests/test_route.cjs`, `tests/test_tools.py` – Abnahmetests (erfundene Werte; `tests/fixtures/` = echte
-  Antworten einer lokalen BRouter-Instanz mit OSM-Testdaten Dreieich, ODbL); `docs/` – Konzept, Abnahme (`abnahme-v53.md`), Änderungen
+  Antworten einer lokalen BRouter-Instanz mit OSM-Testdaten Dreieich, ODbL); `docs/` – Konzept, Abnahme (`abnahme-v53.md`), Audit V5.5 (`AUDIT_V55.md`), offene Punkte (`offen-nach-v55.md`)
 
 ## Nächtliches Update (nur Garmin-Verbindung)
 1. `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json data.json`
@@ -95,6 +98,7 @@ Silas lädt `UploadedFiles_0-_Part*.zip` hoch. Jedes ZIP in einen eigenen, leere
    V5.3: `python3 -I tools/kalibrierung.py data.json --files work/files.json` (persönliche Zeitmodelle, Hold-out) und
    `python3 -I tools/bestleistungen.py data.json --files work/files.json` (Lauf-Bestleistungen). Fehlt `pdc` bei älteren Aktivitäten:
    `python3 -I tools/nachfuellen.py data.json work/acts_raw.json pdc`.
+   V5.5: `python3 -I tools/entwicklung.py data.json --files work/files.json --nur-fehlende` (Blöcke `eb` für «Meine Entwicklung»).
 4. Prüfen: `python3 -I tools/check_referenz.py data.json --files work/files.json --raw-acts work/acts_raw.json`
    (Referenzsatz, Handwerte, Stufen, alle Aktivitäten). «GESAMT: bestanden» muss dastehen; sonst Silas die Liste zeigen.
 5. verschlüsseln, nur `data.enc.json` committen, pushen.
@@ -109,6 +113,9 @@ Auf der Seite erfasste Werte bleiben verschlüsselt auf dem Gerät, bis Silas «
 4. Test-Entwürfe vom Handy (`test_entwuerfe`) sind nur Vorschau: mit der FIT-Datei über `tools/laktat_vorschau.py --extra` zuordnen, Silas zeigen.
 5. verschlüsseln, nur `data.enc.json` committen, pushen.
 Demo-Exporte (`"demo": true`) werden abgelehnt.
+V5.5: Der Export enthält auch `pb` (offizielle Bestzeiten → `pb_offiziell`), `css` (CSS-Tests → `css_tests`, Zeiten von Hand, Korrektur
+ersetzt mit Audit) und `fehler` (Fehlerboard → `fehlerboard`). `fueling_quellen` (geprüfte Garmin/FIT-Quellen, A15) nur nach einer neuen
+Prüfung ersetzen; nie Einnahmen aus Garmin schätzen oder ergänzen.
 
 ## Laktatschwellen und Zonen (V5)
 - `tools/schwellen.py`: LT1 = SOMC (letzte Stufe vor Anstieg ≥ 0,4), Basis + 0,5 (Basis = Mittel der ersten drei Stufen), log-log (≥ 6 Stufen);
@@ -131,6 +138,14 @@ Demo-Exporte (`"demo": true`) werden abgelehnt.
 - Testen ohne Internet: BRouter aus github.com/abrensch/brouter mit `javac` bauen (OsmParser durch XML-Leser ersetzen, PBF braucht
   Protobuf), Segmente aus `brouter-map-creator/src/test/resources/dreieich.osm.gz` + `srtm_38_0*.bef`, Server lokal starten;
   MapLibre/Chart.js aus den GitHub-Releases. Nie behaupten, brouter.de oder Open-Meteo live getestet zu haben, wenn sie gesperrt waren.
+
+## Meine Entwicklung und Regeln V5.5
+- Vergleiche nur aus `eb`-Blöcken (Rad 190–210 W je System Rolle/Rennrad/MTB, Laufen 5:20–5:40/km flach), Urteil `entwicklung-1.0`
+  (mind. 3 je Zeitraum, Bootstrap-Intervall, Guards Hitze/Höhe/Drift/Ausreisser). Laktat zählt erst bestätigt (B1), CSS nur aus Tests.
+- Form `pmc-2.0` (Fitness − Ermüdung desselben Tages), Zonen `zonenverteilung-2.0` (je Sportart, Zonen je Datum, Garmin-Zonen nicht beurteilt).
+- Routenplaner: `varianten-1.0` nur über das erlaubte Rennradprofil (`fastbike`, `consider_traffic`), nie ein unzulässiger Weg;
+  `zeit-rt-1.1`/`wetter-rt-1.1` (Pausen je Zwischenziel); Fehlerband aus `kalibrierung-1.1` (Population, Steigungsklasse).
+- Regel ändern = Version erhöhen, Test ergänzen, `CHANGELOG.md` nachführen. Offene Punkte nur in `docs/offen-nach-v55.md`.
 
 ## Prüfen vor jedem Push von Seite oder Werkzeugen
 `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
