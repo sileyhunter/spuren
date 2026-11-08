@@ -303,21 +303,117 @@ test("A09: Windpfeile zeigen, wohin der Wind weht (Herkunft + 180°)", () => {
   assert.equal(W.length, 3, "kurze Route: trotzdem 3 Pfeile"); assert.ok(W.every((w) => w.d > 0 && w.d < r.L), "nie auf Start/Ziel");
   assert.equal(RT.windPositions(synthRoute(() => 450, 200000, "rennrad", 90)).length, 12, "lange Route: höchstens 12");
 });
-test("A08: Varianten nur über das erlaubte Rennradprofil; Fazit «keine ruhigere legale Asphaltalternative» oder Alternative", () => {
-  const e = RT.engineVariant("rennrad", {}, "ruhig");
-  assert.equal(e.engine, "fastbike"); assert.equal(e.params.consider_traffic, "1"); assert.equal(e.params.processUnusedTags, "1");
-  assert.match(RT.brouterUrl("https://x", e, [8.5, 47], [8.6, 47]), /profile:consider_traffic=1/);
-  const row = (k, label, L, haupt, unbef) => ({ k, label, share: { L, haupt_m: haupt, haupt_pct: 100 * haupt / L, unbef_m: unbef || 0 } });
-  const keine = RT.variantFazit([row("schnell", "Schnell", 12000, 7650), row("weniger", "Weniger Verkehr", 12100, 7400), row("ruhig", "Ruhig", 12300, 7200)]);
-  assert.equal(keine.status, "keine"); assert.match(keine.text, /Keine ruhigere legale Asphaltalternative gefunden: 3 Varianten geprüft, Hauptstrasse Schnell 64 %/);
-  const alt = RT.variantFazit([row("schnell", "Schnell", 12000, 7650), row("ruhig", "Ruhig", 13500, 1500)]);
-  assert.equal(alt.status, "alternative"); assert.equal(alt.k, "ruhig");
-  const schotter = RT.variantFazit([row("schnell", "Schnell", 12000, 7650), row("ruhig", "Ruhig", 12500, 1500, 3000)]);
-  assert.equal(schotter.status, "keine", "Umweg über Schotter ist keine Asphaltalternative");
-  const ruhig = RT.variantFazit([row("schnell", "Schnell", 2540, 0), row("ruhig", "Ruhig", 2540, 0)]);
-  assert.equal(ruhig.status, "ruhig"); assert.match(ruhig.text, /kaum Hauptstrassen \(0 %\), keine Alternative nötig/);
-  const r = load("brouter_dreieich_rennrad_hin.json"), w = RT.wayShare(r);
-  near(Object.values(w.m).reduce((s, v) => s + v, 0), r.L, 1, "Wegarten decken die ganze Route ab");
+test("Varianten 2.0: beide über das erlaubte Rennradprofil; velofreundlich bis zur Toleranz, nie mit mehr Gravel", () => {
+  const e = RT.engineVariant("rennrad", {}, "velo");
+  assert.equal(e.engine, "fastbike", "Rückfallprofil"); assert.equal(e.profil, "rennrad-asphalt", "eigenes Profil ohne Gravel");
+  assert.equal(e.params.consider_traffic, "0.5"); assert.equal(e.params.prefer_cycleways, "1"); assert.equal(e.params.processUnusedTags, "1");
+  assert.match(RT.brouterUrl("https://x", e, [8.5, 47], [8.6, 47]), /profile:prefer_cycleways=1/);
+  for (const v of RT.VARIANTEN.rennrad) for (const x of Object.values(v.params)) assert.ok(/^\d+(\.\d+)?$/.test(x), "Profil-Parameter nur als Zahlen");
+  const row = (k, t, L, haupt, gravel) => ({ k, label: k === "velo" ? "Velofreundlich" : "Schnellste", t, L, haupt_pct: haupt, radweg_pct: k === "velo" ? 30 : 5, gravel_m: gravel || 0 });
+  const w1 = RT.waehleVariante([row("schnell", 3600, 30000, 40), row("velo", 3900, 31000, 8)], 10);
+  assert.equal(w1.k, "velo"); assert.match(w1.text, /\+5 min \(\+8 %\), Hauptstrasse 8 % statt 40 %/);
+  const w2 = RT.waehleVariante([row("schnell", 3600, 30000, 40), row("velo", 4200, 34000, 8)], 10);
+  assert.equal(w2.k, "schnell"); assert.match(w2.text, /\+10 min \(\+17 %\) – mehr als deine Toleranz von 10 %/);
+  assert.equal(RT.waehleVariante([row("schnell", 3600, 30000, 40), row("velo", 4200, 34000, 8)], 20).k, "velo", "Toleranz einstellbar");
+  assert.equal(RT.waehleVariante([row("schnell", 3600, 30000, 40, 0), row("velo", 3650, 30500, 8, 900)], 10).k, "schnell", "mehr Gravel → schnellste");
+  assert.equal(RT.waehleVariante([row("schnell", null, 30000, 40), row("velo", null, 31500, 8)], 10).k, "velo", "ohne Zeit nach Länge (+5 %)");
+  assert.equal(RT.waehleVariante([{ k: "schnell", fehler: "x" }, row("velo", 3900, 31000, 8)], 10).k, "velo", "nur eine berechnet");
+  // echte Antworten (lokale BRouter-Instanz): beide Varianten auf der Testkarte
+  const fx = FX("brouter_dreieich_varianten.json"), R = (gj) => RT.buildRoute([RT.parseBRouter(gj)], fx.punkte, { sport: "rennrad" });
+  const S = R(fx.antworten.schnell), V = R(fx.antworten.velo);
+  const g = RT.waehleVariante([{ k: "schnell", label: "Schnellste", L: S.L, t: null, haupt_pct: RT.wayShare(S).haupt_pct }, { k: "velo", label: "Velofreundlich", L: V.L, t: null, haupt_pct: RT.wayShare(V).haupt_pct }], 10);
+  assert.ok(g.k, "Wahl getroffen"); const ws = RT.wayShare(S);
+  near(Object.values(ws.m).reduce((x, v) => x + v, 0), S.L, 1, "Wegarten decken die ganze Route ab"); assert.ok(isFinite(ws.radweg_pct));
+});
+test("Rennradprofil ohne Gravel: aus fastbike abgeleitet, Feinkies gilt als unbefestigt, Pflaster als befestigt", () => {
+  const brf = fs.readFileSync(path.join(__dirname, "..", "brouter", "rennrad-asphalt.brf"), "utf8");
+  assert.match(brf, /Abgeleitet von fastbike\.brf aus BRouter .*MIT/); assert.match(brf, /assign prefer_cycleways\s+= false/);
+  const isp = /assign ispaved ([^\n]+\n[^\n]+)/.exec(brf)[1], isu = /assign isunpaved ([^\n]+)/.exec(brf)[1];
+  assert.match(isp, /surface=cobblestone/); assert.match(isp, /surface=sett/); assert.doesNotMatch(isp + isu, /fine_gravel/, "Feinkies nirgends als befestigt");
+  assert.match(brf, /highway=cycleway\s+switch isunpaved 15 cyclewaycost/, "Radweg mit Kies wie unbefestigt");
+  assert.match(brf, /tracktype=grade2 switch ispaved 1\.2 10/);
+  assert.match(brf, /assign bikeaccess =/, "Zugangsregeln aus fastbike unverändert vorhanden");
+  // echte Antworten: fastbike nimmt den Feinkies-Feldweg, rennrad-asphalt fährt auf befestigten Wegen
+  const fx = FX("brouter_dreieich_profilvergleich.json"), R = (gj) => RT.buildRoute([RT.parseBRouter(gj)], fx.punkte, { sport: "rennrad" });
+  const kies = (r) => r.segs.filter((s) => s.surface === "kies").reduce((x, s) => x + s.d1 - s.d0, 0);
+  const F = R(fx.fastbike), A = R(fx.rennrad_asphalt);
+  assert.ok(kies(F) > 250, `fastbike über Feinkies (${Math.round(kies(F))} m)`); assert.equal(Math.round(kies(A)), 0, "rennrad-asphalt ohne Kies");
+});
+test("Eigenes Profil hinterlegen: POST <endpoint>/profile, ID zurück; Fehler verständlich, nie still", async () => {
+  let seen = null;
+  const ok = async (url, o) => { seen = { url, o }; return new Response(JSON.stringify({ profileid: "custom_123" }), { status: 200 }); };
+  assert.equal(await RT.uploadProfile(ok, "https://brouter.de/brouter", "---context:global"), "custom_123");
+  assert.equal(seen.url, "https://brouter.de/brouter/profile"); assert.equal(seen.o.method, "POST"); assert.equal(seen.o.body, "---context:global");
+  const bad = async () => new Response(JSON.stringify({ profileid: "custom_1", error: "line 3: unknown lookup" }), { status: 200 });
+  await assert.rejects(RT.uploadProfile(bad, "https://x", "y"), (e) => e.kind === "profil" && /nicht angenommen/.test(e.message) && /unknown lookup/.test(e.detail));
+  await assert.rejects(RT.uploadProfile(async () => { throw new TypeError("Failed to fetch"); }, "https://x", "y"), (e) => e.kind === "netz");
+  assert.equal(RT.profilName("custom_1794154179468"), "rennrad-asphalt (eigenes Profil ohne Gravel)"); assert.equal(RT.profilName("fastbike"), "fastbike");
+});
+test("Wegpunkte: Start und Ziel bleiben, neuer Punkt wird als Zwischenziel mit kleinstem Umweg eingefügt", () => {
+  const chur = [9.5313, 46.8493], lenzerheide = [9.5560, 46.7290], paspels = [9.4458, 46.7465];
+  assert.equal(RT.einfuegeIndex([chur, lenzerheide], paspels), 1, "Chur → Paspels → Lenzerheide");
+  const v = [[0, 0], [0.01, 0], [0.02, 0], [0.03, 0]];
+  assert.equal(RT.einfuegeIndex(v, [0.025, 0.002]), 3); assert.equal(RT.einfuegeIndex(v, [0.004, -0.001]), 1); assert.equal(RT.einfuegeIndex(v, [0.015, 0.001]), 2);
+  assert.equal(RT.einfuegeIndex([chur], paspels), 1, "ohne Ziel: anhängen"); assert.equal(RT.einfuegeIndex([], chur), 0);
+});
+test("Gravel erkennen: Kies, Naturweg, unbefestigt, tracktype; Feldweg ohne Angabe nur «möglicherweise»; Pflaster nie", () => {
+  const seg = (tags) => { const s = { tags }; s.surface = RT.surfaceCat(tags); return s; };
+  assert.equal(RT.gravelArt(seg({ highway: "cycleway", surface: "fine_gravel" })), "kies");
+  assert.equal(RT.gravelArt(seg({ highway: "track", surface: "compacted" })), "kies");
+  assert.equal(RT.gravelArt(seg({ highway: "path", surface: "ground" })), "natur");
+  assert.equal(RT.gravelArt(seg({ highway: "track", surface: "unpaved" })), "unbefestigt");
+  assert.equal(RT.gravelArt(seg({ highway: "track", tracktype: "grade3" })), "grade");
+  assert.equal(RT.gravelArt(seg({ highway: "track" })), "unklar");
+  for (const s of ["sett", "cobblestone", "paving_stones", "asphalt", "concrete"]) assert.equal(RT.gravelArt(seg({ highway: "residential", surface: s })), null, s + " ist kein Gravel");
+  assert.equal(RT.gravelArt(seg({ highway: "track", tracktype: "grade1" })), null); assert.equal(RT.gravelArt(seg({ highway: "residential" })), null, "Strasse ohne Angabe: kein Gravel");
+  const r = load("brouter_dreieich_gravel.json"), G = RT.gravelAbschnitte(r);
+  assert.ok(G.abschnitte.length >= 1 && G.gravel_m > 100, `Abschnitte gefunden (${Math.round(G.gravel_m)} m)`);
+  for (const a of G.abschnitte) { assert.ok(a.d1 > a.d0 && a.gravel_m <= a.len + 1); assert.ok(Object.keys(a.arten).every((k) => RT.GRAVEL_ARTEN[k])); }
+  for (let i = 1; i < G.abschnitte.length; i++) assert.ok(G.abschnitte[i].d0 - G.abschnitte[i - 1].d1 > 60, "Lücken unter 60 m verbunden");
+});
+test("Umfahrung: Sperrpunkte nur auf Gravel-Stücken, 3–10 m, nie an Wegpunkten; echte Umfahrung ohne Gravel", async () => {
+  const r = load("brouter_dreieich_gravel.json"), G = RT.gravelAbschnitte(r), P = RT.umfahrungsPunkte(r, G.abschnitte);
+  assert.ok(P.length >= 1);
+  for (const p of P) {
+    assert.ok(p.r >= 3 && p.r <= 10, "Radius 3–10 m"); assert.ok(G.abschnitte.some((a) => p.d > a.d0 && p.d < a.d1), "im Gravel-Abschnitt");
+    assert.ok(r.vias.every((v) => RT.hav(v.lon, v.lat, p.lon, p.lat) >= 30), "≥ 30 m von Wegpunkten"); assert.ok(RT.gravelArt(RT.at(r, p.d).seg), "auf Gravel");
+  }
+  assert.match(RT.nogoParam(P), /^\d+\.\d{6},\d+\.\d{6},\d+(\|\d+\.\d{6},\d+\.\d{6},\d+)*$/);
+  assert.match(RT.brouterUrl("https://x", { engine: "e", params: {} }, [1, 2], [3, 4], { nogos: "1.000000,2.000000,8", alt: 2 }), /alternativeidx=2&format=geojson&nogos=1\.000000,2\.000000,8/);
+  // echte Antworten der lokalen BRouter-Instanz, der Reihe nach wie aufgezeichnet
+  const fx = FX("brouter_dreieich_umfahrung.json"), a = fx.punkte[0], b = fx.punkte[1];
+  const start = RT.buildRoute([RT.parseBRouter(fx.start)], [a, b], { sport: "rennrad", engine: "PROFIL" });
+  const fake = async (url) => { const k = url.replace("http://test", ""), x = fx.anfragen[k]; if (!x) throw new Error("nicht aufgezeichnet: " + k); return new Response(x.text, { status: x.status }); };
+  const res = await RT.umfahrung(fake, "http://test", { engine: "PROFIL", params: { processUnusedTags: "1", consider_traffic: "0.1", prefer_cycleways: "0" } }, [a, b], start);
+  const U = RT.buildRoute(res.legs, [a, b], { sport: "rennrad" });
+  assert.ok(RT.gravelAbschnitte(start).gravel_m > 50, "vorher mit Gravel"); assert.equal(Math.round(RT.gravelAbschnitte(U).gravel_m), 0, "Umfahrung ohne Gravel");
+  assert.ok(U.L > start.L, "Umfahrung länger"); assert.ok(res.info.sperren >= 1 && res.info.runden >= 1 && !res.info.fehler.length);
+  assert.ok(!U.unvollstaendig, "vollständig");
+  // Der Start liegt hier selbst auf einem Feldweg: BRouter beginnt die Umfahrung am nächsten erlaubten Weg – messbar, wird angezeigt
+  assert.ok(RT.amWegpunkt(start, RT.gravelAbschnitte(start).abschnitte[0]), "Start auf Gravel"); assert.ok(U.snapMax > start.snapMax + 20, `Start verschoben (${Math.round(U.snapMax)} m)`);
+  // Server findet keinen Weg: letzte gelungene bleibt, Fehler gemeldet, keine Ersatzlinie
+  const nie = async () => new Response("target island detected for section 0", { status: 400 });
+  const r2 = await RT.umfahrung(nie, "http://test", { engine: "PROFIL", params: {} }, [a, b], start);
+  assert.equal(r2.info.fehler.length, 1); assert.match(r2.info.fehler[0].text, /abgeschlossenen Teil des Wegnetzes/);
+  assert.equal(RT.buildRoute(r2.legs, [a, b], { sport: "rennrad" }).L.toFixed(0), start.L.toFixed(0), "unverändert");
+});
+test("Andere Routen: echte Alternativen sind keine Doppel; gleiche Route wird als doppelt erkannt", () => {
+  const fx = FX("brouter_dreieich_alternativen.json"), R = (gj) => RT.buildRoute([RT.parseBRouter(gj)], fx.punkte, { sport: "rennrad" });
+  const A0 = R(fx.alt0), A1 = R(fx.alt1), A2 = R(fx.alt2);
+  assert.ok(RT.istDoppelt(A0, A0), "gleich = doppelt"); assert.ok(!RT.istDoppelt(A0, A1) && !RT.istDoppelt(A0, A2) && !RT.istDoppelt(A1, A2), "drei verschiedene");
+  const v = RT.vergleicheRouten(A0, A1);
+  assert.ok(v.anteil > 0.2 && v.anteil < 0.85, `teilweise gleich (${v.anteil.toFixed(2)})`); assert.ok(v.ab && v.ab.d1 > v.ab.d0, "abweichender Teil");
+  assert.ok(isFinite(v.maxEleProfil), "höchster Punkt");
+  assert.match(RT.brouterUrl("https://x", { engine: "e", params: {} }, [1, 2], [3, 4], { alt: 1 }), /alternativeidx=1/);
+  assert.match(RT.brouterUrl("https://x", { engine: "e", params: {} }, [1, 2], [3, 4], { alt: 9 }), /alternativeidx=3/, "höchstens 3");
+});
+test("Ortssuche: nur Text in der Anfrage; LV03/LV95 → WGS84 (Bern, Chur); HTML aus dem Namen entfernt", () => {
+  const u = RT.sucheUrl("Paspels <b>"); assert.ok(u.startsWith("https://api3.geo.admin.ch/rest/services/api/SearchServer?searchText=Paspels%20%3Cb%3E&type=locations"));
+  assert.doesNotMatch(u, /lat|lon|bbox/, "keine Koordinaten");
+  const bern = RT.lv03ZuWgs(600000, 200000); near(bern[0], 7.43864, 1e-4); near(bern[1], 46.95108, 1e-4);
+  const chur = RT.lv03ZuWgs(2759587, 1190818); near(chur[0], 9.5313, 0.001); near(chur[1], 46.8493, 0.001);
+  const res = RT.sucheErgebnisse({ results: [{ attrs: { label: "<b>Chur (GR)</b>", origin: "gg25", x: 190818.5, y: 759587.2 } }, { attrs: { label: "<b>Paspels</b>", origin: "gazetteer", lat: 46.7465, lon: 9.4458 } }, { attrs: { label: "ohne Koordinaten" } }] });
+  assert.equal(res.length, 2); assert.equal(res[0].label, "Chur (GR)"); near(res[0].lon, 9.5313, 0.001); near(res[1].lat, 46.7465, 1e-6);
 });
 test("Fehlerband nach Population: Bergstrecke nicht mit dem Band beliebiger Fahrten (zeit-rt-1.1)", () => {
   const berg = synthRoute((d) => 600 + d * 0.035, 12000, "rennrad", 0), flach = synthRoute(() => 450, 60000, "rennrad", 90);

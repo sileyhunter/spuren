@@ -14,7 +14,8 @@
 })(typeof self !== "undefined" ? self : this, function (FK) {
   "use strict";
   const RT = {};
-  RT.VERSIONS = { route: "route-1.0", hoehe: "hoehe-1.0", anstiege: "anstiege-1.0", zeit: "zeit-rt-1.2", wetter: "wetter-rt-1.2", varianten: "varianten-1.0" };
+  RT.VERSIONS = { route: "route-1.0", hoehe: "hoehe-1.0", anstiege: "anstiege-1.0", zeit: "zeit-rt-1.2", wetter: "wetter-rt-1.2", varianten: "varianten-2.0",
+    gravel: "gravel-rt-1.0", alternativen: "alternativen-1.0", wegpunkte: "wegpunkte-1.0", ortssuche: "ortssuche-1.0" };
   const isNum = (v) => typeof v === "number" && isFinite(v);
   const R_EARTH = 6371008.8, RAD = Math.PI / 180;
 
@@ -36,8 +37,8 @@
    * Zugang: die Profile sperren access=no/private und für das Verkehrsmittel verbotene Wege;
    * zusätzlich bewerten wir jeden Abschnitt selbst (RT.access) und zeigen Schiebe- und Unklar-Stellen. */
   RT.SPORTS = {
-    rennrad: { label: "Rennrad", art: "rad", rad: "rennrad", engine: "fastbike", modi: ["watt", "hf"], wert: { watt: 200, hf: 140 },
-      text: "Asphaltierte, für Velos erlaubte Strassen; Autobahnen ausgeschlossen, Hauptstrassen und unbefestigte Wege stark bestraft." },
+    rennrad: { label: "Rennrad", art: "rad", rad: "rennrad", engine: "fastbike", profil: "rennrad-asphalt", modi: ["watt", "hf"], wert: { watt: 200, hf: 140 },
+      text: "Für Velos erlaubte, asphaltierte Strassen und Velowege; Gravel (Kies, Feinkies, Naturbelag) wird gemieden, Pflaster ist ok; Autobahnen ausgeschlossen." },
     gravel: { label: "Gravel", art: "rad", rad: "gravel", engine: "gravel", modi: ["watt", "hf"], wert: { watt: 180, hf: 135 },
       optionen: { schotter: { label: "Schotter bevorzugen", param: "prefer_unpaved_paths", an: "1", aus: "0", standard: true } },
       text: "Schotter- und Forststrassen, ruhige Asphaltverbindungen; steile, unbefestigte Pfade gemieden." },
@@ -64,44 +65,66 @@
       else if (o.param) params[o.param] = v ? o.an : o.aus;
     }
     params.processUnusedTags = "1";          // alle bekannten OSM-Merkmale melden (Belag, Wegart, Zugang), Route bleibt gleich
-    return { engine, params };
+    return { engine, params, profil: S.profil || null };
   };
 
-  /** Varianten für den Vergleich (varianten-1.0): gleiches, für Velos erlaubtes Profil, nur Verkehr anders gewichtet.
-   *  Schnell = Standard (consider_traffic 0,1), Weniger Verkehr 0,5, Ruhig 1. Asphalt bevorzugt das Rennradprofil in allen dreien. */
+  /** Varianten (varianten-2.0): dasselbe, für Velos erlaubte Rennradprofil (ohne Gravel), automatisch beide gerechnet.
+   *  Schnellste = wenig Gewicht auf Verkehr (consider_traffic 0,1); Velofreundlich = Verkehr wichtig (0,5) und asphaltierte
+   *  Radwege bzw. offizielle Velowege so günstig wie Nebenstrassen (prefer_cycleways 1). Gewählt wird nach RT.waehleVariante. */
   RT.VARIANTEN = {
-    rennrad: [{ k: "schnell", label: "Schnell", params: { consider_traffic: "0.1" } }, { k: "weniger", label: "Weniger Verkehr", params: { consider_traffic: "0.5" } },
-      { k: "ruhig", label: "Ruhig", params: { consider_traffic: "1" } }],
+    rennrad: [{ k: "schnell", label: "Schnellste", params: { consider_traffic: "0.1", prefer_cycleways: "0" } },
+      { k: "velo", label: "Velofreundlich", params: { consider_traffic: "0.5", prefer_cycleways: "1" } }],
   };
+  RT.TOLERANZ_STANDARD = 10;     // % mehr Fahrzeit, die die velofreundliche Variante kosten darf
   RT.engineVariant = function (sport, opts, k) {
     const e = RT.engineFor(sport, opts), v = (RT.VARIANTEN[sport] || []).find((x) => x.k === k);
-    return e && v ? { engine: e.engine, params: Object.assign({}, e.params, v.params) } : e;
+    return e && v ? { engine: e.engine, params: Object.assign({}, e.params, v.params), profil: e.profil } : e;
   };
-  /** Anteile der Wegarten (m und %) einer Route; Hauptstrasse = trunk/primary laut OSM. */
+  /** Anteile der Wegarten (m und %) einer Route; Hauptstrasse = trunk/primary, Radweg = cycleway bzw. offizieller Veloweg laut OSM. */
   RT.wayShare = function (route) {
     const m = {}; for (const s of route.segs || []) m[s.way] = (m[s.way] || 0) + (s.d1 - s.d0);
-    const L = route.L || 1, haupt = m.hauptstrasse || 0, unbef = (route.segs || []).filter((s) => /kies|natur|unbefestigt/.test(s.surface)).reduce((x, s) => x + s.d1 - s.d0, 0);
-    return { m, haupt_m: haupt, haupt_pct: (100 * haupt) / L, unbef_m: unbef, L };
+    const L = route.L || 1, haupt = m.hauptstrasse || 0, rad = m.radweg || 0, unbef = (route.segs || []).filter((s) => /kies|natur|unbefestigt/.test(s.surface)).reduce((x, s) => x + s.d1 - s.d0, 0);
+    return { m, haupt_m: haupt, haupt_pct: (100 * haupt) / L, radweg_m: rad, radweg_pct: (100 * rad) / L, unbef_m: unbef, L };
   };
-  /** Ergebnis des Variantenvergleichs: Gibt es eine legale, deutlich ruhigere Asphaltalternative? */
-  RT.variantFazit = function (rows, opt) {
-    opt = Object.assign({ minDiffPct: 10, maxUmweg: 0.25 }, opt || {});
-    const ok = rows.filter((r) => r.share), base = ok.find((r) => r.k === "schnell") || ok[0];
-    if (!base) return { status: "offen", text: "Keine Variante berechnet." };
-    const liste = ok.map((r) => `${r.label} ${Math.round(r.share.haupt_pct)} %`).join(", ");
-    if (base.share.haupt_pct < opt.minDiffPct) return { status: "ruhig", text: `Route nutzt kaum Hauptstrassen (${Math.round(base.share.haupt_pct)} %), keine Alternative nötig. Geprüft: ${liste}.` };
-    const better = ok.filter((r) => r !== base && base.share.haupt_pct - r.share.haupt_pct >= opt.minDiffPct && r.share.L <= base.share.L * (1 + opt.maxUmweg) && r.share.unbef_m <= base.share.unbef_m + 200);
-    if (!better.length) return { status: "keine", text: `Keine ruhigere legale Asphaltalternative gefunden: ${ok.length} Varianten geprüft, Hauptstrasse ${liste}.` };
-    const b = better.sort((x, y) => x.share.haupt_pct - y.share.haupt_pct)[0];
-    return { status: "alternative", k: b.k, text: `«${b.label}» hat ${Math.round(b.share.haupt_pct)} % statt ${Math.round(base.share.haupt_pct)} % Hauptstrasse (${(b.share.L / 1000).toFixed(1)} statt ${(base.share.L / 1000).toFixed(1)} km).` };
+  /** Welche Variante gilt (varianten-2.0)? rows: [{k, label, t (s) oder null, L, gravel_m, haupt_pct}].
+   *  Velofreundlich, wenn höchstens tol % langsamer (ohne Zeit: länger) und nicht mehr Gravel; sonst die schnellste. */
+  RT.waehleVariante = function (rows, tolPct) {
+    const tol = isNum(tolPct) ? tolPct : RT.TOLERANZ_STANDARD;
+    const ok = (rows || []).filter((r) => r && !r.fehler && isNum(r.L));
+    const s = ok.find((r) => r.k === "schnell"), v = ok.find((r) => r.k === "velo");
+    if (!s && !v) return { k: null, text: "Keine Variante berechnet." };
+    if (!s || !v) return { k: (s || v).k, text: `Nur «${(s || v).label}» berechnet.` };
+    const mass = isNum(s.t) && isNum(v.t) ? "t" : "L", a = s[mass], b = v[mass];
+    const plus = a > 0 ? (100 * (b - a)) / a : 0;
+    const gleich = Math.abs(v.L - s.L) < Math.max(30, s.L * 0.005) && Math.abs((v.haupt_pct || 0) - (s.haupt_pct || 0)) < 1;
+    const diff = mass === "t" ? `${b >= a ? "+" : "−"}${Math.round(Math.abs(b - a) / 60)} min` : `${b >= a ? "+" : "−"}${(Math.abs(b - a) / 1000).toFixed(1)} km`;
+    if (gleich) return { k: "velo", gleich: true, plus: 0, text: "Beide Varianten führen über dieselben Wege." };
+    if ((v.gravel_m || 0) > (s.gravel_m || 0) + 50) return { k: "schnell", plus, text: `Die velofreundliche Variante hätte mehr Gravel (${((v.gravel_m || 0) / 1000).toFixed(1)} km) – darum die schnellste.` };
+    if (plus <= tol) return { k: "velo", plus, text: `Velofreundlich gewählt: ${diff} (${plus >= 0 ? "+" : "−"}${Math.abs(plus).toFixed(0)} %), Hauptstrasse ${Math.round(v.haupt_pct || 0)} % statt ${Math.round(s.haupt_pct || 0)} %, Radweg ${Math.round(v.radweg_pct || 0)} %.` };
+    return { k: "schnell", plus, text: `Velofreundlich wäre ${diff} (+${plus.toFixed(0)} %) – mehr als deine Toleranz von ${tol} %, darum die schnellste.` };
   };
 
   /* ---------------- Routing-Dienst (BRouter) ---------------- */
   RT.ENDPOINT = "https://brouter.de/brouter";
-  RT.brouterUrl = function (endpoint, eng, a, b) {
+  /** Anzeigename eines Profils: hinterlegte eigene Profile heissen beim Server «custom_<Zeit>». */
+  RT.profilName = (engine) => (/^custom_/.test(String(engine || "")) ? "rennrad-asphalt (eigenes Profil ohne Gravel)" : String(engine || ""));
+  /** opt.alt: Alternative 0–3 (BRouter alternativeidx); opt.nogos: Sperrpunkte «lon,lat,radius|…» (Umfahrung). */
+  RT.brouterUrl = function (endpoint, eng, a, b, opt) {
     const ll = [a, b].map((p) => `${(+p[0]).toFixed(6)},${(+p[1]).toFixed(6)}`).join("|");
     const extra = Object.entries(eng.params || {}).map(([k, v]) => `&profile:${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("");
-    return `${endpoint || RT.ENDPOINT}?lonlats=${ll}&profile=${encodeURIComponent(eng.engine)}&alternativeidx=0&format=geojson${extra}`;
+    const alt = opt && isNum(opt.alt) ? Math.max(0, Math.min(3, Math.round(opt.alt))) : 0;
+    const nogo = opt && opt.nogos ? `&nogos=${opt.nogos}` : "";
+    return `${endpoint || RT.ENDPOINT}?lonlats=${ll}&profile=${encodeURIComponent(eng.engine)}&alternativeidx=${alt}&format=geojson${nogo}${extra}`;
+  };
+  /** Eigenes Profil (Text) beim BRouter-Server hinterlegen: POST <endpoint>/profile → «custom_…» (gilt, bis der Server es löscht). */
+  RT.uploadProfile = async function (fetchFn, endpoint, text) {
+    let res;
+    try { res = await fetchFn(`${endpoint || RT.ENDPOINT}/profile`, { method: "POST", headers: { "Content-Type": "text/plain" }, body: text }); }
+    catch (e) { throw new RouteError("netz", "Eigenes Profil konnte nicht hinterlegt werden (keine Verbindung).", String(e && e.message || e)); }
+    const t = await res.text();
+    let j = null; try { j = JSON.parse(t); } catch (e) { /* unten */ }
+    if (!res.ok || !j || !j.profileid || j.error) throw new RouteError("profil", "Der Routing-Server hat das Rennradprofil nicht angenommen.", (j && j.error) || `HTTP ${res.status}: ${t.slice(0, 200)}`);
+    return String(j.profileid);
   };
   class RouteError extends Error {
     constructor(kind, msg, detail) { super(msg); this.kind = kind; this.detail = detail || ""; }
@@ -116,12 +139,12 @@
     if (/datafile .* not found/i.test(t)) return "Für dieses Gebiet hat der Routing-Server keine Kartendaten.";
     if (/killed|watchdog|timeout/i.test(t)) return "Der Routing-Server hat die Berechnung abgebrochen (zu lang oder überlastet). Zwischenziele setzen oder später erneut versuchen.";
     if (status === 0) return "Keine Verbindung zum Routing-Server.";
-    if (status >= 500) return `Der Routing-Server meldet einen internen Fehler${engine ? ` (z. B. Profil «${engine}» dort nicht verfügbar oder Überlastung)` : ""}. Später erneut versuchen oder eine andere Sportart wählen.`;
+    if (status >= 500) return `Der Routing-Server meldet einen internen Fehler${engine ? ` (z. B. Profil «${RT.profilName(engine)}» dort nicht verfügbar oder Überlastung)` : ""}. Später erneut versuchen oder eine andere Sportart wählen.`;
     return "Die Route konnte nicht berechnet werden.";
   };
   /** Einen Abschnitt routen. fetchFn = window.fetch (Tests: eigener Server). */
   RT.fetchLeg = async function (fetchFn, endpoint, eng, a, b, opt) {
-    const url = RT.brouterUrl(endpoint, eng, a, b);
+    const url = RT.brouterUrl(endpoint, eng, a, b, opt);
     const ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
     const timer = ctl ? setTimeout(() => ctl.abort(), (opt && opt.timeout_ms) || 30000) : null;
     let res;
@@ -131,11 +154,11 @@
       throw new RouteError(aborted ? "timeout" : "netz", aborted ? "Zeitüberschreitung beim Routing-Server." : RT.explainError(0, ""), String(e && e.message || e));
     } finally { if (timer) clearTimeout(timer); }
     const text = await res.text();
-    if (!res.ok) throw new RouteError("dienst", RT.explainError(res.status, text, eng.engine), `HTTP ${res.status}: ${text.slice(0, 300) || "(ohne Text)"}`);
+    if (!res.ok) { const er = new RouteError("dienst", RT.explainError(res.status, text, eng.engine), `HTTP ${res.status}: ${text.slice(0, 300) || "(ohne Text)"}`); er.status = res.status; throw er; }
     let gj;
     try { gj = JSON.parse(text); } catch (e) { throw new RouteError("format", "Antwort des Routing-Servers ist kein GeoJSON.", text.slice(0, 200)); }
     const leg = RT.parseBRouter(gj);
-    leg.url = url.replace(/lonlats=[^&]*/, "lonlats=…");
+    leg.url = url.replace(/lonlats=[^&]*/, "lonlats=…").replace(/nogos=[^&]*/, "nogos=…");
     return leg;
   };
 
@@ -833,6 +856,184 @@
     return res;
   };
 
+  /* ---------------- Wegpunkte (wegpunkte-1.0) ----------------
+   * Start (erster) und Ziel (letzter Punkt) bleiben fest. Ein neuer Punkt wird als Zwischenziel dort eingefügt, wo er den
+   * kleinsten Umweg macht (Luftlinie: a→p→b minus a→b); die eigentliche Route rechnet danach BRouter je Abschnitt. */
+  RT.einfuegeIndex = function (vias, p) {
+    const n = (vias || []).length;
+    if (n < 2) return n;
+    let best = 1, cost = Infinity;
+    for (let i = 1; i < n; i++) {
+      const a = vias[i - 1], b = vias[i];
+      const c = RT.hav(a[0], a[1], p[0], p[1]) + RT.hav(p[0], p[1], b[0], b[1]) - RT.hav(a[0], a[1], b[0], b[1]);
+      if (c < cost - 1e-6) { cost = c; best = i; }
+    }
+    return best;
+  };
+
+  /* ---------------- Gravel beim Rennrad (gravel-rt-1.0) ----------------
+   * Gravel = Belag laut OSM Kies/Feinkies/Schotter («kies»), Naturweg («natur») oder «unpaved»; ohne Belagsangabe auch
+   * tracktype grade2–5. Feldwege (highway=track) ganz ohne Angabe sind «unklar» (möglicherweise Gravel). Pflaster ist kein Gravel. */
+  RT.GRAVEL_ARTEN = { kies: "Kies/Feinkies", natur: "Naturweg", unbefestigt: "unbefestigt", grade: "Feldweg laut tracktype", unklar: "Feldweg ohne Belagsangabe" };
+  RT.gravelArt = function (s) {
+    if (!s) return null;
+    if (s.surface === "kies" || s.surface === "natur" || s.surface === "unbefestigt") return s.surface;
+    if (s.surface === "unbekannt") {
+      const t = s.tags || {}, tt = t.tracktype;
+      if (tt && tt !== "grade1") return "grade";
+      if (t.highway === "track" && !tt) return "unklar";
+    }
+    return null;
+  };
+  /** Zusammenhängende Gravel-Abschnitte (Lücken < mergeGap m verbunden); Abschnitte unter minLen m nur gezählt. */
+  RT.gravelAbschnitte = function (route, opt) {
+    opt = Object.assign({ mergeGap: 60, minLen: 15 }, opt || {});
+    const out = [];
+    let cur = null;
+    for (const s of route.segs || []) {
+      const art = RT.gravelArt(s); if (!art) continue;
+      const len = s.d1 - s.d0; if (len <= 0) continue;
+      if (cur && s.d0 - cur.d1 <= opt.mergeGap) { cur.d1 = Math.max(cur.d1, s.d1); }
+      else { cur = { d0: s.d0, d1: s.d1, arten: {}, wege: {}, legs: [] }; out.push(cur); }
+      cur.arten[art] = (cur.arten[art] || 0) + len;
+      const w = s.way || "unbekannt"; cur.wege[w] = (cur.wege[w] || 0) + len;
+      if (!cur.legs.includes(s.leg)) cur.legs.push(s.leg);
+    }
+    const lang = [], kurz = [];
+    for (const a of out) {
+      a.len = a.d1 - a.d0;
+      a.gravel_m = Object.entries(a.arten).reduce((x, [k, v]) => x + v, 0);
+      a.unklar_m = a.arten.unklar || 0;
+      a.sicher = a.gravel_m - a.unklar_m > 0.5;
+      (a.gravel_m >= opt.minLen ? lang : kurz).push(a);
+    }
+    const sum = (L, k) => L.reduce((x, a) => x + a[k], 0);
+    return { abschnitte: lang, kurz: kurz.length, kurz_m: sum(kurz, "gravel_m"), gravel_m: sum(lang, "gravel_m") + sum(kurz, "gravel_m"),
+      sicher_m: sum(lang, "gravel_m") - sum(lang, "unklar_m"), unklar_m: sum(lang, "unklar_m"), v: RT.VERSIONS.gravel };
+  };
+  /** Sperrpunkte für eine Umfahrung: kleine Kreise (5–10 m) mitten auf Gravel-Stücken, je ~150 m einer, nicht an
+   *  Kreuzungen (Mitte eines Wegstücks ≥ 24 m, ≥ 12 m vom Abschnittsende) und nie näher als 30 m an einem Wegpunkt.
+   *  BRouter sperrt Wegstücke, die näher als der Radius am Kreis vorbeiführen. Ergebnis je Abschnitt (leg) der Route. */
+  RT.umfahrungsPunkte = function (route, abschnitte, opt) {
+    opt = Object.assign({ abstand: 150, minSeg: 24, rand: 12, viaFrei: 30 }, opt || {});
+    const out = [], { lon, lat, d } = route;
+    const nahVia = (x, y) => (route.vias || []).some((v) => RT.hav(v.lon, v.lat, x, y) < opt.viaFrei);
+    for (const a of abschnitte || []) {
+      const cand = [];
+      for (let i = 0; i < lon.length - 1; i++) {
+        if (d[i + 1] <= a.d0 || d[i] >= a.d1) continue;
+        const sl = d[i + 1] - d[i], mid = (d[i] + d[i + 1]) / 2;
+        if (mid - a.d0 < opt.rand || a.d1 - mid < opt.rand) continue;
+        const seg = RT.at(route, mid).seg; if (!RT.gravelArt(seg)) continue;
+        cand.push({ i, sl, mid, x: (lon[i] + lon[i + 1]) / 2, y: (lat[i] + lat[i + 1]) / 2, leg: seg ? seg.leg : 0 });
+      }
+      let pick = cand.filter((c) => c.sl >= opt.minSeg && !nahVia(c.x, c.y));
+      if (!pick.length) { const c = cand.filter((x) => !nahVia(x.x, x.y)).sort((p, q) => q.sl - p.sl)[0]; if (c) pick = [c]; }
+      let last = -Infinity;
+      for (const c of pick) {
+        if (c.mid - last < opt.abstand) continue;
+        out.push({ lon: c.x, lat: c.y, r: Math.max(3, Math.min(10, Math.round(c.sl / (c.sl >= opt.minSeg ? 4 : 3)))), leg: c.leg, d: c.mid });
+        last = c.mid;
+      }
+    }
+    return out;
+  };
+  RT.nogoParam = (pts) => (pts || []).map((p) => `${(+p.lon).toFixed(6)},${(+p.lat).toFixed(6)},${Math.round(p.r)}`).join("|");
+  /** Liegt ein Gravel-Abschnitt an einem Wegpunkt (Start, Zwischenziel, Ziel)? Dann nur durch Verschieben des Punkts vermeidbar. */
+  RT.amWegpunkt = (route, a, m) => (route.vias || []).some((v) => isNum(v.d) && a.d0 - (m || 5) <= v.d && v.d <= a.d1 + (m || 5)
+    && !!RT.gravelArt(RT.at(route, Math.max(0, Math.min(route.L, v.d === 0 ? 1 : v.d >= route.L ? route.L - 1 : v.d))).seg));
+  /** Umfahrung suchen: je betroffener Abschnitt (leg) bis zu 3 Runden mit Sperrpunkten auf den Gravel-Stücken (nie näher als
+   *  30 m an einem Wegpunkt); schlägt eine Runde fehl (z. B. Ziel nur über Gravel erreichbar) oder bringt sie nichts, gilt die
+   *  letzte gelungene. Liegt ein Wegpunkt selbst auf Gravel, beginnt die Umfahrung allenfalls am nächsten erlaubten Weg (snap_m).
+   *  Ergebnis: neue legs (unveränderte bleiben), Zahl der Sperren, Fehler je Abschnitt. Nichts wird geraten oder als Linie ergänzt. */
+  RT.umfahrung = async function (fetchFn, endpoint, eng, vias, route, opt) {
+    opt = Object.assign({ runden: 3 }, opt || {});
+    const meta = { sport: route.sport, engine: route.engine };
+    const legs = route.legs.map((lg, li) => ({ coords: route.lon.slice(lg.i0, lg.i1 + 1).map((x, k) => [x, route.lat[lg.i0 + k], route.ele[lg.i0 + k]]),
+      edges: route.segs.filter((s) => s.leg === li).map((s) => ({ i0: s.i0 - lg.i0, i1: s.i1 - lg.i0, tags: s.tags, nodeTags: s.nodeTags || {} })), props: lg.props, url: lg.url }));
+    const g0 = RT.gravelAbschnitte(route), info = { sperren: 0, runden: 0, fehler: [], amWegpunkt: g0.abschnitte.filter((a) => RT.amWegpunkt(route, a)) };
+    const offen = [...new Set(g0.abschnitte.flatMap((a) => a.legs))];
+    const gm = (r) => RT.gravelAbschnitte(r).gravel_m;
+    for (const li of offen) {
+      const a = vias[li], b = vias[li + 1];
+      let cur = RT.buildRoute([legs[li]], [a, b], meta), nogos = [], bestG = gm(cur), bestLeg = null;
+      for (let r = 0; r < opt.runden; r++) {
+        const ziel = RT.gravelAbschnitte(cur).abschnitte;
+        if (!ziel.length) break;
+        const neu = RT.umfahrungsPunkte(cur, ziel).filter((p) => !nogos.some((q) => RT.hav(p.lon, p.lat, q.lon, q.lat) < 5));
+        if (!neu.length) break;
+        nogos = nogos.concat(neu);
+        let leg;
+        try { leg = await RT.fetchLeg(fetchFn, endpoint, eng, a, b, { nogos: RT.nogoParam(nogos) }); }
+        catch (e) { info.fehler.push({ leg: li, text: e.message, detail: e.detail || "" }); break; }
+        cur = RT.buildRoute([leg], [a, b], meta);
+        info.runden = Math.max(info.runden, r + 1);
+        const g = gm(cur);
+        if (g < bestG - 1) { bestG = g; bestLeg = leg; info.sperren = Math.max(info.sperren, nogos.length); }
+      }
+      if (bestLeg) legs[li] = bestLeg;                         // nur übernehmen, wenn weniger Gravel
+    }
+    return { legs, info };
+  };
+
+  /* ---------------- Andere Routen (alternativen-1.0) ----------------
+   * BRouter alternativeidx 1–2 je Abschnitt; gleiche Nummer über alle Abschnitte zusammengesetzt. Doppelte (≥ 85 % der
+   * Strecke innerhalb 30 m einer anderen) werden verworfen. Beschreibung: wo sie abweicht, höchster Punkt. */
+  RT.naheIndex = function (route, step) {
+    step = step || 25;
+    const cell = 0.0015, grid = new Map(), key = (x, y) => Math.floor(x / cell) + ":" + Math.floor(y / cell);
+    for (let dd = 0; dd <= route.L; dd += step) { const a = RT.at(route, dd); const k = key(a.lon, a.lat); if (!grid.has(k)) grid.set(k, []); grid.get(k).push([a.lon, a.lat]); }
+    return function (x, y) {
+      const cx = Math.floor(x / cell), cy = Math.floor(y / cell); let best = Infinity;
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const p of grid.get((cx + i) + ":" + (cy + j)) || []) { const h = RT.hav(x, y, p[0], p[1]); if (h < best) best = h; }
+      return best;
+    };
+  };
+  /** Anteil von B (je 50 m), der höchstens tol m neben A liegt, und der abweichende Teil von B (km von–bis). */
+  RT.vergleicheRouten = function (A, B, tol) {
+    tol = tol || 30;
+    const near = RT.naheIndex(A), P = B.profile;
+    let n = 0, gleich = 0, d0 = null, d1 = null, maxEle = -Infinity, maxEleAb = -Infinity;
+    for (let dd = 0; dd <= B.L; dd += 50) {
+      const a = RT.at(B, dd); n++;
+      if (isNum(a.ele) && a.ele > maxEle) maxEle = a.ele;
+      if (near(a.lon, a.lat) <= tol) gleich++;
+      else { if (d0 == null) d0 = dd; d1 = dd; if (isNum(a.ele) && a.ele > maxEleAb) maxEleAb = a.ele; }
+    }
+    return { anteil: n ? gleich / n : 1, ab: d0 == null ? null : { d0, d1 }, maxEle: isFinite(maxEle) ? maxEle : null, maxEleAb: isFinite(maxEleAb) ? maxEleAb : null, maxEleProfil: P ? Math.max(...P.ele.filter(isNum)) : null };
+  };
+  RT.istDoppelt = (A, B, schwelle) => RT.vergleicheRouten(A, B).anteil >= (schwelle || 0.85) && RT.vergleicheRouten(B, A).anteil >= (schwelle || 0.85);
+
+  /* ---------------- Ortssuche (ortssuche-1.0, swisstopo) ----------------
+   * Gesendet wird nur der eingegebene Text. Antwort: results[].attrs mit label (HTML), detail, origin und Koordinaten
+   * (lat/lon, sonst LV03 x = Nord, y = Ost); Umrechnung mit den Näherungsformeln von swisstopo (Genauigkeit ~1 m). */
+  RT.SUCHE = "https://api3.geo.admin.ch/rest/services/api/SearchServer";
+  RT.sucheUrl = (text, base) => `${base || RT.SUCHE}?searchText=${encodeURIComponent(String(text).trim().slice(0, 80))}&type=locations&origins=gg25,gazetteer,zipcode,address&limit=8`;
+  RT.lv03ZuWgs = function (ost, nord) {
+    if (ost > 2e6) ost -= 2e6; if (nord > 1e6) nord -= 1e6;             // LV95 → LV03
+    const y = (ost - 600000) / 1e6, x = (nord - 200000) / 1e6;
+    const lon = 2.6779094 + 4.728982 * y + 0.791484 * y * x + 0.1306 * y * x * x - 0.0436 * y * y * y;
+    const lat = 16.9023892 + 3.238272 * x - 0.270978 * y * y - 0.002528 * x * x - 0.0447 * y * y * x - 0.014 * x * x * x;
+    return [(lon * 100) / 36, (lat * 100) / 36];
+  };
+  RT.sucheErgebnisse = function (json) {
+    const out = [];
+    for (const r of (json && json.results) || []) {
+      const a = r.attrs || {};
+      let ll = null;
+      if (isNum(a.lon) && isNum(a.lat) && Math.abs(a.lon) <= 180 && Math.abs(a.lat) <= 90) ll = [a.lon, a.lat];
+      else if (isNum(a.x) && isNum(a.y)) {
+        const p = a.x % 1e6, q = a.y % 1e6;                               // LV03 laut Doku: x = Nord, y = Ost (Bern ≈ 200000 / 600000)
+        ll = p < q ? RT.lv03ZuWgs(a.y, a.x) : RT.lv03ZuWgs(a.x, a.y);
+      }
+      if (!ll || !isNum(ll[0]) || !isNum(ll[1])) continue;
+      const label = String(a.label || "").replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+      if (!label) continue;
+      out.push({ label, detail: String(a.detail || ""), origin: String(a.origin || ""), lon: +ll[0].toFixed(6), lat: +ll[1].toFixed(6) });
+    }
+    return out;
+  };
+
   /* ---------------- GPX ---------------- */
   const xmlEsc = (s) => String(s).replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
   RT.gpx = function (route, name, viaNames) {
@@ -840,7 +1041,7 @@
     const P = route.profile;
     const wpts = route.vias.map((p, i) => `<wpt lat="${p.lat.toFixed(6)}" lon="${p.lon.toFixed(6)}"><name>${xmlEsc((viaNames && viaNames[i]) || (i === 0 ? "Start" : i === route.vias.length - 1 ? "Ziel" : "Zwischenziel " + i))}</name></wpt>`).join("\n");
     const pts = route.lon.map((lo, i) => { const e = route.ele[i]; return `<trkpt lat="${route.lat[i].toFixed(6)}" lon="${lo.toFixed(6)}">${isNum(e) ? `<ele>${e.toFixed(1)}</ele>` : ""}</trkpt>`; }).join("\n");
-    const desc = `${route.gezeichnet ? "Von Hand gezeichnet (kein Routing)" : "Geroutet mit " + route.prov.routing + (route.engine ? ", Profil " + route.engine : "")}; ${route.prov.osm}; ${(route.L / 1000).toFixed(1)} km, ${Math.round(P.up)} m Aufstieg`;
+    const desc = `${route.gezeichnet ? "Von Hand gezeichnet (kein Routing)" : "Geroutet mit " + route.prov.routing + (route.engine ? ", Profil " + RT.profilName(route.engine) : "")}; ${route.prov.osm}; ${(route.L / 1000).toFixed(1)} km, ${Math.round(P.up)} m Aufstieg`;
     return `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Ironman Notebook" xmlns="http://www.topografix.com/GPX/1/1">\n<metadata><name>${xmlEsc(name)}</name><desc>${xmlEsc(desc)}</desc></metadata>\n${wpts}\n<trk><name>${xmlEsc(name)}</name><trkseg>\n${pts}\n</trkseg></trk>\n</gpx>\n`;
   };
 
