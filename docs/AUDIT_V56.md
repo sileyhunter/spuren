@@ -10,7 +10,8 @@ keine neuen Haupttabs, keine parallelen Systeme. Regeln und Versionen: `CHANGELO
 - **Produktiv:** auf der veröffentlichten Seite getestet. **Für alle Module: nicht getestet.** Die veröffentlichte Seite ist von dieser
   Arbeitsumgebung aus gesperrt, und es ist kein Browser verbunden. Geprüft ist nur, dass GitHub Pages den Stand veröffentlicht hat.
 
-**Wiederherstellungspunkt:** Git-Tag `v5.5.1-vor-v5.6` (Stand vor V5.6, Seite und Daten). Daten zurück: `git checkout v5.5.1-vor-v5.6 -- data.enc.json`.
+**Wiederherstellungspunkt:** Branch `vor-v56` auf GitHub (Stand ea037c3: Seite und Daten vor V5.6). Daten zurück: `git checkout origin/vor-v56 -- data.enc.json`;
+ganze Seite zurück: die fünf V5.6-Commits rückgängig machen (`git revert`).
 Bestehende Werte unverändert: `check_referenz.py` GESAMT bestanden (alle Aktivitäten gleich, alle Schwellen innerhalb der Toleranz);
 V5.6 ergänzt je Aktivität nur die neuen Felder `ser`, `wk`, `fr` und die Liste `serien/`.
 

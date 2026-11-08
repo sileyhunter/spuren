@@ -3,7 +3,7 @@
 ## V5.6 · 8.11.2026 · Aktivitäts-Explorer, Geplant vs. Ist, Saison 2027, Ermüdungsresistenz, RPE, Energie
 Grundlage: Auftrag V5.6 («TrainingPeaks-Funktionen und intelligente Trainingssteuerung»). Ergebnis je Modul mit Teststand
 (im Code / lokal getestet / produktiv getestet): `docs/AUDIT_V56.md`. Offene Punkte: `docs/offen-nach-v55.md` (Abschnitt V5.6).
-Keine neuen Haupttabs; bestehende Module erweitert. Wiederherstellungspunkt: Git-Tag `v5.5.1-vor-v5.6` (Stand ea037c3).
+Keine neuen Haupttabs; bestehende Module erweitert. Wiederherstellungspunkt: Branch `vor-v56` auf GitHub (Stand ea037c3, Seite und Daten vor V5.6).
 
 **Neu**
 - Aktivitäts-Explorer (Kalender «Analysieren», Karte, Heute): synchronisierte Kurven Leistung, Puls, Pace bzw. Tempo, Kadenz, Höhe;
