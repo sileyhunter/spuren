@@ -516,3 +516,21 @@ test("Lauf-Effizienz: Einheit m/Schlag, Ausreisser und Fehler werden entfernt un
   const p = L.punkte[0];                                               // 10 km in 55 min = 181.8 m/min; / 148 = 1.2285 m/Schlag
   assert.equal(p.y, 1.229); assert.equal(p.mpm, 181.8);
 });
+
+/* ---------- V5.5 Schwimmen: CSS-Formular (A06) ---------- */
+test("A06: CSS-Formular – 9:00 und 4:20 ergeben 2:20/100 m, Eingaben in mm:ss, Fehler und Hinweise", () => {
+  global.window = global.window || {}; window.FK = FK;
+  require("../js/v55-schwimmen.js");
+  const S = window.V55S;
+  assert.equal(S.parseZeit("9:00"), 540); assert.equal(S.parseZeit("4:20"), 260); assert.equal(S.parseZeit("9.00"), 540);
+  assert.equal(S.parseZeit("540"), 540); assert.equal(S.parseZeit("4:20,5"), 260.5); assert.equal(S.parseZeit("4:75"), null); assert.equal(S.parseZeit(""), null);
+  const p = S.pruefe(S.parseZeit("9:00"), S.parseZeit("4:20"));
+  assert.deepEqual(p.fehler, []); assert.equal(p.css, 140); assert.equal(S.mmss(p.css), "2:20");
+  assert.match(S.pruefe(260, 540).fehler[0], /400-m-Zeit muss länger/);
+  assert.match(S.pruefe(null, 260).fehler[0], /Beide Zeiten/);
+  assert.match(S.pruefe(500, 260).hinweise[0], /pro 100 m schneller/, "400 m schneller als 200 m pro 100 m: Hinweis");
+  // Gespeicherte Tests sind Messpunkte für «Meine Entwicklung»; validiert:false bleibt Vorschau
+  const D = { css_tests: [{ id: "c1", datum: "2026-10-01", t400: 540, t200: 260, becken: 25, validiert: true }] };
+  const pts = FK.entwicklungPunkte(D, "css", { lokal: [{ id: "c2", datum: "2026-11-01", t400: 530, t200: 258, becken: 25, validiert: false }] });
+  assert.deepEqual(pts.map((x) => [x.v, x.q.status]), [[140, "bestätigt"], [136, "vorschau"]]);
+});

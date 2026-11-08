@@ -125,6 +125,8 @@ def v5_merge(D, N):
             msg.append(f"{key}: {a} neu, {b} ersetzt")
     if "fueling_produkte" in N:
         D["fueling_produkte"] = N["fueling_produkte"]
+    if N.get("fueling_quellen"):                         # A15: geprüfte Datenquellen für Einnahmen (ersetzt den alten Stand)
+        D["fueling_quellen"] = N["fueling_quellen"]
     if N.get("test_archiv"):
         D["test_archiv"] = sorted(set(D.get("test_archiv", [])) | set(N["test_archiv"]))
     if N.get("notizen_set"):

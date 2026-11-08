@@ -194,13 +194,25 @@
         <td>${t.kh_g != null ? num(t.kh_g) + " g" : t.status === "nicht protokolliert" ? "–" : `≥ ${num(t.kh_min_g)} g`}</td><td>${t.kh_g_h != null ? num(t.kh_g_h) : "–"}</td><td>${t.ml_h != null ? num(t.ml_h) : "–"}</td><td>${t.na_mg_h != null ? num(t.na_mg_h) : "–"}</td><td>${gi >= 0 ? gi + "/5" : "–"}</td>
         <td class="acts"><button class="btn" data-v="${esc(e.id)}">Ansehen</button><button class="btn" data-e="${esc(e.id)}">Bearbeiten</button></td></tr>`;
     }).join("") || `<tr><td colspan="9">Noch keine Einträge. Fehlende Einträge zählen als «nicht protokolliert», nie als 0 g.</td></tr>`);
+    $("t-fu").closest(".tablewrap").hidden = !logs.length;          // leer: der Hinweis oben genügt
     $("t-fu").querySelectorAll("[data-v]").forEach((b) => (b.onclick = () => { FU.sel = b.dataset.v; V.fueling(); }));
     $("t-fu").querySelectorAll("[data-e]").forEach((b) => (b.onclick = () => { FU.cur = JSON.parse(JSON.stringify(logs.find((x) => x.id === b.dataset.e))); delete FU.cur._lokal; editor(); $("fu-edit").scrollIntoView({ behavior: "smooth" }); }));
     // Train your Gut: KH/h und Beschwerden je Einheit
     const sp = $("fu-sport"); if (!sp.dataset.init) { sp.dataset.init = 1; sp.onchange = () => { FU.sport = sp.value; V.fueling(); }; }
     const chron = logs.filter((e) => !FU.sport || e.sport === FU.sport).slice().reverse();
     const zt = (V.Inbox.data.notizen || {})["fu-ziel"] || null;
-    C().chart("c-fu-gut", { type: "bar", data: { labels: chron.map((e) => C().dLabel(e.date)), datasets: [
+    // A07: ohne protokollierte Einnahmen kein leerer g/h-Plot; «nicht protokolliert» ist nie 0 g
+    const proto = chron.filter((e) => e.status !== "nicht protokolliert");
+    $("fu-empty").hidden = proto.length > 0;
+    $("fu-charts").hidden = !proto.length;
+    if (!proto.length) {
+      $("fu-empty").innerHTML = `<p><b>Noch keine protokollierten KH-Einnahmen${FU.sport ? ` (${FU.sport === "rad" ? "Rad" : "Lauf"})` : ""}.</b> ${chron.length ? `${chron.length} Einheit${chron.length > 1 ? "en" : ""} «nicht protokolliert» – zählt nie als 0 g. ` : ""}Darum hier keine Grafik.</p>
+        <div class="row"><button class="btn primary" type="button" id="fu-add">Eintrag hinzufügen</button><button class="btn" type="button" id="fu-imp">Import prüfen</button></div>
+        <div id="fu-imp-out" class="hint" hidden></div>`;
+      $("fu-add").onclick = () => { FU.cur = null; editor(); $("fu-edit").scrollIntoView({ behavior: "smooth", block: "start" }); };
+      $("fu-imp").onclick = () => { const o = $("fu-imp-out"); o.hidden = !o.hidden; o.innerHTML = importStatus(); };
+    }
+    if (proto.length) C().chart("c-fu-gut", { type: "bar", data: { labels: chron.map((e) => C().dLabel(e.date)), datasets: [
       { type: "line", label: "KH g/h (konsumiert)", data: chron.map((e) => F.fuelingTotals(e, dur(e)).kh_g_h), borderColor: C().css("--accent"), backgroundColor: C().css("--accent"), yAxisID: "y", tension: 0, spanGaps: false, pointRadius: 4 },
       { label: "GI-Beschwerden 0–5", data: chron.map((e) => ((e.gi || []).length ? Math.max(...e.gi.map((g) => g.schwere || 0)) : null)), backgroundColor: C().css("--accent-2") + "55", yAxisID: "y2", borderRadius: 3 },
       zt ? { type: "line", label: `Planungsbereich ${zt}`, data: chron.map(() => +zt.split("–")[1]), borderColor: C().css("--accent-2"), borderDash: [5, 4], pointRadius: 0, yAxisID: "y" } : null,
@@ -208,8 +220,11 @@
     $("fu-ziel").value = zt || "";
     $("fu-ziel").onchange = async (e) => { const v = e.target.value.trim().replace(/\s*-\s*/, "–"); V.Inbox.data.notizen = Object.assign({}, V.Inbox.data.notizen, { "fu-ziel": /^\d+–\d+$/.test(v) ? v : null }); await V.Inbox.save(); V.fueling(); };
     // Verlauf einer Einheit
-    const s = logs.find((x) => x.id === FU.sel) || logs[0];
-    if (s) {
+    const s = logs.find((x) => x.id === FU.sel) || logs.find((x) => x.status !== "nicht protokolliert") || logs[0];
+    if (s && s.status === "nicht protokolliert") {
+      C().chart("c-fu-time", { type: "bar", data: { labels: [], datasets: [] } });
+      $("fu-sel").innerHTML = `<b>${dch(s.date)} · ${esc((A.get(s.activity_id) || {}).name || s.titel || "")}</b> · nicht protokolliert: kein Verlauf, keine Rate (nicht 0 g).`;
+    } else if (s) {
       const d = dur(s) || 3600, bl = F.fuelingBlocks(s, d, 30), gi = F.giContext(s, 60), t = F.fuelingTotals(s, d);
       C().chart("c-fu-time", { type: "bar", data: { labels: bl.map((b) => `${b.von}–${b.bis}`), datasets: [
         { label: "KH je 30 min (g)", data: bl.map((b) => b.kh_g), backgroundColor: C().css("--accent") + "aa", borderRadius: 3, yAxisID: "y" },
@@ -221,6 +236,14 @@
     editor();
     produkte();
   };
+  /** A15: Was die Datenquellen zu Einnahmen während einer Einheit liefern (geprüft, nicht vermutet). */
+  function importStatus() {
+    const D = C().D, q = D.fueling_quellen || null;
+    const lokal = (V.Inbox.data.fueling || []).length, srv = (D.fueling || []).length;
+    return `<ul class="flags"><li>Eingespielte Einträge: ${srv} in den Daten, ${lokal} nur auf diesem Gerät (Export «Eingaben» → Chat).</li>
+      ${q ? q.befunde.map((b) => `<li>${esc(b)}</li>`).join("") : "<li>Garmin/FIT: noch nicht geprüft.</li>"}</ul>
+      ${q ? `<p>Stand der Prüfung: ${dch(q.datum)} (${esc(q.v || "")}). Ohne Nachweis werden keine Einnahmen aus Garmin übernommen.</p>` : ""}`;
+  }
   function newEntry(actId) {
     const a = actId && C().ACT_BY_ID.get(actId);
     return { id: "fu-" + (actId || Date.now()), v: "fueling-1.0", activity_id: actId || null, date: a ? a.date : C().iso(C().today), sport: a ? a.sport : "rad", status: "protokolliert", events: [], gi: [], notiz: "", erfasst: new Date().toISOString() };

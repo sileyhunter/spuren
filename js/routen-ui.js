@@ -805,7 +805,7 @@
     const on = (r) => (ST.variant || "schnell") === r.k;
     box.innerHTML = `<div class="rp-card">${head}<table class="t rp-vt"><tr><th>Variante</th><th>km</th><th>Hm</th><th title="Anteil Hauptstrasse">Haupt&shy;str.</th><th title="unbefestigt, km">unbef.</th><th>Zeit</th></tr>${VAR.rows.map((r) => r.fehler
       ? `<tr><td colspan="6">${esc(r.label)}: <small>${esc(r.fehler)}</small></td></tr>`
-      : `<tr class="${on(r) ? "on" : ""}"><td>${esc(r.label)}<br>${on(r) ? '<span class="pill">aktiv</span>' : `<button class="btn rp-vbtn" data-var="${r.k}">Übernehmen</button>`}</td><td>${km(r.share.L)}</td><td>${fmt(r.up)}</td><td>${fmt(r.share.haupt_pct)} %</td><td>${km(r.share.unbef_m)}</td><td>${t(r.t)}</td></tr>`).join("")}</table>
+      : `<tr class="${on(r) ? "on" : ""}"><td>${esc(r.label)}<br>${on(r) ? '<span class="pill">aktiv</span>' : `<button class="btn rp-vbtn" data-var="${r.k}" aria-label="Variante «${esc(r.label)}» übernehmen">Wählen</button>`}</td><td>${km(r.share.L)}</td><td>${fmt(r.up)}</td><td>${fmt(r.share.haupt_pct)} %</td><td>${km(r.share.unbef_m)}</td><td>${t(r.t)}</td></tr>`).join("")}</table>
       <p class="${fz.status === "keine" ? "verdict unsure" : "hint"}">${esc(fz.text)}</p>
       <p class="hint">Nur Wege, die laut OSM für Velos erlaubt sind; «erlaubt laut OSM» hängt von den Kartendaten ab und ist keine rechtliche Garantie – vor Ort gilt die Signalisation.</p></div>`;
     box.querySelectorAll("[data-var]").forEach((b) => (b.onclick = () => { ST.variant = b.dataset.var; reroute(false); }));

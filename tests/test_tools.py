@@ -93,6 +93,17 @@ fu2 = copy.deepcopy(fu)
 fu2["events"][0]["anteil"] = 0.75
 merge_daily.v5_merge(D, {"fueling_add": [fu2]})
 check("Fueling: spätere Korrektur ersetzt, alte Fassung im Audit", D["fueling"][0]["events"][0]["anteil"] == 0.75 and any(a.get("was") == "fueling ersetzt" for a in D["audit"]))
+cs = {"id": "css-1", "datum": "2026-01-12", "t400": 540, "t200": 260, "becken": 25, "validiert": True, "quelle": "von Hand gestoppt"}
+merge_daily.v5_merge(D, {"css_add": [cs]})
+cs2 = dict(cs, t200=262, korrigiert="2026-01-13T08:00:00")
+merge_daily.v5_merge(D, {"css_add": [cs2]})
+check("A06: CSS-Test von Hand gespeichert, Korrektur ersetzt, alte Zeiten im Audit",
+      len(D["css_tests"]) == 1 and D["css_tests"][0]["t200"] == 262 and any(a.get("was") == "css_tests ersetzt" and a.get("alt", {}).get("t200") == 260 for a in D["audit"]),
+      [a.get("was") for a in D["audit"]])
+merge_daily.v5_merge(D, {"fehler_add": [{"id": "fb-1", "datum": "2026-01-12", "kategorie": "ellbogen", "beobachtung": "Ellbogen fällt ab", "status": "offen"}]})
+check("Fehlerboard: Eintrag übernommen", D["fehlerboard"][0]["status"] == "offen")
+merge_daily.v5_merge(D, {"fueling_quellen": {"datum": "2026-01-12", "v": "fueling-quellen-1.0", "befunde": ["FIT: keine Nachricht mit Mengen"]}})
+check("A15: geprüfte Fueling-Quellen gespeichert, ohne Fueling-Einträge zu erzeugen", D["fueling_quellen"]["befunde"] and not any(f.get("quelle") == "Garmin" for f in D.get("fueling", [])))
 merge_daily.v5_merge(D, {"befinden_add": [{"date": "2026-01-11", "muede": 4}], "koppel_set": [{"bike": "b", "run": "r", "status": "getrennt"}]})
 check("Befinden und Koppel-Entscheid gespeichert", D["befinden"][0]["muede"] == 4 and D["koppel"][0]["status"] == "getrennt")
 merge_daily.v5_merge(D, {"zonen_add": [{"id": "z-neu", "gueltig_ab": "2026-02-01", "skalen": []}]})

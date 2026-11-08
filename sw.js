@@ -1,7 +1,7 @@
 /* Ironman Notebook – Offline-Speicher (V5.3). Netz zuerst, bei fehlendem Netz die zuletzt geladene Fassung.
    Gespeichert werden nur die Seite, die Skripte und die verschlüsselte data.enc.json; Kartenkacheln und Fremddienste nie. */
-const CACHE = "notebook-v55-2026-11-08";
-const SHELL = ["./", "index.html", "demo.html", "js/formkurve.js", "js/v5-ui.js", "js/v5-ausdauer.js", "js/v5-extra.js", "js/route.js", "js/routen-ui.js", "js/v53-extra.js", "js/v55.js",
+const CACHE = "notebook-v55-2026-11-08b";
+const SHELL = ["./", "index.html", "demo.html", "js/formkurve.js", "js/v5-ui.js", "js/v5-ausdauer.js", "js/v5-extra.js", "js/route.js", "js/routen-ui.js", "js/v53-extra.js", "js/v55.js", "js/v55-schwimmen.js",
   "manifest.webmanifest", "manifest-demo.webmanifest", "icon-180.png", "icon-192.png", "icon-512.png", "logo.jpg", "logo-kopf.jpg"];
 const CDN = ["https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/", "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/"];
 self.addEventListener("install", (e) => {
