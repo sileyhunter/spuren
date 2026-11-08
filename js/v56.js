@@ -163,7 +163,7 @@
     const lang = C.D.activities.filter((a) => (a.mv || a.dur || 0) >= 5400 && ["rad", "lauf"].includes(a.sport)).slice(-8).reverse();
     const zon = (a) => { const z = a.zones || []; const s = z.reduce((x, y) => x + (y || 0), 0); return s ? { z1: ((z[0] || 0) + (z[1] || 0)) / s, z2: (z[2] || 0) / s, z3: ((z[3] || 0) + (z[4] || 0)) / s } : null; };
     const rows = lang.map((a) => {
-      const E = AN.energie(a, null), log = logs.find((l) => l.activity_id === a.id), t = log ? FK.fuelingTotals(log, a.mv || a.dur) : null, z = zon(a), h = (a.mv || a.dur) / 3600;
+      const E = AN.energie(a, null), log = logs.find((l) => l.activity_id === a.id && !String(l.id || "").startsWith("fg-")) || logs.find((l) => l.activity_id === a.id), t = log ? FK.fuelingTotals(log, a.mv || a.dur) : null, z = zon(a), h = (a.mv || a.dur) / 3600;
       let kh = null;
       if (E.kcal && z) { const lo = (z.z1 * KH_ANTEIL.z1[0] + z.z2 * KH_ANTEIL.z2[0] + z.z3 * KH_ANTEIL.z3[0]) * E.kcal[0] / 4.1 / h, hi = (z.z1 * KH_ANTEIL.z1[1] + z.z2 * KH_ANTEIL.z2[1] + z.z3 * KH_ANTEIL.z3[1]) * E.kcal[1] / 4.1 / h; kh = [Math.round(lo), Math.round(hi)]; }
       const ref = h >= 2.5 ? "bis 90 g/h" : h >= 2 ? "bis 60 g/h" : h >= 1 ? "ca. 30 g/h" : "–";   // Jeukendrup 2014: 1–2 h ≈ 30, > 2 h bis 60, > 2.5 h bis 90 g/h

@@ -5,8 +5,12 @@ Format von new.json: siehe CLAUDE.md.
 """
 import datetime as dt
 import json
+import os
 import sys
 import zoneinfo
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import garmin_ernaehrung  # noqa: E402   V5.7.2: Garmin-Ernährungsprotokoll → Fueling
 
 ZRH = zoneinfo.ZoneInfo("Europe/Zurich")
 TYPES = {  # Garmin-Typ -> (Kategorie, Bezeichnung, indoor)
@@ -271,6 +275,12 @@ def main(data_path, new_path, fit_path=None):
     if "protokolle" in N:                       # Protokoll-Vorlagen (ersetzt die ganze Liste)
         D["protokolle"] = N["protokolle"]
     v5_merge(D, N)
+    # V5.7.2: Garmin-Ernährungsprotokoll je Tag (geprüft gegen die Tageswerte), dann Einnahmen während Aktivitäten → Fueling «fg-…»
+    if N.get("food_logs"):
+        print(f"Garmin-Ernährung: {garmin_ernaehrung.einlesen(D, N['food_logs'])} Tag(e) neu oder geändert")
+    nf, hw = garmin_ernaehrung.fueling_ableiten(D)
+    if nf or hw:
+        print(f"Fueling aus Garmin: {nf} neu" + "".join(f"\n  {h['date']}: {h['text']}" for h in hw))
 
     if fit_path:                               # Protokoll für die Abnahme A2 (14 Nächte ohne fehlende Datei)
         log = D.setdefault("fit_log", [])

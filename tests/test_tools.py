@@ -3,11 +3,13 @@
   python3 -I tests/test_tools.py
 """
 import copy
+import datetime as dt_mod
 import json
 import os
 import subprocess
 import sys
 import tempfile
+import zoneinfo as zoneinfo_mod
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -413,6 +415,59 @@ check("Reihen: alter Name wird umbenannt (Inhalt Byte für Byte gleich)", _rc8 =
 _daten([_A1]); _work(None, "")
 _rc9, _o9 = _run("node", "tools/serien_crypt.mjs", "--nacht")
 check("Reihen Nacht-Update: verwaiste Reihe wird nicht gelöscht, nur gemeldet", _rc9 == 0 and len(_bytes()) == 2 and "verwaist (nicht gelöscht)" in _o9, _o9)
+
+# ---------- V5.7.2 Garmin-Ernährungsprotokoll → Fueling (erfundene Werte) ----------
+import garmin_ernaehrung as GE  # noqa: E402
+def _it(lid, name, qty, kh, kc, zeit, erfasst_utc, units=1.0, unit="SERVING", na=None):
+    return {"logId": lid, "foodName": name, "brandName": None, "servingQty": qty, "numberOfUnits": units, "servingUnit": unit, "calories": kc, "carbs": kh,
+            "sodium": na, "mealName": "SNACKS", "mealTime": zeit, "logTimestamp": erfasst_utc}
+_IT = [_it("a", "Gel Test (1 Gel)", 2.0, 25.0, 100, "09:30:00", "2026-03-01T12:00:00.000Z"),             # während, nachträglich erfasst
+       _it("b", "Pulver Test", 1.0, 50.0, 200, "10:30:00", "2026-03-01T12:00:00.000Z", units=60.0, unit="G", na=300.0),
+       _it("c", "Riegel geplant", 1.0, 40.0, 180, "10:00:00", "2026-03-01T07:00:00.000Z"),           # während, aber vorher erfasst (geplant)
+       _it("d", "Frühstück", 1.0, 80.0, 400, "07:30:00", "2026-03-01T06:40:00.000Z"),                 # vor der Einheit
+       _it("e", "Mittag", 1.0, 90.0, 600, "12:30:00", "2026-03-01T12:00:00.000Z")]                    # nach der Einheit
+_TAG = {"date": "2026-03-01", "dailyCalories": 200 + 200 + 180 + 400 + 600, "dailyCarbs": 50 + 50 + 40 + 80 + 90, "items": _IT}
+_ACT = {"id": "g77", "gid": "g77", "date": "2026-03-01", "start": "09:00", "sport": "rad", "el": 7200, "dur": 7000, "mv": 6900}
+_D8 = {"activities": [_ACT], "fueling": []}
+GE.einlesen(_D8, [_TAG], "2026-03-01"); _n8, _h8 = GE.fueling_ableiten(_D8)
+_e8 = _D8["fueling"][0] if _D8["fueling"] else {}
+check("Garmin-Ernährung: Tag gegen Tageswerte geprüft, nur nachträglich erfasste Einträge mit Uhrzeit in der Einheit zählen",
+      _D8["ernaehrung_garmin"]["2026-03-01"]["pruefung"] == "ok" and _e8.get("id") == "fg-g77" and [x["garmin_log_id"] for x in _e8["events"]] == ["a", "b"]
+      and [x["kh_g"] for x in _e8["events"]] == [50.0, 50.0] and [x["t_min"] for x in _e8["events"]] == [30, 90] and [x["garmin_log_id"] for x in _e8["unsicher"]] == ["c"]
+      and _e8["events"][0]["wasser_ml"] is None and _e8["events"][0]["natrium_mg"] is None and _e8["events"][1]["natrium_mg"] == 300, json.dumps(_e8)[:300])
+_a8 = len(_D8.get("audit", []))
+GE.einlesen(_D8, [_TAG], "2026-03-02"); GE.fueling_ableiten(_D8)
+check("Garmin-Ernährung: wiederholter Abruf → kein Doppel, kein neuer Audit-Eintrag", len(_D8["fueling"]) == 1 and len(_D8.get("audit", [])) == _a8)
+_T2 = dict(_TAG, items=[dict(_IT[0], servingQty=3.0)] + _IT[1:], dailyCarbs=_TAG["dailyCarbs"] + 25, dailyCalories=_TAG["dailyCalories"] + 100)
+GE.einlesen(_D8, [_T2]); GE.fueling_ableiten(_D8)
+check("Garmin-Ernährung: in Garmin geändert → derselbe Eintrag ersetzt, alte Fassung im Audit", len(_D8["fueling"]) == 1 and _D8["fueling"][0]["events"][0]["kh_g"] == 75.0
+      and any(a.get("was") == "Fueling aus Garmin ersetzt" for a in _D8["audit"]))
+_D9 = {"activities": [_ACT], "fueling": []}
+GE.einlesen(_D9, [dict(_TAG, dailyCarbs=_TAG["dailyCarbs"] - 30)]); _n9, _h9 = GE.fueling_ableiten(_D9)
+check("Garmin-Ernährung: Tageswerte passen nicht (unvollständig/falsch übertragen) → nichts zugeordnet, Hinweis", not _D9["fueling"] and _h9 and "nicht vollständig" in _h9[0]["text"])
+_man = {"id": "fu-g77", "v": "fueling-1.0", "activity_id": "g77", "date": "2026-03-01", "status": "protokolliert", "events": [{"t_min": 20, "kh_g": 30}]}
+_D10 = {"activities": [_ACT], "fueling": [dict(_man)]}
+GE.einlesen(_D10, [_TAG]); _n10, _h10 = GE.fueling_ableiten(_D10)
+check("Garmin-Ernährung: eigener Eintrag zur Einheit hat Vorrang → Garmin nicht übernommen, eigener unverändert, Hinweis",
+      _D10["fueling"] == [_man] and _h10 and "manueller Fueling-Eintrag" in _h10[0]["text"])
+_D11 = {"activities": [_ACT], "fueling": []}
+GE.einlesen(_D11, [_TAG]); GE.fueling_ableiten(_D11)
+_D11["fueling"][0]["gi"] = [{"t_min": 60, "schwere": 2}]; _D11["fueling"][0]["geaendert"] = "2026-03-02T08:00:00"
+GE.einlesen(_D11, [_T2]); GE.fueling_ableiten(_D11)
+check("Garmin-Ernährung: auf der Seite bearbeiteter Garmin-Eintrag wird nie überschrieben", _D11["fueling"][0]["gi"] and _D11["fueling"][0]["events"][0]["kh_g"] == 50.0)
+_D12 = {"activities": [_ACT], "fueling": []}
+GE.einlesen(_D12, [_TAG]); GE.fueling_ableiten(_D12)
+GE.einlesen(_D12, [dict(_TAG, items=_IT[3:], dailyCarbs=170, dailyCalories=1000)]); GE.fueling_ableiten(_D12)
+check("Garmin-Ernährung: Einträge in Garmin gelöscht → abgeleiteter Eintrag entfernt (Audit)", not _D12["fueling"] and any(a.get("was") == "Fueling aus Garmin entfernt" for a in _D12["audit"]))
+_t13 = tempfile.mkdtemp()
+json.dump({"activities": [], "days": [], "config": {}}, open(os.path.join(_t13, "d.json"), "w"))
+json.dump({"activities": [{"garmin_id": 77, "name": "Runde", "type": "road_biking", "start_local": "2026-03-01T09:00:00", "duration_s": 7000, "distance_m": 60000,
+                           "elev_gain_m": 300, "avg_hr": 140, "avg_power": 200, "np": 205}], "food_logs": [_TAG]}, open(os.path.join(_t13, "n.json"), "w"))
+open(os.path.join(_t13, "f.jsonl"), "w").write(json.dumps({"garmin_id": 77, "ok": True, "fit": {"mv": 6900, "el": 7200, "t0": int(dt_mod.datetime(2026, 3, 1, 9, 0, tzinfo=zoneinfo_mod.ZoneInfo("Europe/Zurich")).timestamp())}}) + "\n")
+merge_daily.main(os.path.join(_t13, "d.json"), os.path.join(_t13, "n.json"), os.path.join(_t13, "f.jsonl"))
+_r13 = json.load(open(os.path.join(_t13, "d.json")))
+check("Nacht-Update: Ernährungsprotokoll übernommen und Einnahmen der neuen Aktivität im Fueling", "2026-03-01" in _r13.get("ernaehrung_garmin", {})
+      and [e["id"] for e in _r13.get("fueling", [])] == ["fg-g77"] and sum(x["kh_g"] for x in _r13["fueling"][0]["events"]) == 100.0, json.dumps(_r13.get("fueling"))[:300])
 
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)

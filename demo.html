@@ -377,7 +377,7 @@ dl.dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6
 dl.dl dt { color: var(--muted); } dl.dl dd { margin: 0; overflow-wrap: anywhere; }
 ul.flags { margin: 6px 0; padding-left: 18px; font-size: 12.5px; color: var(--muted); }
 .prov { display: inline-block; font: 600 10.5px/1.6 var(--f-body); border: 1px solid var(--line-2); border-radius: 4px; padding: 0 5px; color: var(--muted); background: var(--surface); white-space: nowrap; }
-.prov-fit { border-color: #9cc9c3; color: #116d63; } .prov-messung { border-color: #b7c8db; color: #2f5785; } .prov-wetter { border-color: #c9bfe7; color: #5b4bb0; } .prov-plan { border-color: #ecc0b0; color: #a24a2d; } .prov-zonen { border-color: #9cc9c3; color: #116d63; }
+.prov-fit { border-color: #9cc9c3; color: #116d63; } .prov-messung { border-color: #b7c8db; color: #2f5785; } .prov-wetter { border-color: #c9bfe7; color: #5b4bb0; } .prov-plan { border-color: #ecc0b0; color: #a24a2d; } .prov-zonen { border-color: #9cc9c3; color: #116d63; } .prov-garmin { border-color: #b7c8db; color: #2f5785; }
 .chip.static { cursor: default; } .dia { width: 9px; height: 9px; transform: rotate(45deg); display: inline-block; }
 .syncbar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; border: 1px dashed var(--line-2); border-radius: 10px; padding: 8px 12px; font-size: 13px; }
 .syncbar.pending { border-color: var(--warn); background: #fffaf1; }
@@ -1239,7 +1239,7 @@ body.ex-offen { overflow: hidden; }
         <div id="fu-empty" class="fu-empty" hidden></div>
         <div class="hp-grid" id="fu-charts"><div class="hp-col"><h3 class="mini-h">KH/h und GI-Beschwerden je Einheit</h3><div class="chart"><canvas id="c-fu-gut" aria-label="Kohlenhydrate pro Stunde und Beschwerden"></canvas></div></div>
           <div class="hp-col"><h3 class="mini-h">Verlauf einer Einheit (30-min-Blöcke)</h3><div class="chart"><canvas id="c-fu-time" aria-label="Kohlenhydrate je 30 Minuten und Beschwerden"></canvas></div><div id="fu-sel" class="hint"></div></div></div>
-        <div class="tablewrap"><table class="t" id="t-fu"></table></div>
+        <div class="tablewrap"><table class="t" id="t-fu"></table></div><div id="fu-verdeckt"></div>
         <h3 class="mini-h">Eintrag erfassen</h3>
         <div id="fu-edit"></div>
         <details id="fu-prod"></details>

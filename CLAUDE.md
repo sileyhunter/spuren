@@ -38,6 +38,7 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   Kalibrierung, Geplant vs. Ist, Konstanz, Saison 2027, Ermüdung, Energie); `tools/serien.py` – Sekundenreihen im 2-s-Raster, Workout-Abgleich
   `wk` und Ermüdung `fr` aus FIT; `tools/serien_crypt.mjs` – Reihen verschlüsseln nach `serien/<Name>.bin` (Name = SHA-256 aus
   `serien_salz` und gid bzw. ID, `serien_salz` steht nur verschlüsselt in den Daten; die Dateinamen verraten keine Garmin-/Zwift-IDs)
+- **V5.7.2:** `tools/garmin_ernaehrung.py` – Garmin-Ernährungsprotokoll je Tag prüfen und Einnahmen während einer Aktivität als Fueling «fg-…» übernehmen
 - **V5.7.1 Reihen im Nacht-Update:** `tools/serienlib.mjs` (Formate SPS1/SPS2, Dateiname, Ver-/Entschlüsseln), `tools/serien_pruefen.mjs`
   (Konsistenz Aktivitäten ↔ Reihen ↔ Zuordnung und Datenschutz nach jedem Import; Regeln im Abschnitt «Sekundenreihen»)
 - **V5.7 Smart Training Routes:** `js/training-route.js` (Rechenlogik ohne DOM: Enduco-/Garmin-Workout lesen, Zeitplan je Schritt, Rundtour-Kandidaten,
@@ -81,6 +82,15 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
      die Antwort unverändert unter `"wx": {"g<ID>": {…, "quelle": "Garmin get_activity_weather (Wetterstation)", "abgerufen": "<heute>"}}`
      in `work/new.json`. Zusätzlich höchstens 10 ältere Aktivitäten draussen mit `gid` und ohne `wx` (neueste zuerst). Fehlt die Antwort:
      weglassen, kein Abbruch. Bestehende `wx` werden nie überschrieben.
+   - **Ernährung (V5.7.2, Garmin-Ernährungsprotokoll):** für jedes Datum von (letztes Aktivitätsdatum − 2 Tage) bis heute
+     `get_nutrition_daily_food_log(date)` und `get_hydration_data(date)`. Je Tag mit Einträgen in `work/new.json` unter `"food_logs"`:
+     `date` = `mealDate`, `dailyCalories` = `dailyNutritionContent.calories`, `dailyCarbs` = `dailyNutritionContent.carbs`,
+     `hydration` = {`valueInML`, `activityIntakeInML`, `sweatLossInML`, `lastEntryTimestampLocal`} und `items`: je Eintrag aus
+     `mealDetails[].loggedFoods[]` (jede `logId` nur einmal) unverändert `logId`, `foodName`/`brandName` (aus `foodMetaData`), `servingQty`,
+     `numberOfUnits`/`servingUnit`/`calories`/`carbs`/`sodium` (aus `nutritionContent`; fehlt → null), `mealName` (aus `meal`), `mealTime`,
+     `logTimestamp`. Nichts umrechnen oder ergänzen. `merge_daily.py` prüft jeden Tag gegen die Tageswerte (sonst nicht verwendet) und
+     übernimmt Einträge mit Uhrzeit während einer Aktivität, die erst danach erfasst wurden, als Fueling «fg-<Aktivität>»
+     (`tools/garmin_ernaehrung.py`). Schlägt ein Abruf fehl: weglassen, kein Abbruch, keine Nachricht.
 3. `work/new.json` schreiben (Format unten), dann `python3 -I tools/merge_daily.py data.json work/new.json work/fit.jsonl`.
 4. `SPUREN_PW=… node tools/crypt.mjs encrypt data.json data.enc.json`.
    **Sekundenreihen (V5.7.1, von Silas am 8.11.2026 freigegeben):** `SPUREN_PW=… node tools/serien_crypt.mjs --nacht` (nur neue oder
@@ -105,6 +115,9 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
                           "target_value_low": 120, "target_value_high": 180}]}],
   "planned_range": ["2026-10-31", "2026-11-14"],
   "workouts_neu": [{"wid": 0, "title": "", "sport": "cycling", "dur_s": 0, "erstellt": "2026-11-08T07:39:40", "desc": "", "steps": []}],
+  "food_logs": [{"date": "2026-11-08", "dailyCalories": 0, "dailyCarbs": 0, "hydration": {"valueInML": 0, "activityIntakeInML": 0, "sweatLossInML": 0, "lastEntryTimestampLocal": ""},
+                 "items": [{"logId": "", "foodName": "", "brandName": null, "servingQty": 1.0, "numberOfUnits": 1.0, "servingUnit": "SERVING",
+                            "calories": 0, "carbs": 0, "sodium": null, "mealName": "SNACKS", "mealTime": "10:45:00", "logTimestamp": "2026-11-08T12:52:14.000Z"}]}],
   "config": {"days_backfill": "2026-04-04"}
 }
 ```
@@ -149,7 +162,9 @@ Auf der Seite erfasste Werte bleiben verschlüsselt auf dem Gerät, bis Silas «
 Demo-Exporte (`"demo": true`) werden abgelehnt.
 V5.5: Der Export enthält auch `pb` (offizielle Bestzeiten → `pb_offiziell`), `css` (CSS-Tests → `css_tests`, Zeiten von Hand, Korrektur
 ersetzt mit Audit) und `fehler` (Fehlerboard → `fehlerboard`). `fueling_quellen` (geprüfte Garmin/FIT-Quellen, A15) nur nach einer neuen
-Prüfung ersetzen; nie Einnahmen aus Garmin schätzen oder ergänzen.
+Prüfung ersetzen; nie Einnahmen aus Garmin schätzen oder ergänzen. V5.7.2: Einnahmen aus Garmin nur aus dem Ernährungsprotokoll mit Uhrzeit
+(`fueling-garmin-1.0`: Tag stimmt mit den Tageswerten, Uhrzeit zwischen Start und Ende, erst danach erfasst); eigene Fueling-Einträge haben
+Vorrang, auf der Seite bearbeitete Garmin-Einträge (`geaendert`) werden nie überschrieben.
 V5.6: zusätzlich `rpe` (→ `rpe`), `intervalle` (Korrekturen von Hand → `intervall_korr`), `laktat_punkte` (Laktat einem Abschnitt
 zugeordnet → `laktat_punkte`, Status «vorschau») und `saison` (Stunden «jetzt»/«Spitze» → `saison_plan`); gleiche ID ersetzt mit Audit.
 V5.7: `startorte` (ganze Liste → `startorte`, alte Fassung ins Audit) und `trainingsrouten` (gewählte Vorschläge → `trainingsrouten`, gleiche

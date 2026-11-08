@@ -198,16 +198,21 @@
   const prods = () => (V.Inbox.data.fueling_produkte || C().D.fueling_produkte || []);
   V.fueling = function () {
     const D = C().D, F = FK(), A = C().ACT_BY_ID;
-    const logs = V.merged("fueling", "fueling").sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+    // V5.7.2: Einträge aus Garmin («fg-…») treten zurück, wenn du für dieselbe Einheit selbst etwas erfasst hast (nichts wird überschrieben)
+    const alle = V.merged("fueling", "fueling"), istG = (e) => String(e.id || "").startsWith("fg-");
+    const eigene = new Set(alle.filter((e) => e.activity_id && !istG(e)).map((e) => e.activity_id));
+    const verdeckt = alle.filter((e) => istG(e) && eigene.has(e.activity_id));
+    const logs = alle.filter((e) => !verdeckt.includes(e)).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
     const dur = (e) => { const a = A.get(e.activity_id); return e.dauer_s || (a ? a.mv || a.dur : null); };
     // Liste
     $("t-fu").innerHTML = `<tr><th>Datum</th><th class="l">Einheit</th><th class="l">Status</th><th>KH</th><th>KH/h</th><th>ml/h</th><th>Na mg/h</th><th>GI max</th><th></th></tr>` + (logs.map((e) => {
       const t = F.fuelingTotals(e, dur(e)), a = A.get(e.activity_id), gi = Math.max(-1, ...(e.gi || []).map((g) => g.schwere ?? -1));
-      return `<tr class="${FU.sel === e.id ? "on" : ""}"><td>${dch(e.date)}</td><td class="wrap">${esc(a ? a.name : e.titel || "ohne Aktivität")}${e._lokal ? " " + V.badge("nur hier") : ""}</td><td>${esc(t.status)}</td>
+      return `<tr class="${FU.sel === e.id ? "on" : ""}"><td>${dch(e.date)}</td><td class="wrap">${esc(a ? a.name : e.titel || "ohne Aktivität")}${e._lokal ? " " + V.badge("nur hier") : ""}${istG(e) ? " " + V.prov("garmin", "aus deinem Garmin-Ernährungsprotokoll, Zuordnung über die Uhrzeit der Einträge") : ""}</td><td>${esc(t.status)}</td>
         <td>${t.kh_g != null ? num(t.kh_g) + " g" : t.status === "nicht protokolliert" ? "–" : `≥ ${num(t.kh_min_g)} g`}</td><td>${t.kh_g_h != null ? num(t.kh_g_h) : "–"}</td><td>${t.ml_h != null ? num(t.ml_h) : "–"}</td><td>${t.na_mg_h != null ? num(t.na_mg_h) : "–"}</td><td>${gi >= 0 ? gi + "/5" : "–"}</td>
         <td class="acts"><button class="btn" data-v="${esc(e.id)}">Ansehen</button><button class="btn" data-e="${esc(e.id)}">Bearbeiten</button></td></tr>`;
     }).join("") || `<tr><td colspan="9">Noch keine Einträge. Fehlende Einträge zählen als «nicht protokolliert», nie als 0 g.</td></tr>`);
     $("t-fu").closest(".tablewrap").hidden = !logs.length;          // leer: der Hinweis oben genügt
+    const vh = $("fu-verdeckt"); if (vh) vh.innerHTML = verdeckt.length ? `<p class="hint">${verdeckt.length} Eintrag/Einträge aus Garmin ausgeblendet: Für dieselbe Einheit gibt es deinen eigenen Eintrag (nichts überschrieben).</p>` : "";
     $("t-fu").querySelectorAll("[data-v]").forEach((b) => (b.onclick = () => { FU.sel = b.dataset.v; V.fueling(); }));
     $("t-fu").querySelectorAll("[data-e]").forEach((b) => (b.onclick = () => { FU.cur = JSON.parse(JSON.stringify(logs.find((x) => x.id === b.dataset.e))); delete FU.cur._lokal; editor(); $("fu-edit").scrollIntoView({ behavior: "smooth" }); }));
     // Train your Gut: KH/h und Beschwerden je Einheit
@@ -243,7 +248,10 @@
         { label: "KH je 30 min (g)", data: bl.map((b) => b.kh_g), backgroundColor: C().css("--accent") + "aa", borderRadius: 3, yAxisID: "y" },
         { type: "line", label: "GI-Beschwerde", data: bl.map((b) => { const g = (s.gi || []).filter((x) => x.t_min >= b.von && x.t_min < b.bis); return g.length ? Math.max(...g.map((x) => x.schwere || 0)) : null; }), borderColor: C().css("--lt2"), backgroundColor: C().css("--lt2"), showLine: false, pointStyle: "triangle", pointRadius: 7, yAxisID: "y2" },
       ] }, options: { scales: { x: { title: { display: true, text: "Minuten nach Start" } }, y: { min: 0, title: { display: true, text: "g je 30 min (Summe, keine Stundenrate)" } }, y2: { position: "right", min: 0, max: 5, grid: { display: false } } }, plugins: { legend: { position: "bottom" } } } });
-      $("fu-sel").innerHTML = `<b>${dch(s.date)} · ${esc((A.get(s.activity_id) || {}).name || s.titel || "")}</b> · ${esc(t.status)} · aktive Dauer ${t.dauer_s ? C().hmm(t.dauer_s) + " h" : "unbekannt"}${t.unvollstaendig.length ? ` · <span class="down">${esc(t.unvollstaendig.join("; "))}</span>` : ""}
+      const gq = istG(s) ? `<p class="hint">Quelle: ${esc(s.quelle || "Garmin")} · Zuordnung über die Uhrzeit der Einträge (zwischen ${esc((s.fenster || [])[0] || "–")} und ${esc((s.fenster || [])[1] || "–")}, nachträglich erfasst). Flüssigkeit und fehlende Nährwerte liefert Garmin bei diesen Einträgen nicht – sie bleiben unbekannt.</p>
+        <ul class="flags">${(s.events || []).map((x) => `<li>${esc(x.uhrzeit || "")} (Minute ${x.t_min}): ${esc(x.produkt || "")} · ${esc(x.menge || "")} · ${x.kh_g != null ? num(x.kh_g) + " g KH" : "KH unbekannt"}${x.kcal != null ? ` · ${num(x.kcal)} kcal` : ""}</li>`).join("")}</ul>
+        ${(s.unsicher || []).length ? `<p class="hint">Nicht mitgezählt (vor der angegebenen Uhrzeit erfasst, also geplant): ${esc(s.unsicher.map((x) => `${x.uhrzeit} ${x.produkt}`).join("; "))}</p>` : ""}` : "";
+      $("fu-sel").innerHTML = `<b>${dch(s.date)} · ${esc((A.get(s.activity_id) || {}).name || s.titel || "")}</b> · ${esc(t.status)} · aktive Dauer ${t.dauer_s ? C().hmm(t.dauer_s) + " h" : "unbekannt"}${t.unvollstaendig.length ? ` · <span class="down">${esc(t.unvollstaendig.join("; "))}</span>` : ""}${gq}
         ${gi.length ? `<ul class="flags">${gi.map((g) => `<li>Minute ${g.t_min}: Beschwerde ${g.schwere}/5${g.notiz ? ` («${esc(g.notiz)}»)` : ""} · davor ${g.vorher_min} min: ${num(g.kh_g)} g KH, ${num(g.wasser_ml)} ml (${esc(g.produkte.join(", ") || "nichts")}) · ${esc(g.hinweis)}</li>`).join("")}</ul>` : ""}`;
     } else { $("fu-sel").innerHTML = ""; C().chart("c-fu-time", { type: "bar", data: { labels: [], datasets: [] } }); }
     editor();
@@ -255,7 +263,15 @@
     const lokal = (V.Inbox.data.fueling || []).length, srv = (D.fueling || []).length;
     return `<ul class="flags"><li>Eingespielte Einträge: ${srv} in den Daten, ${lokal} nur auf diesem Gerät (Export «Eingaben» → Chat).</li>
       ${q ? q.befunde.map((b) => `<li>${esc(b)}</li>`).join("") : "<li>Garmin/FIT: noch nicht geprüft.</li>"}</ul>
-      ${q ? `<p>Stand der Prüfung: ${dch(q.datum)} (${esc(q.v || "")}). Ohne Nachweis werden keine Einnahmen aus Garmin übernommen.</p>` : ""}`;
+      ${q ? `<p>Stand der Prüfung: ${dch(q.datum)} (${esc(q.v || "")}). Ohne Nachweis werden keine Einnahmen aus Garmin übernommen.</p>` : ""}
+      ${garminTage()}`;
+  }
+  /** V5.7.2: letzte Tage aus dem Garmin-Ernährungsprotokoll – geprüft gegen die Tageswerte, mit Hinweisen zur Zuordnung. */
+  function garminTage() {
+    const D = C().D, E = D.ernaehrung_garmin || {}, tage = Object.keys(E).sort().reverse().slice(0, 7), hw = D.ernaehrung_garmin_hinweise || [];
+    if (!tage.length) return "";
+    return `<p><b>Garmin-Ernährungsprotokoll</b> (nächtlich übernommen):</p><ul class="flags">${tage.map((d) => `<li>${dch(d)}: ${E[d].pruefung === "ok" ? "vollständig" : "<b>nicht verwendet</b>"} – ${esc(E[d].pruefung_text || "")}</li>`).join("")}</ul>
+      ${hw.length ? `<ul class="flags">${hw.slice(-6).map((h) => `<li>${dch(h.date)}: ${esc(h.text)}</li>`).join("")}</ul>` : ""}`;
   }
   function newEntry(actId) {
     const a = actId && C().ACT_BY_ID.get(actId);

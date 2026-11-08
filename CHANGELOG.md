@@ -1,5 +1,21 @@
 # Änderungen
 
+## V5.7.2 · 8.11.2026 · Fueling aus dem Garmin-Ernährungsprotokoll
+Wunsch von Silas: Ernährung nur einmal in Garmin Connect erfassen. Geprüft mit dem Tagesprotokoll der bestehenden Garmin-Verbindung (8.11.2026):
+jeder Eintrag hat Produkt, Portion, Menge, kcal, KH, teils Natrium, eine Uhrzeit (`mealTime`) und die Erfassungszeit (`logTimestamp`);
+keine Flüssigkeitsmenge je Eintrag und keine Verknüpfung mit einer Aktivität.
+
+- **Nacht-Update:** Tagesprotokoll und Trinken der letzten Tage (`food_logs`), verschlüsselt in `data.enc.json` (`ernaehrung_garmin`).
+- **Prüfung je Tag:** Summe der Einträge (gerundet wie bei Garmin) = Tageswerte (KH ±1 g, kcal ±2), sonst wird der Tag nicht verwendet.
+- **Zuordnung** `fueling-garmin-1.0`: nur Einträge, deren Uhrzeit zwischen Start und Ende (inkl. Pausen) liegt und die erst danach erfasst
+  wurden; vorher erfasste (geplante) Einträge werden angezeigt, aber nicht gezählt; Tages- oder Mahlzeitensummen nie.
+- **Train your Gut:** Ergebnis als Fueling «fg-<Aktivität>» mit Herkunft «Garmin»; ein eigener Eintrag zur Einheit hat Vorrang (Hinweis, nichts
+  überschrieben), ein auf der Seite bearbeiteter Garmin-Eintrag wird nie überschrieben, in Garmin gelöschte Einträge verschwinden (Audit).
+- Kein neuer Schlüssel oder Zugang: Abruf über die bestehende Garmin-Verbindung; nichts davon steht offen im Repository.
+
+Geprüft: `test_tools.py` (Zuordnung, geplant vs. nachträglich, Tagesprüfung, Wiederholung ohne Doppel, Änderung mit Audit, Vorrang eigener
+Einträge, bearbeitet bleibt, gelöscht wird entfernt, Nacht-Update), echte Daten vom 8.11.2026 (Tagesprüfung bestanden), Seite (Liste, Detail).
+
 ## V5.7.1 · 8.11.2026 · Sekundenreihen im Nacht-Update
 Freigabe von Silas (8.11.2026): Das Nacht-Update aktualisiert neben `data.enc.json` auch die verschlüsselten Reihen in `serien/`.
 
