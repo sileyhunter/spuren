@@ -205,6 +205,9 @@ ID ersetzt mit Audit). Startorte und Routen nur verschlüsselt (data.enc.json), 
   Vorgabe und nie nach Garmin/Enduco geschrieben.
 - Ermüdung `ermuedung-1.0`: Puls früh gegen spät bei gleicher Leistung bzw. Pace in derselben Einheit; beste 20 min ab Stunde 2–5.
   «Meine Entwicklung» urteilt darüber nur mit `entwicklung-1.0` (mind. 3 je Zeitraum, Intervall).
+- Lange Ausfahrt `langfahrt-2.0`: Sollband für Grundlage/Long Ride aus dem aktiven Zonenprofil (Z2 Watt nach Dauer: 1 h oberstes Viertel,
+  ab 5 h unterstes Viertel, linear dazwischen; Puls Ende Z2 als Obergrenze); das beobachtete Band (Fahrten ähnlicher Dauer) steht daneben,
+  Renn-Pacing bleibt beobachtet. Nie eigene Zonenwerte in öffentliche Tests oder Doku schreiben.
 - RPE `rpe-1.0`: CR-10 nach Foster (modifizierte Borg-Skala), sRPE = RPE × Bewegungsminuten; Kalibrierung mit Morgenwerten erst ab 20 Paaren, nur Rangkorrelation, keine Prozentwerte.
 - Energie `energie-1.0`: aufgenommen nur aus dem Fueling-Protokoll; Verbrauch Rad aus kJ mit Wirkungsgrad 22–25 % (Annahme); KH-Anteil
   je Garmin-Pulszone ist ein Modell; Richtwert Jeukendrup 2014. Nie Gelmengen oder Stoffwechselwerte erfinden.

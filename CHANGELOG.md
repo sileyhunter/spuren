@@ -13,6 +13,12 @@ Freigabe von Silas (8.11.2026): Das Nacht-Update aktualisiert neben `data.enc.js
   keine Klartext- oder Restdateien, keine Namen ohne Salz, keine Datendateien im Repository. Nicht bestanden → bisherige Dateien bleiben,
   nur `data.enc.json` wird übernommen.
 - Atomares Schreiben (temporäre Datei, dann umbenennen). Seite liest SPS1 und SPS2, sucht Reihen unter gid und (für ältere) unter der ID.
+- **Lange Ausfahrt: Sollband aus den Trainingszonen** (`langfahrt-2.0`, Wunsch Silas): Für «Grundlage» und «Long Ride» kommt das Watt-Sollband
+  aus dem aktiven Zonenprofil – Z2 nach Dauer: bei 1 h das oberste Viertel von Z2, ab 5 h das unterste, dazwischen linear; Puls als
+  Obergrenze (Ende Z2). Daneben das Band deiner Fahrten ähnlicher Dauer (beobachtet). Renn-Pacing bleibt aus beobachteten Fahrten. Der
+  Hinweis aus dem Zonenprofil (Watt für die Rolle bestimmt, draussen Puls als Grenze bis zur Vergleichsfahrt) steht beim Band.
+- **Keine Beispieldaten bei Ladefehler:** Ist `data.enc.json` nicht erreichbar, versucht die Seite es noch zweimal und zeigt dann «Erneut
+  versuchen» statt erfundener Zahlen (vorher still Beispieldaten). Der Offline-Speicher übernimmt Daten und Reihen beim Wechsel der Fassung.
 - **Startorte wiederherstellen:** in «Startorte verwalten» neu «Startorte sichern» (verschlüsselte Datei, Seitenpasswort) und «Sicherung laden»
   (ergänzt fehlende Orte, keine Doppel). Nach dem Einspielen über den Chat stehen sie in `data.enc.json` und sind auf jedem Gerät da.
 

@@ -8,7 +8,7 @@
   "use strict";
   const FK = {};
   FK.VERSIONS = {
-    cockpit: "cockpit-1.0", readiness: "readiness-1.0", langfahrt: "langfahrt-1.0", koppel: "koppel-1.1",
+    cockpit: "cockpit-1.0", readiness: "readiness-1.0", langfahrt: "langfahrt-2.0", koppel: "koppel-1.1",
     fueling: "fueling-1.0", eta: "eta-1.0", cda: "cda-1.0", fit: "fit-js-1.0", wetter: "wetter-1.0",
     pmc: "pmc-2.0", zonen: "zonenverteilung-2.0", orientierung: "langfahrt-orientierung-1.0", entwicklung: "entwicklung-1.0", laufeffizienz: "laufeffizienz-1.0",
   };
@@ -460,6 +460,23 @@
     });
   };
   const sysName = (s) => ({ indoor: "Rolle", rennrad: "Rennrad", mtb: "MTB/Gravel" }[s] || s);
+  /**
+   * Sollband aus den Trainingszonen (langfahrt-2.0, Wunsch Silas 8.11.2026): Z2-Watt des aktiven Zonenprofils nach Dauer –
+   * bei 1 h das oberste Viertel von Z2, ab 5 h das unterste Viertel, dazwischen linear (Bandbreite ¼ von Z2). Gilt für «Grundlage»
+   * und «Long Ride»; Renn-Pacing bleibt aus beobachteten Fahrten. Puls nur als Obergrenze (oberes Ende Z2 Puls). Ohne Profil: null.
+   */
+  FK.ZONENBAND = { h_kurz: 1, h_lang: 5, kurz: [0.75, 1], lang: [0, 0.25], zwecke: ["grundlage", "longride"] };
+  FK.zonenBand = function (zonen, dateISO, stunden) {
+    const P = FK.activeProfile(zonen, dateISO);
+    const sw = P && (P.skalen || []).find((x) => x.disziplin === "rad" && x.metrik === "leistung");
+    const z2 = sw && (sw.zonen || []).find((z) => z.z === "Z2");
+    if (!(z2 && isNum(z2.von) && isNum(z2.bis) && z2.bis > z2.von && isNum(stunden))) return null;
+    const B = FK.ZONENBAND, t = Math.min(1, Math.max(0, (stunden - B.h_kurz) / (B.h_lang - B.h_kurz)));
+    const f0 = B.kurz[0] + (B.lang[0] - B.kurz[0]) * t, f1 = B.kurz[1] + (B.lang[1] - B.kurz[1]) * t, w = z2.bis - z2.von;
+    const sh = (P.skalen || []).find((x) => x.disziplin === "rad" && x.metrik === "puls"), h2 = sh && (sh.zonen || []).find((z) => z.z === "Z2");
+    return { lo: Math.round(z2.von + f0 * w), hi: Math.round(z2.von + f1 * w), z2: [z2.von, z2.bis], puls_max: h2 && isNum(h2.bis) ? h2.bis : null,
+      profil: P.name || P.id, geraet: sw.geraet || null, hinweis: sw.hinweis || "", quelle: "Zonen", stunden, v: FK.VERSIONS.langfahrt };
+  };
   /**
    * «Vorsichtige Orientierung» (langfahrt-orientierung-1.0): nicht validiert, getrennt vom Band aus FK.longRide und nur gedacht,
    * wenn dieses «nicht bestimmbar» ist. Basis: tatsächliche lange Fahrten desselben Systems (mindestens max(3 h, 0,75 × Zieldauer),

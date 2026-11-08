@@ -43,6 +43,10 @@
     }
     const lt1 = LR.system === "indoor" ? lt1Indoor() : null;
     const r = F.longRide(D.activities, { stunden: LR.h, zweck: LR.zweck, system: LR.system, heute: C().iso(C().today), lt1 });
+    // V5.7.1 (langfahrt-2.0): Sollband aus den Trainingszonen (Z2 nach Dauer) für Grundlage und Long Ride; beobachtet daneben
+    const mitZonen = F.ZONENBAND.zwecke.includes(LR.zweck);
+    const zb = mitZonen && F.zonenBand ? F.zonenBand(D.zonen || [], C().iso(C().today), LR.h) : null;
+    const soll = zb || r.watt;
     const plans = V.merged("langfahrt_plaene", "langfahrt");
     const plan = plans.find((p) => p.zweck === LR.zweck && p.stunden === LR.h && p.system === LR.system) || null;
     const fu = V.merged("fueling", "fueling");
@@ -56,10 +60,15 @@
     ].filter(Boolean);
     $("lr-out").innerHTML = `<div class="lr-grid">
       <div class="lr-box"><div class="eyebrow">Watt-Sollband · ${esc(r.zweck_name)} · ${num(LR.h, 1)} h</div>
-        ${r.watt ? `<div class="hero">${r.watt.lo}–${r.watt.hi} <small>W</small></div>${V.badge(r.status)} ${V.prov("abgeleitet", "aus beobachteten Fahrten abgeleitet")}<p class="hint">Median der Fahrten ${r.watt.median} W (Ø Watt, nicht NP)</p>`
+        ${zb ? `<div class="hero">${zb.lo}–${zb.hi} <small>W</small></div>${V.prov("zonen", "aus deinem aktiven Zonenprofil")} <span class="badge">Z2 ${zb.z2[0]}–${zb.z2[1]} W</span>
+          <p class="hint">Aus deinen Trainingszonen (${esc(zb.profil)}): bei 1 h oben in Z2, ab 5 h unten in Z2, dazwischen gleichmässig. Ø Watt, nicht NP.</p>
+          ${LR.system !== "indoor" && /zwift|rolle/i.test(zb.geraet || "") ? `<p class="hint warn-t">Laut Zonenprofil gelten die Watt für die ${esc(zb.geraet)}. Draussen bleibt der Puls die Grenze${zb.puls_max ? ` (höchstens ${zb.puls_max} bpm)` : ""}, bis eine Vergleichsfahrt zeigt, wie dein Leistungsmesser draussen und die Rolle zueinander stehen – keine Umrechnung.</p>` : ""}
+          <p class="hint">Deine Fahrten (${esc(SYS[LR.system])}, ${num(r.fenster_h[0], 1)}–${num(r.fenster_h[1], 1)} h): ${r.watt ? `${r.watt.lo}–${r.watt.hi} W, Median ${r.watt.median} W (${esc(r.status)})` : "zu wenige passende Fahrten für ein beobachtetes Band"}.</p>`
+        : r.watt ? `<div class="hero">${r.watt.lo}–${r.watt.hi} <small>W</small></div>${V.badge(r.status)} ${V.prov("abgeleitet", "aus beobachteten Fahrten abgeleitet")}<p class="hint">Median der Fahrten ${r.watt.median} W (Ø Watt, nicht NP)${mitZonen ? " · kein aktives Zonenprofil mit Watt-Zonen, darum aus deinen Fahrten" : " · Renn-Pacing aus deinen Fahrten, nicht aus den Trainingszonen"}</p>`
           : `<div class="hero muted">nicht bestimmbar</div>${V.badge("nicht bestimmbar")}`}</div>
-      <div class="lr-box"><div class="eyebrow">Puls · Beobachtung</div>
-        ${r.puls ? `<div class="hero">${r.puls.lo}–${r.puls.hi} <small>bpm</small></div><p class="hint">erwartete Drift: +${num(r.puls.drift_bpm, 1)} bpm in der 2. Hälfte · Entkopplung Median ${num(r.puls.entkopplung_median, 1)} %</p>` : `<div class="hero muted">–</div><p class="hint">ohne Evidenz kein Pulsband</p>`}</div>
+      <div class="lr-box"><div class="eyebrow">Puls${zb && zb.puls_max ? " · Obergrenze" : " · Beobachtung"}</div>
+        ${zb && zb.puls_max ? `<div class="hero">≤ ${zb.puls_max} <small>bpm</small></div><p class="hint">Oberes Ende Z2 Puls (${esc(zb.profil)}). Am Rad nach Watt steuern, Puls nur als Obergrenze.</p>` : ""}
+        ${r.puls ? `${zb && zb.puls_max ? `<p class="hint">Beobachtet in deinen Fahrten: ${r.puls.lo}–${r.puls.hi} bpm · ` : `<div class="hero">${r.puls.lo}–${r.puls.hi} <small>bpm</small></div><p class="hint">`}erwartete Drift: ${r.puls.drift_bpm < 0 ? "−" : "+"}${num(Math.abs(r.puls.drift_bpm), 1)} bpm in der 2. Hälfte · Entkopplung Median ${num(r.puls.entkopplung_median, 1)} %</p>` : zb && zb.puls_max ? "" : `<div class="hero muted">–</div><p class="hint">ohne Evidenz kein Pulsband</p>`}</div>
       <div class="lr-box"><div class="eyebrow">Begründung</div><ul class="flags">${r.gruende.map((g) => `<li>${esc(g)}</li>`).join("")}</ul>
         <p class="hint">Evidenz: ${r.evidenz.dauer} Fahrten ${num(r.fenster_h[0], 1)}–${num(r.fenster_h[1], 1)} h · ${r.evidenz.mit_leistung} mit Leistung und Puls · ${r.evidenz.gleichmaessig} gleichmässig · ${r.evidenz.mit_drift} mit Drift · ${r.evidenz.entkopplung_ok} mit Entkopplung ≤ ${F.ZWECK[LR.zweck].maxDec} %</p></div>
       <div class="lr-box"><div class="eyebrow">Risiken und Bedingungen</div><ul class="flags">${risks.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div></div>
@@ -68,20 +77,24 @@
     // Band über 1–6 h, nur wo bestimmbar
     const hs = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6];
     const bands = hs.map((h) => F.longRide(D.activities, { stunden: h, zweck: LR.zweck, system: LR.system, heute: C().iso(C().today), lt1 }));
+    const zbands = hs.map((h) => (mitZonen && F.zonenBand ? F.zonenBand(D.zonen || [], C().iso(C().today), h) : null));
+    const zOk = zbands.some(Boolean);
     const pts = F.longRide(D.activities, { stunden: 3.5, zweck: LR.zweck, system: LR.system, heute: C().iso(C().today), lt1, minN: 0 });
     const all = D.activities.filter((a) => a.sport === "rad" && F.bikeSys(a) === LR.system && a.watt && a.dr && (a.mv || a.dur) >= 3600 && a.date >= F.addDays(C().iso(C().today), -548));
     C().chart("c-lr", { type: "scatter", data: { datasets: [
-      { type: "line", label: "Band unten", data: bands.map((b, i) => (b.watt ? { x: hs[i], y: b.watt.lo } : { x: hs[i], y: null })), borderColor: C().css("--accent"), pointRadius: 0, spanGaps: false },
-      { type: "line", label: "Sollband (beobachtet)", data: bands.map((b, i) => (b.watt ? { x: hs[i], y: b.watt.hi } : { x: hs[i], y: null })), borderColor: C().css("--accent"), backgroundColor: C().css("--accent") + "22", pointRadius: 0, fill: "-1", spanGaps: false },
+      zOk ? { type: "line", label: "Zonen unten", data: zbands.map((b, i) => ({ x: hs[i], y: b ? b.lo : null })), borderColor: C().css("--accent"), pointRadius: 0, spanGaps: false } : null,
+      zOk ? { type: "line", label: "Sollband (Zonen)", data: zbands.map((b, i) => ({ x: hs[i], y: b ? b.hi : null })), borderColor: C().css("--accent"), backgroundColor: C().css("--accent") + "22", pointRadius: 0, fill: "-1", spanGaps: false } : null,
+      { type: "line", label: "Band unten", data: bands.map((b, i) => (b.watt ? { x: hs[i], y: b.watt.lo } : { x: hs[i], y: null })), borderColor: zOk ? C().css("--muted") : C().css("--accent"), borderDash: zOk ? [4, 3] : [], pointRadius: 0, spanGaps: false },
+      { type: "line", label: zOk ? "Deine Fahrten (beobachtet)" : "Sollband (beobachtet)", data: bands.map((b, i) => (b.watt ? { x: hs[i], y: b.watt.hi } : { x: hs[i], y: null })), borderColor: zOk ? C().css("--muted") : C().css("--accent"), borderDash: zOk ? [4, 3] : [], backgroundColor: zOk ? "transparent" : C().css("--accent") + "22", pointRadius: 0, fill: zOk ? false : "-1", spanGaps: false },
       { label: "Fahrten (Ø Watt)", data: all.map((a) => ({ x: +((a.mv || a.dur) / 3600).toFixed(2), y: a.watt, dec: a.dr.dec, id: a.id })), backgroundColor: all.map((a) => (a.dr.dec <= F.ZWECK[LR.zweck].maxDec ? C().css("--strain") : C().css("--muted"))), pointRadius: 3 },
       plan ? { type: "line", label: "Dein Plan", data: [{ x: LR.h, y: plan.watt_lo }, { x: LR.h, y: plan.watt_hi }], borderColor: C().css("--accent-2"), borderWidth: 4, pointRadius: 0 } : null,
     ].filter(Boolean) }, options: { parsing: { xAxisKey: "x", yAxisKey: "y" }, onClick: (e, els, ch) => { const p = els.length && ch.data.datasets[els[0].datasetIndex].data[els[0].index]; if (p && p.id) { LR.ist = p.id; V.langfahrt(); } },
       scales: { x: { type: "linear", min: 1, max: 6, title: { display: true, text: "Bewegungszeit (h)" } }, y: { title: { display: true, text: "Ø Leistung (W)" } } },
-      plugins: { legend: { position: "bottom", labels: { filter: (i) => i.text !== "Band unten" } }, tooltip: { callbacks: { label: (c) => (c.raw.dec != null ? `${num(c.raw.x, 1)} h · ${c.raw.y} W · Entkopplung ${num(c.raw.dec, 1)} %` : `${num(c.raw.x, 1)} h · ${c.raw.y} W`) } } } } });
-    $("lr-chart-note").textContent = `Band nur für Dauern mit mindestens 3 passenden Fahrten. Blaue Punkte: Entkopplung ≤ ${F.ZWECK[LR.zweck].maxDec} %, graue darüber. Tippe auf einen Punkt für Plan gegen Ist.${pts.evidenz ? "" : ""}`;
+      plugins: { legend: { position: "bottom", labels: { filter: (i) => i.text !== "Band unten" && i.text !== "Zonen unten" } }, tooltip: { callbacks: { label: (c) => (c.raw.dec != null ? `${num(c.raw.x, 1)} h · ${c.raw.y} W · Entkopplung ${num(c.raw.dec, 1)} %` : `${num(c.raw.x, 1)} h · ${c.raw.y} W`) } } } } });
+    $("lr-chart-note").textContent = `${zOk ? "Fläche: Sollband aus deinen Zonen (Z2 nach Dauer). Gestrichelt: Band deiner Fahrten, nur" : "Band nur"} für Dauern mit mindestens 3 passenden Fahrten. Blaue Punkte: Entkopplung ≤ ${F.ZWECK[LR.zweck].maxDec} %, graue darüber. Tippe auf einen Punkt für Plan gegen Ist.${pts.evidenz ? "" : ""}`;
     // Plan (editierbares Szenario)
-    const P = plan || { id: `lp-${LR.zweck}-${LR.h}-${LR.system}`, zweck: LR.zweck, stunden: LR.h, system: LR.system, watt_lo: r.watt ? r.watt.lo : "", watt_hi: r.watt ? r.watt.hi : "", puls_max: "", kh_g_h: "", notiz: "" };
-    $("lr-plan").innerHTML = `<h3 class="mini-h">Dein Plan ${plan ? V.prov("plan", "von dir festgelegt") : ""} ${r.watt ? "" : "<small>(Szenario: ohne Evidenz von Hand)</small>"}</h3>
+    const P = plan || { id: `lp-${LR.zweck}-${LR.h}-${LR.system}`, zweck: LR.zweck, stunden: LR.h, system: LR.system, watt_lo: soll ? soll.lo : "", watt_hi: soll ? soll.hi : "", puls_max: zb && zb.puls_max ? zb.puls_max : "", kh_g_h: "", notiz: "" };
+    $("lr-plan").innerHTML = `<h3 class="mini-h">Dein Plan ${plan ? V.prov("plan", "von dir festgelegt") : ""} ${soll ? "" : "<small>(Szenario: ohne Evidenz von Hand)</small>"}</h3>
       <form class="inline" id="lr-form"><label>Watt von<input type="number" name="lo" value="${P.watt_lo}"></label><label>bis<input type="number" name="hi" value="${P.watt_hi}"></label>
       <label>Puls höchstens<input type="number" name="hr" value="${P.puls_max}"></label><label>KH g/h<input type="number" name="kh" value="${P.kh_g_h}"></label>
       <label class="grow">Notiz<input type="text" name="n" value="${esc(P.notiz)}" placeholder="z. B. Zernez–Ofenpass, heiss"></label><button class="btn primary" type="submit">Plan speichern</button></form>
@@ -90,7 +103,7 @@
     // Plan gegen Ist
     const cands = all.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 40);
     const sel = LR.ist && C().ACT_BY_ID.get(LR.ist);
-    const pi = sel ? F.planIst(plan ? { lo: plan.watt_lo, hi: plan.watt_hi } : r.watt, sel) : null;
+    const pi = sel ? F.planIst(plan ? { lo: plan.watt_lo, hi: plan.watt_hi } : soll, sel) : null;
     $("lr-ist").innerHTML = `<h3 class="mini-h">Plan gegen Ist</h3><label class="row">Fahrt <select id="lr-sel"><option value="">wählen …</option>${cands.map((a) => `<option value="${esc(a.id)}" ${a.id === LR.ist ? "selected" : ""}>${dch(a.date)} · ${esc(a.name)} · ${num((a.mv || a.dur) / 3600, 1)} h</option>`).join("")}</select></label>
       ${pi ? `<div class="kv"><div><span>Ø Watt</span><b>${num(pi.avg_w)}</b><small>${esc(pi.lage_avg)}</small></div><div><span>NP</span><b>${num(pi.np_w)}</b><small>${esc(pi.lage_np)}</small></div><div><span>Puls Ø</span><b>${num(pi.hr)}</b></div><div><span>Puls 1./2. Hälfte</span><b>${num(pi.h1)} / ${num(pi.h2)}</b></div><div><span>Entkopplung</span><b>${num(pi.entkopplung, 1)} %</b></div></div>${pi.hinweis ? `<p class="hint">${esc(pi.hinweis)}</p>` : ""}` : `<p class="hint">Wähle eine Fahrt, um sie mit dem Band zu vergleichen. Ø Watt und NP stehen getrennt.</p>`}`;
     $("lr-sel").onchange = (e) => { LR.ist = e.target.value || null; V.langfahrt(); };

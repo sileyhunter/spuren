@@ -534,3 +534,22 @@ test("A06: CSS-Formular – 9:00 und 4:20 ergeben 2:20/100 m, Eingaben in mm:ss,
   const pts = FK.entwicklungPunkte(D, "css", { lokal: [{ id: "c2", datum: "2026-11-01", t400: 530, t200: 258, becken: 25, validiert: false }] });
   assert.deepEqual(pts.map((x) => [x.v, x.q.status]), [[140, "bestätigt"], [136, "vorschau"]]);
 });
+
+test("Sollband lange Ausfahrt aus den Trainingszonen (langfahrt-2.0): Z2 nach Dauer, Puls als Obergrenze (Werte erfunden)", () => {
+  const Z = [{ id: "z-alt", name: "Alt", status: "ersetzt", gueltig_ab: "2025-01-01", gueltig_bis: "2026-05-31",
+               skalen: [{ disziplin: "rad", metrik: "leistung", zonen: [{ z: "Z2", von: 150, bis: 190 }] }] },
+             { id: "z-neu", name: "Zonen Test", status: "aktiv", gueltig_ab: "2026-06-01", gueltig_bis: null, skalen: [
+               { disziplin: "rad", metrik: "leistung", geraet: "Zwift-Rolle", zonen: [{ z: "Z1", von: null, bis: 180 }, { z: "Z2", von: 180, bis: 220 }, { z: "Z3", von: 220, bis: 260 }] },
+               { disziplin: "rad", metrik: "puls", zonen: [{ z: "Z2", von: 130, bis: 145 }, { z: "Z3", von: 145, bis: 160 }] }] }];
+  const b = (h) => { const x = FK.zonenBand(Z, "2026-11-08", h); return [x.lo, x.hi]; };
+  assert.deepEqual(b(1), [210, 220], "1 h: oberstes Viertel von Z2");
+  assert.deepEqual(b(5), [180, 190], "5 h: unterstes Viertel von Z2");
+  assert.deepEqual(b(6), [180, 190], "länger als 5 h: nicht unter Z2");
+  assert.deepEqual(b(0.5), [210, 220], "kürzer als 1 h: nicht über Z2");
+  assert.deepEqual(b(3), [195, 205], "dazwischen linear");
+  const x = FK.zonenBand(Z, "2026-11-08", 2.5);
+  assert.ok(x.lo >= 180 && x.hi <= 220 && x.hi - x.lo === 10 && x.puls_max === 145 && x.profil === "Zonen Test" && x.geraet === "Zwift-Rolle");
+  assert.deepEqual([FK.zonenBand(Z, "2026-03-01", 1).lo, FK.zonenBand(Z, "2026-03-01", 1).hi], [180, 190], "Profil, das am Datum galt");
+  assert.equal(FK.zonenBand([], "2026-11-08", 2), null, "ohne Zonenprofil kein Band (dann beobachtet)");
+  assert.ok(FK.ZONENBAND.zwecke.includes("longride") && !FK.ZONENBAND.zwecke.includes("im"), "Renn-Pacing bleibt beobachtet");
+});

@@ -377,7 +377,7 @@ dl.dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6
 dl.dl dt { color: var(--muted); } dl.dl dd { margin: 0; overflow-wrap: anywhere; }
 ul.flags { margin: 6px 0; padding-left: 18px; font-size: 12.5px; color: var(--muted); }
 .prov { display: inline-block; font: 600 10.5px/1.6 var(--f-body); border: 1px solid var(--line-2); border-radius: 4px; padding: 0 5px; color: var(--muted); background: var(--surface); white-space: nowrap; }
-.prov-fit { border-color: #9cc9c3; color: #116d63; } .prov-messung { border-color: #b7c8db; color: #2f5785; } .prov-wetter { border-color: #c9bfe7; color: #5b4bb0; } .prov-plan { border-color: #ecc0b0; color: #a24a2d; }
+.prov-fit { border-color: #9cc9c3; color: #116d63; } .prov-messung { border-color: #b7c8db; color: #2f5785; } .prov-wetter { border-color: #c9bfe7; color: #5b4bb0; } .prov-plan { border-color: #ecc0b0; color: #a24a2d; } .prov-zonen { border-color: #9cc9c3; color: #116d63; }
 .chip.static { cursor: default; } .dia { width: 9px; height: 9px; transform: rotate(45deg); display: inline-block; }
 .syncbar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; border: 1px dashed var(--line-2); border-radius: 10px; padding: 8px 12px; font-size: 13px; }
 .syncbar.pending { border-color: var(--warn); background: #fffaf1; }
@@ -1207,7 +1207,7 @@ body.ex-offen { overflow: hidden; }
         <div id="v56-ermuedung"></div>
       </div>
       <div class="card w12" id="lr-card">
-        <div class="card-head"><div><h2>Lange Ausfahrt: Watt- und Pulsband für 1–6 h</h2><div class="sub">Aus deinen Fahrten ähnlicher Dauer und mit gleichem System, keine pauschale FTP-Prozentzahl.</div></div>
+        <div class="card-head"><div><h2>Lange Ausfahrt: Watt- und Pulsband für 1–6 h</h2><div class="sub">Sollband aus deinen Trainingszonen (Z2 nach Dauer), daneben deine Fahrten ähnlicher Dauer und mit gleichem System, keine pauschale FTP-Prozentzahl.</div></div>
           <form class="inline" id="lr-ctl" onsubmit="return false"></form></div>
         <div id="lr-out"></div>
         <div class="chart"><canvas id="c-lr" aria-label="Watt-Band nach Dauer mit Fahrten"></canvas></div>
@@ -1361,11 +1361,27 @@ body.ex-offen { overflow: hidden; }
   async function init() {
     if (window.SPUREN_DEMO && window.V5UI) { try { window.SPUREN_VAULT = await window.V5UI.makeVault(new TextEncoder().encode("spuren-demo-nur-beispieldaten-32")); } catch (e) {} }
     if (window.SPUREN_DATEN || window.SPUREN_DEMO) { boot(); return; }
-    try {
-      const r = await fetch("data.enc.json?t=" + Date.now(), { cache: "no-store" });
-      if (!r.ok) throw new Error(String(r.status));
-      payload = await r.json();
-    } catch (e) { boot(); return; }
+    // V5.7.1: Beispieldaten nur, wenn es noch keine Daten gibt (404). Ist die Verbindung weg oder gestört, zweimal neu versuchen,
+    // dann eine Meldung mit «Erneut versuchen» – nie still erfundene Zahlen anstelle der echten zeigen.
+    let r = null, fehler = null;
+    for (let i = 0; i < 3 && !payload; i++) {
+      try {
+        r = await fetch("data.enc.json?t=" + Date.now(), { cache: "no-store" });
+        if (r.status === 404) break;
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        payload = await r.json();
+      } catch (e) { fehler = e; if (i < 2) await new Promise((ok) => setTimeout(ok, 1200 * (i + 1))); }
+    }
+    if (!payload) {
+      if (r && r.status === 404) { boot(); return; }
+      const lock = document.getElementById("lock"), form = document.getElementById("lock-form");
+      for (const el of form.querySelectorAll("input, label, button")) el.hidden = true;
+      form.querySelector("p").textContent = "Deine Daten konnten gerade nicht geladen werden (keine oder schwache Verbindung?). Es werden keine Beispieldaten angezeigt.";
+      document.getElementById("lock-msg").textContent = fehler ? "Grund: " + (fehler.message || fehler) : "";
+      const b = document.createElement("button"); b.type = "button"; b.className = "btn primary"; b.textContent = "Erneut versuchen"; b.onclick = () => location.reload();
+      form.appendChild(b); lock.hidden = false;
+      return;
+    }
     let saved = null;
     try { saved = localStorage.getItem("sf.key"); } catch (e) {}
     if (saved) {
