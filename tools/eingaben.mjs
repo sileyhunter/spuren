@@ -24,6 +24,7 @@ const out = {
   langfahrt_add: clean(d.langfahrt), laktat_bestaetigt: d.laktat_bestaetigt || [], coach_add: clean(d.coach), test_archiv: d.archiv || [],
   notizen_set: d.notizen || {}, quelle_eingaben: { datei: src.split("/").pop(), erstellt: j.erstellt },
   pb_add: clean(d.pb), css_add: clean(d.css), fehler_add: clean(d.fehler),
+  rpe_add: clean(d.rpe), intervall_add: clean(d.intervalle), laktat_punkte_add: clean(d.laktat_punkte), saison_add: clean(d.saison),
 };
 if (d.fueling_produkte) out.fueling_produkte = d.fueling_produkte;
 writeFileSync(dst, JSON.stringify(out, null, 1));

@@ -223,5 +223,56 @@ if os.path.exists(pw_path):
 check("Repo: keine Token-Muster", not any(f for f in tracked if f.endswith((".js", ".html", ".md", ".py", ".mjs")) and
                                           any(s in open(os.path.join(ROOT, f), errors="ignore").read() for s in TOKEN_PATTERNS)))
 
+# --- V5.6 tools/serien.py: Raster, Workout-Abgleich, Ermüdungsresistenz (synthetisch) ---
+import series as _series  # noqa: E402
+import serien  # noqa: E402
+S6 = _series.Session(); S6.sport, S6.start = 2, 1700000000
+for i in range(4 * 3600):
+    blk = (i // 600) % 2
+    S6.ts.append(1700000000 + i); S6.pw.append(200 if blk == 0 else 250); S6.hr.append(130 + 5 * i / 3600 + (10 if blk else 0))
+    S6.cad.append(90); S6.spd.append(9.0); S6.dist.append(9.0 * i); S6.alt.append(500.0); S6.temp.append(None); S6.target.append(None)
+R6 = serien.raster(S6, 2)
+check("Serie: 2-s-Raster ohne Lücke, Mittelwerte", R6["seg"] == [[0, 7200]] and R6["w"][0] == 200 and R6["v"][0] == 900 and "tw" not in R6, str(R6["seg"]))
+S6b = _series.Session(); S6b.sport, S6b.start = 5, 1700000000
+for i in range(120):
+    S6b.ts.append(1700000000 + i); S6b.hr.append(120); S6b.pw.append(None); S6b.cad.append(None); S6b.spd.append(None); S6b.dist.append(None); S6b.alt.append(None); S6b.temp.append(None); S6b.target.append(None)
+R6b = serien.raster(S6b, 2)
+check("Serie ohne Tempo: Formatversion unter ver, kein Feld v (v ist der Tempokanal)", R6b.get("ver") == "serie-1.0" and "v" not in R6b and len(R6b["hr"]) == 60, str({k: R6b[k] for k in R6b if k != "hr"}))
+F6 = serien.ermuedung(S6, "rad", 4 * 3600)
+fr_b = [b for b in F6["bl"] if b[1] == 200]
+check("Ermüdungsresistenz: Blöcke bei 200 W früh und spät mit Startminute und Puls", fr_b and fr_b[0][0] < 90 and fr_b[-1][0] >= 150 and fr_b[-1][2] > fr_b[0][2], str(fr_b[:2]))
+# 10 min 200 W / 10 min 250 W im Wechsel → jede 20-min-Spanne 225 W; nach 4 h bleibt keine 20-min-Spanne (Fahrt dauert 4 h)
+check("Ermüdungsresistenz: beste 20 min ab 0/2/3/4/5 h", F6["p20"] == [225, 225, 225, None, None], str(F6["p20"]))
+steps = [{"i": 0, "typ": "einlaufen", "dauer": "zeit", "s": 600}, {"i": 1, "typ": "aktiv", "dauer": "zeit", "s": 300}, {"i": 2, "typ": "erholung", "dauer": "zeit", "s": 120},
+         {"i": 3, "dauer": "wiederholen", "ab": 1, "mal": 3}, {"i": 4, "typ": "auslaufen", "dauer": "zeit", "s": 300}]
+check("Plan: Gesamtdauer mit Wiederholungen (600 + 3 × 420 + 300)", serien.plan_gesamt(steps) == 2160, str(serien.plan_gesamt(steps)))
+swim = [{"i": 0, "typ": "einlaufen", "dauer": "distanz", "m": 200}, {"i": 1, "typ": "aktiv", "dauer": "distanz", "m": 50}, {"i": 2, "typ": "pause", "dauer": "zeit", "s": 15},
+        {"i": 3, "dauer": "wiederholen", "ab": 1, "mal": 4}, {"i": 4, "typ": "auslaufen", "dauer": "offen"}]
+check("Plan: Schwimm-Workout nach Distanz – Plandauer unbekannt statt Teilsumme, Distanz 200 + 4 × 50 m",
+      serien.plan_gesamt(swim) is None and serien.plan_distanz(swim) == 400, f"{serien.plan_gesamt(swim)} {serien.plan_distanz(swim)}")
+FE = 631065600
+W6 = {"name": "Test", "geraet": {"ftp": 324}, "steps": [{"i": 0, "typ": "aktiv", "ziel": "leistung", "lo": 190, "hi": 260, "einheit": "W?", "s": 1200}],
+      "laps": [(1700000000 - FE, 1700000000 - FE + 1200, 1200000, 0)]}
+A6 = serien.abgleich(S6, W6)
+check("Plan: Enduco-Watt ohne Versatz als Watt gelesen (passt zur gefahrenen Leistung)", A6["schritte"][0]["einheit"] == "W" and A6["schritte"][0]["lo"] == 190 and "Watt gelesen" in A6["schritte"][0]["bezug"], str(A6["schritte"][0]))
+check("Plan: Zeit im Zielbereich (10-s-Mittel) nur aus vorhandenen Werten", A6["im_ziel"] == 100, str(A6["im_ziel"]))
+_tmp = tempfile.mkdtemp()
+json.dump({"messages": [{"global_message_number": 26, "fields": [{"definition_number": 8, "raw_value": "Fatmax"}]},
+                        {"global_message_number": 27, "fields": [{"definition_number": 254, "raw_value": 0}, {"definition_number": 1, "raw_value": 0}, {"definition_number": 2, "raw_value": 370000},
+                                                                 {"definition_number": 3, "raw_value": 0}, {"definition_number": 5, "raw_value": 1904}, {"definition_number": 6, "raw_value": 2899}, {"definition_number": 7, "raw_value": 2}]}]},
+          open(os.path.join(_tmp, "m.json"), "w"))
+WG = serien.workout_garmin(os.path.join(_tmp, "m.json"))
+check("Plan aus der Garmin-Verbindung: gleiche Rohwerte wie FIT (Tempo m/s, Dauer s)", WG["name"] == "Fatmax" and WG["steps"][0]["lo"] == 1.904 and WG["steps"][0]["s"] == 370.0, str(WG["steps"][0]))
+# Uhr schreibt in jede Runde den Aktivitätsstart als Zeitstempel → Ende aus Start + verstrichener Zeit (sonst leeres Fenster, kein Abgleich)
+RL = [serien._runde({2: 1000, 253: 1000, 7: 332000, 8: 300000, 71: 0}), serien._runde({2: 1332, 253: 1000, 7: None, 8: 316000, 71: 1}),
+      serien._runde({2: 2000, 253: 2500, 7: 400000, 8: 400000, 71: 2}), serien._runde({2: 3000, 71: 3})]
+check("Plan: Rundenende bei falschem Zeitstempel aus verstrichener Zeit bzw. Timer, gültiger Zeitstempel bleibt", RL == [(1000, 1332, 300000, 0), (1332, 1648, 316000, 1), (2000, 2500, 400000, 2), (3000, None, None, 3)], str(RL))
+W7 = {"name": "Lauf", "geraet": {}, "steps": [{"i": 0, "typ": "aktiv", "ziel": "tempo", "lo": 8.5, "hi": 9.5, "einheit": "m/s", "s": 1200}],
+      "laps": [serien._runde({2: 1700000000 - FE, 253: 1700000000 - FE, 7: 1200000, 8: 1200000, 71: 0})]}
+A7 = serien.abgleich(S6, W7)
+check("Plan: Lauf-Workout mit Tempoziel trotz falschem Runden-Zeitstempel abgeglichen", A7 and A7["schritte"][0]["im_ziel"] == 100 and A7["schritte"][0]["ist_s"] == 1200, str(A7 and A7["schritte"]))
+merge_daily.v5_merge(D, {"rpe_add": [{"id": "a1", "act": "a1", "datum": "2026-01-10", "rpe": 6}], "laktat_punkte_add": [{"id": "lp-a1-600", "act": "a1", "t": 600, "la": 1.8, "status": "vorschau"}]})
+check("Eingaben V5.6: RPE und Laktatpunkte gespeichert (Laktat bleibt Vorschau)", D["rpe"][0]["rpe"] == 6 and D["laktat_punkte"][0]["status"] == "vorschau")
+
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)

@@ -45,7 +45,7 @@ def minutes(hhmm):
     return int(h) * 60 + int(m)
 
 
-FIT_KEYS = ("el", "mv", "st", "nst", "un", "rc", "ac", "us", "hh", "pdc", "t0", "dr", "sp", "eb")
+FIT_KEYS = ("el", "mv", "st", "nst", "un", "rc", "ac", "us", "hh", "pdc", "t0", "dr", "sp", "eb", "ser", "wk", "fr")
 
 
 def load_fit(path):
@@ -119,7 +119,9 @@ def v5_merge(D, N):
     for key, src, idf in (("fueling", "fueling_add", lambda e: e["id"]), ("befinden", "befinden_add", lambda e: e["date"]),
                           ("langfahrt_plaene", "langfahrt_add", lambda e: e["id"]), ("test_entwuerfe", "test_entwurf_add", lambda e: e["id"]),
                           ("koppel", "koppel_set", lambda e: (e["bike"], e["run"])), ("schwimm_analysen", "coach_add", lambda e: e["id"]),
-                          ("pb_offiziell", "pb_add", lambda e: e["id"]), ("css_tests", "css_add", lambda e: e["id"]), ("fehlerboard", "fehler_add", lambda e: e["id"])):
+                          ("pb_offiziell", "pb_add", lambda e: e["id"]), ("css_tests", "css_add", lambda e: e["id"]), ("fehlerboard", "fehler_add", lambda e: e["id"]),
+                          ("rpe", "rpe_add", lambda e: e["id"]), ("intervall_korr", "intervall_add", lambda e: e["id"]),
+                          ("laktat_punkte", "laktat_punkte_add", lambda e: e["id"]), ("saison_plan", "saison_add", lambda e: e["id"])):
         if N.get(src):
             a, b = _upsert(D, key, N[src], idf)
             msg.append(f"{key}: {a} neu, {b} ersetzt")
