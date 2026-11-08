@@ -27,7 +27,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import series  # noqa: E402
 
-VERSION = "kalibrierung-1.0"
+VERSION = "kalibrierung-1.1"     # 1.1: Hold-out-Population (Länge, Hm/km) und Fehler je Steigungsklasse
 G = 9.80665
 RAD_TYPEN = {"rennrad": {"Rennrad", "Radfahren"}, "mtb": {"Mountainbike", "Mountainbiken"}}
 LAUF_TYPEN = {"Laufen", "Run", "Trail Run"}
@@ -302,6 +302,26 @@ def regress_report(items, xk, yk, min_train, min_test, unit_err, err_fn=None):
     return rep
 
 
+def klasse(r):
+    """Steigungsklasse einer Fahrt nach Höhenmetern je km (kalibrierung-1.1)."""
+    hk = r["up"] / r["km"] if r.get("km") else 0.0
+    return "flach" if hk < 8 else "wellig" if hk < 20 else "bergig"
+
+
+def population(te, rel):
+    """In welcher Population wurde der Fehler geprüft? Länge und Hm/km der Hold-out-Fahrten, Fehler je Steigungsklasse."""
+    if not te or "km" not in te[0]:
+        return {}
+    km = [r["km"] for r in te]
+    hk = [r["up"] / r["km"] for r in te if r["km"]]
+    out = {"km": [round(float(np.percentile(km, 10)), 1), round(float(np.percentile(km, 90)), 1)], "km_min": round(min(km), 1),
+           "hm_km": [round(float(np.percentile(hk, 10)), 1), round(float(np.percentile(hk, 90)), 1)], "klassen": {}}
+    for k in ("flach", "wellig", "bergig"):
+        e = [x for r, x in zip(te, rel) if klasse(r) == k]
+        out["klassen"][k] = {"n": len(e), "mae_rel": float(np.mean(e)) if e else None, "p80_rel": float(np.percentile(e, 80)) if len(e) >= 5 else None}
+    return out
+
+
 def ratio_report(rows, pred_key, act_key, min_train=8, min_test=4, base_key=None):
     """Faktor = Median(Vorhersage/Ist) im Training; Fehler im Hold-out relativ zur Ist-Zeit."""
     tr, te = split_by_date(rows)
@@ -314,7 +334,7 @@ def ratio_report(rows, pred_key, act_key, min_train=8, min_test=4, base_key=None
     rel_raw = [abs(r[pred_key] - r[act_key]) / r[act_key] for r in te]
     bias = float(np.median([(r[pred_key] / f - r[act_key]) / r[act_key] for r in te]))
     rep.update(ok=True, faktor=f, mae_rel=float(np.mean(rel)), mae_rel_ohne_faktor=float(np.mean(rel_raw)), bias_rel=bias,
-               p80_rel=float(np.percentile(rel, 80)), von=min(r["date"] for r in te), bis=max(r["date"] for r in te))
+               p80_rel=float(np.percentile(rel, 80)), von=min(r["date"] for r in te), bis=max(r["date"] for r in te), population=population(te, rel))
     if base_key:
         rep["mae_rel_faustregel"] = float(np.mean([abs(r[base_key] - r[act_key]) / r[act_key] for r in te]))
     rec = recent(rows, 3 * 365)

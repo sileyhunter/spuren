@@ -271,3 +271,61 @@ test("Gezeichnete Linie (Skitour) ist als solche markiert", () => {
   near(s.moving_s, 600 / 400 * 3600, 600 / 400 * 3600 * 0.25, "Aufstieg aus Hm/h");
   assert.ok(/gezeichnet/.test(RT.gpx(r, "Skitour")));
 });
+
+/* ---------- V5.5 ---------- */
+test("A09: 20 min Pause am Zwischenziel verschiebt Ankunft und Wetterzeitpunkt nach dem Punkt um 20 min", () => {
+  const r = synthRoute(() => 450, 20000, "rennrad", 90);
+  const viaD = 10000, pausen = [{ d: viaD, s: 1200 }], t0 = 1762600000;
+  const asked = [];
+  const field = (dd, unix, head) => { asked.push({ dd, unix }); return { temp: 15, regen: 0, speed: 0, dirFrom: 0, along: 0, cross: 0 }; };
+  const ohne = RT.etaWithWeather(r, { mode: "watt", value: 200, start_unix: t0 }, field);
+  const n0 = asked.length;
+  const mit = RT.etaWithWeather(r, { mode: "watt", value: 200, start_unix: t0, pausen }, field);
+  near(mit.moving_s, ohne.moving_s, 1, "Bewegungszeit bleibt gleich");
+  const P = r.profile, k = P.d.findIndex((x) => x > viaD + 50), kv = P.d.findIndex((x) => x >= viaD - 50);
+  near(RT.clockAt(r, mit, t0, pausen, k) - RT.clockAt(r, ohne, t0, [], k), 1200, 1, "nach dem Punkt +20 min");
+  near(RT.clockAt(r, mit, t0, pausen, kv - 2) - RT.clockAt(r, ohne, t0, [], kv - 2), 0, 1, "vor dem Punkt unverändert");
+  near(RT.clockAt(r, mit, t0, pausen, P.n) - t0, ohne.moving_s + 1200, 1, "Ankunft am Ziel +20 min");
+  const second = asked.slice(n0), late = second.filter((q) => q.dd > viaD + 50), early = second.filter((q) => q.dd < viaD - 50);
+  const firstPass = asked.slice(0, n0);
+  const byD = (L, dd) => L.find((q) => Math.abs(q.dd - dd) < 15);
+  const a = byD(firstPass.slice(-P.n), late[late.length - 1].dd), b = byD(second.slice(-P.n), late[late.length - 1].dd);
+  near(b.unix - a.unix, 1200, 2, "Wetter nach dem Zwischenziel 20 min später abgefragt");
+  const c = byD(firstPass.slice(-P.n), early[5].dd), e = byD(second.slice(-P.n), early[5].dd);
+  near(e.unix - c.unix, 0, 2, "Wetter davor unverändert");
+  assert.equal(RT.pausenSumme(pausen), 1200);
+});
+test("A09: Windpfeile zeigen, wohin der Wind weht (Herkunft + 180°)", () => {
+  const pts = [{ d: 0, lon: 8.5, lat: 47 }, { d: 5000, lon: 8.56, lat: 47 }];
+  const A = RT.windArrows(pts, (dd) => ({ speed: 5, dirFrom: dd ? 225 : 270 }), () => 0);
+  assert.deepEqual(A.map((a) => [a.dirFrom, a.rot, a.aus]), [[270, 90, "W"], [225, 45, "SW"]]);
+  const r = synthRoute(() => 450, 2500, "rennrad", 90), W = RT.windPositions(r);
+  assert.equal(W.length, 3, "kurze Route: trotzdem 3 Pfeile"); assert.ok(W.every((w) => w.d > 0 && w.d < r.L), "nie auf Start/Ziel");
+  assert.equal(RT.windPositions(synthRoute(() => 450, 200000, "rennrad", 90)).length, 12, "lange Route: höchstens 12");
+});
+test("A08: Varianten nur über das erlaubte Rennradprofil; Fazit «keine ruhigere legale Asphaltalternative» oder Alternative", () => {
+  const e = RT.engineVariant("rennrad", {}, "ruhig");
+  assert.equal(e.engine, "fastbike"); assert.equal(e.params.consider_traffic, "1"); assert.equal(e.params.processUnusedTags, "1");
+  assert.match(RT.brouterUrl("https://x", e, [8.5, 47], [8.6, 47]), /profile:consider_traffic=1/);
+  const row = (k, label, L, haupt, unbef) => ({ k, label, share: { L, haupt_m: haupt, haupt_pct: 100 * haupt / L, unbef_m: unbef || 0 } });
+  const keine = RT.variantFazit([row("schnell", "Schnell", 12000, 7650), row("weniger", "Weniger Verkehr", 12100, 7400), row("ruhig", "Ruhig", 12300, 7200)]);
+  assert.equal(keine.status, "keine"); assert.match(keine.text, /Keine ruhigere legale Asphaltalternative gefunden: 3 Varianten geprüft, Hauptstrasse Schnell 64 %/);
+  const alt = RT.variantFazit([row("schnell", "Schnell", 12000, 7650), row("ruhig", "Ruhig", 13500, 1500)]);
+  assert.equal(alt.status, "alternative"); assert.equal(alt.k, "ruhig");
+  const schotter = RT.variantFazit([row("schnell", "Schnell", 12000, 7650), row("ruhig", "Ruhig", 12500, 1500, 3000)]);
+  assert.equal(schotter.status, "keine", "Umweg über Schotter ist keine Asphaltalternative");
+  const ruhig = RT.variantFazit([row("schnell", "Schnell", 2540, 0), row("ruhig", "Ruhig", 2540, 0)]);
+  assert.equal(ruhig.status, "ruhig"); assert.match(ruhig.text, /kaum Hauptstrassen \(0 %\), keine Alternative nötig/);
+  const r = load("brouter_dreieich_rennrad_hin.json"), w = RT.wayShare(r);
+  near(Object.values(w.m).reduce((s, v) => s + v, 0), r.L, 1, "Wegarten decken die ganze Route ab");
+});
+test("Fehlerband nach Population: Bergstrecke nicht mit dem Band beliebiger Fahrten (zeit-rt-1.1)", () => {
+  const berg = synthRoute((d) => 600 + d * 0.035, 12000, "rennrad", 0), flach = synthRoute(() => 450, 60000, "rennrad", 90);
+  const kal = { rad_modell: { rennrad: { ok: true, n_test: 31, mae_rel: 0.06, p80_rel: 0.09, population: { km: [45, 160], km_min: 38, hm_km: [5, 18],
+    klassen: { flach: { n: 14, mae_rel: 0.05, p80_rel: 0.07 }, wellig: { n: 13, mae_rel: 0.06, p80_rel: 0.1 }, bergig: { n: 4, mae_rel: 0.09, p80_rel: null } } } } } };
+  assert.equal(RT.klasse(berg), "bergig"); assert.equal(RT.klasse(flach), "flach");
+  const eb = RT.modelError("rennrad", { kal }, berg), ef = RT.modelError("rennrad", { kal }, flach);
+  assert.equal(ef.rel, 0.07); assert.match(ef.quelle, /14 Fahrten der Klasse «flach», 80. Perzentil/);
+  assert.ok(eb.rel >= 0.15, "Bergstrecke: konservativ"); assert.match(eb.quelle, /nur 4 geprüfte Fahrten der Klasse «bergig»/);
+  assert.match(eb.ausserhalb.join(" "), /kürzer als jede geprüfte Fahrt/);
+});

@@ -14,7 +14,7 @@
 })(typeof self !== "undefined" ? self : this, function (FK) {
   "use strict";
   const RT = {};
-  RT.VERSIONS = { route: "route-1.0", hoehe: "hoehe-1.0", anstiege: "anstiege-1.0", zeit: "zeit-rt-1.0", wetter: "wetter-rt-1.0" };
+  RT.VERSIONS = { route: "route-1.0", hoehe: "hoehe-1.0", anstiege: "anstiege-1.0", zeit: "zeit-rt-1.1", wetter: "wetter-rt-1.1", varianten: "varianten-1.0" };
   const isNum = (v) => typeof v === "number" && isFinite(v);
   const R_EARTH = 6371008.8, RAD = Math.PI / 180;
 
@@ -65,6 +65,35 @@
     }
     params.processUnusedTags = "1";          // alle bekannten OSM-Merkmale melden (Belag, Wegart, Zugang), Route bleibt gleich
     return { engine, params };
+  };
+
+  /** Varianten für den Vergleich (varianten-1.0): gleiches, für Velos erlaubtes Profil, nur Verkehr anders gewichtet.
+   *  Schnell = Standard (consider_traffic 0,1), Weniger Verkehr 0,5, Ruhig 1. Asphalt bevorzugt das Rennradprofil in allen dreien. */
+  RT.VARIANTEN = {
+    rennrad: [{ k: "schnell", label: "Schnell", params: { consider_traffic: "0.1" } }, { k: "weniger", label: "Weniger Verkehr", params: { consider_traffic: "0.5" } },
+      { k: "ruhig", label: "Ruhig", params: { consider_traffic: "1" } }],
+  };
+  RT.engineVariant = function (sport, opts, k) {
+    const e = RT.engineFor(sport, opts), v = (RT.VARIANTEN[sport] || []).find((x) => x.k === k);
+    return e && v ? { engine: e.engine, params: Object.assign({}, e.params, v.params) } : e;
+  };
+  /** Anteile der Wegarten (m und %) einer Route; Hauptstrasse = trunk/primary laut OSM. */
+  RT.wayShare = function (route) {
+    const m = {}; for (const s of route.segs || []) m[s.way] = (m[s.way] || 0) + (s.d1 - s.d0);
+    const L = route.L || 1, haupt = m.hauptstrasse || 0, unbef = (route.segs || []).filter((s) => /kies|natur|unbefestigt/.test(s.surface)).reduce((x, s) => x + s.d1 - s.d0, 0);
+    return { m, haupt_m: haupt, haupt_pct: (100 * haupt) / L, unbef_m: unbef, L };
+  };
+  /** Ergebnis des Variantenvergleichs: Gibt es eine legale, deutlich ruhigere Asphaltalternative? */
+  RT.variantFazit = function (rows, opt) {
+    opt = Object.assign({ minDiffPct: 10, maxUmweg: 0.25 }, opt || {});
+    const ok = rows.filter((r) => r.share), base = ok.find((r) => r.k === "schnell") || ok[0];
+    if (!base) return { status: "offen", text: "Keine Variante berechnet." };
+    const liste = ok.map((r) => `${r.label} ${Math.round(r.share.haupt_pct)} %`).join(", ");
+    if (base.share.haupt_pct < opt.minDiffPct) return { status: "ruhig", text: `Route nutzt kaum Hauptstrassen (${Math.round(base.share.haupt_pct)} %), keine Alternative nötig. Geprüft: ${liste}.` };
+    const better = ok.filter((r) => r !== base && base.share.haupt_pct - r.share.haupt_pct >= opt.minDiffPct && r.share.L <= base.share.L * (1 + opt.maxUmweg) && r.share.unbef_m <= base.share.unbef_m + 200);
+    if (!better.length) return { status: "keine", text: `Keine ruhigere legale Asphaltalternative gefunden: ${ok.length} Varianten geprüft, Hauptstrasse ${liste}.` };
+    const b = better.sort((x, y) => x.share.haupt_pct - y.share.haupt_pct)[0];
+    return { status: "alternative", k: b.k, text: `«${b.label}» hat ${Math.round(b.share.haupt_pct)} % statt ${Math.round(base.share.haupt_pct)} % Hauptstrasse (${(b.share.L / 1000).toFixed(1)} statt ${(base.share.L / 1000).toFixed(1)} km).` };
   };
 
   /* ---------------- Routing-Dienst (BRouter) ---------------- */
@@ -634,7 +663,7 @@
     const base = RT.simulate(route, inp);
     if (base.unzureichend) return base;
     const S = RT.SPORTS[route.sport] || RT.SPORTS.rennrad, scen = [];
-    const err = RT.modelError(route.sport, inp);
+    const err = RT.modelError(route.sport, inp, route);
     const variants = [];
     if (S.art === "rad") {
       const dP = inp.mode === "hf" ? (inp.kal.rad_hf_w.mae || 10) : 0;
@@ -650,11 +679,28 @@
     base.fehler = err;
     return base;
   };
-  /** Modellfehler je Sportart: aus Kalibrierung (Hold-out), sonst konservative Annahme. */
-  RT.modelError = function (sport, inp) {
+  /** Steigungsklasse einer Route nach Hm je km (wie tools/kalibrierung.py, kalibrierung-1.1). */
+  RT.klasse = (route) => { const hk = route && route.L ? route.profile.up / (route.L / 1000) : 0; return hk < 8 ? "flach" : hk < 20 ? "wellig" : "bergig"; };
+  /** Modellfehler je Sportart: aus Kalibrierung (Hold-out), sonst konservative Annahme. Rad (zeit-rt-1.1): Band aus dem
+   *  80. Perzentil der Hold-out-Fahrten derselben Steigungsklasse; liegt die Route ausserhalb der geprüften Population
+   *  (kürzer, steiler, flacher) oder hat die Klasse zu wenige Fahrten, wird das Band konservativ erweitert und so beschriftet. */
+  RT.modelError = function (sport, inp, route) {
     const k = inp.kal || {};
     const pick = (o, def, txt) => (o && o.ok && isNum(o.mae_rel) ? { rel: o.mae_rel, quelle: `Hold-out ${o.n_test} Einheiten`, text: txt } : { rel: def, quelle: "Annahme (nicht validiert)", text: txt });
-    if (sport === "rennrad" || sport === "gravel" || sport === "mtb") return pick(k.rad_modell && k.rad_modell[sport === "rennrad" ? "rennrad" : "mtb"], 0.1, "Rad-Physik gegen echte Fahrten");
+    if (sport === "rennrad" || sport === "gravel" || sport === "mtb") {
+      const o = k.rad_modell && k.rad_modell[sport === "rennrad" ? "rennrad" : "mtb"];
+      const base = pick(o, 0.1, "Rad-Physik gegen echte Fahrten");
+      const pop = o && o.ok && o.population;
+      if (!route || !pop || !pop.klassen) return base;
+      const kl = RT.klasse(route), c = pop.klassen[kl] || {}, km = route.L / 1000, hk = route.profile.up / km, out = [];
+      if (km < pop.km_min) out.push(`kürzer als jede geprüfte Fahrt (ab ${Math.round(pop.km_min)} km)`);
+      if (hk > pop.hm_km[1] * 1.25) out.push(`steiler als 90 % der geprüften Fahrten (${Math.round(hk)} statt bis ${Math.round(pop.hm_km[1])} Hm/km)`);
+      if (c.n >= 5 && isNum(c.p80_rel)) {
+        const rel = out.length ? Math.max(c.p80_rel, 0.15) : c.p80_rel;
+        return { rel, klasse: kl, n_klasse: c.n, ausserhalb: out, quelle: `Hold-out ${c.n} Fahrten der Klasse «${kl}», 80. Perzentil${out.length ? "; Route ausserhalb der geprüften Fahrten (" + out.join(", ") + "), daher mindestens ±15 %" : ""}`, text: base.text };
+      }
+      return { rel: Math.max(base.rel * 1.5, 0.15), klasse: kl, n_klasse: c.n || 0, ausserhalb: out, quelle: `nur ${c.n || 0} geprüfte Fahrten der Klasse «${kl}»: Band konservativ (Annahme, nicht validiert)${out.length ? "; " + out.join(", ") : ""}`, text: base.text };
+    }
     if (sport === "laufen" || sport === "trail") return pick(k.lauf_gap, sport === "trail" ? 0.15 : 0.08, "Lauf-Modell gegen echte Läufe");
     if (sport === "wandern") return pick(k.wandern_tobler, 0.15, "Tobler × persönlicher Faktor gegen echte Wanderungen");
     return pick(k.skitour_hf_vam, 0.2, "Skitour-Aufstieg");
@@ -719,17 +765,37 @@
     field.quality = pts.map((p, i) => ({ d: p.d, ele: p.ele, gridEle: series[i].gridEle, diff: isNum(series[i].gridEle) ? series[i].gridEle - p.ele : null }));
     return field;
   };
+  /** Windpfeile für die Karte: an den Wetterstützpunkten zur Durchfahrtszeit; Pfeil zeigt, WOHIN der Wind weht (Herkunft + 180°). */
+  RT.windArrows = function (pts, field, timeAt) {
+    const dirs = ["N", "NO", "O", "SO", "S", "SW", "W", "NW"], out = [];
+    for (const p of pts || []) {
+      const w = field(p.d, timeAt(p.d));
+      if (!w || !isNum(w.speed) || !isNum(w.dirFrom)) continue;
+      out.push({ lon: p.lon, lat: p.lat, d: p.d, speed: w.speed, dirFrom: w.dirFrom, rot: (w.dirFrom + 180) % 360, aus: dirs[Math.round(w.dirFrom / 45) % 8] });
+    }
+    return out;
+  };
+  /** Orte für Windpfeile: gleichmässig entlang der Route, nie auf Start/Ziel (dort liegen die Marker); 1 Pfeil je ~step_m, 3–12. */
+  RT.windPositions = function (route, step_m) {
+    const n = Math.max(3, Math.min(12, Math.round(route.L / (step_m || 4000))));
+    return Array.from({ length: n }, (_, i) => { const dd = route.L * (i + 0.5) / n, a = RT.at(route, dd); return { d: dd, lon: a.lon, lat: a.lat }; });
+  };
   /** Rückenwindkomponente (m/s, positiv = Rückenwind) aus meteorologischer Richtung (woher) und Fahrtrichtung. */
   RT.windAlong = function (speed, dirFromDeg, headingDeg) { return speed * Math.cos(((dirFromDeg + 180) - headingDeg) * RAD); };
 
-  /** Simulation mit Wetter: Zeit ↔ Wetter iterativ (Wetter am Ort zur geschätzten Durchfahrtszeit). */
+  /** Pausen an Wegpunkten (zeit-rt-1.1): [{d, s}] → Sekunden, die vor der Distanz dd schon pausiert wurden. */
+  RT.pauseBefore = function (pausen, dd) { let s = 0; for (const p of pausen || []) if (isNum(p.d) && isNum(p.s) && p.s > 0 && p.d <= dd) s += p.s; return s; };
+  RT.pausenSumme = (pausen) => (pausen || []).reduce((s, p) => s + (isNum(p.s) && p.s > 0 ? p.s : 0), 0);
+  /** Uhrzeit (Unix) an Profilindex k: Start + Bewegungszeit + Pausen an Wegpunkten davor. */
+  RT.clockAt = function (route, sim, start_unix, pausen, k) { const P = route.profile; return start_unix + sim.t[k] + RT.pauseBefore(pausen, P.d[k]); };
+  /** Simulation mit Wetter: Zeit ↔ Wetter iterativ (Wetter am Ort zur geschätzten Durchfahrtszeit, Pausen an Wegpunkten eingerechnet). */
   RT.etaWithWeather = function (route, inp, field) {
     const P = route.profile;
     let res = RT.eta(route, inp);
     if (!field || res.unzureichend) return res;
     for (let it = 0; it < 3; it++) {
       const tPrev = res.t;
-      const wx = (k, tk) => field((P.d[k] + P.d[k + 1]) / 2, inp.start_unix + (tPrev ? tPrev[k] : tk), P.head[k]);
+      const wx = (k, tk) => field((P.d[k] + P.d[k + 1]) / 2, inp.start_unix + (tPrev ? tPrev[k] : tk) + RT.pauseBefore(inp.pausen, P.d[k]), P.head[k]);
       const next = RT.eta(route, { ...inp, wetter: wx });
       const diff = Math.abs(next.moving_s - res.moving_s);
       res = next;

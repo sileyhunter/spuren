@@ -59,7 +59,12 @@
     tempo: { label: "Tempo", cats: () => defFrom(speedBins()) },
   };
   const speedBins = () => (sportDef().art === "rad" ? SPEED_RAD : ST.sport === "laufen" || ST.sport === "trail" ? SPEED_FUSS : SPEED_GEH);
-  const wxAt = (k) => { if (!field || !sim || sim.unzureichend) return null; const P = route.profile; return field((P.d[k] + P.d[k + 1]) / 2, ST.startUnix + sim.t[k], P.head[k]); };
+  const wxAt = (k) => { if (!field || !sim || sim.unzureichend) return null; const P = route.profile; return field((P.d[k] + P.d[k + 1]) / 2, ST.startUnix + sim.t[k] + RT.pauseBefore(pausenList(), P.d[k]), P.head[k]); };
+  /** Pausen an Zwischenzielen (Minuten je Wegpunkt) → [{d, s}] entlang der Route (V5.5, zeit-rt-1.1). */
+  function pausenList() {
+    if (!route || !route.vias) return [];
+    return route.vias.map((v, i) => ({ d: v.d, s: ((ST.pausen || [])[i] || 0) * 60, i })).filter((p) => p.i > 0 && p.i < route.vias.length - 1 && p.s > 0);
+  }
   function catOfStep(tab) {
     const P = route.profile;
     if (tab === "hoehe") return (k) => RT.gradeBin(P.grade[k]);
@@ -98,6 +103,9 @@
         </div>
         <div class="rp-status" id="rp-status" role="status" aria-live="polite"></div>
         <div class="rp-kpis" id="rp-kpis"></div>
+        <div class="row rp-when" id="rp-when" hidden></div>
+        <div class="rp-var" id="rp-var" hidden></div>
+        <div class="rp-winter" id="rp-winter" hidden></div>
         <div class="rp-ana" id="rp-ana" hidden>
           <div class="rp-tabs" id="rp-tabs" role="tablist" aria-label="Analyse"></div>
           <div class="rp-chart" id="rp-chart" tabindex="0" role="slider" aria-label="Höhenprofil: Position auf der Route (Pfeiltasten)" aria-valuemin="0">
@@ -168,11 +176,17 @@
     map.addSource("rt", { type: "geojson", data: E, lineMetrics: false });
     map.addSource("rt-draft", { type: "geojson", data: E });
     map.addSource("rt-cur", { type: "geojson", data: E });
+    map.addSource("rt-wind", { type: "geojson", data: E });
     // Richtungspfeile als kleines Bild (keine Schrift nötig)
     const cv = document.createElement("canvas"); cv.width = cv.height = 24;
     const g = cv.getContext("2d"); g.fillStyle = "#ffffff"; g.strokeStyle = "rgba(31,51,71,.85)"; g.lineWidth = 2;
     g.beginPath(); g.moveTo(5, 5); g.lineTo(19, 12); g.lineTo(5, 19); g.lineTo(9, 12); g.closePath(); g.stroke(); g.fill();
     map.addImage("rt-arrow", { width: 24, height: 24, data: g.getImageData(0, 0, 24, 24).data }, { pixelRatio: 2 });
+    // Windpfeil: zeigt nach oben (Norden) und wird um die Richtung gedreht, WOHIN der Wind weht
+    const wv = document.createElement("canvas"); wv.width = wv.height = 48;
+    const wg = wv.getContext("2d"); wg.fillStyle = "#1f4e79"; wg.strokeStyle = "#ffffff"; wg.lineWidth = 3; wg.lineJoin = "round";
+    wg.beginPath(); wg.moveTo(24, 4); wg.lineTo(38, 22); wg.lineTo(29, 22); wg.lineTo(29, 44); wg.lineTo(19, 44); wg.lineTo(19, 22); wg.lineTo(10, 22); wg.closePath(); wg.stroke(); wg.fill();
+    map.addImage("rt-wind", { width: 48, height: 48, data: wg.getImageData(0, 0, 48, 48).data }, { pixelRatio: 2 });
     const lay = { "line-join": "round", "line-cap": "round" };
     map.addLayer({ id: "rt-draft", type: "line", source: "rt-draft", layout: lay, paint: { "line-color": "#d9694a", "line-width": 3, "line-dasharray": [1.5, 1.5] } });
     map.addLayer({ id: "rt-case", type: "line", source: "rt", layout: lay, paint: { "line-color": "#ffffff", "line-width": 9, "line-opacity": 0.95 } });
@@ -180,6 +194,9 @@
     map.addLayer({ id: "rt-line", type: "line", source: "rt", layout: lay,
       paint: { "line-color": ["get", "color"], "line-width": ["case", ["==", ["get", "sel"], 1], 6.5, 5], "line-opacity": ["case", ["==", ["get", "dim"], 1], 0.28, 1] } });
     map.addLayer({ id: "rt-arrows", type: "symbol", source: "rt", layout: { "symbol-placement": "line", "symbol-spacing": 90, "icon-image": "rt-arrow", "icon-size": 0.9, "icon-allow-overlap": true, "icon-ignore-placement": true } });
+    // Nur Bild, keine Schrift: der Kartenstil hat keine Glyphen (eine Textebene würde von MapLibre verworfen)
+    map.addLayer({ id: "rt-wind", type: "symbol", source: "rt-wind", layout: { "icon-image": "rt-wind", "icon-rotate": ["get", "rot"], "icon-rotation-alignment": "map",
+      "icon-size": ["interpolate", ["linear"], ["get", "kmh"], 0, 0.55, 30, 1.1], "icon-allow-overlap": true, "icon-ignore-placement": true } });
     map.addLayer({ id: "rt-hit", type: "line", source: "rt", layout: lay, paint: { "line-color": "#000", "line-width": 26, "line-opacity": 0.001 } });
     map.addLayer({ id: "rt-cur-halo", type: "circle", source: "rt-cur", paint: { "circle-radius": 16, "circle-color": "#d9694a", "circle-opacity": 0.18 } });
     map.addLayer({ id: "rt-cur", type: "circle", source: "rt-cur", paint: { "circle-radius": 8, "circle-color": "#ffffff", "circle-stroke-color": "#d9694a", "circle-stroke-width": 4 } });
@@ -199,6 +216,12 @@
     renderMap();
   }
 
+  /** Windpfeile entlang der Route zur geschätzten Durchfahrtszeit (Pausen an Wegpunkten eingerechnet). */
+  function windArrowsNow() {
+    if (!route || !field || !wpts || !sim || sim.unzureichend) return [];
+    const P = route.profile, pl = pausenList(), tAt = (dd) => { const k = Math.min(P.n, Math.round(dd / P.step)); return ST.startUnix + sim.t[k] + RT.pauseBefore(pl, dd); };
+    return RT.windArrows(RT.windPositions(route), field, tAt);
+  }
   function renderMap() {
     if (!map || !map.getSource("rt")) return;
     const feats = [];
@@ -212,6 +235,9 @@
       }
     }
     map.getSource("rt").setData({ type: "FeatureCollection", features: feats });
+    // Windpfeile nur in der Wind-Ansicht und mit Prognose: Herkunft (meteorologisch) im Text, Pfeil = Richtung des Windvektors
+    const wf = ST.activeAnalysisTab === "wind" ? windArrowsNow().map((a) => ({ type: "Feature", properties: { rot: a.rot, kmh: a.speed * 3.6 }, geometry: { type: "Point", coordinates: [a.lon, a.lat] } })) : [];
+    if (map.getSource("rt-wind")) map.getSource("rt-wind").setData({ type: "FeatureCollection", features: wf });
     const draft = !route && ST.vias.length > 1 && (drawn() || ST.error) ? ST.vias : null;
     map.getSource("rt-draft").setData(draft && drawn() ? { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: draft } } : { type: "FeatureCollection", features: [] });
     renderMarkers();
@@ -287,7 +313,7 @@
     if (drawn()) { await buildDrawnRoute(my); return; }
     const c = consent();
     if (!c.routing) { ST.busy = false; showConsent(); renderAll(); return; }
-    const eng = RT.engineFor(ST.sport, ST.opts);
+    const eng = ST.variant && RT.VARIANTEN[ST.sport] ? RT.engineVariant(ST.sport, ST.opts, ST.variant) : RT.engineFor(ST.sport, ST.opts);
     const ep = S.get("endpoint", RT.ENDPOINT);
     ST.busy = true; renderStatus(`Route wird berechnet … (${ST.vias.length - 1} Abschnitt${ST.vias.length > 2 ? "e" : ""}, ${esc(sportDef().label)})`);
     const legs = Array.from({ length: ST.vias.length - 1 }, () => null);
@@ -355,7 +381,7 @@
     const rider = isNum(rad.fahrer) ? rad.fahrer : (w.length ? w[w.length - 1].kg : 75);
     const bikeKg = isNum(rad["kg_" + sportDef().rad]) ? rad["kg_" + sportDef().rad] : B.kg;
     const cda = isNum(rad["cda_" + sportDef().rad]) ? rad["cda_" + sportDef().rad] : B.cda;
-    return { mode: ST.effortMode, value: ST.effortValue, kal: kal(), start_unix: ST.startUnix, rad: { m: rider + bikeKg, cda, rider, bikeKg }, korrektur: S.get("korrektur", true) };
+    return { mode: ST.effortMode, value: ST.effortValue, kal: kal(), start_unix: ST.startUnix, rad: { m: rider + bikeKg, cda, rider, bikeKg }, korrektur: S.get("korrektur", true), pausen: pausenList() };
   }
   function buildPieces() {
     const tab = ST.activeAnalysisTab;
@@ -464,8 +490,11 @@
   function drawChart() {
     const svg = $("rp-svg"), box = $("rp-chart");
     if (!svg || !route || box.offsetParent === null) return;
+    const ov = overlaySeries();
+    box.classList.toggle("with-ov", !!ov);
     const W = Math.max(240, box.clientWidth), H = box.clientHeight || 190;
-    const pl = 40, pr = 10, pt = 14, pb = 22, w = W - pl - pr, h = H - pt - pb;
+    const ovH = ov ? 62 : 0, gap = ov ? 20 : 0;            // eigener Streifen unter dem Höhenprofil, gleiche km-Achse
+    const pl = 40, pr = 10, pt = 14, pb = 22, w = W - pl - pr, h = H - pt - pb - ovH - gap;
     const P = route.profile, L = route.L;
     let e0 = P.min, e1 = P.max;
     const pad = Math.max(10, (e1 - e0) * 0.12); e0 = Math.floor((e0 - pad) / 10) * 10; e1 = Math.ceil((e1 + pad) / 10) * 10;
@@ -497,17 +526,20 @@
     }
     s += `<path d="${line(0, L)}" class="el"/>`;
     for (const p of pieces) if (ST.selectedSegmentIds.has(p.id)) s += `<path d="${line(p.d0, p.d1)}" class="sel"/><line x1="${X(p.d0).toFixed(1)}" x2="${X(p.d0).toFixed(1)}" y1="${pt}" y2="${pt + h}" class="selb"/><line x1="${X(p.d1).toFixed(1)}" x2="${X(p.d1).toFixed(1)}" y1="${pt}" y2="${pt + h}" class="selb"/>`;
-    // Wetter-/Tempokurve über dem Profil
-    const ov = overlaySeries();
+    // Wetter bzw. Tempo im eigenen Streifen mit eigener Skala (nie über der Höhenachse)
     if (ov) {
-      const v0 = ov.min, v1 = ov.max === ov.min ? ov.min + 1 : ov.max, Yo = (v) => pt + 4 + (1 - (v - v0) / (v1 - v0)) * (h * 0.42);
-      if (ov.bars) for (const b of ov.pts) s += `<rect x="${X(b[0]).toFixed(1)}" y="${Yo(Math.max(0, b[1])).toFixed(1)}" width="${Math.max(1, (X(b[2]) - X(b[0]))).toFixed(1)}" height="${Math.abs(Yo(b[1]) - Yo(0)).toFixed(1)}" fill="${b[3] || "#4a7fc1"}" opacity=".85"/>`;
-      else s += `<path d="${ov.pts.map((q, i) => `${i ? "L" : "M"}${X(q[0]).toFixed(1)},${Yo(q[1]).toFixed(1)}`).join(" ")}" class="ov"/>`;
-      s += `<text x="${pl + 4}" y="${pt + h - 6}" class="ova">${esc(ov.label)}</text>`;
+      const o0 = pt + h + gap, v0 = ov.min, v1 = ov.max === ov.min ? ov.min + 1 : ov.max, Yo = (v) => o0 + (1 - (v - v0) / (v1 - v0)) * ovH;
+      s += `<rect x="${pl}" y="${o0}" width="${w}" height="${ovH}" class="ovbg"/><text x="${pl}" y="${o0 - 5}" class="ova">${esc(ov.label)}</text>`;
+      if (ov.trocken) s += `<text x="${pl + w / 2}" y="${o0 + ovH / 2 + 4}" class="ovt">trocken – 0 mm/h entlang der Route (Prognose)</text>`;
+      else {
+        for (const v of ov.ticks || niceTicks(v0, v1, 2)) s += `<line x1="${pl}" x2="${pl + w}" y1="${Yo(v).toFixed(1)}" y2="${Yo(v).toFixed(1)}" class="${v === 0 ? "g0" : "g"}"/><text x="${pl - 6}" y="${(Yo(v) + 3.5).toFixed(1)}" class="ya">${fmt(v)}</text>`;
+        if (ov.bars) for (const b of ov.pts) s += `<rect x="${X(b[0]).toFixed(1)}" y="${Yo(Math.max(0, b[1])).toFixed(1)}" width="${Math.max(1, (X(b[2]) - X(b[0]))).toFixed(1)}" height="${Math.abs(Yo(b[1]) - Yo(0)).toFixed(1)}" fill="${b[3] || "#4a7fc1"}" opacity=".85"/>`;
+        else s += `<path d="${ov.pts.map((q, i) => `${i ? "L" : "M"}${X(q[0]).toFixed(1)},${Yo(q[1]).toFixed(1)}`).join(" ")}" class="ov"/>`;
+      }
     }
     // Zwischenziele
     route.vias.forEach((v, i) => { const x = X(v.d); s += `<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${pt}" y2="${pt + h}" class="via"/><circle cx="${x.toFixed(1)}" cy="${pt + h}" r="7" class="viac"/><text x="${x.toFixed(1)}" y="${(pt + h + 3.5).toFixed(1)}" class="vial">${viaLabel(i, route.vias.length)}</text>`; });
-    s += `<g id="rp-cur" class="cur" visibility="hidden"><line y1="${pt}" y2="${pt + h}"/><circle r="5"/></g>`;
+    s += `<g id="rp-cur" class="cur" visibility="hidden"><line y1="${pt}" y2="${pt + h + gap + ovH}"/><circle r="5"/></g>`;
     svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("width", W); svg.setAttribute("height", H);
     svg.innerHTML = s;
     box.setAttribute("aria-valuemax", String(Math.round(L)));
@@ -520,7 +552,7 @@
     if (tab === "tempo") {
       for (let i = 0; i < N; i++) { const k = Math.floor(i * step); out.push([P.d[k], sportDef().art === "rad" || ST.sport === "wandern" || ST.sport === "skitour" ? sim.v[k] * 3.6 : sim.v[k] * 3.6]); }
       const vs = out.map((q) => q[1]).filter(isNum);
-      return vs.length ? { pts: out.filter((q) => isNum(q[1])), min: 0, max: Math.max(...vs) * 1.05, label: "Tempo km/h (Linie)" } : null;
+      return vs.length ? { pts: out.filter((q) => isNum(q[1])), min: 0, max: Math.max(...vs) * 1.05, label: "Tempo (km/h)" } : null;
     }
     if (!field || !TABS[tab].wetter) return null;
     for (let i = 0; i < N; i++) {
@@ -531,10 +563,10 @@
     }
     if (!out.length) return null;
     const vs = out.map((q) => q[1]);
-    if (tab === "temp") return { pts: out, min: Math.min(...vs) - 1, max: Math.max(...vs) + 1, label: "Temperatur °C (Linie)" };
-    if (tab === "regen") return { pts: out, bars: true, min: 0, max: Math.max(1, ...vs), label: "Niederschlag mm/h (Balken)" };
-    const m = Math.max(5, ...vs.map(Math.abs));
-    return { pts: out, bars: true, min: -m, max: m, label: "Rückenwind + / Gegenwind − km/h" };
+    if (tab === "temp") return { pts: out, min: Math.floor(Math.min(...vs) - 1), max: Math.ceil(Math.max(...vs) + 1), label: "Temperatur (°C) zur Durchfahrtszeit" };
+    if (tab === "regen") return { pts: out, bars: true, min: 0, max: Math.max(1, ...vs), label: "Niederschlag (mm/h) zur Durchfahrtszeit", trocken: vs.every((v) => !v) };
+    const m = Math.max(5, Math.ceil(Math.max(...vs.map(Math.abs)) / 5) * 5);
+    return { pts: out, bars: true, min: -m, max: m, ticks: [-m, 0, m], label: "Wind längs (km/h): + Rückenwind, − Gegenwind" };
   }
   function niceTicks(a, b, n) {
     const span = b - a; if (span <= 0) return [a];
@@ -596,6 +628,7 @@
       const lab = viaLabel(i, n), name = (ST.names && ST.names[i]) || (i === 0 ? "Start" : i === n - 1 && n > 1 ? "Ziel" : "Zwischenziel " + i);
       return `<li><span class="rp-pin sm${i === 0 ? " a" : i === n - 1 && n > 1 ? " b" : ""}" aria-hidden="true">${lab}</span>
         <button class="rp-vname" data-z="${i}" title="Auf der Karte zeigen">${esc(name)}<small>${p[1].toFixed(4)}, ${p[0].toFixed(4)}</small></button>
+        ${i > 0 && i < n - 1 ? `<label class="rp-pz">Pause <select data-pz="${i}" aria-label="Pause bei ${esc(name)}">${[0, 5, 10, 15, 20, 30, 45, 60, 90].map((m) => `<option value="${m}" ${((ST.pausen || [])[i] || 0) === m ? "selected" : ""}>${m ? m + " min" : "keine"}</option>`).join("")}</select></label>` : ""}
         <span class="rp-vbtn"><button class="btn icon" data-up="${i}" aria-label="${esc(name)} nach oben" ${i === 0 ? "disabled" : ""}>↑</button><button class="btn icon" data-dn="${i}" aria-label="${esc(name)} nach unten" ${i === n - 1 ? "disabled" : ""}>↓</button><button class="btn icon" data-del="${i}" aria-label="${esc(name)} entfernen">✕</button></span></li>`;
     }).join("");
   }
@@ -629,7 +662,7 @@
     } else warn.push("Von Hand gezeichnet: kein Wegnetz, keine Zugangsprüfung");
     if (route.hoehe_fehlt) warn.push("Höhendaten fehlen teilweise");
     box.className = "rp-status" + (warn.length ? " warn" : " ok");
-    box.innerHTML = warn.length ? `<b>Hinweise:</b> ${warn.map(esc).join(" · ")}` : `Route über erlaubte Wege berechnet (${esc(route.prov.routing)}, Profil ${esc(route.engine || "")}).`;
+    box.innerHTML = warn.length ? `<b>Hinweise:</b> ${warn.map(esc).join(" · ")}` : `Route über laut OSM erlaubte Wege berechnet (${esc(route.prov.routing)}, Profil ${esc(route.engine || "")}). Das hängt von den Kartendaten ab und ist keine rechtliche Garantie.`;
   }
   function renderMini() {
     const box = $("rp-mini"); if (!box) return;
@@ -648,9 +681,11 @@
     box.innerHTML = `<div><b>${km(route.L)}</b><span>km</span></div><div><b>${fmt(P.up)}</b><span>m Aufstieg</span></div><div><b>${fmt(P.down)}</b><span>m Abstieg</span></div>
       <div><b>${ok ? dur(sim.moving_s) : "–"}</b><span>${ok && sim.info.abfahrt_m ? "Aufstieg h" : "Bewegung h"}</span></div>
       <div><b>${ok ? (sportDef().art === "rad" || ST.sport === "wandern" || ST.sport === "skitour" ? fmt(route.L / sim.moving_s * 3.6, 1) : FK.pace(sim.moving_s / route.L * 1000)) : "–"}</b><span>${sportDef().art === "fuss" && ST.sport !== "wandern" ? "Ø /km" : "Ø km/h"}</span></div>
-      <div><b>${ok ? dur(sim.moving_s * (1 + pz.share)) : "–"}</b><span>mit Pausen</span></div>`;
+      <div><b>${ok ? dur(sim.moving_s * (1 + pz.share) + (pz.wegpunkte || 0)) : "–"}</b><span>mit Pausen</span></div>`;
   }
   function pauseShare() {
+    const pw = RT.pausenSumme(pausenList());
+    if (pw > 0) return { share: 0, wegpunkte: pw, text: `an Wegpunkten ${Math.round(pw / 60)} min` };     // keine Doppelzählung mit pauschal
     const fam = sportDef().art === "rad" ? "rad" : ST.sport === "wandern" ? "wandern" : ST.sport === "skitour" ? "skitour" : "lauf";
     const pz = (kal().pausen || {})[fam];
     if (ST.pause === "auto") return pz && isNum(pz.median) ? { share: pz.median, text: `wie bisher (${fmt(pz.median * 100)} %, ${pz.n} Einheiten ≥ 90 min)` } : { share: 0, text: "keine Daten" };
@@ -681,7 +716,12 @@
     const total = rows.reduce((s, x) => s + x.pct, 0);
     box.innerHTML = `<div class="rp-bar" aria-hidden="true">${rows.map((r) => `<span style="flex:${r.len};background:${(defs[r.cat] || UNK).color}" class="${ST.selectedCat === r.cat ? "on" : ""}"></span>`).join("")}</div>
       <ul class="rp-cats">${rows.map((r) => `<li><button data-k="${esc(r.cat)}" aria-pressed="${ST.selectedCat === r.cat}"><span class="sw" style="background:${(defs[r.cat] || UNK).color}"></span>${esc((defs[r.cat] || UNK).label)}<b>${km(r.len)} km</b><i>${fmt(r.pct, r.pct < 1 ? 1 : 0)} %</i></button></li>`).join("")}</ul>
-      <p class="hint">Summe ${fmt(total, 0)} %. ${TABS[tab].netz ? "Quelle: OSM-Merkmale der Routing-Antwort; ohne Angabe = unbekannt (nicht geraten)." : TABS[tab].wetter ? "Quelle: Open-Meteo, je Abschnitt zur geschätzten Durchfahrtszeit." : tab === "tempo" ? "Quelle: Tempomodell unten." : "Steigung je 20 m aus der geglätteten Höhe."} Antippen hebt alle Abschnitte hervor.</p>`;
+      <p class="hint">Summe ${fmt(total, 0)} %. ${TABS[tab].netz ? "Quelle: OSM-Merkmale der Routing-Antwort; ohne Angabe = unbekannt (nicht geraten)." : TABS[tab].wetter ? `Quelle: Open-Meteo, je Abschnitt zur geschätzten Durchfahrtszeit.${tab === "wind" ? windText() : ""}` : tab === "tempo" ? "Quelle: Tempomodell unten." : "Steigung je 20 m aus der geglätteten Höhe."} Antippen hebt alle Abschnitte hervor.</p>`;
+  }
+  function windText() {
+    const A = windArrowsNow(); if (!A.length) return "";
+    const pick = A.length > 3 ? [A[0], A[Math.floor(A.length / 2)], A[A.length - 1]] : A;
+    return ` Karte: Pfeile zeigen, wohin der Wind weht (aus W → Pfeil nach Osten), grösser = stärker. ${pick.map((a) => `km ${km(a.d)}: ${fmt(a.speed * 3.6)} km/h aus ${a.aus}`).join(" · ")}.`;
   }
   function renderInt() {
     const box = $("rp-int");
@@ -697,10 +737,10 @@
     if (!sim) res = "";
     else if (sim.unzureichend) res = `<div class="verdict warn">${esc(sim.grund)}</div>`;
     else {
-      const pz = pauseShare(), arr = ST.startUnix + sim.moving_s * (1 + pz.share);
+      const pz = pauseShare(), pw = pz.wegpunkte || 0, arr = ST.startUnix + sim.moving_s * (1 + pz.share) + pw;
       const band = sim.band || [sim.moving_s, sim.moving_s];
       res = `<div class="rp-res"><div><span>Bewegungszeit</span><b>${dur(sim.moving_s)} h</b><small>${dur(band[0])}–${dur(band[1])} h</small></div>
-        <div><span>Ankunft</span><b>${clock(arr)}</b><small>${clock(ST.startUnix + band[0] * (1 + pz.share))}–${clock(ST.startUnix + band[1] * (1 + pz.share))}</small></div>
+        <div><span>Ankunft</span><b>${clock(arr)}</b><small>${clock(ST.startUnix + band[0] * (1 + pz.share) + pw)}–${clock(ST.startUnix + band[1] * (1 + pz.share) + pw)}</small></div>
         <div><span>Ø ${def.art === "fuss" && ST.sport !== "wandern" ? "Pace" : "Tempo"}</span><b>${def.art === "fuss" && ST.sport !== "wandern" ? FK.pace(sim.moving_s / route.L * 1000) : fmt(route.L / sim.moving_s * 3.6, 1)}</b><small>${def.art === "fuss" && ST.sport !== "wandern" ? "min/km" : "km/h"}</small></div></div>
         <p class="hint">${esc(sim.info.modell)}${sim.info.korrektur ? " · " + esc(sim.info.korrektur.text) : ""} · Band: ${esc(sim.fehler.quelle)} ±${fmt(sim.fehler.rel * 100)} %${field ? ", Wind aus Prognose" : def.art === "rad" ? ", Wind ±7 km/h" : ""}. ${sim.info.hinweise.map(esc).join(" ")}</p>`;
     }
@@ -713,8 +753,6 @@
         <button class="btn icon" id="rp-plus" aria-label="mehr">+</button></div>
       <input type="range" id="rp-range" min="${R[0]}" max="${R[1]}" step="${R[2]}" value="${val}" aria-label="${LAB[m]}" ${m === "pace" ? 'style="direction:rtl"' : ""}>
       ${outside ? `<p class="hint warn-t">Ausserhalb der kalibrierten Werte: grössere Unsicherheit.</p>` : ""}${calNote}
-      <div class="row rp-time"><label>Start <input type="datetime-local" id="rp-start" value="${localInput(ST.startUnix)}"></label>
-        <label>Pausen <select id="rp-pause"><option value="auto" ${ST.pause === "auto" ? "selected" : ""}>${esc(pauseShareText())}</option>${[0, 15, 30, 60, 90].map((x) => `<option value="${x}" ${String(ST.pause) === String(x) ? "selected" : ""}>${x ? "+" + x + " min" : "keine"}</option>`).join("")}</select></label></div>
       ${res}`;
     bindInt();
   }
@@ -745,8 +783,77 @@
     $("rp-range").oninput = (e) => set(+e.target.value);
     $("rp-num").onchange = (e) => { const t = e.target.value.trim(); const v = ST.effortMode === "pace" ? paceIn(t) : +t; if (isNum(v)) set(v, "force"); else e.target.value = ST.effortMode === "pace" ? FK.pace(ST.effortValue) : ST.effortValue; };
     $("rp-int").querySelectorAll("[data-m]").forEach((b) => (b.onclick = () => { ST.effortMode = b.dataset.m; const all = S.get("effort", {}); const mine = all[ST.sport] || {}; ST.effortValue = isNum(mine[ST.effortMode]) ? mine[ST.effortMode] : defaultValue(ST.effortMode); saveEffort(); effortChanged(); }));
+  }
+  /* ---------- Variantenvergleich (varianten-1.0, A08) ---------- */
+  let VAR = { key: null, rows: null, busy: false };
+  const sigOf = () => [ST.sport, JSON.stringify(ST.opts || {}), ST.vias.map((v) => v.join(",")).join("|")].join("#");
+  function renderVar() {
+    const box = $("rp-var"); if (!box) return;
+    const vs = RT.VARIANTEN[ST.sport];
+    if (!route || route.gezeichnet || !vs) { box.hidden = true; return; }
+    box.hidden = false;
+    if (VAR.key !== sigOf()) VAR = { key: sigOf(), rows: null, busy: false };
+    const ws = RT.wayShare(route), cur = vs.find((v) => v.k === ST.variant);
+    const head = `<b>Hauptstrasse ${fmt(ws.haupt_pct)} %</b> der Route (${km(ws.haupt_m)} von ${km(route.L)} km; laut OSM «trunk/primary»)${cur ? ` · Variante «${esc(cur.label)}»` : ""}.`;
+    if (!VAR.rows) {
+      box.innerHTML = `<div class="rp-card">${head}<div class="row"><button class="btn" id="rp-var-go" ${VAR.busy ? "disabled" : ""}>${VAR.busy ? "Varianten werden berechnet …" : "Varianten vergleichen"}</button></div>
+        <p class="hint">Gleiche Wegpunkte mit «Schnell», «Weniger Verkehr» und «Ruhig»: dasselbe, für Velos erlaubte Rennradprofil (Asphalt bevorzugt), nur Verkehr anders gewichtet. Je Variante eine Anfrage an BRouter.</p></div>`;
+      const go = $("rp-var-go"); if (go) go.onclick = () => computeVariants();
+      return;
+    }
+    const fz = RT.variantFazit(VAR.rows), t = (x) => (isNum(x) ? dur(x) : "–");
+    const on = (r) => (ST.variant || "schnell") === r.k;
+    box.innerHTML = `<div class="rp-card">${head}<table class="t rp-vt"><tr><th>Variante</th><th>km</th><th>Hm</th><th title="Anteil Hauptstrasse">Haupt&shy;str.</th><th title="unbefestigt, km">unbef.</th><th>Zeit</th></tr>${VAR.rows.map((r) => r.fehler
+      ? `<tr><td colspan="6">${esc(r.label)}: <small>${esc(r.fehler)}</small></td></tr>`
+      : `<tr class="${on(r) ? "on" : ""}"><td>${esc(r.label)}<br>${on(r) ? '<span class="pill">aktiv</span>' : `<button class="btn rp-vbtn" data-var="${r.k}">Übernehmen</button>`}</td><td>${km(r.share.L)}</td><td>${fmt(r.up)}</td><td>${fmt(r.share.haupt_pct)} %</td><td>${km(r.share.unbef_m)}</td><td>${t(r.t)}</td></tr>`).join("")}</table>
+      <p class="${fz.status === "keine" ? "verdict unsure" : "hint"}">${esc(fz.text)}</p>
+      <p class="hint">Nur Wege, die laut OSM für Velos erlaubt sind; «erlaubt laut OSM» hängt von den Kartendaten ab und ist keine rechtliche Garantie – vor Ort gilt die Signalisation.</p></div>`;
+    box.querySelectorAll("[data-var]").forEach((b) => (b.onclick = () => { ST.variant = b.dataset.var; reroute(false); }));
+  }
+  async function computeVariants() {
+    const vs = RT.VARIANTEN[ST.sport]; if (!vs || !route) return;
+    const sig = sigOf(), ep = S.get("endpoint", RT.ENDPOINT), vias = ST.vias.slice(), inp = effortInput();
+    VAR = { key: sig, rows: null, busy: true }; renderVar();
+    const rows = [];
+    for (const v of vs) {
+      const eng = RT.engineVariant(ST.sport, ST.opts, v.k);
+      try {
+        const legs = await Promise.all(Array.from({ length: vias.length - 1 }, (_, i) => {
+          const key = [ep, eng.engine, JSON.stringify(eng.params), vias[i].join(","), vias[i + 1].join(",")].join("|");
+          if (!CACHE.has(key)) CACHE.set(key, RT.fetchLeg(window.fetch.bind(window), ep, eng, vias[i], vias[i + 1]).catch((e) => { CACHE.delete(key); throw e; }));
+          return CACHE.get(key);
+        }));
+        const r = RT.buildRoute(legs, vias, { sport: ST.sport, engine: eng.engine });
+        const sv = RT.eta(r, inp);
+        rows.push({ k: v.k, label: v.label, share: RT.wayShare(r), up: r.profile.up, t: sv.unzureichend ? null : sv.moving_s });
+      } catch (e) { rows.push({ k: v.k, label: v.label, fehler: e.message || String(e) }); }
+    }
+    if (VAR.key !== sig) return;
+    VAR = { key: sig, rows, busy: false }; renderVar();
+  }
+  /** Winter und Skitouren: Gelände, Lawinen, Wildruhezonen, Regeln – Navigation garantiert keine Sicherheit. */
+  function renderWinter() {
+    const box = $("rp-winter"); if (!box) return;
+    const m = new Date(ST.startUnix * 1000).getMonth(), winter = m >= 10 || m <= 3;
+    const show = ST.sport === "skitour" || (winter && (ST.sport === "wandern" || ST.sport === "trail"));
+    box.hidden = !show || !ST.vias.length;
+    if (box.hidden) return;
+    box.innerHTML = `<div class="rp-card rp-warncard"><b>${ST.sport === "skitour" ? "Skitour" : "Winter"}: Sicherheit liegt nicht in der Linie</b>
+      <ul class="flags"><li>Lawinenbulletin des SLF vor jeder Tour lesen (<a href="https://www.slf.ch" target="_blank" rel="noopener">slf.ch</a>, App «White Risk»); Hänge ab etwa 30° sind lawinenrelevant – die Steigungsfarben zeigen die Linie, nicht den Hang daneben.</li>
+        <li>Wildruhezonen und Wildschutzgebiete respektieren (Karte «Wildruhezonen» auf <a href="https://map.geo.admin.ch" target="_blank" rel="noopener">map.geo.admin.ch</a>); Betretungsverbote und Routengebote gelten auch, wenn hier eine Linie durchführt.</li>
+        <li>${ST.sport === "skitour" ? "Die Linie ist von Hand gezeichnet: kein Wegnetz, keine Prüfung von Gelände, Zugang oder Gefahren." : "Sommerwege können im Winter gesperrt, vereist oder lawinengefährdet sein; «erlaubt laut OSM» gilt nicht für Winterverhältnisse."}</li>
+        <li>Keine Navigation garantiert Sicherheit: Verhältnisse vor Ort, Ausbildung und Ausrüstung entscheiden.</li></ul></div>`;
+  }
+  /** Start und Pausen sichtbar über dem Profil (Primärbedienung, V5.5). */
+  function renderWhen() {
+    const box = $("rp-when"); if (!box) return;
+    if (!route) { box.hidden = true; return; }
+    box.hidden = false;
+    const pw = RT.pausenSumme(pausenList());
+    box.innerHTML = `<label>Start <input type="datetime-local" id="rp-start" value="${localInput(ST.startUnix)}"></label>
+      <label>Pausen <select id="rp-pause" ${pw ? "disabled" : ""}>${pw ? `<option>an Wegpunkten: ${Math.round(pw / 60)} min</option>` : `<option value="auto" ${ST.pause === "auto" ? "selected" : ""}>${esc(pauseShareText())}</option>${[0, 15, 30, 60, 90].map((x) => `<option value="${x}" ${String(ST.pause) === String(x) ? "selected" : ""}>${x ? "+" + x + " min" : "keine"}</option>`).join("")}`}</select></label>`;
     $("rp-start").onchange = (e) => { const [dd, tt] = String(e.target.value).split("T"); if (dd && tt) { ST.startUnix = FK.zurichToUnix(dd, tt.slice(0, 5)); effortChanged(); maybeWeather(true); } };
-    $("rp-pause").onchange = (e) => { ST.pause = e.target.value; renderInt(); renderKpis(); renderArr(); };
+    if (!pw) $("rp-pause").onchange = (e) => { ST.pause = e.target.value; renderInt(); renderKpis(); renderArr(); };
   }
   const paceIn = (t) => { const m = /^(\d{1,2})[:.,](\d{1,2})$/.exec(t); return m ? +m[1] * 60 + +m[2] : /^\d+$/.test(t) ? +t * 60 : NaN; };
   let rafPending = false;
@@ -765,12 +872,13 @@
     if (!route || !sim || sim.unzureichend) { box.innerHTML = ""; return; }
     const P = route.profile, pz = pauseShare();
     const tAt = (d) => { const k = Math.min(P.n, Math.round(d / P.step)); return sim.t[k]; };
-    const band = sim.band || [sim.moving_s, sim.moving_s];
+    const band = sim.band || [sim.moving_s, sim.moving_s], pl = pausenList();
     box.innerHTML = `<h3>Ankunft an den Wegpunkten</h3><ol class="rp-arrl">${route.vias.map((v, i) => {
-      const t = tAt(v.d) * (1 + pz.share), lo = t * band[0] / sim.moving_s, hi = t * band[1] / sim.moving_s;
-      const w = field ? field(v.d, ST.startUnix + tAt(v.d), P.head[Math.min(P.n - 1, Math.round(v.d / P.step))]) : null;
-      return `<li><span class="rp-pin sm${i === 0 ? " a" : i === route.vias.length - 1 ? " b" : ""}">${viaLabel(i, route.vias.length)}</span><span>km ${km(v.d)}</span><b>${clock(ST.startUnix + t)}</b><small>${i ? clock(ST.startUnix + lo) + "–" + clock(ST.startUnix + hi) : tzd.format(new Date(ST.startUnix * 1000))}</small>${w ? `<small>${fmt(w.temp, 0)} °C · Wind ${fmt(w.speed * 3.6)} km/h ${dirName(w.dirFrom)}</small>` : ""}</li>`;
-    }).join("")}</ol>${pz.share ? `<p class="hint">Inklusive Pausen ${esc(pz.text)}, gleichmässig verteilt.</p>` : ""}`;
+      const pv = RT.pauseBefore(pl.filter((q) => q.i < i), v.d), t = tAt(v.d) * (1 + pz.share), lo = t * band[0] / sim.moving_s, hi = t * band[1] / sim.moving_s;
+      const w = field ? field(v.d, ST.startUnix + tAt(v.d) + pv, P.head[Math.min(P.n - 1, Math.round(v.d / P.step))]) : null;
+      const halt = ((ST.pausen || [])[i] || 0);
+      return `<li><span class="rp-pin sm${i === 0 ? " a" : i === route.vias.length - 1 ? " b" : ""}">${viaLabel(i, route.vias.length)}</span><span>km ${km(v.d)}</span><b>${clock(ST.startUnix + t + pv)}</b><small>${i ? clock(ST.startUnix + lo + pv) + "–" + clock(ST.startUnix + hi + pv) : tzd.format(new Date(ST.startUnix * 1000))}</small>${halt && i < route.vias.length - 1 && i > 0 ? `<small>Pause ${halt} min, weiter ${clock(ST.startUnix + t + pv + halt * 60)}</small>` : ""}${w ? `<small>${fmt(w.temp, 0)} °C · Wind ${fmt(w.speed * 3.6)} km/h aus ${dirName(w.dirFrom)}</small>` : ""}</li>`;
+    }).join("")}</ol>${pz.share ? `<p class="hint">Inklusive Pausen ${esc(pz.text)}, gleichmässig verteilt.</p>` : pl.length ? `<p class="hint">Pausen an Wegpunkten verschieben die späteren Durchfahrtszeiten und das Wetter dort.</p>` : ""}`;
   }
   function renderWx() {
     const box = $("rp-wx");
@@ -786,7 +894,7 @@
     const dmax = q.reduce((m, x) => Math.max(m, Math.abs(x.diff || 0)), 0);
     const st = ST.wetter;
     box.innerHTML = `<div class="rp-card"><b>Wetter entlang der Route</b> ${st.status === "laedt" ? '<span class="spin" aria-hidden="true"></span> wird geladen …' : ""}
-      <p class="hint">${st.status === "ok" ? `Open-Meteo-Prognose, Stand ${clock(st.t)}; ${wpts ? wpts.length : 0} Stützpunkte, je Abschnitt zur geschätzten Durchfahrtszeit (Zeitzone Europe/Zurich). Windrichtung = woher der Wind kommt; auf Fahrhöhe ×${String(RT.WIND_HEIGHT).replace(".", ",")} gerechnet. ${dmax > 250 ? `<b>Qualität eingeschränkt:</b> Modellgitter bis ${fmt(dmax)} m neben der Streckenhöhe (Berggelände).` : ""}` : st.status === "fehler" ? `Wetter nicht verfügbar: ${esc(st.msg)}` : st.status === "zuweit" ? "Start liegt mehr als 15 Tage voraus: keine Prognose." : ""}</p>
+      <p class="hint">${st.status === "ok" ? `Open-Meteo-Prognose, Stand ${clock(st.t)}; ${wpts ? wpts.length : 0} Stützpunkte, je Abschnitt zur geschätzten Durchfahrtszeit (Zeitzone Europe/Zurich). Windrichtung = woher der Wind kommt; auf Fahrhöhe ×${String(RT.WIND_HEIGHT)} gerechnet. ${dmax > 250 ? `<b>Qualität eingeschränkt:</b> Modellgitter bis ${fmt(dmax)} m neben der Streckenhöhe (Berggelände).` : ""}` : st.status === "fehler" ? `Wetter nicht verfügbar: ${esc(st.msg)}` : st.status === "zuweit" ? "Start liegt mehr als 15 Tage voraus: keine Prognose." : ""}</p>
       <div class="row"><button class="btn" id="rp-wx-re">Neu laden</button><button class="btn" id="rp-wx-off">Wetter ausschalten</button></div></div>`;
     $("rp-wx-re").onclick = () => maybeWeather(true);
     $("rp-wx-off").onclick = () => { S.set("consent", Object.assign(consent(), { wetter: false })); field = null; ST.wetter = { status: "aus" }; recomputeSim(); buildPieces(); renderAll(); };
@@ -846,7 +954,7 @@
     $("rp-ana").hidden = !route;
     $("rp-saverow").hidden = !route && !ST.vias.length;
     $("pl-gpx").disabled = !route; $("pl-gpx").title = route ? "" : "Erst nach erfolgreichem Routing";
-    renderTabs(); renderLegend(); renderInt(); renderArr(); renderWx(); renderSrc();
+    renderWhen(); renderVar(); renderWinter(); renderTabs(); renderLegend(); renderInt(); renderArr(); renderWx(); renderSrc();
     renderMap();
     requestAnimationFrame(() => { drawChart(); renderInfo(); });
     if (C.onRouteChange) C.onRouteChange();
@@ -918,7 +1026,7 @@
     chartEvents(); gripEvents();
     $("rp-sports").addEventListener("click", (e) => {
       const b = e.target.closest("[data-s]"); if (!b) return;
-      ST.sport = b.dataset.s; S.set("sport", ST.sport); ST.manual = false;
+      ST.sport = b.dataset.s; S.set("sport", ST.sport); ST.manual = false; ST.variant = null;
       loadEffort(); renderSports(); renderOpts();
       clearSel(true);
       if (ST.vias.length >= 2) reroute(false); else renderAll();
@@ -928,13 +1036,21 @@
       ST.opts[o] = e.target.type === "checkbox" ? e.target.checked : e.target.value; S.set("opts", ST.opts);
       if (ST.vias.length >= 2) reroute(false);
     });
+    $("rp-vias").addEventListener("change", (e) => {
+      const sel = e.target.closest("[data-pz]"); if (!sel) return;
+      ST.pausen = Array.from({ length: ST.vias.length }, (_, i) => (ST.pausen || [])[i] || 0);
+      ST.pausen[+sel.dataset.pz] = +sel.value;
+      recomputeSim(); buildPieces(); renderAll();
+      live(`Pause ${sel.value} min: spätere Durchfahrtszeiten und Wetter verschoben.`);
+    });
     $("rp-vias").addEventListener("click", (e) => {
       const b = e.target.closest("button"); if (!b) return;
       const v = ST.vias.slice(), nm = (ST.names || []).slice();
-      const swap = (i, j) => { [v[i], v[j]] = [v[j], v[i]]; [nm[i], nm[j]] = [nm[j], nm[i]]; };
+      const pz = ST.pausen = (ST.pausen || []).slice(0, v.length);
+      const swap = (i, j) => { [v[i], v[j]] = [v[j], v[i]]; [nm[i], nm[j]] = [nm[j], nm[i]]; [pz[i], pz[j]] = [pz[j], pz[i]]; };
       if (b.dataset.up != null) { const i = +b.dataset.up; swap(i, i - 1); ST.names = nm; setVias(v, "umsortiert", { fit: false }); }
       else if (b.dataset.dn != null) { const i = +b.dataset.dn; swap(i, i + 1); ST.names = nm; setVias(v, "umsortiert", { fit: false }); }
-      else if (b.dataset.del != null) { const i = +b.dataset.del; v.splice(i, 1); nm.splice(i, 1); ST.names = nm; setVias(v, "entfernt", { fit: false }); }
+      else if (b.dataset.del != null) { const i = +b.dataset.del; v.splice(i, 1); nm.splice(i, 1); pz.splice(i, 1); ST.names = nm; setVias(v, "entfernt", { fit: false }); }
       else if (b.dataset.z != null && map) map.easeTo({ center: ST.vias[+b.dataset.z], zoom: Math.max(map.getZoom(), 14), duration: reduce() ? 0 : 500 });
     });
     $("rp-add").onclick = () => setAddMode(!ST.addMode);
@@ -942,12 +1058,13 @@
       if (ST.vias.length < 2) return;
       ST.routeDirection = ST.routeDirection === "hin" ? "rueck" : "hin";
       ST.names = (ST.names || []).slice(0, ST.vias.length).reverse();
+      ST.pausen = Array.from({ length: ST.vias.length }, (_, i) => (ST.pausen || [])[i] || 0).reverse();
       setVias(ST.vias.slice().reverse(), "umgekehrt", { fit: false });
       live("Route umgekehrt: Wegpunkte in umgekehrter Reihenfolge, wird neu berechnet.");
     };
     $("rp-loop").onclick = () => { if (ST.vias.length < 2) return; const a = ST.vias[0], b = ST.vias[ST.vias.length - 1]; if (a[0] === b[0] && a[1] === b[1]) return; setVias(ST.vias.concat([a.slice()]), "Rundtour", { fit: false }); };
     $("rp-undo").onclick = () => { if (!history.length) return; ST.vias = history.pop(); renderVias(); reroute(false); };
-    $("rp-new").onclick = () => { history.push(ST.vias.slice()); ST.vias = []; ST.names = []; ST.editId = null; ST.manual = false; $("pl-name").value = ""; $("pl-msg").textContent = ""; setAddMode(true); renderVias(); reroute(false); };
+    $("rp-new").onclick = () => { history.push(ST.vias.slice()); ST.vias = []; ST.names = []; ST.pausen = []; ST.editId = null; ST.manual = false; $("pl-name").value = ""; $("pl-msg").textContent = ""; setAddMode(true); renderVias(); reroute(false); };
     $("rp-tabs").addEventListener("click", (e) => {
       const b = e.target.closest("[data-t]"); if (!b) return;
       if (ST.activeAnalysisTab === b.dataset.t) return;
