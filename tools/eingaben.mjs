@@ -23,6 +23,7 @@ const out = {
   fueling_add: clean(d.fueling), befinden_add: clean(d.befinden), test_entwurf_add: clean(d.test_entwuerfe), koppel_set: clean(d.koppel),
   langfahrt_add: clean(d.langfahrt), laktat_bestaetigt: d.laktat_bestaetigt || [], coach_add: clean(d.coach), test_archiv: d.archiv || [],
   notizen_set: d.notizen || {}, quelle_eingaben: { datei: src.split("/").pop(), erstellt: j.erstellt },
+  pb_add: clean(d.pb), css_add: clean(d.css), fehler_add: clean(d.fehler),
 };
 if (d.fueling_produkte) out.fueling_produkte = d.fueling_produkte;
 writeFileSync(dst, JSON.stringify(out, null, 1));

@@ -16,37 +16,70 @@
   /* ---------------- Fortschritt ---------------- */
   V.training = function (C) {
     if (!$("v53-goals")) return;
-    goals(C); streak(C); diary(C); bests(C); radar(C); zonesMonth(C);
+    goals(C); streak(C); diary(C); bests(C); zonesMonth(C);
   };
   function actsOf(C, sport) { return C.D.activities.filter((a) => !sport || a.sport === sport); }
+  /* Jahresziele kompakt + kumulierter Jahresvergleich im gleichen Kalenderzeitraum. Ein Zeitbegriff für alles: C.hrsOf
+     (Bewegungszeit seit 3.11.2026, sonst Timer); Einheiten ohne Bewegungszeit zählen mit Timer-Zeit und werden genannt. */
   function goals(C) {
-    const box = $("v53-goals"), sel = $("v53-goal-sport");
+    const box = $("v53-goals"), sel = $("v53-goal-sport"), msel = $("v53-cum-metric");
     if (!sel.dataset.init) {
       sel.dataset.init = 1;
       sel.innerHTML = `<option value="">Alle Sportarten</option>` + ["rad", "lauf", "schwimm", "wandern", "ski"].filter((k) => C.SPORTS[k]).map((k) => `<option value="${k}">${C.SPORTS[k].label}</option>`).join("");
       sel.addEventListener("change", () => goals(C));
+      if (msel) msel.addEventListener("change", () => goals(C));
     }
-    const sp = sel.value, year = String(C.today.getFullYear());
-    const sum = (list) => ({ km: list.reduce((s, a) => s + (a.km || 0), 0), h: list.reduce((s, a) => s + (a.mv || a.dur || 0), 0) / 3600, hm: list.reduce((s, a) => s + (a.hm || 0), 0) });
-    const ytd = sum(actsOf(C, sp).filter((a) => a.date.startsWith(year)));
-    const last = sum(actsOf(C, sp).filter((a) => a.date.startsWith(String(+year - 1))));
+    const sp = sel.value, Y = C.today.getFullYear(), year = String(Y);
+    if ($("v53-year-y")) $("v53-year-y").textContent = Y;
+    const bew = ((C.D.config || {}).zeitbasis || "timer") === "bewegung", zeitName = bew ? "Bewegungszeit" : "Timer-Zeit";
+    const sum = (list) => ({ km: list.reduce((s, a) => s + (a.km || 0), 0), h: list.reduce((s, a) => s + C.hrsOf(a), 0), hm: list.reduce((s, a) => s + (a.hm || 0), 0),
+      ohneMv: bew ? list.filter((a) => a.mv == null).length : 0 });
+    const L = actsOf(C, sp).filter((a) => a.date.startsWith(year)), Lp = actsOf(C, sp).filter((a) => a.date.startsWith(String(Y - 1)));
+    const ytd = sum(L), last = sum(Lp);
     const nice = (v, step) => Math.max(step, Math.ceil(v / step) * step);
     const all = store.get("sf.ziele", {}), mine = all[sp || "alle"] || {};
     const tgt = { km: mine.km || nice(last.km || 1000, 500), h: mine.h || nice(last.h || 100, 25), hm: mine.hm || nice(last.hm || 10000, 5000) };
-    const doy = (C.today - new Date(C.today.getFullYear(), 0, 1)) / DAY + 1, frac = doy / (new Date(+year, 11, 31) - new Date(+year, 0, 1) + DAY) * DAY;
-    const ring = (k, label, unit, col, dec) => {
-      const v = ytd[k], t = tgt[k], soll = t * frac, diff = v - soll;
-      return `<div class="v53-ring">${C.ringSVG(v / t, col, C.fmt(v, dec), unit, label)}<b>${label}</b><small>${C.fmt(v, dec)} von ${C.fmt(t)} ${unit}</small>
-        <small class="${diff >= 0 ? "good-t" : "warn-t"}">${diff >= 0 ? "+" : "−"}${C.fmt(Math.abs(diff), dec)} ${unit} gegenüber Soll bis heute</small></div>`;
+    const own = { km: !!mine.km, h: !!mine.h, hm: !!mine.hm };
+    const doy = Math.round((C.today - new Date(Y, 0, 1)) / DAY) + 1, ndays = Math.round((new Date(Y + 1, 0, 1) - new Date(Y, 0, 1)) / DAY), frac = doy / ndays;
+    const row = (k, label, unit, dec) => {
+      const v = ytd[k], t = tgt[k], soll = t * frac, diff = v - soll, pct = Math.round((100 * v) / t);
+      return `<div class="goal"><span class="gl">${label}</span><span class="gbar" role="img" aria-label="${label}: ${C.fmt(v, dec)} von ${C.fmt(t)} ${unit}, Soll bis heute ${C.fmt(soll, dec)}"><i style="width:${Math.min(100, (100 * v) / t).toFixed(1)}%"></i><em style="left:${(100 * frac).toFixed(1)}%"></em></span>
+        <b>${C.fmt(v, dec)} ${unit}</b><small>${pct} % von ${C.fmt(t)} ${unit}${own[k] ? "" : " (Vorjahr aufgerundet)"}</small><small class="${diff >= 0 ? "good-t" : "warn-t"}">Soll heute ${C.fmt(soll, dec)} ${unit}: ${diff >= 0 ? "+" : "−"}${C.fmt(Math.abs(diff), dec)} ${unit}</small></div>`;
     };
-    box.innerHTML = `<div class="v53-rings">${ring("km", "Distanz", "km", C.css("--accent"), 0)}${ring("h", "Zeit", "h", C.SPORTS.rad.color, 0)}${ring("hm", "Höhenmeter", "m", C.css("--accent-2"), 0)}</div>
-      <form class="v53-gform" id="v53-gform"><label>Ziel km<input name="km" inputmode="numeric" value="${tgt.km}"></label><label>Ziel h<input name="h" inputmode="numeric" value="${tgt.h}"></label><label>Ziel Hm<input name="hm" inputmode="numeric" value="${tgt.hm}"></label></form>
-      <p class="hint">Bewegungszeit; Ziele nur auf diesem Gerät gespeichert. Ohne eigenes Ziel: Vorjahr ${year - 1} aufgerundet (${C.fmt(last.km)} km, ${C.fmt(last.h)} h, ${C.fmt(last.hm)} m).</p>`;
+    const ohne = ytd.ohneMv + last.ohneMv;
+    box.innerHTML = `<div class="goal-rows">${row("h", "Zeit", "h", 0)}${row("km", "Distanz", "km", 0)}${row("hm", "Höhenmeter", "m", 0)}</div>
+      <details class="more"><summary>Ziele bearbeiten</summary><form class="v53-gform" id="v53-gform"><label>Ziel h<input name="h" inputmode="numeric" value="${own.h ? tgt.h : ""}" placeholder="${tgt.h}"></label><label>Ziel km<input name="km" inputmode="numeric" value="${own.km ? tgt.km : ""}" placeholder="${tgt.km}"></label><label>Ziel Hm<input name="hm" inputmode="numeric" value="${own.hm ? tgt.hm : ""}" placeholder="${tgt.hm}"></label></form>
+        <p class="hint">Nur auf diesem Gerät gespeichert. Leer lassen = Vorjahr ${Y - 1} aufgerundet (${C.fmt(last.h)} h, ${C.fmt(last.km)} km, ${C.fmt(last.hm)} m).</p></details>
+      <p class="hint">Zeit = ${zeitName} (Regel zeit-1.0) für ${Y} und für das Vorjahresziel ${Y - 1}, also derselbe Zeitbegriff.${ohne ? ` ${ohne} ${ohne === 1 ? "Einheit" : "Einheiten"} ohne Sekundenwerte zählen mit der Timer-Zeit.` : ` Alle Einheiten beider Jahre haben eine ${zeitName}.`} Strich = Soll bis heute (${Math.round(frac * 100)} % des Jahres).</p>`;
     $("v53-gform").onchange = (e) => {
       const f = e.currentTarget, a = store.get("sf.ziele", {});
       a[sp || "alle"] = { km: +f.km.value || undefined, h: +f.h.value || undefined, hm: +f.hm.value || undefined };
       store.set("sf.ziele", a); goals(C);
     };
+    cumulative(C, sp, msel ? msel.value : "h", bew);
+  }
+  function cumulative(C, sp, metric, bew) {
+    if (!$("c-v53-cum")) return;
+    const Y = C.today.getFullYear(), years = [Y - 2, Y - 1, Y], val = (a) => (metric === "h" ? C.hrsOf(a) : metric === "km" ? a.km || 0 : a.hm || 0);
+    // Tag im Jahr nach Kalenderdatum eines Schaltjahrs: 1. März ist in jedem Jahr derselbe Index (gleiches Datum = gleiche Stelle)
+    const unit = { h: "h", km: "km", hm: "m" }[metric], doyOf = (iso) => { const [, m, d] = iso.split("-").map(Number); return Math.round((Date.UTC(2024, m - 1, d) - Date.UTC(2024, 0, 1)) / DAY); };
+    const todayDoy = doyOf(C.iso(C.today));
+    const series = years.map((y) => {
+      const arr = new Array(366).fill(0);
+      for (const a of actsOf(C, sp)) if (a.date.startsWith(String(y))) arr[Math.min(365, doyOf(a.date))] += val(a);
+      let c = 0; const out = arr.map((v) => (c += v));
+      return y === Y ? out.slice(0, todayDoy + 1) : out;
+    });
+    const lab = Array.from({ length: 366 }, (_, i) => { const d = new Date(2024, 0, 1 + i); return `${d.getDate()}.${d.getMonth() + 1}.`; });
+    const cols = [C.css("--line-2") || "#b8c4cc", C.css("--muted"), C.css("--accent")];
+    C.chart("c-v53-cum", { type: "line", data: { labels: lab, datasets: years.map((y, i) => ({ label: String(y), data: series[i].map((v) => +v.toFixed(1)), borderColor: cols[i], backgroundColor: cols[i],
+      borderWidth: y === Y ? 2 : 1.25, pointRadius: 0, tension: 0 })) },
+      options: { interaction: { mode: "index", intersect: false }, scales: { x: { ticks: { maxTicksLimit: innerWidth < 560 ? 5 : 12, maxRotation: 0, callback: function (v, i) { const d = new Date(2024, 0, 1 + i); return d.getDate() === 1 ? ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"][d.getMonth()] : ""; }, autoSkip: false }, grid: { display: false } },
+        y: { beginAtZero: true, ticks: { maxTicksLimit: 5 }, title: { display: true, text: { h: bew ? "Stunden (Bewegung)" : "Stunden (Timer)", km: "Kilometer", hm: "Höhenmeter" }[metric] } } },
+        plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { title: (it) => it[0].label, label: (c) => `${c.dataset.label}: ${C.fmt(c.raw)} ${unit}` } } } } });
+    const now = series[2][todayDoy] || 0, prev = series[1][todayDoy] || 0, d = now - prev;
+    $("v53-cum-note").textContent = `Bis ${C.today.getDate()}.${C.today.getMonth() + 1}.: ${Y} ${C.fmt(now)} ${unit}, ${Y - 1} im gleichen Zeitraum ${C.fmt(prev)} ${unit} (${d >= 0 ? "+" : "−"}${C.fmt(Math.abs(d))} ${unit}). ` +
+      `Gleicher Kalendertag, gleiche Zeitdefinition für alle Jahre${metric === "h" ? ` (${bew ? "Bewegungszeit" : "Timer-Zeit"})` : ""}.`;
   }
   const weekKey = (d) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); const wd = (x.getDay() + 6) % 7; x.setDate(x.getDate() - wd); return x.toISOString().slice(0, 10); };
   function streak(C) {
@@ -78,45 +111,81 @@
     }
     box.innerHTML = `<div class="v53-wk head"><span></span>${["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((x) => `<em>${x}</em>`).join("")}<b>h</b></div>${rows.join("")}<p class="hint">Kreisgrösse = Bewegungszeit des Tages, Farbe = Sportart mit der meisten Zeit.</p>`;
   }
-  const PDC = [["5", "5 s"], ["15", "15 s"], ["30", "30 s"], ["60", "1 min"], ["300", "5 min"], ["600", "10 min"], ["1200", "20 min"], ["3600", "60 min"]];
-  function pdcBest(C, from) {
+  const PDC = [["5", "5 s"], ["15", "15 s"], ["30", "30 s"], ["60", "1 min"], ["300", "5 min"], ["600", "10 min"], ["1200", "20 min"], ["3600", "1 h"], ["7200", "2 h"]];
+  const sysOf = (a) => (window.FK ? FK.bikeSys(a) : a.indoor ? "indoor" : "rennrad");
+  const SYS = { draussen: { name: "Draussen (Leistungsmesser am Rad)", ok: (s) => s === "rennrad" || s === "mtb" }, indoor: { name: "Rolle (Zwift, Smarttrainer)", ok: (s) => s === "indoor" } };
+  function pdcBest(C, from, to, sys) {
     const out = {};
     for (const a of C.D.activities) {
-      if (!a.pdc || (from && C.pd(a.date) < from)) continue;
-      for (const [k] of PDC) { const v = a.pdc[k]; if (isNum(v) && (!out[k] || v > out[k].w)) out[k] = { w: v, date: a.date, name: a.name, indoor: !!a.indoor }; }
+      if (!a.pdc || (from && a.date < from) || (to && a.date > to) || (sys && !SYS[sys].ok(sysOf(a)))) continue;
+      for (const [k] of PDC) { const v = a.pdc[k]; if (isNum(v) && (!out[k] || v > out[k].w)) out[k] = { w: v, date: a.date, name: a.name, indoor: sysOf(a) === "indoor" }; }
     }
     return out;
   }
+  const BS = { sys: "draussen" };
+  /** Offizielle Wettkampfzeiten: getrennt von der FIT-Schätzung, auf dem Gerät verschlüsselt (Export «Eingaben»). */
+  const pbList = () => (window.V5UI && V5UI.merged ? V5UI.merged("pb_offiziell", "pb") : []);
+  const parseHms = (t) => { const p = String(t || "").trim().split(":").map(Number); if (!p.length || p.some((x) => !isFinite(x))) return null; return p.reduce((s, x) => s * 60 + x, 0) || null; };
   function bests(C) {
-    const B = C.D.bestleistungen, all = pdcBest(C), w8 = pdcBest(C, new Date(C.today.getTime() - 56 * DAY));
-    const run = B && B.lauf && B.lauf.length ? `<table class="t"><tr><th>Laufen</th><th>Bestzeit</th><th>Datum</th><th>letzte 12 Monate</th></tr>${B.lauf.map((r) => {
-      const y = (B.lauf_12m || []).find((x) => x.dist === r.dist);
-      return `<tr><td>${C.esc(r.label)}</td><td><b>${mmss(r.s)}</b></td><td>${C.dateCH(r.date)}</td><td>${y ? mmss(y.s) : "–"}</td></tr>`;
-    }).join("")}</table><p class="hint">${C.esc(B.quelle)}, Stand ${C.dateCH(B.erstellt)}. GPS-Sprünge ausgeschlossen.</p>` : `<p class="hint">Noch keine Lauf-Bestleistungen berechnet (tools/bestleistungen.py beim Monatsexport).</p>`;
-    const bike = Object.keys(all).length ? `<table class="t"><tr><th>Rad</th><th>Bestwert</th><th>Datum</th><th>letzte 8 Wochen</th></tr>${PDC.filter(([k]) => all[k]).map(([k, lab]) => `<tr><td>${lab}</td><td><b>${all[k].w} W</b></td><td>${C.dateCH(all[k].date)}${all[k].indoor ? " (Rolle)" : ""}</td><td>${w8[k] ? w8[k].w + " W" : "–"}</td></tr>`).join("")}</table>` : "";
-    $("v53-bests").innerHTML = run + bike;
+    const B = C.D.bestleistungen, Y = C.today.getFullYear();
+    // Laufen: drei relevante Distanzen oben, alles andere im Drilldown
+    let run = `<p class="hint">Noch keine Lauf-Bestleistungen berechnet (tools/bestleistungen.py beim Monatsexport).</p>`;
+    if (B && B.lauf && B.lauf.length) {
+      const off = new Map(pbList().map((e) => [e.dist, e]));
+      const top = ["10 km", "Halbmarathon", "Marathon"].map((l) => B.lauf.find((r) => r.label === l)).filter(Boolean);
+      const pick = top.length >= 3 ? top : B.lauf.slice(-3);
+      const line = (r) => { const o = off.get(r.label);
+        return `<div class="pb-row"><span class="pb-l">${C.esc(r.label)}</span><b>${mmss(r.s)}</b><span class="badge muted" title="${C.esc(B.quelle)}">aus FIT (Schätzung)</span>
+          <small>${C.dateCH(r.date)}${r.name ? " · " + C.esc(r.name) : ""}</small>${o ? `<small class="pb-off">offiziell <b>${mmss(o.s)}</b>${o.anlass ? " · " + C.esc(o.anlass) : ""}${o.datum ? " · " + C.dateCH(o.datum) : ""} <span class="badge ok">Resultat</span></small>` : ""}</div>`; };
+      run = `<h3 class="mini-h">Laufen</h3><div class="pb-rows">${pick.map(line).join("")}</div>
+        <details class="more"><summary>Alle Distanzen und letzte 12 Monate</summary><div class="tablewrap"><table class="t"><tr><th>Distanz</th><th>FIT</th><th>Datum</th><th>12 Monate</th><th>offiziell</th></tr>${B.lauf.map((r) => {
+          const y = (B.lauf_12m || []).find((x) => x.dist === r.dist), o = off.get(r.label);
+          return `<tr><td>${C.esc(r.label)}</td><td><b>${mmss(r.s)}</b></td><td>${C.dateCH(r.date)}</td><td>${y ? mmss(y.s) : "–"}</td><td>${o ? mmss(o.s) : "–"}</td></tr>`; }).join("")}</table></div>
+        <form class="inline" id="pb-form"><label>Distanz<select name="d">${B.lauf.map((r) => `<option>${C.esc(r.label)}</option>`).join("")}</select></label><label>Offizielle Zeit<input name="t" placeholder="1:26:54" inputmode="numeric" required></label>
+          <label class="grow">Anlass<input name="a" placeholder="z. B. Halbmarathon Zürich"></label><label>Datum<input type="date" name="dt"></label><button class="btn" type="submit">Speichern</button></form>
+        <p class="hint">${C.esc(B.quelle)}, Stand ${C.dateCH(B.erstellt)}. GPS-Sprünge ausgeschlossen. Die FIT-Zeit kann von der offiziellen Nettozeit um etwa eine Sekunde abweichen (Start/Ziel-Zeitpunkt, Aufzeichnung); die offizielle Zeit steht getrennt und wird nie verrechnet.</p></details>`;
+    }
+    // Rad: Leistungskurve je System (nie Rolle und Leistungsmesser am Rad mischen), log. Dauerachse 5 s – 2 h
+    const sysSel = `<div class="seg" role="group" aria-label="System">${Object.entries(SYS).map(([k, v]) => `<button type="button" data-sys="${k}" aria-pressed="${BS.sys === k}">${k === "draussen" ? "Draussen" : "Rolle"}</button>`).join("")}</div>`;
+    $("v53-bests").innerHTML = run + `<h3 class="mini-h pb-h">Rad: Leistungskurve ${sysSel}</h3><div class="chart"><canvas id="c-v53-pdc" aria-label="Leistungskurve: beste Watt je Dauer"></canvas></div><p class="hint" id="v53-pdc-note"></p>
+      <h3 class="mini-h">Letzte 8 Wochen im Verhältnis zum Bestwert der letzten 12 Monate</h3><div class="v53-pct" id="v53-pct"></div>`;
+    $("v53-bests").querySelectorAll("[data-sys]").forEach((b) => (b.onclick = () => { BS.sys = b.dataset.sys; bests(C); }));
+    const f = $("pb-form");
+    if (f) f.onsubmit = async (e) => { e.preventDefault(); const t = e.target, sec = parseHms(t.t.value);
+      if (!sec) { t.t.setCustomValidity("Format h:mm:ss oder mm:ss"); t.t.reportValidity(); return; }
+      await V5UI.Inbox.upsert("pb", { id: "pb-" + t.d.value, dist: t.d.value, s: sec, anlass: t.a.value.trim() || null, datum: t.dt.value || null, quelle: "von Hand (offizielles Resultat)", erfasst: new Date().toISOString() });
+      bests(C); };
+    const sys = BS.sys, iso = (d) => C.iso(d);
+    const yA = pdcBest(C, `${Y - 1}-01-01`, `${Y - 1}-12-31`, sys), yB = pdcBest(C, `${Y}-01-01`, null, sys), w8 = pdcBest(C, iso(new Date(C.today.getTime() - 56 * DAY)), null, sys);
+    const ref = pdcBest(C, iso(new Date(C.today.getTime() - 365 * DAY)), null, sys);
+    const pts = (o) => PDC.filter(([k]) => o[k]).map(([k]) => ({ x: +k, y: o[k].w, d: o[k] }));
+    const ds = [[String(Y - 1), yA, C.css("--muted"), 1.25, []], [String(Y), yB, C.css("--accent"), 2, []], ["letzte 8 Wochen", w8, C.css("--accent-2"), 1.5, [5, 4]]]
+      .filter(([, o]) => Object.keys(o).length).map(([l, o, col, bw, dash]) => ({ label: l, data: pts(o), borderColor: col, backgroundColor: col, borderWidth: bw, borderDash: dash, pointRadius: 3, tension: 0 }));
+    const tick = (v) => ({ 5: "5 s", 15: "15 s", 30: "30 s", 60: "1 min", 300: "5 min", 600: "10 min", 1200: "20 min", 3600: "1 h", 7200: "2 h" })[v] || "";
+    if (!ds.length) { $("v53-pdc-note").textContent = `Keine Leistungsdaten (${SYS[sys].name}).`; }
+    C.chart("c-v53-pdc", { type: "line", data: { datasets: ds }, options: { parsing: false, interaction: { mode: "nearest", intersect: false },
+      scales: { x: { type: "logarithmic", min: 5, max: 7200, afterBuildTicks: (ax) => { ax.ticks = [5, 15, 60, 300, 1200, 3600, 7200].filter((v) => innerWidth >= 560 || v !== 15).map((v) => ({ value: v })); }, ticks: { callback: tick, maxRotation: 0 }, title: { display: true, text: "Dauer (logarithmisch)" } },
+        y: { ticks: { maxTicksLimit: 5 }, title: { display: true, text: "beste Ø Watt" } } },
+      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { title: (it) => tick(it[0].raw.x), label: (c) => `${c.dataset.label}: ${c.raw.y} W · ${C.dateCH(c.raw.d.date)} ${C.esc(c.raw.d.name || "")}` } } } } });
+    if (ds.length) $("v53-pdc-note").textContent = `${SYS[sys].name}. Beste Ø Leistung je Dauer aus einzelnen Fahrten; Rolle und Leistungsmesser am Rad werden nie gemischt. Einzelbestwerte hängen davon ab, ob du die Dauer überhaupt voll gefahren bist, und sind kein Nachweis für Trainingsfortschritt.`;
+    const keys = PDC.filter(([k]) => ref[k]);
+    $("v53-pct").innerHTML = keys.length ? keys.map(([k, lab]) => { const p = w8[k] ? Math.round((100 * w8[k].w) / ref[k].w) : null;
+      return `<div><span>${lab}</span><span class="trk"><i style="width:${p == null ? 0 : Math.min(100, p)}%"></i></span><b>${p == null ? "–" : p + " %"}</b><small>${w8[k] ? w8[k].w + " W" : "keine Fahrt"} / ${ref[k].w} W</small></div>`; }).join("") +
+      `<p class="hint">Bestwert der letzten 12 Monate, gleiches System. «keine Fahrt»: in den letzten 8 Wochen keine so lange Leistungsaufzeichnung.</p>` : `<p class="hint">Keine Leistungsdaten der letzten 12 Monate (${SYS[sys].name}).</p>`;
   }
-  function radar(C) {
-    const all = pdcBest(C), w8 = pdcBest(C, new Date(C.today.getTime() - 56 * DAY));
-    const keys = PDC.filter(([k]) => all[k]);
-    if (!keys.length) { $("v53-radar-note").textContent = "Keine Leistungsdaten."; return; }
-    C.chart("c-v53-radar", { type: "radar", data: { labels: keys.map(([, l]) => l), datasets: [
-      { label: "Bestwert (alle Zeiten) = 100 %", data: keys.map(() => 100), borderColor: C.css("--muted"), backgroundColor: C.css("--muted") + "22", pointRadius: 2 },
-      { label: "Letzte 8 Wochen", data: keys.map(([k]) => (w8[k] ? +(w8[k].w / all[k].w * 100).toFixed(1) : 0)), borderColor: C.css("--accent-2"), backgroundColor: C.css("--accent-2") + "33", pointRadius: 3 }] },
-      options: { scales: { r: { min: 0, max: 110, ticks: { stepSize: 25, callback: (v) => v + " %" } } }, plugins: { legend: { position: "bottom" },
-        tooltip: { callbacks: { label: (c) => { const k = keys[c.dataIndex][0]; const src = c.datasetIndex ? w8[k] : all[k]; return src ? `${c.dataset.label}: ${src.w} W (${C.dateCH(src.date)})` : "–"; } } } } } });
-    $("v53-radar-note").textContent = "Beste Leistung je Dauer aus den einzelnen Fahrten (inkl. Rolle). Ohne FTP – nur gemessene Watt.";
-  }
-  function zonesMonth(C) {
-    const t = C.today.getTime(), win = (a, b) => C.D.activities.filter((x) => x.zones && C.pd(x.date).getTime() > t - a * DAY && C.pd(x.date).getTime() <= t - b * DAY);
+  function zonesMonth(C) {             // je Sportart (Auswahl der Zonenkarte), nie gemischt
+    const sel = $("z-sport"), sp = (sel && sel.value) || "rad", name = C.SPORTS[sp] ? C.SPORTS[sp].label : sp;
+    if ($("v53-zones-h")) $("v53-zones-h").textContent = `Garmin-Pulszonen ${name}, letzte 4 Wochen`;
+    const t = C.today.getTime(), win = (a, b) => C.D.activities.filter((x) => x.sport === sp && x.zones && C.pd(x.date).getTime() > t - a * DAY && C.pd(x.date).getTime() <= t - b * DAY);
     const share = (list) => { const z = [0, 0, 0, 0, 0]; for (const a of list) a.zones.forEach((v, i) => (z[i] += v || 0)); const s = z.reduce((x, y) => x + y, 0); return { z, s, p: z.map((v) => (s ? v / s * 100 : 0)) }; };
     const now = share(win(28, 0)), prev = share(win(56, 28));
-    if (!now.s) { $("v53-zones").innerHTML = `<p class="hint">Keine Pulszonen in den letzten 4 Wochen.</p>`; return; }
+    if (!now.s) { $("v53-zones").innerHTML = `<p class="hint">Keine Garmin-Pulszonen (${name}) in den letzten 4 Wochen.</p>`; return; }
     const top = now.p.indexOf(Math.max(...now.p));
     $("v53-zones").innerHTML = `<p class="v53-lead"><b>${C.fmt(now.p[top])} %</b> der Zeit in Zone ${top + 1} (letzte 4 Wochen, ${C.hmm(now.s)} h)${prev.s ? `, ${now.p[top] - prev.p[top] >= 0 ? "+" : "−"}${C.fmt(Math.abs(now.p[top] - prev.p[top]))} Prozentpunkte gegenüber den 4 Wochen davor` : ""}.</p>
       <div class="v53-zbars">${now.p.map((p, i) => `<div><span>Z${i + 1}</span><span class="trk"><i style="width:${p.toFixed(1)}%;background:var(--z${i + 1})"></i>${prev.s ? `<em style="left:${prev.p[i].toFixed(1)}%" title="4 Wochen davor: ${C.fmt(prev.p[i])} %"></em>` : ""}</span><b>${C.fmt(p)} %</b><small>${prev.s ? (p - prev.p[i] >= 0 ? "+" : "−") + C.fmt(Math.abs(p - prev.p[i])) : ""}</small></div>`).join("")}</div>
-      <p class="hint">Garmin-Pulszonen je Aktivität (Zeit), alle Sportarten. Strich = Anteil in den 4 Wochen davor.</p>`;
+      <p class="hint">Zeit je Garmin-Pulszone, wie die Zonen damals auf der Uhr eingestellt waren (nur ${name}). Strich = Anteil in den 4 Wochen davor. Anteile gerundet.</p>`;
   }
+  V.zonesMonth = zonesMonth;
 
   /* ---------------- Körper: Protein und Kohlenhydrate pro kg ---------------- */
   V.koerper = function (C) {

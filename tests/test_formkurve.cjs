@@ -333,3 +333,125 @@ test("Zeitzone Europe/Zurich über Sommer- und Winterzeit", () => {
   assert.equal(FK.zurichLocal(Date.UTC(2026, 9, 25, 0, 30) / 1000), "2026-10-25 02:30");   // erste 02:30 (Sommerzeit)
   assert.equal(FK.zurichLocal(Date.UTC(2026, 9, 25, 1, 30) / 1000), "2026-10-25 02:30");   // zweite 02:30 (Winterzeit)
 });
+
+/* ---------- V5.5: Form (pmc-2.0) – A01 ---------- */
+test("Form: an 10 Tagen gilt Form = Fitness − Ermüdung (exakt und gerundet angezeigt)", () => {
+  const L = [80, 0, 120, 60, 0, 0, 150, 40, 0, 90], start = "2026-03-01", loads = new Map(L.map((v, i) => [FK.addDays(start, i), v]));
+  const P = FK.pmc(loads, "2026-01-01", FK.addDays(start, 9)).slice(-10);
+  assert.equal(P.length, 10);
+  P.forEach((p, i) => {
+    assert.equal(p.date, FK.addDays(start, i));
+    assert.ok(Math.abs(p.tsb - (p.ctl - p.atl)) < 1e-12);
+    const A = FK.pmcAnzeige(p);
+    assert.equal(A.form, A.fitness - A.ermuedung, `Tag ${p.date}`);
+    assert.ok(Math.abs(A.form - A.form_exakt) <= 1, "gerundete Differenz weicht höchstens 1 vom exakten Wert ab");
+  });
+  for (let i = 1; i < P.length; i++) assert.ok(Math.abs(P[i].tsbStart - P[i - 1].tsb) < 1e-12, "Form zu Tagesbeginn = Form des Vortags");
+});
+test("Form: Tageswechsel ohne Training und neue Aktivität am letzten Tag", () => {
+  const loads = new Map([["2026-03-01", 100], ["2026-03-05", 60]]);
+  const A = FK.pmc(loads, "2026-03-01", "2026-03-10"), B = FK.pmc(loads, "2026-03-01", "2026-03-11");
+  A.forEach((p, i) => assert.deepEqual(B[i], p));                       // frühere Tage bleiben gleich
+  const a = A.at(-1), b = B.at(-1);
+  assert.ok(Math.abs(b.ctl - a.ctl * 41 / 42) < 1e-12 && Math.abs(b.atl - a.atl * 6 / 7) < 1e-12);
+  assert.ok(b.tsb > a.tsb, "ohne Training steigt die Form");
+  loads.set("2026-03-11", 90);                                           // Nacht-Update bringt den Lauf von heute
+  const C = FK.pmc(loads, "2026-03-01", "2026-03-11"), c = C.at(-1);
+  assert.deepEqual(C.slice(0, -1), B.slice(0, -1));
+  assert.ok(Math.abs(c.ctl - b.ctl - 90 / 42) < 1e-12 && Math.abs(c.atl - b.atl - 90 / 7) < 1e-12);
+  assert.ok(Math.abs(c.tsbStart - b.tsbStart) < 1e-12, "Form zu Tagesbeginn ändert sich durch die neue Einheit nicht");
+});
+test("Form: Beispiel wie im Screenshot (Fitness 91, Ermüdung 89) ergibt Form +2, Vortageswert getrennt", () => {
+  const A = FK.pmcAnzeige({ date: "2026-11-07", ctl: 90.5, atl: 89.4, tsbStart: -9.6, last: 130 });
+  assert.deepEqual([A.fitness, A.ermuedung, A.form, A.form_exakt, A.form_tagesbeginn], [91, 89, 2, 1.1, -10]);
+  assert.equal(A.v, "pmc-2.0");
+});
+
+/* ---------- V5.5: Intensitätsverteilung (zonen-2.0) – A02 ---------- */
+const ZP = (id, ab, bis, lt1, lt2) => ({ id, name: "Zonen " + id, gueltig_ab: ab, gueltig_bis: bis, status: bis ? "ersetzt" : "aktiv",
+  skalen: [{ disziplin: "rad", metrik: "puls", unit: "bpm", zonen: [{ z: "Z1", von: null, bis: lt1 - 10 }, { z: "Z2", von: lt1 - 10, bis: lt1 }, { z: "Z3", von: lt1, bis: lt2 }, { z: "Z4", von: lt2, bis: lt2 + 10 }, { z: "Z5", von: lt2 + 10, bis: null }] },
+    { disziplin: "lauf", metrik: "puls", unit: "bpm", zonen: [{ z: "Z1", von: null, bis: 130 }, { z: "Z2", von: 130, bis: 145 }, { z: "Z3", von: 145, bis: 165 }, { z: "Z4", von: 165, bis: 175 }, { z: "Z5", von: 175, bis: null }] }] });
+const hist = (bpm, sec) => { const h = Array(30).fill(0); h[Math.floor((bpm - 60) / 5)] = sec; return h; };
+test("Zonen: Grenzen nach Datum der Einheit, ohne Profil nur Garmin-Zonen", () => {
+  const Z = [ZP("alt", "2026-01-01", "2026-06-01", 140, 160), ZP("neu", "2026-06-01", null, 135, 155)];
+  const a1 = { sport: "rad", date: "2025-12-20", hh: hist(152, 3600), zones: [600, 1200, 1200, 600, 0] };
+  const a2 = { sport: "rad", date: "2026-03-10", hh: hist(157, 3600), zones: [0, 0, 3600, 0, 0] };
+  const a3 = { sport: "rad", date: "2026-07-10", hh: hist(157, 3600), zones: [0, 0, 3600, 0, 0] };
+  assert.equal(FK.zone3(a1, Z).basis, "garmin");
+  assert.deepEqual(FK.zone3(a1, Z).z, [1800, 1200, 600]);
+  const q2 = FK.zone3(a2, Z), q3 = FK.zone3(a3, Z);
+  assert.equal(q2.basis, "profil"); assert.equal(q2.grenzen.lt1, 140); assert.deepEqual(q2.z, [0, 3600, 0]);   // 155–160 bpm, altes Profil (LT2 160): mittel
+  assert.equal(q3.basis, "profil"); assert.equal(q3.grenzen.lt1, 135); assert.deepEqual(q3.z, [0, 0, 3600]);   // gleicher Puls, neues Profil (LT2 155): hart
+});
+test("Zonen: Sportarten nie gemischt, Schwimmen ohne Schwellen → unsicher", () => {
+  const Z = [ZP("neu", "2026-01-01", null, 135, 155)];
+  const acts = [{ sport: "rad", date: "2026-02-02", hh: hist(120, 7200) }, { sport: "lauf", date: "2026-02-03", hh: hist(170, 3600) },
+    { sport: "schwimm", date: "2026-02-04", hh: hist(140, 2400), zones: [600, 600, 600, 600, 0] }];
+  const R = FK.zoneSummary(acts, Z, "rad", "2026-02-01", "2026-02-28");
+  assert.equal(R.profil.n, 1); assert.equal(R.profil.s, 7200); assert.equal(R.garmin.n, 0);
+  const S = FK.zoneSummary(acts, Z, "schwimm", "2026-02-01", "2026-02-28");
+  assert.equal(S.profil.n, 0); assert.equal(S.garmin.n, 1);
+  const V = FK.zoneVerdict(S, {});
+  assert.equal(V.status, "unsicher"); assert.match(V.text, /^Beurteilung unsicher/); assert.match(V.text, /Schwimmen/);
+});
+test("Zonen: wenig Daten → «Beurteilung unsicher», nie rote Pauschalwarnung", () => {
+  const Z = [ZP("neu", "2026-01-01", null, 135, 155)];
+  const acts = [0, 1, 2].map((i) => ({ sport: "rad", date: FK.addDays("2026-02-02", i), hh: hist(150, 3600) }));   // alles «mittel»
+  const V = FK.zoneVerdict(FK.zoneSummary(acts, Z, "rad", "2026-02-01", "2026-02-28"), { wettkampf: { name: "Testlauf", tage: 200 } });
+  assert.equal(V.status, "unsicher");
+  assert.doesNotMatch(V.text + V.hypothese, /zu viel|Zu viel|lockerer gestalten/);
+  assert.match(V.hypothese, /Hypothese/); assert.match(V.hypothese, /Wettkampfnähe \(Testlauf: 29 Wochen\)/);
+});
+test("Zonen: genug Daten → Beschreibung mit Zeit, Nenner und Kontext; Summe 101 % ist Rundung", () => {
+  const Z = [ZP("neu", "2026-01-01", null, 135, 155)];
+  const acts = [];
+  for (let w = 0; w < 4; w++) for (let i = 0; i < 3; i++) acts.push({ sport: "rad", date: FK.addDays("2026-02-02", 7 * w + 2 * i), hh: hist(120, 3000).map((v, j) => v + hist(150, 600)[j] + hist(165, 300)[j]) });
+  const S = FK.zoneSummary(acts, Z, "rad", "2026-02-01", "2026-03-01");
+  assert.equal(S.profil.wochen, 4); assert.equal(S.profil.n, 12);
+  const V = FK.zoneVerdict(S, { stundenProWoche: 9.6, einheitenProWoche: 5 });
+  assert.equal(V.status, "beschreibung");
+  assert.equal(V.text, "77 % locker, 15 % mittel, 8 % hart – von 13:00 h Pulszeit in 12 Einheiten (4 Wochen).");
+  assert.match(V.hypothese, /Häufigkeit \(Ø 5 Einheiten pro Woche\), Belastung \(Ø 9.6 h pro Woche\)/);
+  assert.match(FK.zoneVerdict(S, { stundenProWoche: 9.6, einheitenProWoche: 5, sportName: "Rad" }).hypothese, /Ø 5 Rad-Einheiten pro Woche\), Belastung \(Ø 9.6 h Rad pro Woche/);
+  assert.deepEqual(FK.anteile([335, 335, 330]), { pct: [34, 34, 33], summe: 101, total_s: 1000 });
+});
+
+/* ---------- V5.5: Koppellauf koppel-1.1 – A03 ---------- */
+test("Koppellauf: 35 min direkt, 36–45 min nur Kandidat mit Hinweis, bestätigt zählt", () => {
+  const END0 = FK.zurichToUnix("2026-06-14", "10:00");
+  const mk = (m, entscheide) => FK.findBricks([{ id: "b", sport: "rad", t0: END0 - 3600, el: 3600 }, { id: "r", sport: "lauf", t0: END0 + m * 60, el: 1800 }], { entscheide });
+  const d = mk(35)[0], l = mk(40)[0], c = mk(40, [{ bike: "b", run: "r", status: "bestätigt" }])[0];
+  assert.equal(d.fenster, "direkt"); assert.equal(d.direkt, true); assert.equal(d.hinweis, undefined);
+  assert.equal(l.fenster, "lang"); assert.equal(l.status, "vorschlag"); assert.equal(l.direkt, false); assert.match(l.hinweis, /nur Kandidat/);
+  assert.equal(c.fenster, "lang"); assert.equal(c.status, "bestätigt"); assert.equal(c.direkt, true);
+  assert.equal(FK.VERSIONS.koppel, "koppel-1.1");
+});
+test("Koppellauf: Abschnitte 0–5, 5–10, 10–20, ab 20 min unverändert aus den Rohwerten", () => {
+  const sp = [{ von: 0, bis: 300, s: 300, m: 804, pace: 373, hr: 136.9, cad: 167 }, { von: 300, bis: 600, s: 300, m: 883, pace: 340, hr: 146, cad: 169 },
+    { von: 600, bis: 1200, s: 600, m: 1853, pace: 324, hr: 150.5, cad: 171 }, { von: 1200, bis: null, s: 1500, m: 4700, pace: 319, hr: 151.2, cad: null }];
+  const m = FK.brickMetrics({ id: "b", sport: "rad", dur: 3600 }, { id: "r", sport: "lauf", dur: 3000, sp }, null);
+  assert.deepEqual(m.lauf.splits.map((s) => [s.von, s.bis, s.pace, s.hr, s.cad]), [[0, 300, 373, 136.9, 167], [300, 600, 340, 146, 169], [600, 1200, 324, 150.5, 171], [1200, null, 319, 151.2, null]]);
+  assert.deepEqual(FK.splitLabels(m.lauf.splits), ["0–5 min", "5–10 min", "10–20 min", "ab 20 min"]);
+  assert.deepEqual(FK.splitRange(m.lauf.splits.map((s) => s.pace), 5), [314, 378]);       // keine Null-Pace als Achsenbeginn
+});
+
+/* ---------- V5.5: Lange Ausfahrt «vorsichtige Orientierung» – P0.6 ---------- */
+test("5 h: validiert bleibt «nicht bestimmbar»; Orientierung getrennt aus 10 langen Fahrten", () => {
+  const L = [4.3, 4.5, 4.7, 4.9, 5.0, 5.2, 5.3, 5.5, 5.6, 5.8].map((hh, i) => ride(i, { mv: hh * 3600, dur: hh * 3600, watt: 170 + 2 * i, np: 180 + 2 * i, dr: { dec: i < 2 ? 4 : 7 + i * 0.2, h1: 130, h2: 137 + (i % 3) } }));
+  const r = FK.longRide(L, { stunden: 5, zweck: "longride", system: "rennrad", heute: "2026-06-01" });
+  assert.equal(r.status, "nicht bestimmbar"); assert.equal(r.watt, null);
+  const o = FK.longRideOrientierung(L, { stunden: 5, system: "rennrad", heute: "2026-06-01", lt1_hf: 152 });
+  assert.equal(o.status, "orientierung"); assert.equal(o.validiert, false); assert.equal(o.n, 10);
+  assert.deepEqual([o.watt.lo, o.watt.hi], [175, 179]);                   // 25.–50. Perzentil von 170…188 W
+  assert.equal(o.drift_bpm, 8); assert.equal(o.puls_start_max, 144);    // 152 − 8
+  assert.match(o.fehlend.join(" "), /nur 2 der 10 Fahrten mit Entkopplung ≤ 5 %/);
+  assert.match(o.fehlend.join(" "), /keine Umrechnung/);
+});
+test("5 h: Orientierung nie aus kurzen Fahrten; Rolle oben auf LT1 begrenzt", () => {
+  const kurz = [1, 2, 3, 4, 5].map((i) => ride(i, { mv: 2 * 3600, dur: 2 * 3600 }));
+  const o = FK.longRideOrientierung(kurz, { stunden: 5, system: "rennrad", heute: "2026-06-01" });
+  assert.equal(o.status, "keine Orientierung"); assert.equal(o.watt, null); assert.match(o.grund, /nicht hochgerechnet/);
+  const rolle = [1, 2, 3, 4].map((i) => ride(i, { indoor: true, typ: "Zwift", mv: 4 * 3600, dur: 4 * 3600, watt: 200 + i * 5, np: 205 + i * 5 }));
+  const q = FK.longRideOrientierung(rolle, { stunden: 4, system: "indoor", heute: "2026-06-01", lt1_w: 205 });
+  assert.equal(q.watt.hi, 205); assert.ok(q.watt.lo <= 205); assert.match(q.bedingungen.join(" "), /LT1 205 W/);
+});

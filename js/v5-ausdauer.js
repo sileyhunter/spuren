@@ -10,10 +10,26 @@
   const SYS = { rennrad: "Rennrad", mtb: "MTB/Gravel", indoor: "Rolle (Zwift)" };
 
   /* ======================= Lange Ausfahrt 1–6 h ======================= */
-  const LR = { zweck: "longride", h: 5, system: "rennrad", ist: null };
+  const LR = { zweck: "longride", h: 5, system: "rennrad", ist: null, orient: false };
   function lt1Indoor() {
     const t = ((C().D.schwellen || {}).tests || []).filter((x) => x.sport === "rad" && x.protokoll === "rad-stufen-120-20-5" && x.lt1 && x.lt1.lo != null).sort((a, b) => b.datum.localeCompare(a.datum))[0];
     return t ? t.lt1.lo : null;
+  }
+  /** Optionaler Planungsmodus «vorsichtige Orientierung»: sichtbar getrennt vom validierten Band, nur auf Wunsch. */
+  function orientHtml(r) {
+    const F = FK(), D = C().D, today = C().iso(C().today);
+    const g = F.pulsGrenzen ? F.pulsGrenzen(D.zonen || [], "rad", today) : null;
+    const o = F.longRideOrientierung(D.activities, { stunden: LR.h, system: LR.system, heute: today, lt1_w: LR.system === "indoor" ? lt1Indoor() : null, lt1_hf: g ? g.lt1 : null });
+    const head = `<div class="lr-orient-head"><div><b>Vorsichtige Orientierung</b> <span class="badge warn">nicht validiert</span><p class="hint">Optionaler Planungsmodus, wenn die Datenlage schwach ist. Ersetzt kein validiertes Band.</p></div>
+      <button class="btn" type="button" id="lr-orient-btn" aria-expanded="${LR.orient}">${LR.orient ? "Ausblenden" : "Orientierung anzeigen"}</button></div>`;
+    if (!LR.orient) return `<div class="lr-orient">${head}</div>`;
+    if (o.status !== "orientierung") return `<div class="lr-orient">${head}<p>${esc(o.grund)}.</p></div>`;
+    return `<div class="lr-orient">${head}<div class="kv"><div><span>Watt (Ø), ${num(LR.h, 1)} h</span><b>${o.watt.lo}–${o.watt.hi} W</b><small>${esc(o.watt.quelle)}</small></div>
+      <div><span>Puls zu Beginn höchstens</span><b>${o.puls_start_max != null ? o.puls_start_max + " bpm" : "–"}</b><small>${o.puls_start_max != null ? "aus LT1-Puls und deiner Drift" : "LT1-Puls oder Drift fehlt"}</small></div>
+      <div><span>typische Drift</span><b>${o.drift_bpm != null ? (o.drift_bpm > 0 ? "+" : o.drift_bpm < 0 ? "−" : "") + num(Math.abs(o.drift_bpm), 1) + " bpm" : "–"}</b><small>Entkopplung Median ${o.entkopplung_median != null ? num(o.entkopplung_median, 1) + " %" : "–"}</small></div></div>
+      <h3 class="mini-h">So entsteht die Orientierung</h3><ul class="flags">${o.bedingungen.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
+      <h3 class="mini-h">Was für eine validierte Empfehlung fehlt</h3><ul class="flags">${o.fehlend.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
+      <p class="hint">Regel ${esc(o.v)}. Keine Zone aus kurzen Fahrten hochgerechnet. Im Zweifel vorsichtiger beginnen und den Puls in der zweiten Hälfte beobachten.</p></div>`;
   }
   V.langfahrt = function () {
     const D = C().D, F = FK();
@@ -46,7 +62,9 @@
         ${r.puls ? `<div class="hero">${r.puls.lo}–${r.puls.hi} <small>bpm</small></div><p class="hint">erwartete Drift: +${num(r.puls.drift_bpm, 1)} bpm in der 2. Hälfte · Entkopplung Median ${num(r.puls.entkopplung_median, 1)} %</p>` : `<div class="hero muted">–</div><p class="hint">ohne Evidenz kein Pulsband</p>`}</div>
       <div class="lr-box"><div class="eyebrow">Begründung</div><ul class="flags">${r.gruende.map((g) => `<li>${esc(g)}</li>`).join("")}</ul>
         <p class="hint">Evidenz: ${r.evidenz.dauer} Fahrten ${num(r.fenster_h[0], 1)}–${num(r.fenster_h[1], 1)} h · ${r.evidenz.mit_leistung} mit Leistung und Puls · ${r.evidenz.gleichmaessig} gleichmässig · ${r.evidenz.mit_drift} mit Drift · ${r.evidenz.entkopplung_ok} mit Entkopplung ≤ ${F.ZWECK[LR.zweck].maxDec} %</p></div>
-      <div class="lr-box"><div class="eyebrow">Risiken und Bedingungen</div><ul class="flags">${risks.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div></div>`;
+      <div class="lr-box"><div class="eyebrow">Risiken und Bedingungen</div><ul class="flags">${risks.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div></div>
+      ${r.status === "nicht bestimmbar" ? orientHtml(r) : ""}`;
+    const ob = $("lr-orient-btn"); if (ob) ob.onclick = () => { LR.orient = !LR.orient; V.langfahrt(); };
     // Band über 1–6 h, nur wo bestimmbar
     const hs = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6];
     const bands = hs.map((h) => F.longRide(D.activities, { stunden: h, zweck: LR.zweck, system: LR.system, heute: C().iso(C().today), lt1 }));
@@ -89,11 +107,11 @@
     const pairs = F.findBricks(D.activities, { maxMin: BR.max, entscheide: dec });
     const A = C().ACT_BY_ID;
     const live = pairs.filter((p) => p.status !== "getrennt");
-    if (!BR.sel && live.length) BR.sel = live[0].bike + "|" + live[0].run;
+    if (!BR.sel && live.length) { const d0 = live.find((x) => x.direkt) || live[0]; BR.sel = d0.bike + "|" + d0.run; }
     $("t-br").innerHTML = `<tr><th>Datum</th><th class="l">Rad</th><th>Wechsel</th><th class="l">Lauf</th><th class="l">Status</th><th></th></tr>` + (pairs.slice(0, 60).map((p) => {
       const b = A.get(p.bike), r = A.get(p.run), m = F.brickMetrics(b, r, p);
-      return `<tr class="${BR.sel === p.bike + "|" + p.run ? "on" : ""}"><td>${dch(b.date)}</td><td class="wrap">${esc(b.typ)} ${C().hmm(m.rad.dauer_s || 0)} h · ${m.rad.watt ? m.rad.watt + " W" : "ohne Watt"}${m.rad.np ? " · NP " + m.rad.np : ""}</td>
-        <td>${num(p.wechsel_min, 1)} min${p.genau ? "" : " <small>±1</small>"}${p.mehrsport ? " <small>Mehrsport</small>" : ""}${p.hinweis ? `<br><small>${esc(p.hinweis)}</small>` : ""}</td>
+      return `<tr class="${BR.sel === p.bike + "|" + p.run ? "on" : ""}${p.fenster === "lang" && !p.direkt ? " lang" : ""}"><td>${dch(b.date)}</td><td class="wrap">${esc(b.typ)} ${C().hmm(m.rad.dauer_s || 0)} h · ${m.rad.watt ? m.rad.watt + " W" : "ohne Watt"}${m.rad.np ? " · NP " + m.rad.np : ""}</td>
+        <td>${num(p.wechsel_min, 1)} min${p.genau ? "" : " <small>±1</small>"}${p.mehrsport ? " <small>Mehrsport</small>" : ""}${p.fenster === "lang" ? ` <span class="badge muted">lange Pause</span>` : ""}${p.hinweis ? `<br><small>${esc(p.hinweis)}</small>` : ""}</td>
         <td class="wrap">${C().hmm(m.lauf.dauer_s || 0)} h · ${num(r.km, 1)} km${m.lauf.pace_0_5 ? " · 0–5 min " + FK().pace(m.lauf.pace_0_5) : ""}</td><td>${V.badge(p.status)}</td>
         <td class="acts"><button class="btn" data-s="${esc(p.bike)}|${esc(p.run)}">Ansehen</button>${p.status !== "bestätigt" ? `<button class="btn" data-c="${esc(p.bike)}|${esc(p.run)}">Koppeln</button>` : ""}${p.status !== "getrennt" ? `<button class="btn" data-t="${esc(p.bike)}|${esc(p.run)}">Trennen</button>` : ""}</td></tr>`;
     }).join("") || `<tr><td colspan="6">Keine Rad-Lauf-Folge mit höchstens ${BR.max} min Wechsel gefunden.</td></tr>`);
@@ -108,27 +126,58 @@
     $("br-manf").onsubmit = (e) => { e.preventDefault(); set(e.target.b.value + "|" + e.target.r.value, "bestätigt"); };
     // Detail
     const p = pairs.find((x) => x.bike + "|" + x.run === BR.sel);
-    if (!p) { $("br-detail").innerHTML = `<p class="hint">Wähle einen Koppellauf.</p>`; C().chart("c-br", { type: "bar", data: { labels: [], datasets: [] } }); }
+    const minis = ["c-br-pace", "c-br-hr", "c-br-cad"];
+    if (!p) { $("br-detail").innerHTML = `<p class="hint">Wähle einen Koppellauf.</p>`; $("br-minis").hidden = true; }
     else {
+      $("br-minis").hidden = false;
       const b = A.get(p.bike), r = A.get(p.run), m = F.brickMetrics(b, r, p);
       const brickRuns = new Set(pairs.filter((x) => x.status !== "getrennt").map((x) => x.run));
       const sc = F.soloCompare(D.activities, r, brickRuns);
-      $("br-detail").innerHTML = `<div class="kv"><div><span>Rad</span><b>${C().hmm(m.rad.dauer_s || 0)} h</b><small>${m.rad.watt ? `Ø ${m.rad.watt} W` : "ohne Watt"}${m.rad.np ? ` · NP ${m.rad.np} W` : " · kein NP"} · Puls ${num(m.rad.hr)}</small></div>
+      $("br-detail").innerHTML = `${p.fenster === "lang" && !p.direkt ? `<p class="verdict unsure">Wechsel ${num(m.wechsel_min, 1)} min: automatisch erkannter Kandidat mit langer Pause (über 35 min). Zählt erst als direkter Koppellauf, wenn du ihn mit «Koppeln» bestätigst.</p>` : ""}
+        <div class="kv"><div><span>Rad</span><b>${C().hmm(m.rad.dauer_s || 0)} h</b><small>${m.rad.watt ? `Ø ${m.rad.watt} W` : "ohne Watt"}${m.rad.np ? ` · NP ${m.rad.np} W` : " · kein NP"} · Puls ${num(m.rad.hr)}</small></div>
         <div><span>Wechsel</span><b>${num(m.wechsel_min, 1)} min</b><small>${p.genau ? "aus Sekundenwerten" : "aus Startminute ±1 min"}</small></div>
         <div><span>Lauf 0–5 min</span><b>${FK().pace(m.lauf.pace_0_5)}</b><small>Puls ${num((m.lauf.splits[0] || {}).hr)}</small></div><div><span>Lauf 10–20 min</span><b>${FK().pace(m.lauf.pace_10_20)}</b><small>Pulsanstieg ${m.lauf.hr_anstieg != null ? "+" + num(m.lauf.hr_anstieg, 1) : "–"} bpm</small></div>
-        <div><span>Drift Lauf</span><b>${m.lauf.drift != null ? num(m.lauf.drift, 1) + " %" : "–"}</b></div><div><span>Solo-Vergleich</span><b>${sc.status === "vergleichbar" ? (sc.diff_s > 0 ? "+" : "") + sc.diff_s + " s/km" : "nicht vergleichbar"}</b><small>${sc.status === "vergleichbar" ? `gegen ${sc.n} ähnliche Solo-Läufe (0–5 min)` : esc(sc.grund)}</small></div></div>
-        ${m.hinweise.length ? `<ul class="flags">${m.hinweise.map((h) => `<li>${esc(h)}</li>`).join("")}</ul>` : ""}<p class="hint">Kein Kausalbeweis: Wetter, Gelände, Verpflegung und Ermüdung bleiben offen.</p>`;
-      const sp = m.lauf.splits;
-      C().chart("c-br", { type: "bar", data: { labels: sp.map((s) => s.bis ? `${s.von / 60}–${s.bis / 60} min` : `ab ${s.von / 60} min`), datasets: [
-        { type: "line", label: "Pace (min/km)", data: sp.map((s) => s.pace), borderColor: C().css("--accent"), backgroundColor: C().css("--accent"), yAxisID: "y", tension: 0, pointRadius: 4 },
-        { label: "Puls Ø (bpm)", data: sp.map((s) => s.hr), backgroundColor: C().css("--lt2") + "66", yAxisID: "y2", borderRadius: 3 },
-      ] }, options: { scales: { y: { reverse: true, title: { display: true, text: "Pace min/km (oben schneller)" }, ticks: { callback: (v) => FK().pace(v) } }, y2: { position: "right", grid: { display: false }, title: { display: true, text: "Puls bpm" } } },
-        plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (c) => (c.dataset.yAxisID === "y" ? `Pace ${FK().pace(c.raw)} /km` : `Puls ${num(c.raw)} bpm`) } } } } });
+        <div><span>Drift Lauf</span><b>${m.lauf.drift != null ? num(m.lauf.drift, 1) + " %" : "–"}</b></div><div><span>Solo-Vergleich <small>explorativ</small></span><b>${sc.status === "vergleichbar" ? (sc.diff_s > 0 ? "+" : "") + sc.diff_s + " s/km" : "nicht vergleichbar"}</b><small>${sc.status === "vergleichbar" ? `gegen ${sc.n} ähnliche Solo-Läufe (0–5 min)` : esc(sc.grund)}</small></div></div>
+        ${m.hinweise.length ? `<ul class="flags">${m.hinweise.map((h) => `<li>${esc(h)}</li>`).join("")}</ul>` : ""}<p class="hint">Solo-Vergleich ist explorativ, kein Kausalbeweis: Wetter, Gelände, Verpflegung und Ermüdung bleiben offen.</p>`;
+      // Zwei bzw. drei synchronisierte Mini-Grafiken: oben Pace (schneller oben), darunter Puls, optional Schrittfrequenz
+      const sp = m.lauf.splits, labs = F.splitLabels(sp), hasCad = sp.some((s) => s.cad != null);
+      $("br-cad-wrap").hidden = !hasCad;
+      $("br-minis-h").textContent = `Lauf nach dem Rad: Abschnitte (${dch(r.date)}) · Pace oben schneller`;
+      const sync = (idx) => {
+        for (const id of minis) { const ch = C().charts[id]; if (!ch || ch.canvas.closest("[hidden]")) continue;
+          if (idx == null) { ch.setActiveElements([]); ch.tooltip.setActiveElements([], { x: 0, y: 0 }); }
+          else { const el = [{ datasetIndex: 0, index: idx }]; const pt = ch.getDatasetMeta(0).data[idx]; ch.setActiveElements(el); ch.tooltip.setActiveElements(el, pt ? { x: pt.x, y: pt.y } : { x: 0, y: 0 }); }
+          ch.update("none"); }
+        $("t-br-sp").querySelectorAll("tr[data-i]").forEach((tr) => tr.classList.toggle("on", +tr.dataset.i === idx));
+      };
+      const mini = (id, label, vals, unit, fmtV, opt) => {
+        const rg = F.splitRange(vals, opt.pad), last = id === (hasCad ? "c-br-cad" : "c-br-hr");
+        return C().chart(id, { type: "line", data: { labels: labs, datasets: [{ label, data: vals, borderColor: opt.color, backgroundColor: opt.color, borderWidth: 2, pointRadius: 5, pointHoverRadius: 7, tension: 0, spanGaps: false }] },
+          options: { animation: false, layout: { padding: { right: 18 } }, interaction: { mode: "index", intersect: false },
+            onHover: (e, els) => sync(els.length ? els[0].index : null), onClick: (e, els) => sync(els.length ? els[0].index : null),
+            scales: { x: { ticks: { display: last, maxRotation: 0, autoSkip: false, font: { size: 11 } }, grid: { display: false } },
+              y: { reverse: !!opt.reverse, suggestedMin: rg ? rg[0] : undefined, suggestedMax: rg ? rg[1] : undefined, beginAtZero: false, ticks: { maxTicksLimit: 4, callback: fmtV }, title: { display: true, text: unit, font: { size: 11 } },
+                afterFit: (sc) => { sc.width = 66; } } },                     // gleiche Achsenbreite: die drei Grafiken stehen genau untereinander
+            plugins: { legend: { display: false }, tooltip: { displayColors: false, callbacks: { title: (it) => it[0].label, label: (c) => { const s = sp[c.dataIndex];
+              return [`Pace ${FK().pace(s.pace)} /km`, `Puls ${s.hr != null ? num(s.hr) + " bpm" : "–"}`, hasCad ? `Schrittfrequenz ${s.cad != null ? s.cad + " /min" : "–"}` : null, `Daten: ${C().mmss ? C().mmss(s.s) : num(s.s) + " s"} min${s.m != null ? " · " + num(s.m / 1000, 2) + " km" : ""}`].filter(Boolean); } } } } } });
+      };
+      mini("c-br-pace", "Pace", sp.map((s) => s.pace), "min/km", (v) => FK().pace(v), { reverse: true, pad: 5, color: C().css("--accent") });
+      mini("c-br-hr", "Puls", sp.map((s) => (s.hr != null ? Math.round(s.hr * 10) / 10 : null)), "Puls bpm", (v) => num(v), { pad: 3, color: C().css("--lt2") });
+      if (hasCad) mini("c-br-cad", "Schrittfrequenz", sp.map((s) => s.cad), "Schritte/min", (v) => num(v), { pad: 3, color: C().css("--muted") });
+      else if (C().charts["c-br-cad"]) { C().charts["c-br-cad"].destroy(); delete C().charts["c-br-cad"]; }
+      $("t-br-sp").innerHTML = `<tr><th>Abschnitt</th><th>Pace</th><th>Puls</th>${hasCad ? "<th>Kadenz</th>" : ""}<th>km</th></tr>` +
+        (sp.map((s, i) => `<tr data-i="${i}"><td>${labs[i]}</td><td>${FK().pace(s.pace)}</td><td>${s.hr != null ? num(s.hr) : "–"}</td>${hasCad ? `<td>${s.cad ?? "–"}</td>` : ""}<td>${s.m != null ? num(s.m / 1000, 2) : "–"}</td></tr>`).join("") ||
+          `<tr><td colspan="${hasCad ? 5 : 4}">Lauf ohne Sekundenwerte: keine Abschnitte.</td></tr>`);
+      $("t-br-sp").querySelectorAll("tr[data-i]").forEach((tr) => (tr.onclick = () => sync(+tr.dataset.i)));
     }
-    const tr = live.map((x) => ({ x, r: A.get(x.run) })).filter((o) => o.r.sp).map((o) => ({ d: o.r.date, p: (o.r.sp.find((s) => s.von === 0) || {}).pace, w: o.x.wechsel_min })).filter((o) => o.p).reverse();
-    C().chart("c-br-trend", { type: "line", data: { labels: tr.map((o) => C().dLabel(o.d)), datasets: [{ label: "Pace 0–5 min nach dem Rad", data: tr.map((o) => o.p), borderColor: C().css("--accent"), backgroundColor: C().css("--accent"), showLine: false, pointRadius: 4 }] },
-      options: { scales: { y: { reverse: true, ticks: { callback: (v) => FK().pace(v) }, title: { display: true, text: "min/km" } } }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `${FK().pace(c.raw)} /km · Wechsel ${num(tr[c.dataIndex].w, 1)} min` } } } } });
-    $("br-note").textContent = `Erkennung: Lauf beginnt 0–${BR.max} min nach dem Ende einer Radeinheit (Grenze eingeschlossen). Mehrere Läufe oder Fahrten in Frage: Status «auswählen», nichts wird still gekoppelt. Trend ohne Linie, weil Bedingungen selten vergleichbar sind.`;
+    const tr = live.map((x) => ({ x, r: A.get(x.run) })).filter((o) => o.r.sp).map((o) => ({ d: o.r.date, p: (o.r.sp.find((s) => s.von === 0) || {}).pace, w: o.x.wechsel_min, direkt: o.x.direkt })).filter((o) => o.p).reverse();
+    C().chart("c-br-trend", { type: "line", data: { labels: tr.map((o) => C().dLabel(o.d)), datasets: [
+      { label: "direkter Wechsel (bis 35 min oder bestätigt)", data: tr.map((o) => (o.direkt ? o.p : null)), borderColor: C().css("--accent"), backgroundColor: C().css("--accent"), showLine: false, pointRadius: 4 },
+      { label: "lange Pause 35–45 min (nicht bestätigt)", data: tr.map((o) => (o.direkt ? null : o.p)), borderColor: C().css("--muted"), backgroundColor: "transparent", showLine: false, pointRadius: 4, pointBorderWidth: 1.5 }] },
+      options: { scales: { y: { reverse: true, ticks: { callback: (v) => FK().pace(v), maxTicksLimit: 5 }, title: { display: true, text: "min/km · oben schneller" } }, x: { ticks: { maxTicksLimit: innerWidth < 560 ? 5 : 10 } } },
+        plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (c) => `${FK().pace(c.raw)} /km · Wechsel ${num(tr[c.dataIndex].w, 1)} min` } } } } });
+    $("br-trend-note").textContent = "Ohne Verbindungslinie, weil Bedingungen (Wetter, Gelände, Dauer) selten vergleichbar sind. Kein Fortschrittsnachweis.";
+    $("br-note").textContent = `Automatische Kandidaten: Lauf beginnt 0–${BR.max} min nach dem Ende einer Radeinheit. Über 35 min Wechsel: «lange Pause», zählt erst nach Bestätigung als direkter Koppellauf. Mehrere Läufe oder Fahrten in Frage: Status «auswählen», nichts wird still gekoppelt.`;
   };
 
   /* ======================= Fueling / Train your Gut ======================= */

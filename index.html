@@ -279,7 +279,46 @@ nav.tabs button[aria-selected="true"] { color: var(--accent); border-bottom-colo
 .cal .ev.test { background: #fff4e5; border-left-color: var(--warn); color: #7a4a10; }
 .idp section.on { border-left-color: var(--accent); } .idp section.on h4 { color: var(--accent); }
 @media (max-width: 760px) { aside.panel { box-shadow: 0 -8px 24px rgba(31,51,71,.18); } .btn { min-height: 40px; } .chip { min-height: 34px; } }
-.verdict.muted { border-left-color: var(--muted); }
+.verdict.muted, .verdict.unsure { border-left-color: var(--muted); }
+details.layer { grid-column: 1 / -1; background: none; border: 0; }
+details.layer > summary { list-style: none; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-height: 52px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); cursor: pointer; font-weight: 650; font-size: 15px; }
+details.layer > summary::-webkit-details-marker { display: none; }
+details.layer > summary small { font-weight: 400; color: var(--muted); font-size: 12.5px; }
+details.layer > summary::after { content: "▾"; margin-left: auto; color: var(--accent); transition: transform .15s; } details.layer[open] > summary::after { transform: rotate(180deg); }
+details.layer > .dash { margin-top: 12px; }
+.goal-rows { display: flex; flex-direction: column; gap: 10px; }
+.goal { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; grid-template-areas: "l bar v" "l s1 s1" "l s2 s2"; column-gap: 10px; row-gap: 1px; align-items: center; }
+.goal .gl { grid-area: l; font-size: 13px; color: var(--muted); align-self: start; padding-top: 2px; } .goal b { grid-area: v; font-variant-numeric: tabular-nums; font-size: 15px; }
+.goal .gbar { grid-area: bar; position: relative; height: 10px; background: var(--surface-2); border-radius: 5px; }
+.goal .gbar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 5px; }
+.goal .gbar em { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--fg); opacity: .7; transform: translateX(-1px); }
+.goal small { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; } .goal small:nth-of-type(1) { grid-area: s1; } .goal small:nth-of-type(2) { grid-area: s2; }
+.goal small.good-t { color: var(--good); } .goal small.warn-t { color: #8a5a12; }
+.pb-rows { display: flex; flex-direction: column; gap: 8px; }
+.pb-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 8px 10px; background: var(--surface-2); border-radius: 8px; }
+.pb-row .pb-l { min-width: 96px; color: var(--muted); font-size: 13px; } .pb-row b { font-size: 17px; font-variant-numeric: tabular-nums; } .pb-row small { flex-basis: 100%; color: var(--muted); font-size: 12px; }
+.pb-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.tog, .card .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; box-shadow: none; }
+.card .seg button { min-height: 36px; padding: 6px 12px; color: var(--muted); font-size: 13px; } .card .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.v53-pct { display: flex; flex-direction: column; gap: 6px; }
+.v53-pct > div { display: grid; grid-template-columns: 52px minmax(0, 1fr) 46px; grid-template-areas: "l t v" ". s s"; column-gap: 8px; align-items: center; }
+.v53-pct > div > span:first-child { grid-area: l; font-size: 12.5px; color: var(--muted); } .v53-pct .trk { grid-area: t; position: relative; height: 12px; background: var(--surface-2); border-radius: 4px; }
+.v53-pct .trk i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent-2); border-radius: 4px; } .v53-pct b { grid-area: v; text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
+.v53-pct small { grid-area: s; font-size: 11.5px; color: var(--muted); }
+.lr-orient { margin-top: 12px; border: 1.5px dashed var(--line-2); border-radius: 10px; padding: 12px 14px; background: var(--surface); }
+.lr-orient-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; } .lr-orient-head p { margin: 2px 0 0; }
+.chart.mini { height: 128px; } .br-minis .chart.mini + .chart.mini { margin-top: 2px; }
+#t-br-sp td, #t-br-sp th { text-align: right; } #t-br-sp td:first-child, #t-br-sp th:first-child { text-align: left; } #t-br-sp tr.on td { background: var(--accent-soft, #e6f4f2); }
+tr.lang td { color: var(--muted); }
+.z-split { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 10px 0 2px; }
+.z-split > div { background: var(--surface-2); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; }
+.z-split > div span { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.z-split > div b { font-size: 17px; font-variant-numeric: tabular-nums; } .z-split > div small { color: var(--muted); font-variant-numeric: tabular-nums; }
+.z-split > p { grid-column: 1 / -1; margin: 2px 0 0; }
+details.more { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 6px; }
+details.more > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; font-size: 13.5px; color: var(--accent); list-style: none; }
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary::after { content: "▾"; margin-left: 6px; transition: transform .15s; } details.more[open] > summary::after { transform: rotate(180deg); }
 .badge.warn { background: rgba(183,121,31,.14); color: #8a5a12; } .badge.muted { background: var(--surface-2); color: var(--muted); border: 1px dashed var(--line-2); }
 .badge.info { background: rgba(47,114,196,.12); color: var(--info); } .badge.ok { background: rgba(29,143,94,.12); color: var(--good); } .badge.next { background: rgba(183,121,31,.14); color: #8a5a12; }
 .badge { text-transform: none; letter-spacing: .02em; font-family: var(--f-body); }
@@ -738,64 +777,53 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
   <!-- ================= TRAINING ================= -->
   <section class="view" id="view-training" role="tabpanel" aria-labelledby="tab-training" hidden>
     <div class="dash">
-      <div class="card">
-        <div class="card-head"><div><h2>Jahresziele</h2><div class="sub">Stand heute gegen das Soll bis heute</div></div><select id="v53-goal-sport" aria-label="Sportart der Ziele"></select></div>
-        <div id="v53-goals"></div>
-      </div>
-      <div class="card">
-        <h2>Serie und Trainingstagebuch</h2><div class="sub">Wochen in Folge mit mindestens einem Training, letzte 8 Wochen</div>
-        <div class="v53-streak" id="v53-streak"></div>
-        <div class="v53-diary" id="v53-diary"></div>
-      </div>
-      <div class="card">
-        <h2>Bestleistungen</h2><div class="sub">Schnellste Abschnitte und beste Watt je Dauer aus deinen Aktivitäten</div>
-        <div class="tablewrap" id="v53-bests"></div>
-      </div>
-      <div class="card">
-        <h2>Leistungsfähigkeiten</h2><div class="sub">Letzte 8 Wochen im Verhältnis zum Bestwert aller Zeiten</div>
-        <div class="chart"><canvas id="c-v53-radar" aria-label="Leistungsprofil: letzte 8 Wochen gegen Bestwerte"></canvas></div>
-        <p class="hint" id="v53-radar-note"></p>
-      </div>
-      <div class="card w12">
-        <h2>Trainingszonen: letzter Monat</h2><div class="sub">Anteil der Zeit je Pulszone, verglichen mit dem Monat davor</div>
-        <div id="v53-zones"></div>
-      </div>
-      <div class="card w12">
-        <div class="card-head">
-          <div><h2>Mache ich das Richtige?</h2><div class="sub" id="z-basis"></div></div>
-          <div class="row">
-            <select id="z-sport" aria-label="Sportart"></select>
-            <select id="z-range" aria-label="Zeitraum"><option value="12">12 Wochen</option><option value="26">26 Wochen</option><option value="52">52 Wochen</option></select>
-          </div>
-        </div>
-        <div class="verdict" id="z-verdict"></div>
-        <div class="chart"><canvas id="c-zones" aria-label="Zonenverteilung pro Woche"></canvas></div>
-      </div>
       <div class="card w12">
         <div class="card-head">
           <div><h2>Fitness, Ermüdung, Form</h2><div class="sub" id="pmc-sub">Fitness = Belastung der letzten 42 Tage, Ermüdung = letzte 7 Tage, Form = Differenz</div></div>
           <div class="kv" id="pmc-kv" style="min-width:min(320px,100%)"></div>
         </div>
+        <p class="hint" id="pmc-note"></p>
         <div class="chart tall"><canvas id="c-pmc" aria-label="Fitness, Ermüdung und Form"></canvas></div>
       </div>
-      <div class="card w12" id="load-card" hidden data-ausgeblendet="FTP: auf Wunsch ausgeblendet, Daten bleiben">
+      <div class="card w12" id="zones-card">
         <div class="card-head">
-          <div><h2>Trainingslast: Garmin-FTP oder geschätzte FTP</h2><div class="sub" id="load-sub"></div></div>
-          <select id="load-range" aria-label="Zeitraum"><option value="365">12 Monate</option><option value="730" selected>24 Monate</option><option value="all">Alles</option></select>
+          <div><h2>Mache ich das Richtige?</h2><div class="sub">Intensitätsverteilung je Sportart · Einordnung, keine Diagnose</div></div>
+          <div class="row">
+            <select id="z-sport" aria-label="Sportart"></select>
+            <select id="z-range" aria-label="Zeitraum"><option value="4">4 Wochen</option><option value="12" selected>12 Wochen</option><option value="26">26 Wochen</option><option value="52">52 Wochen</option></select>
+          </div>
         </div>
-        <div class="kv" id="load-kv"></div>
-        <div class="chart"><canvas id="c-load" aria-label="Fitness mit Garmin-FTP und mit geschätzter FTP"></canvas></div>
-        <div class="tablewrap"><table class="t" id="t-load"></table></div>
-        <p class="hint" id="load-note"></p>
+        <div class="verdict" id="z-verdict"></div>
+        <div class="z-split" id="z-kv"></div>
+        <p class="hint" id="z-hyp"></p>
+        <div class="chart"><canvas id="c-zones" aria-label="Pulszeit je Woche, locker, mittel und hart"></canvas></div>
+        <p class="hint" id="z-note"></p>
+        <details class="more"><summary>Grundlage und Garmin-Zonen Z1–Z5</summary>
+          <p class="hint" id="z-basis"></p>
+          <h3 class="mini-h" id="v53-zones-h">Garmin-Pulszonen, letzte 4 Wochen</h3>
+          <div id="v53-zones"></div>
+        </details>
       </div>
-      <div class="card w12">
+      <div class="card w12" id="year-card">
+        <div class="card-head"><div><h2>Jahr <span id="v53-year-y"></span>: Ziele und Verlauf</h2><div class="sub">Stand heute gegen das Soll bis heute · gleicher Kalenderzeitraum wie in den Vorjahren</div></div>
+          <div class="row"><select id="v53-goal-sport" aria-label="Sportart"></select><select id="v53-cum-metric" aria-label="Messgrösse"><option value="h">Stunden</option><option value="km">Kilometer</option><option value="hm">Höhenmeter</option></select></div></div>
+        <div id="v53-goals"></div>
+        <h3 class="mini-h">Kumuliert seit 1. Januar</h3>
+        <div class="chart"><canvas id="c-v53-cum" aria-label="Kumulierter Umfang je Jahr im gleichen Kalenderzeitraum"></canvas></div>
+        <p class="hint" id="v53-cum-note"></p>
+      </div>
+      <div class="card w12" id="vol-card">
         <div class="card-head">
-          <div><h2>Wochenumfang</h2><div class="sub">Letzte 16 Wochen nach Sportart</div></div>
-          <select id="v-metric" aria-label="Messgrösse"><option value="h">Stunden</option><option value="km">Kilometer</option><option value="hm">Höhenmeter</option></select>
+          <div><h2>Wochenumfang</h2><div class="sub" id="vol-sub">Letzte 16 Wochen nach Sportart</div></div>
+          <div class="row"><select id="v-sport" aria-label="Sportart"><option value="">Alle Sportarten</option></select>
+          <select id="v-metric" aria-label="Messgrösse"><option value="h">Stunden</option><option value="km">Kilometer</option><option value="hm">Höhenmeter</option></select></div>
         </div>
         <div class="chart"><canvas id="c-volume" aria-label="Wochenumfang"></canvas></div>
+        <p class="hint" id="vol-detail" aria-live="polite">Tippe auf einen Balken: Stunden und Einheiten der Woche.</p>
       </div>
-      <div class="card w8">
+      <details class="layer" id="tr-more"><summary><span>Weitere Auswertungen</span><small>Jahresstatistik, Bestleistungen, Serie und Tagebuch</small></summary>
+      <div class="dash">
+        <div class="card w8">
         <div class="card-head">
           <div><h2>Jahresstatistik</h2><div class="sub" id="y-sub"></div></div>
           <select id="y-year" aria-label="Jahr"></select>
@@ -807,14 +835,37 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
         <div class="kv" id="y-kv2"></div>
         <p class="hint" id="y-note"></p>
       </div>
-      <div class="card w4">
+        <div class="card w4">
         <div class="card-head">
           <div><h2>Jahre im Vergleich</h2><div class="sub">Laufendes Jahr bis heute</div></div>
           <select id="y-metric" aria-label="Messgrösse"><option value="h">Stunden</option><option value="km">Kilometer</option><option value="hm">Höhenmeter</option></select>
         </div>
         <div class="chart tall"><canvas id="c-years" aria-label="Umfang pro Jahr nach Sportart"></canvas></div>
       </div>
-      <div class="card w12" id="db-card">
+        <div class="card w12" id="bests-card">
+          <h2>Bestleistungen</h2><div class="sub">Laufen: schnellste Abschnitte aus FIT. Rad: beste Watt je Dauer, je System getrennt.</div>
+          <div id="v53-bests"></div>
+        </div>
+        <div class="card w12">
+        <h2>Serie und Trainingstagebuch</h2><div class="sub">Wochen in Folge mit mindestens einem Training, letzte 8 Wochen</div>
+        <div class="v53-streak" id="v53-streak"></div>
+        <div class="v53-diary" id="v53-diary"></div>
+      </div>
+        <div class="card w12" id="load-card" hidden data-ausgeblendet="FTP: auf Wunsch ausgeblendet, Daten bleiben">
+        <div class="card-head">
+          <div><h2>Trainingslast: Garmin-FTP oder geschätzte FTP</h2><div class="sub" id="load-sub"></div></div>
+          <select id="load-range" aria-label="Zeitraum"><option value="365">12 Monate</option><option value="730" selected>24 Monate</option><option value="all">Alles</option></select>
+        </div>
+        <div class="kv" id="load-kv"></div>
+        <div class="chart"><canvas id="c-load" aria-label="Fitness mit Garmin-FTP und mit geschätzter FTP"></canvas></div>
+        <div class="tablewrap"><table class="t" id="t-load"></table></div>
+        <p class="hint" id="load-note"></p>
+      </div>
+      </div>
+      </details>
+      <details class="layer" id="tr-method"><summary><span>Daten &amp; Methode</span><small>Datenbasis, Referenzprüfung, Regelversionen, Rechennachweis</small></summary>
+      <div class="dash">
+        <div class="card w12" id="db-card">
         <div class="card-head"><div><h2>Datenbasis und Prüfung</h2><div class="sub" id="db-sub"></div></div></div>
         <div class="kv" id="db-kv"></div>
         <div class="tablewrap"><table class="t" id="t-ref"></table></div>
@@ -822,6 +873,14 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
         <div class="tablewrap"><table class="t" id="t-ver"></table></div>
         <p class="hint" id="db-note"></p>
       </div>
+        <div class="card w12" id="method-card">
+          <div class="card-head"><div><h2>Modellversionen und Rechennachweis</h2><div class="sub">Welche Regel welche Zahl erzeugt – zum Nachprüfen</div></div></div>
+          <div class="tablewrap"><table class="t" id="t-models"></table></div>
+          <div class="row" style="margin-top:10px"><button class="btn" type="button" id="btn-proof">Rechennachweis exportieren</button></div>
+          <p class="hint" id="proof-note">Der Export enthält die Rechenschritte mit deinen Zahlen (Form der letzten 10 Tage, Zonen, Belegkennzahlen), aber keine Passwörter, Schlüssel oder Zugangsdaten. Er bleibt auf diesem Gerät, bis du ihn teilst.</p>
+        </div>
+      </div>
+      </details>
     </div>
   </section>
 
@@ -955,11 +1014,18 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
       <div class="card w12" id="br-card">
         <div class="card-head"><div><h2>Koppelläufe: Rad › Wechsel › Lauf</h2><div class="sub" id="br-note"></div></div>
           <label class="row hint">Wechsel höchstens <input type="number" id="br-max" min="0" max="180" style="width:72px"> min</label></div>
+        <div id="br-detail"></div>
+        <div class="br-minis" id="br-minis">
+          <h3 class="mini-h" id="br-minis-h">Lauf nach dem Rad: Abschnitte</h3>
+          <div class="chart mini"><canvas id="c-br-pace" aria-label="Pace je Abschnitt, schneller oben"></canvas></div>
+          <div class="chart mini"><canvas id="c-br-hr" aria-label="Puls je Abschnitt"></canvas></div>
+          <div class="chart mini" id="br-cad-wrap"><canvas id="c-br-cad" aria-label="Schrittfrequenz je Abschnitt"></canvas></div>
+          <div class="tablewrap"><table class="t" id="t-br-sp"></table></div>
+        </div>
+        <h3 class="mini-h">Alle Koppelläufe</h3>
         <div class="tablewrap"><table class="t" id="t-br"></table></div>
         <details id="br-man"></details>
-        <div id="br-detail"></div>
-        <div class="hp-grid"><div class="hp-col"><h3 class="mini-h">Lauf nach dem Rad: Abschnitte</h3><div class="chart"><canvas id="c-br" aria-label="Pace und Puls je Abschnitt"></canvas></div></div>
-          <div class="hp-col"><h3 class="mini-h">Pace 0–5 min über die Zeit</h3><div class="chart"><canvas id="c-br-trend" aria-label="Pace der ersten 5 Minuten nach dem Rad"></canvas></div></div></div>
+        <details class="more"><summary>Pace 0–5 min über die Zeit (explorativ)</summary><div class="chart"><canvas id="c-br-trend" aria-label="Pace der ersten 5 Minuten nach dem Rad"></canvas></div><p class="hint" id="br-trend-note"></p></details>
       </div>
       <div class="card w12" id="fu-card">
         <div class="card-head"><div><h2>Train your Gut: Kohlenhydrate und Verträglichkeit</h2><div class="sub">Was du wann eingenommen hast und wie der Magen reagiert hat.</div></div>
@@ -2456,18 +2522,50 @@ function recovery(i) {                                                          
   return Math.max(1, Math.min(99, Math.round(((d.hrv / b.hrv - 0.8) / 0.4) * 55 + ((b.rhr / d.rhr - 0.9) / 0.2) * 20 + sl * 25)));
 }
 const _pmc = {};
-function pmc(key = "tss") {           // Fitness (42 Tage), Ermüdung (7 Tage), Form
+function pmc(key = "tss") {           // Fitness (42 Tage), Ermüdung (7 Tage), Form = Fitness − Ermüdung desselben Tages (FK.pmc, pmc-2.0)
   if (_pmc[key]) return _pmc[key];
-  const out = (_pmc[key] = []);
-  if (!D.activities.length) return out;
+  if (!D.activities.length) return (_pmc[key] = []);
   const byDay = new Map(); D.activities.forEach((a) => byDay.set(a.date, (byDay.get(a.date) || 0) + (a[key] || 0)));
-  let d = pd(D.activities[0].date), ctl = 0, atl = 0;
-  while (d <= today) {
-    const ds = iso(d), tss = byDay.get(ds) || 0, tsb = ctl - atl;
-    ctl += (tss - ctl) / 42; atl += (tss - atl) / 7;
-    out.push({ date: ds, ctl, atl, tsb }); d = addDays(d, 1);
-  }
-  return out;
+  return (_pmc[key] = FK.pmc(byDay, D.activities[0].date, iso(today)));
+}
+function pmcStand() {                 // letzte erfasste Einheit: macht sichtbar, ob das heutige Training schon drin ist
+  const a = D.activities.at(-1); if (!a) return "";
+  const heute = a.date === iso(today);
+  return `Stand ${dateCH(iso(today))}; letzte erfasste Einheit ${dateCH(a.date)}${a.start ? " " + a.start : ""}${heute ? "" : "; von heute ist noch keine erfasst (Garmin-Update nachts)"}.`;
+}
+/* Daten & Methode: Regeln der Seite (V5.5) und Export des eigenen Rechennachweises (ohne Passwort, Schlüssel, Zugangsdaten, GPS) */
+const MODEL_ROWS = () => {
+  const dv = (k) => { const v = (D.versions || {})[k]; return v ? (typeof v === "string" ? v : v.v) : null; };
+  return [
+    ["Fitness, Ermüdung, Form", FK.VERSIONS.pmc, "Tageslast exponentiell geglättet (42 bzw. 7 Tage); Form = Fitness − Ermüdung desselben Tages; Vortageswert als «Form zu Tagesbeginn»", "js/formkurve.js FK.pmc"],
+    ["Intensitätsverteilung", FK.VERSIONS.zonen, "je Sportart; Pulsgrenzen aus dem Zonenprofil, das am Tag der Einheit galt; ohne Profil nur Garmin-Zonen, nicht beurteilt; Mindestdaten sonst «Beurteilung unsicher»", "js/formkurve.js FK.zoneVerdict"],
+    ["Koppellauf", FK.VERSIONS.koppel, "Kandidat bei 0–45 min Wechsel; über 35 min «lange Pause», zählt erst nach Bestätigung", "js/formkurve.js FK.findBricks"],
+    ["Meine Entwicklung", FK.VERSIONS.entwicklung || null, "Belegkennzahlen aus vergleichbaren, gleichmässigen Blöcken je Gerätesystem; Guards für n, Protokoll, Drift, Hitze", "js/formkurve.js FK.entwicklung, tools/entwicklung.py"],
+    ["Puls zu Leistung (Blöcke)", dv("entwicklung"), "gleichmässige Blöcke ≥ 10 min in festen Leistungs- bzw. Pace-Bändern, je System", "tools/entwicklung.py"],
+    ["Zeitbegriffe", dv("zeit"), "Timer-, Bewegungs- und Gesamtzeit; Ziele und Vorjahr mit demselben Zeitbegriff", "tools/zeit.py, js/v53-extra.js goals()"],
+    ["Stufen", dv("stufen"), "Stufen aus Zielleistung oder Plateaus", "tools/stufen.py"],
+    ["Schwellen", dv("schwellen"), "LT1/LT2 je Methode mit Unsicherheit; nie ausserhalb der gemessenen Stufen", "tools/schwellen.py"],
+    ["Lange Ausfahrt", FK.VERSIONS.langfahrt, "Band nur aus vergleichbaren Fahrten; «vorsichtige Orientierung» getrennt und nicht validiert", "js/formkurve.js FK.longRide, FK.longRideOrientierung"],
+    ["Bereitschaft", FK.VERSIONS.readiness, "HRV gegen eigene Referenz, Ruhepuls, Schlaf, Befinden; fehlende Werte bleiben unbekannt", "js/formkurve.js FK.readiness"],
+    ["Bestleistungen Laufen", dv("bestleistungen"), "schnellster Abschnitt aus FIT-Sekunden, GPS-Sprünge ausgeschlossen; offizielle Zeit getrennt", "tools/bestleistungen.py"],
+    ["Routen-Zeitmodell", window.RT ? RT.VERSIONS.zeit : null, "Leistungsbilanz bzw. Minetti/Tobler mit persönlicher Kalibrierung", "js/route.js RT.simulate"],
+    ["Kalibrierung", dv("kalibrierung"), "persönliche Faktoren mit Hold-out (neueste 25 %)", "tools/kalibrierung.py"],
+  ];
+};
+function exportProof() {
+  const P = pmc().slice(-10).map((p) => { const a = FK.pmcAnzeige(p); return { datum: p.date, last: +p.last.toFixed(1), fitness: +p.ctl.toFixed(2), ermuedung: +p.atl.toFixed(2), form: +p.tsb.toFixed(2),
+    form_tagesbeginn: +p.tsbStart.toFixed(2), anzeige: { fitness: a.fitness, ermuedung: a.ermuedung, form: a.form }, pruefung: a.form === a.fitness - a.ermuedung ? "Form = Fitness − Ermüdung" : "FEHLER" }; });
+  const bis = iso(today), von = iso(addDays(mondayOf(today), -7 * 11));
+  const Z = ["rad", "lauf", "schwimm"].map((sp) => { const S = FK.zoneSummary(D.activities, D.zonen || [], sp, von, bis), V = FK.zoneVerdict(S, {});
+    return { sport: sp, von, bis, profil: { sekunden: S.profil.z.map(Math.round), einheiten: S.profil.n, wochen: S.profil.wochen, grenzen: S.profil.grenzen }, garmin: { sekunden: S.garmin.z.map(Math.round), einheiten: S.garmin.n }, ohne_puls: S.ohne, status: V.status, text: V.text }; });
+  const Y = today.getFullYear(), yr = (y) => { const L = D.activities.filter((a) => a.date.startsWith(String(y))); return { jahr: y, einheiten: L.length, h_timer: +(L.reduce((s, a) => s + (a.dur || 0), 0) / 3600).toFixed(1),
+    h_bewegung: +(L.reduce((s, a) => s + (a.mv ?? a.dur ?? 0), 0) / 3600).toFixed(1), ohne_bewegungszeit: L.filter((a) => a.mv == null).length }; };
+  const out = { format: "ironman-notebook-rechennachweis-1", erstellt: new Date().toISOString(), hinweis: "Rechenschritte mit eigenen Zahlen. Enthält keine Passwörter, Schlüssel, Zugangsdaten oder GPS-Spuren.",
+    regeln: MODEL_ROWS().map((r) => ({ bereich: r[0], version: r[1], regel: r[2], code: r[3] })),
+    form: { regel: FK.VERSIONS.pmc, formel: "Fitness_d = Fitness_{d−1} + (Last_d − Fitness_{d−1}) / 42; Ermüdung_d analog mit 7; Form_d = Fitness_d − Ermüdung_d", tage: P },
+    zonen: { regel: FK.VERSIONS.zonen, je_sportart: Z }, zeit: { zeitbasis: ZEITBASIS, jahre: [yr(Y - 1), yr(Y)] },
+    entwicklung: window.DEV_PROOF ? window.DEV_PROOF() : null, aktivitaeten: D.activities.length };
+  shareOrDownload(`rechennachweis-${iso(today)}.json`, JSON.stringify(out, null, 1));
 }
 const mondayOf = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
 const lastWeeks = (n) => { const m = mondayOf(today); return Array.from({ length: n }, (_, i) => addDays(m, -7 * (n - 1 - i))); };
@@ -2493,7 +2591,7 @@ function chart(id, cfg) {
   if (!window.Chart) { el.closest(".chart").innerHTML = `<p class="hint">Diagramme konnten nicht geladen werden. Prüfe die Internetverbindung.</p>`; return; }
   charts[id]?.destroy();
   cfg.options = Object.assign({ maintainAspectRatio: false, animation: matchMedia("(prefers-reduced-motion: reduce)").matches ? false : { duration: 450 } }, cfg.options || {});
-  charts[id] = new Chart(el, cfg);
+  return (charts[id] = new Chart(el, cfg));
 }
 function ringSVG(frac, color, big, unit, label) {
   const r = 54, c = 2 * Math.PI * r, f = Math.max(0, Math.min(1, frac || 0));
@@ -2603,9 +2701,9 @@ const TABS = {
           `<div class="ring">${ringSVG((rec || 0) / 100, recColor(rec), rec == null ? "–" : rec + "%", "", "Erholung")}<div class="lbl" style="color:${recColor(rec)}">Erholung</div><div class="det">HRV ${d.hrv ?? "–"} ms · Ruhepuls ${d.rhr ?? "–"}</div></div>
            <div class="ring">${ringSVG(st / 21, css("--strain"), fmt(st, 1), "von 21", "Belastung")}<div class="lbl" style="color:${css("--strain")}">Belastung</div><div class="det">Trainingslast heute ${fmt(tss)}</div></div>
            <div class="ring">${ringSVG((sl || 0) / 100, css("--sleep"), sl == null ? "–" : sl + "%", "", "Schlaf")}<div class="lbl" style="color:${css("--sleep")}">Schlaf</div><div class="det">${fmt(d.sleepH, 1)} h geschlafen</div></div>`;
-        const last = pmc().at(-1) || {};
+        const pa = FK.pmcAnzeige(pmc().at(-1)) || {};
         const s7 = D.days.slice(-7).filter((x) => x.sleepH != null);
-        document.getElementById("today-kv").innerHTML = [["Form", fmt(last.tsb)], ["Fitness", fmt(last.ctl)], ["Body Battery", d.bodyBattery != null ? fmt(d.bodyBattery) : null],
+        document.getElementById("today-kv").innerHTML = [["Form", pa.form != null ? (pa.form > 0 ? "+" + pa.form : pa.form < 0 ? "−" + Math.abs(pa.form) : "0") : null], ["Fitness", pa.fitness ?? null], ["Ermüdung", pa.ermuedung ?? null], ["Body Battery", d.bodyBattery != null ? fmt(d.bodyBattery) : null],
           ["Garmin-Bereitschaft", d.readiness != null ? fmt(d.readiness) : null], ["HRV Ø 30 Tage", fmt(baseline(i).hrv)],
           ["Schlaf Ø 7 Tage", s7.length ? fmt(s7.reduce((s, x) => s + x.sleepH, 0) / s7.length, 1) + " h" : null]]
           .filter(([, v]) => v != null).map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
@@ -2666,10 +2764,15 @@ const TABS = {
 
   training: {
     init() {
-      document.getElementById("z-sport").innerHTML = `<option value="">Alle Sportarten</option>` + ["schwimm", "rad", "lauf"].map((k) => `<option value="${k}">${SPORTS[k].label}</option>`).join("");
-      document.getElementById("z-sport").addEventListener("change", () => this.zones());
+      document.getElementById("z-sport").innerHTML = ["rad", "lauf", "schwimm"].map((k) => `<option value="${k}">${SPORTS[k].label}</option>`).join("");
+      document.getElementById("z-sport").addEventListener("change", () => { this.zones(); if (window.V53 && window.V5UI) V5_READY.then(() => V53.zonesMonth && V53.zonesMonth(V5UI.C)); });
       document.getElementById("z-range").addEventListener("change", () => this.zones());
       document.getElementById("v-metric").addEventListener("change", () => this.volume());
+      document.getElementById("v-sport").innerHTML = `<option value="">Alle Sportarten</option>` + ["rad", "lauf", "schwimm", "wandern", "ski", "andere"].map((k) => `<option value="${k}">${SPORTS[k].label}</option>`).join("");
+      document.getElementById("v-sport").addEventListener("change", () => this.volume());
+      document.querySelectorAll("#view-training details.layer").forEach((d) => d.addEventListener("toggle", () => {   // Grafiken in geschlossenen Ebenen nachträglich auf Grösse bringen
+        if (d.open) d.querySelectorAll("canvas").forEach((c) => charts[c.id] && charts[c.id].resize()); }));
+      document.getElementById("btn-proof").addEventListener("click", () => exportProof());
       const yy = [...new Set(D.activities.map((a) => a.date.slice(0, 4)))].sort().reverse();
       if (!yy.includes(String(today.getFullYear()))) yy.unshift(String(today.getFullYear()));
       document.getElementById("y-year").innerHTML = yy.map((y) => `<option value="${y}">${y}</option>`).join("");
@@ -2677,7 +2780,7 @@ const TABS = {
       document.getElementById("y-metric").addEventListener("change", () => this.yearChart());
       document.getElementById("load-range").addEventListener("change", () => this.load());
     },
-    draw() { this.zones(); this.pmc(); this.load(); this.volume(); this.years(); this.yearChart(); this.datenbasis(); if (window.V53 && window.V5UI) V5_READY.then(() => V53.training(V5UI.C)); },
+    draw() { this.zones(); this.pmc(); this.load(); this.volume(); this.years(); this.yearChart(); this.datenbasis(); this.models(); if (window.V53 && window.V5UI) V5_READY.then(() => V53.training(V5UI.C)); },
     datenbasis() {                      // Referenzsatz, Versionen und Nacht-Protokoll (Umsetzungsplan A1, A2)
       const R = D.referenz, P = R && R.pruefung, V = D.versions || {}, card = document.getElementById("db-card");
       if (!P && !Object.keys(V).length) { card.hidden = true; return; }
@@ -2705,9 +2808,13 @@ const TABS = {
         }).join("") : "");
       const NAMES = { series: "Sekundenreihen", zeit: "Zeitbegriffe", stufen: "Stufen", hh_pdc: "Puls-Histogramm, Leistungskurve", laktat: "Laktat-Import" };
       document.getElementById("t-ver").innerHTML = `<tr><th>Kennzahl</th><th>Version</th><th>Regel</th></tr>` +
-        Object.entries(V).map(([k, v]) => `<tr><td>${esc(NAMES[k] || k)}</td><td>${esc(v.v)}</td><td class="wrap"><small>${esc(v.text || "")}</small></td></tr>`).join("");
+        Object.entries(V).map(([k, v]) => `<tr><td>${esc(NAMES[k] || k)}</td><td>${esc(typeof v === "string" ? v : v.v)}</td><td class="wrap"><small>${esc((v && v.text) || "")}</small></td></tr>`).join("");
       document.getElementById("db-note").textContent = "Referenz-Einheiten und Handwerte liegen verschlüsselt in den Daten. Ändert sich eine Regel, steigt ihre Version, und die Prüfung zeigt, welche gespeicherten Werte sich dadurch ändern würden."
         + (fl.length && fl.at(-1).fehlt && fl.at(-1).fehlt.length ? ` Letzte Nacht ohne FIT: ${fl.at(-1).fehlt.map((x) => dateCH(x.date)).join(", ")}.` : "");
+    },
+    models() {                          // Daten & Methode: Regelversionen der Seite mit Codeort
+      document.getElementById("t-models").innerHTML = `<tr><th>Bereich</th><th>Version</th><th>Regel</th><th>Codeort</th></tr>` +
+        MODEL_ROWS().map((r) => `<tr><td>${esc(r[0])}</td><td>${esc(r[1] || "–")}</td><td class="wrap"><small>${esc(r[2])}</small></td><td class="wrap"><small><code>${esc(r[3])}</code></small></td></tr>`).join("");
     },
     load() {
       const card = document.getElementById("load-card");
@@ -2738,42 +2845,68 @@ const TABS = {
       document.getElementById("load-note").textContent = "Lauf, Schwimmen und übrige Sportarten bleiben gleich. Bei Zwift-Fahrten war die bisherige Last teils pulsbasiert oder mit der FTP aus Zwift gerechnet, die Probe rechnet alle Fahrten einheitlich aus NP und FTP. "
         + (adopted ? "" : "Übernommen wird die Probe erst, wenn du sie bestätigst.");
     },
-    zones() {
-      const n = +document.getElementById("z-range").value, sp = document.getElementById("z-sport").value, weeks = lastWeeks(n);
-      const agg = weeks.map((w) => { const z = [0, 0, 0]; D.activities.filter((a) => inWeek(a, w) && (!sp || a.sport === sp)).forEach((a) => { const q = zone3(a); if (q) q.forEach((v, j) => (z[j] += v)); }); return z; });
-      const pct = agg.map((z) => { const t = z[0] + z[1] + z[2]; return t ? z.map((v) => v / t * 100) : [null, null, null]; });
-      const tot = agg.reduce((acc, z) => acc.map((v, j) => v + z[j]), [0, 0, 0]), T = tot[0] + tot[1] + tot[2];
-      const low = tot[0] / T * 100, mid = tot[1] / T * 100, hi = tot[2] / T * 100;
-      document.getElementById("z-basis").textContent = zoneBasis(sp);
-      const v = document.getElementById("z-verdict"); let cls = "", msg;
-      if (!T) msg = "Noch keine Zonendaten im gewählten Zeitraum.";
-      else if (mid > 20) { cls = "bad"; msg = `Zu viel im mittleren Bereich: ${fmt(mid)} % deiner Zeit. Für die Langdistanz sind etwa 75–80 % locker und höchstens 10–15 % im mittleren Bereich sinnvoll. Lockere Einheiten lockerer gestalten.`; }
-      else if (low < 70) { cls = "warn"; msg = `Nur ${fmt(low)} % locker (Ziel 75–80 %). Für ${RACES.map((r) => r.short).join(" und ")} bringt mehr Grundlage mehr als zusätzliche Intensität.`; }
-      else msg = `Passt: ${fmt(low)} % locker, ${fmt(mid)} % mittel, ${fmt(hi)} % hart. Das entspricht einer polarisierten bis pyramidalen Verteilung, wie sie für die Langdistanz empfohlen wird.`;
-      v.className = "verdict" + (cls ? " " + cls : ""); v.textContent = msg;
-      chart("c-zones", { type: "bar", data: { labels: weeks.map((w) => "KW " + isoWeek(w)), datasets: [
-        { label: "Locker", data: pct.map((p) => p[0] == null ? null : +p[0].toFixed(1)), backgroundColor: css("--good") },
-        { label: "Mittel", data: pct.map((p) => p[1] == null ? null : +p[1].toFixed(1)), backgroundColor: css("--warn") },
-        { label: "Hart", data: pct.map((p) => p[2] == null ? null : +p[2].toFixed(1)), backgroundColor: css("--bad") },
-      ] }, options: { scales: { x: { stacked: true }, y: { stacked: true, min: 0, max: 100, title: { display: true, text: "% der Zeit" } } }, plugins: { ...legendBottom, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${fmt(c.raw)} %` } } } } });
+    zones() {                         // zonen-2.0: je Sportart, Grenzen nach Datum (FK.zone3), Beurteilung nur mit gültigen Schwellen
+      const n = +document.getElementById("z-range").value, sp = document.getElementById("z-sport").value || "rad", weeks = lastWeeks(n);
+      const von = iso(weeks[0]), bis = iso(today), Z = D.zonen || [], name = SPORTS[sp].label;
+      const S = FK.zoneSummary(D.activities, Z, sp, von, bis);
+      const acts = D.activities.filter((a) => a.sport === sp && a.date >= von && a.date <= bis);
+      const nx = RACES.filter((r) => r.date >= bis).sort((x, y) => x.date.localeCompare(y.date))[0];
+      let bereit = null; try { if (window.V5UI && V5UI.befinden) bereit = FK.readiness(D.days, D.activities, V5UI.befinden(), bis).status; } catch (e) {}
+      const V = FK.zoneVerdict(S, { wettkampf: nx ? { name: nx.short, tage: Math.round((pd(nx.date) - today) / DAY) } : null, bereitschaft: bereit,
+        einheitenProWoche: acts.length / n, stundenProWoche: acts.reduce((s, a) => s + hrsOf(a), 0) / n, sportName: name });
+      const v = document.getElementById("z-verdict");
+      v.className = "verdict" + (V.status === "unsicher" ? " unsure" : ""); v.textContent = V.text;
+      const A = FK.anteile(S.profil.z), G = FK.anteile(S.garmin.z), lab = ["locker", "mittel", "hart"], col = ["--good", "--warn", "--bad"];
+      document.getElementById("z-kv").innerHTML = (A ? lab.map((l, j) => `<div><span><i class="dot" style="background:${css(col[j])}"></i>${l}</span><b>${FK.fmtH(S.profil.z[j])}</b><small>${A.pct[j]} %</small></div>`).join("") : "") +
+        `<p class="hint">${A ? `Nenner: ${FK.fmtH(S.profil.s)} Pulszeit mit gültigen Schwellen, ${S.profil.n} ${S.profil.n === 1 ? "Einheit" : "Einheiten"}.${A.summe !== 100 ? ` Anteile einzeln gerundet (Summe ${A.summe} %).` : ""}` : ""}` +
+        `${G ? ` Dazu ${FK.fmtH(S.garmin.s)} in ${S.garmin.n} ${S.garmin.n === 1 ? "Einheit" : "Einheiten"} nur mit Garmin-Pulszonen (blasse Balken, nicht beurteilt).` : ""}` +
+        `${S.ohne ? ` ${S.ohne} ${S.ohne === 1 ? "Einheit" : "Einheiten"} ohne Pulsdaten.` : ""}</p>`;
+      document.getElementById("z-hyp").textContent = S.profil.n ? V.hypothese : "";
+      const g = FK.pulsGrenzen(Z, sp, bis);
+      document.getElementById("z-basis").textContent = (g ? `${name}: ab ${dateCH(g.ab)} gilt «${g.profil}» – locker bis ${g.lt1} bpm (LT1), mittel bis ${g.lt2} bpm (LT2), darüber hart${g.freigabe ? `, freigegeben am ${dateCH(g.freigabe)}` : ""}. ` : `${name}: kein Zonenprofil mit Pulsschwellen hinterlegt. `) +
+        "Ältere Einheiten haben nur die Garmin-Pulszonen, die damals auf der Uhr eingestellt waren (Z1–2, Z3, Z4–5). Sie werden gezeigt, aber nicht beurteilt, weil die Grenzen nicht auf gemessenen Schwellen beruhen. Grenzen gelten je Datum der Einheit; Sportarten werden nie gemischt. Regel " + FK.VERSIONS.zonen + ".";
+      const W = weeks.map((w) => { const r = { profil: [0, 0, 0], garmin: [0, 0, 0] }; D.activities.filter((a) => a.sport === sp && inWeek(a, w)).forEach((a) => { const q = FK.zone3(a, Z); if (q) q.z.forEach((x, j) => (r[q.basis][j] += x / 3600)); }); return r; });
+      const ds = [];
+      for (const [bas, al] of [["profil", ""], ["garmin", "55"]]) lab.forEach((l, j) => ds.push({ label: (l[0].toUpperCase() + l.slice(1)) + (bas === "garmin" ? " (Garmin-Zonen)" : ""), _bas: bas,
+        data: W.map((r) => (r[bas][j] ? +r[bas][j].toFixed(2) : null)), backgroundColor: css(col[j]) + al, stack: "z", borderRadius: 2 }));
+      const tip = (c) => { const r = W[c.dataIndex][c.dataset._bas], t = r[0] + r[1] + r[2]; return `${c.dataset.label}: ${hmm(c.raw * 3600)} h (${Math.round((100 * c.raw) / t)} % von ${hmm(t * 3600)} h)`; };
+      chart("c-zones", { type: "bar", data: { labels: weeks.map((w) => "KW " + isoWeek(w)), datasets: ds },
+        options: { scales: { x: { stacked: true, ticks: { maxTicksLimit: innerWidth < 560 ? 6 : 12 } }, y: { stacked: true, beginAtZero: true, title: { display: true, text: "Pulszeit pro Woche (h)" } } },
+          plugins: { legend: { position: "bottom", labels: { boxWidth: 12, filter: (it) => !/Garmin/.test(it.text) } }, tooltip: { callbacks: { label: tip } } } } });
+      document.getElementById("z-note").textContent = S.garmin.n ? "Kräftige Balken: Grenzen aus deinem Zonenprofil. Blasse Balken: nur Garmin-Pulszonen der Uhr. Antippen zeigt Stunden und Anteil der Woche." : "Antippen zeigt Stunden und Anteil der Woche.";
     },
     pmc() {
-      const p = pmc().slice(-180), last = p.at(-1) || {};
-      document.getElementById("pmc-sub").textContent = "Fitness = Belastung der letzten 42 Tage, Ermüdung = letzte 7 Tage, Form = Differenz. Rad-Trainingslast " + (LOAD_MODE === "ftp_est" ? "mit der geschätzten FTP." : "mit der in Garmin eingestellten FTP.");
-      document.getElementById("pmc-kv").innerHTML = `<div><span>Fitness</span><b>${fmt(last.ctl)}</b></div><div><span>Ermüdung</span><b>${fmt(last.atl)}</b></div><div><span>Form</span><b>${fmt(last.tsb)}</b></div>`;
+      const p = pmc().slice(-180), pa = FK.pmcAnzeige(p.at(-1)) || {}, sg = (v) => (v > 0 ? "+" + v : v < 0 ? "−" + Math.abs(v) : "0");
+      document.getElementById("pmc-sub").textContent = "Fitness = Trainingslast geglättet über 42 Tage, Ermüdung = über 7 Tage, Form = Fitness − Ermüdung (beide inklusive heute). Rad-Trainingslast " + (LOAD_MODE === "ftp_est" ? "mit der geschätzten FTP." : "mit der in Garmin eingestellten FTP.");
+      document.getElementById("pmc-kv").innerHTML = pa.fitness == null ? "" : `<div><span>Fitness</span><b>${pa.fitness}</b></div><div><span>Ermüdung</span><b>${pa.ermuedung}</b></div><div><span>Form</span><b>${sg(pa.form)}</b></div>`;
+      document.getElementById("pmc-note").textContent = pa.fitness == null ? "" : `${pa.fitness} − ${pa.ermuedung} = ${sg(pa.form)} (gerundete Werte; genau ${fmt(pa.form_exakt, 1)}). ` +
+        `Vor der Trainingslast von heute (bisher ${fmt(pa.last)}) lag die Form bei ${sg(pa.form_tagesbeginn)} – Werte von gestern Abend, so zeigen es manche Programme. ${pmcStand()} Regel ${pa.v}.`;
       chart("c-pmc", { type: "line", data: { labels: p.map((x) => dLabel(x.date)), datasets: [
         { label: "Fitness", data: p.map((x) => +x.ctl.toFixed(1)), borderColor: css("--strain"), backgroundColor: css("--strain") + "26", fill: true, pointRadius: 0, tension: 0.3 },
         { label: "Ermüdung", data: p.map((x) => +x.atl.toFixed(1)), borderColor: css("--sleep"), pointRadius: 0, tension: 0.3, borderWidth: 1.5 },
         { label: "Form", data: p.map((x) => +x.tsb.toFixed(1)), borderColor: css("--accent"), pointRadius: 0, tension: 0.3, yAxisID: "y2" },
       ] }, options: { interaction: { mode: "index", intersect: false }, scales: { x: { ticks: { maxTicksLimit: 12 } }, y: { title: { display: true, text: "Trainingslast pro Tag" } }, y2: { position: "right", grid: { display: false }, title: { display: true, text: "Form" } } }, plugins: legendBottom } });
     },
-    volume() {
-      const m = document.getElementById("v-metric").value, weeks = lastWeeks(16);
-      const val = (a) => m === "h" ? hrsOf(a) : m === "km" ? a.km : a.hm;
-      chart("c-volume", { type: "bar", data: { labels: weeks.map((w) => "KW " + isoWeek(w)), datasets: ["schwimm", "rad", "lauf", "ski", "wandern"].map((k) => ({
-        label: SPORTS[k].label, backgroundColor: SPORTS[k].color, borderRadius: 2,
-        data: weeks.map((w) => +D.activities.filter((a) => a.sport === k && inWeek(a, w)).reduce((s, a) => s + (val(a) || 0), 0).toFixed(1)) })) },
-        options: { scales: { x: { stacked: true }, y: { stacked: true, title: { display: true, text: { h: "Stunden", km: "Kilometer", hm: "Höhenmeter" }[m] } } }, plugins: legendBottom } });
+    volume() {                        // klickbare Segmente (Stunden und Einheiten), 4-Wochen-Mittel, Sportfilter
+      const m = document.getElementById("v-metric").value, sp = document.getElementById("v-sport").value, weeks = lastWeeks(16);
+      const val = (a) => m === "h" ? hrsOf(a) : m === "km" ? a.km : a.hm, unit = { h: "h", km: "km", hm: "Hm" }[m];
+      const ks = sp ? [sp] : ["schwimm", "rad", "lauf", "ski", "wandern", "andere"];
+      const W = weeks.map((w) => D.activities.filter((a) => inWeek(a, w) && ks.includes(a.sport)));
+      const tot = W.map((l) => l.reduce((s, a) => s + (val(a) || 0), 0));
+      const mean4 = tot.map((_, i) => (i < 3 ? null : +((tot[i] + tot[i - 1] + tot[i - 2] + tot[i - 3]) / 4).toFixed(1)));
+      const fv = (v) => m === "h" ? hmm(v * 3600) + " h" : fmt(v) + " " + unit;
+      const show = (i) => { const l = W[i], w = weeks[i], e = addDays(w, 6), cur = i === weeks.length - 1;
+        const per = ks.map((k) => { const x = l.filter((a) => a.sport === k); return x.length ? `${SPORTS[k].label} ${fv(x.reduce((s, a) => s + (val(a) || 0), 0))} (${x.length})` : null; }).filter(Boolean);
+        document.getElementById("vol-detail").textContent = `KW ${isoWeek(w)} (${w.getDate()}.${w.getMonth() + 1}.–${e.getDate()}.${e.getMonth() + 1}.)${cur ? ", laufende Woche" : ""}: ${fv(tot[i])} in ${l.length} ${l.length === 1 ? "Einheit" : "Einheiten"}${per.length ? " – " + per.join(", ") : ""}.${mean4[i] != null ? ` 4-Wochen-Mittel ${fv(mean4[i])}.` : ""}`; };
+      const ds = ks.map((k) => ({ label: SPORTS[k].label, backgroundColor: SPORTS[k].color, borderRadius: 2, stack: "u", maxBarThickness: 34,
+        data: W.map((l) => +l.filter((a) => a.sport === k).reduce((s, a) => s + (val(a) || 0), 0).toFixed(1)) }));
+      ds.push({ type: "line", label: "4-Wochen-Mittel", data: mean4, borderColor: css("--fg"), backgroundColor: css("--fg"), borderWidth: 1.5, pointRadius: 0, tension: 0, stack: "mittel", order: -1 });
+      chart("c-volume", { type: "bar", data: { labels: weeks.map((w) => "KW " + isoWeek(w)), datasets: ds },
+        options: { onClick: (e, els) => { if (els.length) show(els[0].index); }, interaction: { mode: "index", intersect: false },
+          scales: { x: { stacked: true, ticks: { maxTicksLimit: innerWidth < 560 ? 6 : 16, maxRotation: 0 }, grid: { display: false } }, y: { stacked: true, beginAtZero: true, ticks: { maxTicksLimit: 5 }, title: { display: true, text: { h: "Stunden", km: "Kilometer", hm: "Höhenmeter" }[m] } } },
+          plugins: { legend: { position: "bottom", labels: { boxWidth: 12 } }, tooltip: { filter: (it) => it.raw != null && it.raw !== 0, callbacks: { label: (c) => `${c.dataset.label}: ${fv(c.raw)}`, footer: (it) => { const i = it[0].dataIndex; return `Total ${fv(tot[i])} · ${W[i].length} Einheiten`; } } } } } });
+      document.getElementById("vol-sub").textContent = `Letzte 16 Wochen${sp ? ", nur " + SPORTS[sp].label : " nach Sportart"}; ${m === "h" ? (ZEITBASIS === "bewegung" ? "Bewegungszeit" : "Timer-Zeit") : unit}. Linie: Mittel der letzten 4 Wochen.`;
+      show(weeks.length - 1);
     },
     years() {
       const Y = +document.getElementById("y-year").value || today.getFullYear(), cur = Y === today.getFullYear();
@@ -2790,11 +2923,11 @@ const TABS = {
         : k === "lauf" ? (pace(l) ? mmss(pace(l)) + " /km" : "–") : k === "schwimm" ? (pace(l) ? mmss(pace(l) / 10) + " /100 m" : "–") : "–";
       const row = (label, l, lp, k, cls) => {
         if (!l.length && !lp.length) return "";
-        const km = sum(l, "km"), kmp = sum(lp, "km"), h = l.reduce((x, a) => x + hrsOf(a), 0) * 3600, hp = lp.reduce((x, a) => x + hrsOf(a), 0) * 3600;
+        const km = sum(l, "km"), kmp = sum(lp, "km"), h = l.reduce((x, a) => x + hrsOf(a), 0) * 3600, hp = lp.reduce((x, a) => x + hrsOf(a), 0) * 3600, ht = sum(l, "dur");
         // Vergleich nach km, wenn beide Jahre genug Distanz haben (beim Total nach Stunden), sonst nach Stunden
         const useKm = cls !== "total" && km >= 20 && kmp >= 20, d = useKm ? (km / kmp - 1) * 100 : hp >= 3 * 3600 ? (h / hp - 1) * 100 : null;
-        const cmp = d != null ? `<td class="${d >= 0 ? "up" : "down"}" title="Vergleich nach ${useKm ? "Kilometern" : "Stunden"}">${(d >= 0 ? "+" : "") + fmt(d)} %</td>` : `<td>${h >= 3 * 3600 ? "neu" : "–"}</td>`;
-        return `<tr class="${cls || ""}"><td>${label}</td><td>${fmt(l.length)}</td><td>${fmt(h / 3600)}</td><td title="Bewegungszeit (zeit-1.0)">${fmt(movH(l))}</td><td>${fmt(km)}</td><td>${fmt(sum(l, "hm"))}</td><td>${fmt(wavg(l, "hr"))}</td><td>${extra(k, l)}</td>${cmp}</tr>`;
+        const cmp = d != null ? `<td class="${d >= 0 ? "up" : "down"}" title="Vergleich nach ${useKm ? "Kilometern" : "Stunden (" + (ZEITBASIS === "bewegung" ? "Bewegung" : "Timer") + ")"}">${(d >= 0 ? "+" : "") + fmt(d)} %</td>` : `<td>${h >= 3 * 3600 ? "neu" : "–"}</td>`;
+        return `<tr class="${cls || ""}"><td>${label}</td><td>${fmt(l.length)}</td><td>${fmt(ht / 3600)}</td><td title="Bewegungszeit (zeit-1.0)">${fmt(movH(l))}</td><td>${fmt(km)}</td><td>${fmt(sum(l, "hm"))}</td><td>${fmt(wavg(l, "hr"))}</td><td>${extra(k, l)}</td>${cmp}</tr>`;
       };
       const dot = (c) => `<span class="dot" style="background:${c};margin-right:8px"></span>`;
       let html = `<tr><th>Sport</th><th>Anzahl</th><th title="Timer-Zeit, wie bisher">h Timer</th><th title="Timer-Zeit ohne Halte">h Bewegung</th><th>km</th><th>hm</th><th>Ø Puls</th><th>Ø Watt / Pace</th><th>ggü. ${Y - 1}</th></tr>`;
@@ -2954,34 +3087,6 @@ const TABS = {
     },
   },
 };
-const LT = {};
-function ltHr(sport) {           // Grenzen locker/mittel/hart aus dem aktiven Zonenprofil (Puls Z2 und Z3); nie aus fixen 2/4 mmol
-  if (!(sport in LT)) {
-    const P = window.FK ? FK.activeProfile(D.zonen || [], iso(today)) : null;
-    const sc = P && P.skalen.find((x) => x.disziplin === sport && x.metrik === "puls");
-    const z2 = sc && sc.zonen.find((z) => z.z === "Z2"), z3 = sc && sc.zonen.find((z) => z.z === "Z3");
-    LT[sport] = z2 && z3 && z2.bis && z3.bis ? { lt1: z2.bis, lt2: z3.bis, date: P.gueltig_ab, profil: P.name } : null;
-  }
-  return LT[sport];
-}
-function zone3(a) {
-  const th = ltHr(a.sport);
-  if (th && a.hh && a.date >= th.date) {
-    const z = [0, 0, 0];
-    a.hh.forEach((sec, i) => {
-      if (!sec) return;
-      const lo = 60 + 5 * i, f1 = Math.min(1, Math.max(0, (th.lt1 - lo) / 5)), f2 = Math.min(1, Math.max(0, (th.lt2 - lo) / 5));
-      z[0] += sec * f1; z[1] += sec * (f2 - f1); z[2] += sec * (1 - f2);
-    });
-    return z;
-  }
-  if (a.zones) return [a.zones[0] + a.zones[1], a.zones[2], a.zones[3] + a.zones[4]];
-  return null;
-}
-function zoneBasis(sp) {
-  const parts = (sp ? [sp] : ["rad", "lauf"]).map((k) => { const t = ltHr(k); return t ? `${SPORTS[k].label} ab ${dateCH(t.date)}: ${t.profil} (locker bis ${t.lt1} bpm, mittel bis ${t.lt2} bpm)` : null; }).filter(Boolean);
-  return parts.length ? "Basis: " + parts.join(" · ") + ". Ältere Einheiten: Garmin-Pulszonen (Z1–2 locker, Z3 mittel, Z4–5 hart)." : "Basis: deine Garmin-Pulszonen (Z1–2 locker, Z3 mittel, Z4–5 hart).";
-}
 function renderChecks() {
   const list = (D.lactate || []).filter((l) => l.kind === "check").sort((a, b) => a.date.localeCompare(b.date));
   const t = document.getElementById("t-checks");

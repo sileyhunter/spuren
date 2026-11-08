@@ -8,8 +8,9 @@
   "use strict";
   const FK = {};
   FK.VERSIONS = {
-    cockpit: "cockpit-1.0", readiness: "readiness-1.0", langfahrt: "langfahrt-1.0", koppel: "koppel-1.0",
+    cockpit: "cockpit-1.0", readiness: "readiness-1.0", langfahrt: "langfahrt-1.0", koppel: "koppel-1.1",
     fueling: "fueling-1.0", eta: "eta-1.0", cda: "cda-1.0", fit: "fit-js-1.0", wetter: "wetter-1.0",
+    pmc: "pmc-2.0", zonen: "zonenverteilung-2.0", orientierung: "langfahrt-orientierung-1.0",
   };
   const DAY = 864e5;
   const isNum = (v) => typeof v === "number" && isFinite(v);
@@ -163,6 +164,115 @@
   const RHR_OK = (v) => isNum(v) && v >= 25 && v <= 120;
   /** Tageslast (TSS-Summe) je Datum. */
   FK.dailyLoad = function (acts) { const m = new Map(); for (const a of acts || []) if (a.date) m.set(a.date, (m.get(a.date) || 0) + (a.tss || 0)); return m; };
+
+  /* ---------------- Fitness, Ermüdung, Form (pmc-2.0) ----------------
+     Exponentiell geglättete Tageslast (Kalendertage, Ortszeit): Fitness x_d = x_{d−1} + (Last_d − x_{d−1}) / 42,
+     Ermüdung gleich mit 7. Tage ohne Training zählen mit Last 0.
+     pmc-1.0 zeigte als «Form» den Vortageswert (Fitness_{d−1} − Ermüdung_{d−1}, Konvention TrainingPeaks), neben Fitness
+     und Ermüdung von heute: daher 91 / 89 / −10. pmc-2.0: Form_d = Fitness_d − Ermüdung_d aus genau den angezeigten Werten;
+     der Vortageswert bleibt als «Form zu Tagesbeginn» (vor den Einheiten des Tages) erhalten und ist so beschriftet. */
+  FK.pmc = function (loads, vonISO, bisISO) {
+    const get = loads instanceof Map ? (d) => loads.get(d) : (d) => (loads || {})[d];
+    const out = []; let ctl = 0, atl = 0;
+    if (!vonISO || !bisISO) return out;
+    for (let n = dayNum(vonISO), e = dayNum(bisISO); n <= e; n++) {
+      const date = isoOf(n), last = +get(date) || 0, start = ctl - atl;
+      ctl += (last - ctl) / 42; atl += (last - atl) / 7;
+      out.push({ date, last, ctl, atl, tsb: ctl - atl, tsbStart: start });
+    }
+    return out;
+  };
+  /** Anzeige: gerundete Fitness und Ermüdung; Form = Differenz dieser gerundeten Werte, damit sie sichtbar aufgeht. */
+  FK.pmcAnzeige = function (p) {
+    if (!p || !isNum(p.ctl) || !isNum(p.atl)) return null;
+    const f = Math.round(p.ctl), e = Math.round(p.atl);
+    return { datum: p.date, fitness: f, ermuedung: e, form: f - e, form_exakt: +(p.ctl - p.atl).toFixed(1),
+      form_tagesbeginn: isNum(p.tsbStart) ? Math.round(p.tsbStart) : null, last: p.last, v: FK.VERSIONS.pmc };
+  };
+
+  /* ---------------- Intensitätsverteilung (zonen-2.0) ----------------
+     Drei Bereiche nur mit ausdrücklich gültigen Schwellen: Pulsgrenzen aus dem Zonenprofil, das am Tag der Einheit galt
+     (Obergrenze Z2 = LT1, Obergrenze Z3 = LT2), je Sportart. Ohne gültiges Profil: Garmin-Pulszonen der Uhr (Z1–2 / Z3 / Z4–5)
+     nur zur Information, ohne Schwellenbezug und ohne Beurteilung. Nie Sportarten mischen. */
+  FK.pulsGrenzen = function (zonen, sport, dateISO) {
+    const P = FK.activeProfile(zonen, dateISO);
+    const sc = P && (P.skalen || []).find((x) => x.disziplin === sport && x.metrik === "puls");
+    const z2 = sc && sc.zonen.find((z) => z.z === "Z2"), z3 = sc && sc.zonen.find((z) => z.z === "Z3");
+    if (!(z2 && z3 && isNum(z2.bis) && isNum(z3.bis))) return null;
+    return { lt1: z2.bis, lt2: z3.bis, profil: P.name || P.id, ab: P.gueltig_ab, freigabe: (P.freigabe && P.freigabe.datum) || null };
+  };
+  /** Puls-Histogramm (5-bpm-Klassen ab 60, Sekunden) an zwei Grenzen teilen; innerhalb einer Klasse linear verteilt. */
+  FK.histSplit = function (hh, lt1, lt2) {
+    const z = [0, 0, 0];
+    (hh || []).forEach((sec, i) => {
+      if (!sec) return;
+      const lo = 60 + 5 * i, f1 = Math.min(1, Math.max(0, (lt1 - lo) / 5)), f2 = Math.min(1, Math.max(0, (lt2 - lo) / 5));
+      z[0] += sec * f1; z[1] += sec * (f2 - f1); z[2] += sec * (1 - f2);
+    });
+    return z;
+  };
+  FK.zone3 = function (a, zonen) {
+    const g = a && a.date ? FK.pulsGrenzen(zonen, a.sport, a.date) : null;
+    if (g && Array.isArray(a.hh) && a.hh.some((x) => x > 0)) return { basis: "profil", z: FK.histSplit(a.hh, g.lt1, g.lt2), grenzen: g };
+    if (a && Array.isArray(a.zones) && a.zones.length >= 5) return { basis: "garmin", z: [a.zones[0] + a.zones[1], a.zones[2], a.zones[3] + a.zones[4]] };
+    return null;
+  };
+  /** Summen je Basis für eine Sportart und einen Zeitraum [von, bis] (inklusive). */
+  FK.zoneSummary = function (acts, zonen, sport, vonISO, bisISO) {
+    const leer = () => ({ z: [0, 0, 0], s: 0, n: 0, wochen: new Set(), grenzen: [] });
+    const out = { v: FK.VERSIONS.zonen, sport, von: vonISO, bis: bisISO, profil: leer(), garmin: leer(), ohne: 0 };
+    for (const a of acts || []) {
+      if (a.sport !== sport || !a.date || a.date < vonISO || a.date > bisISO) continue;
+      const q = FK.zone3(a, zonen);
+      if (!q) { out.ohne++; continue; }
+      const B = out[q.basis];
+      q.z.forEach((v, j) => (B.z[j] += v)); B.s += q.z[0] + q.z[1] + q.z[2]; B.n++;
+      B.wochen.add(Math.floor((dayNum(a.date) + 3) / 7));          // Kalenderwoche Mo–So
+      if (q.grenzen && !B.grenzen.some((g) => g.profil === q.grenzen.profil)) B.grenzen.push(q.grenzen);
+    }
+    for (const k of ["profil", "garmin"]) out[k].wochen = out[k].wochen.size;
+    return out;
+  };
+  /** Prozent je Bereich, einzeln gerundet (Summe darf 99–101 % sein; das ist Rundung, kein Fehler). */
+  FK.anteile = function (z) {
+    const t = (z || []).reduce((s, v) => s + (v || 0), 0);
+    if (!t) return null;
+    const p = z.map((v) => Math.round((100 * v) / t));
+    return { pct: p, summe: p.reduce((s, v) => s + v, 0), total_s: t };
+  };
+  /**
+   * Einordnung ohne Pauschalurteil. Ergebnis: {status: "unsicher"|"beschreibung", text, hypothese, gruende, kontext}.
+   * kontext: {wettkampf: {name, tage}, stundenProWoche, einheitenProWoche, bereitschaft}. Nie «zu viel»/rot.
+   */
+  FK.zoneVerdict = function (sum, kontext, opt) {
+    opt = Object.assign({ minWochen: 3, minEinheiten: 6, minStunden: 6 }, opt || {});
+    const k = kontext || {}, P = sum.profil, G = sum.garmin, gruende = [];
+    const A = FK.anteile(P.z);
+    let status = "beschreibung";
+    if (!P.n) { status = "unsicher"; gruende.push(sum.sport === "schwimm" ? "für Schwimmen sind keine Pulsschwellen hinterlegt (Puls im Wasser zudem oft ungenau)" : "im Zeitraum keine Einheit mit gültigen, freigegebenen Pulsschwellen"); }
+    else {
+      if (P.wochen < opt.minWochen) gruende.push(`erst ${P.wochen} ${P.wochen === 1 ? "Woche" : "Wochen"} mit gültigen Schwellen (mindestens ${opt.minWochen})`);
+      if (P.n < opt.minEinheiten) gruende.push(`nur ${P.n} ${P.n === 1 ? "Einheit" : "Einheiten"} (mindestens ${opt.minEinheiten})`);
+      if (P.s / 3600 < opt.minStunden) gruende.push(`nur ${(P.s / 3600).toFixed(1)} h Pulszeit (mindestens ${opt.minStunden} h)`);
+      if (gruende.length) status = "unsicher";
+    }
+    if (G.n) gruende.push(`${G.n} ${G.n === 1 ? "Einheit" : "Einheiten"} nur mit Garmin-Pulszonen der Uhr: angezeigt, aber nicht beurteilt`);
+    const ctx = [];
+    if (k.wettkampf && isNum(k.wettkampf.tage)) ctx.push(`Wettkampfnähe (${k.wettkampf.name}: ${k.wettkampf.tage < 14 ? k.wettkampf.tage + " Tage" : Math.round(k.wettkampf.tage / 7) + " Wochen"})`);
+    ctx.push("Blockziel");
+    ctx.push(k.bereitschaft ? `Erholungsstand (heute: ${k.bereitschaft})` : "Erholungsstand");
+    const sp = k.sportName ? k.sportName + "-" : "", r1 = (x) => String(Math.round(x * 10) / 10);
+    ctx.push(isNum(k.einheitenProWoche) ? `Häufigkeit (Ø ${r1(k.einheitenProWoche)} ${sp}Einheiten pro Woche)` : "Häufigkeit");
+    ctx.push(isNum(k.stundenProWoche) ? `Belastung (Ø ${r1(k.stundenProWoche)} h ${k.sportName ? k.sportName + " " : ""}pro Woche)` : "Belastung");
+    const hypothese = "Einordnung als Hypothese, keine Vorgabe: Für Grundlagenblöcke auf der Langdistanz wird häufig ein grosser Anteil locker und wenig im mittleren Bereich beschrieben. " +
+      "Ob das jetzt für dich passt, hängt ab von " + ctx.join(", ") + ".";
+    let text;
+    if (status === "unsicher") text = "Beurteilung unsicher: " + gruende.filter((g) => !/nur mit Garmin/.test(g)).join("; ") + ".";
+    else text = `${A.pct[0]} % locker, ${A.pct[1]} % mittel, ${A.pct[2]} % hart – von ${fmtH(P.s)} Pulszeit in ${P.n} Einheiten (${P.wochen} Wochen).`;
+    return { v: FK.VERSIONS.zonen, status, text, hypothese, gruende, anteile: A, kontext: ctx };
+  };
+  const fmtH = (s) => { const m = Math.round(s / 60); return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")} h`; };
+  FK.fmtH = fmtH;
   /**
    * Bereitschaft für einen Tag. days: [{date, hrv, rhr, sleepH, sleepScore}], befinden: [{date, muede, muskel, stress, krank:[…], nachtdienst}]
    * Ergebnis: {status: bereit|normal|vorsichtig|nicht beurteilbar, gruende:[…], indikatoren:{…}, vertrauen, empfehlung}
@@ -350,6 +460,38 @@
     });
   };
   const sysName = (s) => ({ indoor: "Rolle", rennrad: "Rennrad", mtb: "MTB/Gravel" }[s] || s);
+  /**
+   * «Vorsichtige Orientierung» (langfahrt-orientierung-1.0): nicht validiert, getrennt vom Band aus FK.longRide und nur gedacht,
+   * wenn dieses «nicht bestimmbar» ist. Basis: tatsächliche lange Fahrten desselben Systems (mindestens max(3 h, 0,75 × Zieldauer),
+   * höchstens Zieldauer + 1 h, Leistung und Puls, gleichmässig NP/Ø ≤ 1,12), unabhängig von der Entkopplung.
+   * Band = 25.–50. Perzentil der Ø Watt dieser Fahrten; Rolle zusätzlich oben auf LT1 (Test auf der Rolle) begrenzt.
+   * Pulsgrenze für den Start = LT1-Puls − typische Drift (Median 2. − 1. Hälfte). Keine Umrechnung zwischen Systemen,
+   * keine Hochrechnung aus kurzen Fahrten.
+   */
+  FK.longRideOrientierung = function (acts, opt) {
+    opt = Object.assign({ stunden: 5, system: "rennrad", heute: null, monate: 18, lt1_w: null, lt1_hf: null, minN: 3 }, opt || {});
+    const h = opt.stunden, minH = Math.max(3, 0.75 * h), maxH = h + 1;
+    const from = opt.heute ? FK.addDays(opt.heute, -Math.round(opt.monate * 30.4)) : "0000";
+    const L = (acts || []).filter((a) => a.sport === "rad" && FK.bikeSys(a) === opt.system && a.date >= from && (!opt.heute || a.date <= opt.heute)
+      && ((a.mv || a.dur || 0) / 3600) >= minH && ((a.mv || a.dur || 0) / 3600) <= maxH && isNum(a.watt) && a.watt > 0 && isNum(a.hr) && (!isNum(a.np) || a.np / a.watt <= 1.12));
+    const res = { v: FK.VERSIONS.orientierung, validiert: false, stunden: h, system: opt.system, n: L.length, fenster_h: [+minH.toFixed(2), +maxH.toFixed(2)],
+      basis: L.map((a) => ({ id: a.id, date: a.date, h: +((a.mv || a.dur) / 3600).toFixed(2), watt: a.watt, hr: a.hr, dec: a.dr && isNum(a.dr.dec) ? a.dr.dec : null })) };
+    if (L.length < opt.minN) return Object.assign(res, { status: "keine Orientierung", watt: null, puls_start_max: null,
+      grund: `nur ${L.length} lange ${L.length === 1 ? "Fahrt" : "Fahrten"} mit ${fmt1(minH)}–${fmt1(maxH)} h, Leistung und Puls (${sysName(opt.system)}, mindestens ${opt.minN}); aus kürzeren Fahrten wird nicht hochgerechnet` });
+    const W = L.map((a) => a.watt);
+    let lo = quant(W, 0.25), hi = quant(W, 0.5);
+    const bed = [`${L.length} tatsächliche Fahrten ${fmt1(minH)}–${fmt1(maxH)} h (${sysName(opt.system)}), Band = 25.–50. Perzentil ihrer Ø Watt`];
+    if (opt.system === "indoor" && isNum(opt.lt1_w) && hi > opt.lt1_w) { hi = opt.lt1_w; lo = Math.min(lo, hi); bed.push(`oben auf LT1 ${Math.round(opt.lt1_w)} W begrenzt (Test auf der Rolle)`); }
+    const dr = L.filter((a) => a.dr && isNum(a.dr.h1) && isNum(a.dr.h2));
+    const drift = dr.length ? median(dr.map((a) => a.dr.h2 - a.dr.h1)) : null, dec = dr.length ? median(dr.filter((a) => isNum(a.dr.dec)).map((a) => a.dr.dec)) : null;
+    const hfMax = isNum(opt.lt1_hf) && isNum(drift) ? Math.round(opt.lt1_hf - Math.max(0, drift)) : null;
+    if (hfMax != null) bed.push(drift > 0 ? `Puls zu Beginn höchstens ${hfMax} bpm: LT1-Puls ${Math.round(opt.lt1_hf)} bpm minus deine typische Drift +${fmt1(drift)} bpm (Median aus ${dr.length} Fahrten)`
+      : `Puls höchstens ${hfMax} bpm (LT1-Puls); deine typische Drift ist nicht positiv (Median ${drift < 0 ? "−" : ""}${fmt1(Math.abs(drift))} bpm aus ${dr.length} Fahrten, oft wegen Abfahrten oder Pausen), daher keine Reserve abgezogen`);
+    const fehlend = [`nur ${L.filter((a) => a.dr && isNum(a.dr.dec) && a.dr.dec <= 5).length} der ${L.length} Fahrten mit Entkopplung ≤ 5 % (für ein validiertes Band mindestens 3 vergleichbare)`,
+      "Hitze, Höhe, Gelände und Verpflegung der Vergleichsfahrten nicht kontrolliert", opt.system !== "indoor" ? "LT1-Watt aus dem Test gilt nicht für den Leistungsmesser draussen (keine Umrechnung)" : null].filter(Boolean);
+    return Object.assign(res, { status: "orientierung", watt: { lo: Math.round(lo), hi: Math.round(hi), quelle: "lange Fahrten, nicht validiert" }, puls_start_max: hfMax,
+      drift_bpm: isNum(drift) ? +drift.toFixed(1) : null, entkopplung_median: isNum(dec) ? +dec.toFixed(1) : null, bedingungen: bed, fehlend });
+  };
   /** Plan gegen Ist: Ø Watt, NP und Puls mit Drift getrennt (NP ist nicht Ø Watt). */
   FK.planIst = function (plan, a) {
     if (!a) return null;
@@ -371,11 +513,13 @@
   };
   const baseId = (id) => String(id).replace(/-\d+$/, "");
   /**
-   * Koppelläufe: Lauf beginnt 0–maxMin Minuten nach dem Ende einer Radeinheit (Standard 45, Grenze eingeschlossen).
+   * Koppelläufe: Lauf beginnt 0–maxMin Minuten nach dem Ende einer Radeinheit (Standard 45, Grenze eingeschlossen) = automatischer Kandidat.
    * Mehrere Kandidaten → «auswählen» (keine stille Zuordnung). Entscheidungen [{bike, run, status: bestätigt|getrennt}] gehen vor.
+   * koppel-1.1: Wechsel über direktMin (35 min) heisst «lange Pause» (fenster "lang"): bleibt Kandidat, zählt aber erst nach Bestätigung
+   * als direkter Koppellauf (wie im Wettkampf); bis direktMin: fenster "direkt".
    */
   FK.findBricks = function (acts, opt) {
-    opt = Object.assign({ maxMin: 45, entscheide: [] }, opt || {});
+    opt = Object.assign({ maxMin: 45, direktMin: 35, entscheide: [] }, opt || {});
     const A = (acts || []).filter((a) => a.sport === "rad" || a.sport === "lauf").map((a) => ({ a, t: FK.timesOf(a) })).filter((x) => x.t);
     const bikes = A.filter((x) => x.a.sport === "rad"), runs = A.filter((x) => x.a.sport === "lauf");
     const dec = new Map((opt.entscheide || []).map((e) => [e.bike + "|" + e.run, e.status]));
@@ -395,14 +539,17 @@
       else if (p.manuell === "getrennt") p.status = "getrennt";
       else if ((nB.get(p.bike) || 0) > 1 || (nR.get(p.run) || 0) > 1) p.status = "auswählen";
       else p.status = "vorschlag";
+      p.fenster = p.wechsel_s > opt.direktMin * 60 ? "lang" : "direkt";
+      p.direkt = p.fenster === "direkt" || p.status === "bestätigt";      // zählt als direkter Koppellauf (Trend, Vergleiche)
       if (!p.genau && Math.abs(p.wechsel_s - opt.maxMin * 60) <= 90 && !p.manuell) p.hinweis = "Startzeit nur auf die Minute genau: Grenze prüfen";
+      else if (p.fenster === "lang" && p.status !== "bestätigt" && p.status !== "getrennt") p.hinweis = `Wechsel über ${opt.direktMin} min: nur Kandidat, kein direkter Wettkampf-Wechsel ohne Bestätigung`;
     }
     const t0 = new Map(A.map((x) => [x.a.id, x.t.t0]));
     return pairs.sort((x, y) => (t0.get(y.bike) - t0.get(x.bike)) || (t0.get(x.run) - t0.get(y.run)));
   };
   /** Kennzahlen eines Koppellaufs; fehlende Werte bleiben null (z. B. kein NP ohne Leistungsmesser). */
   FK.brickMetrics = function (bike, run, pair) {
-    const sp = (run.sp || []).map((s) => ({ von: s.von, bis: s.bis, s: s.s, pace: s.pace ?? null, hr: s.hr ?? null, cad: s.cad ?? null }));
+    const sp = (run.sp || []).map((s) => ({ von: s.von, bis: s.bis, s: s.s, m: s.m ?? null, pace: s.pace ?? null, hr: s.hr ?? null, cad: s.cad ?? null }));
     const first = sp.find((s) => s.von === 0), mid = sp.find((s) => s.von === 600);
     return {
       rad: { dauer_s: bike.mv || bike.dur || null, watt: isNum(bike.watt) && bike.watt > 0 ? bike.watt : null, np: isNum(bike.np) && bike.np > 0 ? bike.np : null, hr: bike.hr ?? null, tss: bike.tss ?? null },
@@ -412,6 +559,9 @@
       hinweise: [!(isNum(bike.np) && bike.np > 0) ? "Rad ohne NP (kein Leistungsmesser oder keine Leistung)" : null, !sp.length ? "Lauf ohne Sekundenwerte: keine Abschnitte" : null].filter(Boolean),
     };
   };
+  FK.splitLabels = (sp) => (sp || []).map((s) => (s.bis ? `${s.von / 60}–${s.bis / 60} min` : `ab ${s.von / 60} min`));
+  /** Achsenbereich aus den Werten mit Rand (nie ab 0, damit keine scheinbare Null-Pace entsteht). */
+  FK.splitRange = function (vals, pad) { const v = (vals || []).filter(isNum); if (!v.length) return null; return [Math.floor(Math.min(...v) - pad), Math.ceil(Math.max(...v) + pad)]; };
   /** Vergleich mit Solo-Läufen: ähnliche Dauer (±25 %) und Puls (±5 bpm), letzte 180 Tage, mindestens 3; sonst «nicht vergleichbar». */
   FK.soloCompare = function (acts, run, brickRunIds, opt) {
     opt = Object.assign({ tage: 180, minN: 3 }, opt || {});
