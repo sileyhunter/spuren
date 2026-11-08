@@ -26,7 +26,7 @@ Keine neuen Haupttabs; bestehende Module erweitert. Wiederherstellungspunkt: Bra
 | Intervalle | `intervalle-1.0` | Runden mit Workout-Schritt, sonst 30-s-Mittel > 115 % des Medians, mind. 60 s; Korrektur von Hand ersetzt die Erkennung |
 | Geplant vs. Ist | `plan-1.0` | Schritte aus FIT `workout`/`workout_step`, Runden über `wkt_step_index`; Rundenende aus Start + verstrichener Zeit, wenn die Uhr den Aktivitätsstart als Zeitstempel schreibt; Leistungsziele ≤ 1000 je Workout als Watt oder % FTP nach der gefahrenen Leistung (offen ausgewiesen); Plandauer nur, wenn jeder Schritt eine Zeit hat |
 | Ermüdungsresistenz | `ermuedung-1.0` | gleichmässige 10-min-Blöcke ab Minute 10; Puls früh (Start < 90 min) gegen spät (≥ 150 min) bei ±10 W bzw. gleicher Pace; beste 20 min ab Stunde 2/3/4/5 |
-| RPE | `rpe-1.0` | Borg CR-10; sRPE = RPE × Bewegungsminuten; Kalibrierung ab 20 Paaren, Spearman-Rangkorrelation, keine Prozentwerte |
+| RPE | `rpe-1.0` | CR-10 nach Foster (modifizierte Borg-Skala); sRPE = RPE × Bewegungsminuten; Kalibrierung ab 20 Paaren, Spearman-Rangkorrelation, keine Prozentwerte |
 | Energie | `energie-1.0` | Rad: kJ = Ø W × Bewegungszeit, kcal mit Wirkungsgrad 22–25 % (Annahme); KH-Anteil je Garmin-Pulszone als Modell; Richtwert Jeukendrup 2014 |
 | Saison | `saison-1.0` | Taper 2 Wochen, wettkampfspezifisch 8, Aufbau 16, Erholung jede 4. Woche, B-Rennen mit Mini-Taper und Erholungswoche |
 | Entwicklung | `entwicklung-1.0` (unverändert) | neue Metriken `dauer_rad`, `p20_3h`, `dauer_lauf`, `lauf_hf150` mit derselben Urteilsregel |

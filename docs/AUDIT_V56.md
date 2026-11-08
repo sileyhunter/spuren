@@ -62,7 +62,7 @@ V5.6 ergänzt je Aktivität nur die neuen Felder `ser`, `wk`, `fr` und die Liste
 | | |
 |---|---|
 | Gab es schon | Bereitschaft aus HRV, Ruhepuls und Schlaf; Befinden je Tag |
-| Neu | je Einheit RPE 1–10 (Borg CR-10), Gefühl, muskuläre Ermüdung, Bereich, Notiz; sRPE; Liste der letzten Einheiten in Heute; Kalibrierung mit Morgenwerten ab 20 Paaren (Rangkorrelation mit n, keine Prozentwerte) |
+| Neu | je Einheit RPE 1–10 (CR-10 nach Foster), Gefühl, muskuläre Ermüdung, Bereich, Notiz; sRPE; Liste der letzten Einheiten in Heute; Kalibrierung mit Morgenwerten ab 20 Paaren (Rangkorrelation mit n, keine Prozentwerte) |
 | Lokal getestet | Speichern im Browser (verschlüsselt auf dem Gerät), Export-Schlüssel, Übernahme mit `merge_daily.py` (`test_tools.py`) |
 | Einschränkungen | Kalibrierung zeigt einen Zusammenhang, keine Ursache; Last der Einheit nicht herausgerechnet |
 

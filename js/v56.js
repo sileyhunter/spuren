@@ -20,7 +20,7 @@
       const C = UI().C, r = V.rpeVon(C, a.id) || {};
       el.innerHTML = `<details class="more ex-rpe" ${offen ? "open" : ""}><summary>${r.rpe ? `Gefühl: RPE ${r.rpe}${r.gefuehl ? " · " + r.gefuehl : ""}${r.muskel ? ` · Muskulatur ${r.muskel}/3` : ""} – ändern` : "Wie war die Einheit? (RPE 1–10) – noch nicht bewertet"}</summary>
         <form class="rpe-f" id="rpe-f"><div class="rpe-skala" role="group" aria-label="RPE">${Array.from({ length: 10 }, (_, i) => `<button type="button" class="btn rpe-b" data-r="${i + 1}" aria-pressed="${r.rpe === i + 1}">${i + 1}</button>`).join("")}</div>
-        <p class="hint">1 = sehr leicht, 3 = locker, 5 = mittel, 7 = hart, 9–10 = maximal (Borg CR-10).</p>
+        <p class="hint">1 = sehr leicht, 2 = leicht, 3 = moderat, 4 = etwas hart, 5 = hart, 7 = sehr hart, 10 = maximal (CR-10-Skala nach Foster, wie für sRPE üblich).</p>
         <div class="css-grid"><label>Gefühl<select name="g"><option value="">–</option>${GEFUEHL.map((g) => `<option ${r.gefuehl === g ? "selected" : ""}>${g}</option>`).join("")}</select></label>
           <label>Muskuläre Ermüdung<select name="m"><option value="">–</option>${["0 keine", "1 leicht", "2 deutlich", "3 stark"].map((x, i) => `<option value="${i}" ${r.muskel === i ? "selected" : ""}>${x}</option>`).join("")}</select></label>
           <label>Bereich<select name="b"><option value="">–</option>${BEREICH.map((b) => `<option ${r.bereich === b ? "selected" : ""}>${b}</option>`).join("")}</select></label>
