@@ -25,8 +25,10 @@ const out = {
   notizen_set: d.notizen || {}, quelle_eingaben: { datei: src.split("/").pop(), erstellt: j.erstellt },
   pb_add: clean(d.pb), css_add: clean(d.css), fehler_add: clean(d.fehler),
   rpe_add: clean(d.rpe), intervall_add: clean(d.intervalle), laktat_punkte_add: clean(d.laktat_punkte), saison_add: clean(d.saison),
+  trainingsrouten_add: clean(d.trainingsrouten),
 };
 if (d.fueling_produkte) out.fueling_produkte = d.fueling_produkte;
+if (Array.isArray(d.startorte)) out.startorte = clean(d.startorte);     // V5.7: ganze Liste (Startorte bleiben verschlüsselt in data.enc.json)
 writeFileSync(dst, JSON.stringify(out, null, 1));
 const n = Object.entries(out).filter(([, v]) => Array.isArray(v)).map(([k, v]) => `${k}: ${v.length}`).join(", ");
 console.log("Eingaben vom", j.erstellt, "→", dst, "·", n);

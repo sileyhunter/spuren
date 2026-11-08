@@ -274,5 +274,31 @@ check("Plan: Lauf-Workout mit Tempoziel trotz falschem Runden-Zeitstempel abgegl
 merge_daily.v5_merge(D, {"rpe_add": [{"id": "a1", "act": "a1", "datum": "2026-01-10", "rpe": 6}], "laktat_punkte_add": [{"id": "lp-a1-600", "act": "a1", "t": 600, "la": 1.8, "status": "vorschau"}]})
 check("Eingaben V5.6: RPE und Laktatpunkte gespeichert (Laktat bleibt Vorschau)", D["rpe"][0]["rpe"] == 6 and D["laktat_punkte"][0]["status"] == "vorschau")
 
+# ---------- V5.7 Smart Training Routes: Eingaben, Nacht-Update ----------
+merge_daily.v5_merge(D, {"startorte": [{"id": "o1", "name": "Zuhause", "lon": 9.5, "lat": 46.8}], "trainingsrouten_add": [{"id": "tr-2026-11-09-x", "datum": "2026-11-09", "vorschlag": "A"}]})
+merge_daily.v5_merge(D, {"startorte": [{"id": "o1", "name": "Zuhause", "lon": 9.51, "lat": 46.81}, {"id": "o2", "name": "Arbeit", "lon": 9.6, "lat": 46.9}],
+                         "trainingsrouten_add": [{"id": "tr-2026-11-09-x", "datum": "2026-11-09", "vorschlag": "B"}]})
+check("V5.7: Startorte als ganze Liste ersetzt (alte Fassung im Audit), Trainingsroute mit gleicher ID ersetzt",
+      len(D["startorte"]) == 2 and any(a.get("was") == "Startorte ersetzt" for a in D["audit"]) and len(D["trainingsrouten"]) == 1 and D["trainingsrouten"][0]["vorschlag"] == "B")
+_t7 = tempfile.mkdtemp()
+_d7 = {"activities": [], "days": [], "config": {}, "planned": [{"date": "2026-11-01", "title": "alt", "sport": "rad", "dur_s": 60}]}
+json.dump(_d7, open(os.path.join(_t7, "d.json"), "w"))
+json.dump({"activities": [{"garmin_id": 77, "name": "Runde", "type": "road_biking", "start_local": "2026-11-09T10:00:00", "duration_s": 3600, "distance_m": 30000, "elev_gain_m": 300, "avg_hr": 140, "avg_power": 200, "np": 205}],
+           "planned": [{"date": "2026-11-10", "title": "Lange VO2max Intervalle", "sport": "rad", "dur_s": 5199, "wid": 1743810739, "quelle": "Enduco über Garmin",
+                        "steps": [{"type": "warmup", "end_condition": "time", "end_condition_value": 571, "target_type": "power.zone", "target_value_low": 71.4, "target_value_high": 200}]}],
+           "planned_range": ["2026-11-09", "2026-11-23"], "workouts_neu": [{"wid": 1, "title": "Neu", "sport": "cycling", "steps": []}]}, open(os.path.join(_t7, "n.json"), "w"))
+open(os.path.join(_t7, "f.jsonl"), "w").write(json.dumps({"garmin_id": 77, "ok": True, "fit": {"mv": 3500, "poly": "_p~iF~ps|U_ulLnnqC"}}) + "\n")
+merge_daily.main(os.path.join(_t7, "d.json"), os.path.join(_t7, "n.json"), os.path.join(_t7, "f.jsonl"))
+_r7 = json.load(open(os.path.join(_t7, "d.json")))
+check("V5.7 Nacht-Update: Workout-Schritte im Plan, alte Pläne ausserhalb des Bereichs bleiben, neue Enduco-Workouts, GPS-Spur aus der Garmin-Verbindung",
+      _r7["planned"][-1]["steps"][0]["end_condition_value"] == 571 and _r7["planned"][0]["title"] == "alt" and _r7["workouts_neu"][0]["wid"] == 1
+      and _r7["activities"][0]["poly"] == "_p~iF~ps|U_ulLnnqC" and _r7["activities"][0]["mv"] == 3500, json.dumps(_r7)[:300])
+import fit_nacht  # noqa: E402
+_S7 = _series.Session()
+_S7.sport, _S7.lat, _S7.lon = 2, [46.85, 46.851, 46.852, None, 46.853], [9.53, 9.531, 9.532, None, 9.533]
+_p7 = fit_nacht.spur(_S7)
+_S7.manu = 260
+check("V5.7: GPS-Spur draussen wie im Monatsexport (Polyline), drinnen keine", isinstance(_p7, str) and len(_p7) > 4 and fit_nacht.spur(_S7) is None, str(_p7))
+
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)

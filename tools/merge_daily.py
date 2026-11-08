@@ -45,7 +45,7 @@ def minutes(hhmm):
     return int(h) * 60 + int(m)
 
 
-FIT_KEYS = ("el", "mv", "st", "nst", "un", "rc", "ac", "us", "hh", "pdc", "t0", "dr", "sp", "eb", "ser", "wk", "fr")
+FIT_KEYS = ("el", "mv", "st", "nst", "un", "rc", "ac", "us", "hh", "pdc", "t0", "dr", "sp", "eb", "ser", "wk", "fr", "poly")
 
 
 def load_fit(path):
@@ -121,12 +121,19 @@ def v5_merge(D, N):
                           ("koppel", "koppel_set", lambda e: (e["bike"], e["run"])), ("schwimm_analysen", "coach_add", lambda e: e["id"]),
                           ("pb_offiziell", "pb_add", lambda e: e["id"]), ("css_tests", "css_add", lambda e: e["id"]), ("fehlerboard", "fehler_add", lambda e: e["id"]),
                           ("rpe", "rpe_add", lambda e: e["id"]), ("intervall_korr", "intervall_add", lambda e: e["id"]),
-                          ("laktat_punkte", "laktat_punkte_add", lambda e: e["id"]), ("saison_plan", "saison_add", lambda e: e["id"])):
+                          ("laktat_punkte", "laktat_punkte_add", lambda e: e["id"]), ("saison_plan", "saison_add", lambda e: e["id"]),
+                          ("trainingsrouten", "trainingsrouten_add", lambda e: e["id"])):
         if N.get(src):
             a, b = _upsert(D, key, N[src], idf)
             msg.append(f"{key}: {a} neu, {b} ersetzt")
     if "fueling_produkte" in N:
         D["fueling_produkte"] = N["fueling_produkte"]
+    if isinstance(N.get("startorte"), list):              # V5.7: Startorte als ganze Liste (alte Fassung ins Audit)
+        if D.get("startorte") != N["startorte"]:
+            if D.get("startorte"):
+                D.setdefault("audit", []).append({"zeit": dt.datetime.now(ZRH).isoformat(timespec="seconds"), "was": "Startorte ersetzt", "alt": D["startorte"]})
+            D["startorte"] = N["startorte"]
+            msg.append(f"startorte: {len(N['startorte'])}")
     if N.get("fueling_quellen"):                         # A15: geprüfte Datenquellen für Einnahmen (ersetzt den alten Stand)
         D["fueling_quellen"] = N["fueling_quellen"]
     if N.get("test_archiv"):
@@ -250,6 +257,8 @@ def main(data_path, new_path, fit_path=None):
         lo, hi = N.get("planned_range") or [None, None]
         keep = [p for p in D.get("planned", []) if lo and hi and not (lo <= p["date"] <= hi)]
         D["planned"] = sorted(keep + N["planned"], key=lambda p: p["date"])
+    if isinstance(N.get("workouts_neu"), list):             # V5.7: neue Enduco-Workouts ohne Kalenderdatum (ersetzt die Liste)
+        D["workouts_neu"] = N["workouts_neu"][:8]
 
     for l in N.get("lactate_add", []):
         lac = D.setdefault("lactate", [])

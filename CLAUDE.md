@@ -38,9 +38,12 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   Kalibrierung, Geplant vs. Ist, Konstanz, Saison 2027, Ermüdung, Energie); `tools/serien.py` – Sekundenreihen im 2-s-Raster, Workout-Abgleich
   `wk` und Ermüdung `fr` aus FIT; `tools/serien_crypt.mjs` – Reihen verschlüsseln nach `serien/<Name>.bin` (Name = SHA-256 aus
   `serien_salz` und ID, `serien_salz` steht nur verschlüsselt in den Daten; die Dateinamen verraten keine Garmin-/Zwift-IDs)
-- `tests/test_formkurve.cjs`, `tests/test_route.cjs`, `tests/test_analyse.cjs`, `tests/test_tools.py` – Abnahmetests (erfundene Werte; `tests/fixtures/` = echte
+- **V5.7 Smart Training Routes:** `js/training-route.js` (Rechenlogik ohne DOM: Enduco-/Garmin-Workout lesen, Zeitplan je Schritt, Rundtour-Kandidaten,
+  Dauerabstimmung, Intervall-Eignung, Wetter je Durchfahrtszeit, Tageslicht, Vorschläge A/B/C, Vorschlag vs. Ist), `js/training-ui.js`
+  (Trainingsvorschau im Planer, Startorte verschlüsselt, Regler, Kalender «Passende Route finden» `data-str`, «Vorschlag vs. Ist» `data-trv`)
+- `tests/test_formkurve.cjs`, `tests/test_route.cjs`, `tests/test_analyse.cjs`, `tests/test_training.cjs`, `tests/test_tools.py` – Abnahmetests (erfundene Werte; `tests/fixtures/` = echte
   Antworten einer lokalen BRouter-Instanz mit OSM-Testdaten Dreieich, ODbL); `docs/` – Konzept, Abnahme (`abnahme-v53.md`), Audit V5.5 (`AUDIT_V55.md`),
-  Audit V5.6 (`AUDIT_V56.md`), offene Punkte (`offen-nach-v55.md`)
+  Audit V5.6 (`AUDIT_V56.md`), Audit V5.7 (`AUDIT_V57.md`), offene Punkte (`offen-nach-v55.md`)
 
 ## Nächtliches Update (nur Garmin-Verbindung)
 1. `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json data.json`
@@ -48,6 +51,13 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
    - `get_activities_by_date` von (letztes Datum − 2 Tage) bis heute, alle Seiten.
    - pro Einheit `get_activity` (Leistung, NP, Höhenmeter, Dauer) und `get_activity_hr_in_timezones` (Zeit in Zone 1–5).
    - `get_sleep_summary_range` letzte 7 Nächte; `get_stats_range` letzte 7 Tage; `get_nutrition_summary_between_dates` letzte 7 Tage; `get_weigh_ins` letzte 14 Tage; `get_scheduled_workouts` heute bis +14 Tage.
+   - **Workout-Schritte (V5.7, für «Passende Route finden»):** für jede Einheit aus `get_scheduled_workouts` mit `workout_id`:
+     `get_workout_by_id(workout_id)` (vereinfachte Form, nicht `raw`) und im `planned`-Eintrag ergänzen: `wid` = workout_id,
+     `quelle` = `<provider> über Garmin` (z. B. «Enduco über Garmin»), `desc` = erster Satz der Beschreibung (höchstens 200 Zeichen),
+     `steps` = `segments[0].steps` unverändert (type, end_condition, end_condition_value, target_type, target_value_low/high,
+     secondary_target_*, repeat_count, steps). Danach `get_workouts`: Workouts mit `provider` «Enduco», `created_date` in den letzten
+     2 Tagen und nicht im Kalender → höchstens 5 als `"workouts_neu"` (je `get_workout_by_id`; Format unten; ersetzt die alte Liste).
+     Schlägt ein Abruf fehl: ohne Schritte weitermachen, kein Abbruch, keine Nachricht. Enduco-Workouts nie ändern.
    - **Tageswerte rückwirkend nachholen** (bis sie ab 2020 vorhanden sind): Startpunkt ist `config.days_backfill` in `data.json`,
      fehlt der Wert, das früheste Datum in `days`. Liegt er nach 2020-01-01, mit `get_sleep_summary_range` die 180 Nächte davor holen
      (zwei Abfragen à 90 Nächte, nie vor 2020-01-01) und als zusätzliche Einträge in `days` aufnehmen, nur `hrv`, `rhr`, `sleepH`,
@@ -61,7 +71,7 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
      b) `get_activity_fit_messages(activity_id=<id>, message_types=["file_id","lap","length","event","workout","workout_step","zones_target"], message_limit=5000)`,
         ebenfalls als Datei.
      c) `python3 -I tools/fit_nacht.py <id> <pfad_a> <pfad_b> >> work/fit.jsonl` (V5.6: rechnet auch Workout-Abgleich `wk`, Ermüdung `fr`
-        und die Reihe `work/serien/g<ID>.json` für den Explorer)
+        und die Reihe `work/serien/g<ID>.json` für den Explorer; V5.7: GPS-Spur `poly` draussen wie im Monatsexport, für «Vorschlag vs. Ist»)
      Kommt eine Antwort direkt statt als Datei (sehr kurze Aktivität), sie unverändert als `work/fit_<id>_a.json` bzw.
      `work/fit_<id>_b.json` speichern und diese Pfade nehmen. Schlägt ein Abruf fehl: ohne diese Datei weitermachen
      (`fit_nacht.py <id> fehlt`); die Lücke steht dann im Protokoll `fit_log`. Kein Abbruch, keine Nachricht.
@@ -73,6 +83,9 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
 4. `SPUREN_PW=… node tools/crypt.mjs encrypt data.json data.enc.json`, dann nur `data.enc.json` committen («Nacht-Update JJJJ-MM-TT») und auf `main` pushen.
    Sekundenreihen (`serien/`, verschlüsselt) nur, wenn der Auftrag das Committen von `serien/` ausdrücklich erlaubt: dann nach dem
    Verschlüsseln `SPUREN_PW=… node tools/serien_crypt.mjs` und `serien/` mitcommitten. Sonst kommen die Reihen mit dem Monatsexport.
+   **Offen (V5.7, Stand 8.11.2026):** Der geplante nächtliche Auftrag erlaubt nur `data.enc.json`. Damit neue Reihen nachts inkrementell
+   kommen, müsste sein Text «Committe nur data.enc.json» auf «Committe nur data.enc.json und serien/» geändert werden
+   (`serien_crypt.mjs` schreibt nur neue/geänderte Dateien, Namen gehasht, keine Duplikate). Erst nach Silas' ausdrücklicher Freigabe ändern.
 
 ### Format `work/new.json`
 ```json
@@ -83,8 +96,11 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   "days": [{"date": "2026-10-30", "hrv": 0, "rhr": 0, "sleepH": 0, "sleepScore": 0, "kcalOut": 0,
             "kcalIn": 0, "protein": 0, "carbs": 0, "fat": 0}],
   "weights": [{"date": "2026-10-30", "kg": 0, "ts_gmt": 0}],
-  "planned": [{"date": "2026-11-02", "title": "", "sport": "rad", "dur_s": 3600}],
+  "planned": [{"date": "2026-11-02", "title": "", "sport": "rad", "dur_s": 3600, "wid": 0, "quelle": "Enduco über Garmin", "desc": "",
+               "steps": [{"type": "warmup", "end_condition": "time", "end_condition_value": 600, "target_type": "power.zone",
+                          "target_value_low": 120, "target_value_high": 180}]}],
   "planned_range": ["2026-10-31", "2026-11-14"],
+  "workouts_neu": [{"wid": 0, "title": "", "sport": "cycling", "dur_s": 0, "erstellt": "2026-11-08T07:39:40", "desc": "", "steps": []}],
   "config": {"days_backfill": "2026-04-04"}
 }
 ```
@@ -131,6 +147,8 @@ ersetzt mit Audit) und `fehler` (Fehlerboard → `fehlerboard`). `fueling_quelle
 Prüfung ersetzen; nie Einnahmen aus Garmin schätzen oder ergänzen.
 V5.6: zusätzlich `rpe` (→ `rpe`), `intervalle` (Korrekturen von Hand → `intervall_korr`), `laktat_punkte` (Laktat einem Abschnitt
 zugeordnet → `laktat_punkte`, Status «vorschau») und `saison` (Stunden «jetzt»/«Spitze» → `saison_plan`); gleiche ID ersetzt mit Audit.
+V5.7: `startorte` (ganze Liste → `startorte`, alte Fassung ins Audit) und `trainingsrouten` (gewählte Vorschläge → `trainingsrouten`, gleiche
+ID ersetzt mit Audit). Startorte und Routen nur verschlüsselt (data.enc.json), nie offen ins Repository.
 
 ## Laktatschwellen und Zonen (V5)
 - `tools/schwellen.py`: LT1 = SOMC (letzte Stufe vor Anstieg ≥ 0,4), Basis + 0,5 (Basis = Mittel der ersten drei Stufen), log-log (≥ 6 Stufen);
@@ -186,8 +204,23 @@ zugeordnet → `laktat_punkte`, Status «vorschau») und `saison` (Stunden «jet
 - Energie `energie-1.0`: aufgenommen nur aus dem Fueling-Protokoll; Verbrauch Rad aus kJ mit Wirkungsgrad 22–25 % (Annahme); KH-Anteil
   je Garmin-Pulszone ist ein Modell; Richtwert Jeukendrup 2014. Nie Gelmengen oder Stoffwechselwerte erfinden.
 
+## V5.7: Smart Training Routes (Trainingskalender und Routenplaner, kein eigener Tab)
+- Workout `workout-1.0`: Schritte aus der Garmin-Verbindung (Enduco schreibt Watt, Tempo in m/s oder Puls), Wiederholungen aufgefaltet;
+  intensiv = Mitte des Zielbereichs ab Z3 des aktiven Zonenprofils; Leistung ≤ 150 überall → «Watt oder % FTP?» offen, nie geraten.
+  Dauertraining (Grundlage, Sprints < 10 %, Trail, Wandern) Ziel ±5 %, sonst ±10 %. **Keine direkte Enduco-Schnittstelle**, Workouts nie ändern.
+- Vorschläge `trainingsroute-1.0`: Rundtour = Kreis durch den Start (3 Zwischenziele), 6 Richtungen, dann Radius nach der echten
+  Fahrzeit nachregeln (höchstens 2 Runden), Rennrad C mit dem velofreundlichen Profil; eine Anfrage je Kandidat (Mehrpunkt), Warteschlange
+  höchstens 2 gleichzeitig (`anfragen-1.0`), gleiche URL nur einmal. Plandauer bleibt massgebend: Abweichung wird gezeigt, nie angepasst.
+- Intervalle `intervall-rt-1.0` (Abfahrt < −4 % über 200 m = ungeeignet, Unterbrechungen laut OSM-Knoten, Gravel beim Rennrad, Berg ≥ 4 %);
+  ungeeignete Abschnitte werden so gezeigt, nie als passend. Wetter `wetteroptimiert-1.0` (Seitenböen > 36 km/h, Regen, Gegenwind auf dem
+  Rückweg; unbekannt bleibt unbekannt, B nur mit ≥ 70 % bekanntem Wind). Ruhig `ruhig-1.0`, Tageslicht `tageslicht-1.0` (NOAA, ±2 min).
+- Rennrad (V5.7): Pflaster eigener Belag (`belag-1.1`, kein Gravel), Varianten `varianten-2.1` (10 % auf die Fahrzeit; ohne Zeit ausdrücklich
+  Distanz; velofreundlich nur, wenn wirklich ruhiger), Profil `gravel-rt-1.1` (`avoid_mainroads`). Ersatzprofil fastbike immer sichtbar melden.
+- Vorschlag vs. Ist `auswertung-rt-1.0`: Prognosefehler, Prognose bei Ist-Leistung, Streckentreue aus `poly`; Modellgüte nur aus Einheiten
+  nach dem Kalibrierungsstand und mit ≥ 80 % gefolgter Strecke.
+
 ## Prüfen vor jedem Push von Seite oder Werkzeugen
-`node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
+`node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
 Kein Live-Push, wenn ein Test fehlschlägt. Screenshots mit echten Daten nie ins Repo.
 
 ## FTP und Trainingslast

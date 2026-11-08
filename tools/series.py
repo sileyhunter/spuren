@@ -43,6 +43,7 @@ class Session:
         self.distance = None      # m
         self.ts = []              # Unix-Sekunden je Datensatz
         self.pw, self.hr, self.cad, self.spd, self.dist, self.alt, self.temp, self.target = ([] for _ in range(8))
+        self.lat, self.lon = [], []   # V5.7: Position je Datensatz (Grad), nur aus der Garmin-Verbindung (für die GPS-Spur «poly»)
         self.laps = []            # {"start","end","timer","elapsed","intensity","dist"}
         self.lengths = []         # Schwimmen: {"start","timer","elapsed","active"}
         self.timer_events = []    # (Unix, "start"|"stop")
@@ -208,6 +209,8 @@ def from_garmin(records_path, messages_path=None):
         S.alt.append(r.get("altitude_m"))
         S.temp.append(r.get("temperature_c"))
         S.target.append(r.get("target_power_w"))
+        S.lat.append(r.get("lat_deg"))
+        S.lon.append(r.get("lon_deg"))
     for lp in d.get("laps") or []:
         st = _unix(lp.get("start_time"))
         el = float(lp.get("total_elapsed_time_s") or 0)
