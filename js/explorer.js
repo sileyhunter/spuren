@@ -26,8 +26,11 @@
     if (window.SPUREN_DEMO) return AN.decode(demoSerie(a));
     const salz = C().D.serien_salz;
     if (!salz) throw Object.assign(new Error("Für diese Daten liegen noch keine Sekundenwerte vor."), { art: "fehlt" });
-    const r = await fetch(`serien/${await AN.serieName(salz, a.id)}.bin`);
-    if (r.status === 404) throw Object.assign(new Error("Für diese Aktivität liegen noch keine Sekundenwerte vor. Sie kommen spätestens mit dem nächsten Export der FIT-Dateien (manuell erfasste Einheiten haben keine)."), { art: "fehlt" });
+    // V5.7.1: Name aus der gid (bleibt beim Monatsexport gleich); ältere Reihen liegen evtl. noch unter der Aktivitäts-ID
+    const keys = [AN.serieKey(a)]; if (String(a.id) !== keys[0]) keys.push(String(a.id));
+    let r = null;
+    for (const k of keys) { r = await fetch(`serien/${await AN.serieName(salz, k)}.bin`); if (r.status !== 404) break; }
+    if (r.status === 404) throw Object.assign(new Error("Für diese Aktivität liegen noch keine Sekundenwerte vor. Sie kommen mit dem nächsten Nacht-Update, sonst mit dem nächsten Export der FIT-Dateien (manuell erfasste Einheiten haben keine)."), { art: "fehlt" });
     if (!r.ok) throw new Error(`Sekundenwerte nicht geladen (HTTP ${r.status}).`);
     const u8 = new Uint8Array(await r.arrayBuffer());
     const V = window.SPUREN_VAULT; if (!V || !V.openBin) throw new Error("Seite zuerst entsperren.");

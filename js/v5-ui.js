@@ -94,8 +94,17 @@
     const b64d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
     return {
       async seal(obj) { const iv = crypto.getRandomValues(new Uint8Array(12)); const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, k, new TextEncoder().encode(JSON.stringify(obj)))); return b64e(iv) + "." + b64e(ct); },
-      /** V5.6: Binärdatei «SPS1 | IV | Chiffre+Tag» (Sekundenreihen) → Klartext-Bytes. */
-      async openBin(u8) { if (String.fromCharCode(u8[0], u8[1], u8[2], u8[3]) !== "SPS1") throw new Error("Unbekanntes Dateiformat"); return new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: u8.subarray(4, 16) }, k, u8.subarray(16))); },
+      /** Sekundenreihe → gzip-Bytes. SPS1 (V5.6): «SPS1 | IV | Chiffre+Tag». SPS2 (V5.7.1): verschlüsselt sind «Länge (4 Byte) | gzip |
+       *  Nullen» – die Datei ist auf eine Zweierpotenz aufgefüllt, damit ihre Grösse die Dauer nur grob verrät (tools/serienlib.mjs). */
+      async openBin(u8) {
+        const f = String.fromCharCode(u8[0], u8[1], u8[2], u8[3]);
+        if (f !== "SPS1" && f !== "SPS2") throw new Error("Unbekanntes Dateiformat");
+        const pt = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: u8.subarray(4, 16) }, k, u8.subarray(16)));
+        if (f === "SPS1") return pt;
+        const n = ((pt[0] << 24) >>> 0) + (pt[1] << 16) + (pt[2] << 8) + pt[3];
+        if (n > pt.length - 4) throw new Error("Sekundenreihe beschädigt");
+        return pt.subarray(4, 4 + n);
+      },
       async open(s) { const [a, b] = String(s).split("."); const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64d(a) }, k, b64d(b)); return JSON.parse(new TextDecoder().decode(pt)); },
     };
   };

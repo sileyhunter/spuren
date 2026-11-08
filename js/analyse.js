@@ -26,8 +26,10 @@
     return { id: R.id, sport: R.sport, dt, t0: R.t0, t, n: t.length, hr: ch("hr"), w: ch("w"), cad: ch("cad"), v: ch("v", (x) => x / 100),
       alt: ch("alt", (x) => x / 10), d: ch("d"), tw: ch("tw"), laps: R.laps || [], len: R.len || [], wkt: R.wkt || null };
   };
-  /** Dateiname der Reihe in serien/: erste 24 Hex-Zeichen von SHA-256("<serien_salz>:<Aktivitäts-ID>") – gleich wie
-   *  tools/serien_crypt.mjs. serien_salz steht nur verschlüsselt in den Daten, die Namen verraten also keine IDs. */
+  /** Dateiname der Reihe in serien/: erste 24 Hex-Zeichen von SHA-256("<serien_salz>:<Schlüssel>") – gleich wie
+   *  tools/serienlib.mjs. serien_salz (128 Bit, Zufall) steht nur verschlüsselt in den Daten, die Namen verraten also keine IDs. */
+  /** Schlüssel einer Aktivität für den Dateinamen (V5.7.1): Garmin-ID (gid, «g…»), sonst die ID – bleibt beim Monatsexport gleich. */
+  AN.serieKey = (a) => String((a && a.gid) || (a && a.id));
   AN.serieName = async function (salz, id) {
     const h = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${salz}:${id}`)));
     return Array.from(h.slice(0, 12), (b) => b.toString(16).padStart(2, "0")).join("");

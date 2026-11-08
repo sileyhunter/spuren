@@ -300,5 +300,119 @@ _p7 = fit_nacht.spur(_S7)
 _S7.manu = 260
 check("V5.7: GPS-Spur draussen wie im Monatsexport (Polyline), drinnen keine", isinstance(_p7, str) and len(_p7) > 4 and fit_nacht.spur(_S7) is None, str(_p7))
 
+# ---------- V5.7.1 Nacht-Update mit Sekundenreihen (serien/): neu, wiederholt, geändert, Fehler, Monatsexport, Datenschutz ----------
+import hashlib  # noqa: E402
+import secrets  # noqa: E402
+import shutil  # noqa: E402
+_t8 = tempfile.mkdtemp()
+_PW8 = "nur-ein-test-passwort"                      # erfunden – nie das Seitenpasswort
+os.makedirs(os.path.join(_t8, "tools")); os.makedirs(os.path.join(_t8, "work", "serien"))
+for _f in ("serienlib.mjs", "serien_crypt.mjs", "serien_pruefen.mjs", "crypt.mjs"):
+    shutil.copy(os.path.join(ROOT, "tools", _f), os.path.join(_t8, "tools", _f))
+
+
+def _run(*a, pw=_PW8):
+    env = {k: v for k, v in os.environ.items() if k != "SPUREN_PW"}
+    if pw is not None:
+        env["SPUREN_PW"] = pw
+    r = subprocess.run(list(a), cwd=_t8, capture_output=True, text=True, env=env)
+    return r.returncode, r.stdout + r.stderr
+
+
+def _git(*a):
+    return _run("git", "-c", "user.name=Test", "-c", "user.email=test@example.invalid", *a)[1]
+
+
+def _reihe(aid, n, laps=1):
+    return json.dumps({"ver": "serie-1.0", "id": aid, "sport": "rad", "dt": 2, "seg": [[0, n]], "w": [200] * n, "hr": [130] * n,
+                       "laps": [[0, 2 * n, None]] * laps}, separators=(",", ":"))
+
+
+def _daten(acts):
+    json.dump({"serien_salz": _salz8, "activities": acts}, open(os.path.join(_t8, "data.json"), "w"))
+    return _run("node", "tools/crypt.mjs", "encrypt", "data.json", "data.enc.json")[0]
+
+
+def _bytes():
+    return {f: open(os.path.join(_t8, "serien", f), "rb").read() for f in sorted(os.listdir(os.path.join(_t8, "serien")))}
+
+
+def _work(name, text):
+    for f in os.listdir(os.path.join(_t8, "work", "serien")):
+        os.remove(os.path.join(_t8, "work", "serien", f))
+    if name:
+        open(os.path.join(_t8, "work", "serien", name), "w").write(text)
+
+
+_salz8 = secrets.token_hex(16)
+_A1 = {"id": "1001", "date": "2026-10-01", "start": "08:00", "sport": "rad", "ser": {"dt": 2, "n": 100}}
+_A2 = {"id": "g555", "gid": "g555", "date": "2026-11-08", "start": "10:00", "sport": "rad", "ser": {"dt": 2, "n": 50}}
+_name = lambda key: hashlib.sha256(f"{_salz8}:{key}".encode()).hexdigest()[:24] + ".bin"  # noqa: E731
+_run("git", "init", "-q")
+open(os.path.join(_t8, ".gitignore"), "w").write("data.json\nwork/\n")
+_daten([_A1])
+_work("1001.json", _reihe("1001", 100))
+_rc0, _o0 = _run("node", "tools/serien_crypt.mjs")                       # Monatsexport: Ausgangslage mit einer Reihe
+_git("add", "-A"); _git("commit", "-qm", "Basis")
+_B0 = _bytes()
+# Nacht 1: neue Aktivität
+_daten([_A1, _A2]); _work("g555.json", _reihe("g555", 50))
+_rc1, _o1 = _run("node", "tools/serien_crypt.mjs", "--nacht")
+_p1, _po1 = _run("node", "tools/serien_pruefen.mjs", "--nacht", "--git")
+_B1 = _bytes()
+_neu = _B1.get(_name("g555"))
+check("Reihen Nacht 1: neue Aktivität → genau 1 neue Datei, bestehende Byte für Byte unverändert, Prüfung bestanden",
+      _rc0 == 0 and _rc1 == 0 and _p1 == 0 and len(_B1) == 2 and _B1[_name("1001")] == _B0[_name("1001")] and _neu is not None and "1 neu" in _o1, _o1 + _po1)
+check("Reihen: neue Datei verschlüsselt (SPS2) und auf eine Zweierpotenz ≥ 16 KiB aufgefüllt; Name aus Salz und gid, nicht aus der ID allein",
+      _neu[:4] == b"SPS2" and len(_neu) >= 16384 and (len(_neu) & (len(_neu) - 1)) == 0 and b'"seg"' not in _neu and b"g555" not in _neu
+      and _name("g555") != hashlib.sha256(b"g555").hexdigest()[:24] + ".bin", str(len(_neu)))
+_git("add", "-A"); _git("commit", "-qm", "Nacht 1")
+# Nacht 2: dieselbe Aktivität noch einmal importiert
+_rc2, _o2 = _run("node", "tools/serien_crypt.mjs", "--nacht")
+_p2, _po2 = _run("node", "tools/serien_pruefen.mjs", "--nacht", "--git")
+check("Reihen Nacht 2: wiederholter Import derselben Aktivität → nichts neu, nichts geändert, keine Doppel, Git unverändert",
+      _rc2 == 0 and _p2 == 0 and "0 neu, 0 geändert" in _o2 and "1 unverändert" in _o2 and _bytes() == _B1 and _git("status", "--porcelain", "serien") == "", _o2 + _po2)
+# tatsächlich geänderte Reihe: gleiche Datei, neuer Inhalt
+_work("g555.json", _reihe("g555", 50, laps=2))
+_rc3, _o3 = _run("node", "tools/serien_crypt.mjs", "--nacht")
+_p3, _po3 = _run("node", "tools/serien_pruefen.mjs", "--nacht", "--git")
+check("Reihen: geänderte Reihe → dieselbe Datei neu geschrieben, keine zweite", _rc3 == 0 and _p3 == 0 and "1 geändert" in _o3 and len(_bytes()) == 2
+      and _bytes()[_name("g555")] != _B1[_name("g555")], _o3 + _po3)
+_git("checkout", "-q", "--", "serien")
+# Fehler: beschädigte Eingabe bzw. falsches Passwort → bisherige Dateien bleiben (Wiederherstellen wie im Nacht-Update)
+_work("g555.json", _reihe("g555", 50)[:40])
+_rc4, _o4 = _run("node", "tools/serien_crypt.mjs", "--nacht")
+_p4, _po4 = _run("node", "tools/serien_pruefen.mjs", "--nacht", "--git")
+_git("checkout", "-q", "--", "serien"); _git("clean", "-fdq", "--", "serien")
+_rc5, _o5 = _run("node", "tools/serien_crypt.mjs", "--nacht", pw="falsch")
+_p5, _po5 = _run("node", "tools/serien_pruefen.mjs", "--nacht", "--git", pw="falsch")
+check("Reihen: Import schlägt fehl (Eingabe beschädigt, falsches Passwort) → Abbruch mit Fehler, Prüfung nicht bestanden, bisherige Dateien unverändert",
+      _rc4 == 1 and _p4 == 1 and _rc5 == 2 and _p5 == 1 and _bytes() == _B1 and not any(".tmp" in f for f in os.listdir(os.path.join(_t8, "serien"))), _o4 + _o5)
+# Prüfung erkennt Klartext, Rest eines Abbruchs, Doppel unter altem Namen, Namen ohne Salz
+_work("g555.json", _reihe("g555", 50))
+_run("node", "tools/serien_crypt.mjs", "--nacht")
+open(os.path.join(_t8, "serien", "0123456789abcdef01234567.bin"), "w").write(_reihe("x", 3))
+open(os.path.join(_t8, "serien", _name("g555") + ".tmp-1"), "wb").write(b"x")
+shutil.copy(os.path.join(_t8, "serien", _name("g555")), os.path.join(_t8, "serien", hashlib.sha256(b"g555").hexdigest()[:24] + ".bin"))
+_p6, _po6 = _run("node", "tools/serien_pruefen.mjs", "--nacht", "--git")
+check("Reihen-Prüfung erkennt unverschlüsselte Datei, Rest eines Abbruchs und Dateinamen ohne Salz",
+      _p6 == 1 and "unverschlüsselter Inhalt" in _po6 and "fremde Datei" in _po6 and "ohne Salz" in _po6, _po6)
+_git("checkout", "-q", "--", "serien"); _git("clean", "-fdq", "--", "serien")
+# Monatsexport: Nacht-ID g555 wird zur FIT-ID, gid bleibt → gleicher Dateiname, nichts verwaist, kein Neuimport
+_A2m = dict(_A2, id="4990001")
+_daten([_A1, _A2m]); _work(None, "")
+_rc7, _o7 = _run("node", "tools/serien_crypt.mjs")
+_p7, _po7 = _run("node", "tools/serien_pruefen.mjs", "--git", "--bericht", "work/serien_lauf.json")
+check("Reihen Monatsexport: neue ID mit gleicher gid → Reihe bleibt unter ihrem Namen, nichts gelöscht, keine Doppel",
+      _rc7 == 0 and _p7 == 0 and "0 verwaist entfernt" in _o7 and _bytes() == _B1 and _git("status", "--porcelain", "serien") == "", _o7 + _po7)
+# Alter Name (Aktivitäts-ID statt gid) wird beim Monatsexport einmal umbenannt, Inhalt unverändert
+_git("mv", "serien/" + _name("g555"), "serien/" + _name("4990001")); _git("commit", "-qm", "alter Name")
+_rc8, _o8 = _run("node", "tools/serien_crypt.mjs")
+check("Reihen: alter Name wird umbenannt (Inhalt Byte für Byte gleich)", _rc8 == 0 and "1 umbenannt" in _o8 and _bytes() == _B1, _o8)
+# Nacht-Update löscht nie: Aktivität fehlt in den Daten → Reihe bleibt, wird nur gemeldet
+_daten([_A1]); _work(None, "")
+_rc9, _o9 = _run("node", "tools/serien_crypt.mjs", "--nacht")
+check("Reihen Nacht-Update: verwaiste Reihe wird nicht gelöscht, nur gemeldet", _rc9 == 0 and len(_bytes()) == 2 and "verwaist (nicht gelöscht)" in _o9, _o9)
+
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)

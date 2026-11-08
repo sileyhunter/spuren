@@ -37,7 +37,9 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   sRPE, Energie, Saisonphasen), `js/explorer.js` (Aktivitäts-Explorer, öffnet über jedem Tab: `data-ex="<ID>"`), `js/v56.js` (RPE und
   Kalibrierung, Geplant vs. Ist, Konstanz, Saison 2027, Ermüdung, Energie); `tools/serien.py` – Sekundenreihen im 2-s-Raster, Workout-Abgleich
   `wk` und Ermüdung `fr` aus FIT; `tools/serien_crypt.mjs` – Reihen verschlüsseln nach `serien/<Name>.bin` (Name = SHA-256 aus
-  `serien_salz` und ID, `serien_salz` steht nur verschlüsselt in den Daten; die Dateinamen verraten keine Garmin-/Zwift-IDs)
+  `serien_salz` und gid bzw. ID, `serien_salz` steht nur verschlüsselt in den Daten; die Dateinamen verraten keine Garmin-/Zwift-IDs)
+- **V5.7.1 Reihen im Nacht-Update:** `tools/serienlib.mjs` (Formate SPS1/SPS2, Dateiname, Ver-/Entschlüsseln), `tools/serien_pruefen.mjs`
+  (Konsistenz Aktivitäten ↔ Reihen ↔ Zuordnung und Datenschutz nach jedem Import; Regeln im Abschnitt «Sekundenreihen»)
 - **V5.7 Smart Training Routes:** `js/training-route.js` (Rechenlogik ohne DOM: Enduco-/Garmin-Workout lesen, Zeitplan je Schritt, Rundtour-Kandidaten,
   Dauerabstimmung, Intervall-Eignung, Wetter je Durchfahrtszeit, Tageslicht, Vorschläge A/B/C, Vorschlag vs. Ist), `js/training-ui.js`
   (Trainingsvorschau im Planer, Startorte verschlüsselt, Regler, Kalender «Passende Route finden» `data-str`, «Vorschlag vs. Ist» `data-trv`)
@@ -80,12 +82,14 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
      in `work/new.json`. Zusätzlich höchstens 10 ältere Aktivitäten draussen mit `gid` und ohne `wx` (neueste zuerst). Fehlt die Antwort:
      weglassen, kein Abbruch. Bestehende `wx` werden nie überschrieben.
 3. `work/new.json` schreiben (Format unten), dann `python3 -I tools/merge_daily.py data.json work/new.json work/fit.jsonl`.
-4. `SPUREN_PW=… node tools/crypt.mjs encrypt data.json data.enc.json`, dann nur `data.enc.json` committen («Nacht-Update JJJJ-MM-TT») und auf `main` pushen.
-   Sekundenreihen (`serien/`, verschlüsselt) nur, wenn der Auftrag das Committen von `serien/` ausdrücklich erlaubt: dann nach dem
-   Verschlüsseln `SPUREN_PW=… node tools/serien_crypt.mjs` und `serien/` mitcommitten. Sonst kommen die Reihen mit dem Monatsexport.
-   **Offen (V5.7, Stand 8.11.2026):** Der geplante nächtliche Auftrag erlaubt nur `data.enc.json`. Damit neue Reihen nachts inkrementell
-   kommen, müsste sein Text «Committe nur data.enc.json» auf «Committe nur data.enc.json und serien/» geändert werden
-   (`serien_crypt.mjs` schreibt nur neue/geänderte Dateien, Namen gehasht, keine Duplikate). Erst nach Silas' ausdrücklicher Freigabe ändern.
+4. `SPUREN_PW=… node tools/crypt.mjs encrypt data.json data.enc.json`.
+   **Sekundenreihen (V5.7.1, von Silas am 8.11.2026 freigegeben):** `SPUREN_PW=… node tools/serien_crypt.mjs --nacht` (nur neue oder
+   tatsächlich geänderte Reihen aus `work/serien/`, atomar geschrieben, nichts gelöscht oder umbenannt), dann
+   `SPUREN_PW=… node tools/serien_pruefen.mjs --nacht --git` (Konsistenz und Datenschutz, siehe «Sekundenreihen»).
+   - Beide ohne Fehler und letzte Zeile «PRÜFUNG REIHEN: bestanden» → `git add data.enc.json serien/`.
+   - Sonst: `git checkout -- serien/ && git clean -fdq -- serien/` (die bisherigen Dateien bleiben unverändert), nur `data.enc.json`
+     stagen, Commit-Nachricht mit dem Zusatz « (Reihen nicht übernommen)» und Silas kurz informieren (Grund aus der Ausgabe, ohne Daten).
+   Nie `data.json` oder etwas aus `work/` committen. Commit «Nacht-Update JJJJ-MM-TT», auf `main` pushen.
 
 ### Format `work/new.json`
 ```json
@@ -129,8 +133,9 @@ Silas lädt `UploadedFiles_0-_Part*.zip` hoch. Jedes ZIP in einen eigenen, leere
    Ermüdung `fr`; ändert nur diese drei Felder). Nach einer Regeländerung bei `wk`/`fr`: ohne `--nur-fehlende`, mit `--ohne-reihen`.
 4. Prüfen: `python3 -I tools/check_referenz.py data.json --files work/files.json --raw-acts work/acts_raw.json`
    (Referenzsatz, Handwerte, Stufen, alle Aktivitäten). «GESAMT: bestanden» muss dastehen; sonst Silas die Liste zeigen.
-5. verschlüsseln, dann `SPUREN_PW=… node tools/serien_crypt.mjs` (schreibt nur neue/geänderte Reihen, entfernt verwaiste; bricht das
-   Löschen ab, wenn mehr als 5 % verwaist wären), `data.enc.json` und `serien/` committen, pushen.
+5. verschlüsseln, dann `SPUREN_PW=… node tools/serien_crypt.mjs` (nur neue/geänderte Reihen; Reihen unter altem Namen werden auf die gid
+   umbenannt; entfernt verwaiste, bricht das Löschen ab, wenn mehr als 5 % verwaist wären) und
+   `SPUREN_PW=… node tools/serien_pruefen.mjs --git` («PRÜFUNG REIHEN: bestanden»), `data.enc.json` und `serien/` committen, pushen.
 
 ## Eingaben von der Seite (V5: Fueling, Befinden, Tests vom Handy, Koppelläufe, Pläne, B1)
 Auf der Seite erfasste Werte bleiben verschlüsselt auf dem Gerät, bis Silas «Exportieren» tippt und die Datei
@@ -218,6 +223,19 @@ ID ersetzt mit Audit). Startorte und Routen nur verschlüsselt (data.enc.json), 
   Distanz; velofreundlich nur, wenn wirklich ruhiger), Profil `gravel-rt-1.1` (`avoid_mainroads`). Ersatzprofil fastbike immer sichtbar melden.
 - Vorschlag vs. Ist `auswertung-rt-1.0`: Prognosefehler, Prognose bei Ist-Leistung, Streckentreue aus `poly`; Modellgüte nur aus Einheiten
   nach dem Kalibrierungsstand und mit ≥ 80 % gefolgter Strecke.
+
+## Sekundenreihen (serien/, V5.7.1)
+- Format SPS2 (neu geschriebene Reihen): AES-256-GCM mit dem Seitenschlüssel über «Länge | gzip(JSON) | Nullen», Datei auf eine Zweierpotenz
+  ≥ 16 KiB aufgefüllt (die Grösse verrät die Dauer nur grob). SPS1 (bis V5.6, exakte Grösse) wird weiter gelesen, nicht neu geschrieben.
+- Name = erste 24 Hex-Zeichen von SHA-256(«serien_salz:gid», sonst «serien_salz:id»); `serien_salz` (128 Bit Zufall) nur verschlüsselt in
+  den Daten. Die gid bleibt beim Monatsexport erhalten → gleicher Name, kein Neuimport, nichts verwaist.
+- Nur neue oder tatsächlich geänderte Reihen werden geschrieben (Vergleich mit dem entschlüsselten Bestand); das Nacht-Update löscht und
+  benennt nie um. Schlägt ein Import fehl, bleiben die bisherigen Dateien (atomar schreiben, sonst `git checkout`/`git clean` auf `serien/`).
+- `tools/serien_pruefen.mjs` nach jedem Import: jede Datei entschlüsselbar und aufgefüllt, Inhalt gehört zur Aktivität (ID, Anzahl Werte =
+  `ser.n`), keine zweite Datei je Aktivität, keine Klartext-/Restdateien, kein Name aus einer ID ohne Salz, keine doppelten IDs/gids,
+  `data.json`/`work/`/FIT nicht im Repository; im Nacht-Update keine Löschung und nur Änderungen laut Lauf-Bericht.
+- Sichtbar bleibt öffentlich: Anzahl der Dateien, Zeitpunkt neuer Dateien (Nacht-Update → Tag einer Aktivität) und die grobe Grössenstufe.
+  Die exakten Grössen der SPS1-Dateien stehen in der Git-Historie.
 
 ## Prüfen vor jedem Push von Seite oder Werkzeugen
 `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.

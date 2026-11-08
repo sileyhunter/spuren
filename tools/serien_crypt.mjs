@@ -1,54 +1,89 @@
-// Sekundenreihen für den Aktivitäts-Explorer verschlüsseln (V5.6): work/serien/<id>.json → serien/<name>.bin
-// Format: "SPS1" | IV (12 Byte) | AES-256-GCM(gzip(JSON)) | Tag (16 Byte). Schlüssel wie data.enc.json (gleiches Salz, PBKDF2-SHA256),
-// damit die Seite mit dem beim Entsperren abgeleiteten Schlüssel öffnet.
-// Dateiname: die ersten 24 Hex-Zeichen von SHA-256("<serien_salz>:<Aktivitäts-ID>"). serien_salz ist ein Zufallswert, der nur
-// verschlüsselt in data.enc.json steht – so verraten die öffentlichen Dateinamen keine Garmin-/Zwift-IDs (die auf Aktivitätsseiten
-// zeigen könnten) und keine Reihenfolge. Sichtbar bleiben nur Anzahl und Grösse der Dateien.
-// Unveränderte Reihen werden nicht neu geschrieben (bestehende Datei wird entschlüsselt und verglichen), damit Git nur echte
-// Änderungen sieht – auch in einem frischen Arbeitsordner ohne Zwischenstand.
-// Aufruf: SPUREN_PW=... node tools/serien_crypt.mjs [data.enc.json] [work/serien] [serien] [--aufraeumen]
-import { createCipheriv, createDecipheriv, createHash, pbkdf2Sync, randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
-import { gunzipSync, gzipSync } from "node:zlib";
+// Sekundenreihen für den Aktivitäts-Explorer verschlüsseln: work/serien/<id>.json → serien/<name>.bin
+// (V5.6; V5.7.1: Nacht-Update, Format SPS2 mit Auffüllen, Name aus der Garmin-ID, atomares Schreiben). Formate: tools/serienlib.mjs.
+//
+// Grundsätze
+//   - Nur neue oder tatsächlich geänderte Reihen werden geschrieben: Die bestehende Datei wird entschlüsselt und mit dem neuen
+//     Klartext verglichen (auch in einem frischen Arbeitsordner ohne Zwischenstand). Unverändert → Datei bleibt Byte für Byte gleich.
+//   - Eine Reihe gehört zu genau einer Aktivität in den Daten (über id oder gid); unbekannte Eingaben werden nicht geschrieben.
+//   - Schreiben atomar (temporäre Datei, dann umbenennen): Eine bestehende Datei ist immer vollständig alt oder vollständig neu.
+//   - Name aus der gid: Der Monatsexport ersetzt die Nacht-ID «g…» durch die FIT-ID, übernimmt aber die gid → gleicher Name.
+// Modi
+//   --nacht   Nacht-Update: nichts löschen, nichts umbenennen; Bericht für tools/serien_pruefen.mjs.
+//   (ohne)    Monatsexport: Reihen unter altem Namen (id statt gid) umbenennen, verwaiste entfernen. Sicherung: mehr als 50
+//             Dateien und mehr als 5 % auf einmal nur mit --aufraeumen.
+// Aufruf: SPUREN_PW=... node tools/serien_crypt.mjs [data.enc.json] [work/serien] [serien] [--nacht] [--aufraeumen] [--bericht <datei>]
+// Exit: 0 ok · 1 Eingabe unlesbar oder Schreibfehler (bisherige Dateien bleiben) · 2 Passwort/Salz fehlt
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+import { NAME_RE, datenOeffnen, oeffnen, schliessen, serieKey, serieName } from "./serienlib.mjs";
 
-const [encPath = "data.enc.json", inDir = "work/serien", outDir = "serien"] = process.argv.slice(2).filter((x) => !x.startsWith("--"));
+const args = process.argv.slice(2);
+const flag = (f) => args.includes(f);
+const opt = (f, d) => { const i = args.indexOf(f); return i >= 0 && args[i + 1] ? args[i + 1] : d; };
+const pos = args.filter((x, i) => !x.startsWith("--") && args[i - 1] !== "--bericht");
+const [encPath = "data.enc.json", inDir = "work/serien", outDir = "serien"] = pos;
+const nacht = flag("--nacht"), berichtPfad = opt("--bericht", "work/serien_lauf.json");
+try { rmSync(berichtPfad, { force: true }); } catch {}   // nie einen Bericht eines früheren Laufs prüfen
 const pw = process.env.SPUREN_PW;
 if (!pw) { console.error("SPUREN_PW fehlt"); process.exit(2); }
-const p = JSON.parse(readFileSync(encPath, "utf8"));
-const key = pbkdf2Sync(pw, Buffer.from(p.salt, "base64"), p.iter, 32, "sha256");
-// serien_salz aus den verschlüsselten Daten (gleiches Format wie tools/crypt.mjs: iv + ct mit angehängtem Tag, base64)
-const dIv = Buffer.from(p.iv, "base64"), dCt = Buffer.from(p.ct, "base64");
-const dc = createDecipheriv("aes-256-gcm", key, dIv);
-dc.setAuthTag(dCt.subarray(dCt.length - 16));
-const D = JSON.parse(Buffer.concat([dc.update(dCt.subarray(0, dCt.length - 16)), dc.final()]).toString("utf8"));
+let key, D;
+try { ({ key, D } = datenOeffnen(encPath, pw)); } catch (e) { console.error("Daten nicht lesbar (Passwort?): " + e.message); process.exit(2); }
 const salz = D.serien_salz;
-if (!salz) { console.error("serien_salz fehlt in den Daten – zuerst einmal setzen (siehe CLAUDE.md, V5.6)"); process.exit(2); }
-const serieName = (s, id) => createHash("sha256").update(`${s}:${id}`).digest("hex").slice(0, 24);
-const offen = (buf) => {   // bestehende Datei → Klartext (oder null, wenn unlesbar)
-  try {
-    if (buf.subarray(0, 4).toString() !== "SPS1") return null;
-    const d = createDecipheriv("aes-256-gcm", key, buf.subarray(4, 16));
-    d.setAuthTag(buf.subarray(buf.length - 16));
-    return gunzipSync(Buffer.concat([d.update(buf.subarray(16, buf.length - 16)), d.final()]));
-  } catch { return null; }
-};
+if (!salz || !/^[0-9a-f]{32,}$/.test(salz)) { console.error("serien_salz fehlt oder ist zu kurz (mindestens 128 Bit) – siehe CLAUDE.md"); process.exit(2); }
+
+const A = D.activities || [];
+const byId = new Map(A.map((a) => [String(a.id), a])), byGid = new Map(A.filter((a) => a.gid).map((a) => [String(a.gid), a]));
+const lauf = { modus: nacht ? "nacht" : "export", erstellt: new Date().toISOString(), neu: [], geaendert: [], gleich: 0, unbekannt: [],
+  umbenannt: [], verwaist: [], entfernt: [], fehler: [], zuordnung: {} };
 mkdirSync(outDir, { recursive: true });
-let neu = 0, gleich = 0, bytes = 0;
-for (const f of existsSync(inDir) ? readdirSync(inDir) : []) {
-  if (!f.endsWith(".json") || f.startsWith(".")) continue;
-  const id = f.slice(0, -5), plain = readFileSync(`${inDir}/${f}`), out = `${outDir}/${serieName(salz, id)}.bin`;
-  if (existsSync(out)) { const alt = offen(readFileSync(out)); if (alt && alt.equals(plain)) { gleich++; continue; } }
-  const iv = randomBytes(12), c = createCipheriv("aes-256-gcm", key, iv);
-  const ct = Buffer.concat([c.update(gzipSync(plain, { level: 9 })), c.final(), c.getAuthTag()]);
-  writeFileSync(out, Buffer.concat([Buffer.from("SPS1"), iv, ct]));
-  neu++; bytes += ct.length + 16;
+// Reste eines abgebrochenen Laufs (nur temporäre Dateien dieses Werkzeugs; bestehende Reihen bleiben)
+for (const f of readdirSync(outDir)) if (/\.bin\.tmp-\d+$/.test(f)) unlinkSync(`${outDir}/${f}`);
+const schreib = (out, buf) => { const tmp = `${out}.tmp-${process.pid}`; writeFileSync(tmp, buf); renameSync(tmp, out); };
+
+// 1) Monatsexport: Reihe unter altem Namen (Aktivitäts-ID) auf den Namen aus der gid umbenennen – Inhalt unverändert
+if (!nacht) for (const a of A) {
+  const k = serieKey(a); if (k === String(a.id)) continue;
+  const alt = `${outDir}/${serieName(salz, a.id)}.bin`, neu = `${outDir}/${serieName(salz, k)}.bin`;
+  if (existsSync(alt) && !existsSync(neu)) { renameSync(alt, neu); lauf.umbenannt.push(serieName(salz, k)); }
 }
-// Verwaiste Dateien (Aktivität nicht mehr in den Daten, z. B. Nacht-Aktivität g<ID> nach dem Monatsexport unter ihrer FIT-ID) entfernen
-// Sicherung: mehr als 50 Dateien und mehr als 5 % auf einmal nur mit --aufraeumen (falsche Datendatei würde sonst vieles löschen)
-const soll = new Set((D.activities || []).map((a) => `${serieName(salz, a.id)}.bin`));
-const alle = readdirSync(outDir).filter((f) => f.endsWith(".bin")), verwaist = alle.filter((f) => !soll.has(f));
-let weg = 0;
-if (verwaist.length > 50 && verwaist.length > 0.05 * alle.length && !process.argv.includes("--aufraeumen")) {
-  console.error(`${verwaist.length} von ${alle.length} Reihen gehören zu keiner Aktivität – nichts gelöscht. Datendatei prüfen; gewollt: --aufraeumen`);
-} else for (const f of verwaist) { unlinkSync(`${outDir}/${f}`); weg++; }
-console.log(`Reihen verschlüsselt: ${neu} neu/geändert (${(bytes / 1e6).toFixed(1)} MB), ${gleich} unverändert, ${weg} verwaist entfernt → ${outDir}/`);
+
+// 2) Eingaben verschlüsseln (nur neue oder geänderte)
+let bytes = 0;
+const eingaben = existsSync(inDir) ? readdirSync(inDir).filter((f) => f.endsWith(".json") && !f.startsWith(".")).sort() : [];
+for (const f of eingaben) {
+  const stem = f.slice(0, -5), a = byId.get(stem) || byGid.get(stem);
+  if (!a) { lauf.unbekannt.push(stem); continue; }
+  const name = serieName(salz, serieKey(a)), out = `${outDir}/${name}.bin`;
+  let plain;
+  try { plain = readFileSync(`${inDir}/${f}`); const j = JSON.parse(plain); if (!Array.isArray(j.seg)) throw new Error("ohne seg"); }
+  catch (e) { lauf.fehler.push({ id: stem, grund: "Eingabe unlesbar: " + e.message }); continue; }
+  const vorhanden = existsSync(out);
+  let alt = null;
+  if (vorhanden) { try { alt = oeffnen(key, readFileSync(out)).plain; } catch { alt = null; } }
+  if (alt && alt.equals(plain)) { lauf.gleich++; lauf.zuordnung[name] = String(a.id); continue; }
+  try {
+    const buf = schliessen(key, plain);
+    schreib(out, buf);
+    bytes += buf.length;
+    (vorhanden ? lauf.geaendert : lauf.neu).push(name);
+    lauf.zuordnung[name] = String(a.id);
+  } catch (e) { lauf.fehler.push({ id: stem, grund: "Schreibfehler: " + e.message }); }
+}
+
+// 3) Verwaiste Reihen (Aktivität nicht mehr in den Daten)
+const soll = new Set(A.map((a) => `${serieName(salz, serieKey(a))}.bin`));
+const altnamen = new Set(A.filter((a) => serieKey(a) !== String(a.id)).map((a) => `${serieName(salz, a.id)}.bin`));
+const alle = readdirSync(outDir).filter((f) => NAME_RE.test(f));
+lauf.verwaist = alle.filter((f) => !soll.has(f) && !altnamen.has(f)).map((f) => f.slice(0, -4));
+if (!nacht && lauf.verwaist.length) {
+  if (lauf.verwaist.length > 50 && lauf.verwaist.length > 0.05 * alle.length && !flag("--aufraeumen"))
+    console.error(`${lauf.verwaist.length} von ${alle.length} Reihen gehören zu keiner Aktivität – nichts gelöscht. Datendatei prüfen; gewollt: --aufraeumen`);
+  else for (const n of lauf.verwaist) { unlinkSync(`${outDir}/${n}.bin`); lauf.entfernt.push(n); }
+}
+
+try { mkdirSync(dirname(berichtPfad), { recursive: true }); writeFileSync(berichtPfad, JSON.stringify(lauf, null, 1)); } catch (e) { console.error("Bericht nicht geschrieben: " + e.message); }
+console.log(`Reihen (${lauf.modus}): ${lauf.neu.length} neu, ${lauf.geaendert.length} geändert (${(bytes / 1e6).toFixed(2)} MB), ${lauf.gleich} unverändert, ` +
+  `${lauf.umbenannt.length} umbenannt, ${lauf.entfernt.length} verwaist entfernt${nacht && lauf.verwaist.length ? `, ${lauf.verwaist.length} verwaist (nicht gelöscht)` : ""}` +
+  `${lauf.unbekannt.length ? `, ${lauf.unbekannt.length} ohne Aktivität übersprungen` : ""}${lauf.fehler.length ? `, ${lauf.fehler.length} FEHLER` : ""} → ${outDir}/`);
+for (const f of lauf.fehler) console.error(`  Fehler ${f.id}: ${f.grund}`);
+process.exit(lauf.fehler.length ? 1 : 0);

@@ -1,5 +1,30 @@
 # Änderungen
 
+## V5.7.1 · 8.11.2026 · Sekundenreihen im Nacht-Update
+Freigabe von Silas (8.11.2026): Das Nacht-Update aktualisiert neben `data.enc.json` auch die verschlüsselten Reihen in `serien/`.
+
+- **Nur Neues:** Reihen werden nur geschrieben, wenn sie neu sind oder sich tatsächlich geändert haben (Vergleich mit dem entschlüsselten
+  Bestand); ein wiederholter Import derselben Aktivität ändert keine Datei. Das Nacht-Update löscht und benennt nie um.
+- **Kein Neuimport beim Monatsexport:** Der Dateiname kommt neu aus der Garmin-ID (gid), die beim Monatsexport erhalten bleibt. Vorher hätte
+  der Monatsexport die Reihen der Nacht-Aktivitäten als verwaist gelöscht und (mit `--nur-fehlende`) nicht neu angelegt. 2 Reihen umbenannt.
+- **Datenschutz:** neues Format SPS2 – auf Zweierpotenzen ≥ 16 KiB aufgefüllt, damit die Dateigrösse die Dauer nur grob verrät; Namen weiter
+  aus einem 128-Bit-Geheimwert (`serien_salz`, nur verschlüsselt) – ohne ihn lässt sich zu einer Garmin-ID kein Name berechnen.
+- **Prüfung nach jedem Import** (`tools/serien_pruefen.mjs`): Entschlüsselung, Auffüllung, Zuordnung (ID, Anzahl Werte), keine Doppel,
+  keine Klartext- oder Restdateien, keine Namen ohne Salz, keine Datendateien im Repository. Nicht bestanden → bisherige Dateien bleiben,
+  nur `data.enc.json` wird übernommen.
+- Atomares Schreiben (temporäre Datei, dann umbenennen). Seite liest SPS1 und SPS2, sucht Reihen unter gid und (für ältere) unter der ID.
+
+| Regel | vorher | jetzt |
+|---|---|---|
+| Reihen-Format | SPS1 (exakte Grösse) | SPS2 (aufgefüllt), SPS1 wird weiter gelesen |
+| Dateiname | SHA-256(Salz:ID) | SHA-256(Salz:gid, sonst ID) |
+| Nacht-Update | nur `data.enc.json` | `data.enc.json` und `serien/` nach bestandener Prüfung |
+
+Geprüft: `test_tools.py` (neu: neue Aktivität, wiederholter Import, geänderte Reihe, Fehler mit Wiederherstellung, falsches Passwort,
+Monatsexport mit neuer ID, Umbenennen, verwaiste Reihe im Nacht-Update, Prüfung erkennt Klartext, Restdatei und Namen ohne Salz);
+echte Aktivität vom 8.11.2026 lokal durch den ganzen Nacht-Ablauf (neu → 1 Datei; noch einmal → keine Änderung); Seite entschlüsselt SPS1
+und SPS2 im Browser, Manipulation wird erkannt.
+
 ## V5.7 · 8.11.2026 · Smart Training Routes (Trainingsroute aus dem geplanten Workout)
 Auftrag «Ironman Notebook V5.7 – Smart Training Routes». Der Planer bleibt mit allen Funktionen erhalten (Start/Ziel fest, Zwischenziele,
 Rennrad ohne Gravel, Varianten, andere Routen, Umfahrung, Umkehren, Profil/Belag/Wegart/Wetter synchron). Kein neuer Haupttab.
