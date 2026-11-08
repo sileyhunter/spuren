@@ -22,12 +22,14 @@
     const box = $("eta-card"); if (!box) return;
     if (!box.dataset.init) {
       box.dataset.init = 1;
-      $("eta-form").innerHTML = `<label>Leistung (W)<input type="number" name="P" value="200"></label><label>Fahrer + Rad (kg)<input type="number" name="m" value="${Math.round(((C().weights && C().weights().slice(-1)[0] || {}).kg || 75) + 8.5)}"></label>
-        <label>CdA (m²)<input type="number" step="0.005" name="cda" value="0.30"></label><label>Crr<input type="number" step="0.0005" name="crr" value="0.0040"></label>
+      const kg = (C().weights && C().weights().slice(-1)[0] || {}).kg;
+      $("eta-form").innerHTML = `<label>Leistung (W)<input type="number" name="P" value="200"></label><label>Fahrer + Rad (kg) <small class="badge muted">Annahme</small><input type="number" name="m" value="${Math.round((kg || 75) + 8.5)}" title="${kg ? `letzte Waage ${kg} kg + 8,5 kg Rad und Ausrüstung` : "kein Gewicht erfasst: 75 kg + 8,5 kg angenommen"}"></label>
+        <label>CdA Rad + Position (m²) <small class="badge muted">Annahme</small><input type="number" step="0.005" name="cda" value="0.30"></label><label>Crr Reifen + Belag <small class="badge muted">Annahme</small><input type="number" step="0.0005" name="crr" value="0.0040"></label>
         <label>Temperatur (°C)<input type="number" name="temp" value="15"></label><label>Wind längs (km/h)<input type="number" name="wind" value="0" title="positiv = Rückenwind, negativ = Gegenwind"></label>
         <label>Abfahrt höchstens (km/h)<input type="number" name="vmax" value="60"></label><label>Pausen (min)<input type="number" name="pause" value="0"></label>
-        <label>Strecke<select name="src"><option value="flach">40 km flach (Prüfung)</option><option value="plan">Route aus dem Planer</option><option value="gpx">GPX-Datei</option></select></label>
-        <label class="btn" id="eta-gpxl" hidden>GPX wählen<input type="file" accept=".gpx,application/gpx+xml" name="gpx" hidden></label>`;
+        <label>Strecke<select name="src"><option value="flach">40 km flach (nur Prüffall)</option><option value="plan">Route aus dem Planer</option><option value="gpx">GPX-Datei</option></select></label>
+        <p class="hint eta-ann">Annahmen, nicht kalibriert: CdA 0,30 m² gilt für ein Rennrad in aufrechter Position, das Zeitfahrrad oder der Aufsatz liegen meist tiefer – Messwert aus dem Aerotest unten eintragen. Crr 0,004 = guter Asphalt. Gewicht = letzte Waage + 8,5 kg. Leistungsmesser (±1–2 %) und Wind ändern das Ergebnis spürbar.</p>`;
+      $("eta-form").insertAdjacentHTML("beforeend", `<label class="btn" id="eta-gpxl" hidden>GPX wählen<input type="file" accept=".gpx,application/gpx+xml" name="gpx" hidden></label>`);
       const f = $("eta-form");
       f.addEventListener("input", () => V.eta());
       f.src.addEventListener("change", () => { ETA.src = f.src.value; $("eta-gpxl").hidden = ETA.src !== "gpx"; V.eta(); });
@@ -37,7 +39,7 @@
     const q = { P: +f.P.value || 0, m: +f.m.value || 80, cda: +f.cda.value || 0.3, crr: +f.crr.value || 0.004, temp: +f.temp.value, wind: (+f.wind.value || 0) / 3.6, vmax: (+f.vmax.value || 60) / 3.6, eta: 0.976 };
     let pts = null, srcTxt = "", warn = [];
     if (ETA.src === "flach") { pts = Array.from({ length: 201 }, (_, i) => ({ d: i * 200, ele: 450 })); srcTxt = "40 km flach auf 450 m"; }
-    else if (ETA.src === "plan") { const r = C().planRoute && C().planRoute(); if (r) { pts = toPts(r.ll, r.ele); srcTxt = "Route aus dem Planer (Luftlinie zwischen deinen Punkten, Höhe aus dem Höhenmodell)"; } else warn.push("Im Planer ist keine Route mit Höhenprofil: Karte › Route planen."); }
+    else if (ETA.src === "plan") { const r = C().planRoute && C().planRoute(); if (r) { pts = toPts(r.ll, r.ele); srcTxt = "Route aus dem Planer (geroutete Strecke, Höhe aus dem Höhenmodell)"; } else warn.push("Im Planer ist keine Route mit Höhenprofil: Karte › Route planen."); }
     else if (ETA.gpx) { pts = toPts(ETA.gpx.ll, ETA.gpx.ele); srcTxt = `GPX ${ETA.gpxName}`; if (!ETA.gpx.ele) warn.push("GPX ohne Höhe: Steigungen fehlen, gerechnet wird flach."); }
     else warn.push("GPX-Datei wählen.");
     let out = `<p class="hint">${esc(warn.join(" "))}</p>`;

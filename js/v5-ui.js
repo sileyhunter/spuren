@@ -14,7 +14,10 @@
   V.esc = esc; V.num = num; V.$ = $;
   const PROV = { messung: "Messung", fit: "FIT-abgeleitet", wetter: "Wettermodell", berechnet: "berechnet", plan: "Nutzerplan", abgeleitet: "abgeleitet", ungeprueft: "ungeprüft", manuell: "manuell" };
   V.prov = (k, title) => `<span class="prov prov-${k}" title="${esc(title || "Herkunft")}">${PROV[k] || k}</span>`;
-  const BADGE = { "vorläufig": "warn", "nicht bestimmbar": "muted", "bestätigt": "ok", "vorschau": "next", "bestimmbar": "ok", "entwurf": "next", "aktiv": "ok", "bereit": "ok", "normal": "info", "vorsichtig": "warn", "nicht beurteilbar": "muted" };
+  // Einheitliche Status-Pillen (V5.5): nie alarmistisch, «unbekannt» und «nicht beurteilbar» neutral
+  const BADGE = { "vorläufig": "warn", "nicht bestimmbar": "muted", "bestätigt": "ok", "vorschau": "next", "bestimmbar": "ok", "entwurf": "next", "aktiv": "ok", "bereit": "ok", "normal": "info", "vorsichtig": "warn",
+    "nicht beurteilbar": "muted", "unbekannt": "muted", "niedrige Qualität": "muted", "FIT-abgeleitet": "info", "verbessert": "ok", "stabil": "info", "unklar": "muted", "verschlechtert": "warn",
+    "vorschlag": "next", "auswählen": "next", "getrennt": "muted", "nicht validiert": "warn", "explorativ": "muted" };
   V.badge = (s, extra) => `<span class="badge ${BADGE[s] || ""}">${esc(s)}${extra ? " · " + esc(extra) : ""}</span>`;
   const TEST_COLORS = ["#148a7e", "#7a68d8", "#d9694a", "#3a7bd5", "#8a9a2b"];
   const SINGLE_COLOR = "#e08a3c";
@@ -139,7 +142,7 @@
       const last = tests.filter((t) => !/^labor/.test(t.protokoll)).slice(-2).map((t) => t.id);
       LZ.shown = last.length ? last : tests.slice(-1).map((t) => t.id);
     }
-    $("lz-head").innerHTML = `<div class="card-head"><div><div class="eyebrow">Ironman Notebook</div><h2 class="big">Laktat &amp; Trainingszonen</h2>
+    $("lz-head").innerHTML = `<div class="card-head"><div><h2>Laktat &amp; Trainingszonen</h2>
         <div class="sub">Tests vergleichen · Einzelmessungen öffnen · LT1/LT2 nur aus gültigen Stufentests</div></div>
         <div class="seg" role="group" aria-label="Sportart">${["rad", "lauf"].map((s) => `<button aria-pressed="${LZ.sport === s}" data-sp="${s}">${s === "rad" ? "Rad" : "Lauf"}</button>`).join("")}</div></div>
       ${pv ? `<div class="verdict warn">${pv} Laktatdateien sind Vorschau: die Werte stammen aus deinen Tabellen und dem Chat, du hast sie noch nicht bestätigt (Schritt B1). Schwellen und Marker gelten deshalb als <b>vorläufig</b>.</div>` : ""}`;
@@ -169,11 +172,15 @@
       ctx.restore();
     },
   };
-  function drawMain(tests, singles) {
-    const shown = tests.filter((t) => LZ.shown.includes(t.id));
+  function drawMain(tests, singlesAll) {
+    LZ.filter = LZ.filter || "alle";
+    const shown = LZ.filter === "einzel" ? [] : tests.filter((t) => LZ.shown.includes(t.id));
+    const singles = LZ.filter === "stufen" ? [] : singlesAll;
     const u = unitOf(LZ.sport);
-    $("lz-legend").innerHTML = tests.map((t, i) => `<button class="chip" aria-pressed="${LZ.shown.includes(t.id)}" data-t="${esc(t.id)}"><span class="dot" style="background:${TEST_COLORS[i % 5]}"></span>${dch(t.datum)} · ${esc(protName(t.protokoll))}${t.datenstatus === "vorschau" ? " · Vorschau" : ""}</button>`).join("")
-      + (singles.length ? `<span class="chip static"><span class="dia" style="background:${SINGLE_COLOR}"></span>Einzelmessungen aus dem Training (${singles.length})</span>` : "");
+    const filt = `<div class="seg lz-filter" role="group" aria-label="Messart">${[["alle", "Alle"], ["stufen", "Stufentests"], ["einzel", "Einzelmessungen"]].map(([k, l]) => `<button type="button" data-f="${k}" aria-pressed="${LZ.filter === k}">${l}</button>`).join("")}</div>`;
+    $("lz-legend").innerHTML = filt + (LZ.filter === "einzel" ? "" : tests.map((t, i) => `<button class="chip" aria-pressed="${LZ.shown.includes(t.id)}" data-t="${esc(t.id)}"><span class="dot" style="background:${TEST_COLORS[i % 5]}"></span>${dch(t.datum)} · ${esc(protName(t.protokoll))}${t.datenstatus === "vorschau" ? " · Vorschau" : ""}</button>`).join("")
+      ) + (singles.length ? `<span class="chip static"><span class="dia" style="background:${SINGLE_COLOR}"></span>Einzelmessungen aus dem Training (${singles.length})</span>` : "");
+    $("lz-legend").querySelectorAll("[data-f]").forEach((b) => b.addEventListener("click", () => { LZ.filter = b.dataset.f; LZ.sel = null; V.laktat(); }));
     $("lz-legend").querySelectorAll("[data-t]").forEach((b) => b.addEventListener("click", () => { const id = b.dataset.t; LZ.shown = LZ.shown.includes(id) ? LZ.shown.filter((x) => x !== id) : LZ.shown.concat(id); V.laktat(); }));
     const prots = [...new Set(shown.map((t) => t.protokoll))];
     const ref = shown.filter((t) => t.protokoll === prots[0]).slice(-1)[0];
@@ -222,12 +229,15 @@
       const s = L.singles.find((x) => x.id === LZ.sel.id); if (!s) return;
       const a = C.ACT_BY_ID.get(s.aktivitaet);
       const flags = FK().qualityFlags(s);
-      box.innerHTML = `<div class="eyebrow">Ausgewählte Messung · Einzelwert</div><div class="hero">${num(s.la, 1)} <small>mmol/l</small></div>
-        <div class="sub2">${esc(a ? a.name : "Aktivität")} · ${dch(s.datum)}</div>${V.badge(s.status)} ${V.prov("messung", "Laktat: eigene Messung")}
-        ${kv([["Sportart", s.sport === "lauf" ? "Laufen" : "Rad"], ["Ziel", s.soll != null ? `${num(s.soll)} ${u}` : null], ["Ist (Median im Block)", s.x != null ? `${num(s.x)} ${u} ${V.prov("fit")}` : null],
+      const geraet = a ? `${esc(a.typ || "")}${a.indoor || /zwift|rolle|indoor/i.test(a.typ || "") ? " (Rolle, Leistung vom Trainer)" : " (draussen, eigener Leistungsmesser)"}` : null;
+      box.innerHTML = `<div class="eyebrow">Ausgewählte Messung · Einzelwert im Training</div><div class="hero">${num(s.la, 1)} <small>mmol/l</small></div>
+        <div class="sub2">${s.dauer_s ? `nach ${C.mmss(s.dauer_s)} min ` : ""}${s.x != null ? `bei ${num(s.x)} ${u}` : ""} · ${esc(a ? a.name : "Aktivität")} · ${dch(s.datum)}</div>${V.badge(s.status)} ${V.prov("messung", "Laktat: eigene Messung")}
+        <p class="hint">Kein Stufentest und kein standardisierter Test (z. B. 20 min): vergleichbar nur mit Messungen gleicher Blockdauer, Leistung und Abnahme.</p>
+        ${kv([["Art", "Einzelmessung im Training"], ["Sportart", s.sport === "lauf" ? "Laufen" : "Rad"], ["Gerät", geraet], ["Ziel", s.soll != null ? `${num(s.soll)} ${u}` : null], ["Ist (Median im Block)", s.x != null ? `${num(s.x)} ${u} ${V.prov("fit")}` : null],
           ["NP im Block", s.np != null ? `${num(s.np)} W` : null], ["Puls Ø / max", s.hf != null ? `${num(s.hf)} / ${num(s.hf_max)} bpm` : null], ["Puls letzte 30 s", s.hf30 != null ? `${num(s.hf30)} bpm` : null],
           ["Block", s.fenster ? `${s.fenster[0].slice(0, 5)}–${s.fenster[1].slice(0, 5)}` : s.ende ? `endet ${s.ende}` : null], ["Dauer", s.dauer_s ? C.mmss(s.dauer_s) + " min" : null],
-          ["Arbeit vor dem Block", s.kj_vor != null ? `${num(s.kj_vor)} kJ` : null], ["Zuordnung", esc(s.zuordnung || "offen")], ["Quelle", esc(s.quelle)]])}
+          ["Vorbelastung (Arbeit vor dem Block)", s.kj_vor != null ? `${num(s.kj_vor)} kJ` : null], ["Abnahme", esc((s.regel && /Blut|Ende/i.test(s.regel) ? s.regel : (s.hinweise || []).find((h) => /Blut|Ende/i.test(h))) || "Zeitpunkt nicht erfasst")],
+          ["Ruhezeit vor der Abnahme", "nicht erfasst"], ["Zuordnung", esc(s.zuordnung || "offen")], ["Quelle", esc(s.quelle)]])}
         ${flags.length ? `<ul class="flags">${flags.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>` : ""}
         ${(s.hinweise || []).length ? `<p class="hint">${s.hinweise.map(esc).join(" · ")}</p>` : ""}
         <p class="hint">Einzelwerte zeigen den Verlauf bei fixer Leistung; LT1/LT2 entstehen nur aus Stufentests.</p>`;
@@ -360,15 +370,18 @@
       for (const [mk, col, nm] of [[LZ.m1, C.css("--lt1"), "LT1"], [LZ.m2, C.css("--lt2"), "LT2"]]) {
         const pts = tests.filter((t) => t.protokoll === p && t.methoden[mk] && t.methoden[mk].gueltig);
         if (!pts.length) continue;
-        ds.push({ type: "line", label: `${nm} · ${mName(mk)} · ${protName(p)}`, data: pts.map((t) => ({ x: F.dayNum(t.datum), y: t.methoden[mk].x })), _bands: pts.map((t) => t.methoden[mk].band80),
+        const fam = nm === "LT1" ? ["somc", "basis05", "loglog"] : ["dickhuth", "moddmax", "dmax"];
+        const span = (t) => { const v = fam.map((k) => t.methoden[k]).filter((m) => m && m.gueltig).map((m) => m.x); return v.length > 1 ? [Math.min(...v), Math.max(...v), v.length] : null; };
+        ds.push({ type: "line", label: `${nm} · ${mName(mk)} · ${protName(p)}`, data: pts.map((t) => ({ x: F.dayNum(t.datum), y: t.methoden[mk].x, st: t.datenstatus, sp: span(t) })), _bands: pts.map((t) => t.methoden[mk].band80),
           borderColor: col, backgroundColor: col, borderDash: pi ? [5, 4] : [], pointStyle: pi ? "triangle" : "circle", pointRadius: 5, tension: 0, showLine: pts.length > 1 });
       }
     });
     const none = tests.filter((t) => !(t.methoden[LZ.m2] || {}).gueltig).map((t) => `${dch(t.datum)}: ${esc(((t.methoden[LZ.m2] || {}).grund) || "nicht bestimmbar")}`);
-    $("lt-note").innerHTML = `Punkte = Wert der Methode, Strich = 80-%-Band aus der Messunsicherheit des Laktatgeräts. Jede Linie verbindet nur Tests mit gleichem Protokoll und gleicher Sportart. ${none.length ? `<br>${esc(mName(LZ.m2))} nicht bestimmbar: ${none.join("; ")}.` : ""}`;
+    $("lt-note").innerHTML = `Punkte = Wert der gewählten Methode. Strich = 80-%-Band nur aus der Messunsicherheit des Laktatgeräts (Simulation) – kein vollständiges Konfidenzintervall: die Unsicherheit der Methode selbst zeigt die Spannweite zwischen den Methoden (im Tooltip und in «Schwellen je Methode»). Jede Linie verbindet nur Tests mit gleichem Protokoll und gleicher Sportart; verschiedene Protokolle (z. B. Labor 3 min +40 W und Zwift 5 min +20 W) werden nie verbunden. ${none.length ? `<br>${esc(mName(LZ.m2))} nicht bestimmbar: ${none.join("; ")}.` : ""}`;
     C.chart("c-ltt", { type: "scatter", data: { datasets: ds }, plugins: [errBars], options: { parsing: { xAxisKey: "x", yAxisKey: "y" },
       scales: { x: { type: "linear", ticks: { callback: (v) => new Date(v * 864e5).toLocaleDateString("de-CH", { month: "short", year: "2-digit" }) }, title: { display: true, text: "Testdatum" } }, y: { title: { display: true, text: u === "W" ? "Leistung (W)" : "Tempo (km/h)" } } },
-      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${num(c.raw.y, u === "W" ? 0 : 2)} ${u} · ${new Date(c.raw.x * 864e5).toLocaleDateString("de-CH")}` } } } } });
+      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (c) => [`${c.dataset.label}: ${num(c.raw.y, u === "W" ? 0 : 2)} ${u} · ${new Date(c.raw.x * 864e5).toLocaleDateString("de-CH")}`,
+        `Status: ${c.raw.st === "bestätigt" ? "bestätigt" : "Vorschau (nicht bestätigt)"}`, c.raw.sp ? `Spanne der ${c.raw.sp[2]} gültigen Methoden: ${num(c.raw.sp[0], u === "W" ? 0 : 2)}–${num(c.raw.sp[1], u === "W" ? 0 : 2)} ${u}` : "nur eine gültige Methode"] } } } } });
   }
   function drawMethods() {
     const S = (C.D.schwellen || {}), u = unitOf(LZ.sport);
@@ -542,8 +555,7 @@
     const r = F.readiness(D.days, D.activities, V.befinden(), day);
     V.lastReadiness = r;
     const col = { bereit: C.css("--good"), normal: C.css("--strain"), vorsichtig: C.css("--warn"), "nicht beurteilbar": C.css("--muted") }[r.status];
-    const ring = $("rings").querySelector(".ring");
-    if (ring) ring.innerHTML = `${C.ringSVG(1, col, { bereit: "bereit", normal: "normal", vorsichtig: "Vorsicht", "nicht beurteilbar": "offen" }[r.status], "", "Bereitschaft")}<div class="lbl" style="color:${col}">Bereitschaft</div><div class="det">${esc(r.gruende[0] || "")}</div>`;
+    if (window.V55) window.V55.heute(C, r);                      // V5.5: Tagesurteil, Datenqualität, drei Kennzahlen statt Ringen
     const own = (Inbox.data.notizen || {})["plan-" + day];
     const ind = r.indikatoren;
     const row = (k, v, st) => `<div class="rd-row"><span>${k}</span><b class="${/unter|erhöht|kurz|hoch|belastet/.test(st || "") ? "down" : ""}">${esc(v)}</b></div>`;
@@ -571,15 +583,7 @@
     v.textContent = r.empfehlung;
     $("rd-range").querySelectorAll("button").forEach((b) => { b.setAttribute("aria-pressed", String(+b.dataset.n === RD.n)); b.onclick = () => { RD.n = +b.dataset.n; V.heute(); }; });
     const T = F.readinessTrend(D.days, D.activities, V.befinden(), day, RD.n);
-    C.chart("c-recovery", { type: "bar", data: { labels: T.map((x) => C.dLabel(x.date)), datasets: [
-      { type: "line", label: "HRV (ms)", data: T.map((x) => x.hrv), borderColor: C.css("--accent"), backgroundColor: C.css("--accent"), yAxisID: "y", pointRadius: 2, tension: 0, spanGaps: false },
-      { type: "line", label: "Referenz HRV unten", data: T.map((x) => x.refLo), borderColor: "transparent", pointRadius: 0, yAxisID: "y", fill: false },
-      { type: "line", label: "Referenzband HRV", data: T.map((x) => x.refHi), borderColor: "transparent", backgroundColor: C.css("--accent") + "1f", pointRadius: 0, yAxisID: "y", fill: "-1" },
-      { type: "line", label: "Ruhepuls (bpm)", data: T.map((x) => x.rhr), borderColor: C.css("--strain"), backgroundColor: C.css("--strain"), yAxisID: "y", pointRadius: 2, borderDash: [4, 3], tension: 0 },
-      { label: "Schlaf (h)", data: T.map((x) => x.sleepH), backgroundColor: C.css("--sleep") + "88", yAxisID: "y2", borderRadius: 2 },
-    ] }, options: { interaction: { mode: "index", intersect: false }, scales: { x: { ticks: { maxTicksLimit: 8 } }, y: { title: { display: true, text: "HRV ms · Ruhepuls bpm" } }, y2: { position: "right", min: 0, max: 12, grid: { display: false }, title: { display: true, text: "Schlaf h" } } },
-      plugins: { legend: { position: "bottom", labels: { filter: (i) => i.text !== "Referenz HRV unten" } }, tooltip: { callbacks: { afterBody: (it) => { const x = T[it[0].dataIndex]; return `Bereitschaft: ${x.status}${x.befinden ? ` · Müdigkeit ${x.befinden}/5` : ""}`; } } } } } });
-    $("rd-trend-note").textContent = `Band = deine HRV-Referenz (eigene 60 bzw. 28 Tage vor der Woche, ±0,5 SD). Lücken bleiben Lücken. Kategorie je Tag im Tooltip.`;
+    if (window.V55) window.V55.verlauf(C, T);                    // V5.5: drei synchronisierte Mini-Grafiken
   };
   function befForm(b) {
     b = b || {};

@@ -8,7 +8,7 @@
   const DAY = 864e5;
   const SYS = [["indoor", "Rolle (Zwift)"], ["rennrad", "Rennrad draussen"], ["mtb", "MTB/Gravel draussen"]];
   const ST = { w: 12, ref: "vorjahr", sport: "", sys: null, von: null, bis: null, last: null };
-  const pill = (s) => `<span class="badge ${{ verbessert: "ok", stabil: "info", unklar: "muted", verschlechtert: "warn", "nicht beurteilbar": "muted" }[s] || "muted"}">${s}</span>`;
+  const pill = (s) => (window.V5UI && V5UI.badge ? V5UI.badge(s) : `<span class="badge">${s}</span>`);   // gleiche Pillen wie überall
 
   function perioden(C) {
     const F = window.FK, bis = C.iso(C.today), von = F.addDays(bis, -7 * ST.w + 1);
@@ -162,6 +162,56 @@
       <div class="tablewrap"><table class="t"><tr><th>Kennzahl</th><th>n Zeitraum / Ref.</th><th>Median Zeitraum / Ref.</th><th>Unterschied</th><th>90-%-Intervall</th><th>Urteil</th><th>ausgeschl.</th></tr>${rows}</table></div>
       <p class="hint">Regeln ${F.VERSIONS.entwicklung}, Blöcke ${dv ? (typeof dv === "string" ? dv : dv.v) : "eb-1.0"}. Text aus festen Regeln erzeugt (kein Sprachmodell); er darf umformuliert, aber Zahlen und Unsicherheit dürfen nicht verändert werden. Keine medizinische Diagnose, keine Trainingsanweisung.</p>`;
   }
+  /* ======================= Heute: Tagesurteil, Datenqualität, drei Kennzahlen (A12) ======================= */
+  /** Datenqualität als Liste: was vorhanden ist und was fehlt – fehlende Werte werden nie als «normal» gezeigt. */
+  V.datenqualitaet = function (r) {
+    const I = r.indikatoren, L = [];
+    L.push(I.hrv.status === "unbekannt" ? { ok: false, t: I.hrv.grund } : { ok: true, t: `HRV vorhanden (${I.hrv.n7} von 7 Nächten)` });
+    L.push(I.rhr.status === "unbekannt" ? { ok: false, t: I.rhr.grund } : { ok: true, t: "Ruhepuls vorhanden" });
+    L.push(I.schlaf.status === "unbekannt" ? { ok: false, t: "letzte Schlafnacht fehlt" } : { ok: true, t: "Schlaf der letzten Nacht vorhanden" });
+    L.push(I.befinden.status === "nicht angegeben" ? { ok: false, t: "subjektives Befinden fehlt" } : { ok: true, t: "Befinden eingetragen" });
+    return L;
+  };
+  V.heute = function (C, r) {
+    const box = $("today-main"); if (!box) return;
+    const D = C.D, day = C.iso(C.today), I = r.indikatoren, F = window.FK;
+    const lastSleep = D.days.filter((d) => d.date <= day && d.sleepH > 0).at(-1);
+    const nacht = (iso) => { const p = F.addDays(iso, -1); return `Nacht ${C.dateCH(p).replace(/\.\d{4}$/, ".")}–${C.dateCH(iso).replace(/\.\d{4}$/, ".")}`; };
+    const head = { bereit: "Bereit", normal: "Normal", vorsichtig: "Vorsicht bei Intensität", "nicht beurteilbar": "Nicht beurteilbar" }[r.status];
+    const dq = V.datenqualitaet(r);
+    const tile = (lab, val, sub, miss) => `<div class="${miss ? "miss" : ""}"><span>${lab}</span><b>${val}</b><small>${sub}</small></div>`;
+    const hrvT = I.hrv.status === "unbekannt" ? tile("HRV, Ø 7 Nächte", "fehlt", C.esc(I.hrv.grund), true)
+      : tile("HRV, Ø 7 Nächte", `${I.hrv.wert7} ms`, `Referenz ${I.hrv.refLo}–${I.hrv.refHi} ms (${I.hrv.referenz}) · ${C.esc(I.hrv.status)}`);
+    const rhrT = I.rhr.status === "unbekannt" ? tile("Ruhepuls, Ø 3 Tage", "fehlt", C.esc(I.rhr.grund), true)
+      : tile("Ruhepuls, Ø 3 Tage", `${C.fmt(I.rhr.wert3, 0)} bpm`, `Referenz ${C.fmt(I.rhr.ref, 0)} bpm (${I.rhr.referenz}) · ${C.esc(I.rhr.status)}`);
+    const sT = I.schlaf.status === "unbekannt"
+      ? tile(`Schlaf, ${nacht(day)}`, "fehlt", lastSleep ? `zuletzt erfasst: ${nacht(lastSleep.date)}, ${C.fmt(lastSleep.sleepH, 1)} h – zählt heute nicht` : "keine Schlafdaten", true)
+      : tile(`Schlaf, ${nacht(day)}`, `${C.fmt(I.schlaf.wert, 1)} h`, `${I.schlaf.score != null ? `Garmin-Schlafwert ${I.schlaf.score} von 100 · ` : ""}${C.esc(I.schlaf.status)}${I.schlaf.ref != null ? ` (Ø 28 Tage ${C.fmt(I.schlaf.ref, 1)} h)` : ""}`);
+    box.innerHTML = `<div class="td-verdict rd-${r.status.replace(/ /g, "-")}"><b>${head}</b><span>${C.esc(r.empfehlung)}</span></div>
+      <p class="td-dq"><span>Datenqualität:</span> ${dq.map((x) => `<i class="${x.ok ? "ok" : "no"}">${x.ok ? "✓" : "–"} ${C.esc(x.t)}</i>`).join("")}</p>
+      <div class="td-tiles">${hrvT}${rhrT}${sT}</div>`;
+  };
+  /** Bereitschaft im Verlauf: drei synchronisierte Mini-Grafiken mit gemeinsamer Zeitachse statt einer Grafik mit zwei Skalen. */
+  V.verlauf = function (C, T) {
+    const ids = ["c-rd-hrv", "c-rd-rhr", "c-rd-sleep"], labs = T.map((x) => C.dLabel(x.date));
+    const sync = (idx) => { for (const id of ids) { const ch = C.charts[id]; if (!ch) continue; const el = idx == null ? [] : [{ datasetIndex: 0, index: idx }];
+      const pt = idx == null ? null : ch.getDatasetMeta(0).data[idx]; ch.setActiveElements(el); ch.tooltip.setActiveElements(el, pt ? { x: pt.x, y: pt.y } : { x: 0, y: 0 }); ch.update("none"); } };
+    const base = (last, unit) => ({ animation: false, interaction: { mode: "index", intersect: false }, layout: { padding: { right: 8 } },
+      onHover: (e, els) => sync(els.length ? els[0].index : null), onClick: (e, els) => sync(els.length ? els[0].index : null),
+      scales: { x: { offset: true, ticks: { display: last, maxTicksLimit: innerWidth < 560 ? 5 : 8, maxRotation: 0 }, grid: { display: false } },   // gleiche Lage wie die Schlafbalken
+        y: { ticks: { maxTicksLimit: 3 }, title: { display: true, text: unit, font: { size: 11 } }, afterFit: (sc) => { sc.width = 58; } } },
+      plugins: { legend: { display: false }, tooltip: { displayColors: false, callbacks: { title: (it) => it[0].label, label: () => null,
+        afterBody: (it) => { const x = T[it[0].dataIndex]; return [`HRV ${x.hrv ?? "–"} ms${x.refLo ? ` (Referenz ${x.refLo}–${x.refHi})` : ""}`, `Ruhepuls ${x.rhr ?? "–"} bpm`, `Schlaf ${x.sleepH != null ? C.fmt(x.sleepH, 1) + " h" : "fehlt"}`, `Bereitschaft: ${x.status}`]; } } } } });
+    C.chart(ids[0], { type: "line", data: { labels: labs, datasets: [
+      { label: "HRV", data: T.map((x) => x.hrv), borderColor: C.css("--accent"), backgroundColor: C.css("--accent"), borderWidth: 1.75, pointRadius: 2.5, tension: 0, spanGaps: false },
+      { label: "Referenz unten", data: T.map((x) => x.refLo), borderColor: "transparent", pointRadius: 0, fill: false },
+      { label: "Referenz", data: T.map((x) => x.refHi), borderColor: "transparent", backgroundColor: C.css("--accent") + "1f", pointRadius: 0, fill: "-1" }] }, options: base(false, "HRV ms") });
+    C.chart(ids[1], { type: "line", data: { labels: labs, datasets: [{ label: "Ruhepuls", data: T.map((x) => x.rhr), borderColor: C.css("--strain"), backgroundColor: C.css("--strain"), borderWidth: 1.75, pointRadius: 2.5, tension: 0, spanGaps: false }] }, options: base(false, "Ruhepuls bpm") });
+    C.chart(ids[2], { type: "bar", data: { labels: labs, datasets: [{ label: "Schlaf", data: T.map((x) => x.sleepH), backgroundColor: C.css("--sleep") + "99", borderRadius: 2, maxBarThickness: 14 }] }, options: (() => { const o = base(true, "Schlaf h"); o.scales.y.min = 0; o.scales.y.suggestedMax = 10; return o; })() });
+    const miss = T.filter((x) => x.sleepH == null).length;
+    $("rd-trend-note").textContent = `Band = deine HRV-Referenz (eigene 60 bzw. 28 Tage vor der Woche, ±0,5 SD). Lücken bleiben Lücken${miss ? ` (Schlaf fehlt an ${miss} von ${T.length} Tagen)` : ""}. Antippen zeigt alle Werte des Tages.`;
+  };
+
   /** Leistung: primärer Ausdauertrend je Jahr und System (Median der Blöcke, n, Streuung). Kein Mischen der Systeme. */
   V.trend = function (C) {
     const box = $("trend-tab"); if (!box || !window.FK) return;

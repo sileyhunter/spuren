@@ -168,7 +168,7 @@ form.inline input, form.inline select { width: 132px; }
   .legend { width: 150px; }
   .countdowns, .stand { display: none; }
   .brand { padding-block: 12px 2px; }
-  nav.tabs { flex: 1 1 100%; margin-left: -4px; }
+  .tabbar { flex: 1 1 100%; margin-left: -4px; }
   nav.tabs button { padding: 10px 10px 9px; font-size: 15px; }
   .rings { gap: 6px; }
   .ring .det { font-size: 10.5px; }
@@ -328,6 +328,31 @@ details.layer > .dash { margin-top: 12px; }
   radial-gradient(farthest-side at 0 50%, rgba(23,43,58,.22), transparent) left center / 12px 100% no-repeat scroll; }
 .scroll-hint { margin: 2px 0 2px; font-size: 11.5px; color: var(--muted); text-align: right; }
 @media (max-width: 560px) { table.t td.wrap { min-width: 150px; } }
+.td-verdict { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 10px; background: var(--surface-2); border-left: 4px solid var(--muted); }
+.td-verdict b { font-size: 22px; } .td-verdict span { font-size: 13.5px; color: var(--fg); }
+.td-verdict.rd-bereit { border-left-color: var(--good); } .td-verdict.rd-normal { border-left-color: var(--accent); } .td-verdict.rd-vorsichtig { border-left-color: var(--warn); }
+.td-dq { font-size: 12.5px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 8px 0; } .td-dq span { font-weight: 600; }
+.td-dq i { font-style: normal; } .td-dq i.ok { color: var(--good); } .td-dq i.no { color: #8a5a12; }
+.td-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.td-tiles > div { background: var(--surface-2); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.td-tiles span { font-size: 12px; color: var(--muted); } .td-tiles b { font-size: 20px; font-variant-numeric: tabular-nums; } .td-tiles small { font-size: 11.5px; color: var(--muted); line-height: 1.35; }
+.td-tiles > div.miss { background: none; border: 1.5px dashed var(--line-2); } .td-tiles > div.miss b { color: #8a5a12; font-size: 17px; }
+@media (max-width: 560px) { .td-tiles { grid-template-columns: minmax(0, 1fr); } .td-tiles > div { flex-direction: row; flex-wrap: wrap; align-items: baseline; column-gap: 8px; } .td-tiles span { flex-basis: 100%; } }
+@media (max-width: 760px) {     /* Touch-Ziele mindestens 44 px */
+  .btn, select, input[type=number], input[type=date], input[type=text], input:not([type]), input[type=range], .card .seg button, nav.tabs button, .rp .btn,
+  button.chip, .view .ltna, .view .btn, .view .sw-ctl .btn { min-height: 44px; }
+  .btn { padding: 8px 12px; } details > summary { min-height: 44px; display: flex; align-items: center; }
+  .scale5 label span { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+}
+.tabbar { display: flex; flex: 1; min-width: 0; align-self: stretch; } .tabbar nav.tabs { flex: 1 1 auto; }
+@media (max-width: 760px) { .tabbar { flex: 1 1 100%; margin-left: -4px; } }
+nav.tabs { scroll-behavior: smooth; }
+nav.tabs.more-r { -webkit-mask-image: linear-gradient(to right, #000 82%, transparent); mask-image: linear-gradient(to right, #000 82%, transparent); }
+nav.tabs.more-l { -webkit-mask-image: linear-gradient(to left, #000 82%, transparent); mask-image: linear-gradient(to left, #000 82%, transparent); }
+nav.tabs.more-l.more-r { -webkit-mask-image: linear-gradient(to right, transparent, #000 14%, #000 86%, transparent); mask-image: linear-gradient(to right, transparent, #000 14%, #000 86%, transparent); }
+.tabs-more { display: none; border: 0; background: var(--surface); color: var(--accent); font-size: 20px; min-width: 40px; min-height: 44px; cursor: pointer; align-self: stretch; }
+.tabs-more.on { display: inline-flex; align-items: center; justify-content: center; }
+.lz-filter { margin: 0 8px 6px 0; } .eta-ann { flex-basis: 100%; margin: 4px 0 0; } #eta-form label small.badge { font-size: 9.5px; padding: 1px 6px; }
 .chart.mini { height: 128px; } .br-minis .chart.mini + .chart.mini { margin-top: 2px; }
 #t-br-sp td, #t-br-sp th { text-align: right; } #t-br-sp td:first-child, #t-br-sp th:first-child { text-align: left; } #t-br-sp tr.on td { background: var(--accent-soft, #e6f4f2); }
 tr.lang td { color: var(--muted); }
@@ -615,7 +640,7 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
 </div>
 <header class="top">
   <div class="brand"><img class="mark-img" src="logo-kopf.jpg" alt="" width="104" height="38" decoding="async">Ironman Notebook</div>
-  <nav class="tabs" role="tablist" aria-label="Bereiche">
+  <div class="tabbar"><nav class="tabs" role="tablist" aria-label="Bereiche">
     <button role="tab" id="tab-karte" data-tab="karte" aria-selected="true">Karte</button>
     <button role="tab" id="tab-heute" data-tab="heute" aria-selected="false">Heute</button>
     <button role="tab" id="tab-kalender" data-tab="kalender" aria-selected="false">Kalender</button>
@@ -626,6 +651,7 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
     <button role="tab" id="tab-schwimmen" data-tab="schwimmen" aria-selected="false">Schwimmen</button>
     <button role="tab" id="tab-koerper" data-tab="koerper" aria-selected="false">Körper</button>
   </nav>
+  <button class="tabs-more" id="tabs-more" type="button" aria-label="Weitere Bereiche zeigen">›</button></div>
   <div class="countdowns" id="countdowns"></div>
   <div class="stand" id="stand"></div>
 </header>
@@ -751,7 +777,7 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
     <div class="dash">
       <div class="card w8">
         <div class="card-head"><div><h2>Heute</h2><div class="sub" id="today-date"></div></div></div>
-        <div class="rings" id="rings"></div>
+        <div id="today-main"><p class="hint">Bereitschaft wird berechnet …</p></div>
       </div>
       <div class="card w4" id="rd-wrap">
         <div id="rd-card"></div>
@@ -761,7 +787,9 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
       <div class="card w8">
         <div class="card-head"><div><h2>Bereitschaft im Verlauf</h2><div class="sub">HRV gegen deine eigene Referenz, Ruhepuls und Schlaf</div></div>
           <div class="seg" id="rd-range" role="group" aria-label="Zeitraum"><button data-n="21" aria-pressed="true">21 Tage</button><button data-n="42" aria-pressed="false">42 Tage</button></div></div>
-        <div class="chart"><canvas id="c-recovery" aria-label="Verlauf HRV, Ruhepuls und Schlaf"></canvas></div>
+        <div class="chart mini"><canvas id="c-rd-hrv" aria-label="HRV mit Referenzband"></canvas></div>
+        <div class="chart mini"><canvas id="c-rd-rhr" aria-label="Ruhepuls"></canvas></div>
+        <div class="chart mini"><canvas id="c-rd-sleep" aria-label="Schlafdauer"></canvas></div>
         <p class="hint" id="rd-trend-note"></p>
       </div>
       <div class="card w4">
@@ -943,7 +971,9 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
         <div class="sub">Beste Leistung je Dauer, dieses Jahr gegen Vorjahr</div>
         <div class="chart"><canvas id="c-pdc" aria-label="Leistungskurve"></canvas></div>
       </div>
-      <div class="card w12">
+      <details class="layer" id="lei-more"><summary><span>Weitere Auswertungen</span><small>Puls zu Watt und Pace, Lauf-Effizienz (explorativ)</small></summary>
+      <div class="dash">
+        <div class="card w12">
         <div class="card-head">
           <div><h2>Puls zu Watt und Pace <span class="badge muted">explorativ</span></h2><div class="sub">Jeder Punkt ist eine ganze Einheit: Ø Puls gegen Leistung (NP) bzw. Ø Pace. Leistungsmesser, Strecke, Höhe, Temperatur, Wind, Intervalle und Pausen sind nicht herausgerechnet – Unterschiede sind deshalb kein Fortschrittsnachweis. Vergleichbare Blöcke: «Meine Entwicklung» im Fortschritt.</div></div>
           <select id="hp-range" aria-label="Zeitraum"></select>
@@ -962,25 +992,31 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
         </div>
         <p class="hint">Rad: Fahrten mit Leistungsmesser ab 20 Minuten. Lauf: ab 15 Minuten und 2 km. Die Tabellen lesen den Puls an der Trendlinie ab, nur wenn genug Einheiten in diesem Bereich liegen (sonst –).</p>
       </div>
-      <div class="card">
+        <div class="card">
         <h2>Lauf: Effizienz <span class="badge muted">explorativ</span></h2>
         <div class="sub">Meter pro Herzschlag (m/Schlag): Tempo in m/min geteilt durch Puls in Schlägen/min. Steigt der Wert, läufst du bei gleichem Puls weiter. Gelände, Wetter und Ermüdung sind nicht herausgerechnet; gesicherte Aussagen stehen unter «Meine Entwicklung».</div>
         <div class="chart"><canvas id="c-ef" aria-label="Laufeffizienz in Meter pro Herzschlag"></canvas></div>
         <p class="hint" id="ef-note"></p>
       </div>
-      <div class="card w12" id="eta-card">
+      </div>
+      </details>
+      <details class="layer" id="lei-calc"><summary><span>Rechner</span><small>Rad-Fahrzeit aus der Leistungsbilanz, Aerotest (CdA)</small></summary>
+      <div class="dash">
+        <div class="card w12" id="eta-card">
         <div class="card-head"><div><h2>Rad-Fahrzeit aus der Leistungsbilanz</h2><div class="sub">Watt, Gewicht, CdA, Rollwiderstand, Luftdichte und Wind je Abschnitt. Schätzung mit Spanne, kein Routing.</div></div></div>
         <form class="inline" id="eta-form" onsubmit="return false"></form>
         <div id="eta-out"></div>
         <div class="chart"><canvas id="c-eta" aria-label="Tempo und Höhe entlang der Strecke"></canvas></div>
         <details><summary>Prüffälle der Physik</summary><div class="tablewrap"><table class="t" id="t-eta"></table></div></details>
       </div>
-      <div class="card w12" id="cda-card">
+        <div class="card w12" id="cda-card">
         <div class="card-head"><div><h2>Aerotest: CdA im A-B-A-Vergleich</h2><div class="sub">Virtuelle Höhe nach Chung aus Leistung, Tempo und Höhe. Ergebnis immer «geschätzt».</div></div>
           <label class="btn">FIT-Datei laden<input type="file" id="cda-file" accept=".fit,application/octet-stream" hidden></label></div>
         <form class="inline" id="cda-par" onsubmit="return false"><label>Fahrer + Rad (kg)<input type="number" name="m" value="83"></label><label>Crr<input type="number" step="0.0005" name="crr" value="0.004"></label><label>Temperatur (°C)<input type="number" name="temp" value="15"></label><label>Höhe (m)<input type="number" name="alt" value="500"></label></form>
         <div id="cda-out"></div>
       </div>
+      </div>
+      </details>
     </div>
   </section>
 
@@ -1003,27 +1039,33 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
         <div class="zc" id="zc-box"></div>
         <p class="hint">LT1/LT2 sind Werte des jeweiligen Tests und auf jeder Skala eigen. Antippen öffnet Grenzen, Methode, Quelle, Datum und Status. Zonen entstehen nie automatisch aus LT1/LT2.</p>
       </div>
-      <div class="card" id="lt-card">
+      <details class="layer" id="lz-more"><summary><span>Verlauf und Tests</span><small>LT1/LT2 im Verlauf, Schwellen je Methode, Testbibliothek mit Bestätigung (B1), Kurzchecks</small></summary>
+      <div class="dash">
+        <div class="card" id="lt-card">
         <div class="card-head"><div><h2>LT1 und LT2 im Verlauf</h2><div class="sub">Nur vergleichbare Tests: gleiche Sportart und gleiches Protokoll</div></div>
           <div class="row"><select id="lt-m1" aria-label="Methode LT1"></select><select id="lt-m2" aria-label="Methode LT2"></select></div></div>
         <div class="chart"><canvas id="c-ltt" aria-label="LT1 und LT2 über die Zeit mit Unsicherheit"></canvas></div>
         <p class="hint" id="lt-note"></p>
       </div>
-      <div class="card" id="lm-card">
+        <div class="card" id="lm-card">
         <h2>Schwellen je Methode</h2><div class="sub">Grau: 2 und 4 mmol/l nur zur Orientierung, nie als Schwelle</div>
         <div class="tablewrap"><table class="t" id="t-lmeth"></table></div>
         <p class="hint" id="lm-note"></p>
       </div>
-      <div class="card w12" id="lib-card">
+        <div class="card w12" id="lib-card">
         <div class="card-head"><div><h2>Testbibliothek</h2><div class="sub">Tests, Einzelmessungen und Entwürfe vom Handy. «Bestätigen» ist Schritt B1 und geht mit dem nächsten Export an mich.</div></div><div class="row" id="lib-f"></div></div>
         <div class="tablewrap"><table class="t" id="t-lib"></table></div>
       </div>
-      <div class="card w12">
+        <div class="card w12">
         <div class="card-head"><div><h2>Laktat-Kurzchecks</h2><div class="sub">Gleicher Block, zum Beispiel 10 Minuten bei 220 W. Sinken Laktat und Puls bei gleicher Leistung, bist du fitter. Die Werte gibst du mir im Chat, ich hole Puls und Watt aus der Einheit.</div></div></div>
         <div class="chart"><canvas id="c-checks" aria-label="Verlauf der Laktat-Kurzchecks"></canvas></div>
         <div class="tablewrap"><table class="t" id="t-checks"></table></div>
       </div>
-      <div class="card w12" id="tz-card">
+      </div>
+      </details>
+      <details class="layer" id="lz-method"><summary><span>Daten &amp; Methode</span><small>Testzentrum (Stufen aus den Sekundenwerten), Eingaben auf diesem Gerät</small></summary>
+      <div class="dash">
+        <div class="card w12" id="tz-card">
         <div class="card-head">
           <div><h2>Testzentrum: Stufentests</h2><div class="sub" id="tz-sub">Stufen aus den Sekundenwerten. Laktat steht nur mit Quelle da.</div></div>
           <select id="tz-test" aria-label="Test"></select>
@@ -1037,8 +1079,9 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
         <h3 class="mini-h">Protokoll-Vorlagen</h3>
         <div class="tablewrap"><table class="t" id="t-proto"></table></div>
       </div>
-
-      <div class="card w12"><h2>Eingaben auf diesem Gerät</h2><div data-v5-sync></div></div>
+        <div class="card w12"><h2>Eingaben auf diesem Gerät</h2><div data-v5-sync></div></div>
+      </div>
+      </details>
     </div>
   </section>
 
@@ -1520,11 +1563,25 @@ function showTab(name) {
   if (name === "karte") { map?.resize(); }
   const t = TABS[name];
   if (t && !t.done) { t.done = true; try { t.init?.(); t.draw(); } catch (e) { console.error(e); } }
-  document.querySelector(`nav.tabs button[data-tab="${name}"]`)?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  const tb = document.querySelector(`nav.tabs button[data-tab="${name}"]`), nav = document.querySelector("nav.tabs");
+  if (tb && nav) nav.scrollTo({ left: Math.max(0, tb.offsetLeft - (nav.clientWidth - tb.offsetWidth) / 2), behavior: "smooth" });   // aktiven Bereich mittig zeigen
   if (location.hash.slice(1) !== name) history.replaceState(null, "", "#" + name);
   store.set("sf.tab", name);
+  tabHints();
 }
 document.querySelectorAll("nav.tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
+/* Hinweis auf weitere Bereiche: ausgeblendeter Rand und Pfeil, solange die Leiste seitlich weitergeht */
+function tabHints() {
+  const nav = document.querySelector("nav.tabs"), more = document.getElementById("tabs-more");
+  if (!nav) return;
+  const l = nav.scrollLeft > 4, r = nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 4;
+  nav.classList.toggle("more-l", l); nav.classList.toggle("more-r", r);
+  if (more) { more.classList.toggle("on", r || l); more.textContent = r ? "›" : "‹"; more.setAttribute("aria-label", r ? "Weitere Bereiche rechts zeigen" : "Zurück zum Anfang der Bereiche"); }
+}
+document.querySelector("nav.tabs")?.addEventListener("scroll", () => requestAnimationFrame(tabHints), { passive: true });
+addEventListener("resize", tabHints);
+document.getElementById("tabs-more")?.addEventListener("click", () => { const nav = document.querySelector("nav.tabs"); const r = nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 4;
+  nav.scrollBy({ left: r ? nav.clientWidth * 0.7 : -nav.scrollWidth, behavior: "smooth" }); });
 window.addEventListener("hashchange", () => showTab(location.hash.slice(1)));
 
 /* =====================================================================
@@ -2637,12 +2694,20 @@ if (window.Chart) {
   Chart.defaults.font.family = css("--f-body"); Chart.defaults.font.size = 12;
   Chart.defaults.color = css("--muted"); Chart.defaults.borderColor = css("--line");
   Chart.defaults.plugins.legend.labels.boxWidth = 12; Chart.defaults.plugins.legend.labels.boxHeight = 12;
+  // V5.5 einheitlicher Stil: Hauptlinien 1,75 px, gut treffbare Punkte, feine Raster
+  Chart.defaults.elements.line.borderWidth = 1.75; Chart.defaults.elements.point.hitRadius = 8; Chart.defaults.elements.bar.borderRadius = 2;
 }
+// Grafiken in eingeklappten Bereichen haben keine Grösse: beim Öffnen nachträglich anpassen (toggle bubbelt nicht → Capture)
+document.addEventListener("toggle", (e) => { if (e.target.open) e.target.querySelectorAll("canvas").forEach((c) => charts[c.id] && charts[c.id].resize()); }, true);
 function chart(id, cfg) {
   const el = document.getElementById(id);
   if (!window.Chart) { el.closest(".chart").innerHTML = `<p class="hint">Diagramme konnten nicht geladen werden. Prüfe die Internetverbindung.</p>`; return; }
   charts[id]?.destroy();
   cfg.options = Object.assign({ maintainAspectRatio: false, animation: matchMedia("(prefers-reduced-motion: reduce)").matches ? false : { duration: 450 } }, cfg.options || {});
+  if (innerWidth < 560 && ["line", "bar", "scatter"].includes(cfg.type)) {           // iPhone: höchstens 6 Beschriftungen auf der x-Achse
+    const sc = (cfg.options.scales = cfg.options.scales || {}), x = (sc.x = sc.x || {});
+    if (x.type !== "logarithmic" && !x.afterBuildTicks) { x.ticks = x.ticks || {}; if (x.ticks.autoSkip !== false) { x.ticks.maxTicksLimit = Math.min(x.ticks.maxTicksLimit || 6, 6); x.ticks.maxRotation = 0; } }
+  }
   return (charts[id] = new Chart(el, cfg));
 }
 function ringSVG(frac, color, big, unit, label) {
@@ -2744,15 +2809,10 @@ const TABS = {
       document.getElementById("races").innerHTML = RACES.map((r) => { const d = daysTo(r.date); return `<div class="race"><div class="n">${esc(r.short)}</div><div class="d">${d}</div><small>Tage · ${Math.floor(d / 7)} Wochen · ${dateCH(r.date)}</small></div>`; }).join("");
       const i = D.days.length - 1, d = D.days[i];
       if (!d) {
-        document.getElementById("rings").innerHTML = `<p class="hint">Noch keine Tageswerte. Sie kommen mit dem ersten Garmin-Update.</p>`;
+        document.getElementById("today-main").innerHTML = `<p class="hint">Noch keine Tageswerte. Sie kommen mit dem ersten Garmin-Update.</p>`;
         document.getElementById("today-verdict").textContent = "Noch keine Daten.";
         if (window.V5UI) V5_READY.then(() => V5UI.heute());
       } else {
-        const rec = recovery(i), tss = dayLoad(d.date), st = strain(tss), sl = d.sleepScore;
-        document.getElementById("rings").innerHTML =
-          `<div class="ring">${ringSVG((rec || 0) / 100, recColor(rec), rec == null ? "–" : rec + "%", "", "Erholung")}<div class="lbl" style="color:${recColor(rec)}">Erholung</div><div class="det">HRV ${d.hrv ?? "–"} ms · Ruhepuls ${d.rhr ?? "–"}</div></div>
-           <div class="ring">${ringSVG(st / 21, css("--strain"), fmt(st, 1), "von 21", "Belastung")}<div class="lbl" style="color:${css("--strain")}">Belastung</div><div class="det">Trainingslast heute ${fmt(tss)}</div></div>
-           <div class="ring">${ringSVG((sl || 0) / 100, css("--sleep"), sl == null ? "–" : sl + "%", "", "Schlaf")}<div class="lbl" style="color:${css("--sleep")}">Schlaf</div><div class="det">${fmt(d.sleepH, 1)} h geschlafen</div></div>`;
         const pa = FK.pmcAnzeige(pmc().at(-1)) || {};
         const s7 = D.days.slice(-7).filter((x) => x.sleepH != null);
         document.getElementById("today-kv").innerHTML = [["Form", pa.form != null ? (pa.form > 0 ? "+" + pa.form : pa.form < 0 ? "−" + Math.abs(pa.form) : "0") : null], ["Fitness", pa.fitness ?? null], ["Ermüdung", pa.ermuedung ?? null], ["Body Battery", d.bodyBattery != null ? fmt(d.bodyBattery) : null],
@@ -2822,8 +2882,6 @@ const TABS = {
       document.getElementById("v-metric").addEventListener("change", () => this.volume());
       document.getElementById("v-sport").innerHTML = `<option value="">Alle Sportarten</option>` + ["rad", "lauf", "schwimm", "wandern", "ski", "andere"].map((k) => `<option value="${k}">${SPORTS[k].label}</option>`).join("");
       document.getElementById("v-sport").addEventListener("change", () => this.volume());
-      document.querySelectorAll("#view-training details.layer").forEach((d) => d.addEventListener("toggle", () => {   // Grafiken in geschlossenen Ebenen nachträglich auf Grösse bringen
-        if (d.open) d.querySelectorAll("canvas").forEach((c) => charts[c.id] && charts[c.id].resize()); }));
       document.getElementById("btn-proof").addEventListener("click", () => exportProof());
       const yy = [...new Set(D.activities.map((a) => a.date.slice(0, 4)))].sort().reverse();
       if (!yy.includes(String(today.getFullYear()))) yy.unshift(String(today.getFullYear()));
