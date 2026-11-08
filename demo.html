@@ -6,7 +6,6 @@
 <title>Ironman Notebook · Demo</title>
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-192.png">
-<link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="manifest" href="manifest-demo.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -260,7 +259,9 @@ html, body { touch-action: manipulation; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 /* ===================== V5: helles Design und neue Bausteine ===================== */
-.brand { color: var(--fg); } .brand .mark { box-shadow: none; width: 28px; height: 28px; border-radius: 7px; background: none; flex: none; }
+.brand { color: var(--fg); } .brand .mark-img { height: 38px; width: auto; flex: none; mix-blend-mode: multiply; border-radius: 4px; }
+.lock-hero { width: 100%; height: auto; display: block; mix-blend-mode: multiply; margin: -6px 0 2px; }
+@media (max-width: 560px) { .brand .mark-img { height: 32px; } }
 nav.tabs button { font: 600 14px/1 var(--f-body); letter-spacing: .01em; text-transform: none; }
 nav.tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
 .card { border-radius: 14px; box-shadow: 0 1px 2px rgba(31,51,71,.04); }
@@ -543,7 +544,8 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
 <body>
 <div class="lock" id="lock" hidden>
   <form class="lock-box" id="lock-form">
-    <div class="brand"><svg class="mark" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="110" fill="#127c72"/><path d="M58 360 L168 214 L214 262 L292 150 L360 238 L392 204 L454 360" fill="none" stroke="#fff" stroke-width="34" stroke-linejoin="round" stroke-linecap="round"/><path d="M74 418 C150 398 250 400 438 396" fill="none" stroke="#f08a63" stroke-width="26" stroke-linecap="round"/></svg>Ironman Notebook</div>
+    <img class="lock-hero" src="logo.jpg" alt="Ironman Notebook: Berglandschaft mit Schwimmen, Rad, Laufen, Skitour und Jagd" width="1200" height="610">
+    <div class="brand">Ironman Notebook</div>
     <p>Deine Daten sind verschlüsselt. Gib dein Passwort ein.</p>
     <input type="password" id="lock-pw" autocomplete="current-password" placeholder="Passwort" aria-label="Passwort" required>
     <label class="row hint" for="lock-keep"><input type="checkbox" id="lock-keep" checked> Auf diesem Gerät merken</label>
@@ -552,7 +554,7 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
   </form>
 </div>
 <header class="top">
-  <div class="brand"><svg class="mark" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="110" fill="#127c72"/><path d="M58 360 L168 214 L214 262 L292 150 L360 238 L392 204 L454 360" fill="none" stroke="#fff" stroke-width="34" stroke-linejoin="round" stroke-linecap="round"/><path d="M74 418 C150 398 250 400 438 396" fill="none" stroke="#f08a63" stroke-width="26" stroke-linecap="round"/></svg>Ironman Notebook</div>
+  <div class="brand"><img class="mark-img" src="logo-kopf.jpg" alt="" width="104" height="38" decoding="async">Ironman Notebook</div>
   <nav class="tabs" role="tablist" aria-label="Bereiche">
     <button role="tab" id="tab-karte" data-tab="karte" aria-selected="true">Karte</button>
     <button role="tab" id="tab-heute" data-tab="heute" aria-selected="false">Heute</button>

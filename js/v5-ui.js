@@ -137,7 +137,7 @@
       const last = tests.filter((t) => !/^labor/.test(t.protokoll)).slice(-2).map((t) => t.id);
       LZ.shown = last.length ? last : tests.slice(-1).map((t) => t.id);
     }
-    $("lz-head").innerHTML = `<div class="card-head"><div><div class="eyebrow">Spuren / Formkurve</div><h2 class="big">Laktat &amp; Trainingszonen</h2>
+    $("lz-head").innerHTML = `<div class="card-head"><div><div class="eyebrow">Ironman Notebook</div><h2 class="big">Laktat &amp; Trainingszonen</h2>
         <div class="sub">Tests vergleichen · Einzelmessungen öffnen · LT1/LT2 nur aus gültigen Stufentests</div></div>
         <div class="seg" role="group" aria-label="Sportart">${["rad", "lauf"].map((s) => `<button aria-pressed="${LZ.sport === s}" data-sp="${s}">${s === "rad" ? "Rad" : "Lauf"}</button>`).join("")}</div></div>
       ${pv ? `<div class="verdict warn">${pv} Laktatdateien sind Vorschau: die Werte stammen aus deinen Tabellen und dem Chat, du hast sie noch nicht bestätigt (Schritt B1). Schwellen und Marker gelten deshalb als <b>vorläufig</b>.</div>` : ""}`;
