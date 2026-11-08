@@ -546,6 +546,39 @@ table.t.rp-vt td:first-child { min-width: 64px; } .rp-vt .rp-vbtn { margin-top: 
 .rp-altpin.umfahrung { background: #5f7f4a; } .rp-altpin.variante { background: #8a6fb0; }
 .rp-altnr { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #6b7785; color: #fff; font-size: 11px; font-weight: 700; margin-right: 2px; }
 .rp-altnr.haupt { background: var(--accent); } .rp-altnr.standard { background: #a67c3d; }
+/* V5.7 Smart Training Routes: Trainingsvorschau im Planer (hell, gleiche Karten wie der Planer) */
+.rp-train { margin: 2px 0 10px; } .tr-box { background: #f7fbfa; border-color: #cfe5e0; }
+.tr-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; } .tr-head h3 { margin: 0; font: 600 15px var(--f-body); }
+.tr-f { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); } .tr-f select { width: 100%; }
+.tr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.tr-grid label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); min-width: 0; }
+.tr-grid input, .tr-grid select { width: 100%; min-width: 0; }
+.tr-wo { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; } .tr-wo .badge { margin: 2px 4px 0 0; } .tr-wo .hint { align-self: stretch; }
+.tr-kurz { justify-content: space-between; } .tr-det summary { cursor: pointer; font-size: 13px; margin-top: 6px; } .tr-orte .row input[type="search"] { flex: 1; min-width: 0; }
+.tr-man { border: 1px dashed var(--line-2); border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.tr-orte summary, .tr-desc summary, .tr-err summary { cursor: pointer; font-size: 13px; color: var(--fg); }
+.tr-orte { border-top: 1px solid var(--line); padding-top: 6px; display: flex; flex-direction: column; gap: 6px; } .tr-orte[open] { gap: 8px; }
+.tr-ol { list-style: none; margin: 4px 0; padding: 0; display: flex; flex-direction: column; gap: 4px; } .tr-ol li { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+.tr-ol small { color: var(--muted); font-variant-numeric: tabular-nums; }
+.tr-status { font-size: 13px; color: var(--muted); min-height: 1em; }
+.tr-sliders { display: flex; flex-direction: column; gap: 6px; } .tr-sl { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--muted); } .tr-sl b { color: var(--fg); font-size: 14px; font-variant-numeric: tabular-nums; }
+.tr-sl input[type="range"] { width: 100%; }
+.tr-vt td, .tr-vt th { text-align: right; } .tr-vt td:first-child, .tr-vt th:first-child { text-align: left; } .tr-vt tr.on td { background: #eef7f5; }
+.tr-card { border: 1px solid var(--line); border-left: 4px solid var(--k, var(--accent)); border-radius: 12px; padding: 10px 12px; background: #fff; display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.tr-card.on { box-shadow: 0 0 0 2px var(--k, var(--accent)) inset; }
+.tr-card-h { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tr-key { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; color: #fff; font: 700 12px/1 system-ui, sans-serif; } .tr-key.sm { width: 20px; height: 20px; font-size: 11px; }
+.tr-kpi { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.tr-kpi div { background: #f1f7f6; border-radius: 9px; padding: 6px 8px; display: flex; flex-direction: column; min-width: 0; } .tr-kpi div.warn { background: rgba(183,121,31,.12); }
+.tr-kpi span { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; } .tr-kpi b { font: 600 16px/1.2 var(--f-body); font-variant-numeric: tabular-nums; } .tr-kpi small { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.tr-facts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; }
+.tr-facts li { display: grid; grid-template-columns: 76px 1fr; gap: 6px; } .tr-facts li > span { color: var(--muted); }
+.tr-ivs { margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; }
+.tr-ivs li { border-left: 3px solid var(--good); padding-left: 6px; } .tr-ivs li.bedingt { border-left-color: var(--warn); } .tr-ivs li.ungeeignet { border-left-color: var(--bad); }
+.tr-ivs small { color: var(--muted); } .tr-sel { background: #eef7f5; } .tr-pick { margin: 0; }
+.tr-kal { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; } .tr-vgl { width: 100%; }
+.rp-chart .ivl { font: 700 10px var(--f-body); fill: #fff; text-anchor: middle; paint-order: stroke; stroke: rgba(0,0,0,.35); stroke-width: 2px; }
+@media (max-width: 420px) { .tr-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tr-facts li { grid-template-columns: 1fr; gap: 0; } }
 .rp-chart .ova { font: 600 10.5px var(--f-body); fill: #3e3394; text-anchor: start; }
 .rp-chart .via { stroke: var(--fg); stroke-width: 1; stroke-dasharray: 2 3; opacity: .55; }
 .rp-chart .viac { fill: #fff; stroke: var(--accent); stroke-width: 2; }
@@ -1295,6 +1328,8 @@ body.ex-offen { overflow: hidden; }
 <script src="js/formkurve.js"></script>
 <script src="js/route.js"></script>
 <script src="js/routen-ui.js"></script>
+<script src="js/training-route.js"></script>
+<script src="js/training-ui.js"></script>
 <script src="js/v5-ui.js"></script>
 <script src="js/v5-ausdauer.js"></script>
 <script src="js/v5-extra.js"></script>
@@ -1591,8 +1626,13 @@ function makeDemo() {
       a5: [{ id: "demo-test-2", name: "Stufentest (Beispiel)", n: 6, soll_n: 6, dx: [0, -1, 0, 0, -1, 0], toleranz: 3, ok: true }] } };
   const tests = [{ date: iso(addDays(today, 18)), kind: "check", note: "Kurzcheck 10 min @ 220 W, gleicher Block wie bisher", status: "vorschlag" },
     { date: iso(addDays(today, 61)), kind: "stufentest", note: "Stufentest Rad vor dem nächsten Trainingsblock", status: "vorschlag" }];
-  const PLAN = { 1: ["Schwimmen Technik", "schwimm", 2700], 2: ["Rad Grundlage", "rad", 5400], 3: ["Lauf locker", "lauf", 3000], 4: ["Rad Sweet Spot", "rad", 4500], 6: ["Lange Ausfahrt", "rad", 10800], 0: ["Langer Lauf", "lauf", 5400] };
-  const planned = []; for (let i = 1; i <= 14; i++) { const d = addDays(today, i), q = PLAN[d.getDay()]; if (q) planned.push({ date: iso(d), title: q[0], sport: q[1], dur_s: q[2] }); }
+  // V5.7: Beispiel-Workouts in der Form der Garmin-Verbindung (erfundene Werte)
+  const pz = (s, lo, hi, type) => ({ type: type || "interval", end_condition: "time", end_condition_value: s, target_type: "power.zone", target_value_low: lo, target_value_high: hi });
+  const vz = (s, lo, hi, type) => ({ type: type || "interval", end_condition: "time", end_condition_value: s, target_type: "speed.zone", target_value_low: lo, target_value_high: hi });
+  const PLAN = { 1: ["Schwimmen Technik", "schwimm", 2700], 2: ["Rad Grundlage", "rad", 5400, [pz(600, 120, 180, "warmup"), pz(4200, 190, 220), pz(600, 120, 180, "cooldown")]],
+    3: ["Lauf locker", "lauf", 3000, [vz(3000, 2.9, 3.2)]], 4: ["Rad Sweet Spot", "rad", 4500, [pz(900, 120, 180, "warmup"), { type: "repeat", end_condition: "iterations", end_condition_value: 3, repeat_count: 3, steps: [pz(600, 250, 270), pz(300, 150, 190, "rest")] }, pz(900, 120, 180, "cooldown")]],
+    6: ["Lange Ausfahrt", "rad", 10800, [pz(10800, 180, 210)]], 0: ["Langer Lauf", "lauf", 5400, [vz(5400, 2.8, 3.1)]] };
+  const planned = []; for (let i = 1; i <= 14; i++) { const d = addDays(today, i), q = PLAN[d.getDay()]; if (q) planned.push(Object.assign({ date: iso(d), title: q[0], sport: q[1], dur_s: q[2] }, q[3] ? { steps: q[3], quelle: "Beispiel-Workout" } : {})); }
   const points = [
     { id: "demo-p1", name: "Jagdposten Waldrand (Beispiel)", cat: "jagd", lat: 46.8742, lon: 8.2911 },
     { id: "demo-p2", name: "Jagdposten Lichtung (Beispiel)", cat: "jagd", lat: 46.8611, lon: 8.3127 },
@@ -2586,6 +2626,7 @@ function planLoad(id) {
   window.RTUI.loadSaved(r);
 }
 function initPlanner() {
+  window.APP = { showTab, setPlanActive };     // V5.7: Trainingskalender öffnet Karte und Planer (Smart Training Routes)
   document.getElementById("btn-plan").addEventListener("click", () => setPlanActive(!plan.active));
   if (!window.RTUI || !window.RT) {
     document.getElementById("btn-plan").title = "Routenplaner konnte nicht geladen werden";
@@ -2976,7 +3017,8 @@ const TABS = {
       box.hidden = false;
       box.innerHTML = `<b>${pd(ds).toLocaleDateString("de-CH", { weekday: "long", day: "numeric", month: "long" })}</b>` + (ev.length ? ev.map((e) => e.a
         ? `<div><span class="dot" style="background:${e.c}"></span> ${esc(e.a.name)} · ${fmt(e.a.km, 1)} km · ${fmt(e.a.hm)} hm · ${hmm(e.a.dur)}${e.a.hr ? " · Ø " + e.a.hr + " bpm" : ""}${e.a.watt ? " · " + e.a.watt + " W" : ""} · TL ${fmt(e.a.tss)}${e.a.wk ? `<br><small>Plan «${esc(e.a.wk.name || "")}»: ${e.a.wk.plan_s ? hmm(e.a.wk.plan_s) : e.a.wk.plan_m ? (e.a.wk.plan_m >= 2000 ? fmt(e.a.wk.plan_m / 1000, 1) + " km" : e.a.wk.plan_m + " m") : "Dauer offen"} geplant, ${hmm(e.a.wk.ist_s)} absolviert${e.a.wk.im_ziel != null ? `, ${e.a.wk.im_ziel} % im Ziel` : ""}</small>` : ""} <button class="btn ex-btn" data-ex="${esc(e.a.id)}">Analysieren</button></div>`
-        : `<div>${esc(e.text)}${e.title && e.title !== e.text ? " – " + esc(e.title) : ""}</div>`).join("") : `<div class="hint">Kein Eintrag.</div>`);
+        : `<div>${esc(e.text)}${e.title && e.title !== e.text ? " – " + esc(e.title) : ""}${e.p && ["rad", "lauf", "wandern"].includes(e.p.sport) && window.TRUI && ds >= iso(addDays(today, -1)) ? ` <button class="btn ex-btn" data-str="${esc(ds)}|${e.pi}">Passende Route finden</button>` : ""}</div>`).join("") : `<div class="hint">Kein Eintrag.</div>`)
+        + (window.TRUI ? window.TRUI.kalender(ds) : "");
       if (!keep) this.draw();
     },
   },
@@ -3427,7 +3469,7 @@ function calEvents(ds) {
   testsWithStatus().forEach((t) => { if (t.date === ds) ev.push({ cls: "test", text: (t.done ? "✓ " : "") + KIND[t.kind], title: t.note || "" }); });
   (D.lactate || []).forEach((l) => { if (l.date === ds && !(D.tests || []).some((t) => t.kind === l.kind && Math.abs(pd(l.date) - pd(t.date)) <= 4 * DAY)) ev.push({ cls: "test", text: "✓ " + KIND[l.kind], title: l.block || "" }); });
   D.activities.forEach((a) => { if (a.date === ds) ev.push({ cls: "", c: (SPORTS[a.sport] || SPORTS.andere).color, text: `${a.typ || SPORTS[a.sport].label} ${hmm(a.dur)}`, title: a.name, a }); });
-  (D.planned || []).forEach((p) => { if (p.date === ds) ev.push({ cls: "plan", c: (SPORTS[p.sport] || SPORTS.andere).color, text: "Plan: " + (p.title || ""), title: p.title + (p.dur_s ? " · " + hmm(p.dur_s) : "") }); });
+  (D.planned || []).forEach((p, i) => { if (p.date === ds) ev.push({ cls: "plan", c: (SPORTS[p.sport] || SPORTS.andere).color, text: "Plan: " + (p.title || ""), title: p.title + (p.dur_s ? " · " + hmm(p.dur_s) : ""), p, pi: i }); });
   return ev;
 }
 

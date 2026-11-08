@@ -6,7 +6,7 @@
   const $ = (id) => document.getElementById(id);
   const isNum = (v) => typeof v === "number" && isFinite(v);
   const reduce = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let C = null, RT = null, FK = null, map = null;
+  let C = null, RT = null, FK = null, map = null, BF = null;   // BF: BRouter-Anfragen über eine Warteschlange (höchstens 2 gleichzeitig)
 
   const ST = {
     activeRouteId: null, cursorDistance_m: null, selectedSegmentIds: new Set(), selectedCat: null, selectedClimb: null,
@@ -102,6 +102,7 @@
           </div>
         </div>
         <div class="rp-mini" id="rp-mini" aria-live="off"></div>
+        <div class="rp-train" id="rp-train" hidden></div>
         <div class="chips rp-sports" id="rp-sports" role="radiogroup" aria-label="Sportart"></div>
         <div class="rp-opts" id="rp-opts"></div>
         <div class="rp-consent" id="rp-consent" hidden></div>
@@ -113,6 +114,7 @@
         </div>
         <ol class="rp-vias" id="rp-vias" aria-label="Wegpunkte"></ol>
         <div class="row rp-tools">
+          <button class="btn" id="rp-tr" title="Passende Route zu einer geplanten Einheit">Training → Route</button>
           <button class="btn" id="rp-loop">Rundtour</button>
           <button class="btn" id="rp-undo">Rückgängig</button>
           <button class="btn" id="rp-new">Neu</button>
@@ -149,6 +151,7 @@
 
   function init(ctx) {
     C = ctx; RT = window.RT; FK = window.FK; map = ctx.map;
+    BF = RT.gate(window.fetch.bind(window), 2);
     skeleton();
     ST.sport = S.get("sport", "rennrad");
     if (!RT.SPORTS[ST.sport]) ST.sport = "rennrad";
@@ -331,6 +334,7 @@
   /* ---------------- Interaktion Karte ---------------- */
   function mapClick(e) {
     if (!active()) return false;
+    if (window.TRUI && window.TRUI.wantsMapClick && window.TRUI.wantsMapClick()) { window.TRUI.mapClick([+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)]); return true; }
     // Route antippen = Position im Profil (immer, auch im Punkt-Modus); daneben tippen = Punkt setzen (im Punkt-Modus)
     if (route) {
       const box = [[e.point.x - 14, e.point.y - 14], [e.point.x + 14, e.point.y + 14]];
@@ -391,7 +395,7 @@
     await Promise.all(legs.map(async (_, i) => {
       const key = [ep, eng.engine, JSON.stringify(eng.params), vias[i].join(","), vias[i + 1].join(","), (opt && opt.alt) || 0].join("|");
       try {
-        if (!CACHE.has(key)) CACHE.set(key, RT.fetchLeg(window.fetch.bind(window), ep, eng, vias[i], vias[i + 1], opt));
+        if (!CACHE.has(key)) CACHE.set(key, RT.fetchLeg(BF, ep, eng, vias[i], vias[i + 1], opt));
         legs[i] = await CACHE.get(key);
       } catch (e) { CACHE.delete(key); errs.push({ i, e }); }
     }));
@@ -466,7 +470,7 @@
         const r = RT.buildRoute(x.legs, vias, Object.assign({}, meta, { engine: x.eng.engine }));
         if (x.k) r.variante = x.k;
         const sv = RT.eta(r, inp), sh = RT.wayShare(r), g = RT.gravelAbschnitte(r);
-        return { k: x.k, label: x.label, eng: x.eng, route: r, t: sv.unzureichend ? null : sv.moving_s, L: r.L, up: r.profile.up, gravel_m: g.gravel_m, haupt_pct: sh.haupt_pct, radweg_pct: sh.radweg_pct };
+        return { k: x.k, label: x.label, eng: x.eng, route: r, t: sv.unzureichend ? null : sv.moving_s, L: r.L, up: r.profile.up, gravel_m: g.gravel_m, haupt_pct: sh.haupt_pct, strasse_pct: sh.strasse_pct, verkehr_pct: sh.verkehr_pct, radweg_pct: sh.radweg_pct };
       });
       if (vs) {
         const auto = RT.waehleVariante(rows, toleranz());
@@ -512,14 +516,23 @@
     const inp = effortInput();
     sim = field ? RT.etaWithWeather(route, inp, field) : RT.eta(route, inp);
   }
-  function effortInput() {
-    const B = RT.RAD[sportDef().rad || "rennrad"];
+  /** Eingabe für die Zeitprognose einer Sportart (auch für Trainingsvorschläge, ohne den Planer zu verändern). */
+  function inputFor(sport, mode, value) {
+    const def = RT.SPORTS[sport] || sportDef(), B = RT.RAD[def.rad || "rennrad"];
     const rad = S.get("rad", {});
     const w = C.weights ? C.weights() : [];
     const rider = isNum(rad.fahrer) ? rad.fahrer : (w.length ? w[w.length - 1].kg : 75);
-    const bikeKg = isNum(rad["kg_" + sportDef().rad]) ? rad["kg_" + sportDef().rad] : B.kg;
-    const cda = isNum(rad["cda_" + sportDef().rad]) ? rad["cda_" + sportDef().rad] : B.cda;
-    return { mode: ST.effortMode, value: ST.effortValue, kal: kal(), start_unix: ST.startUnix, rad: { m: rider + bikeKg, cda, rider, bikeKg }, korrektur: S.get("korrektur", true), pausen: pausenList() };
+    const bikeKg = isNum(rad["kg_" + def.rad]) ? rad["kg_" + def.rad] : B.kg;
+    const cda = isNum(rad["cda_" + def.rad]) ? rad["cda_" + def.rad] : B.cda;
+    return { mode, value, kal: kal(), start_unix: ST.startUnix, rad: { m: rider + bikeKg, cda, rider, bikeKg }, korrektur: S.get("korrektur", true), pausen: [] };
+  }
+  function effortInput() {
+    const inp = inputFor(ST.sport, ST.effortMode, ST.effortValue);
+    inp.pausen = pausenList();
+    // V5.7: geplantes Workout aktiv (Smart Training Routes) → Leistung bzw. Tempo je Workout-Schritt
+    const tp = window.TRUI && window.TRUI.planFor ? window.TRUI.planFor(ST.sport, ST.effortMode, ST.effortValue) : null;
+    if (tp) inp.plan = tp;
+    return inp;
   }
   function buildPieces() {
     const tab = ST.activeAnalysisTab;
@@ -665,6 +678,13 @@
       s += `<path d="${area(p.d0, p.d1)}" fill="${color}" fill-opacity="${anySel ? (sel ? 0.95 : 0.14) : 0.62}" stroke="none"/>`;
     }
     s += `<path d="${line(0, L)}" class="el"/>`;
+    // V5.7: geplante Intervalle (intervall-rt-1.0) als Bänder über dem Profil – Farbe = Eignung des Abschnitts
+    const bands = window.TRUI && window.TRUI.chartBands ? window.TRUI.chartBands(route, sim) : null;
+    if (bands) for (const b of bands) {
+      const x0 = X(Math.max(0, b.d0)), x1 = X(Math.min(L, b.d1)), col = b.note === "gut" ? "#2f8f83" : b.note === "bedingt" ? "#c9913f" : "#b4443a";
+      s += `<rect x="${x0.toFixed(1)}" y="${pt}" width="${Math.max(1.5, x1 - x0).toFixed(1)}" height="${h}" fill="${col}" fill-opacity=".1"/><rect x="${x0.toFixed(1)}" y="${pt}" width="${Math.max(1.5, x1 - x0).toFixed(1)}" height="7" fill="${col}"><title>Intervall ${b.nr}: ${esc(b.note)}</title></rect>`;
+      if (x1 - x0 > 9) s += `<text x="${((x0 + x1) / 2).toFixed(1)}" y="${pt + 17}" class="ivl">${b.nr}</text>`;
+    }
     for (const p of pieces) if (ST.selectedSegmentIds.has(p.id)) s += `<path d="${line(p.d0, p.d1)}" class="sel"/><line x1="${X(p.d0).toFixed(1)}" x2="${X(p.d0).toFixed(1)}" y1="${pt}" y2="${pt + h}" class="selb"/><line x1="${X(p.d1).toFixed(1)}" x2="${X(p.d1).toFixed(1)}" y1="${pt}" y2="${pt + h}" class="selb"/>`;
     // Wetter bzw. Tempo im eigenen Streifen mit eigener Skala (nie über der Höhenachse)
     if (ov) {
@@ -798,8 +818,10 @@
     const st = (tab) => RT.stats(RT.pieces(route, tab), route.L);
     if (!route.gezeichnet) {
       const acc = st("zugang"), surf = st("belag");
-      for (const a of acc) if (a.cat !== "ok") warn.push(`${RT.ACCESS[a.cat].label}: ${km(a.len)} km`);
+      for (const a of acc) if (a.cat !== "ok" && a.len >= 5) warn.push(`${(RT.ACCESS[a.cat] || { label: "Zugang unbekannt" }).label}: ${km(a.len)} km`);
       if (ST.sport === "rennrad") { const G = RT.gravelAbschnitte(route); if (G.gravel_m >= 1 && !GRV.ok) warn.push(`Rennrad: ${km(G.gravel_m)} km Gravel – Abschnitte und Umfahrung siehe Meldung`); }
+      // V5.7: Ersatzprofil nie unbemerkt (das eigene Rennradprofil meidet Gravel stärker)
+      if (RT.SPORTS[ST.sport] && RT.SPORTS[ST.sport].profil && route.engine && !/^custom_/.test(route.engine)) warn.push(`Eigenes Rennradprofil nicht verfügbar – berechnet mit dem Standardprofil «${route.engine}», das Gravel weniger meidet`);
       const unk = surf.find((x) => x.cat === "unbekannt"); if (unk && unk.pct > 20) warn.push(`Belag zu ${fmt(unk.pct)} % unbekannt`);
       if (route.segs.some((s) => s.way === "autobahn")) warn.push("Autobahn in der Route – bitte melden, sollte nie vorkommen");
       route.vias.forEach((v, i) => { if (v.snap_m > SNAP_WARN) warn.push(`Punkt ${viaLabel(i, route.vias.length)} liegt ${fmt(v.snap_m)} m neben dem Weg (Route beginnt/endet am Weg)`); });
@@ -1015,7 +1037,7 @@
     GRV.busy = true; GRV.umf = null; renderGravel();
     let umf;
     try {
-      const { legs, info } = await RT.umfahrung(window.fetch.bind(window), ep, eng, vias, vorher);
+      const { legs, info } = await RT.umfahrung(BF, ep, eng, vias, vorher);
       const r = RT.buildRoute(legs, vias, { sport: ST.sport, engine: eng.engine, prov: vorher.prov });
       r.variante = vorher.variante;
       const besser = RT.gravelAbschnitte(r).gravel_m < RT.gravelAbschnitte(vorher).gravel_m - 1;
@@ -1122,7 +1144,7 @@
     box.hidden = false;
     const pw = RT.pausenSumme(pausenList());
     box.innerHTML = `<label>Start <input type="datetime-local" id="rp-start" value="${localInput(ST.startUnix)}"></label>
-      <label>Pausen <select id="rp-pause" ${pw ? "disabled" : ""}>${pw ? `<option>an Wegpunkten: ${Math.round(pw / 60)} min</option>` : `<option value="auto" ${ST.pause === "auto" ? "selected" : ""}>${esc(pauseShareText())}</option>${[0, 15, 30, 60, 90].map((x) => `<option value="${x}" ${String(ST.pause) === String(x) ? "selected" : ""}>${x ? "+" + x + " min" : "keine"}</option>`).join("")}`}</select></label>`;
+      <label>Pausen <select id="rp-pause" ${pw ? "disabled" : ""}>${pw ? `<option>an Wegpunkten: ${Math.round(pw / 60)} min</option>` : `<option value="auto" ${ST.pause === "auto" ? "selected" : ""}>${esc(pauseShareText())}</option>${[0, 10, 15, 20, 30, 45, 60, 90].map((x) => `<option value="${x}" ${String(ST.pause) === String(x) ? "selected" : ""}>${x ? "+" + x + " min" : "keine"}</option>`).join("")}`}</select></label>`;
     $("rp-start").onchange = (e) => { const [dd, tt] = String(e.target.value).split("T"); if (dd && tt) { ST.startUnix = FK.zurichToUnix(dd, tt.slice(0, 5)); effortChanged(); maybeWeather(true); } };
     if (!pw) $("rp-pause").onchange = (e) => { ST.pause = e.target.value; renderInt(); renderKpis(); renderArr(); };
   }
@@ -1200,7 +1222,7 @@
       ["Höhe", route.gezeichnet ? "Höhenmodell Mapzen/AWS Terrain Tiles" : "BRouter (SRTM-Höhenmodell an den OSM-Knoten); 20-m-Abtastung, Mittel über 100 m, Auf-/Abstieg mit 3-m-Hysterese"],
       ["Tempo", sportDef().art === "rad" ? `Leistungsbilanz je 20 m: Fahrer ${fmt(inp.rad.rider, 1)} kg + Rad ${fmt(inp.rad.bikeKg, 1)} kg, CdA ${String(inp.rad.cda)}, Crr je Belag (Annahmen), Wirkungsgrad 97,6 %, Luftdichte aus Höhe und Temperatur; bergab rollen (≤ −5 %: 0 W), Abfahrt ≤ ${B.vmax.asphalt} km/h auf Asphalt und Kurven ≤ √(${B.alat}·r); bei Regen −15 %` :
         ST.sport === "wandern" ? "Tobler-Gehfunktion je 20 m × persönlicher Faktor; Hm/h-Modus: bergauf Vertikaltempo" : ST.sport === "skitour" ? "Aufstieg aus Hm/h, flach 4 km/h; Abfahrt nicht bestimmt" : "Flachtempo × Minetti-Energiekosten je Steigung; bergab höchstens +20 % (Trail +10 %, ab T3 0 %); über 20 % gehen"],
-      ...(RT.VARIANTEN[ST.sport] ? [["Varianten", `${esc(RT.VERSIONS.varianten)}: schnellste (Verkehr wenig gewichtet) und velofreundlich (Verkehr wichtig, asphaltierte Radwege bevorzugt); velofreundlich, solange höchstens ${toleranz()} % langsamer und nicht mehr Gravel`],
+      ...(RT.VARIANTEN[ST.sport] ? [["Varianten", `${esc(RT.VERSIONS.varianten)}: schnellste (Verkehr wenig gewichtet) und velofreundlich (Verkehr wichtig, asphaltierte Radwege bevorzugt, Hauptstrassen ohne Radstreifen zusätzlich gemieden); velofreundlich, solange höchstens ${toleranz()} % mehr Fahrzeit (ohne Zeitprognose: Distanz), nicht mehr Gravel und tatsächlich ruhiger (weniger Verkehrsstrassen oder mehr Radweg)`],
         ["Gravel", `${esc(RT.VERSIONS.gravel)}: Belag laut OSM Kies/Feinkies, Naturweg oder unbefestigt, ohne Belag auch tracktype grade2–5; Feldweg ohne Angabe = «möglicherweise»; Umfahrung mit Sperrpunkten (5–10 m) auf den Gravel-Stücken, Abschnitte an Wegpunkten nicht gesperrt`]] : []),
       ["Kalibrierung", K.v ? `${esc(K.v)} vom ${esc(K.erstellt)} – ${esc(K.quelle)}` : "keine"],
       ["Wetter", field ? "Open-Meteo Forecast API (best_match), stündlich, linear in Zeit und Strecke interpoliert, Wind als Vektor" : "nicht geladen"],
@@ -1231,6 +1253,7 @@
     renderMap();
     requestAnimationFrame(() => { drawChart(); renderInfo(); });
     if (C.onRouteChange) C.onRouteChange();
+    if (window.TRUI && window.TRUI.onPlanner) { try { window.TRUI.onPlanner(route, sim); } catch (e) { console.error(e); } }
   }
   function live(t) { const el = $("rp-live"); if (el) { el.textContent = ""; setTimeout(() => (el.textContent = t), 30); } }
 
@@ -1327,6 +1350,7 @@
       else if (b.dataset.z != null && map) map.easeTo({ center: ST.vias[+b.dataset.z], zoom: Math.max(map.getZoom(), 14), duration: reduce() ? 0 : 500 });
     });
     $("rp-add").onclick = () => setAddMode(!ST.addMode);
+    $("rp-tr").onclick = () => { if (window.TRUI) window.TRUI.show({}); };
     $("rp-q").addEventListener("input", (e) => sucheOrt(e.target.value));
     $("rp-q").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); const b = $("rp-qres").querySelector("[data-q]"); if (b) b.click(); } if (e.key === "Escape") { $("rp-qres").hidden = true; } });
     $("rp-rev").onclick = () => {
@@ -1416,9 +1440,10 @@
   async function gpx() {
     const msg = (t) => ($("pl-msg").textContent = t);
     if (!route) { msg("GPX gibt es nur für eine erfolgreich berechnete Route – nie als Ersatzlinie."); return; }
-    const name = $("pl-name").value.trim() || `${sportDef().label} ${C.dateCH(C.iso(C.today))}`;
+    const name = $("pl-name").value.trim() || (window.TRUI && window.TRUI.gpxName && window.TRUI.gpxName()) || `${sportDef().label} ${C.dateCH(C.iso(C.today))}`;
     const file = name.replace(/[^\wäöüÄÖÜ -]+/g, "").trim().replace(/\s+/g, "-") + ".gpx";
-    msg(await C.shareOrDownload(file, RT.gpx(route, name, ST.names)));
+    const extra = window.TRUI && window.TRUI.gpxExtras ? window.TRUI.gpxExtras(route, sim) : null;
+    msg(await C.shareOrDownload(file, RT.gpx(route, name, ST.names, extra)));
   }
   function loadSaved(rec) {
     open();
@@ -1459,6 +1484,27 @@
     return { ll: route.lon.map((x, i) => [x, route.lat[i]]), ele: route.ele.map((e) => (isNum(e) ? e : null)), label: route.gezeichnet ? "von Hand gezeichnet" : `geroutet (${route.prov.routing}, Profil ${RT.profilName(route.engine)})` };
   }
 
+  /** V5.7 Smart Training Routes: einen Vorschlag in den Planer laden (gleiche Wegpunkte, Variante fest, Workout-Intensität). */
+  function loadTraining(cfg) {
+    open();
+    ST.sport = cfg.sport; S.set("sport", ST.sport); ST.opts = Object.assign({}, cfg.opts || {}); ST.manual = false;
+    ST.names = (cfg.names || []).slice(); ST.pausen = []; ST.editId = null; $("pl-name").value = cfg.name || "";
+    if (isNum(cfg.startUnix)) ST.startUnix = cfg.startUnix;
+    ST.pause = isNum(cfg.pauseMin) ? String(cfg.pauseMin) : "auto";
+    const def = sportDef();
+    if (cfg.effort && def.modi.includes(cfg.effort.mode) && isNum(cfg.effort.value)) { ST.effortMode = cfg.effort.mode; ST.effortValue = cfg.effort.value; } else loadEffort();
+    ST.variantWahl = cfg.variantWahl || "auto";
+    renderSports(); renderOpts();
+    ST.vias = cfg.vias.map((p) => [+p[0], +p[1]]); renderVias(); setAddMode(false);
+    clearSel(true);
+    reroute(true);
+  }
+  /** Abschnitte einer bereits gerechneten Antwort in den Cache legen (gleicher Schlüssel wie legsFor): keine Doppelanfrage. */
+  function primeLegs(ep, eng, vias, legs, opt) {
+    legs.forEach((leg, i) => { const key = [ep, eng.engine, JSON.stringify(eng.params), vias[i].join(","), vias[i + 1].join(","), (opt && opt.alt) || 0].join("|"); CACHE.set(key, Promise.resolve(leg)); });
+  }
   window.RTUI = { init, open, close, active, mapClick, loadSaved, planRoute, state: () => ST, route: () => route, sim: () => sim, climbs: () => climbs, pieces: () => pieces,
-    setCursor: (d) => setCursor(d, "api"), selectCat, selectClimb, setSheet, map: () => map };
+    setCursor: (d) => setCursor(d, "api"), selectCat, selectClimb, setSheet, map: () => map,
+    loadTraining, primeLegs, inputFor, bfetch: () => BF, endpoint: () => S.get("endpoint", RT.ENDPOINT), profilId: (sport, neu) => profilId(sport, S.get("endpoint", RT.ENDPOINT), neu),
+    profilFehler: () => PROF.fehler || null, consent, setConsent: (o) => S.set("consent", Object.assign(consent(), o)), fitCoords, redraw: () => { drawChart(); renderInfo(); }, recompute: () => effortChanged(), store: S };
 })();
