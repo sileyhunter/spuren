@@ -96,7 +96,7 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
      `logTimestamp`. Nichts umrechnen oder ergänzen. `merge_daily.py` prüft jeden Tag gegen die Tageswerte (sonst nicht verwendet) und
      übernimmt Einträge mit Uhrzeit während einer Aktivität, die erst danach erfasst wurden, als Fueling «fg-<Aktivität>»
      (`tools/garmin_ernaehrung.py`). Schlägt ein Abruf fehl: weglassen, kein Abbruch, keine Nachricht.
-3. `work/new.json` schreiben (Format unten), dann `python3 -I tools/merge_daily.py data.json work/new.json work/fit.jsonl`.
+3. `work/new.json` schreiben (Format unten, mit `"lauf": "nacht"`), dann `python3 -I tools/merge_daily.py data.json work/new.json work/fit.jsonl`.
    **Eingaben vom Handy (V5.9.3, eingang-1.0, Abschnitt «Eingang»):** `SPUREN_PW=… node tools/eingang.mjs einlesen` (liest `eingang/*.bin`,
    schreibt `work/eingang_a.json`, `work/eingang_b.json`, `work/eingang_dateien.json`).
    - Gibt es `work/eingang_a.json`: `python3 -I tools/merge_daily.py data.json work/eingang_a.json`.
@@ -138,13 +138,35 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   "config": {"days_backfill": "2026-04-04"}
 }
 ```
-`config` ist optional und wird in `data.json` übernommen (nur die angegebenen Schlüssel).
+`config` ist optional und wird in `data.json` übernommen (nur die angegebenen Schlüssel). `"lauf": "nacht"` bzw. `"morgen"` (V5.9.2) setzt
+`updated_lauf` (die Seite zeigt «Stand 08:31 (Morgen-Update)»).
 Zuordnung: `type` = Garmin-Typ aus `get_activity`; `start_local` = `start_time_local`; `duration_s` = `duration_seconds`;
 `elev_gain_m` = `elevation_gain_meters`; `avg_hr` = `avg_hr_bpm`; `avg_power` = `avg_power_watts`; `np` = `normalized_power_watts`;
 Tage: `hrv` = `avg_overnight_hrv`, `rhr` = `resting_heart_rate_bpm`, `sleepH` = `sleep_hours`, `sleepScore` = `sleep_score`,
 `kcalOut` = `total_calories` (nur abgeschlossene Tage), Ernährung nur für abgeschlossene Tage mit `item_count` ≥ 4.
 Gewicht: `weight_kg`, `ts_gmt` = `timestamp_gmt` (alle Messungen; das Skript nimmt pro Tag die Morgenmessung).
 Leere Werte als `null`. Unbekannte Felder weglassen. Werte nie schätzen.
+
+## Morgen-Update (V5.9.2, morgen-1.0, täglich 08:30, nur lesend auf Garmin)
+Zweck: das Workout des Tages und die Werte der letzten Nacht auf «Heute», bevor Silas trainiert (er exportiert Enduco-Workouts oft erst am
+Morgen nach Garmin). Keine Aktivitäten, keine FIT-Dateien, keine Sekundenreihen – das bleibt beim Nacht-Update. Nach Garmin wird nichts
+geschrieben, Enduco-Workouts werden nie geändert. Jeder Abruf, der fehlschlägt, wird weggelassen: kein Abbruch, keine Nachricht.
+1. `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json data.json`
+2. Über die Garmin-Verbindung, Zuordnung der Felder wie im Nacht-Update:
+   - `get_sleep_summary_range` von gestern bis heute → `days` mit nur `hrv`, `rhr`, `sleepH`, `sleepScore` (Nächte ohne Werte weglassen).
+   - `get_stats_range` für heute → `rhr` von heute, falls es im Schlaf fehlt. Kein `kcalOut` und keine Ernährung: der Tag läuft noch.
+   - `get_scheduled_workouts` heute bis +14 Tage, je Einheit mit `workout_id` `get_workout_by_id` → `planned` und `planned_range`,
+     genau wie im Nacht-Update (Workout-Schritte V5.7).
+   - `get_workouts` → `workouts_neu` wie im Nacht-Update (Enduco, letzte 2 Tage, nicht im Kalender, höchstens 5).
+3. `work/new.json` mit `"lauf": "morgen"` und nur diesen Feldern schreiben, `python3 -I tools/merge_daily.py data.json work/new.json` (ohne
+   fit.jsonl). Danach die Eingaben vom Handy wie im Nacht-Update (Schritt 3 «Eingaben vom Handy», mit Bestätigungen und Prüfung).
+4. `SPUREN_PW=… node tools/crypt.mjs encrypt data.json data.enc.json`, dann «Eingang aufräumen» wie im Nacht-Update (keine Sekundenreihen).
+   Commit «Morgen-Update JJJJ-MM-TT» mit `data.enc.json` (und den Löschungen in `eingang/`), auf `main` pushen. Scheitert der Push: einmal
+   `git pull --rebase`, erneut pushen. Gibt es dabei einen Konflikt in `data.enc.json`: `git rebase --abort`, `git reset --hard origin/main`,
+   Schritte 1, 3 und 4 mit dem schon geschriebenen `work/new.json` wiederholen und pushen.
+5. Schlägt Entschlüsseln, `merge_daily.py` oder auch der zweite Push fehl: nichts committen (`data.enc.json` bleibt unverändert) und Silas
+   kurz informieren. Klappt alles: keine Nachricht.
+Das Nacht-Update danach ersetzt dieselben Tage, Workouts und `workouts_neu` (nichts doppelt).
 
 ## Monatlicher Garmin-Export (FIT, volle Genauigkeit inkl. GPS-Spuren)
 Silas lädt `UploadedFiles_0-_Part*.zip` hoch. Jedes ZIP in einen eigenen, leeren Ordner ausserhalb des Repos entpacken.

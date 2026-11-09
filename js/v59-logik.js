@@ -83,11 +83,11 @@
     return out;
   };
   /** Stand der Daten aus «updated» (TT.MM.JJJJ hh:mm, Zeit des letzten Updates): heute → «Stand 08:31», sonst mit Datum. */
-  L.standText = function (updated, heuteISO) {
+  L.standText = function (updated, heuteISO, lauf) {
     const m = /^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}:\d{2})/.exec(String(updated || ""));
     if (!m) return null;
-    const iso = `${m[3]}-${m[2]}-${m[1]}`;
-    return { iso, zeit: m[4], text: iso === heuteISO ? `Stand ${m[4]}` : `Stand ${m[1]}.${m[2]}. ${m[4]}`, heute: iso === heuteISO };
+    const iso = `${m[3]}-${m[2]}-${m[1]}`, wann = iso === heuteISO ? m[4] : `${m[1]}.${m[2]}. ${m[4]}`;
+    return { iso, zeit: m[4], text: `Stand ${wann}${lauf ? ` (${lauf})` : ""}`, heute: iso === heuteISO };
   };
 
   return L;

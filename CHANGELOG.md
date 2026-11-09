@@ -1,5 +1,25 @@
 # Änderungen
 
+## V5.9.2 · 9.11.2026 · Paket 2 «Morgen-Update» (morgen-1.0)
+Auftrag V5.9, Entscheid E3 (täglich 08:30, nur lesend auf Garmin).
+
+- **Morgen-Update um 08:30** (neue geplante Aufgabe, nach dem Morgen-Briefing um 07:40): holt nur lesend über die Garmin-Verbindung die
+  Werte der letzten Nacht (HRV, Ruhepuls, Schlaf), die geplanten Einheiten von heute bis +14 Tage mit Schritten und neue Enduco-Workouts,
+  spielt die Eingaben vom Handy ein und committet «Morgen-Update JJJJ-MM-TT». Keine Aktivitäten, FIT-Dateien oder Reihen (das bleibt beim
+  Nacht-Update); nach Garmin wird nichts geschrieben, Enduco-Workouts werden nie geändert. Ein fehlgeschlagener Lauf committet nichts
+  (`data.enc.json` bleibt unverändert); scheitert der Push, einmal neu holen und neu einspielen. Ablauf in `CLAUDE.md`, Abschnitt «Morgen-Update».
+- **«Heute geplant»** (oben auf «Heute», seit V5.9.5): Name, Dauer, Ziele aus den Schritten (Watt, Pace oder Puls), Quelle «Enduco über
+  Garmin» und «Passende Route finden»; ohne Workout «Für heute noch kein Workout in Garmin (Stand 08:31)» – nie geraten.
+- **Stand mit Lauf**: `merge_daily.py` merkt sich, ob zuletzt das Morgen- oder das Nacht-Update lief (`updated_lauf`); «Heute» zeigt
+  «Stand 08:31 (Morgen-Update)» bei «Heute geplant» und bei der Bereitschaft («Morgenwerte von heute»).
+- Check-in kompakter: die Endpunkte (frisch/schwer, voll/leer, ruhig/gestresst) stehen in den Knöpfen 1 und 5, damit Check-in, Workout und
+  Bereitschaft auf 390 × 844 ohne Scrollen sichtbar sind.
+
+Geprüft: `test_tools.py` (Morgen-Update übernimmt nur Nachtwerte, Plan und neue Workouts, ohne Verbrauch des laufenden Tages; das Nacht-Update
+danach ersetzt dieselben Tage und Workouts, nichts doppelt), `test_v59.cjs` (Heute geplant, Stand). E2E mit einem erfundenen Enduco-Workout
+von heute: Ziele «15:00 Einfahren (140–180 W) · 3 × (8:00 @ 250–270 W / 4:00 @ 130–160 W) · …», Dauer 1:30 h, «Passende Route finden» öffnet
+den Planer mit diesem Workout; Check-in, Workout und Bereitschaft auf 390 × 844 ohne Scrollen. Der erste echte Lauf ist morgen um 08:30.
+
 ## V5.9.5 · 9.11.2026 · Paket 5 «Einfacher bedienen» (bedienung-1.0)
 Auftrag V5.9, Entscheid E7 (9.11.2026): ja, als zweites Paket nach Paket 3.
 

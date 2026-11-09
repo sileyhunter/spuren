@@ -58,11 +58,10 @@
       CI.krank = !!(b.krank && b.krank.length); CI.krankListe = (b.krank || []).filter((k) => L().KRANK.includes(k)); CI.notiz = b.notiz || "";
     }
     box.innerHTML = `<div class="ci" role="group" aria-label="Morgen-Check-in">
-      <div class="ci-head"><div><h2>${CI.edit ? "Befinden ändern" : "Guten Morgen"}</h2><div class="sub">${CI.edit ? "Jeder Tipp speichert sofort." : "Wie geht's? Drei Tipps – gespeichert wird von selbst."}</div></div>
+      <div class="ci-head"><div><h2>${CI.edit ? "Befinden ändern" : "Guten Morgen"}</h2><div class="sub">${CI.edit ? "Jeder Tipp speichert sofort." : "Wie geht's? Drei Tipps, fertig."}</div></div>
         ${CI.edit ? `<button class="btn" type="button" data-ci="fertig">Fertig</button>` : `<button class="lnk" type="button" data-ci="aus">heute nicht</button>`}</div>
       ${F.map((f) => `<div class="ci-q"><span class="ci-l" id="ci-l-${f.k}">${f.label}</span>
-        <div class="ci-b" role="radiogroup" aria-labelledby="ci-l-${f.k}">${[1, 2, 3, 4, 5].map((v) => `<button type="button" role="radio" class="ci-v v${v}" aria-checked="${CI.wahl[f.k] === v}" aria-label="${f.label} ${v}: ${esc(wort(f, v))}" data-q="${f.k}" data-v="${v}">${v}</button>`).join("")}</div>
-        <span class="ci-e" aria-hidden="true"><span>${f.lo}</span><span>${f.hi}</span></span></div>`).join("")}
+        <div class="ci-b" role="radiogroup" aria-labelledby="ci-l-${f.k}">${[1, 2, 3, 4, 5].map((v) => `<button type="button" role="radio" class="ci-v v${v}" aria-checked="${CI.wahl[f.k] === v}" aria-label="${f.label} ${v}: ${esc(wort(f, v))}" data-q="${f.k}" data-v="${v}">${v}${v === 1 ? `<span class="ci-w" aria-hidden="true">${f.lo}</span>` : v === 5 ? `<span class="ci-w" aria-hidden="true">${f.hi}</span>` : ""}</button>`).join("")}</div></div>`).join("")}
       <div class="ci-x"><label class="ci-k"><input type="checkbox" data-ci="krank" ${CI.krank ? "checked" : ""}> krank oder verletzt</label>
         ${CI.notizOffen || CI.notiz ? "" : `<button type="button" class="lnk" data-ci="notiz">＋ Notiz</button>`}</div>
       ${CI.krank ? `<div class="chips ci-kl" role="group" aria-label="Was genau? (optional)">${L().KRANK.map((k) => `<button type="button" class="chip" aria-pressed="${CI.krankListe.includes(k)}" data-kr="${esc(k)}">${esc(k)}</button>`).join("")}</div>` : ""}
@@ -133,7 +132,7 @@
   };
   V.heutePlan = function () {
     const box = $("heute-plan"); if (!box) return;
-    const D = C.D, day = heuteISO(), TR = window.TR, st = L().standText(D.updated, day);
+    const D = C.D, day = heuteISO(), TR = window.TR, st = L().standText(D.updated, day, D.updated_lauf);
     const E = L().geplantAm(D.planned, day);
     const zeile = ({ i, p }) => {
       let wo = null; try { wo = TR && TR.workout ? TR.workout(Object.assign({}, p, { sport_plan: p.sport }), {}) : null; } catch (e) { wo = null; }
@@ -159,7 +158,7 @@
     if (F && F.ringeVerlauf) {
       for (let i = 0; i < 8 && !ring; i++) { const d = L().addDays(day, -i), x = (D.days || []).find((z) => z.date === d); if (x && (isNum(x.hrv) || isNum(x.rhr) || isNum(x.sleepScore))) { tag = d; ring = F.ringeVerlauf(D.days, D.activities, d, 1)[0]; } }
     }
-    const st = L().standText(D.updated, day);
+    const st = L().standText(D.updated, day, D.updated_lauf);
     const pill = (lab, v, farbe) => `<span class="bk-r"><i style="background:${v == null ? C.css("--muted") : farbe}"></i>${lab} <b>${v == null ? "–" : v + " %"}</b></span>`;
     box.innerHTML = `<p class="bk-satz rd-${r.status.replace(/ /g, "-")}"><b>${esc(wort)}:</b> ${esc(r.empfehlung)}${r.gruende && r.gruende.length ? ` <span class="bk-g">(${esc(r.gruende.slice(0, 3).join(", "))})</span>` : ""}</p>
       ${ring ? `<div class="bk-ringe" role="group" aria-label="Erholung, Schlaf, Belastung">${pill("Erholung", ring.erholung, C.css(F.ringFarbe(ring.erholung) === "gut" ? "--good" : F.ringFarbe(ring.erholung) === "mittel" ? "--warn" : "--bad"))}${pill("Schlaf", ring.schlaf, C.css("--sleep"))}${pill("Belastung", ring.belastung, C.css("--strain"))}</div>` : ""}

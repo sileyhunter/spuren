@@ -321,6 +321,8 @@ def main(data_path, new_path, fit_path=None):
         print(f"FIT-Sekundenwerte: {fit_used} ausgewertet, {len(fit_missing)} fehlen")
         del log[:-60]
     D["updated"] = dt.datetime.now(ZRH).strftime("%d.%m.%Y %H:%M")
+    if N.get("lauf") in ("morgen", "nacht"):              # V5.9.2 morgen-1.0: welcher Lauf zuletzt (Stand auf «Heute»)
+        D["updated_lauf"] = "Morgen-Update" if N["lauf"] == "morgen" else "Nacht-Update"
     json.dump(D, open(data_path, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
     print(f"Aktivitäten neu: {added}, ergänzt: {updated}, gesamt: {len(acts)} | Tage: {len(D['days'])} | Gewichte: {len(D.get('weights', []))}"
           f" | geplant: {len(D.get('planned', []))} | Laktat: {len(D.get('lactate', []))}")

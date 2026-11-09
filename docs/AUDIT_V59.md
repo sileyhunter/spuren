@@ -27,3 +27,13 @@ GitHub-API, Garmin-Lauf, brouter.de, Open-Meteo nachgebildet oder nicht erreichb
 | Breite Tabellen als Liste (zuerst Geplant/Ist, Ermüdung, Saison) | ja (alle zu breiten Tabellen) | ja (E2E: keine zu breite Tabelle mehr) | offen |
 | Ausblenden statt löschen, wieder einblendbar | ja (Einstellungen) | ja | – |
 | demo.html mit gleicher Navigation | ja | ja | – |
+
+## Paket 2 · V5.9.2 · Morgen-Update (E3: täglich 08:30, nur lesend)
+| Punkt | implementiert | lokal getestet | produktiv getestet |
+|---|---|---|---|
+| Abschnitt «Morgen-Update» in CLAUDE.md (nur lesend, keine Aktivitäten/FIT/Reihen, Commit «Morgen-Update …») | ja | – (Ablauf; Teile wie im Nacht-Update) | offen (erster Lauf 10.11. 08:30) |
+| Geplante Aufgabe täglich 08:30 | ja | – | offen (drei Morgen prüfen) |
+| «Heute geplant» mit Zielen aus den Schritten, Quelle, «Passende Route finden»; ohne Workout «noch kein Workout (Stand …)» | ja | ja (E2E mit erfundenem Workout) | offen |
+| Ringe und Bereitschaft mit Morgenwerten und Uhrzeit des Stands | ja | ja (E2E: «Morgenwerte von heute · Stand 08:31 (Morgen-Update)») | offen |
+| Nacht-Update danach ohne Doppel | ja | ja (test_tools) | offen |
+| Fehlgeschlagener Morgenlauf lässt data.enc.json unverändert | ja (nichts committen) | – | offen |

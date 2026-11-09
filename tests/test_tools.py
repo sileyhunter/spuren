@@ -559,5 +559,30 @@ _rest9 = sorted(os.listdir(os.path.join(_t9, "eingang")))
 check("Eingang aufräumen: nur eingespielte Dateien und Test entfernt, Bestätigung bleibt ohne --mit-b liegen",
       _a9 == 0 and _rest9 == ["20261110T062000Z-00000003.bin"] and "1 Bestätigung(en) bleiben liegen" in _ao9, _ao9 + str(_rest9))
 
+# ---------- V5.9.2 Morgen-Update (morgen-1.0): nur Tageswerte, Workouts und Plan; das Nacht-Update danach ersetzt statt ergänzt ----------
+_t10 = tempfile.mkdtemp()
+json.dump({"activities": [], "days": [{"date": "2026-11-09", "hrv": 70, "rhr": 50, "sleepH": 7.5, "sleepScore": 80, "kcalOut": 2900}], "config": {},
+           "planned": [{"date": "2026-11-09", "title": "Alt", "sport": "rad", "dur_s": 3600}, {"date": "2026-11-10", "title": "Alt morgen", "sport": "lauf", "dur_s": 1800}],
+           "workouts_neu": [{"wid": 1, "title": "alt"}]}, open(os.path.join(_t10, "d.json"), "w"))
+_morgen = {"lauf": "morgen", "days": [{"date": "2026-11-10", "hrv": 66, "rhr": 51, "sleepH": 6.9, "sleepScore": 71}],
+           "planned": [{"date": "2026-11-10", "title": "Lauf locker", "sport": "lauf", "dur_s": 3000, "wid": 5, "quelle": "Enduco über Garmin", "steps": []}],
+           "planned_range": ["2026-11-10", "2026-11-24"], "workouts_neu": [{"wid": 7, "title": "Rad Grundlage", "sport": "cycling", "dur_s": 5400}]}
+json.dump(_morgen, open(os.path.join(_t10, "m.json"), "w"))
+merge_daily.main(os.path.join(_t10, "d.json"), os.path.join(_t10, "m.json"))
+_m10 = json.load(open(os.path.join(_t10, "d.json")))
+_nacht = {"lauf": "nacht", "days": [{"date": "2026-11-10", "hrv": 66, "rhr": 51, "sleepH": 6.9, "sleepScore": 71, "kcalOut": 2750}],
+          "planned": [{"date": "2026-11-10", "title": "Lauf locker", "sport": "lauf", "dur_s": 3000, "wid": 5, "quelle": "Enduco über Garmin", "steps": []},
+                      {"date": "2026-11-11", "title": "Rad", "sport": "rad", "dur_s": 3600}], "planned_range": ["2026-11-10", "2026-11-24"],
+          "workouts_neu": [{"wid": 7, "title": "Rad Grundlage", "sport": "cycling", "dur_s": 5400}]}
+json.dump(_nacht, open(os.path.join(_t10, "n.json"), "w"))
+merge_daily.main(os.path.join(_t10, "d.json"), os.path.join(_t10, "n.json"))
+_n10 = json.load(open(os.path.join(_t10, "d.json")))
+check("Morgen-Update: Werte der Nacht und Workout des Tages da, Stand «Morgen-Update», kein Verbrauch für den laufenden Tag",
+      [d["date"] for d in _m10["days"]] == ["2026-11-09", "2026-11-10"] and _m10["days"][1]["hrv"] == 66 and "kcalOut" not in _m10["days"][1]
+      and [p["title"] for p in _m10["planned"]] == ["Alt", "Lauf locker"] and _m10["workouts_neu"][0]["wid"] == 7 and _m10.get("updated_lauf") == "Morgen-Update")
+check("Nacht-Update danach: gleiche Tage und Workouts ersetzt, nicht ergänzt",
+      [d["date"] for d in _n10["days"]] == ["2026-11-09", "2026-11-10"] and _n10["days"][1]["kcalOut"] == 2750
+      and [p["title"] for p in _n10["planned"]] == ["Alt", "Lauf locker", "Rad"] and len(_n10["workouts_neu"]) == 1 and _n10.get("updated_lauf") == "Nacht-Update")
+
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)

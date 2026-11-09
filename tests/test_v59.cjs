@@ -98,3 +98,12 @@ test("Gefühl gegen Morgenwerte: erst ab 20 Morgen; der passende Wert wird erkan
   const h = K.werte.find((w) => w.k === "hrv");
   assert.ok(h.rho > 0.7 && h.erwartet && h.brauchbar, JSON.stringify(h));
 });
+
+/* ---------------- morgen-1.0 ---------------- */
+test("Heute geplant: Einheiten des Tages mit ihrer Stelle in planned; Stand aus dem letzten Update mit Lauf", () => {
+  assert.deepEqual(L.geplantAm([{ date: "2026-11-10" }, { date: "2026-11-11" }, { date: "2026-11-10" }], "2026-11-10").map((x) => x.i), [0, 2]);
+  assert.deepEqual(L.geplantAm(null, "2026-11-10"), []);
+  assert.equal(L.standText("10.11.2026 08:31", "2026-11-10", "Morgen-Update").text, "Stand 08:31 (Morgen-Update)");
+  assert.equal(L.standText("09.11.2026 22:58", "2026-11-10").text, "Stand 09.11. 22:58");
+  assert.equal(L.standText(null, "2026-11-10"), null, "ohne Update kein Stand (nie geraten)");
+});
