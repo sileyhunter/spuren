@@ -576,7 +576,8 @@
     const r = F.readiness(D.days, D.activities, V.befinden(), day);
     V.lastReadiness = r;
     const col = { bereit: C.css("--good"), normal: C.css("--strain"), vorsichtig: C.css("--warn"), "nicht beurteilbar": C.css("--muted") }[r.status];
-    if (window.V55) window.V55.heute(C, r);                      // V5.5: Tagesurteil, Datenqualität, drei Kennzahlen statt Ringen
+    if (window.V55) window.V55.heute(C, r);                      // V5.5: Tagesurteil, Datenqualität, drei Kennzahlen
+    if (window.V55 && window.V55.ringe) { try { window.V55.ringe(C); } catch (e) { console.error(e); } }   // V5.8: Ringe mit Wochenverlauf (ringe-1.0)
     const own = (Inbox.data.notizen || {})["plan-" + day];
     const ind = r.indikatoren;
     const row = (k, v, st) => `<div class="rd-row"><span>${k}</span><b class="${/unter|erhöht|kurz|hoch|belastet/.test(st || "") ? "down" : ""}">${esc(v)}</b></div>`;

@@ -464,7 +464,7 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
 .planner.rp { position: absolute; z-index: 7; top: 0; right: 0; bottom: 0; left: auto; width: 440px; max-width: none; margin: 0; padding: 0; gap: 0;
   background: var(--surface); border: 0; border-left: 1px solid var(--line); border-radius: 0; box-shadow: -6px 0 24px rgba(31,51,71,.10); display: flex; flex-direction: column; }
 .rp-scroll > * { flex-shrink: 0; }
-.rp-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 14px 16px calc(28px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 12px; }
+.rp-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding: 14px 16px calc(28px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 12px; }
 .rp-grip { display: none; }
 .rp-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
 .rp-head h2 { margin: 0 0 2px; font: 600 20px/1.2 var(--f-body); }
@@ -508,9 +508,9 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
 .rp-kpis div { background: var(--surface-2); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; min-width: 0; }
 .rp-kpis b { font: 600 19px/1.1 var(--f-body); font-variant-numeric: tabular-nums; }
 .rp-kpis span { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
-.rp-tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
-.rp-tabs::-webkit-scrollbar { display: none; }
-.rp-tabs button { border: 1px solid transparent; background: none; border-radius: 999px; padding: 6px 11px; font-size: 13px; color: var(--muted); cursor: pointer; white-space: nowrap; min-height: 34px; }
+/* V5.8: alle Ansichten umbrechen statt seitlich scrollen – jede ist ohne Wischen antippbar */
+.rp-tabs { display: flex; flex-wrap: wrap; gap: 4px 4px; padding-bottom: 2px; }
+.rp-tabs button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 11px; font-size: 13px; color: var(--muted); cursor: pointer; white-space: nowrap; min-height: 36px; }
 .rp-tabs button[aria-selected="true"] { background: #e4f3f0; border-color: #bfe0d9; color: var(--accent); font-weight: 600; }
 .rp-chart { position: relative; height: 190px; touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: crosshair; border-radius: 10px; outline-offset: 3px; }
 .rp-chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
@@ -529,6 +529,29 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
 .rp-vt td, .rp-vt th { text-align: right; } .rp-vt td:first-child, .rp-vt th:first-child { text-align: left; } .rp-var { margin: 4px 0 8px; }
 table.t.rp-vt { table-layout: auto; } table.t.rp-vt th, table.t.rp-vt td { padding: 7px 4px; white-space: normal; vertical-align: top; } table.t.rp-vt th { letter-spacing: .02em; font-size: 11px; }
 table.t.rp-vt td:first-child { min-width: 64px; } .rp-vt .rp-vbtn { margin-top: 4px; padding: 0 10px; font-size: 13px; } .rp-vt tr.on td { background: var(--accent-soft, #e6f2ef); }
+/* V5.8 Routenplaner: breite Tabellen seitlich scrollbar, Abschnitte von Hand, Lücken, Skitour, Hangneigung, MTB-Abfahrt */
+.tbl-wrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.rp-tbl td small { display: block; color: var(--muted); font-size: 11px; white-space: nowrap; }
+.rp-vias li .rp-leg { grid-column: 2 / -1; justify-self: start; }
+.rp-leg { border: 1px dashed var(--line-2); background: var(--surface); color: var(--muted); border-radius: 999px; padding: 4px 10px; font-size: 12px; min-height: 30px; cursor: pointer; margin: 2px 0 4px; text-align: left; }
+.rp-leg.on { border-style: solid; border-color: #8a96a1; background: #eef1f4; color: var(--fg); font-weight: 600; }
+.rp-gl { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.rp-gl li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; }
+.rp-skil { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.rp-skil li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; } .rp-skil small { color: var(--muted); }
+.rp-hang { border-top: 1px dashed var(--line); padding-top: 6px; margin-bottom: 4px; display: flex; flex-direction: column; gap: 4px; }
+.rp-hang .hg-warn { margin: 0; color: #8a3a12; font-weight: 600; font-size: 13px; }
+.rp-hang li.hg-h30 .rp-gsec, .rp-hang li.hg-h35 .rp-gsec, .rp-hang li.hg-h40 .rp-gsec { color: #a3401f; }
+.rp-hang li.hg-h25 { color: var(--muted); }
+.rp-def { background: var(--surface-2); border-radius: 8px; padding: 6px 8px; }
+.rp-altnr.abfahrt, .rp-altpin.abfahrt { background: #6f5a8a; }
+.rp-mt td small { color: var(--muted); }
+.rp-mol { display: grid; gap: 8px; } .rp-mo { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--surface); }
+.rp-mo.on { border-color: var(--accent); background: #e6f2ef; } .rp-mo small.muted { color: var(--muted); display: block; margin-top: 2px; }
+.rp-mo-h { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; } .rp-mo-h .btn, .rp-mo-h .sel { margin-left: auto; }
+.rp-mo-h .sel { font: 600 12.5px var(--f-body); color: var(--accent); } .rp-mo-h .rp-vbtn { min-height: 34px; }
+.rp-mo-k { font-size: 13px; margin-top: 3px; line-height: 1.4; } .rp-mo-k > span:first-child:not(.warn-t) { color: var(--muted); font-size: 11.5px; letter-spacing: .03em; margin-right: 6px; }
+.lnk { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
 /* V5.6 Routenplaner: Ortssuche, Gravel-Meldung, andere Routen */
 .rp-search { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 6px; }
 .rp-search .row { gap: 6px; flex-wrap: nowrap; } .rp-search input { flex: 1 1 auto; min-width: 0; } .rp-search select { width: auto; flex: 0 0 auto; max-width: 42%; }
@@ -652,6 +675,14 @@ table.t.rp-vt td:first-child { min-width: 64px; } .rp-vt .rp-vbtn { margin-top: 
   .rp-chart { height: 170px; }
 }
 
+/* ===================== V5.8: Ringe Erholung, Schlaf, Belastung (ringe-1.0) ===================== */
+.ringe { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 4px 0 6px; }
+.ringe .rg { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; min-width: 0; }
+.ringe .rg svg { width: 100%; max-width: 132px; }
+.ringe .rg b { font: 600 14px var(--f-body); } .ringe .rg small { color: var(--muted); font-size: 11.5px; line-height: 1.35; }
+.ringe .rg.miss svg { opacity: .55; }
+.chart.mid { height: 210px; }
+@media (max-width: 420px) { .ringe { gap: 4px; } .ringe .rg small { font-size: 10.5px; } }
 /* ===================== V5.3: Fortschritt, Ernährung, Schwimmübungen ===================== */
 .v53-rings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .v53-ring { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; min-width: 0; }
@@ -872,6 +903,13 @@ body.ex-offen { overflow: hidden; }
   <!-- ================= HEUTE ================= -->
   <section class="view" id="view-heute" role="tabpanel" aria-labelledby="tab-heute" hidden>
     <div class="dash">
+      <div class="card w12" id="ringe-card">
+        <div class="card-head"><div><h2>Erholung, Schlaf, Belastung</h2><div class="sub" id="ringe-sub"></div></div>
+          <div class="seg" id="ringe-range" role="group" aria-label="Zeitraum des Verlaufs"><button data-n="7" aria-pressed="true">7 Tage</button><button data-n="28" aria-pressed="false">28 Tage</button></div></div>
+        <div class="ringe" id="ringe"><p class="hint">Wird berechnet …</p></div>
+        <div class="chart mid"><canvas id="c-ringe" aria-label="Erholung, Schlaf und Belastung im Verlauf, je 0 bis 100 Prozent"></canvas></div>
+        <p class="hint" id="ringe-note"></p>
+      </div>
       <div class="card w8">
         <div class="card-head"><div><h2>Heute</h2><div class="sub" id="today-date"></div></div></div>
         <div id="today-main"><p class="hint">Bereitschaft wird berechnet …</p></div>
@@ -2648,7 +2686,7 @@ function initPlanner() {
     document.getElementById("btn-plan").title = "Routenplaner konnte nicht geladen werden";
     return;
   }
-  window.RTUI.init({ map, store, D, fmt, esc, hmm, dateCH, iso, today, shareOrDownload, elevations, densifyLL, weights,
+  window.RTUI.init({ map, store, D, fmt, esc, hmm, dateCH, iso, today, shareOrDownload, elevations, densifyLL, weights, getJSON, demTile,
     routes: { save(rec) { const i = userRoutes.findIndex((r) => r.id === rec.id); if (i >= 0) userRoutes[i] = rec; else userRoutes.push(rec); const ok = saveRoutes(); renderRoutes(); return ok; } },
     close: () => setPlanActive(false) });
 }
@@ -2875,12 +2913,12 @@ function chart(id, cfg) {
   return (charts[id] = new Chart(el, cfg));
 }
 function ringSVG(frac, color, big, unit, label) {
-  const r = 54, c = 2 * Math.PI * r, f = Math.max(0, Math.min(1, frac || 0));
+  const r = 54, c = 2 * Math.PI * r, f = Math.max(0, Math.min(1, frac || 0)), ff = (v) => css(v).replace(/"/g, "'");   // Schriftnamen in "…" würden das style-Attribut beenden
   return `<svg viewBox="0 0 140 140" role="img" aria-label="${esc(label)}: ${esc(big)} ${esc(unit)}">
     <circle cx="70" cy="70" r="${r}" fill="none" stroke="${css("--surface-2")}" stroke-width="11"/>
     <circle cx="70" cy="70" r="${r}" fill="none" stroke="${color}" stroke-width="11" stroke-linecap="round" stroke-dasharray="${(c * f).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 70 70)" style="filter:drop-shadow(0 0 6px ${color}66)"/>
-    <text x="70" y="76" text-anchor="middle" fill="${css("--fg")}" style="font:700 36px ${css("--f-display")}">${esc(big)}</text>
-    <text x="70" y="97" text-anchor="middle" fill="${css("--muted")}" style="font:500 10.5px ${css("--f-mono")}">${esc(unit)}</text></svg>`;
+    <text x="70" y="76" text-anchor="middle" fill="${css("--fg")}" style="font:700 36px ${ff("--f-display")}">${esc(big)}</text>
+    <text x="70" y="97" text-anchor="middle" fill="${css("--muted")}" style="font:500 10.5px ${ff("--f-mono")}">${esc(unit)}</text></svg>`;
 }
 const recColor = (r) => r == null ? css("--muted") : r >= 67 ? css("--good") : r >= 34 ? css("--warn") : css("--bad");
 const legendBottom = { legend: { position: "bottom" } };

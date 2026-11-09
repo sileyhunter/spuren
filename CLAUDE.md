@@ -44,6 +44,8 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
 - **V5.7 Smart Training Routes:** `js/training-route.js` (Rechenlogik ohne DOM: Enduco-/Garmin-Workout lesen, Zeitplan je Schritt, Rundtour-Kandidaten,
   Dauerabstimmung, Intervall-Eignung, Wetter je Durchfahrtszeit, Tageslicht, Vorschläge A/B/C, Vorschlag vs. Ist), `js/training-ui.js`
   (Trainingsvorschau im Planer, Startorte verschlüsselt, Regler, Kalender «Passende Route finden» `data-str`, «Vorschlag vs. Ist» `data-trv`)
+- **V5.8:** keine neuen Dateien; Rechenlogik in `js/route.js` (Abschnitte von Hand, Skitourennetz, Hangneigung, MTB-Abfahrt, Wegende, drei
+  Rennradvarianten, Windpfeile), Oberfläche in `js/routen-ui.js`, Ringe «Heute» in `js/formkurve.js` (`FK.ringeVerlauf`) und `js/v55.js` (`V55.ringe`)
 - `tests/test_formkurve.cjs`, `tests/test_route.cjs`, `tests/test_analyse.cjs`, `tests/test_training.cjs`, `tests/test_tools.py` – Abnahmetests (erfundene Werte; `tests/fixtures/` = echte
   Antworten einer lokalen BRouter-Instanz mit OSM-Testdaten Dreieich, ODbL); `docs/` – Konzept, Abnahme (`abnahme-v53.md`), Audit V5.5 (`AUDIT_V55.md`),
   Audit V5.6 (`AUDIT_V56.md`), Audit V5.7 (`AUDIT_V57.md`), offene Punkte (`offen-nach-v55.md`)
@@ -182,11 +184,13 @@ ID ersetzt mit Audit). Startorte und Routen nur verschlüsselt (data.enc.json), 
 
 ## Routenplaner (V5.3)
 - Routing: öffentlicher BRouter-Server `https://brouter.de/brouter` (ohne Schlüssel), einstellbar über localStorage `sf.rt.endpoint`.
-  Profile: Rennrad eigenes Profil `brouter/rennrad-asphalt.brf` (aus `fastbike`, ohne Gravel; Rückfall `fastbike`), Gravel `gravel` (`prefer_unpaved_paths=1`), MTB `gravel` bzw. «Technische Trails» `mtb`
-  (`StrictNOBicycleaccess=1`), Laufen/Trail/Wandern `hiking-mountain` (SAC-Grenze 1/3/wählbar), immer `processUnusedTags=1`.
+  Profile: Rennrad eigenes Profil `brouter/rennrad-asphalt.brf` (aus `fastbike`, ohne Gravel; Rückfall `fastbike`), Gravel `gravel` (`prefer_unpaved_paths=1`), MTB Aufstieg `gravel` (`prefer_unpaved_paths=1`),
+  Abfahrt wählbar, Singletrail `mtb` (`StrictNOBicycleaccess=1`, seit V5.8 nur noch als Abfahrt), Laufen/Trail/Wandern `hiking-mountain` (SAC-Grenze 1/3/wählbar), immer `processUnusedTags=1`.
   Profil-Parameter nur als Zahlen (`1`/`0`), nie `true`/`false` (Server bricht sonst mit HTTP 500 ab).
 - Koordinaten werden erst nach Zustimmung im Planer gesendet (Routing an BRouter, Wetter an Open-Meteo); keine Schlüssel, kein Backend.
-- Nie eine Luftlinie als Ersatz zeichnen oder als GPX speichern; Skitour ist ausdrücklich «von Hand gezeichnet».
+- Nie eine Luftlinie als Ersatz zeichnen oder als GPX speichern. Abschnitte «von Hand» (`hand-1.0`) gibt es nur auf ausdrückliche Wahl
+  (Skitour, «→ von Hand» je Abschnitt, «Lücke von Hand schliessen», ohne Routing-Zustimmung): gerade Linien zwischen den gesetzten Punkten,
+  gekennzeichnet (gestrichelt, Belag/Wegart/Zugang «von Hand / nicht geprüft»), im GPX genannt – nie als erlaubter Weg ausgegeben.
 - Neue Kennzahlen/Regeln: Version in `RT.VERSIONS` erhöhen, `node --test tests/test_route.cjs`.
 - **V5.6 Rennrad:** das Profil wird beim Server über `POST <endpoint>/profile` hinterlegt (nur Text, ID «custom_…», 6 h wiederverwendet;
   HTTP 5xx beim Routing → einmal neu hinterlegen, sonst `fastbike` mit Hinweis). Änderungen am Profil nur mit Test in `tests/test_route.cjs`
@@ -200,6 +204,24 @@ ID ersetzt mit Audit). Startorte und Routen nur verschlüsselt (data.enc.json), 
 - Testen ohne Internet: BRouter aus github.com/abrensch/brouter mit `javac` bauen (OsmParser durch XML-Leser ersetzen, PBF braucht
   Protobuf), Segmente aus `brouter-map-creator/src/test/resources/dreieich.osm.gz` + `srtm_38_0*.bef`, Server lokal starten;
   MapLibre/Chart.js aus den GitHub-Releases. Nie behaupten, brouter.de oder Open-Meteo live getestet zu haben, wenn sie gesperrt waren.
+
+## Planer V5.8 (Wünsche vom 9.11.2026)
+- Wegpunkte `wegpunkte-1.1`: Punkt-Modus bleibt an, keine Obergrenze; neuer Punkt zwischen die Wegpunkte, zwischen denen er auf der Linie liegt
+  (gleich nahe Abschnitte ±10 m: kleinerer Umweg), ohne Linie kleinster Umweg. Ein Punkt in einem Abschnitt von Hand macht beide Teile von Hand.
+- Skitour `skiroute-1.0`: swisstopo-Ebene `ch.swisstopo-karto.skitouren` über identify (Rechteck in LV95, `sr=2056`, 50 je Seite, höchstens 4 Seiten,
+  nur nach Zustimmung `consent.skirouten`); Netz mit 12 m Zusammenlegen und 20 m Anschluss; Weg nur bis 150 m neben der Route und höchstens
+  1,8 × Luftlinie + 800 m, sonst von Hand mit Grund. Quelle nennen: «swisstopo, mit dem SAC», nicht markiert, keine Haftung, keine Lawinenaussage.
+- Hangneigung `hangneigung-1.0`: Gelände, nicht Spur; Höhenraster Mapzen/AWS Terrain Tiles (Zoom 14, bei sehr langen Touren 13), ±15 m, an der
+  Linie und 20 m seitlich, Maximum je 20 m. Klassen nach SLF (30/35/40°) plus 25° als Hinweis; fehlendes Raster = unbekannt, nie 0°.
+  Keine Lawinenbeurteilung behaupten.
+- Wandern/Trail `wegende-1.0`: Lücke ab 60 m zwischen Punkt und Wegnetz zeigen (ohne Linie); schliessen nur auf Knopfdruck.
+- MTB `mtb-abfahrt-1.0`: Aufstieg Gravel-Profil mit `prefer_unpaved_paths=1`; Abfahrten erst auf Knopfdruck (Singletrail `RT.MTB_TRAIL`, andere
+  Strasse `RT.MTB_STRASSE` mit Sperrpunkten auf dem Aufstieg, gleicher Weg nur bei Rundtour ≤ 60 m); MTB-Skala nie raten; «gleich wie» nur aus
+  den Abfahrten (`RT.istDoppelt` mit Bereichen), nie aus der ganzen Route mit dem gemeinsamen Aufstieg.
+- Rennrad `varianten-3.0`: direkteste, velofreundliche, ruhigste (consider_traffic 1) – alle über das Profil ohne Gravel; `alternativen-1.1` ohne
+  zusätzlichen Gravel. Windpfeile `windpfeile-1.1`: 3–20, Gegen-/Rückenwind ±5 km/h, abschaltbar (`sf.rt.windkarte`).
+- Heute `ringe-1.0` (`FK.ringeVerlauf`): Erholung Φ((z_lnHRV − z_Ruhepuls)/2) gegen 60 Tage (mind. 14 Werte), Schlaf = Garmin-Schlafwert genau dieser
+  Nacht, Belastung = (1 − 2^(−TSS/CTL_Vortag)) · 100; alle 0–100 %, Lücken bleiben leer, Tag mit Datum. Kein medizinisches Mass.
 
 ## Meine Entwicklung und Regeln V5.5
 - Vergleiche nur aus `eb`-Blöcken (Rad 190–210 W je System Rolle/Rennrad/MTB, Laufen 5:20–5:40/km flach), Urteil `entwicklung-1.0`

@@ -553,3 +553,28 @@ test("Sollband lange Ausfahrt aus den Trainingszonen (langfahrt-2.0): Z2 nach Da
   assert.equal(FK.zonenBand([], "2026-11-08", 2), null, "ohne Zonenprofil kein Band (dann beobachtet)");
   assert.ok(FK.ZONENBAND.zwecke.includes("longride") && !FK.ZONENBAND.zwecke.includes("im"), "Renn-Pacing bleibt beobachtet");
 });
+
+/* ---------- V5.8 Ringe (ringe-1.0), erfundene Werte ---------- */
+test("ringe-1.0: Erholung aus HRV und Ruhepuls gegen eigene 60 Tage, Schlaf nur aus der eigenen Nacht, Belastung gegen die Fitness", () => {
+  const heute = "2026-03-20", days = [], acts = [];
+  for (let i = 0; i < 70; i++) { const d = FK.addDays(heute, -69 + i); days.push({ date: d, hrv: 80 + (i % 2 ? 4 : -4), rhr: 50 + (i % 2 ? 1 : -1), sleepScore: 75, sleepH: 7 }); if (i % 2) acts.push({ date: d, tss: 80 }); }
+  const typ = FK.ringe(days.map((d, i) => (i === 69 ? Object.assign({}, d, { hrv: 80, rhr: 50 }) : d)), acts, heute);
+  assert.ok(Math.abs(typ.erholung - 50) <= 2, "typischer Morgen ≈ 50 %: " + typ.erholung);
+  const gut = FK.ringe(days.map((d, i) => (i === 69 ? Object.assign({}, d, { hrv: 92, rhr: 47 }) : d)), acts, heute);
+  assert.ok(gut.erholung > 90, "höhere HRV, tieferer Ruhepuls → hoch"); assert.equal(FK.ringFarbe(gut.erholung), "gut");
+  const schlecht = FK.ringe(days.map((d, i) => (i === 69 ? Object.assign({}, d, { hrv: 68, rhr: 54 }) : d)), acts, heute);
+  assert.ok(schlecht.erholung < 10); assert.equal(FK.ringFarbe(schlecht.erholung), "tief");
+  const nurPuls = FK.ringe(days.map((d, i) => (i === 69 ? Object.assign({}, d, { hrv: null, rhr: 50 }) : d)), acts, heute);
+  assert.equal(nurPuls.quelleE, "nur Ruhepuls (HRV fehlt)"); assert.ok(Math.abs(nurPuls.erholung - 50) <= 2);
+  const leer = FK.ringe(days.map((d, i) => (i === 69 ? { date: d.date } : d)), acts, heute);
+  assert.equal(leer.erholung, null); assert.equal(leer.schlaf, null, "fehlende Nacht bleibt leer – nie die Nacht davor");
+  const kurz = FK.ringe(days.slice(-10), acts, heute); assert.equal(kurz.erholung, null, "unter 14 Referenztagen: unbekannt");
+  // Belastung: Tageslast = Fitness → 50 %, doppelt → 75 %, Ruhetag 0 %
+  const r = FK.ringe(days, acts, heute);
+  assert.ok(r.ctl > 30 && r.ctl < 45); assert.equal(r.belastung, Math.round(100 * (1 - Math.pow(2, -r.tss / r.ctl))));
+  const eins = FK.ringe(days, acts.concat([{ date: heute, tss: r.ctl - r.tss }]), heute); assert.ok(Math.abs(eins.belastung - 50) <= 1, "Tageslast = Fitness");
+  const ruhe = FK.ringe(days, acts.filter((a) => a.date !== heute), heute); assert.equal(ruhe.belastung, 0);
+  const V = FK.ringeVerlauf(days, acts, heute, 7);
+  assert.equal(V.length, 7); assert.equal(V[6].date, heute); assert.ok(V.every((x) => x.v === "ringe-1.0"));
+  assert.equal(FK.ringeVerlauf([], [], heute, 3)[0].belastung, null, "ohne Daten: unbekannt");
+});

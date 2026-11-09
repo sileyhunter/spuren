@@ -213,6 +213,34 @@
       <p class="td-dq"><span>Datenqualität:</span> ${dq.map((x) => `<i class="${x.ok ? "ok" : "no"}">${x.ok ? "✓" : "–"} ${C.esc(x.t)}</i>`).join("")}</p>
       <div class="td-tiles">${hrvT}${rhrT}${sT}</div>`;
   };
+  /* V5.8 Ringe (ringe-1.0): Erholung, Schlaf, Belastung je 0–100 % mit Wochenverlauf. Angezeigt wird der letzte Tag mit
+   * Morgenwerten (die Werte von heute kommen mit dem Garmin-Update in der Nacht) – immer mit Datum, nie eine andere Nacht. */
+  const RG = { n: 7 };
+  V.ringe = function (C) {
+    const box = $("ringe"); if (!box || !window.FK) return;
+    const F = window.FK, D = C.D, heute = C.iso(C.today), isN = (v) => typeof v === "number" && isFinite(v);
+    let tag = heute;
+    for (let i = 0; i < 8; i++) { const d = F.addDays(heute, -i), r = (D.days || []).find((x) => x.date === d); if (r && (isN(r.hrv) || isN(r.rhr) || isN(r.sleepScore))) { tag = d; break; } }
+    const T = F.ringeVerlauf(D.days, D.activities, tag, RG.n), r = T[T.length - 1];
+    const col = { gut: C.css("--good"), mittel: C.css("--warn"), tief: C.css("--bad"), unbekannt: C.css("--muted") };
+    const ring = (v, color, label, sub) => `<div class="rg${v == null ? " miss" : ""}">${C.ringSVG(v == null ? 0 : v / 100, v == null ? C.css("--muted") : color, v == null ? "–" : v + " %", v == null ? "fehlt" : "", label)}<b style="color:${v == null ? "inherit" : color}">${label}</b><small>${sub}</small></div>`;
+    const e = r.erholung, sE = e == null ? (r.hrv == null && r.rhr == null ? "keine Morgenwerte" : "zu wenig Referenz (unter 14 Tage)") : `${r.hrv != null ? `HRV ${C.fmt(r.hrv, 0)} ms` : "HRV fehlt"} · ${r.rhr != null ? `Ruhepuls ${C.fmt(r.rhr, 0)}` : "Ruhepuls fehlt"}<br>gegen deine 60 Tage${r.quelleE && /nur/.test(r.quelleE) ? ` (${C.esc(r.quelleE)})` : ""}`;
+    const sS = r.schlaf == null ? "Nacht fehlt – keine andere Nacht eingesetzt" : `Garmin-Schlafwert${r.sleepH != null ? ` · ${C.fmt(r.sleepH, 1)} h` : ""}`;
+    const sB = r.belastung == null ? "zu wenig Daten für die Fitness" : `Tageslast ${C.fmt(r.tss, 0)} bei Fitness ${C.fmt(r.ctl, 0)}<br>${r.tss ? "50 % = so viel wie deine Fitness" : "Ruhetag"}`;
+    box.innerHTML = ring(e, col[F.ringFarbe(e)], "Erholung", sE) + ring(r.schlaf, C.css("--sleep"), "Schlaf", sS) + ring(r.belastung, C.css("--strain"), "Belastung", sB);
+    $("ringe-sub").textContent = tag === heute ? `Heute, ${C.dateCH(tag)}` : `Stand ${C.dateCH(tag)} – die Morgenwerte von heute kommen mit dem Garmin-Update in der Nacht`;
+    const labs = T.map((x) => C.dLabel(x.date));
+    C.chart("c-ringe", { type: "line", data: { labels: labs, datasets: [
+      { label: "Erholung", data: T.map((x) => x.erholung), borderColor: C.css("--good"), backgroundColor: C.css("--good"), borderWidth: 2, pointRadius: RG.n > 14 ? 1.5 : 3, tension: 0.25, spanGaps: false },
+      { label: "Schlaf", data: T.map((x) => x.schlaf), borderColor: C.css("--sleep"), backgroundColor: C.css("--sleep"), borderWidth: 2, pointRadius: RG.n > 14 ? 1.5 : 3, tension: 0.25, spanGaps: false },
+      { label: "Belastung", data: T.map((x) => x.belastung), borderColor: C.css("--strain"), backgroundColor: C.css("--strain"), borderWidth: 2, pointRadius: RG.n > 14 ? 1.5 : 3, tension: 0.25, spanGaps: false }] },
+      options: { animation: false, interaction: { mode: "index", intersect: false },
+        scales: { y: { min: 0, max: 100, ticks: { stepSize: 25, callback: (v) => v + " %" } }, x: { ticks: { maxTicksLimit: innerWidth < 560 ? 5 : 8, maxRotation: 0 }, grid: { display: false } } },
+        plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.raw == null ? "fehlt" : c.raw + " %"}`, afterBody: (it) => { const x = T[it[0].dataIndex]; return [`HRV ${x.hrv ?? "–"} ms · Ruhepuls ${x.rhr ?? "–"}`, `Schlaf ${x.sleepH != null ? C.fmt(x.sleepH, 1) + " h" : "–"} · Tageslast ${C.fmt(x.tss, 0)}`]; } } } } } });
+    const miss = T.filter((x) => x.erholung == null || x.schlaf == null).length;
+    $("ringe-note").textContent = `Alle drei von 0 bis 100 %, mehr = mehr. Erholung: HRV und Ruhepuls dieses Morgens gegen deine eigenen 60 Tage davor (50 % = für dich typischer Morgen, 84 % = eine Standardabweichung besser). Schlaf: Garmin-Schlafwert der Nacht davor. Belastung: Trainingslast des Tages gegen deine Fitness (50 % = Tageslast so gross wie die Fitness, 75 % = doppelt so gross). Lücken bleiben leer${miss ? ` (an ${miss} von ${T.length} Tagen fehlt mindestens ein Wert)` : ""}. Kein medizinisches Mass. Regel ${F.VERSIONS.ringe}.`;
+    $("ringe-range").querySelectorAll("button").forEach((b) => { b.setAttribute("aria-pressed", String(+b.dataset.n === RG.n)); b.onclick = () => { RG.n = +b.dataset.n; V.ringe(C); }; });
+  };
   /** Bereitschaft im Verlauf: drei synchronisierte Mini-Grafiken mit gemeinsamer Zeitachse statt einer Grafik mit zwei Skalen. */
   V.verlauf = function (C, T) {
     const ids = ["c-rd-hrv", "c-rd-rhr", "c-rd-sleep"], labs = T.map((x) => C.dLabel(x.date));

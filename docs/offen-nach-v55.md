@@ -59,3 +59,17 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
     gibt es nicht (kein Server). Auf Wunsch lade ich eine GPX-Datei aus dem Chat als Strecke hoch – nur mit ausdrücklichem Ja.
 28. **Vorschläge im Speicher:** Je gewähltem Vorschlag ~10 kB (kompakte Linie) in den Eingaben bzw. `data.enc.json`. Nach einigen Monaten
     alte, ausgewertete Vorschläge auf die Kennzahlen kürzen.
+
+## Planer V5.8 (Wünsche vom 9.11.2026)
+29. **Skitourenrouten live prüfen (hier gesperrt):** Antwort der swisstopo-identify-Schnittstelle für `ch.swisstopo-karto.skitouren` mit einem
+    Rechteck (Geometrie, Attributnamen, Teilung in mehrere Objekte je Route) ist nach Dokumentation umgesetzt und nur mit einer nachgebildeten
+    Antwort getestet. Zu prüfen: eine Tour bei Chur (z. B. Fürhörnli oder Piz Beverin), ob Anschlüsse an Kreuzungen und Varianten passen.
+30. **Hangneigung:** Raster Mapzen/AWS Terrain Tiles (~25–30 m Auflösung in der Schweiz) unterschätzt kurze Steilstufen; die swisstopo-Karte
+    «Hangneigung über 30°» (swissALTI3D) ist genauer und per Knopf einblendbar, wird aber nicht ausgewertet (nur Bild). Später: Profil-Dienst
+    von swisstopo (DTM2) für die Spur oder Auswertung der Rasterfarben – beides live ungeprüft.
+31. **MTB-Abfahrt:** «Singletrail» nutzt das BRouter-MTB-Profil mit `MTB_factor` 1; ob es in Graubünden bekannte Trails findet (OSM `mtb:scale`
+    oft leer), ist ungeprüft. Kantonale Regeln für Velos auf Wanderwegen prüft die Seite nicht (Hinweis «unklar»).
+32. **Wegende beim Wandern:** BRouter sucht Wege für einen Punkt bis 60 km weit (dynamischer Radius); das Wegende kann deshalb auf einem Weg
+    liegen, der nicht zum Gipfel führt. Dann die Lücke von Hand schliessen und mit Punkten führen.
+33. **Ringe auf «Heute»:** Die Morgenwerte des Tages kommen mit dem Nacht-Update; tagsüber zeigen die Ringe den letzten vollständigen Tag
+    (mit Datum). Ein Abruf am Morgen (z. B. mit dem Morgen-Briefing) würde sie aktueller machen – nur mit deiner Freigabe für einen weiteren Lauf.

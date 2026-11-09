@@ -11,6 +11,7 @@
     cockpit: "cockpit-1.0", readiness: "readiness-1.0", langfahrt: "langfahrt-2.0", koppel: "koppel-1.1",
     fueling: "fueling-1.0", eta: "eta-1.0", cda: "cda-1.0", fit: "fit-js-1.0", wetter: "wetter-1.0",
     pmc: "pmc-2.0", zonen: "zonenverteilung-2.0", orientierung: "langfahrt-orientierung-1.0", entwicklung: "entwicklung-1.0", laufeffizienz: "laufeffizienz-1.0",
+    ringe: "ringe-1.0",
   };
   const DAY = 864e5;
   const isNum = (v) => typeof v === "number" && isFinite(v);
@@ -182,6 +183,46 @@
     }
     return out;
   };
+  /* ---------------- Ringe auf «Heute» (ringe-1.0) ----------------
+   * Drei Werte von 0 bis 100 %, alle in derselben Richtung (mehr = mehr Erholung, besserer Schlaf, mehr Belastung):
+   * Erholung: Morgen-HRV (ln) und Ruhepuls dieses Tages gegen deine eigenen 60 Tage davor (je mindestens 14 Werte);
+   *   z = (z_HRV − z_Ruhepuls) / 2, Erholung = Φ(z) · 100 % (50 % = für dich typischer Morgen, 84 % = eine Standardabweichung
+   *   besser). Fehlt die HRV, zählt nur der Ruhepuls (so beschriftet); fehlen beide oder die Referenz: unbekannt.
+   * Schlaf: Garmin-Schlafwert der Nacht, die an diesem Tag endet. Fehlt diese Nacht: unbekannt – nie die Nacht davor.
+   * Belastung: Trainingslast des Tages (Summe TSS wie bei Fitness/Ermüdung) gegen deine Fitness (CTL) am Vortag:
+   *   Belastung = (1 − 2^(−TSS/CTL)) · 100 % → 50 % = Tageslast so gross wie deine Fitness, 75 % = doppelt so gross. Ruhetag 0 %.
+   *   Fitness unter 5 (zu wenig Daten): unbekannt. Kein medizinisches Mass und keine Trainingsvorgabe. */
+  const phi = (z) => { const t = 1 / (1 + 0.3275911 * Math.abs(z) / Math.SQRT2), y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-(z * z) / 2); return 0.5 * (1 + (z >= 0 ? y : -y)); };
+  FK.RINGE = { ref_tage: 60, min_ref: 14, sd_ln_hrv: 0.03, sd_rhr: 1 };
+  FK.ringeVerlauf = function (days, acts, bisISO, n) {
+    n = n || 7;
+    const byDate = new Map((days || []).map((d) => [d.date, d]));
+    const loads = new Map(); for (const a of acts || []) if (a && a.date) loads.set(a.date, (loads.get(a.date) || 0) + (isNum(a.tss) ? a.tss : 0));
+    const dates = [...loads.keys(), ...(days || []).map((d) => d.date)].sort();
+    const von = FK.addDays(bisISO, -(n - 1));
+    const P = dates.length ? FK.pmc(loads, dates[0] < von ? dates[0] : von, bisISO) : [];
+    const ctlAm = new Map(P.map((p) => [p.date, p.ctl]));
+    const out = [];
+    for (let i = n - 1; i >= 0; i--) {
+      const date = FK.addDays(bisISO, -i), d = byDate.get(date) || {};
+      const ref = []; for (let k = 1; k <= FK.RINGE.ref_tage; k++) { const r = byDate.get(FK.addDays(date, -k)); if (r) ref.push(r); }
+      const lh = ref.filter((r) => isNum(r.hrv) && r.hrv > 0).map((r) => Math.log(r.hrv)), rh = ref.filter((r) => isNum(r.rhr) && r.rhr > 0).map((r) => r.rhr);
+      let zH = null, zR = null;
+      if (isNum(d.hrv) && d.hrv > 0 && lh.length >= FK.RINGE.min_ref) zH = (Math.log(d.hrv) - mean(lh)) / Math.max(FK.RINGE.sd_ln_hrv, sd(lh));
+      if (isNum(d.rhr) && d.rhr > 0 && rh.length >= FK.RINGE.min_ref) zR = (d.rhr - mean(rh)) / Math.max(FK.RINGE.sd_rhr, sd(rh));
+      const z = zH != null && zR != null ? (zH - zR) / 2 : zH != null ? zH : zR != null ? -zR : null;
+      const erholung = z == null ? null : Math.round(100 * phi(z));
+      const quelleE = zH != null && zR != null ? "HRV und Ruhepuls" : zH != null ? "nur HRV (Ruhepuls fehlt)" : zR != null ? "nur Ruhepuls (HRV fehlt)" : null;
+      const schlaf = isNum(d.sleepScore) ? Math.round(d.sleepScore) : null;
+      const tss = loads.get(date) || 0, ctl = ctlAm.get(FK.addDays(date, -1));
+      const belastung = isNum(ctl) && ctl >= 5 ? Math.round(100 * (1 - Math.pow(2, -tss / ctl))) : null;
+      out.push({ date, erholung, quelleE, zH, zR, hrv: isNum(d.hrv) ? d.hrv : null, rhr: isNum(d.rhr) ? d.rhr : null, n_ref: Math.min(lh.length, rh.length),
+        schlaf, sleepH: isNum(d.sleepH) ? d.sleepH : null, belastung, tss, ctl: isNum(ctl) ? ctl : null, v: FK.VERSIONS.ringe });
+    }
+    return out;
+  };
+  FK.ringe = (days, acts, dateISO) => FK.ringeVerlauf(days, acts, dateISO, 1)[0];
+  FK.ringFarbe = (v) => (v == null ? "unbekannt" : v >= 67 ? "gut" : v >= 34 ? "mittel" : "tief");
   /** Anzeige: gerundete Fitness und Ermüdung; Form = Differenz dieser gerundeten Werte, damit sie sichtbar aufgeht. */
   FK.pmcAnzeige = function (p) {
     if (!p || !isNum(p.ctl) || !isNum(p.atl)) return null;

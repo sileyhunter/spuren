@@ -219,8 +219,9 @@ test("Profil-Parameter für BRouter: Zahlen statt true/false, Optionen wechseln 
   assert.equal(g.engine, "gravel"); assert.equal(g.params.prefer_unpaved_paths, "1"); assert.equal(g.params.processUnusedTags, "1");
   assert.equal(RT.engineFor("gravel", { schotter: false }).params.prefer_unpaved_paths, "0");
   assert.equal(RT.engineFor("mtb", {}).engine, "gravel", "MTB standardmässig Forst-/Kieswege");
-  const t = RT.engineFor("mtb", { technisch: true });
-  assert.equal(t.engine, "mtb"); assert.equal(t.params.StrictNOBicycleaccess, "1");
+  // mtb-abfahrt-1.0: «Technische Trails» gilt nicht mehr für die ganze Route – Aufstieg immer Gravel, Trails nur als Abfahrt
+  assert.equal(RT.engineFor("mtb", { technisch: true }).engine, "gravel", "alte Einstellung wirkt nicht mehr auf den Aufstieg");
+  assert.equal(RT.MTB_TRAIL.engine, "mtb"); assert.equal(RT.MTB_TRAIL.params.StrictNOBicycleaccess, "1");
   assert.equal(RT.engineFor("wandern", { sac: "2" }).params.SAC_scale_limit, "2");
   assert.equal(RT.engineFor("skitour", {}), null, "Skitour: kein Routing");
   const u = RT.brouterUrl("https://brouter.de/brouter", g, [9.5, 47.0], [9.51, 47.01]);
@@ -301,7 +302,7 @@ test("A09: Windpfeile zeigen, wohin der Wind weht (Herkunft + 180°)", () => {
   assert.deepEqual(A.map((a) => [a.dirFrom, a.rot, a.aus]), [[270, 90, "W"], [225, 45, "SW"]]);
   const r = synthRoute(() => 450, 2500, "rennrad", 90), W = RT.windPositions(r);
   assert.equal(W.length, 3, "kurze Route: trotzdem 3 Pfeile"); assert.ok(W.every((w) => w.d > 0 && w.d < r.L), "nie auf Start/Ziel");
-  assert.equal(RT.windPositions(synthRoute(() => 450, 200000, "rennrad", 90)).length, 12, "lange Route: höchstens 12");
+  assert.equal(RT.windPositions(synthRoute(() => 450, 200000, "rennrad", 90)).length, 20, "lange Route: höchstens 20 (windpfeile-1.1)");
 });
 test("Varianten 2.0: beide über das erlaubte Rennradprofil; velofreundlich bis zur Toleranz, nie mit mehr Gravel", () => {
   const e = RT.engineVariant("rennrad", {}, "velo");
@@ -514,4 +515,177 @@ test("F1: andere Werte – Temperatur, Niederschlag, Böen fehlen → unbekannt,
   // Temperatur: fehlt nur ein Nachbar, wird der vorhandene genommen (keine 0); bleibt so (nur gemeldet)
   const T = RT.weatherField(PTS3(10000), meteo(3, () => [4, 270], { temp: (i) => (i === 1 ? null : 8) }));
   assert.equal(T(2500, T0, 90).temp, 8);
+});
+
+/* ---------- V5.8: Wegpunkte, von Hand, Skitourenrouten, Hangneigung, MTB-Abfahrt, Wandern mit Lücke, Varianten, Wind ----------
+ * Alle Geometrien, Höhenraster und Skitourenrouten hier sind SYNTHETISCH (erfunden), keine Live-Daten. */
+const legOf = (pts, tags) => ({ coords: pts.map((p) => [p[0], p[1], p[2] != null ? p[2] : 500]), edges: [{ i0: 0, i1: pts.length - 1, tags: tags || { highway: "track", surface: "gravel" }, nodeTags: {} }], props: { creator: "SYNTHETISCH" } });
+test("wegpunkte-1.1: neuer Punkt kommt zwischen die Wegpunkte, zwischen denen er auf der Linie liegt (nicht nach Luftlinie)", () => {
+  const A = [8.50, 47.00], M = [8.52, 47.00], B = [8.50, 46.999];
+  const leg0 = legOf(RT.densify([A, M], 50)), leg1 = legOf(RT.densify([M, [8.52, 47.01], [8.50, 47.01], B], 50));
+  const r = RT.buildRoute([leg0, leg1], [A, M, B], { sport: "mtb" });
+  const P = [8.51, 47.0095];                       // 55 m neben dem Rückweg (Abschnitt 2), 1 km neben dem Hinweg
+  assert.equal(RT.einfuegeIndex([A, M, B], P), 1, "Luftlinie allein wählt den falschen Abschnitt");
+  assert.equal(RT.einfuegeIndex([A, M, B], P, r), 2, "mit Linie: zwischen M und B");
+  assert.equal(RT.einfuegeIndex([A, M, B], [8.51, 47.0004], r), 1, "nahe am Hinweg: zwischen A und M");
+  // keine Obergrenze: 60 Punkte nacheinander einfügen
+  let v = [[8.50, 47.00], [8.52, 47.00]];
+  for (let i = 1; i < 60; i++) { const p = [8.50 + 0.02 * ((i * 37) % 59 + 0.5) / 59.5, 47.0005]; v.splice(RT.einfuegeIndex(v, p), 0, p); }
+  assert.equal(v.length, 61); for (let i = 1; i < v.length; i++) assert.ok(v[i][0] > v[i - 1][0], "auch in gemischter Reihenfolge gesetzt: von West nach Ost");
+});
+test("hand-1.0: Abschnitt von Hand ist gekennzeichnet (Belag, Wegart, Zugang), GPX nennt ihn; Route bleibt geroutet", () => {
+  const A = [8.50, 47.00], M = [8.51, 47.00], B = [8.51, 47.005];
+  const osm = legOf(RT.densify([A, M], 30), { highway: "path", sac_scale: "mountain_hiking" });
+  const hand = RT.handLeg([M, B]); hand.coords.forEach((c, i) => (c[2] = 500 + i * 10));
+  assert.ok(hand.coords.length >= 28, "alle 20 m ein Punkt"); assert.equal(hand.edges[0].quelle, "hand");
+  const r = RT.buildRoute([osm, hand], [A, M, B], { sport: "wandern" });
+  assert.equal(r.gezeichnet, false); near(r.quellen.hand, 556, 3, "von Hand"); near(r.quellen.osm, 760, 5, "Wegnetz");
+  const s = r.segs.find((x) => x.quelle === "hand");
+  assert.equal(s.surface, "hand"); assert.equal(s.way, "hand"); assert.equal(s.access, "ungeprueft");
+  const acc = RT.stats(RT.pieces(r, "zugang"), r.L);
+  near(acc.find((x) => x.cat === "ok").len, r.quellen.osm, 1, "erlaubt nur auf dem Wegnetz"); near(acc.find((x) => x.cat === "ungeprueft").len, r.quellen.hand, 1, "von Hand: nicht geprüft");
+  assert.match(RT.gpx(r, "Test"), /von Hand gezeichnet 0\.6 km \(kein Wegnetz\)/);
+  const d = RT.buildDrawn([[9.8, 46.5], [9.81, 46.51]], [2000, 2100], { sport: "skitour" });
+  assert.ok(d.gezeichnet && d.quellen.hand > 0, "alte gezeichnete Linie = von Hand");
+});
+test("skiroute-1.0: Netz aus Linien (T-Anschluss), kürzester Weg, Anschluss von Hand, Umweg und Lücken mit Grund", () => {
+  // Route 1: Tal → Gipfel; Route 2 zweigt 8 m neben Route 1 ab (kein gemeinsamer Punkt); Route 3 liegt allein weit weg
+  const r1 = { id: "1", name: "Testgipfel von Süden", lines: [RT.densify([[9.400, 46.600], [9.410, 46.610], [9.420, 46.620]], 80)] };
+  const mid = [9.410, 46.610 + 8 / 110540];
+  const r2 = { id: "2", name: "Testgipfel Ostvariante", lines: [[[9.405, 46.605 + 8 / 110540], [9.43, 46.607], [9.44, 46.612]]] };
+  const r3 = { id: "3", name: "Allein", lines: [[[9.60, 46.70], [9.61, 46.71]]] };
+  void mid;
+  const N = RT.skiNetz([r1, r2, r3]);
+  assert.ok(N.nodes.length > 10 && !N.leer);
+  const a = [9.4005, 46.6003], b = [9.4398, 46.6121];
+  const p = RT.skiPfad(N, a, b);
+  assert.ok(p.ok, p.grund); assert.deepEqual(p.namen.sort(), ["Testgipfel Ostvariante", "Testgipfel von Süden"]);
+  const lang = RT.hav(9.400, 46.600, 9.405, 46.605) + RT.hav(9.405, 46.605, 9.43, 46.607) + RT.hav(9.43, 46.607, 9.44, 46.612);
+  near(p.len, lang, 60, "über die Abzweigung"); assert.ok(p.snapA < 60 && p.snapB < 60);
+  const leg = RT.skiLeg(a, b, p);
+  assert.deepEqual(leg.edges.map((e) => e.quelle), ["hand", "ski", "hand"], "Anschlüsse von Hand");
+  const R = RT.buildRoute([leg], [a, b], { sport: "skitour" });
+  assert.ok(R.gezeichnet && R.quellen.ski > 1000 && R.quellen.hand < 120);
+  assert.equal(R.segs.find((s) => s.quelle === "ski").way, "skiroute");
+  assert.match(RT.gpx(R, "Ski"), /Skitourenrouten swisstopo\/SAC/);
+  const weit = RT.skiPfad(N, [9.30, 46.55], b); assert.ok(!weit.ok && /näher als 150 m/.test(weit.grund));
+  const getrennt = RT.skiPfad(N, a, [9.605, 46.705]); assert.ok(!getrennt.ok && /hängen nicht zusammen/.test(getrennt.grund));
+  // Umweg: zwei Punkte nah beieinander, die Linie dazwischen macht eine weite Schlaufe
+  // Schlaufe, deren Ende 9 m neben dem Anfang liegt: Punkte werden zusammengelegt, der kurze Weg führt über diese Stelle
+  const loop = { id: "4", name: "Schlaufe", lines: [RT.densify([[9.50, 46.50], [9.55, 46.53], [9.50, 46.56], [9.5001, 46.50005]], 100)] };
+  const pl = RT.skiPfad(RT.skiNetz([loop]), [9.5004, 46.5007], [9.4998, 46.5009]);
+  assert.ok(pl.ok && pl.len < 400, "kurz über das zusammengelegte Ende: " + (pl.grund || Math.round(pl.len)));
+  const N2 = RT.skiNetz([{ id: "5", name: "U", lines: [RT.densify([[9.50, 46.50], [9.53, 46.53], [9.506, 46.501]], 100)] }]);
+  const um = RT.skiPfad(N2, [9.5, 46.5002], [9.506, 46.5012]);
+  assert.ok(!um.ok && /grosser Umweg/.test(um.grund), um.grund);
+  assert.equal(RT.skiLeg([9.5, 46.5], [9.51, 46.5], um).edges[0].quelle, "hand", "ohne Skitourenroute: von Hand");
+});
+test("skiroute-1.0: identify-Antwort (LV95) → WGS84; Anfrage nur mit dem Suchrechteck, LV95, höchstens 50 je Seite", () => {
+  // Beispiel aus der swisstopo-Dokumentation der Näherungsformeln: 46°2'38.87" N, 8°43'49.79" E → E 2'699'999.76, N 1'099'999.97
+  const ref = RT.toLV95(8 + 43 / 60 + 49.79 / 3600, 46 + 2 / 60 + 38.87 / 3600);
+  near(ref[0], 2699999.76, 1.5, "Referenz Ost"); near(ref[1], 1099999.97, 1.5, "Referenz Nord");
+  const [E, Nn] = RT.toLV95(9.5313, 46.8493);
+  const back = RT.fromLV95(E, Nn); near(back[0], 9.5313, 2e-5); near(back[1], 46.8493, 2e-5);
+  const js = { results: [{ featureId: 77, layerBodId: RT.SKI_LAYER, properties: { name: "Testroute" }, geometry: { type: "MultiLineString", coordinates: [[[E, Nn], [E + 500, Nn + 800]]] } }, { featureId: 78, geometry: null }] };
+  const f = RT.skiFeatures(js);
+  assert.equal(f.length, 1); assert.equal(f[0].name, "Testroute"); near(f[0].lines[0][0][0], 9.5313, 3e-5);
+  const bb = RT.skiBbox([[9.53, 46.85], [9.6, 46.8]], 1500);
+  assert.ok(bb[2] - bb[0] < 40001 && bb[0] < E && bb[2] > E);
+  const u = RT.skiIdentifyUrl(bb, 50);
+  assert.match(u, /geometryType=esriGeometryEnvelope/); assert.match(u, /sr=2056/); assert.match(u, /offset=50/); assert.match(u, /layers=all:ch\.swisstopo-karto\.skitouren/);
+  assert.ok(!/9\.53|46\.85/.test(u), "nur LV95-Rechteck, keine WGS-Punkte");
+});
+/** Synthetisches Terrarium-Raster (Zoom 14): Ebene, die nach Osten mit tan(grad) ansteigt. */
+function demEbene(grad, lon0, lat0) {
+  const z = 14, n = 2 ** z, tiles = new Map(), tan = Math.tan(grad * Math.PI / 180), kx = 111320 * Math.cos(lat0 * Math.PI / 180);
+  for (const t of RT.demKacheln(lon0 - 0.01, lat0 - 0.01, lon0 + 0.01, lat0 + 0.01, z)) {
+    const d = new Uint8ClampedArray(256 * 256 * 4);
+    for (let py = 0; py < 256; py++) for (let px = 0; px < 256; px++) {
+      const X = (t.x * 256 + px + 0.5) / (n * 256), Y = (t.y * 256 + py + 0.5) / (n * 256);
+      const lon = X * 360 - 180, lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * Y))) * 180 / Math.PI;
+      const v = 1500 + (lon - lon0) * kx * tan + 32768, i = (py * 256 + px) * 4;
+      d[i] = Math.floor(v / 256); d[i + 1] = Math.floor(v) % 256; d[i + 2] = Math.floor((v - Math.floor(v)) * 256); d[i + 3] = 255;
+    }
+    tiles.set(t.x + "/" + t.y, d);
+  }
+  return RT.demSampler(tiles, z);
+}
+test("hangneigung-1.0: Gelände aus dem Höhenraster, SLF-Klassen 30/35/40 und 25° als Übergang", () => {
+  const lon0 = 9.6, lat0 = 46.7;
+  for (const [g, k] of [[22, "h0"], [27, "h25"], [32, "h30"], [37, "h35"], [42, "h40"]]) {
+    const el = demEbene(g, lon0, lat0), s = RT.hangAn(el, lon0, lat0);
+    near(s, g, 0.6, `Ebene ${g}°`); assert.equal(RT.hangKlasse(s), k);
+  }
+  assert.equal(RT.hangKlasse(null), "unbekannt");
+  // Querung: die Linie läuft quer zum Hang (nach Norden, fast flach), der Hang ist trotzdem 32° steil
+  const el = demEbene(32, lon0, lat0), pts = RT.densify([[lon0, lat0 - 0.003], [lon0, lat0 + 0.003]], 20);
+  const leg = { coords: pts.map((p) => [p[0], p[1], el(p[0], p[1])]), edges: [{ i0: 0, i1: pts.length - 1, tags: {}, nodeTags: {}, quelle: "hand" }], props: {} };
+  const r = RT.buildRoute([leg], [pts[0], pts[pts.length - 1]], { sport: "skitour" });
+  assert.ok(Math.abs(r.profile.up) < 15, "Linie selbst fast flach");
+  const H = RT.hangProfil(r, el);
+  near(H.max, 32, 0.8); near(H.ab30_m, r.L, 25, "ganze Querung ≥ 30°"); assert.equal(H.ab35_m, 0);
+  assert.equal(H.abschnitte.length, 1); assert.equal(H.abschnitte[0].klasse, "h30"); near(H.bekannt_pct, 100, 0.1);
+  const fehlt = RT.hangProfil(r, () => null); assert.equal(fehlt.max, null); assert.equal(fehlt.bekannt_pct, 0, "ohne Raster: unbekannt, nie 0°");
+});
+test("mtb-abfahrt-1.0: höchster Punkt, Sperrpunkte auf dem Aufstieg, Trail-Kennzahlen, gleicher Weg zurück mit Einbahn", () => {
+  const A = [8.50, 47.00], T = [8.52, 47.01];
+  const up = legOf(RT.densify([A, T], 20).map((p, i, a) => [p[0], p[1], 600 + (600 * i) / (a.length - 1)]), { highway: "track", tracktype: "grade2", surface: "gravel" });
+  const downPts = RT.densify([T, [8.51, 47.012], A], 20).map((p, i, a) => [p[0], p[1], 1200 - (600 * i) / (a.length - 1)]);
+  const n1 = Math.floor(downPts.length / 2);
+  const down = { coords: downPts, edges: [{ i0: 0, i1: n1, tags: { highway: "path", "mtb:scale": "2", surface: "ground" }, nodeTags: {} }, { i0: n1, i1: downPts.length - 1, tags: { highway: "path", surface: "ground" }, nodeTags: {} }], props: {} };
+  const r = RT.buildRoute([up, down], [A, T, A], { sport: "mtb" });
+  const H = RT.hoechsterPunkt(r);
+  assert.equal(H.via, 1, "Zwischenziel am Gipfel"); near(H.ele, 1200, 10, "geglättet"); near(H.auf, 600, 25); near(H.ab, 600, 25);
+  const K = RT.trailKennzahlen(r, H.d, r.L);
+  near(K.trail_pct, 100, 0.5); assert.equal(K.mtbMax, "S2"); near(K.ohne_skala_m, (r.L - H.d) / 2, 60, "Hälfte ohne MTB-Skala = unbekannt");
+  near(K.natur_m, r.L - H.d, 2); assert.ok(K.unklar_m > 0, "Pfad ohne Velo-Angabe: unklar");
+  const S = RT.abfahrtSperren(r, 0, H.d, { frei: [T] });
+  assert.ok(S.length >= 3 && S.length <= 20 && S.every((p) => p.d >= 300 && p.d <= H.d - 300 && p.r === 15));
+  // gleicher Weg zurück: Aufstieg umgekehrt; eine Einbahn bergauf wird bergab gemeldet
+  const up1 = RT.legsAusRoute(r)[0]; up1.edges[0].tags = Object.assign({}, up1.edges[0].tags, { oneway: "yes" });
+  const back = RT.umkehrLeg(up1);
+  assert.deepEqual(back.coords[0].slice(0, 2), up1.coords[up1.coords.length - 1].slice(0, 2));
+  const rr = RT.buildRoute([up1, back], [A, T, A], { sport: "mtb" });
+  near(RT.einbahnGegen(rr, rr.vias[1].d, rr.L), rr.L - rr.vias[1].d, 2, "zurück gegen die Einbahn"); near(RT.einbahnGegen(rr, 0, rr.vias[1].d), 0, 0.1);
+  const one = RT.legsZuEinem(RT.legsAusRoute(r)); assert.equal(one.coords.length, r.lon.length, "zusammengefügt ohne doppelte Punkte");
+  assert.equal(RT.SPORTS.mtb.engine, "gravel"); assert.equal(RT.engineFor("mtb", {}).params.prefer_unpaved_paths, "1", "Aufstieg: Kies bevorzugt");
+  assert.equal(RT.MTB_TRAIL.params.StrictNOBicycleaccess, "1", "Singletrail: reine Fusswege gesperrt");
+  // zwei Abfahrten nach einem langen gemeinsamen Aufstieg: ganz verglichen «doppelt», nur die Abfahrten verglichen verschieden
+  const A2 = [8.40, 47.00], Z = [8.53, 47.01];
+  const auf2 = legOf(RT.densify([A2, T], 20).map((p) => [p[0], p[1], 800]), { highway: "track", surface: "gravel" });
+  const abw = (m) => legOf(RT.densify([T, m, Z], 20).map((p) => [p[0], p[1], 700]), { highway: "path", surface: "ground" });
+  const P = RT.buildRoute([auf2, abw([8.525, 47.013])], [A2, T, Z], { sport: "mtb" }), Q = RT.buildRoute([auf2, abw([8.525, 47.007])], [A2, T, Z], { sport: "mtb" });
+  assert.ok(RT.istDoppelt(P, Q), "ganze Route: der gemeinsame Aufstieg überwiegt");
+  assert.ok(!RT.istDoppelt(P, Q, 0.85, { a: [P.vias[1].d, P.L], b: [Q.vias[1].d, Q.L] }), "nur die Abfahrten: verschieden");
+  assert.ok(RT.istDoppelt(P, P, 0.85, { a: [P.vias[1].d, P.L], b: [P.vias[1].d, P.L] }), "gleiche Abfahrt bleibt gleich");
+});
+test("wegende-1.0: Lücke zum Wegnetz wird gemessen; schliessen setzt das Wegende und markiert nur die Lücke «von Hand»", () => {
+  const A = [8.50, 47.00], W = [8.51, 47.00], Z = [8.515, 47.004];          // Ziel 590 m neben dem Wegende
+  const r = RT.buildRoute([legOf(RT.densify([A, W], 25), { highway: "path" })], [A, Z], { sport: "wandern" });
+  const L = RT.luecken(r);
+  assert.equal(L.length, 1); assert.equal(L[0].i, 1); near(L[0].m, RT.hav(W[0], W[1], Z[0], Z[1]), 2); near(L[0].weg[0], W[0], 1e-9);
+  const s = RT.lueckeSchliessen([A, Z], 1, L[0].weg, { names: ["Hütte", "Gipfel"], pausen: [0, 0] });
+  assert.deepEqual(s.vias, [A, W, Z]); assert.deepEqual(s.handNach, [null, true, null]); assert.deepEqual(s.names, ["Hütte", "Wegende", "Gipfel"]);
+  assert.deepEqual(RT.zwischenPunkt(A, Z, 0.5), [8.5075, 47.002]);
+});
+test("varianten-3.0: «Am ruhigsten» nur, wenn innerhalb der Toleranz, ohne mehr Gravel und wirklich ruhiger", () => {
+  for (const v of RT.VARIANTEN.rennrad) for (const x of Object.values(v.params)) assert.ok(/^\d+(\.\d+)?$/.test(x));
+  assert.deepEqual(RT.VARIANTEN.rennrad.map((v) => v.k), ["schnell", "velo", "ruhig"]);
+  const row = (k, t, L, haupt, str, rad, gravel) => ({ k, label: k, t, L, haupt_pct: haupt, strasse_pct: str, radweg_pct: rad, gravel_m: gravel || 0 });
+  const S = row("schnell", 3600, 30000, 30, 30, 5), V = row("velo", 3800, 31000, 10, 25, 20);
+  assert.equal(RT.waehleVariante([S, V, row("ruhig", 3900, 31500, 2, 10, 35)], 10).k, "ruhig", "+8 %, deutlich ruhiger");
+  const w = RT.waehleVariante([S, V, row("ruhig", 4500, 36000, 0, 5, 40)], 10);
+  assert.equal(w.k, "velo", "+25 % zu viel"); assert.ok(w.ruhig && w.ruhig.plus > 20);
+  assert.equal(RT.waehleVariante([S, V, row("ruhig", 3810, 31010, 10, 25, 20)], 10).k, "velo", "gleiche Wege wie velofreundlich");
+  assert.equal(RT.waehleVariante([S, V, row("ruhig", 3700, 30500, 2, 5, 40, 900)], 10).k, "velo", "mehr Gravel: nie");
+  assert.equal(RT.waehleVariante([{ k: "schnell", fehler: "x" }, { k: "velo", fehler: "x" }, row("ruhig", 3700, 30500, 2, 5, 40)], 10).k, "ruhig", "nur diese berechnet");
+  assert.equal(RT.waehleVariante([S, V], 10).k, "velo", "zwei Varianten wie bisher");
+});
+test("windpfeile-1.1: je Pfeil Gegen-, Rücken- oder Seitenwind zur Fahrtrichtung; 3–20 Pfeile", () => {
+  const field = (dd, t, head) => ({ speed: 5, dirFrom: 270, along: isFinite(head) ? RT.windAlong(5, 270, head) : null });
+  const pts = [{ d: 1, lon: 8.5, lat: 47, head: 90 }, { d: 2, lon: 8.5, lat: 47, head: 270 }, { d: 3, lon: 8.5, lat: 47, head: 0 }];
+  assert.deepEqual(RT.windArrows(pts, field, () => 0).map((a) => a.art), ["rueck", "gegen", "seite"]);
+  assert.equal(RT.windArrows([{ d: 1, lon: 8.5, lat: 47 }], field, () => 0)[0].art, "unbekannt", "ohne Richtung keine Aussage");
+  const r = synthRoute(() => 450, 200000, "rennrad", 90);
+  assert.equal(RT.windPositions(r).length, 20); assert.ok(RT.windPositions(r).every((p) => Math.abs(p.head - 90) < 1));
 });

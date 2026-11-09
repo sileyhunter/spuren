@@ -14,8 +14,10 @@
 })(typeof self !== "undefined" ? self : this, function (FK) {
   "use strict";
   const RT = {};
-  RT.VERSIONS = { route: "route-1.0", hoehe: "hoehe-1.0", anstiege: "anstiege-1.0", zeit: "zeit-rt-1.3", wetter: "wetter-rt-1.2", varianten: "varianten-2.1",
-    gravel: "gravel-rt-1.1", alternativen: "alternativen-1.0", wegpunkte: "wegpunkte-1.0", ortssuche: "ortssuche-1.0", belag: "belag-1.1", anfragen: "anfragen-1.0" };
+  RT.VERSIONS = { route: "route-1.1", hoehe: "hoehe-1.0", anstiege: "anstiege-1.0", zeit: "zeit-rt-1.3", wetter: "wetter-rt-1.2", varianten: "varianten-3.0",
+    gravel: "gravel-rt-1.1", alternativen: "alternativen-1.1", wegpunkte: "wegpunkte-1.1", ortssuche: "ortssuche-1.0", belag: "belag-1.1", anfragen: "anfragen-1.0",
+    // V5.8: Abschnitte von Hand, Skitourenrouten, Hangneigung, Wegende beim Wandern, MTB-Abfahrten, Windpfeile
+    hand: "hand-1.0", skiroute: "skiroute-1.0", hang: "hangneigung-1.0", wegende: "wegende-1.0", mtb: "mtb-abfahrt-1.0", wind: "windpfeile-1.1" };
   const isNum = (v) => typeof v === "number" && isFinite(v);
   const R_EARTH = 6371008.8, RAD = Math.PI / 180;
 
@@ -42,9 +44,9 @@
     gravel: { label: "Gravel", art: "rad", rad: "gravel", engine: "gravel", modi: ["watt", "hf"], wert: { watt: 180, hf: 135 },
       optionen: { schotter: { label: "Schotter bevorzugen", param: "prefer_unpaved_paths", an: "1", aus: "0", standard: true } },
       text: "Schotter- und Forststrassen, ruhige Asphaltverbindungen; steile, unbefestigte Pfade gemieden." },
-    mtb: { label: "MTB", art: "rad", rad: "mtb", engine: "gravel", modi: ["watt", "hf"], wert: { watt: 170, hf: 135 },
-      optionen: { technisch: { label: "Technische Trails", engine: "mtb", params: { StrictNOBicycleaccess: "1", MTB_factor: "0.5" }, standard: false } },
-      text: "Standard wie Gravel (Forst- und Kieswege). «Technische Trails» nutzt das MTB-Profil; reine Fusswege bleiben gesperrt." },
+    // mtb-abfahrt-1.0: Aufstieg immer über Forst- und Kieswege (Gravel-Profil); Abfahrt danach wählbar (gleicher Weg, Singletrail, andere Strasse)
+    mtb: { label: "MTB", art: "rad", rad: "mtb", engine: "gravel", params: { prefer_unpaved_paths: "1" }, modi: ["watt", "hf"], wert: { watt: 170, hf: 135 },
+      text: "Aufstieg über Forst- und Kieswege (Gravel-Profil, Kies bevorzugt). Ab dem höchsten Punkt kannst du die Abfahrt wählen: gleicher Weg, Singletrail (MTB-Profil, reine Fusswege gesperrt) oder eine andere Strasse." },
     laufen: { label: "Laufen", art: "fuss", engine: "hiking-mountain", params: { SAC_scale_limit: "1", SAC_scale_preferred: "0" }, modi: ["pace", "hf"], wert: { pace: 330, hf: 145 },
       text: "Fuss- und Wanderwege, ruhige Strassen; Bergwege über T1 ausgeschlossen." },
     trail: { label: "Trail", art: "fuss", engine: "hiking-mountain", params: { SAC_scale_limit: "3", SAC_scale_preferred: "2" }, modi: ["pace", "hf"], wert: { pace: 400, hf: 150 },
@@ -53,7 +55,7 @@
       optionen: { sac: { label: "Höchste SAC-Stufe", param: "SAC_scale_limit", werte: ["1", "2", "3", "4"], standard: "3" } },
       text: "Wanderwege nach SAC-Skala (Standard bis T3); Zugang laut OSM." },
     skitour: { label: "Skitour", art: "ski", engine: null, modi: ["hmh", "hf"], wert: { hmh: 450, hf: 145 },
-      text: "Kein Wegnetz im Winter: Linie wird von Hand gezeichnet (keine Routenberechnung). Keine Aussage zur Lawinensicherheit." },
+      text: "Die Linie folgt, wo möglich, den Skitourenrouten von swisstopo und SAC; dazwischen und abseits davon zeichnest du von Hand. Hangneigung aus dem Höhenmodell. Keine Aussage zur Lawinensicherheit." },
   };
   RT.engineFor = function (sport, opts) {
     const S = RT.SPORTS[sport]; if (!S || !S.engine) return null;
@@ -71,9 +73,11 @@
   /** Varianten (varianten-2.0): dasselbe, für Velos erlaubte Rennradprofil (ohne Gravel), automatisch beide gerechnet.
    *  Schnellste = wenig Gewicht auf Verkehr (consider_traffic 0,1); Velofreundlich = Verkehr wichtig (0,5) und asphaltierte
    *  Radwege bzw. offizielle Velowege so günstig wie Nebenstrassen (prefer_cycleways 1). Gewählt wird nach RT.waehleVariante. */
+  // varianten-3.0: dazu «Am ruhigsten» (Verkehr sehr wichtig, consider_traffic 1) – alle drei mit dem Rennradprofil ohne Gravel
   RT.VARIANTEN = {
-    rennrad: [{ k: "schnell", label: "Schnellste", params: { consider_traffic: "0.1", prefer_cycleways: "0", avoid_mainroads: "0" } },
-      { k: "velo", label: "Velofreundlich", params: { consider_traffic: "0.5", prefer_cycleways: "1", avoid_mainroads: "1" } }],
+    rennrad: [{ k: "schnell", label: "Am direktesten", params: { consider_traffic: "0.1", prefer_cycleways: "0", avoid_mainroads: "0" } },
+      { k: "velo", label: "Velofreundlich", params: { consider_traffic: "0.5", prefer_cycleways: "1", avoid_mainroads: "1" } },
+      { k: "ruhig", label: "Am ruhigsten", params: { consider_traffic: "1", prefer_cycleways: "1", avoid_mainroads: "1" } }],
   };
   RT.TOLERANZ_STANDARD = 10;     // % mehr Fahrzeit, die die velofreundliche Variante kosten darf
   RT.engineVariant = function (sport, opts, k) {
@@ -87,13 +91,31 @@
     const str = m.strasse || 0;
     return { m, haupt_m: haupt, haupt_pct: (100 * haupt) / L, strasse_m: str, strasse_pct: (100 * str) / L, verkehr_pct: (100 * (haupt + 0.5 * str)) / L, radweg_m: rad, radweg_pct: (100 * rad) / L, unbef_m: unbef, L };
   };
-  /** Welche Variante gilt (varianten-2.1)? rows: [{k, label, t (s) oder null, L, gravel_m, haupt_pct, radweg_pct}].
+  /** Welche Variante gilt (varianten-3.0; zwischen direktester und velofreundlicher wie varianten-2.1)? rows: [{k, label, t (s) oder null, L, gravel_m, haupt_pct, radweg_pct}].
    *  Velofreundlich, wenn höchstens tol % langsamer (Fahrzeit; nur ohne Zeitprognose die Distanz, dann ausdrücklich so
    *  beschriftet), nicht mehr Gravel und tatsächlich ruhiger: weniger Verkehrsstrassen (Hauptstrasse + ½ Verbindungsstrasse)
-   *  oder mehr Radweg, je ≥ 1 Prozentpunkt, und nicht mehr Verkehrsstrassen; sonst die schnellste. */
+   *  oder mehr Radweg, je ≥ 1 Prozentpunkt, und nicht mehr Verkehrsstrassen; sonst die direkteste. */
   RT.waehleVariante = function (rows, tolPct) {
     const tol = isNum(tolPct) ? tolPct : RT.TOLERANZ_STANDARD;
+    const base = waehle2(rows, tol);
+    // varianten-3.0: «Am ruhigsten», wenn auch sie höchstens tol % langsamer als die direkteste ist, nicht mehr Gravel hat und
+    // gegenüber der bisherigen Wahl tatsächlich ruhiger ist (gleiche Regel wie oben); sonst bleibt die bisherige Wahl.
     const ok = (rows || []).filter((r) => r && !r.fehler && isNum(r.L));
+    const s = ok.find((r) => r.k === "schnell"), q = ok.find((r) => r.k === "ruhig"), cur = ok.find((r) => r.k === base.k);
+    if (q && !base.k) return { k: "ruhig", text: "Nur «Am ruhigsten» berechnet." };
+    if (!q || !s || !cur || cur === q) return base;
+    const mass = isNum(s.t) && isNum(q.t) ? "t" : "L", plus = s[mass] > 0 ? (100 * (q[mass] - s[mass])) / s[mass] : 0;
+    const vk = (r) => (isNum(r.verkehr_pct) ? r.verkehr_pct : (r.haupt_pct || 0) + 0.5 * (r.strasse_pct || 0));
+    const gleich = Math.abs(q.L - cur.L) < Math.max(30, cur.L * 0.005) && Math.abs((q.haupt_pct || 0) - (cur.haupt_pct || 0)) < 1;
+    const ruhiger = (vk(q) <= vk(cur) - 1 || (q.radweg_pct || 0) >= (cur.radweg_pct || 0) + 1) && vk(q) < vk(cur) + 1;
+    base.ruhig = { plus, mass, gleich, ruhiger };
+    if (gleich && base.gleich) base.text = "Alle drei Routen führen hier über dieselben Wege.";
+    if (gleich || !ruhiger || (q.gravel_m || 0) > (s.gravel_m || 0) + 50 || plus > tol) return base;
+    const diff = mass === "t" ? `${q.t >= s.t ? "+" : "−"}${Math.round(Math.abs(q.t - s.t) / 60)} min` : `${q.L >= s.L ? "+" : "−"}${(Math.abs(q.L - s.L) / 1000).toFixed(1)} km`;
+    return { k: "ruhig", plus, mass, ruhig: base.ruhig, text: `Am ruhigsten gewählt: ${diff} (${plus >= 0 ? "+" : "−"}${Math.abs(plus).toFixed(0)} %${mass === "L" ? ", ohne Zeitprognose auf die Distanz" : ""}), Verkehrsstrassen ${Math.round(vk(q))} % statt ${Math.round(vk(s))} % bei der direktesten.` };
+  };
+  function waehle2(rows, tol) {
+    const ok = (rows || []).filter((r) => r && !r.fehler && isNum(r.L) && r.k !== "ruhig");
     const s = ok.find((r) => r.k === "schnell"), v = ok.find((r) => r.k === "velo");
     if (!s && !v) return { k: null, text: "Keine Variante berechnet." };
     if (!s || !v) return { k: (s || v).k, text: `Nur «${(s || v).label}» berechnet.` };
@@ -103,14 +125,14 @@
     const diff = mass === "t" ? `${b >= a ? "+" : "−"}${Math.round(Math.abs(b - a) / 60)} min` : `${b >= a ? "+" : "−"}${(Math.abs(b - a) / 1000).toFixed(1)} km`;
     if (gleich) return { k: "velo", gleich: true, plus: 0, text: "Beide Varianten führen über dieselben Wege." };
     const ohneZeit = mass === "L" ? " (ohne Zeitprognose: Toleranz ersatzweise auf die Distanz angewendet)" : "";
-    if ((v.gravel_m || 0) > (s.gravel_m || 0) + 50) return { k: "schnell", plus, mass, text: `Die velofreundliche Variante hätte mehr Gravel (${((v.gravel_m || 0) / 1000).toFixed(1)} km) – darum die schnellste.` };
+    if ((v.gravel_m || 0) > (s.gravel_m || 0) + 50) return { k: "schnell", plus, mass, text: `Die velofreundliche Variante hätte mehr Gravel (${((v.gravel_m || 0) / 1000).toFixed(1)} km) – darum die direkteste.` };
     const vk = (r) => (isNum(r.verkehr_pct) ? r.verkehr_pct : (r.haupt_pct || 0) + 0.5 * (r.strasse_pct || 0));
     const hv = v.haupt_pct || 0, hs = s.haupt_pct || 0, rv = v.radweg_pct || 0, rs = s.radweg_pct || 0, kv = vk(v), ks = vk(s);
     const ruhiger = (kv <= ks - 1 || rv >= rs + 1) && kv < ks + 1;
-    if (!ruhiger) return { k: "schnell", plus, mass, nicht_ruhiger: true, text: `Die velofreundliche Variante ist hier nicht ruhiger (Verkehrsstrassen ${Math.round(kv)} % statt ${Math.round(ks)} %, Radweg ${Math.round(rv)} % statt ${Math.round(rs)} %) – darum die schnellste.` };
+    if (!ruhiger) return { k: "schnell", plus, mass, nicht_ruhiger: true, text: `Die velofreundliche Variante ist hier nicht ruhiger (Verkehrsstrassen ${Math.round(kv)} % statt ${Math.round(ks)} %, Radweg ${Math.round(rv)} % statt ${Math.round(rs)} %) – darum die direkteste.` };
     if (plus <= tol) return { k: "velo", plus, mass, text: `Velofreundlich gewählt: ${diff} (${plus >= 0 ? "+" : "−"}${Math.abs(plus).toFixed(0)} %${ohneZeit}), Hauptstrasse ${Math.round(hv)} % statt ${Math.round(hs)} %, Radweg ${Math.round(rv)} %.` };
-    return { k: "schnell", plus, mass, text: `Velofreundlich wäre ${diff} (+${plus.toFixed(0)} %) – mehr als deine Toleranz von ${tol} %${ohneZeit}, darum die schnellste.` };
-  };
+    return { k: "schnell", plus, mass, text: `Velofreundlich wäre ${diff} (+${plus.toFixed(0)} %) – mehr als deine Toleranz von ${tol} %${ohneZeit}, darum die direkteste.` };
+  }
 
   /* ---------------- Routing-Dienst (BRouter) ---------------- */
   RT.ENDPOINT = "https://brouter.de/brouter";
@@ -296,6 +318,8 @@
     kies: { label: "Kies/Schotter", color: "#c9913f" },
     unbefestigt: { label: "Unbefestigt (ohne Angabe)", color: "#d9b36c" },
     natur: { label: "Naturweg", color: "#7b8f3a" },
+    schnee: { label: "Schnee (Skitourenroute)", color: "#8fb3d9" },
+    hand: { label: "Von Hand (kein Wegnetz)", color: "#a7b0b8" },
     unbekannt: { label: "Unbekannt", color: "#b9bec4" },
   };
   const SURF_MAP = {
@@ -318,6 +342,8 @@
     fussweg: { label: "Fussweg/Treppe", color: "#9b6fb0" },
     faehre: { label: "Fähre", color: "#4a7fc1" },
     autobahn: { label: "Autobahn", color: "#5c1f1a" },
+    skiroute: { label: "Skitourenroute (swisstopo/SAC)", color: "#3d7fb3" },
+    hand: { label: "Von Hand gezeichnet", color: "#a7b0b8" },
     unbekannt: { label: "Unbekannt", color: "#b9bec4" },
   };
   RT.wayCat = function (t) {
@@ -363,7 +389,10 @@
     eingeschraenkt: { label: "Eingeschränkt", color: "#d9824a" },
     schieben: { label: "Schieben", color: "#9b6fb0" },
     verboten: { label: "Nicht erlaubt", color: "#b4443a" },
+    ungeprueft: { label: "Nicht geprüft (ohne Wegnetz)", color: "#c3c8cd" },
   };
+  /** Was «Zugang» bedeutet (Anzeige im Planer). */
+  RT.ZUGANG_TEXT = "Zugang = ob du laut OpenStreetMap hier fahren bzw. gehen darfst: erlaubt; eingeschränkt (z. B. «Zubringerdienst gestattet», Land- und Forstwirtschaft); schieben (Velo verboten, zu Fuss erlaubt); nicht erlaubt (privat, Fahrverbot, Autostrasse); unklar (Weg ohne Velo-Angabe, kantonale Regel und Signalisation prüfen). Vor Ort gilt die Signalisation.";
   RT.SAC = { hiking: "T1", mountain_hiking: "T2", demanding_mountain_hiking: "T3", alpine_hiking: "T4", demanding_alpine_hiking: "T5", difficult_alpine_hiking: "T6" };
 
   /* ---------------- Route aus Abschnitten ---------------- */
@@ -389,13 +418,21 @@
       for (const e of leg.edges) {
         const i0 = Math.max(off0 > 0 ? off0 - 1 : 0, base + e.i0), i1 = base + e.i1;
         if (i1 <= i0) continue;
-        segs.push({ id: segs.length, leg: li, i0, i1, d0: 0, d1: 0, tags: e.tags, nodeTags: e.nodeTags, ohne_meldung: !!e.ohne_meldung });
+        segs.push({ id: segs.length, leg: li, i0, i1, d0: 0, d1: 0, tags: e.tags || {}, nodeTags: e.nodeTags || {}, ohne_meldung: !!e.ohne_meldung,
+          quelle: e.quelle || leg.quelle || "osm", info: e.info || null });
       }
       legInfo.push({ i0: Math.max(0, base), i1: lon.length - 1, props: leg.props, url: leg.url || "" });
     });
     for (const s of segs) { s.d0 = d[s.i0]; s.d1 = d[s.i1]; }
     const art = meta.sport && RT.SPORTS[meta.sport] ? RT.SPORTS[meta.sport].art : "rad";
     for (const s of segs) {
+      if (s.quelle === "hand" || s.quelle === "ski") {          // hand-1.0 / skiroute-1.0: ohne OSM-Merkmale, nicht geraten
+        const ski = s.quelle === "ski";
+        s.surface = ski ? "schnee" : "hand"; s.way = ski ? "skiroute" : "hand"; s.access = "ungeprueft";
+        s.accessNote = ski ? "Skitourenroute: Verhältnisse, Wildruhezonen und Signalisation vor Ort beachten" : "von Hand gezeichnet: Zugang und Gelände nicht geprüft";
+        s.sac = null; s.mtb = null; s.smooth = null; s.reverse = false;
+        continue;
+      }
       s.surface = RT.surfaceCat(s.tags); s.way = RT.wayCat(s.tags);
       const a = RT.access(s.tags, art === "rad" ? "rad" : "fuss"); s.access = a.s; s.accessNote = a.g;
       s.sac = s.tags.sac_scale ? RT.SAC[s.tags.sac_scale] || null : null;
@@ -406,25 +443,28 @@
     const L = d.length ? d[d.length - 1] : 0;
     const viaD = [0].concat(legInfo.map((l) => d[l.i1]));
     // Abstand gewünschter Punkt ↔ Punkt am Wegnetz (BRouter schiebt Punkte auf den nächsten erlaubten Weg, auch weit weg)
-    const snap = (vias || []).map((p, i) => {
-      const j = i === 0 ? 0 : legInfo[Math.min(i - 1, legInfo.length - 1)] ? legInfo[Math.min(i - 1, legInfo.length - 1)].i1 : lon.length - 1;
-      return lon.length ? RT.hav(p[0], p[1], lon[j], lat[j]) : null;
-    });
+    const snapJ = (vias || []).map((p, i) => (i === 0 ? 0 : legInfo[Math.min(i - 1, legInfo.length - 1)] ? legInfo[Math.min(i - 1, legInfo.length - 1)].i1 : lon.length - 1));
+    const snap = (vias || []).map((p, i) => (lon.length ? RT.hav(p[0], p[1], lon[snapJ[i]], lat[snapJ[i]]) : null));
     const route = {
       v: RT.VERSIONS.route, id: meta.id || "r" + Date.now().toString(36), sport: meta.sport || null, engine: meta.engine || null,
       lon, lat, ele, d, L, segs, legs: legInfo,
-      vias: (vias || []).map((p, i) => ({ lon: p[0], lat: p[1], d: viaD[Math.min(i, viaD.length - 1)], snap_m: snap[i] })),
+      vias: (vias || []).map((p, i) => ({ lon: p[0], lat: p[1], d: viaD[Math.min(i, viaD.length - 1)], snap_m: snap[i], weg: lon.length ? [lon[snapJ[i]], lat[snapJ[i]]] : null })),
       snapMax: Math.max(0, ...snap.filter((x) => x != null)),
       gapMax, unvollstaendig: gapMax > 25, created: meta.created || new Date().toISOString(),
       prov: Object.assign({ routing: legs[0] ? legs[0].props.creator : "", osm: "© OpenStreetMap-Mitwirkende (ODbL)" }, meta.prov || {}),
     };
+    // Herkunft je Meter (route-1.1): Wegnetz (OSM über BRouter), Skitourenroute (swisstopo/SAC) oder von Hand
+    const quellen = { osm: 0, ski: 0, hand: 0 };
+    for (const s of segs) quellen[s.quelle] = (quellen[s.quelle] || 0) + (s.d1 - s.d0);
+    route.quellen = quellen;
+    route.gezeichnet = L > 0 && quellen.osm < 0.5;
     route.profile = RT.profile(route);
     return route;
   };
 
   /** Freihand-Linie (Skitour): ausdrücklich gezeichnet, ohne Wegnetz. */
   RT.buildDrawn = function (pts, eles, meta) {
-    const leg = { coords: pts.map((p, i) => [p[0], p[1], eles && isNum(eles[i]) ? eles[i] : null]), edges: [{ i0: 0, i1: pts.length - 1, tags: {}, nodeTags: {}, ohne_meldung: true }], props: { creator: "von Hand gezeichnet" } };
+    const leg = { coords: pts.map((p, i) => [p[0], p[1], eles && isNum(eles[i]) ? eles[i] : null]), edges: [{ i0: 0, i1: pts.length - 1, tags: {}, nodeTags: {}, ohne_meldung: true, quelle: "hand" }], props: { creator: "von Hand gezeichnet" }, quelle: "hand" };
     const r = RT.buildRoute([leg], [pts[0], pts[pts.length - 1]], Object.assign({}, meta, { prov: { routing: "von Hand gezeichnet (kein Routing)" } }));
     r.gezeichnet = true;
     return r;
@@ -913,20 +953,26 @@
     field.quality = pts.map((p, i) => ({ d: p.d, ele: p.ele, gridEle: series[i].gridEle, diff: isNum(series[i].gridEle) ? series[i].gridEle - p.ele : null }));
     return field;
   };
-  /** Windpfeile für die Karte: an den Wetterstützpunkten zur Durchfahrtszeit; Pfeil zeigt, WOHIN der Wind weht (Herkunft + 180°). */
-  RT.windArrows = function (pts, field, timeAt) {
+  /** Windpfeile für die Karte: zur Durchfahrtszeit; Pfeil zeigt, WOHIN der Wind weht (Herkunft + 180°). windpfeile-1.1: mit
+   *  Fahrtrichtung (headAt) auch Gegen-/Rückenwind je Pfeil: «gegen» unter −5 km/h längs, «rueck» über +5 km/h, sonst «seite». */
+  RT.windArrows = function (pts, field, timeAt, headAt) {
     const dirs = ["N", "NO", "O", "SO", "S", "SW", "W", "NW"], out = [];
     for (const p of pts || []) {
-      const w = field(p.d, timeAt(p.d));
+      const head = typeof headAt === "function" ? headAt(p.d) : (isNum(p.head) ? p.head : null);
+      const w = field(p.d, timeAt(p.d), isNum(head) ? head : undefined);
       if (!w || !isNum(w.speed) || !isNum(w.dirFrom)) continue;
-      out.push({ lon: p.lon, lat: p.lat, d: p.d, speed: w.speed, dirFrom: w.dirFrom, rot: (w.dirFrom + 180) % 360, aus: dirs[Math.round(w.dirFrom / 45) % 8] });
+      const along = isNum(head) ? (isNum(w.along) ? w.along : RT.windAlong(w.speed, w.dirFrom, head)) : null;
+      const art = along == null ? "unbekannt" : along < -1.4 ? "gegen" : along > 1.4 ? "rueck" : "seite";
+      out.push({ lon: p.lon, lat: p.lat, d: p.d, speed: w.speed, dirFrom: w.dirFrom, rot: (w.dirFrom + 180) % 360, aus: dirs[Math.round(w.dirFrom / 45) % 8], along, art });
     }
     return out;
   };
-  /** Orte für Windpfeile: gleichmässig entlang der Route, nie auf Start/Ziel (dort liegen die Marker); 1 Pfeil je ~step_m, 3–12. */
+  /** Orte für Windpfeile: gleichmässig entlang der Route, nie auf Start/Ziel (dort liegen die Marker); 1 Pfeil je ~step_m
+   *  (Standard 3 km), 3–20 (windpfeile-1.1), mit Fahrtrichtung an der Stelle. */
   RT.windPositions = function (route, step_m) {
-    const n = Math.max(3, Math.min(12, Math.round(route.L / (step_m || 4000))));
-    return Array.from({ length: n }, (_, i) => { const dd = route.L * (i + 0.5) / n, a = RT.at(route, dd); return { d: dd, lon: a.lon, lat: a.lat }; });
+    const n = Math.max(3, Math.min(20, Math.round(route.L / (step_m || 3000))));
+    const P = route.profile;
+    return Array.from({ length: n }, (_, i) => { const dd = route.L * (i + 0.5) / n, a = RT.at(route, dd); return { d: dd, lon: a.lon, lat: a.lat, head: P ? P.head[Math.min(P.n - 1, Math.max(0, a.k))] : null }; });
   };
   /** Rückenwindkomponente (m/s, positiv = Rückenwind) aus meteorologischer Richtung (woher) und Fahrtrichtung. */
   RT.windAlong = function (speed, dirFromDeg, headingDeg) { return speed * Math.cos(((dirFromDeg + 180) - headingDeg) * RAD); };
@@ -955,15 +1001,33 @@
   /* ---------------- Wegpunkte (wegpunkte-1.0) ----------------
    * Start (erster) und Ziel (letzter Punkt) bleiben fest. Ein neuer Punkt wird als Zwischenziel dort eingefügt, wo er den
    * kleinsten Umweg macht (Luftlinie: a→p→b minus a→b); die eigentliche Route rechnet danach BRouter je Abschnitt. */
-  RT.einfuegeIndex = function (vias, p) {
+  /* wegpunkte-1.1: Liegt schon eine Linie vor (route), zählt, welchem Abschnitt der Linie der neue Punkt am nächsten liegt
+   * (nicht der Luftlinie zwischen den Wegpunkten): so landet ein Punkt zwischen den beiden Wegpunkten, zwischen denen er auf
+   * der Route liegt, auch bei Schlaufen, Hin- und Rückweg oder kurvigen Abschnitten. Gleich nahe Abschnitte (±10 m): der mit
+   * dem kleineren Umweg. Ohne Linie: kleinster Umweg wie bisher. Keine Obergrenze für die Zahl der Punkte. */
+  RT.einfuegeIndex = function (vias, p, route) {
     const n = (vias || []).length;
     if (n < 2) return n;
-    let best = 1, cost = Infinity;
-    for (let i = 1; i < n; i++) {
-      const a = vias[i - 1], b = vias[i];
-      const c = RT.hav(a[0], a[1], p[0], p[1]) + RT.hav(p[0], p[1], b[0], b[1]) - RT.hav(a[0], a[1], b[0], b[1]);
-      if (c < cost - 1e-6) { cost = c; best = i; }
+    const umweg = (i) => { const a = vias[i - 1], b = vias[i]; return RT.hav(a[0], a[1], p[0], p[1]) + RT.hav(p[0], p[1], b[0], b[1]) - RT.hav(a[0], a[1], b[0], b[1]); };
+    if (route && route.legs && route.legs.length === n - 1 && route.lon && route.lon.length > 1) {
+      const cosl = Math.cos(p[1] * RAD), X = (i) => (route.lon[i] - p[0]) * cosl * 111320, Y = (i) => (route.lat[i] - p[1]) * 110540;
+      const best = new Array(n - 1).fill(Infinity);
+      route.legs.forEach((lg, li) => {
+        for (let i = Math.max(0, lg.i0); i < Math.min(route.lon.length - 1, lg.i1); i++) {
+          const ax = X(i), ay = Y(i), vx = X(i + 1) - ax, vy = Y(i + 1) - ay, l2 = vx * vx + vy * vy;
+          const t = l2 > 0 ? Math.max(0, Math.min(1, -(ax * vx + ay * vy) / l2)) : 0, dist = Math.hypot(ax + vx * t, ay + vy * t);
+          if (dist < best[li]) best[li] = dist;
+        }
+      });
+      const m = Math.min(...best);
+      if (isFinite(m)) {
+        let pick = -1, c = Infinity;
+        best.forEach((b, li) => { if (b <= m + 10) { const u = umweg(li + 1); if (u < c - 1e-6) { c = u; pick = li; } } });
+        if (pick >= 0) return pick + 1;
+      }
     }
+    let best = 1, cost = Infinity;
+    for (let i = 1; i < n; i++) { const c = umweg(i); if (c < cost - 1e-6) { cost = c; best = i; } }
     return best;
   };
 
@@ -1075,22 +1139,24 @@
   /* ---------------- Andere Routen (alternativen-1.0) ----------------
    * BRouter alternativeidx 1–2 je Abschnitt; gleiche Nummer über alle Abschnitte zusammengesetzt. Doppelte (≥ 85 % der
    * Strecke innerhalb 30 m einer anderen) werden verworfen. Beschreibung: wo sie abweicht, höchster Punkt. */
-  RT.naheIndex = function (route, step) {
+  RT.naheIndex = function (route, step, von, bis) {
     step = step || 25;
     const cell = 0.0015, grid = new Map(), key = (x, y) => Math.floor(x / cell) + ":" + Math.floor(y / cell);
-    for (let dd = 0; dd <= route.L; dd += step) { const a = RT.at(route, dd); const k = key(a.lon, a.lat); if (!grid.has(k)) grid.set(k, []); grid.get(k).push([a.lon, a.lat]); }
+    for (let dd = Math.max(0, von || 0); dd <= Math.min(route.L, bis == null ? route.L : bis); dd += step) { const a = RT.at(route, dd); const k = key(a.lon, a.lat); if (!grid.has(k)) grid.set(k, []); grid.get(k).push([a.lon, a.lat]); }
     return function (x, y) {
       const cx = Math.floor(x / cell), cy = Math.floor(y / cell); let best = Infinity;
       for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const p of grid.get((cx + i) + ":" + (cy + j)) || []) { const h = RT.hav(x, y, p[0], p[1]); if (h < best) best = h; }
       return best;
     };
   };
-  /** Anteil von B (je 50 m), der höchstens tol m neben A liegt, und der abweichende Teil von B (km von–bis). */
-  RT.vergleicheRouten = function (A, B, tol) {
-    tol = tol || 30;
-    const near = RT.naheIndex(A), P = B.profile;
+  /** Anteil von B (je 50 m), der höchstens tol m neben A liegt, und der abweichende Teil von B (km von–bis).
+   *  opt.a / opt.b = [von, bis] in m: nur diese Teile vergleichen (z. B. die Abfahrten nach dem gemeinsamen Aufstieg). */
+  RT.vergleicheRouten = function (A, B, tol, opt) {
+    tol = tol || 30; opt = opt || {};
+    const ra = opt.a || [0, A.L], rb = opt.b || [0, B.L];
+    const near = RT.naheIndex(A, 25, ra[0], ra[1]), P = B.profile;
     let n = 0, gleich = 0, d0 = null, d1 = null, maxEle = -Infinity, maxEleAb = -Infinity;
-    for (let dd = 0; dd <= B.L; dd += 50) {
+    for (let dd = Math.max(0, rb[0]); dd <= Math.min(B.L, rb[1]); dd += 50) {
       const a = RT.at(B, dd); n++;
       if (isNum(a.ele) && a.ele > maxEle) maxEle = a.ele;
       if (near(a.lon, a.lat) <= tol) gleich++;
@@ -1098,7 +1164,10 @@
     }
     return { anteil: n ? gleich / n : 1, ab: d0 == null ? null : { d0, d1 }, maxEle: isFinite(maxEle) ? maxEle : null, maxEleAb: isFinite(maxEleAb) ? maxEleAb : null, maxEleProfil: P ? Math.max(...P.ele.filter(isNum)) : null };
   };
-  RT.istDoppelt = (A, B, schwelle) => RT.vergleicheRouten(A, B).anteil >= (schwelle || 0.85) && RT.vergleicheRouten(B, A).anteil >= (schwelle || 0.85);
+  RT.istDoppelt = (A, B, schwelle, opt) => {
+    const o = opt || {}, s = schwelle || 0.85;
+    return RT.vergleicheRouten(A, B, 30, o).anteil >= s && RT.vergleicheRouten(B, A, 30, { a: o.b, b: o.a }).anteil >= s;
+  };
 
   /* ---------------- Ortssuche (ortssuche-1.0, swisstopo) ----------------
    * Gesendet wird nur der eingegebene Text. Antwort: results[].attrs mit label (HTML), detail, origin und Koordinaten
@@ -1130,6 +1199,421 @@
     return out;
   };
 
+
+  /* ================= V5.8 ================= */
+  /* ---------------- Schweizer Koordinaten (Näherungsformeln swisstopo, ~1 m) ---------------- */
+  RT.toLV95 = function (lon, lat) {
+    const p = (lat * 3600 - 169028.66) / 10000, l = (lon * 3600 - 26782.5) / 10000;
+    return [2600072.37 + 211455.93 * l - 10938.51 * l * p - 0.36 * l * p * p - 44.54 * l ** 3,
+      1200147.07 + 308807.95 * p + 3745.25 * l * l + 76.63 * p * p - 194.56 * l * l * p + 119.79 * p ** 3];
+  };
+  RT.fromLV95 = function (E, N) {
+    const y = (E - 2600000) / 1e6, x = (N - 1200000) / 1e6;
+    const l = 2.6779094 + 4.728982 * y + 0.791484 * y * x + 0.1306 * y * x * x - 0.0436 * y ** 3;
+    const p = 16.9023892 + 3.238272 * x - 0.270978 * y * y - 0.002528 * x * x - 0.0447 * y * y * x - 0.014 * x ** 3;
+    return [+(l * 100 / 36).toFixed(7), +(p * 100 / 36).toFixed(7)];
+  };
+
+  /* ---------------- Abschnitte von Hand (hand-1.0) ----------------
+   * Nur auf ausdrückliche Wahl (Skitour, «Lücke von Hand schliessen», «Abschnitt von Hand», ohne Routing-Zustimmung):
+   * gerade Linien zwischen DEINEN Punkten, alle 20 m eine Höhe aus dem Höhenmodell. Belag, Wegart und Zugang bleiben
+   * «von Hand / nicht geprüft» – nie als erlaubter Weg ausgegeben. */
+  RT.densify = function (pts, step) {
+    step = step || 20;
+    if (!pts || pts.length < 2) return (pts || []).map((p) => [p[0], p[1]]);
+    const out = [[+pts[0][0], +pts[0][1]]];
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i], n = Math.max(1, Math.ceil(RT.hav(a[0], a[1], b[0], b[1]) / step));
+      for (let k = 1; k <= n; k++) out.push([a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n]);
+    }
+    return out;
+  };
+  /** Abschnitt aus Stücken [{pts, quelle: "hand"|"ski", info}] in Reihenfolge (aneinanderstossend), je 20 m verdichtet.
+   *  Höhen danach in coords[i][2] eintragen (Höhenmodell). */
+  RT.legAusStuecken = function (stuecke, step) {
+    const coords = [], edges = [];
+    for (const st of stuecke || []) {
+      if (!st || !st.pts || st.pts.length < 2) continue;
+      const d = RT.densify(st.pts, step || 20);
+      const i0 = coords.length ? coords.length - 1 : 0;
+      d.forEach((p, k) => { if (coords.length && k === 0) { const c = coords[coords.length - 1]; if (RT.hav(c[0], c[1], p[0], p[1]) < 0.5) return; } coords.push([p[0], p[1], null]); });
+      if (coords.length - 1 > i0) edges.push({ i0, i1: coords.length - 1, tags: {}, nodeTags: {}, quelle: st.quelle || "hand", info: st.info || null });
+    }
+    const ski = edges.some((e) => e.quelle === "ski");
+    return { coords, edges, props: { creator: ski ? "Skitourenrouten swisstopo/SAC" : "von Hand gezeichnet" }, quelle: ski ? "ski" : "hand" };
+  };
+  RT.handLeg = (pts, step) => RT.legAusStuecken([{ pts, quelle: "hand" }], step);
+  /** Abschnitte (legs) einer fertigen Route wieder herauslösen (gleiche Form wie parseBRouter, mit Herkunft je Kante). */
+  RT.legsAusRoute = function (route) {
+    return route.legs.map((lg, li) => ({ coords: route.lon.slice(lg.i0, lg.i1 + 1).map((x, k) => [x, route.lat[lg.i0 + k], route.ele[lg.i0 + k]]),
+      edges: route.segs.filter((s) => s.leg === li).map((s) => ({ i0: s.i0 - lg.i0, i1: s.i1 - lg.i0, tags: s.tags, nodeTags: s.nodeTags || {}, quelle: s.quelle, info: s.info })),
+      props: lg.props, url: lg.url }));
+  };
+  /** Mehrere Abschnitte zu einem zusammenfügen (gemeinsame Punkte nur einmal). */
+  RT.legsZuEinem = function (legs) {
+    const coords = [], edges = [];
+    for (const lg of legs) {
+      let skip = 0;
+      if (coords.length) { const c = coords[coords.length - 1], f = lg.coords[0]; if (RT.hav(c[0], c[1], f[0], f[1]) < 0.5) skip = 1; }
+      const base = coords.length - skip;
+      for (let i = skip; i < lg.coords.length; i++) coords.push(lg.coords[i].slice());
+      for (const e of lg.edges) { const i0 = Math.max(0, base + e.i0), i1 = base + e.i1; if (i1 > i0) edges.push(Object.assign({}, e, { i0, i1 })); }
+    }
+    return { coords, edges, props: Object.assign({}, (legs[0] || {}).props, { zusammengefuegt: true }) };
+  };
+  /** Abschnitt rückwärts (gleicher Weg zurück): Linie und Merkmale umgedreht; reversedirection gekippt, damit Einbahnen
+   *  gegen die neue Richtung sichtbar werden (RT.einbahnGegen). */
+  RT.umkehrLeg = function (leg) {
+    const N = leg.coords.length;
+    return { coords: leg.coords.slice().reverse().map((c) => c.slice()),
+      edges: leg.edges.slice().reverse().map((e) => { const t = Object.assign({}, e.tags || {}); if (t.reversedirection === "yes") delete t.reversedirection; else t.reversedirection = "yes";
+        return Object.assign({}, e, { i0: N - 1 - e.i1, i1: N - 1 - e.i0, tags: t }); }),
+      props: Object.assign({}, leg.props, { umgekehrt: true }) };
+  };
+  /** Meter gegen eine Einbahn (fürs Velo, laut OSM), z. B. nach dem Umkehren. */
+  RT.einbahnGegen = function (route, d0, d1) {
+    d0 = d0 || 0; d1 = d1 == null ? route.L : d1;
+    let m = 0;
+    for (const s of route.segs || []) {
+      const t = s.tags || {}, a = Math.max(d0, s.d0), b = Math.min(d1, s.d1); if (b <= a) continue;
+      if (t["oneway:bicycle"] === "no" || /opposite/.test(t.cycleway || "")) continue;
+      const rev = t.reversedirection === "yes";
+      if ((t.oneway === "yes" && rev) || (t.oneway === "-1" && !rev)) m += b - a;
+    }
+    return m;
+  };
+
+  /* ---------------- Skitourenrouten (skiroute-1.0) ----------------
+   * Quelle: swisstopo-Ebene «Skitourenrouten» (ch.swisstopo-karto.skitouren, mit dem SAC) über die identify-Schnittstelle
+   * von geo.admin.ch (LV95, höchstens 50 Objekte je Anfrage). Netz: Punkte innerhalb 12 m zusammengelegt, Linienenden bis
+   * 20 m an nahe Linien angeschlossen. Zwischen zwei Punkten: kürzester Weg im Netz zwischen den Stellen, die ihnen am
+   * nächsten liegen (höchstens 150 m daneben); der kurze Anschluss vom Punkt zur Linie ist «von Hand». Kein Netz in der Nähe
+   * oder Umweg grösser als 1,8 × Luftlinie + 800 m: der Abschnitt bleibt von Hand – mit Grund, nie still. */
+  RT.SKI_LAYER = "ch.swisstopo-karto.skitouren";
+  RT.SKI_IDENTIFY = "https://api3.geo.admin.ch/rest/services/api/MapServer/identify";
+  /** Suchrechteck (LV95) um die Punkte, je Seite rand_m, höchstens 40 km Kantenlänge. */
+  RT.skiBbox = function (pts, rand_m) {
+    rand_m = rand_m == null ? 1500 : rand_m;
+    const ll = (pts || []).map((p) => RT.toLV95(p[0], p[1]));
+    if (!ll.length) return null;
+    let e0 = Math.min(...ll.map((p) => p[0])) - rand_m, e1 = Math.max(...ll.map((p) => p[0])) + rand_m;
+    let n0 = Math.min(...ll.map((p) => p[1])) - rand_m, n1 = Math.max(...ll.map((p) => p[1])) + rand_m;
+    const cap = (a, b) => { const m = (a + b) / 2, h = Math.min(20000, (b - a) / 2); return [m - h, m + h]; };
+    [e0, e1] = cap(e0, e1); [n0, n1] = cap(n0, n1);
+    return [Math.floor(e0), Math.floor(n0), Math.ceil(e1), Math.ceil(n1)];
+  };
+  RT.skiIdentifyUrl = function (bbox, offset, base) {
+    const b = bbox.map((v) => Math.round(v)).join(",");
+    return `${base || RT.SKI_IDENTIFY}?geometry=${b}&geometryType=esriGeometryEnvelope&layers=all:${RT.SKI_LAYER}&mapExtent=${b}&imageDisplay=1000,1000,96&tolerance=0&returnGeometry=true&geometryFormat=geojson&sr=2056&lang=de${offset ? "&offset=" + offset : ""}`;
+  };
+  const skiName = (props) => {
+    const low = {}; for (const [k, v] of Object.entries(props || {})) low[k.toLowerCase()] = v;
+    for (const k of ["name", "routenname", "route_name", "bezeichnung", "label", "titel", "name_de", "tourname"]) if (typeof low[k] === "string" && low[k].trim()) return low[k].trim();
+    const s = Object.values(props || {}).find((v) => typeof v === "string" && v.trim().length > 2 && v.length < 80 && !/^https?:/.test(v));
+    return s ? s.trim() : "Skitourenroute";
+  };
+  /** identify-Antwort → [{id, name, props, lines: [[[lon, lat], …], …]}] (LV95/LV03 → WGS84). */
+  RT.skiFeatures = function (json) {
+    const out = [];
+    const conv = (c) => { const x = +c[0], y = +c[1]; return x > 2e6 ? RT.fromLV95(x, y) : x > 4e5 ? RT.fromLV95(x + 2e6, y + 1e6) : [x, y]; };
+    for (const r of (json && json.results) || []) {
+      const g = r.geometry; if (!g || !Array.isArray(g.coordinates)) continue;
+      const lines = g.type === "LineString" ? [g.coordinates] : g.type === "MultiLineString" ? g.coordinates : [];
+      const L = lines.map((ln) => ln.map(conv).filter((p) => isNum(p[0]) && isNum(p[1]))).filter((ln) => ln.length >= 2);
+      if (!L.length) continue;
+      const props = r.properties || r.attributes || {};
+      out.push({ id: String(r.featureId != null ? r.featureId : r.id != null ? r.id : "f" + out.length), name: skiName(props), props, lines: L });
+    }
+    return out;
+  };
+  RT.skiNetz = function (features, opt) {
+    opt = Object.assign({ tol: 12, anschluss: 20 }, opt || {});
+    const lines = [];
+    (features || []).forEach((f, fi) => { for (const ln of f.lines || []) if (ln && ln.length >= 2) lines.push({ f: fi, pts: ln }); });
+    const netz = { nodes: [], edges: [], adj: [], features: features || [], v: RT.VERSIONS.skiroute, Q: new Map(), kx: 1, ky: 1, leer: !lines.length };
+    if (!lines.length) return netz;
+    let lat0 = 0, cnt = 0; for (const l of lines) for (const p of l.pts) { lat0 += +p[1]; cnt++; } lat0 /= cnt;
+    const kx = Math.cos(lat0 * RAD) * 111320, ky = 110540, nodes = netz.nodes, edges = netz.edges, adj = netz.adj;
+    netz.kx = kx; netz.ky = ky;
+    const G = new Map(), cs = opt.tol * 2;
+    const node = (lon, lat) => {
+      const x = lon * kx, y = lat * ky, cx = Math.floor(x / cs), cy = Math.floor(y / cs);
+      let best = -1, bd = opt.tol;
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const id of G.get((cx + i) + ":" + (cy + j)) || []) { const d = Math.hypot(nodes[id].x - x, nodes[id].y - y); if (d <= bd) { bd = d; best = id; } }
+      if (best >= 0) return best;
+      const id = nodes.length; nodes.push({ x, y, lon, lat }); adj.push([]);
+      const k = cx + ":" + cy; if (!G.has(k)) G.set(k, []); G.get(k).push(id);
+      return id;
+    };
+    const addEdge = (a, b, f) => {
+      if (a === b) return -1;
+      const len = Math.hypot(nodes[a].x - nodes[b].x, nodes[a].y - nodes[b].y); if (len < 0.01) return -1;
+      if (adj[a].some((id) => !edges[id].aus && ((edges[id].a === a && edges[id].b === b) || (edges[id].a === b && edges[id].b === a)))) return -1;
+      const id = edges.length; edges.push({ a, b, len, f, aus: false }); adj[a].push(id); adj[b].push(id); return id;
+    };
+    const ends = [];
+    for (const l of lines) {
+      let prev = -1;
+      l.pts.forEach((p, k) => { const id = node(+p[0], +p[1]); if (prev >= 0) addEdge(prev, id, l.f); if (k === 0 || k === l.pts.length - 1) ends.push(id); prev = id; });
+    }
+    const ecs = 50, ekeys = (e) => { const A = nodes[e.a], B = nodes[e.b], out = [];
+      for (let i = Math.floor(Math.min(A.x, B.x) / ecs); i <= Math.floor(Math.max(A.x, B.x) / ecs); i++) for (let j = Math.floor(Math.min(A.y, B.y) / ecs); j <= Math.floor(Math.max(A.y, B.y) / ecs); j++) out.push(i + ":" + j);
+      return out; };
+    const EG = new Map();
+    edges.forEach((e, id) => { for (const k of ekeys(e)) { if (!EG.has(k)) EG.set(k, []); EG.get(k).push(id); } });
+    const splits = new Map();
+    for (const nid of ends) {
+      if (adj[nid].length !== 1) continue;                     // Kreuzung oder schon verbunden
+      const N = nodes[nid], cx = Math.floor(N.x / ecs), cy = Math.floor(N.y / ecs);
+      let best = null;
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const id of EG.get((cx + i) + ":" + (cy + j)) || []) {
+        const e = edges[id]; if (e.a === nid || e.b === nid) continue;
+        const A = nodes[e.a], B = nodes[e.b], vx = B.x - A.x, vy = B.y - A.y, l2 = vx * vx + vy * vy;
+        const t = l2 > 0 ? Math.max(0, Math.min(1, ((N.x - A.x) * vx + (N.y - A.y) * vy) / l2)) : 0;
+        const d = Math.hypot(A.x + vx * t - N.x, A.y + vy * t - N.y);
+        if (d <= opt.anschluss && (!best || d < best.d)) best = { id, t, d };
+      }
+      if (!best) continue;
+      const e = edges[best.id];
+      if (best.t * e.len < opt.tol) addEdge(nid, e.a, -1);
+      else if ((1 - best.t) * e.len < opt.tol) addEdge(nid, e.b, -1);
+      else { if (!splits.has(best.id)) splits.set(best.id, []); splits.get(best.id).push({ t: best.t, from: nid }); }
+    }
+    for (const [id, L] of splits) {
+      const e = edges[id]; e.aus = true;
+      const A = nodes[e.a], B = nodes[e.b];
+      L.sort((p, q) => p.t - q.t);
+      let prev = e.a;
+      for (const sp of L) {
+        const nid = nodes.length; nodes.push({ x: A.x + (B.x - A.x) * sp.t, y: A.y + (B.y - A.y) * sp.t, lon: A.lon + (B.lon - A.lon) * sp.t, lat: A.lat + (B.lat - A.lat) * sp.t }); adj.push([]);
+        addEdge(prev, nid, e.f); addEdge(sp.from, nid, -1); prev = nid;
+      }
+      addEdge(prev, e.b, e.f);
+    }
+    edges.forEach((e, id) => { if (e.aus) return; for (const k of ekeys(e)) { if (!netz.Q.has(k)) netz.Q.set(k, []); netz.Q.get(k).push(id); } });
+    return netz;
+  };
+  /** Nächste Stelle des Netzes (höchstens maxD m). */
+  RT.skiSnap = function (netz, lon, lat, maxD) {
+    if (!netz || netz.leer) return null;
+    const x = lon * netz.kx, y = lat * netz.ky, cs = 50, r = Math.ceil(maxD / cs), cx = Math.floor(x / cs), cy = Math.floor(y / cs);
+    let best = null;
+    for (let i = -r; i <= r; i++) for (let j = -r; j <= r; j++) for (const id of netz.Q.get((cx + i) + ":" + (cy + j)) || []) {
+      const e = netz.edges[id], A = netz.nodes[e.a], B = netz.nodes[e.b], vx = B.x - A.x, vy = B.y - A.y, l2 = vx * vx + vy * vy;
+      const t = l2 > 0 ? Math.max(0, Math.min(1, ((x - A.x) * vx + (y - A.y) * vy) / l2)) : 0;
+      const d = Math.hypot(A.x + vx * t - x, A.y + vy * t - y);
+      if (d <= maxD && (!best || d < best.d)) best = { e: id, t, d, lon: A.lon + (B.lon - A.lon) * t, lat: A.lat + (B.lat - A.lat) * t };
+    }
+    return best;
+  };
+  RT.skiPfad = function (netz, a, b, opt) {
+    opt = Object.assign({ maxSnap: 150, faktor: 1.8, plus: 800 }, opt || {});
+    const luft = RT.hav(a[0], a[1], b[0], b[1]);
+    if (!netz || netz.leer) return { ok: false, grund: "keine Skitourenroute im Ausschnitt" };
+    const sa = RT.skiSnap(netz, a[0], a[1], opt.maxSnap), sb = RT.skiSnap(netz, b[0], b[1], opt.maxSnap);
+    if (!sa) return { ok: false, grund: `keine Skitourenroute näher als ${opt.maxSnap} m beim ersten Punkt` };
+    if (!sb) return { ok: false, grund: `keine Skitourenroute näher als ${opt.maxSnap} m beim zweiten Punkt` };
+    const E = netz.edges, Nn = netz.nodes, n = Nn.length;
+    const ea = E[sa.e], eb = E[sb.e];
+    const dist = new Float64Array(n).fill(Infinity), prev = new Int32Array(n).fill(-1), prevE = new Int32Array(n).fill(-1);
+    const H = [];
+    const push = (node, d) => { H.push([d, node]); let i = H.length - 1; while (i > 0) { const q = (i - 1) >> 1; if (H[q][0] <= H[i][0]) break; [H[q], H[i]] = [H[i], H[q]]; i = q; } };
+    const pop = () => { const top = H[0], last = H.pop(); if (H.length) { H[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < H.length && H[l][0] < H[m][0]) m = l; if (r < H.length && H[r][0] < H[m][0]) m = r; if (m === i) break; [H[m], H[i]] = [H[i], H[m]]; i = m; } } return top; };
+    const seed = (node, d) => { if (d < dist[node]) { dist[node] = d; prev[node] = -2; prevE[node] = sa.e; push(node, d); } };
+    seed(ea.a, sa.t * ea.len); seed(ea.b, (1 - sa.t) * ea.len);
+    while (H.length) {
+      const [d, u] = pop(); if (d > dist[u]) continue;
+      for (const id of netz.adj[u]) {
+        const e = E[id]; if (e.aus) continue;
+        const v = e.a === u ? e.b : e.a, nd = d + e.len;
+        if (nd < dist[v]) { dist[v] = nd; prev[v] = u; prevE[v] = id; push(v, nd); }
+      }
+    }
+    let ziel = null, len = Infinity;
+    if (sa.e === sb.e) { len = Math.abs(sa.t - sb.t) * ea.len; ziel = "direkt"; }
+    const viaA = dist[eb.a] + sb.t * eb.len, viaB = dist[eb.b] + (1 - sb.t) * eb.len;
+    if (viaA < len) { len = viaA; ziel = eb.a; }
+    if (viaB < len) { len = viaB; ziel = eb.b; }
+    if (!isFinite(len)) return { ok: false, grund: "die Skitourenrouten bei den beiden Punkten hängen nicht zusammen", snapA: sa.d, snapB: sb.d };
+    const pts = [[sa.lon, sa.lat]], fs = [];
+    if (ziel !== "direkt") {
+      const chain = []; let u = ziel;
+      while (u >= 0) { chain.push(u); const e = E[prevE[u]]; if (e && e.f >= 0) fs.push(e.f); u = prev[u]; if (u === -2) break; }
+      chain.reverse().forEach((id) => pts.push([Nn[id].lon, Nn[id].lat]));
+      if (eb.f >= 0) fs.push(eb.f);
+      if (ea.f >= 0) fs.push(ea.f);
+    } else if (ea.f >= 0) fs.push(ea.f);
+    pts.push([sb.lon, sb.lat]);
+    let L = 0; for (let i = 1; i < pts.length; i++) L += RT.hav(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]);
+    const grenze = luft * opt.faktor + opt.plus;
+    const namen = [...new Set(fs.map((f) => (netz.features[f] || {}).name).filter(Boolean))];
+    if (L + sa.d + sb.d > grenze) return { ok: false, grund: `die Skitourenroute wäre ein grosser Umweg (${(L / 1000).toFixed(1)} km statt ${(luft / 1000).toFixed(1)} km Luftlinie)`, umweg: L / Math.max(1, luft), snapA: sa.d, snapB: sb.d };
+    return { ok: true, pts, len: L, snapA: sa.d, snapB: sb.d, luft, namen, v: RT.VERSIONS.skiroute };
+  };
+  /** Ein Abschnitt Skitour: Anschluss von Hand (falls > 5 m), Skitourenroute, Anschluss von Hand. */
+  RT.skiLeg = function (a, b, pfad) {
+    if (!pfad || !pfad.ok) return RT.handLeg([a, b]);
+    const st = [], p0 = pfad.pts[0], p1 = pfad.pts[pfad.pts.length - 1];
+    if (pfad.snapA > 5) st.push({ pts: [a, p0], quelle: "hand", info: { anschluss: true } });
+    st.push({ pts: pfad.pts, quelle: "ski", info: { namen: pfad.namen } });
+    if (pfad.snapB > 5) st.push({ pts: [p1, b], quelle: "hand", info: { anschluss: true } });
+    const leg = RT.legAusStuecken(st);
+    leg.pfad = { len: pfad.len, namen: pfad.namen, snapA: pfad.snapA, snapB: pfad.snapB };
+    return leg;
+  };
+
+  /* ---------------- Hangneigung (hangneigung-1.0) ----------------
+   * Gelände, nicht die Linie: Neigung aus dem Höhenraster (Mapzen/AWS Terrain Tiles, Terrarium-Kodierung, Zoom 14), zentrale
+   * Differenzen über ±15 m, an der Linie und je 20 m links und rechts; je 20-m-Schritt der grösste Wert. Klassen nach SLF:
+   * unter 30° mässig steil, ab 30° steil (97 % der tödlichen Skifahrerlawinen), ab 35° sehr steil, ab 40° extrem steil.
+   * 25–30° als Übergang: die SLF-Grenzen sind Richtwerte, und ein Raster von ~25–30 m glättet kurze Steilstufen.
+   * Keine Lawinenbeurteilung – das Bulletin und die Verhältnisse vor Ort entscheiden. */
+  RT.HANG_KLASSEN = [
+    { k: "h0", label: "unter 25°", lo: -1, hi: 25, color: "#c9d3dc" },
+    { k: "h25", label: "25–30° Übergang – Hinweis", lo: 25, hi: 30, color: "#e3c25a" },
+    { k: "h30", label: "30–35° steil – Lawinengelände", lo: 30, hi: 35, color: "#e08a3c" },
+    { k: "h35", label: "35–40° sehr steil", lo: 35, hi: 40, color: "#c8502f" },
+    { k: "h40", label: "über 40° extrem steil", lo: 40, hi: 91, color: "#7d2a6b" },
+  ];
+  RT.hangKlasse = (deg) => (isNum(deg) ? (RT.HANG_KLASSEN.find((c) => deg >= c.lo && deg < c.hi) || RT.HANG_KLASSEN[0]).k : "unbekannt");
+  RT.terrarium = (r, g, b) => r * 256 + g + b / 256 - 32768;
+  RT.DEM_URL = (z, x, y) => `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`;
+  /** Kacheln (Web Mercator) für ein Rechteck. */
+  RT.demKacheln = function (lon0, lat0, lon1, lat1, z) {
+    const n = 2 ** z, tx = (lon) => Math.floor((lon + 180) / 360 * n), ty = (lat) => { const s = Math.sin(lat * RAD); return Math.floor((0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * n); };
+    const out = [];
+    for (let x = tx(Math.min(lon0, lon1)); x <= tx(Math.max(lon0, lon1)); x++) for (let y = ty(Math.max(lat0, lat1)); y <= ty(Math.min(lat0, lat1)); y++) out.push({ z, x, y });
+    return out;
+  };
+  /** Höhe (bilinear) aus geladenen Kacheln: tiles = Map("x/y" → RGBA 256×256). Fehlt eine Kachel: null. */
+  RT.demSampler = function (tiles, z) {
+    const n = 2 ** z;
+    const at = (X, Y) => { const tx = Math.floor(X / 256), ty = Math.floor(Y / 256), d = tiles.get(tx + "/" + ty); if (!d) return null; const i = ((Y - ty * 256) * 256 + (X - tx * 256)) * 4; return RT.terrarium(d[i], d[i + 1], d[i + 2]); };
+    return function (lon, lat) {
+      const s = Math.sin(lat * RAD), X = (lon + 180) / 360 * n * 256 - 0.5, Y = (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * n * 256 - 0.5;
+      const x0 = Math.floor(X), y0 = Math.floor(Y), fx = X - x0, fy = Y - y0;
+      const a = at(x0, y0), b = at(x0 + 1, y0), c = at(x0, y0 + 1), d = at(x0 + 1, y0 + 1);
+      if (a == null || b == null || c == null || d == null) return null;
+      return a * (1 - fx) * (1 - fy) + b * fx * (1 - fy) + c * (1 - fx) * fy + d * fx * fy;
+    };
+  };
+  /** Geländeneigung (Grad) an einer Stelle aus elevAt(lon, lat). */
+  RT.hangAn = function (elevAt, lon, lat, dm) {
+    dm = dm || 15;
+    const dLon = dm / (111320 * Math.cos(lat * RAD)), dLat = dm / 110540;
+    const e = elevAt(lon + dLon, lat), w = elevAt(lon - dLon, lat), nn = elevAt(lon, lat + dLat), s = elevAt(lon, lat - dLat);
+    if (![e, w, nn, s].every(isNum)) return null;
+    return Math.atan(Math.hypot((e - w) / (2 * dm), (nn - s) / (2 * dm))) / RAD;
+  };
+  RT.hangProfil = function (route, elevAt, opt) {
+    opt = Object.assign({ seite: 20, dm: 15, minLen: 20 }, opt || {});
+    const P = route.profile, n = P.n, deg = new Float64Array(n).fill(NaN);
+    let bekannt = 0, max = null, kmax = -1;
+    for (let k = 0; k < n; k++) {
+      const lon = (P.lon[k] + P.lon[k + 1]) / 2, lat = (P.lat[k] + P.lat[k + 1]) / 2, h = P.head[k] * RAD;
+      const pts = [[lon, lat]];
+      if (opt.seite > 0) { const dx = (Math.cos(h) * opt.seite) / (111320 * Math.cos(lat * RAD)), dy = (-Math.sin(h) * opt.seite) / 110540; pts.push([lon + dx, lat + dy], [lon - dx, lat - dy]); }
+      let mx = null;
+      for (const [x, y] of pts) { const v = RT.hangAn(elevAt, x, y, opt.dm); if (isNum(v) && (mx == null || v > mx)) mx = v; }
+      if (mx != null) { deg[k] = mx; bekannt++; if (max == null || mx > max) { max = mx; kmax = k; } }
+    }
+    const abschnitte = [];
+    let cur = null;
+    for (let k = 0; k < n; k++) {
+      const v = deg[k], steil = isNum(v) && v >= 25;
+      if (steil) {
+        if (cur && P.d[k] - cur.d1 <= 40) { cur.d1 = P.d[k + 1]; if (v > cur.max) { cur.max = v; cur.kmax = k; } }
+        else { cur = { d0: P.d[k], d1: P.d[k + 1], max: v, kmax: k }; abschnitte.push(cur); }
+      }
+    }
+    const lang = abschnitte.filter((a) => a.d1 - a.d0 >= opt.minLen || a.max >= 30);
+    for (const a of lang) { a.klasse = RT.hangKlasse(a.max); a.len = a.d1 - a.d0; }
+    const m = (lo) => { let s = 0; for (let k = 0; k < n; k++) if (isNum(deg[k]) && deg[k] >= lo) s += P.d[k + 1] - P.d[k]; return s; };
+    return { v: RT.VERSIONS.hang, deg, max, kmax, abschnitte: lang, ab25_m: m(25), ab30_m: m(30), ab35_m: m(35), ab40_m: m(40), bekannt_pct: n ? (100 * bekannt) / n : 0,
+      quelle: "Höhenraster Mapzen/AWS Terrain Tiles (Zoom 14, Terrarium), zentrale Differenzen ±15 m, an der Linie und 20 m seitlich" };
+  };
+
+  /* ---------------- MTB: Aufstieg und Abfahrt (mtb-abfahrt-1.0) ----------------
+   * Aufstieg bis zum höchsten Punkt über Forst- und Kieswege (Gravel-Profil, Kies bevorzugt). Abfahrt ab dem höchsten Punkt
+   * zum Ziel, wählbar: gleicher Weg zurück (nur bei Rundtour, Linie des Aufstiegs umgekehrt, Einbahnen gemeldet),
+   * Singletrail (MTB-Profil, reine Fusswege gesperrt, Trails bevorzugt) oder andere Strasse (Gravel-Profil mit Sperrpunkten
+   * auf dem Aufstieg). Je Abfahrt Kennzahlen aus OSM: Trail-Anteil, MTB-Skala (fehlt = unbekannt), Belag, Zugang. */
+  RT.MTB_TRAIL = { engine: "mtb", params: { StrictNOBicycleaccess: "1", MTB_factor: "1.0", processUnusedTags: "1" } };
+  RT.MTB_STRASSE = { engine: "gravel", params: { prefer_unpaved_paths: "1", processUnusedTags: "1" } };
+  /** Auf-/Abstieg zwischen d0 und d1 (geglättete 20-m-Höhe, 3-m-Hysterese wie hoehe-1.0). */
+  RT.hm = function (route, d0, d1) {
+    const P = route.profile, k0 = Math.max(0, Math.floor((d0 || 0) / P.step)), k1 = Math.min(P.n, Math.ceil((d1 == null ? route.L : d1) / P.step));
+    let up = 0, dn = 0, ref = P.ele[k0];
+    for (let k = k0 + 1; k <= k1; k++) { const v = P.ele[k]; if (v - ref >= 3) { up += v - ref; ref = v; } else if (ref - v >= 3) { dn += ref - v; ref = v; } }
+    return { up, down: dn };
+  };
+  /** Höchster Punkt der Route; ist ein Zwischenziel höchstens 300 m und 30 Hm davon entfernt, gilt dieses. */
+  RT.hoechsterPunkt = function (route) {
+    const P = route.profile; let k = 0;
+    for (let i = 1; i <= P.n; i++) if (P.ele[i] > P.ele[k]) k = i;
+    let via = null, dv = Infinity;
+    (route.vias || []).forEach((v, i) => { if (i > 0 && i < route.vias.length - 1 && Math.abs(v.d - P.d[k]) < 300 && P.ele[k] - RT.at(route, v.d).ele < 30 && Math.abs(v.d - P.d[k]) < dv) { dv = Math.abs(v.d - P.d[k]); via = i; } });
+    const d = via != null ? route.vias[via].d : P.d[k], a = RT.at(route, d);
+    return { d, ele: a.ele, lon: a.lon, lat: a.lat, via, auf: RT.hm(route, 0, d).up, ab: RT.hm(route, d, route.L).down, am_ende: route.L - d < 200 };
+  };
+  /** Sperrpunkte auf dem Aufstieg (für «andere Strasse»): alle ~300 m ein Kreis von 15 m, nicht in den ersten und letzten
+   *  300 m und nie näher als 80 m an den frei zu haltenden Punkten (Gipfel, Ziel); höchstens 20. */
+  RT.abfahrtSperren = function (aufstieg, d0, d1, opt) {
+    opt = Object.assign({ abstand: 300, rand: 300, r: 15, max: 20, frei: [] }, opt || {});
+    const out = [], L = d1 - d0;
+    if (L < 2 * opt.rand + 50) return out;
+    const n = Math.max(1, Math.min(opt.max, Math.floor((L - 2 * opt.rand) / opt.abstand) + 1));
+    for (let i = 0; i < n; i++) {
+      const dd = d0 + opt.rand + (n === 1 ? (L - 2 * opt.rand) / 2 : (i * (L - 2 * opt.rand)) / (n - 1)), a = RT.at(aufstieg, dd);
+      if (opt.frei.some((p) => RT.hav(p[0], p[1], a.lon, a.lat) < 80)) continue;
+      out.push({ lon: a.lon, lat: a.lat, r: opt.r, d: dd });
+    }
+    return out;
+  };
+  /** Kennzahlen einer Abfahrt (oder eines Teils der Route) aus den OSM-Merkmalen. */
+  RT.trailKennzahlen = function (route, d0, d1) {
+    d0 = d0 || 0; d1 = d1 == null ? route.L : d1;
+    const o = { L: 0, trail_m: 0, ohne_skala_m: 0, mtbMax: null, asphalt_m: 0, kies_m: 0, natur_m: 0, unklar_m: 0, verboten_m: 0, schieben_m: 0, hand_m: 0 };
+    let maxS = null;
+    for (const s of route.segs || []) {
+      const a = Math.max(d0, s.d0), b = Math.min(d1, s.d1); if (b <= a) continue;
+      const len = b - a; o.L += len;
+      if (s.quelle === "hand") { o.hand_m += len; continue; }
+      const t = s.tags || {}, trail = s.way === "pfad" || s.way === "fussweg" || (t["mtb:scale"] != null && s.way !== "fahrweg" && s.way !== "nebenstrasse");
+      if (trail) { o.trail_m += len; if (s.mtb) { const v = parseInt(String(s.mtb).slice(1), 10); if (isNum(v) && (maxS == null || v > maxS)) maxS = v; } else o.ohne_skala_m += len; }
+      if (s.surface === "asphalt" || s.surface === "hart" || s.surface === "pflaster") o.asphalt_m += len;
+      else if (s.surface === "kies" || s.surface === "unbefestigt") o.kies_m += len;
+      else if (s.surface === "natur") o.natur_m += len;
+      if (s.access === "unklar") o.unklar_m += len; else if (s.access === "verboten") o.verboten_m += len; else if (s.access === "schieben") o.schieben_m += len;
+    }
+    o.mtbMax = maxS == null ? null : "S" + maxS;
+    o.trail_pct = o.L ? (100 * o.trail_m) / o.L : 0;
+    const h = RT.hm(route, d0, d1); o.ab = h.down; o.auf = h.up;
+    o.einbahn_m = RT.einbahnGegen(route, d0, d1);
+    return o;
+  };
+
+  /* ---------------- Wandern und Trail: Weg endet vor dem Punkt (wegende-1.0) ----------------
+   * BRouter schiebt einen Punkt neben dem Wegnetz auf den nächsten erlaubten Weg. Ab 60 m zeigt der Planer die Lücke
+   * zwischen Wegende und Punkt – ohne Linie. Auf Wunsch wird das Wegende als Punkt gesetzt und die Lücke als Abschnitt
+   * «von Hand» geschlossen; weitere Punkte darin präzisieren die Linie. Findet BRouter gar keinen Weg, werden Ersatzziele auf
+   * der Luftlinie zum Punkt versucht (85, 70, 50, 30 %), um das Wegende zu finden. */
+  RT.WEGENDE_STUFEN = [0.85, 0.7, 0.5, 0.3];
+  RT.zwischenPunkt = (a, b, f) => [+(a[0] + (b[0] - a[0]) * f).toFixed(6), +(a[1] + (b[1] - a[1]) * f).toFixed(6)];
+  /** Punkte mit Lücke zum Wegnetz: [{i, m, weg: [lon, lat]}]. */
+  RT.luecken = (route, minM) => (route && route.vias ? route.vias.map((v, i) => ({ i, m: v.snap_m || 0, weg: v.weg })).filter((x) => x.m >= (minM || 60) && x.weg) : []);
+  /** Wegpunkte, Namen und «von Hand danach» so ergänzen, dass die Lücke beim Punkt i von Hand geschlossen wird. */
+  RT.lueckeSchliessen = function (vias, i, weg, extra) {
+    const n = vias.length, w = [+(+weg[0]).toFixed(6), +(+weg[1]).toFixed(6)], v = vias.map((p) => p.slice()), ex = {};
+    for (const k of Object.keys(extra || {})) ex[k] = Array.from({ length: n }, (_, j) => ((extra[k] || [])[j] != null ? extra[k][j] : null));
+    if (!ex.handNach) ex.handNach = Array.from({ length: n }, () => null);
+    const ins = (pos, p) => { v.splice(pos, 0, p); for (const k of Object.keys(ex)) ex[k].splice(pos, 0, k === "names" ? "Wegende" : k === "pausen" ? 0 : null); };
+    if (i === 0) { ins(1, w); ex.handNach[0] = true; }                                   // Punkt → Wegende von Hand
+    else if (i === n - 1) { ins(n - 1, w); ex.handNach[n - 1] = true; }                  // Wegende → Punkt von Hand
+    else { ins(i, w); ins(i + 2, w.slice()); ex.handNach[i] = true; ex.handNach[i + 1] = true; }   // hin und zurück von Hand
+    return Object.assign({ vias: v }, ex);
+  };
+
   /* ---------------- GPX ---------------- */
   const xmlEsc = (s) => String(s).replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
   /** extra: weitere Wegpunkte [{lon, lat, name}] (V5.7: Beginn der geplanten Intervalle). */
@@ -1139,7 +1623,9 @@
     const wpts = route.vias.map((p, i) => `<wpt lat="${p.lat.toFixed(6)}" lon="${p.lon.toFixed(6)}"><name>${xmlEsc((viaNames && viaNames[i]) || (i === 0 ? "Start" : i === route.vias.length - 1 ? "Ziel" : "Zwischenziel " + i))}</name></wpt>`)
       .concat((extra || []).filter((w) => isNum(w.lon) && isNum(w.lat)).map((w) => `<wpt lat="${(+w.lat).toFixed(6)}" lon="${(+w.lon).toFixed(6)}"><name>${xmlEsc(w.name || "")}</name></wpt>`)).join("\n");
     const pts = route.lon.map((lo, i) => { const e = route.ele[i]; return `<trkpt lat="${route.lat[i].toFixed(6)}" lon="${lo.toFixed(6)}">${isNum(e) ? `<ele>${e.toFixed(1)}</ele>` : ""}</trkpt>`; }).join("\n");
-    const desc = `${route.gezeichnet ? "Von Hand gezeichnet (kein Routing)" : "Geroutet mit " + route.prov.routing + (route.engine ? ", Profil " + RT.profilName(route.engine) : "")}; ${route.prov.osm}; ${(route.L / 1000).toFixed(1)} km, ${Math.round(P.up)} m Aufstieg`;
+    const Q = route.quellen || {}, km1 = (m) => (m / 1000).toFixed(1);
+    const teile = [Q.ski > 0.5 ? `Skitourenrouten swisstopo/SAC ${km1(Q.ski)} km` : "", Q.hand > 0.5 && Q.hand < route.L - 0.5 ? `von Hand gezeichnet ${km1(Q.hand)} km (kein Wegnetz)` : ""].filter(Boolean);
+    const desc = `${route.gezeichnet && !(Q.ski > 0.5) ? "Von Hand gezeichnet (kein Routing)" : route.gezeichnet ? "Skitour" : "Geroutet mit " + route.prov.routing + (route.engine ? ", Profil " + RT.profilName(route.engine) : "")}${teile.length ? "; " + teile.join(", ") : ""}; ${route.prov.osm}; ${(route.L / 1000).toFixed(1)} km, ${Math.round(P.up)} m Aufstieg`;
     return `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Ironman Notebook" xmlns="http://www.topografix.com/GPX/1/1">\n<metadata><name>${xmlEsc(name)}</name><desc>${xmlEsc(desc)}</desc></metadata>\n${wpts}\n<trk><name>${xmlEsc(name)}</name><trkseg>\n${pts}\n</trkseg></trk>\n</gpx>\n`;
   };
 

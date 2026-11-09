@@ -1,5 +1,45 @@
 # Änderungen
 
+## V5.8 · 9.11.2026 · Planer: Skitourenrouten, Hangneigung, MTB-Abfahrt, Wegende, drei Rennradrouten, Windpfeile; Ringe auf «Heute»
+Wünsche von Silas (9.11.2026).
+
+- **Skitour** (`skiroute-1.0`): Die Linie folgt, wo möglich, den Skitourenrouten von swisstopo/SAC (Ebene «Skitourenrouten», identify-Schnittstelle
+  von geo.admin.ch, LV95, je Seite 50 Objekte, höchstens 4 Seiten). Netz: Punkte innerhalb 12 m zusammengelegt, Linienenden bis 20 m angeschlossen;
+  je Abschnitt kürzester Weg zwischen den nächsten Stellen (höchstens 150 m neben der Route). Anschlüsse und Abschnitte ohne Route bleiben «von Hand»
+  (gestrichelt, mit Grund), ebenso bei Umweg über 1,8 × Luftlinie + 800 m. Nur nach Zustimmung (gesendet wird ein Rechteck um die Punkte).
+- **Hangneigung** (`hangneigung-1.0`): Gelände an der Linie und 20 m daneben aus dem Höhenraster (Mapzen/AWS Terrain Tiles, Zoom 14, ±15 m),
+  nicht die Steigung der Spur. Klassen nach SLF: ab 30° steil (Lawinengelände), ab 35° sehr steil, ab 40° extrem steil; 25–30° als Hinweis
+  (Gradgrenzen sind Richtwerte, das Raster glättet Steilstufen). Warnstellen im Winterhinweis, Ansicht «Hangneigung», swisstopo-Karte «Hangneigung
+  über 30°» per Knopf. Fehlt das Raster: unbekannt, nie «flach». Bei Skitouren und im Winter zu Fuss.
+- **Wegpunkte** (`wegpunkte-1.1`): Punkt-Modus bleibt an (beliebig viele Punkte); ein neuer Punkt kommt zwischen die beiden Wegpunkte, zwischen
+  denen er auf der bestehenden Linie liegt (auch bei Schlaufen und Hin- und Rückweg), ohne Linie wie bisher mit kleinstem Umweg.
+- **Abschnitte von Hand** (`hand-1.0`): nur auf ausdrückliche Wahl («→ von Hand» je Abschnitt, «Lücke von Hand schliessen», Skitour) – gerade
+  Linien zwischen deinen Punkten, Höhe aus dem Höhenmodell, Belag/Wegart/Zugang «von Hand / nicht geprüft», gestrichelt auf der Karte, im GPX genannt.
+- **Wandern und Trail** (`wegende-1.0`): Liegt ein Punkt neben dem Wegnetz, führt die Route bis zum Wegende (roter Punkt), die Lücke wird ohne
+  Linie gezeigt; «Lücke von Hand schliessen» setzt das Wegende als Punkt, der Rest ist von Hand und lässt sich mit Punkten präzisieren. Findet
+  BRouter gar keinen Weg, werden Ersatzziele auf der Luftlinie versucht (85/70/50/30 %) und das Wegende vorgeschlagen.
+- **MTB** (`mtb-abfahrt-1.0`): Aufstieg immer über Forst- und Kieswege (Gravel-Profil, Kies bevorzugt; die alte Option «Technische Trails» gilt
+  nicht mehr für die ganze Route). Ab dem höchsten Punkt (als Umkehrpunkt setzen) zum Vergleich: wie geplant, Singletrail (MTB-Profil, reine
+  Fusswege gesperrt), andere Strasse (Sperrpunkte auf dem Aufstieg) und – bei Rundtouren – der gleiche Weg zurück (Einbahnen gemeldet); je
+  Abfahrt eine Karte mit Trail-Anteil, MTB-Skala (fehlt = «keine Angabe», nie geraten), Belag, Zugang; grau auf der Karte, Wahl übernimmt die
+  Route. «Gleich wie» vergleicht nur die Abfahrten (der gemeinsame Aufstieg zählt nicht), «grösstenteils gleich» bei anderer Länge.
+- **Rennrad** (`varianten-3.0`, `alternativen-1.1`): drei Routen nebeneinander – am direktesten, velofreundlich, am ruhigsten (Verkehr sehr wichtig) –,
+  alle mit dem Profil ohne Gravel; «am ruhigsten» wird gewählt, wenn sie innerhalb der Toleranz liegt, nicht mehr Gravel hat und wirklich ruhiger
+  ist. «Andere Routen» ohne zusätzlichen Gravel (kein Standardprofil mit Gravel mehr).
+- **Windpfeile** (`windpfeile-1.1`): mit Prognose immer entlang der Route (3–20 Pfeile, abschaltbar), Farbe nach Gegen-, Rücken- oder Seitenwind
+  zur Fahrtrichtung (±5 km/h).
+- **Bedienung:** alle Analyse-Ansichten umbrechen (jede ohne Wischen antippbar), breite Tabellen seitlich scrollbar, Anstiege schmaler;
+  «Zugang» heisst «Erlaubt?» und ist erklärt.
+- **Heute: Ringe** (`ringe-1.0`): Erholung (HRV und Ruhepuls gegen die eigenen 60 Tage, Φ(z)), Schlaf (Garmin-Schlafwert der Nacht davor),
+  Belastung (Tageslast gegen die Fitness, 50 % = Tageslast so gross wie die Fitness) – alle 0–100 %, mit Verlauf 7/28 Tage. Fehlende Werte bleiben
+  leer (Audit V5.5: keine andere Nacht, gleiche Skala für alle drei). Angezeigt wird der letzte Tag mit Morgenwerten, mit Datum.
+  Korrigiert: Die Zahl in der Mitte eines Rings war klein, weil der Schriftname mit Anführungszeichen das SVG-Stilattribut beendete.
+
+Geprüft: `test_route.cjs` (44, davon 9 neu: Einfügen per Linie, von Hand, Skitourennetz, identify/LV95, Hangneigung auf synthetischem Raster,
+MTB, Wegende, drei Varianten, Windpfeile), `test_formkurve.cjs` (Ringe), E2E auf iPhone-Grösse gegen eine lokale BRouter-Instanz (OSM-Testdaten
+Dreieich) mit nachgebildeten swisstopo-, Höhen- und Wetterantworten (synthetisch). brouter.de, swisstopo, AWS-Höhenraster und Open-Meteo sind von
+hier aus gesperrt und wurden nicht live getestet.
+
 ## V5.7.2 · 8.11.2026 · Fueling aus dem Garmin-Ernährungsprotokoll
 Wunsch von Silas: Ernährung nur einmal in Garmin Connect erfassen. Geprüft mit dem Tagesprotokoll der bestehenden Garmin-Verbindung (8.11.2026):
 jeder Eintrag hat Produkt, Portion, Menge, kcal, KH, teils Natrium, eine Uhrzeit (`mealTime`) und die Erfassungszeit (`logTimestamp`);
