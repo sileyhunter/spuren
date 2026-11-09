@@ -1,5 +1,24 @@
 # Änderungen
 
+## V5.9.4 · 9.11.2026 · Paket 4 «Schwimmen – nur der CSS-Test zählt» (css-2.0)
+Auftrag V5.9, Entscheid E6 (nur der CSS-Test zählt; Termine wie im Auftrag).
+
+- **Testkalender mit CSS-Tests** (400 m und 200 m) an fünf Donnerstagen: 19.11.2026 Ausgangswert, 7.1.2027 vor Thailand, 11.2.2027 nach dem
+  Trainingslager, 25.3.2027 vier Wochen vor Jesolo, 13.5.2027 nach Jesolo, vor Hamburg (Status «geplant»). Ein eingetragener CSS-Test bis
+  4 Tage daneben hakt den Termin ab; ein Test ausserhalb des Plans erscheint im Kalender als «✓ CSS-Test».
+- **Eintragen mit zwei Zeiten:** Datum, 400 m und 200 m – fertig. Becken, Reihenfolge, Pause, Wassertemperatur, Zeitnahme, Einschwimmen und
+  Notiz liegen unter «Mehr Angaben» (sonst 25-m-Becken, 400 → 200, 10 min Pause, von Hand gestoppt). Der Test geht über «Direkt speichern»
+  in die Daten («gesendet · kommt mit dem nächsten Update»). Oben in der Karte: der nächste geplante Test; ab zwei Tests der Verlauf je Becken.
+- **CSS ist der einzige Schwimmwert:** «Meine Entwicklung» zeigt unter «Alle Sportarten» wieder die vier Belegkennzahlen Rad, Laufen, Laktat
+  und CSS (die Ermüdungs-Kacheln mit der Sportart Rad bzw. Laufen); die Jahresstatistik zeigt beim Schwimmen den letzten CSS-Test des Jahres
+  statt der Rohpace. Rohpace, Videovergleich und Fehlerboard sind ausgeblendet, die Daten bleiben. Technik wertet Claude im Chat aus.
+- Nebenbei: Die Ermüdungs-Kacheln in «Meine Entwicklung» nennen jetzt ihre richtige Quelle (FIT-Sekundenwerte, ermuedung-1.0) statt
+  «eingetragene CSS-Tests».
+
+Geprüft: `test_v59.cjs` (Termin erledigt bis 4 Tage daneben, nie durch einen Laktat-Eintrag; nächster offener Termin), `test_tools.py`
+(Testkalender über «tests», CSS-Test vom Handy über eingang/ bis `css_tests`), `check_referenz.py` «GESAMT: bestanden». E2E (erfundene
+Zeiten 6:40/3:10 → CSS 1:45 /100 m) auf 390 × 844: Plan, Speichern, Verlauf, Kachel in «Meine Entwicklung», Testkalender, Jahresstatistik.
+
 ## V5.9.1 · 9.11.2026 · Paket 1 «Trainingslast richtig rechnen» (last-2.0)
 Auftrag V5.9, Entscheide E1 (Rad-Last mit der LT2, nie FTP; bis zum neuen Stufentest gilt die LT2-Vorschau vom 29.4.) und E2 (alle Sportarten zählen).
 

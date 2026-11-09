@@ -98,6 +98,25 @@
     return out;
   };
 
+  /* ======================= css-2.0: Testkalender mit CSS-Tests (Schwimmen, E6) ======================= */
+  const tage = (a, b) => Math.abs(Date.parse(a + "T12:00:00Z") - Date.parse(b + "T12:00:00Z")) / 864e5;
+  L.tageAbstand = tage;
+  L.TEST_TOLERANZ_TAGE = 4;
+  /** Testkalender mit Status: Laktat-Tests (stufentest, check) erledigt durch einen Laktat-Eintrag gleicher Art, CSS-Tests durch einen
+   *  eingetragenen CSS-Test (Feld datum) – jeweils höchstens 4 Tage neben dem geplanten Datum. */
+  L.testsMitStatus = function (tests, lactate, css) {
+    return (tests || []).map((t) => {
+      const hit = t.kind === "css" ? (css || []).find((c) => c && c.datum && tage(c.datum, t.date) <= L.TEST_TOLERANZ_TAGE)
+        : (lactate || []).find((l) => l && l.kind === t.kind && l.date && tage(l.date, t.date) <= L.TEST_TOLERANZ_TAGE);
+      return Object.assign({}, t, { done: !!hit, doneDate: hit ? hit.datum || hit.date : undefined });
+    });
+  };
+  /** Geplante CSS-Tests mit Status und der nächste offene ab heute (für die CSS-Karte und «Meine Entwicklung»). */
+  L.cssPlan = function (tests, css, heuteISO) {
+    const liste = L.testsMitStatus((tests || []).filter((t) => t.kind === "css"), [], css).sort((a, b) => a.date.localeCompare(b.date));
+    return { liste, naechster: liste.find((t) => !t.done && t.date >= heuteISO) || null };
+  };
+
   /* ======================= morgen-1.0: Heute geplant ======================= */
   /** Einheiten aus dem Garmin-Kalender für einen Tag (mit ihrer Stelle in planned, für «Passende Route finden»). */
   L.geplantAm = function (planned, datum) {

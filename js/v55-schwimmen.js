@@ -8,7 +8,7 @@
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const UI = () => window.V5UI;
   const pill = (s, extra) => (UI() && UI().badge ? UI().badge(s, extra) : `<span class="badge">${s}</span>`);
-  V.VERSION = "css-1.0";
+  V.VERSION = "css-2.0";            // V5.9.4: CSS einziger Schwimm-Massstab (E6), Eintrag mit zwei Zeiten; Formel unverändert (css-1.0)
 
   /** «9:00», «9.00», «9:00.5» oder Sekunden («540») → Sekunden; sonst null. */
   V.parseZeit = function (s) {
@@ -36,19 +36,29 @@
   };
 
   const tests = () => (UI() ? UI().merged("css_tests", "css") : []).slice().sort((a, b) => (a.datum || "").localeCompare(b.datum || "") || (a.id || "").localeCompare(b.id || ""));
-  let EDIT = null;
+  let EDIT = null, MSG = null;
+  const wtag = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("de-CH", { weekday: "short", day: "numeric", month: "numeric", year: "numeric" });
+  const gesendet = (t) => !!(window.EG && UI() && UI().Inbox && window.EG.istGesendet(UI().Inbox.data, "css", t));
+  V.status = (t) => (t._lokal ? (gesendet(t) ? pill("gesendet", "kommt mit dem nächsten Update") : pill("entwurf", "auf dem Gerät")) : pill(t.validiert === false ? "vorschau" : "bestätigt"));
 
-  /* ---------------- CSS-Test ---------------- */
+  /* ---------------- CSS-Test (css-2.0: einziger Massstab, zwei Zeiten genügen) ---------------- */
   V.css = function (C) {
     const box = $("sw-css"); if (!box) return;
     const L = tests(), e = EDIT ? L.find((t) => t.id === EDIT) : null;
     const v = (k, d) => C.esc(e ? (e[k] ?? d) : d);
     const pr = e && e.protokoll || {};
-    box.innerHTML = `<form class="css-form" id="css-form" novalidate>
+    const plan = window.V59L ? window.V59L.cssPlan(C.D.tests, L, C.iso(C.today)) : { liste: [], naechster: null }, nx = plan.naechster;
+    const planTxt = plan.liste.length ? `<p class="keep css-plan">${nx ? `Nächster CSS-Test: <b>${C.esc(wtag(nx.date))}</b>${nx.note ? " – " + C.esc(nx.note) : ""}` : "Alle geplanten CSS-Tests sind eingetragen."}`
+      + `<br><small>${plan.liste.map((t) => `${t.done ? "✓ " : ""}${C.dateCH(t.date)}`).join(" · ")} (Testkalender)</small></p>` : "";
+    const msg = MSG; MSG = null;
+    box.innerHTML = `${planTxt}<form class="css-form" id="css-form" novalidate>
         <div class="css-grid">
           <label>Datum<input type="date" name="datum" value="${v("datum", C.iso(C.today))}" required></label>
           <label>400 m (mm:ss)<input name="t400" inputmode="decimal" autocomplete="off" placeholder="9:00" value="${e ? mmss(e.t400) : ""}" required></label>
           <label>200 m (mm:ss)<input name="t200" inputmode="decimal" autocomplete="off" placeholder="4:20" value="${e ? mmss(e.t200) : ""}" required></label>
+        </div>
+        <details class="more css-mehr"${e ? " open" : ""}><summary><span>Mehr Angaben<small class="css-std">sonst: 25-m-Becken, 400 → 200, 10 min Pause, von Hand gestoppt</small></span></summary>
+        <div class="css-grid">
           <label>Becken<select name="becken">${[["25", "25 m"], ["50", "50 m"], ["frei", "Freiwasser"]].map(([k, l]) => `<option value="${k}" ${String(e ? e.becken : "25") === k ? "selected" : ""}>${l}</option>`).join("")}</select></label>
           <label>Reihenfolge<select name="reihenfolge">${[["400 zuerst, dann 200", "400 → 200"], ["200 zuerst, dann 400", "200 → 400"]].map(([x, l]) => `<option value="${x}" ${pr.reihenfolge === x ? "selected" : ""}>${l}</option>`).join("")}</select></label>
           <label>Pause dazwischen (min)<input name="pause" type="number" min="0" max="60" step="1" value="${C.esc(pr.pause_min ?? 10)}"></label>
@@ -56,7 +66,8 @@
           <label>Zeit genommen<select name="quelle">${[["von Hand gestoppt", "von Hand"], ["Uhr: manuelle Runde", "Uhr (Runde)"], ["Trainer/Begleitung", "Begleitung"]].map(([x, l]) => `<option value="${x}" ${e && e.quelle === x ? "selected" : ""}>${l}</option>`).join("")}</select></label>
           <label class="span2">Einschwimmen / Ablauf<input name="einschwimmen" value="${C.esc(pr.einschwimmen ?? "")}" placeholder="z. B. 10 min locker, 4 × 25 m steigernd"></label>
           <label class="span2">Notiz (Bedingungen)<input name="notiz" value="${v("notiz", "")}" placeholder="z. B. Bahn geteilt, Wende ohne Rolle"></label>
-        </div>
+        </div></details>
+        ${msg ? `<p class="keep" role="status">${msg}</p>` : ""}
         <p class="css-live" id="css-live" aria-live="polite"></p>
         <div class="row"><button class="btn primary" type="submit">${e ? "Korrektur speichern" : "Test speichern"}</button>${e ? '<button class="btn" type="button" id="css-cancel">Abbrechen</button>' : ""}</div>
       </form>
@@ -81,6 +92,7 @@
         quelle: f.quelle.value, notiz: f.notiz.value.trim() || null, validiert: true, v: V.VERSION,
         erfasst: alt.erfasst || new Date().toISOString(), ...(alt.id ? { korrigiert: new Date().toISOString() } : {}) };
       await UI().Inbox.upsert("css", item);
+      MSG = `Gespeichert: CSS <b>${mmss(p.css)} /100 m</b> vom ${C.esc(C.dateCH(item.datum))}${window.EG && window.EG.aktiv && window.EG.aktiv() && window.EG.hatSchluessel() ? " – wird direkt gesendet und kommt mit dem nächsten Update in die Daten." : " – auf diesem Gerät; mit «Direkt speichern» oder «Exportieren» in die Daten."}`;
       EDIT = null; V.css(C);
       if (window.V55 && V55.refresh) V55.refresh();
     };
@@ -89,12 +101,29 @@
     const prevOf = (t) => { const i = L.indexOf(t); for (let k = i - 1; k >= 0; k--) if ((L[k].becken || "frei") === (t.becken || "frei") && isNum(window.FK.css(L[k].t400, L[k].t200))) return L[k]; return null; };
     $("css-list").innerHTML = rows.length ? `<h3 class="mini-h">Gespeicherte Tests <small>${rows.length}</small></h3><ul class="css-tests">${rows.map((t) => {
       const c = window.FK.css(t.t400, t.t200), pv = prevOf(t), d = pv ? c - window.FK.css(pv.t400, pv.t200) : null;
-      return `<li><div class="css-top"><b>${C.dateCH(t.datum)}</b> <span class="css-val">CSS ${mmss(c)} /100 m</span> ${t._lokal ? pill("entwurf", "auf dem Gerät") : pill(t.validiert === false ? "vorschau" : "bestätigt")}</div>
+      return `<li><div class="css-top"><b>${C.dateCH(t.datum)}</b> <span class="css-val">CSS ${mmss(c)} /100 m</span> ${V.status(t)}</div>
         <div class="hint">400 m ${mmss(t.t400)} · 200 m ${mmss(t.t200)} · ${t.becken ? t.becken + " m Becken" : "Freiwasser"}${t.wasser && t.wasser.temp_c != null ? ` · ${C.fmt(t.wasser.temp_c, 1)} °C` : ""}${t.protokoll && t.protokoll.pause_min != null ? ` · Pause ${t.protokoll.pause_min} min` : ""} · ${C.esc(t.quelle || "von Hand")}${t.korrigiert ? " · korrigiert" : ""}${t.notiz ? ` · ${C.esc(t.notiz)}` : ""}</div>
         ${pv ? `<div class="hint">Gegenüber ${C.dateCH(pv.datum)} (gleiches Becken): ${d === 0 ? "gleich" : `${d < 0 ? "−" : "+"}${mmss(Math.abs(d))} /100 m`} – Einzelvergleich, ohne Unsicherheit; gesichert erst in «Meine Entwicklung» ab drei Tests je Zeitraum.</div>` : ""}
         <div class="row"><button class="btn" data-css-edit="${C.esc(t.id)}">Zeiten korrigieren</button></div></li>`; }).join("")}</ul>`
       : `<p class="hint">Noch kein CSS-Test gespeichert. Ablauf: gut einschwimmen, 400 m maximal gleichmässig, Pause (z. B. 5–10 min locker), 200 m maximal. Zeiten von Hand stoppen oder als manuelle Runde nehmen und hier eintragen.</p>`;
     $("css-list").querySelectorAll("[data-css-edit]").forEach((b) => (b.onclick = () => { EDIT = b.dataset.cssEdit; V.css(C); $("sw-css").scrollIntoView({ block: "start" }); }));
+    V.cssVerlauf(C, L);
+  };
+
+  /** Verlauf der CSS-Tests (ab 2 Tests), je Becken eine Linie – tiefer ist schneller. */
+  V.cssVerlauf = function (C, L) {
+    const wrap = $("css-chart-wrap"); if (!wrap) return;
+    const P = L.map((t) => ({ t, c: window.FK.css(t.t400, t.t200) })).filter((x) => isNum(x.c));
+    wrap.hidden = P.length < 2;
+    if (P.length < 2) return;
+    const labels = [...new Set(P.map((x) => x.t.datum))].sort(), bk = (t) => (t.becken ? t.becken + " m" : "Freiwasser");
+    const farben = { "25 m": C.css("--accent"), "50 m": C.css("--sleep"), Freiwasser: C.css("--accent-2") };
+    const ds = [...new Set(P.map((x) => bk(x.t)))].map((b) => ({ label: b === "Freiwasser" ? "CSS Freiwasser" : `CSS ${parseInt(b, 10)}-m-Becken`, spanGaps: true, tension: 0, pointRadius: 4, borderWidth: 2,
+      borderColor: farben[b] || C.css("--fg"), backgroundColor: farben[b] || C.css("--fg"),
+      data: labels.map((d) => { const x = P.filter((y) => y.t.datum === d && bk(y.t) === b).at(-1); return x ? +x.c.toFixed(1) : null; }) }));
+    C.chart("c-css", { type: "line", data: { labels: labels.map((d) => C.dLabel(d)), datasets: ds },
+      options: { plugins: { legend: { position: "bottom", labels: { boxWidth: 12 } }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${mmss(c.raw)} /100 m` } } },
+        scales: { y: { reverse: true, ticks: { callback: (v) => mmss(v) }, title: { display: true, text: "CSS pro 100 m (oben = schneller)" } } } } });
   };
 
   /* ---------------- Fehlerboard ---------------- */
@@ -156,7 +185,7 @@
 
   /* ---------------- Rohpace (Garmin) ---------------- */
   V.rohpace = function (C) {
-    const n = $("swim-raw-note"); if (!n) return;
+    const n = $("swim-raw-note"); if (!n || ($("sw-raw-card") && $("sw-raw-card").hidden)) return;      // V5.9.4: ausgeblendet (E6)
     const sw = C.D.activities.filter((a) => a.sport === "schwimm" && a.km > 0 && a.dur);
     const bad = sw.filter((a) => /freiwasser|open/i.test(a.typ || a.type || "")).length;
     n.innerHTML = `${pill("nicht validiert")} Pace = Dauer ÷ Distanz der ganzen Einheit aus Garmin (${sw.length} Einheiten${bad ? `, davon ${bad} Freiwasser` : ""}). Enthält Pausen am Rand, Technik-, Bein- und Pull-Serien; Bahnen und Wenden erkennt die Uhr nicht immer. Darum <b>kein bestätigter Fortschritt</b> – Vergleiche nur über den CSS-Test oben.`;

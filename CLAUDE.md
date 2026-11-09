@@ -386,8 +386,14 @@ Wegpunkte, z. B. Jagdposten aus Garmin Explore: GPX in einen eigenen, leeren Ord
 `python3 -I tools/import_points.py data.json <datei.gpx>` (ersetzt früher importierte Punkte), verschlüsseln, nur `data.enc.json` committen.
 
 ## Testkalender
-`tests` in den Daten: `[{"date":"…","kind":"stufentest"|"check","note":"…","status":"vorschlag"}]`.
-Änderungen über `"tests": [ … ]` (ersetzt die ganze Liste) in `work/new.json`.
+`tests` in den Daten: `[{"date":"…","kind":"stufentest"|"check"|"css","note":"…","status":"vorschlag"|"geplant"}]`.
+Änderungen über `"tests": [ … ]` (ersetzt die ganze Liste) in `work/new.json`. Erledigt: Laktat-Tests durch einen Eintrag in `lactate` gleicher
+Art, CSS-Tests durch einen CSS-Test in `css_tests` (bzw. auf dem Gerät), je höchstens 4 Tage daneben (`V59L.testsMitStatus`).
+**Schwimmen (V5.9.4, css-2.0, E6):** Als Schwimm-Massstab zählt nur der CSS-Test (400 m und 200 m; CSS = (T400 − T200) ÷ 2 pro 100 m).
+Termine (`kind` «css», «geplant»): 19.11.2026 Ausgangswert, 7.1.2027 vor Thailand, 11.2.2027 nach dem Trainingslager, 25.3.2027 vier Wochen
+vor Jesolo, 13.5.2027 nach Jesolo, vor Hamburg – nicht an Kursabenden und nicht in Thailand. Eintrag auf der Seite mit zwei Zeiten (Rest
+optional), über «Direkt speichern» → `css_tests`. Rohpace aus Garmin, Videovergleich und Fehlerboard sind ausgeblendet (Daten bleiben);
+Technik wertet Claude im Chat aus (Videos Bild für Bild), nie auf der Seite.
 Protokoll-Vorlagen: `protokolle` (Liste mit `id name sport ablauf blut ende rahmen status`), ändern über `"protokolle": [ … ]` in `work/new.json`.
 
 ## Test-Workouts (A9)

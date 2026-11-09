@@ -88,4 +88,6 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
     Ältere Tests (Labor 15.8.2024, Stufentest 4.12.2025) sind nicht eingetragen (Vorschauen; E1: die Vorschau vom 29.4. bis zum neuen Test).
 38. **Eigene Referenz je Leistungsmesser:** Zwift-Rolle, Quarq und EngineCheck werden nicht ineinander umgerechnet; eine eigene LT2 je
     System erst nach einer Vergleichsfahrt (gleiche Fahrt, zwei Messer).
+39. **CSS-Test am 19.11. (Silas):** 400 m und 200 m maximal, Zeiten auf der Seite eintragen (Schwimmen → zwei Zeiten). Der Termin wird
+    bis 4 Tage daneben abgehakt. Ein Vergleich in «Meine Entwicklung» braucht einen Test im Zeitraum und einen davor (gleiches Becken).
 

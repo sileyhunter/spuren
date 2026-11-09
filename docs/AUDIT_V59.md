@@ -50,3 +50,14 @@ GitHub-API, Garmin-Lauf, brouter.de, Open-Meteo nachgebildet oder nicht erreichb
 | Umschalten `config.load_model = "last-2.0"` erst nach Silas' Okay | vorbereitet (Seite rechnet in beiden Modi; E2E beide) | ja | offen (Okay von Silas) |
 | Nacht-Update rechnet `tl2` für neue Einheiten | ja (`merge_daily.py`) | ja (test_tools) | offen (nächste Nacht) |
 
+## Paket 4 · V5.9.4 · Schwimmen – nur der CSS-Test zählt (E6)
+| Punkt | implementiert | lokal getestet | produktiv getestet |
+|---|---|---|---|
+| Testkalender: fünf CSS-Termine (19.11., 7.1., 11.2., 25.3., 13.5.), «geplant», erledigt bis 4 Tage daneben | ja (Daten und Seite) | ja (test_v59, test_tools, E2E) | ja (Termine in den Daten) |
+| «Meine Entwicklung» und Schwimmen: CSS einziger Fortschrittswert, Rohpace ausgeblendet | ja (auch Jahresstatistik) | ja (E2E: CSS-Kachel unter «Alle Sportarten» und «Schwimmen») | offen (erster echter Test 19.11.) |
+| Eintragen mit zwei Zeiten über «Direkt speichern» | ja | ja (E2E ohne Schlüssel; test_tools: CSS vom Handy bis `css_tests`) | offen (iPhone, mit Schlüssel) |
+| CSS = (T400 − T200) ÷ 2 pro 100 m | ja (unverändert, `FK.css`) | ja | – |
+| Technik nicht auf der Seite; Videovergleich und Fehlerboard ausgeblendet, Daten bleiben | ja (seit V5.9.5) | ja | – |
+| Abnahme: erster CSS-Test nach dem nächsten Update in den Daten und in «Meine Entwicklung» | Weg vorbereitet | ja (lokal) | offen (nach dem Test am 19.11.) |
+| Nebenbei: Quelle der Ermüdungs-Kacheln (`quelle()` in js/v55.js) | ja | ja | – |
+

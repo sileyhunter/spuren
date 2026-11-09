@@ -62,6 +62,11 @@
     if (Array.isArray(data.startorte) && neu(N, "startorte", EG.hash(EG.stabil(data.startorte)))) N.daten.startorte = data.startorte.map(sauber);
     return { normal: N, bestaetigung: B, n: N.n + B.n };
   };
+  /** Ist dieser Eintrag mit genau diesem Inhalt schon gesendet? (Anzeige «gesendet · kommt mit dem nächsten Update») */
+  EG.istGesendet = function (data, list, e) {
+    const g = (data && data.eg && data.eg.gesendet) || {}, idf = EG.LISTEN[list];
+    return !!(idf && e && g[list + "|" + idf(e)] === EG.hash(EG.stabil(sauber(e))));
+  };
   /** Schlüssel, die es auf dem Gerät nicht mehr gibt (eingespielt und lokal entfernt), aus der Sendeliste streichen. */
   EG.aufraeumen = function (data, gesendet) {
     const alle = EG.offen(data, {}), da = new Set(Object.keys(alle.normal.keys).concat(Object.keys(alle.bestaetigung.keys)));

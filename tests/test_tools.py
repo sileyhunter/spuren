@@ -508,7 +508,7 @@ _spec9 = [
     {"name": "20261110T060000Z-00000001.bin", "art": "eingaben", "zeit": "2026-11-10T06:00:00Z", "daten": {"befinden": [{"date": "2026-11-10", "muede": 2, "muskel": 3, "stress": 1}],
      "routen": [{"id": "u-r1", "name": "Runde", "coords": [[9.5, 46.8], [9.51, 46.81]]}], "laktat_punkte": [_lp9]}},
     {"name": "20261110T061000Z-00000002.bin", "art": "eingaben", "zeit": "2026-11-10T06:10:00Z", "daten": {"befinden": [{"date": "2026-11-10", "muede": 2, "muskel": 3, "stress": 3}],
-     "routen_entfernt": ["u-r0"]}},
+     "routen_entfernt": ["u-r0"], "css": [{"id": "css-2026-11-10-t", "datum": "2026-11-10", "t400": 400, "t200": 190, "css_s": 105, "becken": 25, "validiert": True, "v": "css-2.0"}]}},
     {"name": "20261110T062000Z-00000003.bin", "art": "bestaetigung", "zeit": "2026-11-10T06:20:00Z", "daten": {"laktat_punkte_bestaetigt": ["lp-g1-600"], "laktat_bestaetigt": ["check-test"]}},
     {"name": "20261110T062100Z-00000004.bin", "art": "probe", "zeit": "2026-11-10T06:21:00Z", "daten": {"probe": True}},
     {"name": "20261110T062200Z-00000005.bin", "art": "eingaben", "zeit": "2026-11-10T06:22:00Z", "demo": True, "daten": {"befinden": [{"date": "2026-11-10", "muede": 5, "muskel": 5, "stress": 5}]}},
@@ -531,9 +531,9 @@ check("Eingang: gleiche ID → spätere Eingabe gewinnt; gelöschte Route geht m
       and [r["id"] for r in _A9["routen_add"]] == ["u-r1"] and _A9["routen_entfernt"] == ["u-r0"], json.dumps(_A9)[:300])
 merge_daily.main(os.path.join(_t9, "data.json"), os.path.join(_t9, "work", "eingang_a.json"))
 _R9 = json.load(open(os.path.join(_t9, "data.json")))
-check("Eingang A eingespielt: Befinden, Route auf alle Geräte, alte Route entfernt (Audit), Laktatpunkt als Vorschau",
+check("Eingang A eingespielt: Befinden, Route auf alle Geräte, alte Route entfernt (Audit), Laktatpunkt als Vorschau, CSS-Test vom Handy in css_tests",
       _R9["befinden"][0]["stress"] == 3 and [r["id"] for r in _R9["routes"]] == ["u-r1"] and any(a.get("was") == "Route entfernt" for a in _R9["audit"])
-      and _R9["laktat_punkte"][0]["status"] == "vorschau" and not _R9.get("lactate"))
+      and _R9["laktat_punkte"][0]["status"] == "vorschau" and not _R9.get("lactate") and [c["css_s"] for c in _R9.get("css_tests", [])] == [105])
 merge_daily.main(os.path.join(_t9, "data.json"), os.path.join(_t9, "work", "eingang_b.json"))
 _R9 = json.load(open(os.path.join(_t9, "data.json")))
 _k9 = {l["id"]: l for l in _R9.get("lactate", [])}
@@ -583,6 +583,15 @@ check("Morgen-Update: Werte der Nacht und Workout des Tages da, Stand «Morgen-U
 check("Nacht-Update danach: gleiche Tage und Workouts ersetzt, nicht ergänzt",
       [d["date"] for d in _n10["days"]] == ["2026-11-09", "2026-11-10"] and _n10["days"][1]["kcalOut"] == 2750
       and [p["title"] for p in _n10["planned"]] == ["Alt", "Lauf locker", "Rad"] and len(_n10["workouts_neu"]) == 1 and _n10.get("updated_lauf") == "Nacht-Update")
+
+# ---------- V5.9.4 Testkalender mit CSS-Tests (css-2.0) ----------
+_t13 = tempfile.mkdtemp()
+json.dump({"activities": [], "days": [], "config": {}, "updated": "08.11.2026 23:26", "tests": [{"date": "2026-11-21", "kind": "check", "note": "x", "status": "vorschlag"}]}, open(os.path.join(_t13, "d.json"), "w"))
+json.dump({"tests": [{"date": "2026-11-19", "kind": "css", "note": "Ausgangswert", "status": "geplant"}, {"date": "2026-11-21", "kind": "check", "note": "x", "status": "vorschlag"}]},
+          open(os.path.join(_t13, "n.json"), "w"))
+merge_daily.main(os.path.join(_t13, "d.json"), os.path.join(_t13, "n.json"))
+_d13 = json.load(open(os.path.join(_t13, "d.json")))
+check("Testkalender: CSS-Termine über «tests» (ganze Liste), Stand bleibt", [t["kind"] for t in _d13["tests"]] == ["css", "check"] and _d13["updated"] == "08.11.2026 23:26")
 
 # ---------- V5.9.1 Trainingslast mit LT2 (last-2.0, erfundene Werte) ----------
 import last as LAST  # noqa: E402

@@ -92,8 +92,10 @@
       const conf = pts.filter((p) => !(p.q && p.q.status === "vorschau")), pool = conf.length ? conf : pts;
       const pick = [lastIn(pool.filter((p) => p.date >= P.von && p.date <= P.bis)), lastIn(pool.filter((p) => p.date <= RT.bis))].filter(Boolean);
       const r = F.entwicklung("css", pick, P, RT, { minN: 1 });
-      r.label = "Schwimmen: CSS (validierte Tests)"; r.kurz = "CSS"; r.alle = pts; r.testvergleich = true;
-      r.naechstes = pts.length ? "Schwimmen: CSS-Test im gleichen Becken und mit gleichem Protokoll wiederholen." : "Schwimmen: CSS-Test (400 m und 200 m) machen und im Schwimmen-Tab eintragen; rohe Pool-Pace zählt nicht.";
+      r.label = "Schwimmen: CSS-Test (einziger Schwimm-Massstab)"; r.kurz = "CSS"; r.alle = pts; r.testvergleich = true;
+      const nx = window.V59L ? window.V59L.cssPlan(D.tests, (window.V5UI && V5UI.merged ? V5UI.merged("css_tests", "css") : D.css_tests) || [], C.iso(C.today)).naechster : null;
+      const wann = nx ? ` – nächster geplant am ${C.dateCH(nx.date)}${nx.note ? " (" + nx.note + ")" : ""}` : "";
+      r.naechstes = pts.length ? `Schwimmen: CSS-Test im gleichen Becken und mit gleichem Protokoll wiederholen${wann}.` : `Schwimmen: CSS-Test (400 m und 200 m) machen und im Schwimmen-Tab eintragen${wann}; die Pace ganzer Einheiten aus Garmin zählt nicht.`;
       if (r.status !== "nicht beurteilbar" && Math.min(r.n.P, r.n.R) < 2 && (r.status === "verbessert" || r.status === "verschlechtert")) { r.gruende.push("nur Einzeltests"); r.status = "unklar"; }
       out.push(r);
     }
@@ -126,7 +128,10 @@
       const best = rad.slice().sort((a, b) => (b.n.P + b.n.R) - (a.n.P + a.n.R))[0];
       ST.sys = best ? best.sys : null;
     }
-    const tiles = [rad.find((r) => r.sys === ST.sys), ...res.ergebnisse.filter((r) => r.metric !== "rad200")].filter(Boolean).slice(0, 4);
+    // V5.9.4: «Alle Sportarten» zeigt die vier Belegkennzahlen Rad, Laufen, Laktat und CSS (Schwimmen nur mit dem CSS-Test, E6);
+    // Ermüdung und weitere Rad-/Laufwerte mit der Sportart-Wahl. Die Antworten oben nutzen immer alle Ergebnisse.
+    const KERN = ["lauf330", "laktat", "css"], andere = res.ergebnisse.filter((r) => r.metric !== "rad200");
+    const tiles = [rad.find((r) => r.sys === ST.sys), ...(ST.sport ? andere : KERN.map((k) => andere.find((r) => r.metric === k)))].filter(Boolean);
     $("dev-metrics").innerHTML = tiles.map((r, i) => tile(C, r, i, rad)).join("") || `<p class="hint">Für diese Auswahl gibt es keine Belegkennzahlen.</p>`;
     $("dev-metrics").querySelectorAll("[data-sys]").forEach((b) => (b.onclick = () => { ST.sys = b.dataset.sys; V.entwicklung(C); }));
     tiles.forEach((r, i) => miniChart(C, r, i, P, R));
@@ -147,7 +152,11 @@
   function quelle(r) {
     if (r.metric === "rad200" || r.metric === "lauf330") return "FIT-Sekundenwerte, gleichmässige 10-min-Blöcke (eb-1.0), je Aktivität ein Wert";
     if (r.metric === "laktat") return `Stufentests ${r.protokoll || ""}, Laktat linear zwischen gemessenen Stufen`;
-    return "eingetragene CSS-Tests (400 m und 200 m)";
+    if (r.metric === "css") return "eingetragene CSS-Tests (400 m und 200 m)";
+    if (r.metric === "dauer_rad" || r.metric === "dauer_lauf") return "FIT-Sekundenwerte (ermuedung-1.0): je Einheit Puls früh gegen spät bei gleicher Leistung bzw. Pace, je Einheit ein Wert";
+    if (r.metric === "p20_3h") return "FIT-Sekundenwerte (ermuedung-1.0): beste 20 min ab Stunde 3 gegen die besten frischen 20 min derselben Fahrt";
+    if (r.metric === "lauf_hf150") return "FIT-Sekundenwerte (ermuedung-1.0): Pace in Abschnitten mit 145–155 bpm, flach und gleichmässig, je Lauf der Median";
+    return "FIT-Sekundenwerte";
   }
   function miniChart(C, r, i, P, R) {
     const F = window.FK, M = F.EW_METRIKEN[r.metric], x = (d) => F.dayNum(d);

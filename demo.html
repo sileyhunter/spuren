@@ -746,6 +746,8 @@ body.ex-offen { overflow: hidden; }
 .fb-dl dt { color: var(--muted); } .fb-dl dd { margin: 0; } .fb-st { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); } .fb-st select { min-height: 44px; }
 .sw-status { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; margin: 0 0 10px; font-size: 13px; color: var(--muted); }
 .v53-drill figure { margin: 0; } .v53-drill figcaption { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+.css-mehr .css-std { display: block; font-weight: 400; font-size: 12px; color: var(--muted); }
+.css-plan small { color: var(--muted); }
 .v53-drills { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
 .v53-drill { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
 .v53-drill h3 { margin: 0; font: 600 15px var(--f-body); } .v53-drill svg { width: 100%; height: auto; }
@@ -1027,7 +1029,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
       </div>
       <div class="card w12">
         <h2>Testkalender</h2>
-        <div class="sub">Wann ein Stufentest oder ein kurzer Laktat-Check Sinn macht. Kurz-Checks am besten am Ende einer lockeren Woche, damit die Werte vergleichbar sind. Die Vorschläge passe ich auf Wunsch an.</div>
+        <div class="sub">Wann ein Stufentest, ein kurzer Laktat-Check oder ein CSS-Test (Schwimmen, 400 m und 200 m) Sinn macht. Kurz-Checks am besten am Ende einer lockeren Woche, damit die Werte vergleichbar sind. Die Vorschläge passe ich auf Wunsch an.</div>
         <div class="tablewrap"><table class="t" id="t-tests" data-liste></table></div>
       </div>
     </div>
@@ -1366,8 +1368,9 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
   <section class="view" id="view-schwimmen" role="region" aria-label="Schwimmen" hidden>
     <div class="dash">
       <div class="card w12" id="sw-css-card">
-        <div class="card-head"><div><h2>CSS-Test (400 m / 200 m)</h2><div class="sub">Kritische Schwimmgeschwindigkeit aus deinen gestoppten Zeiten – die Grundlage für Vergleiche im Becken</div></div></div>
+        <div class="card-head"><div><h2>CSS-Test (400 m / 200 m)</h2><div class="sub">Der einzige Massstab für deinen Schwimmfortschritt – aus zwei gestoppten Zeiten</div></div></div>
         <div id="sw-css"></div>
+        <div class="chart" id="css-chart-wrap" hidden><canvas id="c-css" aria-label="CSS je Test über die Zeit, je Becken"></canvas></div>
       </div>
 
       <div class="card w12" id="sw-board-card" hidden data-ausgeblendet="Technik wird auf der Seite nicht mehr ausgewertet (V5.9, E6): Videos im Chat schicken. Daten bleiben">
@@ -3179,7 +3182,7 @@ const TABS = {
       document.getElementById("cal").innerHTML = html;
       const tests = testsWithStatus(), next = tests.find((t) => !t.done && pd(t.date) >= today);
       document.getElementById("t-tests").innerHTML = `<tr><th>Datum</th><th>Test</th><th>Warum</th><th>Status</th></tr>` + tests.map((t) =>
-        `<tr><td>${dateCH(t.date)}</td><td>${KIND[t.kind]}</td><td style="white-space:normal">${esc(t.note || "")}</td><td>${t.done ? `<span class="badge ok">erledigt</span>` : t === next ? `<span class="badge next">als Nächstes</span>` : pd(t.date) < today ? `<span class="badge">verpasst</span>` : `<span class="badge">Vorschlag</span>`}</td></tr>`).join("");
+        `<tr><td>${dateCH(t.date)}</td><td>${KIND[t.kind]}</td><td style="white-space:normal">${esc(t.note || "")}</td><td>${t.done ? `<span class="badge ok">erledigt</span>` : t === next ? `<span class="badge next">als Nächstes</span>` : pd(t.date) < today ? `<span class="badge">verpasst</span>` : t.status === "geplant" ? `<span class="badge info">geplant</span>` : `<span class="badge">Vorschlag</span>`}</td></tr>`).join("");
       if (this.sel) this.day(this.sel, true);
     },
     day(ds, keep) {
@@ -3406,7 +3409,11 @@ const TABS = {
         ["Höhenmeter", fmt(sum(L, "hm"))], ["Trainingslast", fmt(sum(L, "tss"))], ["Ø Puls", fmt(wavg(L, "hr"))]].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
       const pace = (l) => { const k = sum(l, "km"); return k ? sum(l, "dur") / k : null; };
       const extra = (k, l) => k === "rad" ? (wavg(l, "watt") ? fmt(wavg(l, "watt")) + " W" : "–")
-        : k === "lauf" ? (pace(l) ? mmss(pace(l)) + " /km" : "–") : k === "schwimm" ? (pace(l) ? mmss(pace(l) / 10) + " /100 m" : "–") : "–";
+        : k === "lauf" ? (pace(l) ? mmss(pace(l)) + " /km" : "–") : k === "schwimm" ? cssJahr() : "–";
+      const cssJahr = () => {               // V5.9.4 (E6): beim Schwimmen nur der CSS-Test, keine Rohpace aus Garmin
+        const c = cssTests().filter((x) => x.datum >= from && x.datum <= to && Number.isFinite(FK.css(x.t400, x.t200))).sort((a, b) => a.datum.localeCompare(b.datum)).at(-1);
+        return c ? `CSS ${mmss(FK.css(c.t400, c.t200))} /100 m` : "–";
+      };
       const row = (label, l, lp, k, cls) => {
         if (!l.length && !lp.length) return "";
         const km = sum(l, "km"), kmp = sum(lp, "km"), h = l.reduce((x, a) => x + hrsOf(a), 0) * 3600, hp = lp.reduce((x, a) => x + hrsOf(a), 0) * 3600, ht = sum(l, "dur");
@@ -3416,7 +3423,7 @@ const TABS = {
         return `<tr class="${cls || ""}"><td>${label}</td><td>${fmt(l.length)}</td><td>${fmt(ht / 3600)}</td><td title="Bewegungszeit (zeit-1.0)">${fmt(movH(l))}</td><td>${fmt(km)}</td><td>${fmt(sum(l, "hm"))}</td><td>${fmt(wavg(l, "hr"))}</td><td>${extra(k, l)}</td>${cmp}</tr>`;
       };
       const dot = (c) => `<span class="dot" style="background:${c};margin-right:8px"></span>`;
-      let html = `<tr><th>Sport</th><th>Anzahl</th><th title="Timer-Zeit, wie bisher">h Timer</th><th title="Timer-Zeit ohne Halte">h Bewegung</th><th>km</th><th>hm</th><th>Ø Puls</th><th>Ø Watt / Pace</th><th>ggü. ${Y - 1}</th></tr>`;
+      let html = `<tr><th>Sport</th><th>Anzahl</th><th title="Timer-Zeit, wie bisher">h Timer</th><th title="Timer-Zeit ohne Halte">h Bewegung</th><th>km</th><th>hm</th><th>Ø Puls</th><th title="Rad: Ø Watt · Laufen: Ø Pace · Schwimmen: letzter CSS-Test im Jahr (keine Rohpace, V5.9.4)">Ø Watt / Pace / CSS</th><th>ggü. ${Y - 1}</th></tr>`;
       for (const k of ["schwimm", "rad", "lauf", "ski", "wandern", "andere"]) {
         const l = L.filter((a) => a.sport === k), lp = Lp.filter((a) => a.sport === k);
         html += row(dot(SPORTS[k].color) + SPORTS[k].label, l, lp, k);
@@ -3534,7 +3541,7 @@ const TABS = {
   schwimmen: {
     draw() {
       const sw = D.activities.filter((a) => a.sport === "schwimm" && a.km > 0 && a.dur).slice(-60);
-      chart("c-swim", { type: "line", data: { labels: sw.map((a) => dLabel(a.date)), datasets: [
+      if (!document.getElementById("sw-raw-card").hidden) chart("c-swim", { type: "line", data: { labels: sw.map((a) => dLabel(a.date)), datasets: [
         { label: "Rohpace pro 100 m (Garmin, nicht validiert)", data: sw.map((a) => +(a.dur / (a.km * 10)).toFixed(1)), borderColor: SPORTS.schwimm.color + "99", backgroundColor: SPORTS.schwimm.color, pointRadius: 3, borderDash: [4, 4], tension: 0 }] },
         options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => mmss(c.raw) + " pro 100 m (Rohdaten)" } } }, scales: { x: { ticks: { maxTicksLimit: 10 } }, y: { reverse: true, ticks: { callback: (v) => mmss(v) } } } } });
       if (window.V5UI) V5_READY.then(() => { V5UI.schwimmen(); if (window.V55S) V55S.schwimmen(V5UI.C); });
@@ -3682,19 +3689,17 @@ function renderSteps() {          // Testzentrum (Umsetzungsplan A5): Stufen aus
     (PR.length ? PR.map((r) => `<tr><td>${esc(r.name)}</td><td class="wrap"><small>${esc(r.ablauf)}</small></td><td class="wrap"><small>${esc(r.blut)}</small></td><td class="wrap"><small>${esc(r.ende)}</small></td><td class="wrap"><small>${esc(r.rahmen || "")}</small></td><td><span class="badge${r.status === "freigegeben" ? " ok" : " next"}">${esc(r.status)}</span></td></tr>`).join("")
       : `<tr><td colspan="6">Noch keine Vorlagen.</td></tr>`);
 }
-const KIND = { stufentest: "Stufentest", check: "Laktat-Check" };
-function testsWithStatus() {
-  const done = (D.lactate || []);
-  return (D.tests || []).map((t) => {
-    const hit = done.find((l) => l.kind === t.kind && Math.abs(pd(l.date) - pd(t.date)) <= 4 * DAY);
-    return { ...t, done: !!hit, doneDate: hit && hit.date };
-  });
+const KIND = { stufentest: "Stufentest", check: "Laktat-Check", css: "CSS-Test" };
+const cssTests = () => (window.V5UI && V5UI.C && V5UI.merged ? V5UI.merged("css_tests", "css") : (D.css_tests || []));   // Daten + Gerät
+function testsWithStatus() {                  // Laktat-Tests über D.lactate, CSS-Tests über eingetragene CSS-Tests (V59L, ±4 Tage)
+  return V59L.testsMitStatus(D.tests, D.lactate, cssTests());
 }
 function calEvents(ds) {
   const ev = [];
   (D.config?.races || RACES).forEach((r) => { if (r.date === ds) ev.push({ cls: "race", text: r.short || r.name, title: r.name }); });
   testsWithStatus().forEach((t) => { if (t.date === ds) ev.push({ cls: "test", text: (t.done ? "✓ " : "") + KIND[t.kind], title: t.note || "" }); });
   (D.lactate || []).forEach((l) => { if (l.date === ds && !(D.tests || []).some((t) => t.kind === l.kind && Math.abs(pd(l.date) - pd(t.date)) <= 4 * DAY)) ev.push({ cls: "test", text: "✓ " + KIND[l.kind], title: l.block || "" }); });
+  cssTests().forEach((c) => { if (c.datum === ds && !(D.tests || []).some((t) => t.kind === "css" && Math.abs(pd(c.datum) - pd(t.date)) <= 4 * DAY)) ev.push({ cls: "test", text: "✓ CSS-Test", title: Number.isFinite(FK.css(c.t400, c.t200)) ? `CSS ${mmss(FK.css(c.t400, c.t200))} /100 m` : "" }); });
   D.activities.forEach((a) => { if (a.date === ds) ev.push({ cls: "", c: (SPORTS[a.sport] || SPORTS.andere).color, text: `${a.typ || SPORTS[a.sport].label} ${hmm(a.dur)}`, title: a.name, a }); });
   (D.planned || []).forEach((p, i) => { if (p.date === ds) ev.push({ cls: "plan", c: (SPORTS[p.sport] || SPORTS.andere).color, text: "Plan: " + (p.title || ""), title: p.title + (p.dur_s ? " · " + hmm(p.dur_s) : ""), p, pi: i }); });
   return ev;

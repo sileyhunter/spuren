@@ -18,7 +18,7 @@
   const BADGE = { "vorläufig": "warn", "nicht bestimmbar": "muted", "bestätigt": "ok", "vorschau": "next", "bestimmbar": "ok", "entwurf": "next", "aktiv": "ok", "bereit": "ok", "normal": "info", "vorsichtig": "warn",
     "nicht beurteilbar": "muted", "unbekannt": "muted", "niedrige Qualität": "muted", "FIT-abgeleitet": "info", "verbessert": "ok", "stabil": "info", "unklar": "muted", "verschlechtert": "warn",
     "vorschlag": "next", "auswählen": "next", "getrennt": "muted", "nicht validiert": "warn", "explorativ": "muted",
-    "offen": "next", "verbessern": "warn", "manueller Videovergleich": "info", "extern analysiert": "info", "nicht protokolliert": "muted" };
+    "offen": "next", "verbessern": "warn", "manueller Videovergleich": "info", "extern analysiert": "info", "nicht protokolliert": "muted", "gesendet": "info", "geplant": "info" };
   V.badge = (s, extra) => `<span class="badge ${BADGE[s] || ""}">${esc(s)}${extra ? " · " + esc(extra) : ""}</span>`;
   const TEST_COLORS = ["#148a7e", "#7a68d8", "#d9694a", "#3a7bd5", "#8a9a2b"];
   const SINGLE_COLOR = "#e08a3c";

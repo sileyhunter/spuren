@@ -122,3 +122,20 @@ test("Trainingslast last-2.0: Referenz je Datum (letzter Test davor, vorher der 
     "bisher = tss wie geliefert (tss0), neu = tl2; nur Rad ändert; ausserhalb der Wochen nichts");
   assert.equal(L.montag("2026-11-15"), "2026-11-09"); assert.equal(L.montag("2026-11-16"), "2026-11-16");
 });
+
+/* ---------------- css-2.0 (Testkalender mit CSS-Tests) ---------------- */
+test("Testkalender: CSS-Tests gelten als erledigt mit einem eingetragenen CSS-Test bis 4 Tage daneben; Laktat-Tests wie bisher", () => {
+  const tests = [{ date: "2026-11-19", kind: "css", note: "Ausgangswert", status: "geplant" }, { date: "2027-01-07", kind: "css", note: "vor Thailand", status: "geplant" },
+    { date: "2026-11-21", kind: "check", note: "x", status: "vorschlag" }, { date: "2026-12-05", kind: "stufentest", note: "y", status: "vorschlag" }];
+  const css = [{ id: "c1", datum: "2026-11-20", t400: 400, t200: 190 }, { id: "c2", datum: "2027-01-12", t400: 395, t200: 188 }];
+  const lac = [{ kind: "check", date: "2026-11-24" }, { kind: "stufentest", date: "2026-11-20" }];
+  const S = L.testsMitStatus(tests, lac, css);
+  assert.deepEqual(S.map((t) => [t.kind, t.done, t.doneDate || null]),
+    [["css", true, "2026-11-20"], ["css", false, null], ["check", true, "2026-11-24"], ["stufentest", false, null]],
+    "CSS 1 Tag daneben erledigt, 5 Tage daneben nicht; Check 3 Tage daneben erledigt; ein CSS-Test erledigt nie einen Laktat-Test");
+  assert.equal(L.testsMitStatus(null, null, null).length, 0);
+  const P = L.cssPlan(tests, css, "2026-11-25");
+  assert.deepEqual(P.liste.map((t) => t.date), ["2026-11-19", "2027-01-07"], "nur CSS-Tests, nach Datum");
+  assert.equal(P.naechster.date, "2027-01-07");
+  assert.equal(L.cssPlan(tests, css.concat([{ datum: "2027-01-08", t400: 1, t200: 0.5 }]), "2026-11-25").naechster, null, "alle erledigt → kein nächster");
+});
