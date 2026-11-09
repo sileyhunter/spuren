@@ -17,3 +17,13 @@ GitHub-API, Garmin-Lauf, brouter.de, Open-Meteo nachgebildet oder nicht erreichb
 | 3b Startorte, Trainingsrouten, gespeicherte Routen auf alle Geräte | ja | ja (test_tools: Route neu und entfernt) | offen |
 | 3c Test bestätigen (ganzer Test, Abweichungen sichtbar), Explorer «Laktat hier» bestätigen | ja | ja (E2E: eigene Bestätigungsdatei) | offen |
 | 3c Prüfung im Update ohne FIT (check_referenz.py --ohne-fit), Bestätigung bleibt liegen, wenn sie scheitert | ja | ja (mit den echten Daten: 21 von 21 Schwellen) | offen |
+
+## Paket 5 · V5.9.5 · Einfacher bedienen (E7: ja, als zweites Paket)
+| Punkt | implementiert | lokal getestet | produktiv getestet |
+|---|---|---|---|
+| Start auf «Heute»: Check-in, Heute geplant, Bereitschaft in einem Satz, diese Woche | ja | ja (E2E 390 × 844: alle drei oben sichtbar; 390 × 664 im Browser: Bereitschaft knapp darunter) | offen (iPhone) |
+| Leiste unten mit 5 Bereichen, Unterbereiche, im Planer ausgeblendet | ja | ja (E2E: jeder Bereich mit einem Tipp, Planer ohne Leiste) | offen |
+| Info-Knopf je Karte, «Erklärtexte immer zeigen» | ja | ja (E2E: 34 Erklärungen versteckt, per Knopf sichtbar) | offen |
+| Breite Tabellen als Liste (zuerst Geplant/Ist, Ermüdung, Saison) | ja (alle zu breiten Tabellen) | ja (E2E: keine zu breite Tabelle mehr) | offen |
+| Ausblenden statt löschen, wieder einblendbar | ja (Einstellungen) | ja | – |
+| demo.html mit gleicher Navigation | ja | ja | – |

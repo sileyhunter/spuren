@@ -775,6 +775,46 @@ body.ex-offen { overflow: hidden; }
 .syncbar.fehler { border-color: var(--bad); }
 table.v59-bt tr.flag td { background: #fff4e5; }
 .v5-overlay { grid-template-columns: minmax(0, 1fr); } .te-box { min-width: 0; max-width: 100%; box-sizing: border-box; } .te-box > * { min-width: 0; }
+/* V5.9.5 Bedienung (bedienung-1.0): Leiste unten, Unterbereiche, Info-Knopf, Tabellen als Liste; Heute oben */
+header.top { flex-wrap: nowrap; gap: 6px 18px; }
+.kopf-knopf { margin-left: auto; flex: none; background: none; border: 0; width: 44px; height: 44px; display: grid; place-items: center; color: var(--muted); cursor: pointer; border-radius: 10px; }
+.kopf-knopf:hover { color: var(--fg); background: var(--surface-2); }
+nav.leiste { flex: none; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); background: var(--surface); border-top: 1px solid var(--line); z-index: 30;
+  padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+nav.leiste button { background: none; border: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px; padding: 6px 2px 5px;
+  color: var(--muted); font: 600 11px/1.15 var(--f-body); cursor: pointer; text-align: center; -webkit-tap-highlight-color: transparent; }
+nav.leiste button[aria-current="page"] { color: var(--accent); } nav.leiste button[aria-current="page"] svg { stroke-width: 2.3; }
+body.plan-aktiv nav.leiste { display: none; }
+nav.unter { position: sticky; top: 0; z-index: 8; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; background: var(--bg); border-bottom: 1px solid var(--line);
+  padding: 8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); }
+@media (min-width: 900px) { nav.unter { grid-auto-columns: max-content; } }
+nav.unter button { border: 1px solid var(--line-2); background: var(--surface); border-radius: 10px; padding: 6px 8px; font: 600 13px var(--f-body); color: var(--fg); cursor: pointer; min-height: 38px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+nav.unter button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.card { position: relative; }
+.info-knopf { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line-2); background: var(--surface); color: var(--muted);
+  font: italic 700 14px/1 Georgia, serif; cursor: pointer; display: grid; place-items: center; z-index: 2; padding: 0; }
+.info-knopf[aria-expanded="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.card:not(.info-auf) .erkl { display: none !important; }
+.card.hat-info > .card-head, .card.hat-info > h2:first-of-type { padding-right: 36px; }
+.hp-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; } .hp-head h2 { margin: 0; } .hp-stand { font-size: 12px; color: var(--muted); }
+.hp-wo { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; } .hp-wo:first-of-type { border-top: 0; padding-top: 2px; }
+.hp-k { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; } .hp-k b { font-size: 16px; } .hp-m { color: var(--muted); font-size: 13px; }
+.hp-z { margin: 4px 0; font-size: 13.5px; line-height: 1.45; } .hp-z.muted { color: var(--muted); }
+.hp-f { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; } .hp-q { font-size: 12px; color: var(--muted); }
+.hp-leer { margin: 6px 0 2px; }
+.bk-satz { margin: 0 0 6px; font-size: 14.5px; } .bk-satz.rd-bereit b { color: var(--good); } .bk-satz.rd-vorsichtig b { color: var(--warn); } .bk-g { color: var(--muted); font-size: 13px; }
+.bk-ringe { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; } .bk-r { display: inline-flex; align-items: center; gap: 5px; } .bk-r i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.bk-stand { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+@media (max-width: 760px) { header.top .brand { padding-block: 8px; font-size: 18px; } header.top .mark-img { height: 30px; width: auto; } .dash { gap: 12px; padding-block: 12px 28px; } }
+@media (max-width: 640px) {
+  table.t.als-liste, table.t.als-liste tbody, table.t.als-liste tr, table.t.als-liste td, table.t.als-liste th { display: block; width: auto; }
+  table.t.als-liste tr.kopf { display: none; }
+  table.t.als-liste tr { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; margin: 0 0 8px; background: var(--surface); }
+  table.t.als-liste td, table.t.als-liste th { border: 0 !important; padding: 2px 0 !important; text-align: left !important; white-space: normal !important; position: static !important; background: none !important; min-width: 0 !important; }
+  table.t.als-liste td[data-l]::before { content: attr(data-l) ": "; color: var(--muted); font-size: 12px; }
+  table.t.als-liste td:first-child, table.t.als-liste th:first-child { font-weight: 650; font-size: 14.5px; }
+  .tablewrap:has(> table.t.als-liste) { overflow: visible; }
+}
 </style>
 </head>
 <body>
@@ -791,26 +831,15 @@ table.v59-bt tr.flag td { background: #fff4e5; }
 </div>
 <header class="top">
   <div class="brand"><img class="mark-img" src="logo-kopf.jpg" alt="" width="104" height="38" decoding="async">Ironman Notebook</div>
-  <div class="tabbar"><nav class="tabs" role="tablist" aria-label="Bereiche">
-    <button role="tab" id="tab-karte" data-tab="karte" aria-selected="true">Karte</button>
-    <button role="tab" id="tab-heute" data-tab="heute" aria-selected="false">Heute</button>
-    <button role="tab" id="tab-kalender" data-tab="kalender" aria-selected="false">Kalender</button>
-    <button role="tab" id="tab-training" data-tab="training" aria-selected="false">Fortschritt</button>
-    <button role="tab" id="tab-laktat" data-tab="laktat" aria-selected="false">Laktat &amp; Zonen</button>
-    <button role="tab" id="tab-ausdauer" data-tab="ausdauer" aria-selected="false">Ausdauer</button>
-    <button role="tab" id="tab-leistung" data-tab="leistung" aria-selected="false">Leistung</button>
-    <button role="tab" id="tab-schwimmen" data-tab="schwimmen" aria-selected="false">Schwimmen</button>
-    <button role="tab" id="tab-koerper" data-tab="koerper" aria-selected="false">Körper</button>
-  </nav>
-  <button class="tabs-more" id="tabs-more" type="button" aria-label="Weitere Bereiche zeigen">›</button></div>
   <div class="countdowns" id="countdowns"></div>
   <div class="stand" id="stand"></div>
+  <button class="kopf-knopf" id="btn-einst" type="button" aria-label="Einstellungen" title="Einstellungen"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
 <div class="demo-banner" id="banner" hidden><b>Beispieldaten.</b> Alle Spuren und Zahlen sind erfunden, damit du Aufbau und Funktionen beurteilen kannst. Mit dem ersten Garmin-Import werden sie ersetzt.</div>
 
 <main>
   <!-- ================= KARTE ================= -->
-  <section class="view" id="view-karte" role="tabpanel" aria-labelledby="tab-karte">
+  <section class="view" id="view-karte" role="region" aria-label="Karte">
     <aside class="panel" id="panel">
       <div class="panel-head"><b>Filter &amp; Punkte</b><button class="btn primary" id="panel-close">Karte zeigen</button></div>
       <div>
@@ -924,9 +953,15 @@ table.v59-bt tr.flag td { background: #fff4e5; }
   </section>
 
   <!-- ================= HEUTE ================= -->
-  <section class="view" id="view-heute" role="tabpanel" aria-labelledby="tab-heute" hidden>
+  <section class="view" id="view-heute" role="region" aria-label="Heute" hidden>
     <div class="dash">
       <div class="card w12 ci-card" id="checkin-card"><div id="checkin" aria-live="polite"><p class="hint">Check-in wird geladen …</p></div></div>
+      <div class="card w12 hp-card" id="heute-plan-card"><div id="heute-plan" aria-live="polite"></div></div>
+      <div class="card w12 bk-card" id="bereit-kurz-card"><div id="bereit-kurz"><p class="hint">Bereitschaft wird berechnet …</p></div></div>
+      <div class="card w12" id="woche-card">
+        <h2>Diese Woche</h2>
+        <div class="tablewrap"><table class="t" id="t-week" data-liste></table></div>
+      </div>
       <div class="card w12" id="ringe-card">
         <div class="card-head"><div><h2>Erholung, Schlaf, Belastung</h2><div class="sub" id="ringe-sub"></div></div>
           <div class="seg" id="ringe-range" role="group" aria-label="Zeitraum des Verlaufs"><button data-n="7" aria-pressed="true">7 Tage</button><button data-n="28" aria-pressed="false">28 Tage</button></div></div>
@@ -963,15 +998,12 @@ table.v59-bt tr.flag td { background: #fff4e5; }
         <h2>Rennen</h2>
         <div class="races" id="races"></div>
       </div>
-      <div class="card w12">
-        <h2>Diese Woche</h2>
-        <div class="tablewrap"><table class="t" id="t-week"></table></div>
-      </div>
     </div>
+    <p class="tm-note">IRONMAN® ist eine eingetragene Marke der World Triathlon Corporation. Diese private Trainingsseite steht in keiner Verbindung dazu; der Name ist nur ein persönlicher Titel.</p>
   </section>
 
   <!-- ================= KALENDER ================= -->
-  <section class="view" id="view-kalender" role="tabpanel" aria-labelledby="tab-kalender" hidden>
+  <section class="view" id="view-kalender" role="region" aria-label="Kalender" hidden>
     <div class="dash">
       <div class="card w12">
         <div class="card-head">
@@ -993,13 +1025,13 @@ table.v59-bt tr.flag td { background: #fff4e5; }
       <div class="card w12">
         <h2>Testkalender</h2>
         <div class="sub">Wann ein Stufentest oder ein kurzer Laktat-Check Sinn macht. Kurz-Checks am besten am Ende einer lockeren Woche, damit die Werte vergleichbar sind. Die Vorschläge passe ich auf Wunsch an.</div>
-        <div class="tablewrap"><table class="t" id="t-tests"></table></div>
+        <div class="tablewrap"><table class="t" id="t-tests" data-liste></table></div>
       </div>
     </div>
   </section>
 
   <!-- ================= TRAINING ================= -->
-  <section class="view" id="view-training" role="tabpanel" aria-labelledby="tab-training" hidden>
+  <section class="view" id="view-training" role="region" aria-label="Fortschritt" hidden>
     <div class="dash">
       <div class="card w12" id="dev-card">
         
@@ -1131,7 +1163,7 @@ table.v59-bt tr.flag td { background: #fff4e5; }
   </section>
 
   <!-- ================= LEISTUNG ================= -->
-  <section class="view" id="view-leistung" role="tabpanel" aria-labelledby="tab-leistung" hidden>
+  <section class="view" id="view-leistung" role="region" aria-label="Leistung" hidden>
     <div class="dash">
       <div class="card w12" id="trend-card">
         <div class="card-head"><div><h2>Ausdauertrend aus gleichmässigen Blöcken</h2><div class="sub">Primär: Puls bei gleicher Leistung bzw. gleichem Tempo, je Gerätesystem getrennt</div></div></div>
@@ -1201,7 +1233,7 @@ table.v59-bt tr.flag td { background: #fff4e5; }
   </section>
 
   <!-- ================= LAKTAT & ZONEN (V5) ================= -->
-  <section class="view" id="view-laktat" role="tabpanel" aria-labelledby="tab-laktat" hidden>
+  <section class="view" id="view-laktat" role="region" aria-label="Laktat und Zonen" hidden>
     <div class="dash">
       <div class="card w12 v5-head" id="lz-head"></div>
       <div class="card w8" id="lz-main">
@@ -1266,7 +1298,7 @@ table.v59-bt tr.flag td { background: #fff4e5; }
   </section>
 
   <!-- ================= AUSDAUER (V5) ================= -->
-  <section class="view" id="view-ausdauer" role="tabpanel" aria-labelledby="tab-ausdauer" hidden>
+  <section class="view" id="view-ausdauer" role="region" aria-label="Ausdauer" hidden>
     <div class="dash">
       <div class="card w12" id="v56-ermuedung-card">
         <div class="card-head"><div><h2>Ermüdungsresistenz</h2><div class="sub">Puls bei gleicher Leistung früh und spät in derselben Fahrt, Leistung nach 2–5 Stunden</div></div></div>
@@ -1319,19 +1351,19 @@ table.v59-bt tr.flag td { background: #fff4e5; }
   </section>
 
   <!-- ================= SCHWIMMEN (V5) ================= -->
-  <section class="view" id="view-schwimmen" role="tabpanel" aria-labelledby="tab-schwimmen" hidden>
+  <section class="view" id="view-schwimmen" role="region" aria-label="Schwimmen" hidden>
     <div class="dash">
       <div class="card w12" id="sw-css-card">
         <div class="card-head"><div><h2>CSS-Test (400 m / 200 m)</h2><div class="sub">Kritische Schwimmgeschwindigkeit aus deinen gestoppten Zeiten – die Grundlage für Vergleiche im Becken</div></div></div>
         <div id="sw-css"></div>
       </div>
 
-      <div class="card w12">
+      <div class="card w12" id="sw-board-card" hidden data-ausgeblendet="Technik wird auf der Seite nicht mehr ausgewertet (V5.9, E6): Videos im Chat schicken. Daten bleiben">
         <div class="card-head"><div><h2>Fehlerboard</h2><div class="sub">Beobachtung → Sollzustand → Übung → nächste Aufnahme. Status: offen, verbessern, bestätigt, nicht beurteilbar</div></div></div>
         <div id="sw-board"></div>
       </div>
 
-      <div class="card w12">
+      <div class="card w12" id="sw-coach-card" hidden data-ausgeblendet="Videovergleich: Technik wertet Claude im Chat Bild für Bild aus (V5.9, E6). Daten bleiben">
         <div class="card-head"><div><h2>Schwimmtechnik-Coach</h2><div class="sub">Zwei Videos nebeneinander, Bild für Bild, mit eigenen Marken und Winkeln. Videos verlassen das Gerät nicht.</div></div></div>
         <div id="sw-coach"></div>
       </div>
@@ -1343,7 +1375,7 @@ table.v59-bt tr.flag td { background: #fff4e5; }
         <h2>Lernbausteine im Verlauf</h2><div class="sub">Deine eigene Bewertung je Sitzung, keine automatische Analyse</div>
         <div class="chart"><canvas id="c-sw-tech" aria-label="Bewertung der Lernbausteine über die Zeit"></canvas></div>
       </div>
-      <div class="card w12">
+      <div class="card w12" id="sw-raw-card" hidden data-ausgeblendet="Rohpace aus Garmin: als Massstab zählt nur noch der CSS-Test (V5.9, E6). Daten bleiben">
         <h2>Rohdaten: Pace pro 100 m aus Garmin</h2>
         <div class="sub">Eingeschränkte Aussagekraft · weiter oben ist schneller</div>
         <p class="hint" id="swim-raw-note"></p>
@@ -1353,7 +1385,7 @@ table.v59-bt tr.flag td { background: #fff4e5; }
   </section>
 
   <!-- ================= KÖRPER ================= -->
-  <section class="view" id="view-koerper" role="tabpanel" aria-labelledby="tab-koerper" hidden>
+  <section class="view" id="view-koerper" role="region" aria-label="Körper" hidden>
     <div class="dash">
       <div class="card w8">
         <div class="card-head">
@@ -1385,8 +1417,14 @@ table.v59-bt tr.flag td { background: #fff4e5; }
       </div>
     </div>
   </section>
-  <p class="tm-note">IRONMAN® ist eine eingetragene Marke der World Triathlon Corporation. Diese private Trainingsseite steht in keiner Verbindung dazu; der Name ist nur ein persönlicher Titel.</p>
 </main>
+<nav class="leiste" id="leiste" aria-label="Bereiche">
+  <button type="button" data-gruppe="heute"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg><span>Heute</span></button>
+  <button type="button" data-gruppe="kalender"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span>Kalender</span></button>
+  <button type="button" data-gruppe="karte"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4.5 3.5 6.5v13l5.5-2 6 2 5.5-2v-13l-5.5 2-6-2z"/><path d="M9 4.5v13M15 6.5v13"/></svg><span>Karte</span></button>
+  <button type="button" data-gruppe="analyse"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 20.5h17"/><path d="M5 16l4.5-5 3.5 3 6-7.5"/><circle cx="19" cy="6.5" r="1.3"/></svg><span>Analyse</span></button>
+  <button type="button" data-gruppe="koerper"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 16c1.6 0 1.6-1.4 3.2-1.4s1.6 1.4 3.2 1.4 1.6-1.4 3.2-1.4 1.6 1.4 3.2 1.4 1.6-1.4 3.2-1.4 1.6 1.4 2.9 1.4"/><path d="M2.5 20c1.6 0 1.6-1.4 3.2-1.4s1.6 1.4 3.2 1.4 1.6-1.4 3.2-1.4 1.6 1.4 3.2 1.4 1.6-1.4 3.2-1.4 1.6 1.4 2.9 1.4"/><circle cx="14.5" cy="5.5" r="2"/><path d="M6.5 12.5l4-4.5 2.8 2.4 3.2-2"/></svg><span>Körper &amp; Schwimmen</span></button>
+</nav>
 <div class="v5-overlay" id="v5-test" hidden></div>
 <div class="v5-overlay" id="v59-ov" hidden></div>
 
@@ -1792,34 +1830,45 @@ document.getElementById("countdowns").innerHTML = RACES.map((r) => `<div>${esc(r
 document.getElementById("stand").textContent = !D.demo && D.updated ? "Stand " + D.updated : "";
 
 const TAB_NAMES = ["karte", "heute", "kalender", "training", "laktat", "ausdauer", "leistung", "schwimmen", "koerper"];
+/* V5.9.5 (bedienung-1.0): fünf Bereiche in einer Leiste unten. «Analyse» bündelt Fortschritt, Laktat & Zonen, Ausdauer und Leistung,
+   «Körper & Schwimmen» die beiden Ansichten; innerhalb eines Bereichs wechselt eine Leiste oben (immer sichtbar beim Scrollen). */
+const GRUPPEN = { heute: ["heute"], kalender: ["kalender"], karte: ["karte"], analyse: ["training", "laktat", "ausdauer", "leistung"], koerper: ["koerper", "schwimmen"] };
+const UNTER_NAME = { training: "Fortschritt", laktat: "Laktat", ausdauer: "Ausdauer", leistung: "Leistung", koerper: "Körper", schwimmen: "Schwimmen" };
+const gruppeVon = (name) => Object.keys(GRUPPEN).find((g) => GRUPPEN[g].includes(name)) || "heute";
+for (const [g, views] of Object.entries(GRUPPEN)) {
+  if (views.length < 2) continue;
+  for (const v of views) {
+    const sec = document.getElementById("view-" + v); if (!sec) continue;
+    const nav = document.createElement("nav"); nav.className = "unter"; nav.setAttribute("aria-label", g === "analyse" ? "Analyse" : "Körper und Schwimmen");
+    nav.innerHTML = views.map((x) => `<button type="button" data-tab="${x}" aria-pressed="${x === v}">${UNTER_NAME[x]}</button>`).join("");
+    sec.insertBefore(nav, sec.firstChild);
+  }
+}
 function showTab(name) {
   if (name === "checkin") { name = "heute"; setTimeout(() => document.getElementById("checkin-card")?.scrollIntoView({ block: "start" }), 60); }   // V5.9.3: Link aus dem Morgen-Briefing
-  if (!TAB_NAMES.includes(name)) name = "karte";
-  document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
+  if (!TAB_NAMES.includes(name)) name = "heute";
+  const g = gruppeVon(name);
+  document.querySelectorAll("#leiste [data-gruppe]").forEach((b) => { if (b.dataset.gruppe === g) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
+  document.querySelectorAll("nav.unter [data-tab]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tab === name)));
   document.querySelectorAll("section.view").forEach((s) => (s.hidden = s.id !== "view-" + name));
+  document.body.classList.toggle("plan-aktiv", name === "karte" && !!(window.RTUI && window.RTUI.active && window.RTUI.active()));
   if (name === "karte") { map?.resize(); }
   const t = TABS[name];
   if (t && !t.done) { t.done = true; try { t.init?.(); t.draw(); } catch (e) { console.error(e); } }
   if (window.V56 && window.V5UI && typeof V5_READY !== "undefined") V5_READY.then(() => { try { V56.zeichnen(name, V5UI.C); } catch (e) { console.error(e); } });
-  const tb = document.querySelector(`nav.tabs button[data-tab="${name}"]`), nav = document.querySelector("nav.tabs");
-  if (tb && nav) nav.scrollTo({ left: Math.max(0, tb.offsetLeft - (nav.clientWidth - tb.offsetWidth) / 2), behavior: "smooth" });   // aktiven Bereich mittig zeigen
   if (location.hash.slice(1) !== name) history.replaceState(null, "", "#" + name);
   store.set("sf.tab", name);
-  tabHints();
+  if (GRUPPEN[g].length > 1) store.set("sf.unter." + g, name);
+  if (window.V59 && window.V59.ansicht) requestAnimationFrame(() => window.V59.ansicht(name));   // Info-Knopf, Tabellen als Liste
 }
-document.querySelectorAll("nav.tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
-/* Hinweis auf weitere Bereiche: ausgeblendeter Rand und Pfeil, solange die Leiste seitlich weitergeht */
-function tabHints() {
-  const nav = document.querySelector("nav.tabs"), more = document.getElementById("tabs-more");
-  if (!nav) return;
-  const l = nav.scrollLeft > 4, r = nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 4;
-  nav.classList.toggle("more-l", l); nav.classList.toggle("more-r", r);
-  if (more) { more.classList.toggle("on", r || l); more.textContent = r ? "›" : "‹"; more.setAttribute("aria-label", r ? "Weitere Bereiche rechts zeigen" : "Zurück zum Anfang der Bereiche"); }
-}
-document.querySelector("nav.tabs")?.addEventListener("scroll", () => requestAnimationFrame(tabHints), { passive: true });
-addEventListener("resize", tabHints);
-document.getElementById("tabs-more")?.addEventListener("click", () => { const nav = document.querySelector("nav.tabs"); const r = nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 4;
-  nav.scrollBy({ left: r ? nav.clientWidth * 0.7 : -nav.scrollWidth, behavior: "smooth" }); });
+document.querySelectorAll("#leiste [data-gruppe]").forEach((b) => b.addEventListener("click", () => {
+  const g = b.dataset.gruppe, akt = location.hash.slice(1);
+  if (GRUPPEN[g].includes(akt) && GRUPPEN[g].length === 1) { const sec = document.getElementById("view-" + akt); if (sec) sec.scrollTo({ top: 0, behavior: "smooth" }); return; }   // nochmals tippen = nach oben
+  const letzt = store.get("sf.unter." + g, GRUPPEN[g][0]);
+  showTab(GRUPPEN[g].includes(letzt) ? letzt : GRUPPEN[g][0]);
+}));
+document.querySelectorAll("nav.unter [data-tab]").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
+document.getElementById("btn-einst")?.addEventListener("click", () => window.V59 && window.V59.einstellungen && window.V59.einstellungen());
 window.addEventListener("hashchange", () => showTab(location.hash.slice(1)));
 
 /* =====================================================================
@@ -2697,6 +2746,7 @@ function setPlanActive(on) {
   document.getElementById("btn-plan").setAttribute("aria-pressed", String(on));
   document.querySelector(".map-wrap").classList.toggle("planning", on);
   document.getElementById("view-karte").classList.toggle("planning", on);
+  document.body.classList.toggle("plan-aktiv", !!on);          // V5.9.5: im Planer keine Leiste unten (Bottom Sheet)
   if (on && innerWidth <= 760) document.getElementById("panel").classList.add("closed");
   if (on) window.RTUI.open(); else window.RTUI.close();
   if (map) setTimeout(() => map.resize(), 60);
@@ -3056,7 +3106,7 @@ const TABS = {
       if (!d) {
         document.getElementById("today-main").innerHTML = `<p class="hint">Noch keine Tageswerte. Sie kommen mit dem ersten Garmin-Update.</p>`;
         document.getElementById("today-verdict").textContent = "Noch keine Daten.";
-        if (window.V5UI) V5_READY.then(() => { V5UI.heute(); if (window.V59) { V59.checkin(); V59.gefuehlKarte(); } });
+        if (window.V5UI) V5_READY.then(() => { V5UI.heute(); if (window.V59) { V59.checkin(); V59.heuteOben(); V59.gefuehlKarte(); } });
       } else {
         const pa = FK.pmcAnzeige(pmc().at(-1)) || {};
         const s7 = D.days.slice(-7).filter((x) => x.sleepH != null);
@@ -3064,7 +3114,7 @@ const TABS = {
           ["Garmin-Bereitschaft", d.readiness != null ? fmt(d.readiness) : null], ["HRV Ø 30 Tage", fmt(baseline(i).hrv)],
           ["Schlaf Ø 7 Tage", s7.length ? fmt(s7.reduce((s, x) => s + x.sleepH, 0) / s7.length, 1) + " h" : null]]
           .filter(([, v]) => v != null).map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
-        if (window.V5UI) V5_READY.then(() => { V5UI.heute(); if (window.V59) { V59.checkin(); V59.gefuehlKarte(); } });
+        if (window.V5UI) V5_READY.then(() => { V5UI.heute(); if (window.V59) { V59.checkin(); V59.heuteOben(); V59.gefuehlKarte(); } });
       }
       const w0 = mondayOf(today), wk = D.activities.filter((a) => inWeek(a, w0));
       const rows = Object.entries(SPORTS).map(([k, s]) => {
@@ -3575,7 +3625,7 @@ function calEvents(ds) {
    ===================================================================== */
 v5Start();
 initKarte();
-V5_READY.finally(() => { const h0 = location.hash.slice(1); showTab(TAB_NAMES.includes(h0) || h0 === "checkin" ? h0 : store.get("sf.tab", "karte")); });
+V5_READY.finally(() => { const h0 = location.hash.slice(1); showTab(TAB_NAMES.includes(h0) || h0 === "checkin" ? h0 : "heute"); });   // V5.9.5: Start auf «Heute»
 }
 </script>
 </body>

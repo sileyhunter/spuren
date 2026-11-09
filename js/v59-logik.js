@@ -75,5 +75,20 @@
     return out;
   };
 
+  /* ======================= morgen-1.0: Heute geplant ======================= */
+  /** Einheiten aus dem Garmin-Kalender für einen Tag (mit ihrer Stelle in planned, für «Passende Route finden»). */
+  L.geplantAm = function (planned, datum) {
+    const out = [];
+    (planned || []).forEach((p, i) => { if (p && p.date === datum) out.push({ i, p }); });
+    return out;
+  };
+  /** Stand der Daten aus «updated» (TT.MM.JJJJ hh:mm, Zeit des letzten Updates): heute → «Stand 08:31», sonst mit Datum. */
+  L.standText = function (updated, heuteISO) {
+    const m = /^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}:\d{2})/.exec(String(updated || ""));
+    if (!m) return null;
+    const iso = `${m[3]}-${m[2]}-${m[1]}`;
+    return { iso, zeit: m[4], text: iso === heuteISO ? `Stand ${m[4]}` : `Stand ${m[1]}.${m[2]}. ${m[4]}`, heute: iso === heuteISO };
+  };
+
   return L;
 });

@@ -1,5 +1,29 @@
 # Änderungen
 
+## V5.9.5 · 9.11.2026 · Paket 5 «Einfacher bedienen» (bedienung-1.0)
+Auftrag V5.9, Entscheid E7 (9.11.2026): ja, als zweites Paket nach Paket 3.
+
+- **Start auf «Heute»** statt auf der Karte (Links mit `#…` gehen weiter direkt in einen Bereich, `#checkin` zum Check-in). Oben: Check-in,
+  solange er fehlt, dann «Heute geplant» (Workouts des Tages aus dem Garmin-Kalender mit Zielen aus den Schritten, Quelle und «Passende Route
+  finden»; ohne Workout «Für heute noch kein Workout in Garmin (Stand …)»), die Bereitschaft in einem Satz mit Erholung, Schlaf, Belastung und
+  dem Stand der Daten, dann «Diese Woche». Auf 390 × 844 (App vom Home-Bildschirm) ohne Scrollen sichtbar: Check-in, Workout, Bereitschaft.
+- **Fünf Bereiche in einer Leiste unten**: Heute · Kalender · Karte · Analyse · Körper & Schwimmen. «Analyse» bündelt Fortschritt,
+  Laktat & Zonen, Ausdauer und Leistung, «Körper & Schwimmen» die beiden Ansichten; oben wechselt eine Leiste (bleibt beim Scrollen
+  sichtbar), der zuletzt gewählte Unterbereich bleibt gemerkt. Im Routenplaner ist die Leiste weg, damit sie das Bottom Sheet nicht stört.
+  Einstellungen über das Zahnrad oben rechts.
+- **Info-Knopf je Karte**: Erklärtexte, Regelversionen und Quellen liegen hinter «i»; sichtbar bleibt das Ergebnis. Hat eine Karte kein
+  Ergebnis (z. B. noch keine Daten), bleibt der Text sichtbar. Warnungen, Statusmeldungen und Eingaben werden nie versteckt. In den
+  Einstellungen: «Erklärtexte immer zeigen».
+- **Breite Tabellen als Liste** auf dem iPhone statt seitlich wischen: «Geplant gegenüber absolviert», Ermüdungsresistenz, Saison,
+  Testkalender, «Diese Woche» und jede andere Tabelle, die nicht in die Breite passt (je Zeile eine Karte, Spaltennamen davor).
+- **Ausblenden statt löschen**: RPE-Liste der Einheiten, Videovergleich, Fehlerboard und Rohpace beim Schwimmen sind ausgeblendet; die Daten
+  bleiben, und in den Einstellungen («Ausgeblendete Karten») lässt sich jede Karte auf diesem Gerät wieder einblenden.
+- Der Markenhinweis steht jetzt unten auf «Heute» (vorher schimmerte er hinter den Bereichen durch).
+
+Geprüft: E2E auf iPhone-Grösse (390 × 844 und 390 × 664) mit erfundenen Daten: Start auf «Heute», alle drei Karten oben sichtbar (844),
+jeder Bereich mit einem Tipp, Unterbereich gemerkt, Info-Knopf blendet Erklärungen ein und aus, Tabellen als Liste ohne seitliches Wischen
+(in keinem Bereich mehr eine zu breite Tabelle), Leiste im Planer weg und danach wieder da, Demo mit gleicher Navigation, keine Programmfehler.
+
 ## V5.9.3 · 9.11.2026 · Paket 3 «Eingaben ohne Tippen»: Morgen-Check-in, Direkt speichern, Laktat bestätigen
 Auftrag V5.9 (Entscheide vom 9.11.2026: E4 GitHub-Schlüssel nur für dieses Repository, E5 Befinden als Check-in auf der Seite statt auf der Uhr).
 Wiederherstellungspunkt vor dem Bau: Branch `vor-v59`. Versionen je Paket: V5.9.1 = Paket 1 … V5.9.5 = Paket 5 (gebaut in der Reihenfolge 3 → 5 → 2 → 1 → 4).

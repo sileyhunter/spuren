@@ -16,6 +16,7 @@
 
   V.init = function (ctx) {
     C = ctx;
+    beobachten();
     if (EG()) EG().beiStatus(() => { if ($("checkin")) V.checkin(); if (!$("v59-ov").hidden && V._ovArt === "einst") V.einstellungen(); });
     window.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("v59-ov").hidden) V.schliessen(); });
   };
@@ -57,7 +58,7 @@
       CI.krank = !!(b.krank && b.krank.length); CI.krankListe = (b.krank || []).filter((k) => L().KRANK.includes(k)); CI.notiz = b.notiz || "";
     }
     box.innerHTML = `<div class="ci" role="group" aria-label="Morgen-Check-in">
-      <div class="ci-head"><div><h2>${CI.edit ? "Befinden ändern" : "Guten Morgen – wie geht's?"}</h2><div class="sub">${CI.edit ? "Jeder Tipp speichert sofort." : "Drei Tipps, gespeichert wird von selbst."}</div></div>
+      <div class="ci-head"><div><h2>${CI.edit ? "Befinden ändern" : "Guten Morgen"}</h2><div class="sub">${CI.edit ? "Jeder Tipp speichert sofort." : "Wie geht's? Drei Tipps – gespeichert wird von selbst."}</div></div>
         ${CI.edit ? `<button class="btn" type="button" data-ci="fertig">Fertig</button>` : `<button class="lnk" type="button" data-ci="aus">heute nicht</button>`}</div>
       ${F.map((f) => `<div class="ci-q"><span class="ci-l" id="ci-l-${f.k}">${f.label}</span>
         <div class="ci-b" role="radiogroup" aria-labelledby="ci-l-${f.k}">${[1, 2, 3, 4, 5].map((v) => `<button type="button" role="radio" class="ci-v v${v}" aria-checked="${CI.wahl[f.k] === v}" aria-label="${f.label} ${v}: ${esc(wort(f, v))}" data-q="${f.k}" data-v="${v}">${v}</button>`).join("")}</div>
@@ -124,6 +125,96 @@
       <p class="hint">Gefühl = Mittel aus Beine, Energie und Kopf. HRV und Ruhepuls gegen deine eigenen 60 Tage davor, Schlaf = Garmin-Schlafwert der Nacht, Last = Trainingslast am Vortag (alle Sportarten). |ρ| ab 0.3 = brauchbar. Nur Zusammenhang, keine Ursache. Regel ${esc(K.v)}.</p>`;
   };
 
+  /* ======================= Heute oben: geplant (morgen-1.0) und Bereitschaft in einem Satz ======================= */
+  const SPORT_WORT = { rad: "Rad", lauf: "Laufen", schwimm: "Schwimmen", wandern: "Wandern", ski: "Ski", andere: "Training", kraft: "Kraft" };
+  V.heuteOben = function () {
+    if (!C || !L()) return;
+    V.heutePlan(); V.bereitKurz();
+  };
+  V.heutePlan = function () {
+    const box = $("heute-plan"); if (!box) return;
+    const D = C.D, day = heuteISO(), TR = window.TR, st = L().standText(D.updated, day);
+    const E = L().geplantAm(D.planned, day);
+    const zeile = ({ i, p }) => {
+      let wo = null; try { wo = TR && TR.workout ? TR.workout(Object.assign({}, p, { sport_plan: p.sport }), {}) : null; } catch (e) { wo = null; }
+      const dauer = wo && isNum(wo.dauer_s) ? wo.dauer_s : isNum(p.dur_s) ? p.dur_s : null;
+      const ziele = wo && wo.schritte && wo.schritte.length ? TR.strukturText(wo) : null;
+      const route = ["rad", "lauf", "wandern"].includes(p.sport) && window.TRUI && !C.IS_DEMO;
+      return `<div class="hp-wo"><div class="hp-k"><b>${esc(p.title || SPORT_WORT[p.sport] || "Training")}</b><span class="hp-m">${esc(SPORT_WORT[p.sport] || p.sport || "")}${dauer ? ` · ${C.hmm(dauer)} h` : ""}</span></div>
+        ${ziele ? `<p class="hp-z">${esc(ziele)}</p>` : `<p class="hp-z muted">Keine Schritte im Kalender – Ziele siehe Garmin.</p>`}
+        ${wo && wo.hinweise && wo.hinweise.length ? `<p class="hint warn-t">${esc(wo.hinweise[0])}</p>` : ""}
+        <div class="hp-f"><span class="hp-q">${esc(p.quelle || "Garmin-Kalender")}</span>${route ? `<button class="btn" type="button" data-str="${esc(day)}|${i}">Passende Route finden</button>` : ""}</div></div>`;
+    };
+    const neu = (D.workouts_neu || []).slice(0, 3);
+    box.innerHTML = `<div class="hp-head"><h2>Heute geplant</h2><span class="hp-stand">${st && E.length ? esc(st.text) : ""}</span></div>
+      ${E.length ? E.map(zeile).join("") : `<p class="hp-leer">Für heute noch kein Workout in Garmin${st ? ` (${esc(st.text)})` : ""}.</p>`}
+      ${!E.length && neu.length ? `<p class="hint">Neu von Enduco, noch ohne Datum: ${neu.map((w) => esc(w.title || "Workout")).join(", ")} – im Planer unter «Passende Route finden» wählbar.</p>` : ""}`;
+  };
+  V.bereitKurz = function () {
+    const box = $("bereit-kurz"); if (!box) return;
+    const r = UI() && UI().lastReadiness, F = window.FK, D = C.D, day = heuteISO();
+    if (!r) { box.innerHTML = `<p class="hint">Bereitschaft wird berechnet …</p>`; return; }
+    const wort = { bereit: "Bereit", normal: "Normal", vorsichtig: "Vorsicht bei Intensität", "nicht beurteilbar": "Nicht beurteilbar" }[r.status] || r.status;
+    let ring = null, tag = null;
+    if (F && F.ringeVerlauf) {
+      for (let i = 0; i < 8 && !ring; i++) { const d = L().addDays(day, -i), x = (D.days || []).find((z) => z.date === d); if (x && (isNum(x.hrv) || isNum(x.rhr) || isNum(x.sleepScore))) { tag = d; ring = F.ringeVerlauf(D.days, D.activities, d, 1)[0]; } }
+    }
+    const st = L().standText(D.updated, day);
+    const pill = (lab, v, farbe) => `<span class="bk-r"><i style="background:${v == null ? C.css("--muted") : farbe}"></i>${lab} <b>${v == null ? "–" : v + " %"}</b></span>`;
+    box.innerHTML = `<p class="bk-satz rd-${r.status.replace(/ /g, "-")}"><b>${esc(wort)}:</b> ${esc(r.empfehlung)}${r.gruende && r.gruende.length ? ` <span class="bk-g">(${esc(r.gruende.slice(0, 3).join(", "))})</span>` : ""}</p>
+      ${ring ? `<div class="bk-ringe" role="group" aria-label="Erholung, Schlaf, Belastung">${pill("Erholung", ring.erholung, C.css(F.ringFarbe(ring.erholung) === "gut" ? "--good" : F.ringFarbe(ring.erholung) === "mittel" ? "--warn" : "--bad"))}${pill("Schlaf", ring.schlaf, C.css("--sleep"))}${pill("Belastung", ring.belastung, C.css("--strain"))}</div>` : ""}
+      <p class="bk-stand">${tag && tag !== day ? `Morgenwerte vom ${esc(C.dateCH(tag))}` : tag ? "Morgenwerte von heute" : "Keine Morgenwerte"}${st ? ` · ${esc(st.text)}` : ""} · <button class="lnk" type="button" data-bk="mehr">Einzelheiten</button></p>`;
+    const m = box.querySelector('[data-bk="mehr"]'); if (m) m.onclick = () => { const el = $("ringe-card"); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };
+  };
+
+  /* ======================= Bedienung (bedienung-1.0): Info-Knopf und Tabellen als Liste ======================= */
+  const ERKL = '.card-head .sub:not([id]), .card > .sub:not([id]), .card > h2 + .sub:not([id]), .card p.hint, .card div.hint, .card .td-dq';
+  const BLEIBT = '[role="status"], [aria-live], .warn-t, .down, .verdict, .keep, .ci, .ci *, .ci-done, .ci-done *, .hp-leer, .syncbar, .syncbar *, .info-knopf';
+  const ERGEBNIS = 'canvas, table, ul, ol, dl, .kv, .verdict, .rg, .dev-num, .ci, .ci-done, .race, .cal, .rd-status, .td-tiles, .td-verdict, input, textarea, .bk-satz, .hp-wo, .hp-leer, img, .dev-tile';
+  const LISTEN_IN = ["#v56-plan", "#v56-saison", "#v56-ermuedung"];
+  V.erklImmer = () => lsGet("sf.erkl.immer") === "1";
+  function infoKarte(card) {
+    if (card.closest("#view-karte") || card.hidden) return;
+    if (V.erklImmer()) { card.querySelectorAll(".erkl").forEach((e) => e.classList.remove("erkl")); card.classList.remove("hat-info"); card.querySelector(":scope > .info-knopf")?.remove(); return; }
+    const kand = [...card.querySelectorAll(ERKL)].filter((e) => !e.matches(BLEIBT) && !e.closest(BLEIBT.replace(/, \.[a-z-]+ \*/g, "")) && e.textContent.trim());
+    const ergebnis = [...card.querySelectorAll(ERGEBNIS)].some((e) => !kand.some((k) => k.contains(e)) && !(e.tagName === "TABLE" && ![...e.rows].some((r) => [...r.cells].some((c) => c.tagName === "TD"))));   // leere Tabelle ist kein Ergebnis
+    card.querySelectorAll(".erkl").forEach((e) => { if (!kand.includes(e) || !ergebnis) e.classList.remove("erkl"); });
+    if (!ergebnis || !kand.length) { card.classList.remove("hat-info"); card.querySelector(":scope > .info-knopf")?.remove(); return; }
+    kand.forEach((e) => e.classList.add("erkl"));
+    card.classList.add("hat-info");
+    let b = card.querySelector(":scope > .info-knopf");
+    if (!b) {
+      b = document.createElement("button"); b.type = "button"; b.className = "info-knopf"; b.textContent = "i";
+      b.setAttribute("aria-label", "Erklärung, Regel und Quelle zeigen"); b.setAttribute("aria-expanded", "false");
+      b.onclick = () => { const auf = card.classList.toggle("info-auf"); b.setAttribute("aria-expanded", String(auf)); };
+      card.insertBefore(b, card.firstChild);
+    }
+  }
+  function alsListe(t) {
+    t.classList.add("als-liste");
+    const rows = [...t.rows]; if (!rows.length) return;
+    const kopf = rows.find((r) => r.cells.length && [...r.cells].every((c) => c.tagName === "TH"));
+    if (!kopf) return;
+    kopf.classList.add("kopf");
+    const lab = []; for (const c of kopf.cells) for (let k = 0; k < (c.colSpan || 1); k++) lab.push(c.textContent.trim());
+    for (const r of rows) { if (r === kopf) continue; let j = 0; for (const c of r.cells) { const l = lab[j]; if (l && j > 0 && !c.hasAttribute("data-l")) c.setAttribute("data-l", l); j += c.colSpan || 1; } }
+  }
+  const schmal = () => typeof matchMedia === "function" && matchMedia("(max-width: 640px)").matches;
+  V.ansicht = function (name) {
+    const sec = document.getElementById("view-" + name); if (!sec || name === "karte") return;
+    sec.querySelectorAll("table.t[data-liste]").forEach(alsListe);
+    for (const sel of LISTEN_IN) sec.querySelectorAll(sel + " table.t").forEach(alsListe);
+    if (schmal()) sec.querySelectorAll(".tablewrap > table.t:not(.als-liste):not([data-keine-liste])").forEach((t) => { const w = t.parentElement; if (w.offsetParent && w.scrollWidth > w.clientWidth + 8) alsListe(t); });   // jede zu breite Tabelle: Liste statt Wischen
+    sec.querySelectorAll(".card").forEach(infoKarte);
+  };
+  let beobachter = null, geplant = 0;
+  function beobachten() {
+    if (beobachter || typeof MutationObserver === "undefined") return;
+    const main = document.querySelector("main"); if (!main) return;
+    beobachter = new MutationObserver(() => { if (geplant) return; geplant = requestAnimationFrame(() => { geplant = 0; const v = document.querySelector("section.view:not([hidden])"); if (v) V.ansicht(v.id.slice(5)); }); });
+    beobachter.observe(main, { childList: true, subtree: true });
+  }
+
   /* ======================= Overlay (Einstellungen, Bestätigen) ======================= */
   function oeffne(art, html) {
     const ov = $("v59-ov"); V._ovArt = art;
@@ -170,6 +261,7 @@
           <p class="hint">Der Schlüssel liegt mit deinem Seitenschlüssel verschlüsselt auf diesem Gerät, nie im Repository. Risiko: Wer dein Gerät und dein Seitenpasswort hat, kann in dieses eine Repository schreiben, aber nirgends sonst. Widerrufen kannst du ihn jederzeit auf GitHub. Pro Gerät einmal einrichten.</p></details>
         ${(eg.dateien || []).length ? `<details><summary>Zuletzt gesendet</summary><ul class="es-l">${eg.dateien.slice(-8).reverse().map((d) => `<li>${new Date(d.zeit).toLocaleString("de-CH", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} · ${d.n} ${d.art === "bestaetigung" ? "Bestätigung" : "Eingabe"}${d.n === 1 ? "" : "n"}</li>`).join("")}</ul></details>` : ""}`}
       </section>
+      <section class="es" id="es-bed"><h3>Bedienung</h3><label class="row"><input type="checkbox" data-erkl ${V.erklImmer() ? "checked" : ""}> <span>Erklärtexte, Regeln und Quellen immer zeigen (sonst hinter dem Knopf <b>i</b> je Karte)</span></label></section>
       <section class="es" id="es-aus"><h3>Ausgeblendete Karten</h3><p class="hint">Ausgeblendet heisst nicht gelöscht: Die Daten bleiben. Einblenden gilt für dieses Gerät.</p>
         <ul class="es-l">${karten.map((el) => `<li><label class="row"><input type="checkbox" data-ein="${esc(el.id)}" ${ein.has(el.id) ? "checked" : ""}> <span><b>${esc(titel(el))}</b><br><small>${esc(el.dataset.ausblendbar)}</small></span></label></li>`).join("") || "<li>Keine.</li>"}</ul></section>`);
     const f = ov.querySelector("#es-gh"), msg = ov.querySelector("#es-msg");
@@ -181,6 +273,8 @@
       if (a === "weg") { E.schluesselEntfernen(); V.einstellungen(); return; }
       b.disabled = false;
     }));
+    const ek = ov.querySelector("[data-erkl]");
+    if (ek) ek.onchange = () => { lsSet("sf.erkl.immer", ek.checked ? "1" : null); const v = document.querySelector("section.view:not([hidden])"); if (v) V.ansicht(v.id.slice(5)); };
     ov.querySelectorAll("[data-ein]").forEach((cb) => (cb.onchange = () => {
       const s = new Set(V.eingeblendet()); if (cb.checked) s.add(cb.dataset.ein); else s.delete(cb.dataset.ein);
       lsSet(AUS_KEY, JSON.stringify([...s])); location.reload();

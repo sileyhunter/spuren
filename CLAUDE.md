@@ -253,6 +253,16 @@ V5.9.3: `routen` (im Planer gespeicherte Routen → `routes`, gleiche ID ersetzt
 - Heute `ringe-1.0` (`FK.ringeVerlauf`): Erholung Φ((z_lnHRV − z_Ruhepuls)/2) gegen 60 Tage (mind. 14 Werte), Schlaf = Garmin-Schlafwert genau dieser
   Nacht, Belastung = (1 − 2^(−TSS/CTL_Vortag)) · 100; alle 0–100 %, Lücken bleiben leer, Tag mit Datum. Kein medizinisches Mass.
 
+## Bedienung V5.9.5 (bedienung-1.0)
+- Start auf «Heute» (Hash-Links wie `#laktat` oder `#checkin` gehen direkt). Fünf Bereiche in der Leiste unten (`#leiste`, `GRUPPEN` in
+  index.html): Heute · Kalender · Karte · Analyse (training, laktat, ausdauer, leistung) · Körper & Schwimmen (koerper, schwimmen); die
+  Ansichten (`section.view`, `showTab(name)`) bleiben einzeln, oben wechselt `nav.unter`. Im Planer (`body.plan-aktiv`) keine Leiste.
+- Info-Knopf (`V59.ansicht`): Erklärtexte (`.sub` ohne id, `.hint`) einer Karte mit Ergebnis liegen hinter «i»; Warnungen (`.warn-t`, `.down`),
+  `.verdict`, Status (`role=status`, `aria-live`) und `.keep` nie verstecken. Neue Erklärtexte deshalb als `.hint`, Warnungen mit `.warn-t`.
+- Breite Tabellen: `data-liste` an der Tabelle (oder zu breit auf ≤ 640 px) → Liste (`.als-liste`, Spaltenname je Zelle). Tabellen, die
+  nie Liste werden sollen: `data-keine-liste`.
+- Ausblenden statt löschen: `hidden data-ausgeblendet="Grund"` an der Karte (mit id); Einstellungen → «Ausgeblendete Karten» blendet je Gerät ein.
+
 ## Meine Entwicklung und Regeln V5.5
 - Vergleiche nur aus `eb`-Blöcken (Rad 190–210 W je System Rolle/Rennrad/MTB, Laufen 5:20–5:40/km flach), Urteil `entwicklung-1.0`
   (mind. 3 je Zeitraum, Bootstrap-Intervall, Guards Hitze/Höhe/Drift/Ausreisser). Laktat zählt erst bestätigt (B1), CSS nur aus Tests.

@@ -222,8 +222,14 @@ if os.path.exists(pw_path):
     pw = open(pw_path).read().strip()
     leak = [f for f in tracked if os.path.isfile(os.path.join(ROOT, f)) and pw in open(os.path.join(ROOT, f), errors="ignore").read()]
     check("Repo: Passwort in keiner Datei", not leak, leak)
-check("Repo: keine Token-Muster", not any(f for f in tracked if f.endswith((".js", ".html", ".md", ".py", ".mjs")) and
-                                          any(s in open(os.path.join(ROOT, f), errors="ignore").read() for s in TOKEN_PATTERNS)))
+import re as _re  # noqa: E402
+# V5.9.3: echte Schlüssel-Formen statt nur Präfixe (die Seite nennt «github_pat_» als Hinweis für die Eingabe des eigenen Schlüssels)
+_TOKEN_RE = [_re.compile(TOKEN_PATTERNS[0] + r"[A-Za-z0-9]{30,}"), _re.compile(TOKEN_PATTERNS[1] + r"[A-Za-z0-9_]{40,}"),
+             _re.compile(TOKEN_PATTERNS[2] + r"[A-Za-z0-9_-]{20,}"), _re.compile(TOKEN_PATTERNS[3] + r"[0-9A-Z]{16}")]
+_tok = [f for f in tracked if f.endswith((".js", ".html", ".md", ".py", ".mjs", ".json", ".txt")) and os.path.isfile(os.path.join(ROOT, f))
+        and any(r.search(open(os.path.join(ROOT, f), errors="ignore").read()) for r in _TOKEN_RE)]
+check("Repo: keine Schlüssel (Token) in Dateien", not _tok, _tok)
+check("Token-Prüfung erkennt einen Schlüssel", any(r.search("x " + TOKEN_PATTERNS[1] + "A" * 60) for r in _TOKEN_RE) and not any(r.search('placeholder="' + TOKEN_PATTERNS[1] + '…"') for r in _TOKEN_RE))
 
 # --- V5.6 tools/serien.py: Raster, Workout-Abgleich, Ermüdungsresistenz (synthetisch) ---
 import series as _series  # noqa: E402
