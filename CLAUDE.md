@@ -44,6 +44,9 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
 - **V5.7 Smart Training Routes:** `js/training-route.js` (Rechenlogik ohne DOM: Enduco-/Garmin-Workout lesen, Zeitplan je Schritt, Rundtour-Kandidaten,
   Dauerabstimmung, Intervall-Eignung, Wetter je Durchfahrtszeit, Tageslicht, Vorschläge A/B/C, Vorschlag vs. Ist), `js/training-ui.js`
   (Trainingsvorschau im Planer, Startorte verschlüsselt, Regler, Kalender «Passende Route finden» `data-str`, «Vorschlag vs. Ist» `data-trv`)
+- **V5.9:** `js/eingang.js` (Direkt speichern: Delta, EGS1, GitHub-Schlüssel, Warteschlange), `js/v59-logik.js` (Rechenlogik ohne DOM:
+  Check-in, Gefühl gegen Morgenwerte, Heute geplant, Trainingslast, CSS), `js/v59.js` (Check-in, Einstellungen, Laktat bestätigen …),
+  `tools/eingang.mjs` (eingang/ einlesen, aufräumen, prüfen), `tools/eingaben_lib.mjs` (Zuordnung Eingaben → merge_daily.py), `tests/test_v59.cjs`
 - **V5.8:** keine neuen Dateien; Rechenlogik in `js/route.js` (Abschnitte von Hand, Skitourennetz, Hangneigung, MTB-Abfahrt, Wegende, drei
   Rennradvarianten, Windpfeile), Oberfläche in `js/routen-ui.js`, Ringe «Heute» in `js/formkurve.js` (`FK.ringeVerlauf`) und `js/v55.js` (`V55.ringe`)
 - `tests/test_formkurve.cjs`, `tests/test_route.cjs`, `tests/test_analyse.cjs`, `tests/test_training.cjs`, `tests/test_tools.py` – Abnahmetests (erfundene Werte; `tests/fixtures/` = echte
@@ -94,6 +97,14 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
      übernimmt Einträge mit Uhrzeit während einer Aktivität, die erst danach erfasst wurden, als Fueling «fg-<Aktivität>»
      (`tools/garmin_ernaehrung.py`). Schlägt ein Abruf fehl: weglassen, kein Abbruch, keine Nachricht.
 3. `work/new.json` schreiben (Format unten), dann `python3 -I tools/merge_daily.py data.json work/new.json work/fit.jsonl`.
+   **Eingaben vom Handy (V5.9.3, eingang-1.0, Abschnitt «Eingang»):** `SPUREN_PW=… node tools/eingang.mjs einlesen` (liest `eingang/*.bin`,
+   schreibt `work/eingang_a.json`, `work/eingang_b.json`, `work/eingang_dateien.json`).
+   - Gibt es `work/eingang_a.json`: `python3 -I tools/merge_daily.py data.json work/eingang_a.json`.
+   - Gibt es `work/eingang_b.json` (Laktat auf der Seite bestätigt): `cp data.json work/vor_b.json`, dann
+     `python3 -I tools/merge_daily.py data.json work/eingang_b.json`, `python3 -I tools/migrate_v5.py data.json` und
+     `python3 -I tools/check_referenz.py data.json --ohne-fit`. Steht «GESAMT: bestanden» da, ist B übernommen. Sonst
+     `cp work/vor_b.json data.json` (die Bestätigung bleibt in `eingang/` liegen) und Silas kurz informieren (Grund aus der Ausgabe, ohne Werte).
+   - Meldet `einlesen` «abgelehnt …» (Demo, fremd, nicht entschlüsselbar): nie löschen, Silas kurz informieren.
 4. `SPUREN_PW=… node tools/crypt.mjs encrypt data.json data.enc.json`.
    **Sekundenreihen (V5.7.1, von Silas am 8.11.2026 freigegeben):** `SPUREN_PW=… node tools/serien_crypt.mjs --nacht` (nur neue oder
    tatsächlich geänderte Reihen aus `work/serien/`, atomar geschrieben, nichts gelöscht oder umbenannt), dann
@@ -101,7 +112,11 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
    - Beide ohne Fehler und letzte Zeile «PRÜFUNG REIHEN: bestanden» → `git add data.enc.json serien/`.
    - Sonst: `git checkout -- serien/ && git clean -fdq -- serien/` (die bisherigen Dateien bleiben unverändert), nur `data.enc.json`
      stagen, Commit-Nachricht mit dem Zusatz « (Reihen nicht übernommen)» und Silas kurz informieren (Grund aus der Ausgabe, ohne Daten).
-   Nie `data.json` oder etwas aus `work/` committen. Commit «Nacht-Update JJJJ-MM-TT», auf `main` pushen.
+   **Eingang aufräumen (V5.9.3):** `node tools/eingang.mjs aufraeumen work/eingang_dateien.json` (mit `--mit-b`, wenn B übernommen wurde;
+   entfernt mit `git rm` nur die eingespielten Dateien und Testdateien), dann `SPUREN_PW=… node tools/eingang.mjs pruefen --git`
+   («PRÜFUNG EINGANG: bestanden»; sonst Silas den Grund nennen). Die Löschungen gehören in denselben Commit wie `data.enc.json`.
+   Nie `data.json` oder etwas aus `work/` committen. Commit «Nacht-Update JJJJ-MM-TT», auf `main` pushen. Scheitert der Push (neue Eingaben
+   vom Handy während des Updates), einmal `git pull --rebase` und erneut pushen; die neuen Dateien spielt das nächste Update ein.
 
 ### Format `work/new.json`
 ```json
@@ -153,6 +168,8 @@ Silas lädt `UploadedFiles_0-_Part*.zip` hoch. Jedes ZIP in einen eigenen, leere
    `SPUREN_PW=… node tools/serien_pruefen.mjs --git` («PRÜFUNG REIHEN: bestanden»), `data.enc.json` und `serien/` committen, pushen.
 
 ## Eingaben von der Seite (V5: Fueling, Befinden, Tests vom Handy, Koppelläufe, Pläne, B1)
+**Seit V5.9.3 der Normalfall: «Direkt speichern»** (Abschnitt «Eingang»): Jede Eingabe geht verschlüsselt nach `eingang/`, Morgen- und
+Nacht-Update spielen sie ein. Der Export bleibt der Rückweg (ohne Schlüssel, ohne Netz, anderes Gerät):
 Auf der Seite erfasste Werte bleiben verschlüsselt auf dem Gerät, bis Silas «Exportieren» tippt und die Datei
 `spuren-eingaben-….json` im Chat schickt (sie ist mit dem Seitenpasswort verschlüsselt). Einspielen:
 1. Datei in einen eigenen Ordner ausserhalb des Repos kopieren, entschlüsseln: `SPUREN_PW=… node tools/eingaben.mjs <datei> work/eingaben.json`
@@ -171,6 +188,19 @@ V5.6: zusätzlich `rpe` (→ `rpe`), `intervalle` (Korrekturen von Hand → `int
 zugeordnet → `laktat_punkte`, Status «vorschau») und `saison` (Stunden «jetzt»/«Spitze» → `saison_plan`); gleiche ID ersetzt mit Audit.
 V5.7: `startorte` (ganze Liste → `startorte`, alte Fassung ins Audit) und `trainingsrouten` (gewählte Vorschläge → `trainingsrouten`, gleiche
 ID ersetzt mit Audit). Startorte und Routen nur verschlüsselt (data.enc.json), nie offen ins Repository.
+V5.9.3: `routen` (im Planer gespeicherte Routen → `routes`, gleiche ID ersetzt mit Audit), `routen_entfernt` (auf der Seite gelöscht → aus
+`routes` entfernt, alte Fassung ins Audit), `laktat_punkte_bestaetigt` («Laktat hier» aus dem Explorer auf der Seite bestätigt → Kurzcheck in
+`lactate`, Quelle «aus Explorer», Punkt «übernommen»; übernommene Punkte werden nie wieder «vorschau»). Befinden kommt aus dem Morgen-Check-in
+(`befinden-1.1`: Beine → `muskel`, Energie → `muede`, Kopf → `stress`, je 1–5; dazu `krank`, `notiz`; gleicher Tag ersetzt mit Audit).
+
+## Eingang (eingang/, V5.9.3 «Direkt speichern», eingang-1.0)
+- Die Seite legt jede Eingabe als `eingang/<JJJJMMTT>T<hhmmss>Z-<8 Hex>.bin` an (GitHub-Contents-API, Commit «Eingang»). Format EGS1:
+  «EGS1» | IV | AES-256-GCM(Länge | gzip(JSON) | Nullen) | Tag, Seitenschlüssel wie data.enc.json, Datei auf eine Zweierpotenz ≥ 16 KiB
+  aufgefüllt. Öffentlich sichtbar bleibt nur, dass und wann eine Eingabe kam. Bestätigungen (Laktat B1, Explorer) kommen in eine eigene Datei.
+- Zugang: feingranularer GitHub-Schlüssel nur für sileyhunter/spuren, «Contents: Read and write», 1 Jahr gültig (E4). Er liegt mit dem
+  Seitenschlüssel verschlüsselt auf dem Gerät (`sf.eg.schluessel`), nie im Repository, nie im Chat. Ohne Netz oder Schlüssel wartet die Eingabe.
+- Nur Morgen- und Nacht-Update löschen Dateien in `eingang/`, und nur die eingespielten (`tools/eingang.mjs aufraeumen`). Abgelehnte Dateien
+  (Demo, fremd, nicht entschlüsselbar) bleiben liegen und werden gemeldet. `tools/eingang.mjs pruefen --git`: nur gültige, aufgefüllte EGS1-Dateien.
 
 ## Laktatschwellen und Zonen (V5)
 - `tools/schwellen.py`: LT1 = SOMC (letzte Stufe vor Anstieg ≥ 0,4), Basis + 0,5 (Basis = Mittel der ersten drei Stufen), log-log (≥ 6 Stufen);
@@ -278,7 +308,7 @@ ID ersetzt mit Audit). Startorte und Routen nur verschlüsselt (data.enc.json), 
   Die exakten Grössen der SPS1-Dateien stehen in der Git-Historie.
 
 ## Prüfen vor jedem Push von Seite oder Werkzeugen
-`node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
+`node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
 Kein Live-Push, wenn ein Test fehlschlägt. Screenshots mit echten Daten nie ins Repo.
 
 ## FTP und Trainingslast

@@ -1,5 +1,41 @@
 # Änderungen
 
+## V5.9.3 · 9.11.2026 · Paket 3 «Eingaben ohne Tippen»: Morgen-Check-in, Direkt speichern, Laktat bestätigen
+Auftrag V5.9 (Entscheide vom 9.11.2026: E4 GitHub-Schlüssel nur für dieses Repository, E5 Befinden als Check-in auf der Seite statt auf der Uhr).
+Wiederherstellungspunkt vor dem Bau: Branch `vor-v59`. Versionen je Paket: V5.9.1 = Paket 1 … V5.9.5 = Paket 5 (gebaut in der Reihenfolge 3 → 5 → 2 → 1 → 4).
+
+- **Morgen-Check-in** (`befinden-1.1`): oben auf «Heute», solange das Befinden von heute fehlt. Beine (frisch–schwer), Energie (voll–leer),
+  Kopf (ruhig–gestresst), je fünf grosse Knöpfe; nach dem dritten Tipp ist er gespeichert und zu, ohne Speichern-Knopf. Dazu «krank oder
+  verletzt» (optional genauer) und eine freie Notiz; «heute nicht» blendet ihn für den Tag aus, «ändern» öffnet ihn wieder. Er füllt dieselben
+  Felder wie das bisherige Befinden (Beine → Muskeln, Energie → Müdigkeit, Kopf → Stress), die Bereitschaft rechnet unverändert damit.
+- **Gefühl und Morgenwerte**: Ab 20 Morgen mit Check-in zeigt «Heute», welcher Wert (HRV und Ruhepuls gegen die eigenen 60 Tage, Schlafwert
+  der Nacht, Trainingslast am Vortag) am besten zum Gefühl passt – Rangkorrelation nach Spearman mit n, |ρ| ab 0,3 brauchbar, Richtung geprüft;
+  keine Prozente, keine Ursache. Ersetzt die RPE-Kalibrierung; die Liste «Letzte Einheiten bewerten» und die RPE-Abfrage im Explorer sind
+  ausgeblendet (Daten bleiben, in den Einstellungen wieder einblendbar).
+- **Direkt speichern** (`eingang-1.0`, `js/eingang.js`): Jede Eingabe geht als verschlüsselte Datei `eingang/<Zeit>-<Zufall>.bin` ins
+  Repository (Format EGS1 wie die Sekundenreihen: Seitenschlüssel, auf eine Zweierpotenz ≥ 16 KiB aufgefüllt; sichtbar bleibt nur, dass und wann
+  etwas kam). Gesendet wird nur Neues oder Geändertes; Laktat-Bestätigungen in einer eigenen Datei. Zugang mit einem feingranularen
+  GitHub-Schlüssel (nur sileyhunter/spuren, «Contents: Read and write», 1 Jahr), verschlüsselt auf dem Gerät; Einstellungen mit Anleitung,
+  «Verbindung testen» und klaren Meldungen (ungültig/abgelaufen, kein Schreibrecht, kein Zugriff). Ohne Netz oder Schlüssel wartet die
+  Eingabe und geht später von selbst raus; «Exportieren» bleibt der Rückweg. Auch Startorte, Trainingsrouten und neu die im Planer
+  gespeicherten Routen kommen so verschlüsselt auf alle Geräte (gelöschte Routen werden auch dort entfernt).
+- **Einspielen** (`tools/eingang.mjs`, `tools/eingaben_lib.mjs`): Morgen- und Nacht-Update lesen `eingang/` (spätere Eingabe gewinnt bei
+  gleicher ID), spielen über `merge_daily.py` ein (alte Fassung ins Audit) und entfernen danach nur die eingespielten Dateien im selben Commit.
+  Demo-, fremde oder nicht entschlüsselbare Dateien werden nie eingespielt und nie gelöscht, nur gemeldet. `eingang.mjs pruefen --git`:
+  nur gültige, aufgefüllte EGS1-Dateien.
+- **Laktat bestätigen (B1)**: In der Testbibliothek «Test bestätigen» zeigt alle Stufen auf einmal mit Tabelle, FIT-Leistung, Laktat und Puls;
+  fehlende Werte, unklare Zuordnung und Abweichungen über 5 W bzw. 0,3 km/h sind markiert. Gleich für «Laktat hier» im Explorer (wird als
+  Kurzcheck übernommen, Quelle «aus Explorer»). Das Update übernimmt Bestätigungen, rechnet `migrate_v5.py` und
+  `check_referenz.py --ohne-fit` (neu: Laktat mit Quelle und Schwellen je Methode, ohne FIT-Dateien); besteht die Prüfung nicht, bleibt die
+  Bestätigung in `eingang/` liegen und Silas bekommt eine Nachricht. Zonen ändern sich dadurch nie.
+
+Geprüft: `tests/test_v59.cjs` (neu, 8 Tests: Delta, Format EGS1, Dateiname, Meldungen, Check-in, Rangkorrelation, Kalibrierung ab 20 Morgen),
+`test_tools.py` (Eingang: Seite verschlüsselt → Werkzeug liest, spätere Eingabe gewinnt, Route entfernt, Laktat aus dem Explorer, nichts doppelt,
+Prüfung, Aufräumen). E2E auf iPhone-Grösse mit erfundenen Daten und einer nachgebildeten GitHub-API: drei Tipps in unter einer Sekunde,
+Datei EGS1 16 KiB mit richtigem Schlüssel und Commit «Eingang», Änderung schickt nur den geänderten Eintrag, Flugmodus wartet und sendet danach,
+abgelaufener Schlüssel gibt eine klare Meldung ohne Verlust, Bestätigung als eigene Datei, nach dem Neuladen bleibt der Schlüssel (nur
+verschlüsselt im Speicher). Die echte GitHub-API konnte von hier aus nicht geprüft werden: bitte am iPhone «Verbindung testen».
+
 ## V5.8 · 9.11.2026 · Planer: Skitourenrouten, Hangneigung, MTB-Abfahrt, Wegende, drei Rennradrouten, Windpfeile; Ringe auf «Heute»
 Wünsche von Silas (9.11.2026).
 

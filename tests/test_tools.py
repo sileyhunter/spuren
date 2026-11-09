@@ -475,5 +475,83 @@ _r13 = json.load(open(os.path.join(_t13, "d.json")))
 check("Nacht-Update: Ernährungsprotokoll übernommen und Einnahmen der neuen Aktivität im Fueling", "2026-03-01" in _r13.get("ernaehrung_garmin", {})
       and [e["id"] for e in _r13.get("fueling", [])] == ["fg-g77"] and sum(x["kh_g"] for x in _r13["fueling"][0]["events"]) == 100.0, json.dumps(_r13.get("fueling"))[:300])
 
+# ---------- V5.9.3 Eingaben direkt gespeichert (eingang/): einlesen, zusammenführen, prüfen, aufräumen (erfundene Werte) ----------
+_t9 = tempfile.mkdtemp()
+os.makedirs(os.path.join(_t9, "tools")); os.makedirs(os.path.join(_t9, "js"))
+for _f in ("eingang.mjs", "eingaben_lib.mjs", "crypt.mjs"):
+    shutil.copy(os.path.join(ROOT, "tools", _f), os.path.join(_t9, "tools", _f))
+shutil.copy(os.path.join(ROOT, "js", "eingang.js"), os.path.join(_t9, "js", "eingang.js"))
+
+
+def _run9(*a, pw=_PW8):
+    env = {k: v for k, v in os.environ.items() if k != "SPUREN_PW"}
+    if pw is not None:
+        env["SPUREN_PW"] = pw
+    r = subprocess.run(list(a), cwd=_t9, capture_output=True, text=True, env=env)
+    return r.returncode, r.stdout + r.stderr
+
+
+_D9 = {"activities": [], "routes": [{"id": "u-r0", "name": "Alt", "coords": [[9.5, 46.8], [9.6, 46.9]]}],
+       "laktat_vorschau": [{"id": "check-test", "art": "check", "sport": "rad", "datum": "2026-11-04", "status": "vorschau", "aktivitaet": "g2", "datei": "Chat",
+                            "zeilen": [{"x": 225, "la": 1.2, "hf": 146, "quelle": {"stelle": "Chat"}}], "kandidaten": [{"hr": 146, "hr_max": 150, "np": 226, "drift": 1.0}]}]}
+json.dump(_D9, open(os.path.join(_t9, "data.json"), "w"))
+_run9("node", "tools/crypt.mjs", "encrypt", "data.json", "data.enc.json")
+_lp9 = {"id": "lp-g1-600", "act": "g1", "datum": "2026-11-09", "sport": "rad", "t": 600, "la": 1.6, "status": "vorschau", "quelle": "von Hand im Explorer",
+        "abschnitt": {"von": 0, "bis": 600, "w": 220, "np": 225, "hr": 140, "pace": None, "grund": "gleichmässiger Block"}}
+_spec9 = [
+    {"name": "20261110T060000Z-00000001.bin", "art": "eingaben", "zeit": "2026-11-10T06:00:00Z", "daten": {"befinden": [{"date": "2026-11-10", "muede": 2, "muskel": 3, "stress": 1}],
+     "routen": [{"id": "u-r1", "name": "Runde", "coords": [[9.5, 46.8], [9.51, 46.81]]}], "laktat_punkte": [_lp9]}},
+    {"name": "20261110T061000Z-00000002.bin", "art": "eingaben", "zeit": "2026-11-10T06:10:00Z", "daten": {"befinden": [{"date": "2026-11-10", "muede": 2, "muskel": 3, "stress": 3}],
+     "routen_entfernt": ["u-r0"]}},
+    {"name": "20261110T062000Z-00000003.bin", "art": "bestaetigung", "zeit": "2026-11-10T06:20:00Z", "daten": {"laktat_punkte_bestaetigt": ["lp-g1-600"], "laktat_bestaetigt": ["check-test"]}},
+    {"name": "20261110T062100Z-00000004.bin", "art": "probe", "zeit": "2026-11-10T06:21:00Z", "daten": {"probe": True}},
+    {"name": "20261110T062200Z-00000005.bin", "art": "eingaben", "zeit": "2026-11-10T06:22:00Z", "demo": True, "daten": {"befinden": [{"date": "2026-11-10", "muede": 5, "muskel": 5, "stress": 5}]}},
+]
+_js9 = """const EG = require("./js/eingang.js"); const fs = require("fs"); const { pbkdf2Sync } = require("node:crypto");
+(async () => { const p = JSON.parse(fs.readFileSync("data.enc.json", "utf8"));
+  const key = await crypto.subtle.importKey("raw", pbkdf2Sync(process.env.SPUREN_PW, Buffer.from(p.salt, "base64"), p.iter, 32, "sha256"), "AES-GCM", false, ["encrypt", "decrypt"]);
+  fs.mkdirSync("eingang", { recursive: true });
+  for (const s of JSON.parse(process.argv[1])) { const o = EG.inhalt(s.daten, s.art, new Date(s.zeit)); if (s.demo) o.demo = true; fs.writeFileSync("eingang/" + s.name, await EG.schliessen(key, o)); }
+})();"""
+_rc9, _o9 = _run9("node", "-e", _js9, json.dumps(_spec9))
+open(os.path.join(_t9, "eingang", "20261110T063000Z-0000000f.bin"), "wb").write(secrets.token_bytes(16384))
+_rc9b, _o9b = _run9("node", "tools/eingang.mjs", "einlesen")
+_L9 = json.load(open(os.path.join(_t9, "work", "eingang_dateien.json")))
+_A9 = json.load(open(os.path.join(_t9, "work", "eingang_a.json")))
+check("Eingang: Seite verschlüsselt (EGS1), Werkzeug liest – Eingaben, Bestätigung, Test getrennt; Demo und fremde Datei abgelehnt",
+      _rc9 == 0 and _rc9b == 0 and _L9["a"] == ["20261110T060000Z-00000001.bin", "20261110T061000Z-00000002.bin"] and _L9["b"] == ["20261110T062000Z-00000003.bin"]
+      and _L9["probe"] == ["20261110T062100Z-00000004.bin"] and sorted(x["name"] for x in _L9["abgelehnt"]) == ["20261110T062200Z-00000005.bin", "20261110T063000Z-0000000f.bin"], _o9 + _o9b)
+check("Eingang: gleiche ID → spätere Eingabe gewinnt; gelöschte Route geht mit", _A9["befinden_add"] == [{"date": "2026-11-10", "muede": 2, "muskel": 3, "stress": 3}]
+      and [r["id"] for r in _A9["routen_add"]] == ["u-r1"] and _A9["routen_entfernt"] == ["u-r0"], json.dumps(_A9)[:300])
+merge_daily.main(os.path.join(_t9, "data.json"), os.path.join(_t9, "work", "eingang_a.json"))
+_R9 = json.load(open(os.path.join(_t9, "data.json")))
+check("Eingang A eingespielt: Befinden, Route auf alle Geräte, alte Route entfernt (Audit), Laktatpunkt als Vorschau",
+      _R9["befinden"][0]["stress"] == 3 and [r["id"] for r in _R9["routes"]] == ["u-r1"] and any(a.get("was") == "Route entfernt" for a in _R9["audit"])
+      and _R9["laktat_punkte"][0]["status"] == "vorschau" and not _R9.get("lactate"))
+merge_daily.main(os.path.join(_t9, "data.json"), os.path.join(_t9, "work", "eingang_b.json"))
+_R9 = json.load(open(os.path.join(_t9, "data.json")))
+_k9 = {l["id"]: l for l in _R9.get("lactate", [])}
+check("Eingang B (Bestätigungen): Explorer-Laktat als Kurzcheck, Vorschau als Messung, Status «übernommen»",
+      _k9.get("lp-g1-600", {}).get("kind") == "check" and _k9["lp-g1-600"]["w"] == 220 and _k9["lp-g1-600"]["lactate"] == 1.6 and "aus Explorer" in _k9["lp-g1-600"]["note"]
+      and _k9.get("check-test", {}).get("lactate") == 1.2 and _R9["laktat_punkte"][0]["status"] == "übernommen", json.dumps(_R9.get("lactate"))[:300])
+merge_daily.main(os.path.join(_t9, "data.json"), os.path.join(_t9, "work", "eingang_a.json"))
+check("Eingang: dieselbe Datei noch einmal → nichts doppelt, übernommener Laktatpunkt bleibt übernommen",
+      len(json.load(open(os.path.join(_t9, "data.json")))["laktat_punkte"]) == 1 and json.load(open(os.path.join(_t9, "data.json")))["laktat_punkte"][0]["status"] == "übernommen")
+_p9, _po9 = _run9("node", "tools/eingang.mjs", "pruefen")
+for _f in ("20261110T062200Z-00000005.bin", "20261110T063000Z-0000000f.bin"):
+    os.remove(os.path.join(_t9, "eingang", _f))
+open(os.path.join(_t9, "eingang", "notiz.txt"), "w").write("klartext")
+_p9b, _po9b = _run9("node", "tools/eingang.mjs", "pruefen")
+os.remove(os.path.join(_t9, "eingang", "notiz.txt"))
+_run9("git", "init", "-q"); _run9("git", "-c", "user.name=T", "-c", "user.email=t@example.invalid", "add", "-A"); _run9("git", "-c", "user.name=T", "-c", "user.email=t@example.invalid", "commit", "-qm", "x")
+_p9c, _po9c = _run9("node", "tools/eingang.mjs", "pruefen", "--git")
+_p9d, _po9d = _run9("node", "tools/eingang.mjs", "pruefen", pw="falsch")
+check("Eingang-Prüfung: Demo, fremde und unverschlüsselte Dateien → nicht bestanden; nur gültige → bestanden; falsches Passwort → nicht bestanden",
+      _p9 == 1 and "Demo" in _po9 and "kein EGS1" in _po9 and _p9b == 1 and "fremde Datei" in _po9b and _p9c == 0 and "PRÜFUNG EINGANG: bestanden" in _po9c and _p9d == 1, _po9 + _po9b + _po9c)
+_a9, _ao9 = _run9("node", "tools/eingang.mjs", "aufraeumen", "work/eingang_dateien.json")
+_rest9 = sorted(os.listdir(os.path.join(_t9, "eingang")))
+check("Eingang aufräumen: nur eingespielte Dateien und Test entfernt, Bestätigung bleibt ohne --mit-b liegen",
+      _a9 == 0 and _rest9 == ["20261110T062000Z-00000003.bin"] and "1 Bestätigung(en) bleiben liegen" in _ao9, _ao9 + str(_rest9))
+
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)

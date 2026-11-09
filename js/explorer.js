@@ -258,9 +258,11 @@
   }
   function laktat() {
     const P = laktatPunkte();
+    const best = new Set((UI() && UI().Inbox.data && UI().Inbox.data.laktat_punkte_bestaetigt) || []);       // V5.9.3 (3c)
     $("ex-lak").innerHTML = P.length ? `<h3 class="mini-h">Laktat in dieser Einheit</h3><div class="tablewrap"><table class="t"><tr><th>Zeit</th><th>mmol/l</th><th>Abschnitt</th><th>${ST.a.sport === "lauf" ? "Pace" : "Ø W"}</th><th>Ø Puls</th><th>Status</th></tr>${P.sort((a, b) => a.t - b.t).map((p) =>
-      `<tr><td>${hms(p.t)}</td><td>${f1(p.la)}</td><td>${hms(p.abschnitt.von)}–${hms(p.abschnitt.bis)}</td><td>${ST.a.sport === "lauf" ? pace(p.abschnitt.pace) : f0(p.abschnitt.w)}</td><td>${f0(p.abschnitt.hr)}</td><td>${UI().badge(p.status || "vorschau")}</td></tr>`).join("")}</table></div>
-      <p class="hint">Zuordnung: ${esc(P[0].abschnitt.grund)}. Bleibt Vorschau: zählt weder für Schwellen noch für «Meine Entwicklung», bis du den Wert nach dem Export im Chat bestätigst (dann als Kurzcheck übernommen).</p>` : "";
+      `<tr><td>${hms(p.t)}</td><td>${f1(p.la)}</td><td>${hms(p.abschnitt.von)}–${hms(p.abschnitt.bis)}</td><td>${ST.a.sport === "lauf" ? pace(p.abschnitt.pace) : f0(p.abschnitt.w)}</td><td>${f0(p.abschnitt.hr)}</td><td>${best.has(p.id) ? UI().badge("bestätigt", "kommt mit dem nächsten Update") : (p.status || "vorschau") === "vorschau" && window.V59 && !C().IS_DEMO ? `${UI().badge("vorschau")} <button class="btn" type="button" data-lpb="${esc(p.id)}">Bestätigen</button>` : UI().badge(p.status || "vorschau")}</td></tr>`).join("")}</table></div>
+      <p class="hint">Zuordnung: ${esc(P[0].abschnitt.grund)}. Bleibt Vorschau: zählt weder für Schwellen noch für «Meine Entwicklung», bis du den Wert bestätigst (dann übernimmt ihn das nächste Update als Kurzcheck).</p>` : "";
+    $("ex-lak").querySelectorAll("[data-lpb]").forEach((b) => (b.onclick = () => { const p = P.find((x) => x.id === b.dataset.lpb); if (p) window.V59.punktBestaetigen(p, laktat); }));
   }
 
   /* ---------------- Geplant gegenüber Ist (plan-1.0) ---------------- */

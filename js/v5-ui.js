@@ -29,7 +29,9 @@
     key() { return (C && C.IS_DEMO ? "demo." : "") + "sf.v5.eingaben"; },
     empty() { return { v: 1, fueling: [], befinden: [], test_entwuerfe: [], koppel: [], langfahrt: [], laktat_bestaetigt: [], archiv: [], coach: [], fueling_produkte: null, notizen: {},
       pb: [], css: [], fehler: [], rpe: [], intervalle: [], laktat_punkte: [], saison: [],
-      trainingsrouten: [], startorte: null }; },   // V5.7: gewählte Trainingsrouten; Startorte als ganze Liste (null = keine lokale Änderung)
+      trainingsrouten: [], startorte: null,   // V5.7: gewählte Trainingsrouten; Startorte als ganze Liste (null = keine lokale Änderung)
+      routen: [], routen_entfernt: [], laktat_punkte_bestaetigt: [],   // V5.9.3: gespeicherte Routen auf alle Geräte, Laktat aus dem Explorer bestätigt
+      eg: { gesendet: {}, dateien: [] } }; },                          // V5.9.3 eingang-1.0: was schon direkt gesendet ist (js/eingang.js)
     async ensureVault() {
       if (this.vault) return this.vault;
       if (window.SPUREN_VAULT) { this.vault = window.SPUREN_VAULT; this.persistent = true; return this.vault; }
@@ -48,10 +50,11 @@
       } catch (e) { this.loadError = "Gespeicherte Eingaben konnten nicht geöffnet werden (anderes Passwort?)."; }
       this.dropSynced();
     },
-    async save() {
+    async save(opt) {
       try { await this.ensureVault(); localStorage.setItem(this.key(), await this.vault.seal(this.data)); this.savedAt = new Date(); this.saveError = null; }
       catch (e) { this.saveError = "Nicht gespeichert: Speicher auf diesem Gerät nicht verfügbar."; }
       V.syncBar();
+      if (!(opt && opt.still) && window.EG && window.EG.geaendert) window.EG.geaendert();   // V5.9.3: direkt speichern (eingang/)
     },
     /** Eingaben, die schon in den Daten stehen (gleiche ID, gleicher Inhalt), werden lokal entfernt. */
     dropSynced() {
@@ -60,15 +63,21 @@
       const pairs = [["fueling", "fueling", (e) => e.id], ["befinden", "befinden", (e) => e.date], ["test_entwuerfe", "test_entwuerfe", (e) => e.id], ["langfahrt", "langfahrt_plaene", (e) => e.id], ["koppel", "koppel", (e) => e.bike + "|" + e.run],
         ["pb", "pb_offiziell", (e) => e.id], ["css", "css_tests", (e) => e.id], ["fehler", "fehlerboard", (e) => e.id],
         ["rpe", "rpe", (e) => e.id], ["intervalle", "intervall_korr", (e) => e.id], ["laktat_punkte", "laktat_punkte", (e) => e.id], ["saison", "saison_plan", (e) => e.id],
-        ["trainingsrouten", "trainingsrouten", (e) => e.id]];
+        ["trainingsrouten", "trainingsrouten", (e) => e.id], ["routen", "routes", (e) => e.id]];
       for (const [loc, key, idf] of pairs) { const m = srv(key, idf); this.data[loc] = (this.data[loc] || []).filter((e) => !(m.has(idf(e)) && same(m.get(idf(e)), stripLocal(e)))); }
       if (Array.isArray(this.data.startorte) && same(this.data.startorte, D.startorte || [])) this.data.startorte = null;
       const conf = new Set((D.lactate || []).map((l) => l.id));
       this.data.laktat_bestaetigt = (this.data.laktat_bestaetigt || []).filter((id) => !conf.has(id));
+      const lpOk = new Set((D.laktat_punkte || []).filter((p) => p.status === "übernommen").map((p) => p.id));       // V5.9.3
+      this.data.laktat_punkte_bestaetigt = (this.data.laktat_punkte_bestaetigt || []).filter((id) => !lpOk.has(id));
+      this.data.laktat_punkte = (this.data.laktat_punkte || []).filter((p) => !lpOk.has(p.id));                       // übernommen: die Daten gelten
+      const rIds = new Set((D.routes || []).map((r) => r.id)), ges = (this.data.eg && this.data.eg.gesendet) || {};
+      this.data.routen_entfernt = (this.data.routen_entfernt || []).filter((id) => rIds.has(id) || !ges["routen_entfernt|" + id]);   // bleibt, bis gesendet und aus den Daten weg
+      if (this.data.eg && window.EG) this.data.eg.gesendet = window.EG.aufraeumen(this.data, this.data.eg.gesendet);
     },
     upsert(list, item, idf) { idf = idf || ((e) => e.id); const L = this.data[list]; const i = L.findIndex((e) => idf(e) === idf(item)); if (i >= 0) L[i] = item; else L.push(item); return this.save(); },
     remove(list, id, idf) { idf = idf || ((e) => e.id); this.data[list] = this.data[list].filter((e) => idf(e) !== id); return this.save(); },
-    count() { const d = this.data || {}; return ["fueling", "befinden", "test_entwuerfe", "koppel", "langfahrt", "coach", "pb", "css", "fehler", "rpe", "intervalle", "laktat_punkte", "saison", "trainingsrouten"].reduce((s, k) => s + (d[k] || []).length, 0) + (d.laktat_bestaetigt || []).length + (d.fueling_produkte ? 1 : 0) + (Array.isArray(d.startorte) ? 1 : 0); },
+    count() { const d = this.data || {}; return ["fueling", "befinden", "test_entwuerfe", "koppel", "langfahrt", "coach", "pb", "css", "fehler", "rpe", "intervalle", "laktat_punkte", "saison", "trainingsrouten", "routen", "routen_entfernt", "laktat_punkte_bestaetigt"].reduce((s, k) => s + (d[k] || []).length, 0) + (d.laktat_bestaetigt || []).length + (d.fueling_produkte ? 1 : 0) + (Array.isArray(d.startorte) ? 1 : 0); },
     async exportFile() {
       await this.ensureVault();
       const out = { format: "spuren-eingaben-1", erstellt: new Date().toISOString(), demo: !!C.IS_DEMO, salt: this.vault.salt || null, iter: this.vault.iter || null,
@@ -85,8 +94,8 @@
         for (const o of d.startorte) if (o && !L.some((x) => x.id === o.id || x.name === o.name)) L.push(o);
         this.data.startorte = L;
       }
-      for (const k of ["fueling", "befinden", "test_entwuerfe", "koppel", "langfahrt", "coach", "pb", "css", "fehler", "rpe", "intervalle", "laktat_punkte", "saison", "trainingsrouten"]) for (const e of d[k] || []) { const L = (this.data[k] = this.data[k] || []); const idf = k === "befinden" ? (x) => x.date : k === "koppel" ? (x) => x.bike + "|" + x.run : (x) => x.id; if (!L.some((x) => idf(x) === idf(e))) L.push(e); }
-      for (const id of d.laktat_bestaetigt || []) if (!this.data.laktat_bestaetigt.includes(id)) this.data.laktat_bestaetigt.push(id);
+      for (const k of ["fueling", "befinden", "test_entwuerfe", "koppel", "langfahrt", "coach", "pb", "css", "fehler", "rpe", "intervalle", "laktat_punkte", "saison", "trainingsrouten", "routen"]) for (const e of d[k] || []) { const L = (this.data[k] = this.data[k] || []); const idf = k === "befinden" ? (x) => x.date : k === "koppel" ? (x) => x.bike + "|" + x.run : (x) => x.id; if (!L.some((x) => idf(x) === idf(e))) L.push(e); }
+      for (const k of ["laktat_bestaetigt", "laktat_punkte_bestaetigt", "routen_entfernt"]) for (const id of d[k] || []) if (!(this.data[k] = this.data[k] || []).includes(id)) this.data[k].push(id);
       if (d.fueling_produkte && !this.data.fueling_produkte) this.data.fueling_produkte = d.fueling_produkte;
       await this.save();
     },
@@ -98,6 +107,8 @@
     const b64d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
     return {
       async seal(obj) { const iv = crypto.getRandomValues(new Uint8Array(12)); const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, k, new TextEncoder().encode(JSON.stringify(obj)))); return b64e(iv) + "." + b64e(ct); },
+      /** V5.9.3 eingang-1.0: Eingabe als aufgefüllte EGS1-Datei (js/eingang.js); der Schlüssel verlässt den Tresor nicht. */
+      sealEGS1(obj) { return window.EG.schliessen(k, obj); },
       /** Sekundenreihe → gzip-Bytes. SPS1 (V5.6): «SPS1 | IV | Chiffre+Tag». SPS2 (V5.7.1): verschlüsselt sind «Länge (4 Byte) | gzip |
        *  Nullen» – die Datei ist auf eine Zweierpotenz aufgefüllt, damit ihre Grösse die Dauer nur grob verrät (tools/serienlib.mjs). */
       async openBin(u8) {
@@ -121,13 +132,19 @@
   };
   V.syncBar = function () {
     const n = Inbox.data ? Inbox.count() : 0;
+    const E = window.EG, es = E && Inbox.data && E.status ? E.status() : null;
+    const direkt = !!(es && E.aktiv() && E.hatSchluessel());           // V5.9.3 eingang-1.0
+    const offen = direkt ? es.offen : n;
     for (const el of document.querySelectorAll("[data-v5-sync]")) {
-      el.innerHTML = `<div class="syncbar${n ? " pending" : ""}" role="status">
-        <span>${n ? `<b>${n}</b> Eingabe${n === 1 ? "" : "n"} nur auf diesem Gerät, verschlüsselt${Inbox.persistent ? "" : " (nur für diese Sitzung)"}.` : "Keine offenen Eingaben auf diesem Gerät."}
-        ${Inbox.savedAt ? ` Gespeichert ${Inbox.savedAt.toLocaleTimeString("de-CH", { hour: "2-digit", minute: "2-digit" })}.` : ""}${Inbox.saveError ? ` <b class="down">${esc(Inbox.saveError)}</b>` : ""}${Inbox.loadError ? ` <b class="down">${esc(Inbox.loadError)}</b>` : ""}</span>
-        <span class="row">${n ? `<button class="btn primary" data-act="export">Exportieren</button>` : ""}<label class="btn">Sicherung laden<input type="file" accept="application/json,.json" data-act="import" hidden></label></span>
-        <span class="hint">Exportierte Datei im Chat schicken: ich spiele sie ein. Ohne Netz bleibt alles hier gespeichert.</span></div>`;
+      const kopf = direkt ? `<b>Direkt speichern: an.</b> ${es.offen ? `<b>${es.offen}</b> Eingabe${es.offen === 1 ? "" : "n"} noch nicht gesendet. ` : ""}${esc(es.text || "")}`
+        : n ? `<b>${n}</b> Eingabe${n === 1 ? "" : "n"} nur auf diesem Gerät, verschlüsselt${Inbox.persistent ? "" : " (nur für diese Sitzung)"}.` : "Keine offenen Eingaben auf diesem Gerät.";
+      el.innerHTML = `<div class="syncbar${offen ? " pending" : ""}${es && es.zustand === "fehler" ? " fehler" : ""}" role="status">
+        <span>${kopf}${Inbox.savedAt ? ` Gespeichert ${Inbox.savedAt.toLocaleTimeString("de-CH", { hour: "2-digit", minute: "2-digit" })}.` : ""}${Inbox.saveError ? ` <b class="down">${esc(Inbox.saveError)}</b>` : ""}${Inbox.loadError ? ` <b class="down">${esc(Inbox.loadError)}</b>` : ""}${!direkt && es && es.zustand === "fehler" ? ` <b class="down">${esc(es.text)}</b>` : ""}</span>
+        <span class="row">${direkt && es.offen ? `<button class="btn primary" data-act="senden">Jetzt senden</button>` : ""}${n ? `<button class="btn${direkt ? "" : " primary"}" data-act="export">Exportieren</button>` : ""}<label class="btn">Sicherung laden<input type="file" accept="application/json,.json" data-act="import" hidden></label>${C && !C.IS_DEMO && window.V59 ? `<button class="btn" data-act="einst">Direkt speichern …</button>` : ""}</span>
+        <span class="hint">${direkt ? "Eingaben gehen verschlüsselt ins Repository und kommen mit dem nächsten Morgen- oder Nacht-Update in die Daten. Rückweg: Exportieren und im Chat schicken." : C && C.IS_DEMO ? "Demo: Eingaben bleiben auf diesem Gerät." : "Exportierte Datei im Chat schicken: ich spiele sie ein. Mit einem GitHub-Schlüssel geht es von selbst («Direkt speichern»). Ohne Netz bleibt alles hier gespeichert."}</span></div>`;
       el.querySelector('[data-act="export"]')?.addEventListener("click", () => Inbox.exportFile());
+      el.querySelector('[data-act="senden"]')?.addEventListener("click", () => E.senden());
+      el.querySelector('[data-act="einst"]')?.addEventListener("click", () => window.V59 && window.V59.einstellungen && window.V59.einstellungen("direkt"));
       el.querySelector('[data-act="import"]')?.addEventListener("change", async (e) => { try { await Inbox.importFile(e.target.files[0]); V.refreshAll(); } catch (err) { alertBox(el, "Datei nicht lesbar: " + err.message); } });
     }
   };
@@ -138,6 +155,10 @@
   V.init = async function (ctx) {
     C = V.C = ctx;
     await Inbox.load();
+    if (window.EG) {                                                   // V5.9.3: Eingaben direkt speichern (eingang-1.0)
+      window.EG.beiStatus(() => V.syncBar());
+      window.EG.starten({ Inbox, vault: () => (!C.IS_DEMO && window.SPUREN_VAULT) || null, demo: !!C.IS_DEMO });
+    }
     V.syncBar();
     window.addEventListener("keydown", (e) => { if (e.key === "Escape") closePop(); });
     document.addEventListener("click", (e) => { if (pop && !pop.contains(e.target) && !e.target.closest(".ltm,.ltna")) closePop(); });
@@ -441,17 +462,20 @@
     const shown = rows.filter((r) => (!LIB.sport || r.sport === LIB.sport) && (!LIB.prot || r.prot === LIB.prot) && (!LIB.status || r.status === LIB.status) && (LIB.arch || !arch.has(r.id)));
     $("t-lib").innerHTML = `<tr><th>Datum</th><th class="l">Art</th><th class="l">Sport</th><th class="l">Protokoll</th><th>Werte</th><th class="l">Quelle</th><th class="l">Gerät</th><th class="l">Status</th><th class="l">Aktionen</th></tr>` + (shown.map((r) => `<tr>
       <td>${dch(r.datum)}</td><td>${esc(r.art)}</td><td>${r.sport === "lauf" ? "Lauf" : "Rad"}</td><td>${esc(protName(r.prot))}</td><td>${r.n}</td><td class="wrap"><small>${esc(r.quelle)}</small></td><td>${esc(r.geraet)}</td>
-      <td>${V.badge(conf.has(r.id) ? "bestätigt" : r.status, conf.has(r.id) ? "zum Export" : "")}${arch.has(r.id) ? " " + V.badge("archiviert") : ""}</td>
+      <td>${V.badge(conf.has(r.id) ? "bestätigt" : r.status, conf.has(r.id) ? "kommt mit dem nächsten Update" : "")}${arch.has(r.id) ? " " + V.badge("archiviert") : ""}</td>
       <td class="acts">${r.art !== "Entwurf" ? `<button class="btn" data-a="show" data-id="${esc(r.id)}">Ansehen</button>` : `<button class="btn" data-a="open" data-id="${esc(r.id)}">Weiter</button>`}
         ${r.art === "Stufentest" ? `<button class="btn" data-a="dup" data-id="${esc(r.id)}">Als Vorlage</button>` : ""}
-        ${r.status === "vorschau" && !conf.has(r.id) ? `<button class="btn" data-a="conf" data-id="${esc(r.id)}">Bestätigen</button>` : ""}
+        ${r.status === "vorschau" && !conf.has(r.id) ? `<button class="btn" data-a="conf" data-id="${esc(r.id)}">${r.art === "Stufentest" ? "Test bestätigen" : "Bestätigen"}</button>` : ""}
         <button class="btn" data-a="arch" data-id="${esc(r.id)}">${arch.has(r.id) ? "Zurückholen" : "Archivieren"}</button></td></tr>`).join("") || `<tr><td colspan="9">Keine Tests mit diesen Filtern.</td></tr>`);
     $("t-lib").querySelectorAll("[data-a]").forEach((b) => b.addEventListener("click", async () => {
       const id = b.dataset.id, r = rows.find((x) => x.id === id);
       if (b.dataset.a === "show") { LZ.sport = r.sport; if (r.art === "Stufentest") { LZ.shown = Array.from(new Set((LZ.shown || []).concat(id))); LZ.sel = { k: "stufe", t: id, nr: 1 }; } else LZ.sel = { k: "einzel", id }; V.laktat(); $("lz-main").scrollIntoView({ behavior: "smooth" }); }
       if (b.dataset.a === "dup") V.testEntry.open(null, { vorlageVon: id, sport: r.sport, protokoll: r.prot });
       if (b.dataset.a === "open") V.testEntry.open(id);
-      if (b.dataset.a === "conf") { if (!Inbox.data.laktat_bestaetigt.includes(id)) Inbox.data.laktat_bestaetigt.push(id); await Inbox.save(); V.library(); }
+      if (b.dataset.a === "conf") {          // V5.9.3 (3c): ganzer Test auf einmal, Abweichungen sichtbar (js/v59.js)
+        if (window.V59 && window.V59.testBestaetigen(id)) return;
+        if (!Inbox.data.laktat_bestaetigt.includes(id)) Inbox.data.laktat_bestaetigt.push(id); await Inbox.save(); V.library();
+      }
       if (b.dataset.a === "arch") { Inbox.data.archiv = arch.has(id) ? Inbox.data.archiv.filter((x) => x !== id) : Inbox.data.archiv.concat(id); await Inbox.save(); V.library(); }
     }));
   };
@@ -588,18 +612,11 @@
       ${row("Ruhepuls", ind.rhr.status === "unbekannt" ? ind.rhr.grund : `${ind.rhr.status} (Ø ${num(ind.rhr.wert3, 1)} bpm)`, ind.rhr.status)}
       ${row("Schlaf", ind.schlaf.wert != null ? `${ind.schlaf.status} (${num(ind.schlaf.wert, 1)} h)` : ind.schlaf.grund, ind.schlaf.status)}
       ${row("Belastung 7 Tage", ind.last.status === "unbekannt" ? ind.last.grund : `${ind.last.status} (${ind.last.akut7} / Ø ${ind.last.chronisch7})`, ind.last.status)}
-      ${row("Befinden", ind.befinden.status, ind.befinden.status)}${ind.krank ? row("Krankheitszeichen", ind.krank.zeichen.join(", "), "erhöht") : ""}
+      ${row("Befinden", ind.befinden.status === "nicht angegeben" ? "nicht angegeben (Check-in oben)" : ind.befinden.status, ind.befinden.status)}${ind.krank ? row("Krankheitszeichen", ind.krank.zeichen.join(", "), "erhöht") : ""}
       <p class="hint">Vertrauen ${esc(r.vertrauen)} · Vorschlag: ${esc(r.empfehlung)} ${r.nachtdienst ? "· Nachtdienst berücksichtigt" : ""}</p>
       <details class="rd-own"><summary>Selbst entscheiden${own ? " · " + esc(own) : ""}</summary><form class="inline" id="rd-own"><label>Heute mache ich<input type="text" name="t" value="${esc(own || "")}" placeholder="z. B. 60 min locker statt Intervalle"></label><button class="btn" type="submit">Speichern</button></form></details>
-      <details class="rd-bef"${(V.befinden().find((b) => b.date === day)) ? "" : " open"}><summary>Befinden heute eintragen</summary><form id="rd-bef" class="rd-form">${befForm(V.befinden().find((b) => b.date === day))}</form></details>
       <p class="hint">Kein medizinisches Diagnoseinstrument. Fehlende Werte werden nicht durch «normal» ersetzt. Version ${esc(r.v)}.</p>`;
     $("rd-own").onsubmit = async (e) => { e.preventDefault(); Inbox.data.notizen = Object.assign({}, Inbox.data.notizen, { ["plan-" + day]: e.target.t.value.trim() }); await Inbox.save(); V.heute(); };
-    $("rd-bef").onsubmit = async (e) => {
-      e.preventDefault(); const f = e.target;
-      const b = { date: day, muede: +f.muede.value || null, muskel: +f.muskel.value || null, stress: +f.stress.value || null, krank: [...f.querySelectorAll("[name=krank]:checked")].map((x) => x.value), nachtdienst: f.nacht.checked, notiz: f.notiz.value.trim(), erfasst: new Date().toISOString() };
-      if (!b.krank.length) delete b.krank;
-      await Inbox.upsert("befinden", b, (x) => x.date); V.heute();
-    };
     const v = $("today-verdict");
     v.className = "verdict" + (r.status === "vorsichtig" ? " warn" : r.status === "nicht beurteilbar" ? " muted" : "");
     v.textContent = r.empfehlung;
@@ -607,13 +624,4 @@
     const T = F.readinessTrend(D.days, D.activities, V.befinden(), day, RD.n);
     if (window.V55) window.V55.verlauf(C, T);                    // V5.5: drei synchronisierte Mini-Grafiken
   };
-  function befForm(b) {
-    b = b || {};
-    const sc = (n, lab) => `<fieldset class="scale5"><legend>${lab}</legend>${[1, 2, 3, 4, 5].map((v) => `<label><input type="radio" name="${n}" value="${v}" ${b[n] === v ? "checked" : ""}><span>${v}</span></label>`).join("")}</fieldset>`;
-    const K = ["Halsweh", "Fieber", "Erkältung", "Magen-Darm", "Verletzung"];
-    return `${sc("muede", "Müdigkeit (1 frisch – 5 erschöpft)")}${sc("muskel", "Muskeln (1 locker – 5 sehr schwer)")}${sc("stress", "Stress (1 ruhig – 5 sehr hoch)")}
-      <fieldset class="checks"><legend>Krankheitszeichen</legend>${K.map((k) => `<label><input type="checkbox" name="krank" value="${k}" ${(b.krank || []).includes(k) ? "checked" : ""}> ${k}</label>`).join("")}</fieldset>
-      <label class="row"><input type="checkbox" name="nacht" ${b.nachtdienst ? "checked" : ""}> Nachtdienst / Schlaf zu ungewohnter Zeit</label>
-      <label>Notiz<input type="text" name="notiz" value="${esc(b.notiz || "")}"></label><button class="btn primary" type="submit">Speichern</button>`;
-  }
 })();

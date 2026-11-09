@@ -17,6 +17,8 @@
   V.rpeVon = (C, id) => rpeListe(C).find((r) => r.id === id) || null;
   window.RPE = {
     karte(el, a, offen) {
+      const kc = document.getElementById("v56-rpe-card");
+      if (kc && kc.dataset.ausgeblendet) { el.innerHTML = ""; return; }      // V5.9: RPE der Einheiten ausgeblendet (Morgen-Check-in), Daten bleiben
       const C = UI().C, r = V.rpeVon(C, a.id) || {};
       el.innerHTML = `<details class="more ex-rpe" ${offen ? "open" : ""}><summary>${r.rpe ? `Gefühl: RPE ${r.rpe}${r.gefuehl ? " · " + r.gefuehl : ""}${r.muskel ? ` · Muskulatur ${r.muskel}/3` : ""} – ändern` : "Wie war die Einheit? (RPE 1–10) – noch nicht bewertet"}</summary>
         <form class="rpe-f" id="rpe-f"><div class="rpe-skala" role="group" aria-label="RPE">${Array.from({ length: 10 }, (_, i) => `<button type="button" class="btn rpe-b" data-r="${i + 1}" aria-pressed="${r.rpe === i + 1}">${i + 1}</button>`).join("")}</div>

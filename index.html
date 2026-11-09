@@ -752,6 +752,29 @@ body.ex-offen { overflow: hidden; }
 .v53-drill ol { margin: 0; padding-left: 18px; font-size: 13px; } .v53-err { margin: 0; font-size: 12.5px; color: #7c2537; }
 .item .wxcopy { color: var(--accent); }
 @media (max-width: 560px) { .v53-wk { grid-template-columns: 38px repeat(7, minmax(0, 1fr)) 40px; } .v53-big b { font-size: 32px; } }
+/* V5.9.3 Morgen-Check-in (befinden-1.1), Einstellungen «Direkt speichern», Laktat bestätigen */
+.ci-card { padding-block: 12px; } .ci-card.ci-fertig { padding-block: 10px; }
+.ci-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 4px; } .ci-head h2 { margin: 0; }
+.ci-q { display: grid; grid-template-columns: 62px minmax(0, 1fr); column-gap: 8px; align-items: center; margin-top: 6px; }
+.ci-l { grid-row: 1 / 3; font-weight: 650; }
+.ci-b { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.ci-v { min-height: 46px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--surface-2); font: 700 18px var(--f-body); color: var(--fg); cursor: pointer; padding: 0; }
+.ci-v[aria-checked="true"] { color: #fff; border-color: transparent; box-shadow: 0 2px 6px rgba(31,51,71,.18); }
+.ci-v.v1[aria-checked="true"] { background: #1e8f5a; } .ci-v.v2[aria-checked="true"] { background: #4f9a46; } .ci-v.v3[aria-checked="true"] { background: #a8821c; }
+.ci-v.v4[aria-checked="true"] { background: #c8672a; } .ci-v.v5[aria-checked="true"] { background: #c0394b; }
+.ci-e { grid-column: 2; display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); padding: 1px 4px 0; }
+.ci-x { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 6px; flex-wrap: wrap; } .ci-k { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; }
+.ci-kl { margin-top: 4px; } input.ci-n { width: 100%; margin-top: 6px; min-height: 42px; font-size: 16px; }
+.ci-done { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; } .ci-done small { color: var(--muted); }
+.ci-ok { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--good); color: #fff; display: grid; place-items: center; font-weight: 700; }
+.ci-meta { margin-top: 2px; font-size: 12.5px; color: var(--muted); } .ci-s.ok { color: var(--good); } .ci-s.down { color: var(--bad); }
+.ci-kal { margin: 0 0 6px; }
+.es { border-top: 1px solid var(--line); padding-top: 10px; } .es h3 { margin: 0 0 6px; font: 650 15px var(--f-body); }
+.es-f { display: flex; flex-direction: column; gap: 8px; } .es-f label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); } .es-f input { min-height: 44px; font-size: 16px; }
+.es-l { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; } .es-hilfe ol { margin: 6px 0; padding-left: 20px; } .es-st { margin: 0 0 8px; }
+.syncbar.fehler { border-color: var(--bad); }
+table.v59-bt tr.flag td { background: #fff4e5; }
+.v5-overlay { grid-template-columns: minmax(0, 1fr); } .te-box { min-width: 0; max-width: 100%; box-sizing: border-box; } .te-box > * { min-width: 0; }
 </style>
 </head>
 <body>
@@ -903,6 +926,7 @@ body.ex-offen { overflow: hidden; }
   <!-- ================= HEUTE ================= -->
   <section class="view" id="view-heute" role="tabpanel" aria-labelledby="tab-heute" hidden>
     <div class="dash">
+      <div class="card w12 ci-card" id="checkin-card"><div id="checkin" aria-live="polite"><p class="hint">Check-in wird geladen …</p></div></div>
       <div class="card w12" id="ringe-card">
         <div class="card-head"><div><h2>Erholung, Schlaf, Belastung</h2><div class="sub" id="ringe-sub"></div></div>
           <div class="seg" id="ringe-range" role="group" aria-label="Zeitraum des Verlaufs"><button data-n="7" aria-pressed="true">7 Tage</button><button data-n="28" aria-pressed="false">28 Tage</button></div></div>
@@ -919,7 +943,11 @@ body.ex-offen { overflow: hidden; }
         <div class="verdict" id="today-verdict"></div>
         <div class="kv" id="today-kv"></div>
       </div>
-      <div class="card w12" id="v56-rpe-card">
+      <div class="card w12" id="gefuehl-card">
+        <div class="card-head"><div><h2>Gefühl und Morgenwerte</h2><div class="sub">Welcher Wert passt bei dir am besten zu deinem Gefühl am Morgen?</div></div></div>
+        <div id="gefuehl"></div>
+      </div>
+      <div class="card w12" id="v56-rpe-card" hidden data-ausgeblendet="RPE der einzelnen Einheiten: ersetzt durch den Morgen-Check-in (V5.9), Daten bleiben">
         <div class="card-head"><div><h2>Letzte Einheiten bewerten</h2><div class="sub">RPE, Gefühl und Beschwerden – verbindet dein Empfinden mit Last, HRV, Ruhepuls und Schlaf</div></div></div>
         <div id="v56-rpe"></div><div id="v56-kal"></div>
       </div>
@@ -1205,7 +1233,7 @@ body.ex-offen { overflow: hidden; }
         <p class="hint" id="lm-note"></p>
       </div>
         <div class="card w12" id="lib-card">
-        <div class="card-head"><div><h2>Testbibliothek</h2><div class="sub">Tests, Einzelmessungen und Entwürfe vom Handy. «Bestätigen» ist Schritt B1 und geht mit dem nächsten Export an mich.</div></div><div class="row" id="lib-f"></div></div>
+        <div class="card-head"><div><h2>Testbibliothek</h2><div class="sub">Tests, Einzelmessungen und Entwürfe vom Handy. «Test bestätigen» ist Schritt B1: alle Stufen auf einmal, Abweichungen sichtbar; das nächste Update übernimmt die Bestätigung.</div></div><div class="row" id="lib-f"></div></div>
         <div class="tablewrap"><table class="t" id="t-lib"></table></div>
       </div>
         <div class="card w12">
@@ -1360,10 +1388,13 @@ body.ex-offen { overflow: hidden; }
   <p class="tm-note">IRONMAN® ist eine eingetragene Marke der World Triathlon Corporation. Diese private Trainingsseite steht in keiner Verbindung dazu; der Name ist nur ein persönlicher Titel.</p>
 </main>
 <div class="v5-overlay" id="v5-test" hidden></div>
+<div class="v5-overlay" id="v59-ov" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="js/formkurve.js"></script>
+<script src="js/eingang.js"></script>
+<script src="js/v59-logik.js"></script>
 <script src="js/route.js"></script>
 <script src="js/routen-ui.js"></script>
 <script src="js/training-route.js"></script>
@@ -1377,6 +1408,7 @@ body.ex-offen { overflow: hidden; }
 <script src="js/analyse.js"></script>
 <script src="js/explorer.js"></script>
 <script src="js/v56.js"></script>
+<script src="js/v59.js"></script>
 <script>
 (() => {
   const b64d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
@@ -1451,6 +1483,7 @@ body.ex-offen { overflow: hidden; }
 <script>
 function boot() {
 "use strict";
+if (window.V59) V59.ausblenden();          // V5.9: ausgeblendete Karten bleiben verborgen, ausser auf diesem Gerät wieder eingeblendet
 if (!Array.prototype.at) Array.prototype.at = function (i) { i = Math.trunc(i) || 0; if (i < 0) i += this.length; return this[i]; };
 /* =====================================================================
    Grundlagen
@@ -1744,7 +1777,10 @@ function weights() {
   return [...m].map(([date, kg]) => ({ date, kg })).sort((a, b) => a.date.localeCompare(b.date));
 }
 const allPoints = () => (D.demo && userPoints.length ? [] : D.points).concat(userPoints);
-const allRoutes = () => (D.demo && userRoutes.length ? [] : D.routes).concat(userRoutes);
+/* V5.9.3: gespeicherte Routen kommen über «Direkt speichern» in die Daten (D.routes) und so auf alle Geräte; die Fassung auf diesem
+   Gerät gewinnt bei gleicher ID, auf diesem Gerät gelöschte bleiben verborgen, bis das Update sie entfernt hat. */
+const routenWeg = () => new Set((window.V5UI && V5UI.Inbox && V5UI.Inbox.data && V5UI.Inbox.data.routen_entfernt) || []);
+const allRoutes = () => { const weg = routenWeg(), lok = new Set(userRoutes.map((r) => r.id)); return (D.demo && userRoutes.length ? [] : D.routes).filter((r) => !lok.has(r.id) && !weg.has(r.id)).concat(userRoutes); };
 const isUserItem = (id) => String(id).startsWith("u-");
 
 /* =====================================================================
@@ -1757,6 +1793,7 @@ document.getElementById("stand").textContent = !D.demo && D.updated ? "Stand " +
 
 const TAB_NAMES = ["karte", "heute", "kalender", "training", "laktat", "ausdauer", "leistung", "schwimmen", "koerper"];
 function showTab(name) {
+  if (name === "checkin") { name = "heute"; setTimeout(() => document.getElementById("checkin-card")?.scrollIntoView({ block: "start" }), 60); }   // V5.9.3: Link aus dem Morgen-Briefing
   if (!TAB_NAMES.includes(name)) name = "karte";
   document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
   document.querySelectorAll("section.view").forEach((s) => (s.hidden = s.id !== "view-" + name));
@@ -2675,7 +2712,7 @@ async function shareOrDownload(filename, text) {
   return "Heruntergeladen.";
 }
 function planLoad(id) {
-  const r = userRoutes.find((x) => x.id === id); if (!r || !window.RTUI) return;
+  const r = allRoutes().find((x) => x.id === id); if (!r || !window.RTUI) return;
   setPlanActive(true);
   window.RTUI.loadSaved(r);
 }
@@ -2687,7 +2724,9 @@ function initPlanner() {
     return;
   }
   window.RTUI.init({ map, store, D, fmt, esc, hmm, dateCH, iso, today, shareOrDownload, elevations, densifyLL, weights, getJSON, demTile,
-    routes: { save(rec) { const i = userRoutes.findIndex((r) => r.id === rec.id); if (i >= 0) userRoutes[i] = rec; else userRoutes.push(rec); const ok = saveRoutes(); renderRoutes(); return ok; } },
+    routes: { save(rec) { const i = userRoutes.findIndex((r) => r.id === rec.id); if (i >= 0) userRoutes[i] = rec; else userRoutes.push(rec); const ok = saveRoutes(); renderRoutes();
+      if (!IS_DEMO && window.V5UI && V5UI.Inbox && V5UI.Inbox.data) V5UI.Inbox.upsert("routen", JSON.parse(JSON.stringify(rec)));   // V5.9.3: verschlüsselt auf alle Geräte
+      return ok; } },
     close: () => setPlanActive(false) });
 }
 /* =====================================================================
@@ -2782,8 +2821,12 @@ function renderRoutes() {
     const r = allRoutes().find((x) => x.id === b.dataset.id); const bb = r && boundsOfCoords([r.coords]);
     if (bb && map) { map.fitBounds(bb, { padding: 60, maxZoom: 15 }); hlSet([{ type: "LineString", coordinates: r.coords }], "list"); }
   }));
-  el.querySelectorAll(".del").forEach((b) => b.addEventListener("click", () => armDelete(b, () => {
-    userRoutes = userRoutes.filter((r) => r.id !== b.dataset.id); saveRoutes(); renderRoutes();
+  el.querySelectorAll(".del").forEach((b) => b.addEventListener("click", () => armDelete(b, async () => {
+    const id = b.dataset.id;
+    userRoutes = userRoutes.filter((r) => r.id !== id); saveRoutes();
+    const I = window.V5UI && V5UI.Inbox;                     // V5.9.3: auch in den Daten und auf den anderen Geräten entfernen
+    if (I && I.data && !IS_DEMO) { I.data.routen = (I.data.routen || []).filter((r) => r.id !== id); if (((D.routes || []).some((r) => r.id === id) || ((I.data.eg || {}).gesendet || {})["routen|" + id]) && !(I.data.routen_entfernt || []).includes(id)) (I.data.routen_entfernt = I.data.routen_entfernt || []).push(id); await I.save(); }
+    map?.getSource("routes")?.setData(lineGeo(allRoutes())); renderRoutes();
   })));
 }
 function exportGpx() {
@@ -2889,7 +2932,7 @@ function isoWeek(dt) { const d = new Date(dt); d.setHours(0, 0, 0, 0); d.setDate
 function v5Start() {
   if (!window.V5UI) return;
   V5_READY = V5UI.init({ D, chart, css, fmt, esc, dateCH, dLabel, pd, iso, today, SPORTS, IS_DEMO, hrsOf, shareOrDownload, ACT_BY_ID, charts, mmss, hmm, ringSVG, weights,
-    planRoute: () => (window.RTUI ? window.RTUI.planRoute() : null) }).catch((e) => console.error(e));
+    planRoute: () => (window.RTUI ? window.RTUI.planRoute() : null) }).then(() => { if (window.V59) V59.init(V5UI.C); }).catch((e) => console.error(e));
 }
 const charts = {};
 if (window.Chart) {
@@ -3013,7 +3056,7 @@ const TABS = {
       if (!d) {
         document.getElementById("today-main").innerHTML = `<p class="hint">Noch keine Tageswerte. Sie kommen mit dem ersten Garmin-Update.</p>`;
         document.getElementById("today-verdict").textContent = "Noch keine Daten.";
-        if (window.V5UI) V5_READY.then(() => V5UI.heute());
+        if (window.V5UI) V5_READY.then(() => { V5UI.heute(); if (window.V59) { V59.checkin(); V59.gefuehlKarte(); } });
       } else {
         const pa = FK.pmcAnzeige(pmc().at(-1)) || {};
         const s7 = D.days.slice(-7).filter((x) => x.sleepH != null);
@@ -3021,7 +3064,7 @@ const TABS = {
           ["Garmin-Bereitschaft", d.readiness != null ? fmt(d.readiness) : null], ["HRV Ø 30 Tage", fmt(baseline(i).hrv)],
           ["Schlaf Ø 7 Tage", s7.length ? fmt(s7.reduce((s, x) => s + x.sleepH, 0) / s7.length, 1) + " h" : null]]
           .filter(([, v]) => v != null).map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
-        if (window.V5UI) V5_READY.then(() => V5UI.heute());
+        if (window.V5UI) V5_READY.then(() => { V5UI.heute(); if (window.V59) { V59.checkin(); V59.gefuehlKarte(); } });
       }
       const w0 = mondayOf(today), wk = D.activities.filter((a) => inWeek(a, w0));
       const rows = Object.entries(SPORTS).map(([k, s]) => {
@@ -3532,7 +3575,7 @@ function calEvents(ds) {
    ===================================================================== */
 v5Start();
 initKarte();
-V5_READY.finally(() => showTab(TAB_NAMES.includes(location.hash.slice(1)) ? location.hash.slice(1) : store.get("sf.tab", "karte")));
+V5_READY.finally(() => { const h0 = location.hash.slice(1); showTab(TAB_NAMES.includes(h0) || h0 === "checkin" ? h0 : store.get("sf.tab", "karte")); });
 }
 </script>
 </body>

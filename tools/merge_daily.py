@@ -112,7 +112,25 @@ def laktat_uebernehmen(D, pid):
              "block": p.get("block"), "activity": p.get("aktivitaet"), "zuordnung": p.get("zuordnung"),
              "note": "; ".join(p.get("hinweise") or []), "quelle": (z.get("quelle") or {}).get("stelle") or p.get("datei"),
              "bestaetigt": dt.date.today().isoformat()}
-    _upsert(D, "lactate", [e], what="Laktat")
+    _upsert(D, "lactate", [e], idf=lambda x: x.get("id"), what="Laktat")
+    p["status"] = "übernommen"
+    return True
+
+
+def laktatpunkt_uebernehmen(D, pid):
+    """V5.9.3 (3c): «Laktat hier» aus dem Explorer nach Silas' Bestätigung auf der Seite als Kurzcheck übernehmen."""
+    p = next((x for x in D.get("laktat_punkte", []) if x.get("id") == pid), None)
+    if not p or p.get("status") != "vorschau":
+        return False
+    ab = p.get("abschnitt") or {}
+    mmss = lambda s: f"{int(s) // 60}:{int(s) % 60:02d}" if isinstance(s, (int, float)) else "?"  # noqa: E731
+    e = {"id": pid, "kind": "check", "date": p.get("datum"), "sport": p.get("sport"), "block": f"Explorer {mmss(ab.get('von'))}–{mmss(ab.get('bis'))}",
+         "w": ab.get("w") if p.get("sport") != "lauf" else None, "pace_s": ab.get("pace") if p.get("sport") == "lauf" else None,
+         "np": ab.get("np"), "hr_avg": ab.get("hr"), "hr_max": None, "drift": None, "lactate": p.get("la"),
+         "note": "aus Explorer" + (f"; {p['notiz']}" if p.get("notiz") else ""), "activity": p.get("act"),
+         "quelle": f"{p.get('quelle') or 'Explorer'}, Abschnitt {mmss(ab.get('von'))}–{mmss(ab.get('bis'))} ({ab.get('grund') or 'Zuordnung'})",
+         "bestaetigt": dt.date.today().isoformat()}
+    _upsert(D, "lactate", [e], idf=lambda x: x.get("id"), what="Laktat")
     p["status"] = "übernommen"
     return True
 
@@ -128,7 +146,11 @@ def v5_merge(D, N):
                           ("laktat_punkte", "laktat_punkte_add", lambda e: e["id"]), ("saison_plan", "saison_add", lambda e: e["id"]),
                           ("trainingsrouten", "trainingsrouten_add", lambda e: e["id"])):
         if N.get(src):
-            a, b = _upsert(D, key, N[src], idf)
+            items = N[src]
+            if key == "laktat_punkte":                   # V5.9.3: schon übernommene Punkte bleiben übernommen (nie zurück auf «vorschau»)
+                done = {x.get("id") for x in D.get("laktat_punkte", []) if x.get("status") == "übernommen"}
+                items = [dict(e, status="übernommen") if e.get("id") in done else e for e in items]
+            a, b = _upsert(D, key, items, idf)
             msg.append(f"{key}: {a} neu, {b} ersetzt")
     if "fueling_produkte" in N:
         D["fueling_produkte"] = N["fueling_produkte"]
@@ -160,6 +182,17 @@ def v5_merge(D, N):
         _upsert(D, "zonen", [z], what="Zonenprofil")
     for pid in N.get("laktat_bestaetigt") or []:
         msg.append(f"B1 {pid}: {'übernommen' if laktat_uebernehmen(D, pid) else 'nicht gefunden oder schon übernommen'}")
+    for pid in N.get("laktat_punkte_bestaetigt") or []:   # V5.9.3: Laktat aus dem Explorer, auf der Seite bestätigt
+        msg.append(f"Laktat {pid}: {'als Kurzcheck übernommen' if laktatpunkt_uebernehmen(D, pid) else 'nicht gefunden oder schon übernommen'}")
+    if N.get("routen_add"):                              # V5.9.3: gespeicherte Routen aller Geräte (nur verschlüsselt in data.enc.json)
+        a, b = _upsert(D, "routes", N["routen_add"], what="Route")
+        msg.append(f"routes: {a} neu, {b} ersetzt")
+    for rid in N.get("routen_entfernt") or []:
+        alt = next((r for r in D.get("routes", []) if r.get("id") == rid), None)
+        if alt is not None:
+            D["routes"] = [r for r in D["routes"] if r.get("id") != rid]
+            D.setdefault("audit", []).append({"zeit": dt.datetime.now(ZRH).isoformat(timespec="seconds"), "was": "Route entfernt", "id": rid, "alt": alt})
+            msg.append(f"Route {rid} entfernt")
     if msg:
         print("V5:", "; ".join(msg))
 

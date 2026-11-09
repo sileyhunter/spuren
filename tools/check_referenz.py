@@ -1,6 +1,9 @@
 """Referenzsatz und Neuberechnung (Umsetzungsplan A1, Abnahmen A1, A3, A5).
 
   python3 -I tools/check_referenz.py data.json --files work/files.json --raw-acts work/acts_raw.json [--init work/referenz_init.json]
+  python3 -I tools/check_referenz.py data.json --ohne-fit      (V5.9.3: Morgen-/Nacht-Update ohne FIT-Dateien, z. B. nach einer
+                                                                Laktat-Bestätigung: nur Laktat mit Quelle und Schwellen je Methode;
+                                                                Ergebnis unter referenz.pruefung_update, die volle Prüfung bleibt)
 
 --init   legt den Referenzsatz in data.json an (10 Einheiten mit von Hand geprüften Werten, siehe Datei)
 Danach bei jedem Lauf:
@@ -42,14 +45,55 @@ def compute(path):
             "stufen_hr_vor": [s["hr_vor"] for s in st["stufen"]] if st else []}, f
 
 
+def laktat_ohne_quelle(D):
+    ohne = [(p["id"], z.get("stufe")) for p in D.get("laktat_vorschau", []) for z in p.get("zeilen", [])
+            if z.get("la") is not None and not z.get("quelle")]
+    ohne += [(l.get("date"), l.get("kind")) for l in D.get("lactate", []) if l.get("lactate") is not None and not (l.get("quelle") or l.get("note") or l.get("activity"))]
+    return ohne
+
+
+def schwellen_gegen_soll(D, R):
+    sch = []
+    S = {t["test"]: t for t in (D.get("schwellen") or {}).get("tests", [])}
+    for tid, soll in (R.get("schwellen_soll") or {}).items():
+        t = S.get(tid)
+        for mk, v in soll.items():
+            got = ((t or {}).get("methoden", {}).get(mk) or {}).get("x")
+            tol = 0.06 if (t or {}).get("sport") == "lauf" else 1.0
+            sch.append({"test": tid, "methode": mk, "soll": v, "neu": got, "ok": got is not None and abs(got - v) <= tol, "toleranz": tol})
+    return sch
+
+
+def ohne_fit(a, D):
+    """V5.9.3: Prüfung im Update ohne FIT-Dateien (Laktat bestätigt): Laktat mit Quelle, Schwellen je Methode gegen die Auswertung."""
+    R = D.get("referenz")
+    if not R:
+        raise SystemExit("kein Referenzsatz in data.json")
+    ohne, sch = laktat_ohne_quelle(D), schwellen_gegen_soll(D, R)
+    ok = not ohne and all(x["ok"] for x in sch)
+    R["pruefung_update"] = {"datum": dt.date.today().isoformat(), "ok": ok, "ohne_fit": True, "laktat_ohne_quelle": len(ohne), "schwellen": sch}
+    json.dump(D, open(a.data, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+    print(f"Laktatwerte ohne Quelle: {len(ohne)}")
+    bad = [x for x in sch if not x["ok"]]
+    print(f"Schwellen gegen die Auswertung: {len(sch) - len(bad)} von {len(sch)} innerhalb ±1 W bzw. ±0,06 km/h")
+    for x in bad:
+        print("   NEIN", x)
+    print("Ohne FIT-Dateien nicht geprüft: Referenzsatz, Zeitbegriffe, Stufen, alle Aktivitäten (volle Prüfung beim Monatsexport).")
+    print("GESAMT:", "bestanden" if ok else "NICHT bestanden")
+    return 0 if ok else 1
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("data")
     ap.add_argument("--files", default="work/files.json")
     ap.add_argument("--raw-acts", default="work/acts_raw.json")
     ap.add_argument("--init")
+    ap.add_argument("--ohne-fit", action="store_true")
     a = ap.parse_args()
     D = json.load(open(a.data, encoding="utf-8"))
+    if a.ohne_fit:
+        return ohne_fit(a, D)
     files = json.load(open(a.files))
     today = dt.date.today().isoformat()
     if a.init:
@@ -139,4 +183,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

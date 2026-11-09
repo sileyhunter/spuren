@@ -73,3 +73,12 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
     liegen, der nicht zum Gipfel führt. Dann die Lücke von Hand schliessen und mit Punkten führen.
 33. **Ringe auf «Heute»:** Die Morgenwerte des Tages kommen mit dem Nacht-Update; tagsüber zeigen die Ringe den letzten vollständigen Tag
     (mit Datum). Ein Abruf am Morgen (z. B. mit dem Morgen-Briefing) würde sie aktueller machen – nur mit deiner Freigabe für einen weiteren Lauf.
+
+## V5.9 (Auftrag vom 9.11.2026)
+34. **Direkt speichern einrichten (Silas, einmal je Gerät):** feingranularen GitHub-Schlüssel anlegen (nur sileyhunter/spuren,
+    «Contents: Read and write», 1 Jahr) und in den Einstellungen einfügen, dann «Verbindung testen». Die echte GitHub-API war hier nicht
+    erreichbar; getestet mit einer nachgebildeten Antwort. Zu prüfen am iPhone: Check-in, eine Eingabe im Flugmodus, danach mit Netz.
+35. **Schlüssel läuft nach einem Jahr ab:** Die Seite meldet dann «ungültig oder abgelaufen», die Eingaben warten. Erinnerung im
+    Morgen-Briefing einen Monat vorher wäre möglich (nur mit Freigabe).
+36. **Jede Eingabe ist ein Commit auf main** («Eingang») und löst einen Pages-Build aus. Bei vielen Eingaben am Tag wäre ein eigener Zweig für
+    `eingang/` möglich; das Update müsste ihn dann zusätzlich holen.
