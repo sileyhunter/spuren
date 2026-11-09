@@ -37,3 +37,16 @@ GitHub-API, Garmin-Lauf, brouter.de, Open-Meteo nachgebildet oder nicht erreichb
 | Ringe und Bereitschaft mit Morgenwerten und Uhrzeit des Stands | ja | ja (E2E: «Morgenwerte von heute · Stand 08:31 (Morgen-Update)») | offen |
 | Nacht-Update danach ohne Doppel | ja | ja (test_tools) | offen |
 | Fehlgeschlagener Morgenlauf lässt data.enc.json unverändert | ja (nichts committen) | – | offen |
+
+## Paket 1 · V5.9.1 · Trainingslast richtig rechnen (E1: LT2, vorläufig bis zum neuen Test; E2: alle Sportarten)
+| Punkt | implementiert | lokal getestet | produktiv getestet |
+|---|---|---|---|
+| Feld `tl2` neben `tss`, Rad NP gegen LT2 aus `config.last_ref`, nie FTP, keine Umrechnung zwischen Leistungsmessern | ja (`tools/last.py`) | ja (test_tools mit erfundener Fahrt, ± 1) | ja (echte Daten, lokal: Fahrt 8.11. = Abnahmewert aus dem Auftrag ± 1) |
+| Je Datum der letzte Test davor; vor dem ersten Test der erste, gekennzeichnet; Referenz «vorläufig» | ja | ja (test_tools, test_v59) | ja (Referenz aus dem Test 29.4.2026, vorläufig) |
+| `tss` aller 1776 Aktivitäten unverändert | ja | ja | ja (Vergleich mit der Sicherung; check_referenz «GESAMT: bestanden») |
+| Fitness, Ermüdung, Form, Ring, Bereitschaft zählen alle Sportarten (auch Wandern) | ja (unverändert) | ja | ja |
+| Wochenlast je Sportart in Farbe | ja (Fortschritt) | ja (E2E 390 × 844, 1280 × 900) | offen (iPhone) |
+| Vergleich alt → neu je Woche und Sportart, 12 Wochen | ja (Seite und `last.py --vergleich`) | ja | ja (Tabelle an Silas) |
+| Umschalten `config.load_model = "last-2.0"` erst nach Silas' Okay | vorbereitet (Seite rechnet in beiden Modi; E2E beide) | ja | offen (Okay von Silas) |
+| Nacht-Update rechnet `tl2` für neue Einheiten | ja (`merge_daily.py`) | ja (test_tools) | offen (nächste Nacht) |
+

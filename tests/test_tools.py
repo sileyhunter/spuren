@@ -584,5 +584,39 @@ check("Nacht-Update danach: gleiche Tage und Workouts ersetzt, nicht ergänzt",
       [d["date"] for d in _n10["days"]] == ["2026-11-09", "2026-11-10"] and _n10["days"][1]["kcalOut"] == 2750
       and [p["title"] for p in _n10["planned"]] == ["Alt", "Lauf locker", "Rad"] and len(_n10["workouts_neu"]) == 1 and _n10.get("updated_lauf") == "Nacht-Update")
 
+# ---------- V5.9.1 Trainingslast mit LT2 (last-2.0, erfundene Werte) ----------
+import last as LAST  # noqa: E402
+_cfg11 = {"ftp": 300, "last_ref": {"rad": [{"ab": "2026-05-01", "lt2_w": 250, "status": "vorläufig", "quelle": "Test"}]}}
+_A11 = [{"id": "r1", "date": "2026-11-08", "sport": "rad", "dur": 9000, "np": 210, "tss": 123},
+        {"id": "r0", "date": "2025-06-01", "sport": "rad", "dur": 3600, "np": 250, "tss": 80},
+        {"id": "l1", "date": "2026-11-07", "sport": "lauf", "dur": 3600, "tss": 70},
+        {"id": "w1", "date": "2026-11-06", "sport": "wandern", "dur": 14400, "tss": 90},
+        {"id": "r2", "date": "2026-11-05", "sport": "rad", "dur": 3600, "tss": 50}]
+_D11 = {"config": _cfg11, "activities": copy.deepcopy(_A11)}
+_n11 = LAST.alle(_D11)
+_t11 = {a["id"]: a.get("tl2") for a in _D11["activities"]}
+check("Trainingslast last-2.0: Fahrt NP 210 W, Timer 2:30:00 mit LT2 250 W → 176 ± 1 (Garmin-Last 123 bleibt)", abs(_t11["r1"] - 176) <= 1, str(_t11))
+check("Trainingslast: vor dem ersten Test gilt der erste (gekennzeichnet), Lauf/Wandern/Rad ohne NP wie bisher, tss nie überschrieben",
+      _t11["r0"] == 100 and LAST.ref_fuer(_cfg11, "2025-06-01")[1] is True and _t11["l1"] == 70 and _t11["w1"] == 90 and _t11["r2"] == 50
+      and [a["tss"] for a in _D11["activities"]] == [a["tss"] for a in _A11] and _n11 == 2 and _D11["versions"]["last"]["v"] == "last-2.0", str(_t11))
+_cfg11b = dict(_cfg11, last_ref={"rad": [{"ab": "2026-05-01", "lt2_w": 250}, {"ab": "2026-12-05", "lt2_w": 262}]})
+check("Trainingslast: je Datum gilt der letzte Test davor", LAST.ref_fuer(_cfg11b, "2026-12-04")[0]["lt2_w"] == 250 and LAST.ref_fuer(_cfg11b, "2026-12-05")[0]["lt2_w"] == 262)
+_V11 = LAST.vergleich(_D11, 2, "2026-11-08")
+check("Trainingslast: Vergleich je Woche und Sportart bisher → neu (nur Rad ändert)", _V11["2026-11-02"]["rad"] == [123 + 50, 176 + 50] and _V11["2026-11-02"]["lauf"] == [70, 70], json.dumps(_V11))
+_t12 = tempfile.mkdtemp()
+json.dump({"activities": [], "days": [], "config": {"ftp": 300}}, open(os.path.join(_t12, "d.json"), "w"))
+json.dump({"config": {"last_ref": _cfg11["last_ref"]}, "activities": [{"garmin_id": 88, "name": "Rolle", "type": "virtual_ride", "start_local": "2026-11-09T18:00:00",
+           "duration_s": 3600, "distance_m": 30000, "elev_gain_m": 0, "avg_hr": 140, "avg_power": 220, "np": 230}]}, open(os.path.join(_t12, "n.json"), "w"))
+merge_daily.main(os.path.join(_t12, "d.json"), os.path.join(_t12, "n.json"))
+_a12 = json.load(open(os.path.join(_t12, "d.json")))["activities"][0]
+check("Nacht-Update: neue Radeinheit bekommt tl2 gleich mit, tss weiter mit der Garmin-FTP", _a12["tss"] == round((230 / 300) ** 2 * 100) and _a12["tl2"] == round((230 / 250) ** 2 * 100), str(_a12))
+_d12 = json.load(open(os.path.join(_t12, "d.json")))
+_d12["updated"] = "08.11.2026 23:26"; json.dump(_d12, open(os.path.join(_t12, "d.json"), "w"))
+json.dump({"config": {"last_ref": {"rad": [{"ab": "2026-04-29", "lt2_w": 270}]}}}, open(os.path.join(_t12, "c.json"), "w"))
+merge_daily.main(os.path.join(_t12, "d.json"), os.path.join(_t12, "c.json"))
+_e12 = json.load(open(os.path.join(_t12, "d.json")))
+check("Nur config eingespielt: tl2 neu gerechnet, «Daten vom …» bleibt beim letzten Garmin-Abruf",
+      _e12["activities"][0]["tl2"] == round((230 / 270) ** 2 * 100) and _e12["updated"] == "08.11.2026 23:26", str(_e12.get("updated")))
+
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)

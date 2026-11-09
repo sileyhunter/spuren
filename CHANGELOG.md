@@ -1,5 +1,28 @@
 # Änderungen
 
+## V5.9.1 · 9.11.2026 · Paket 1 «Trainingslast richtig rechnen» (last-2.0)
+Auftrag V5.9, Entscheide E1 (Rad-Last mit der LT2, nie FTP; bis zum neuen Stufentest gilt die LT2-Vorschau vom 29.4.) und E2 (alle Sportarten zählen).
+
+- **Neues Feld `tl2` je Aktivität** neben `tss` (`tools/last.py`, Regel last-2.0): Rad (Rolle und draussen) mit Leistung =
+  Timer-Dauer × (NP / LT2)² × 100; die LT2 kommt aus `config.last_ref` (Datum, Test, Methode, Quelle, Status), je Datum gilt der letzte
+  Test davor, vor dem ersten Test der erste (gekennzeichnet). Alle anderen Sportarten und Rad ohne Leistung wie bisher. `tss` bleibt
+  unverändert. Hinterlegt: LT2 (Dickhuth) aus dem Rad-Stufentest 29.4.2026, «vorläufig» (Test nicht ausbelastet, nicht bestätigt); der Wert
+  steht nur verschlüsselt in den Daten.
+- **Nacht-Update rechnet `tl2` gleich mit** (`merge_daily.py`), auch für alle älteren Aktivitäten, wenn sich die Referenz ändert.
+- **Fortschritt: «Wochenlast je Sportart»** – Trainingslast pro Woche in den Farben der Sportarten (12/26/52 Wochen, Antippen zeigt die
+  Woche), damit sichtbar ist, woher die Belastung kommt (Wandern zählt weiter mit, E2). Darunter der **Vergleich Garmin-FTP → LT2** für die
+  letzten 12 Wochen je Woche und Sportart, mit Fitness, Ermüdung und Form heute vorher/nachher.
+- **Noch nicht umgeschaltet:** Die Seite rechnet weiter mit der Garmin-Last, bis Silas den Vergleich bestätigt; dann
+  `config.load_model = "last-2.0"`. Danach rechnen Fitness, Ermüdung, Form, stärkster Fitness-Anstieg, Belastungs-Ring, «Belastung 7 Tage»
+  und die Last je Einheit im Kalender mit `tl2`; Fahrten vor dem ersten Test sind im Kalender gekennzeichnet.
+- «Daten vom …» bleibt beim letzten Garmin-Abruf, wenn nur `config`, Laktat oder Eingaben eingespielt werden (bisher sprang der Stand mit).
+
+Geprüft: `test_tools.py` (erfundene Fahrt: NP 210 W, Timer 2:30:00, LT2 250 W → tl2 176; vor dem ersten Test gekennzeichnet; Lauf/Wandern/Rad ohne
+NP unverändert; je Datum der letzte Test davor; Vergleich je Woche und Sportart; neue Fahrt im Nacht-Update bekommt tl2; Stand bleibt bei
+config allein), `test_v59.cjs` (Referenz je Datum, Vergleich), `check_referenz.py` «GESAMT: bestanden» und `tss` aller 1776 Aktivitäten
+gleich wie vorher. Mit den echten Daten (nur lokal, verschlüsselt): die Fahrt vom 8.11. ergibt den Abnahmewert aus dem Auftrag (± 1); die
+Vergleichstabelle der letzten 12 Wochen ging an Silas. E2E (erfundene Daten) in beiden Modi auf 390 × 844 und 1280 × 900, ohne Programmfehler.
+
 ## V5.9.2 · 9.11.2026 · Paket 2 «Morgen-Update» (morgen-1.0)
 Auftrag V5.9, Entscheid E3 (täglich 08:30, nur lesend auf Garmin).
 

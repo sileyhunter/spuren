@@ -11,6 +11,7 @@ import zoneinfo
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import garmin_ernaehrung  # noqa: E402   V5.7.2: Garmin-Ernährungsprotokoll → Fueling
+import last  # noqa: E402                V5.9.1: Trainingslast mit LT2 (tl2, last-2.0)
 
 ZRH = zoneinfo.ZoneInfo("Europe/Zurich")
 TYPES = {  # Garmin-Typ -> (Kategorie, Bezeichnung, indoor)
@@ -197,6 +198,9 @@ def v5_merge(D, N):
         print("V5:", "; ".join(msg))
 
 
+GARMIN_KEYS = ("activities", "days", "weights", "planned", "planned_range", "workouts_neu", "food_logs", "wx")
+
+
 def main(data_path, new_path, fit_path=None):
     D = json.load(open(data_path, encoding="utf-8"))
     N = json.load(open(new_path, encoding="utf-8"))
@@ -320,7 +324,10 @@ def main(data_path, new_path, fit_path=None):
         log.append({"nacht": dt.datetime.now(ZRH).strftime("%Y-%m-%d"), "neu": added, "fit": fit_used, "fehlt": fit_missing})
         print(f"FIT-Sekundenwerte: {fit_used} ausgewertet, {len(fit_missing)} fehlen")
         del log[:-60]
-    D["updated"] = dt.datetime.now(ZRH).strftime("%d.%m.%Y %H:%M")
+    last.alle(D)                               # V5.9.1: tl2 je Aktivität (Rad NP gegen LT2), tss bleibt unverändert
+    # «Daten vom …» = letzter Abruf aus Garmin: Einspielen ohne Garmin-Daten (nur config, Laktat, Eingaben) lässt den Stand stehen
+    if fit_path or any(N.get(k) for k in GARMIN_KEYS) or not D.get("updated"):
+        D["updated"] = dt.datetime.now(ZRH).strftime("%d.%m.%Y %H:%M")
     if N.get("lauf") in ("morgen", "nacht"):              # V5.9.2 morgen-1.0: welcher Lauf zuletzt (Stand auf «Heute»)
         D["updated_lauf"] = "Morgen-Update" if N["lauf"] == "morgen" else "Nacht-Update"
     json.dump(D, open(data_path, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))

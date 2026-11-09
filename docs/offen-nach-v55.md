@@ -82,3 +82,10 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
     Morgen-Briefing einen Monat vorher wäre möglich (nur mit Freigabe).
 36. **Jede Eingabe ist ein Commit auf main** («Eingang») und löst einen Pages-Build aus. Bei vielen Eingaben am Tag wäre ein eigener Zweig für
     `eingang/` möglich; das Update müsste ihn dann zusätzlich holen.
+37. **Trainingslast umschalten (Silas):** Vergleich Garmin-FTP → LT2 liegt vor; die Seite rechnet weiter mit der Garmin-Last, bis Silas
+    bestätigt (`config.load_model = "last-2.0"`). Die hinterlegte LT2 ist eine Vorschau aus einem nicht ausbelasteten Test (29.4.2026); nach
+    dem neuen Stufentest mit Ausbelastung neuen Eintrag in `config.last_ref.rad` (ab Testdatum) – Fahrten davor behalten die bisherige.
+    Ältere Tests (Labor 15.8.2024, Stufentest 4.12.2025) sind nicht eingetragen (Vorschauen; E1: die Vorschau vom 29.4. bis zum neuen Test).
+38. **Eigene Referenz je Leistungsmesser:** Zwift-Rolle, Quarq und EngineCheck werden nicht ineinander umgerechnet; eine eigene LT2 je
+    System erst nach einer Vergleichsfahrt (gleiche Fahrt, zwei Messer).
+

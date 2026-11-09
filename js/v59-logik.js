@@ -75,6 +75,29 @@
     return out;
   };
 
+  /* ======================= last-2.0: Trainingslast mit LT2 (Rechnung in tools/last.py, hier nur Anzeige) ======================= */
+  /** LT2-Referenz für ein Datum wie tools/last.py → { r, vorErstem } (r = null ohne Referenz). */
+  L.lastRef = function (cfg, datum) {
+    const lst = ((((cfg || {}).last_ref) || {}).rad || []).slice().sort((a, b) => a.ab.localeCompare(b.ab));
+    if (!lst.length) return { r: null, vorErstem: false };
+    const davor = lst.filter((x) => x.ab <= datum);
+    return davor.length ? { r: davor[davor.length - 1], vorErstem: false } : { r: lst[0], vorErstem: true };
+  };
+  const montag = (iso) => { const d = new Date(iso + "T12:00:00Z"), w = (d.getUTCDay() + 6) % 7; d.setUTCDate(d.getUTCDate() - w); return d.toISOString().slice(0, 10); };
+  L.montag = montag;
+  /** Vergleich je Woche (ISO-Montag) und Sportart wie tools/last.py vergleich(): [bisher, neu] mit bisher = tss wie geliefert
+   *  (tss0, falls die Seite tss schon ersetzt hat), neu = tl2 (fehlt → bisher). Ergebnis: je Woche { sport: [bisher, neu] }. */
+  L.lastVergleich = function (acts, wochen) {
+    const out = wochen.map(() => ({}));
+    for (const a of acts || []) {
+      const k = a && a.date ? wochen.indexOf(montag(a.date)) : -1;
+      if (k < 0) continue;
+      const alt = isNum(a.tss0) ? a.tss0 : isNum(a.tss) ? a.tss : 0, neu = isNum(a.tl2) ? a.tl2 : alt, s = a.sport || "andere";
+      const r = (out[k][s] = out[k][s] || [0, 0]); r[0] += alt; r[1] += neu;
+    }
+    return out;
+  };
+
   /* ======================= morgen-1.0: Heute geplant ======================= */
   /** Einheiten aus dem Garmin-Kalender für einen Tag (mit ihrer Stelle in planned, für «Passende Route finden»). */
   L.geplantAm = function (planned, datum) {

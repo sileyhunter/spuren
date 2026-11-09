@@ -107,3 +107,18 @@ test("Heute geplant: Einheiten des Tages mit ihrer Stelle in planned; Stand aus 
   assert.equal(L.standText("09.11.2026 22:58", "2026-11-10").text, "Stand 09.11. 22:58");
   assert.equal(L.standText(null, "2026-11-10"), null, "ohne Update kein Stand (nie geraten)");
 });
+
+/* ---------------- last-2.0 (Rechnung in tools/last.py, hier Referenz und Vergleich für die Seite) ---------------- */
+test("Trainingslast last-2.0: Referenz je Datum (letzter Test davor, vorher der erste, gekennzeichnet) und Vergleich je Woche und Sportart", () => {
+  const cfg = { last_ref: { rad: [{ ab: "2026-12-05", lt2_w: 262 }, { ab: "2026-05-01", lt2_w: 250, status: "vorläufig" }] } };
+  assert.equal(L.lastRef(cfg, "2026-11-08").r.lt2_w, 250);
+  assert.equal(L.lastRef(cfg, "2026-11-08").vorErstem, false);
+  assert.equal(L.lastRef(cfg, "2026-12-05").r.lt2_w, 262, "ab dem Testtag gilt der neue Test");
+  assert.deepEqual(L.lastRef(cfg, "2025-01-01"), { r: { ab: "2026-05-01", lt2_w: 250, status: "vorläufig" }, vorErstem: true });
+  assert.deepEqual(L.lastRef({}, "2026-11-08"), { r: null, vorErstem: false }, "ohne Referenz nichts geraten");
+  const acts = [{ date: "2026-11-08", sport: "rad", tss: 176, tss0: 123, tl2: 176 }, { date: "2026-11-07", sport: "lauf", tss: 70, tss0: 70, tl2: 70 },
+    { date: "2026-11-09", sport: "wandern", tss: 90 }, { date: "2026-10-01", sport: "rad", tss: 50 }, { date: "2026-11-10", sport: "rad", tss: null, tl2: null }];
+  assert.deepEqual(L.lastVergleich(acts, ["2026-11-02", "2026-11-09"]), [{ rad: [123, 176], lauf: [70, 70] }, { wandern: [90, 90], rad: [0, 0] }],
+    "bisher = tss wie geliefert (tss0), neu = tl2; nur Rad ändert; ausserhalb der Wochen nichts");
+  assert.equal(L.montag("2026-11-15"), "2026-11-09"); assert.equal(L.montag("2026-11-16"), "2026-11-16");
+});

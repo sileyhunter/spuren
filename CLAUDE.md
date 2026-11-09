@@ -46,7 +46,8 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   (Trainingsvorschau im Planer, Startorte verschlüsselt, Regler, Kalender «Passende Route finden» `data-str`, «Vorschlag vs. Ist» `data-trv`)
 - **V5.9:** `js/eingang.js` (Direkt speichern: Delta, EGS1, GitHub-Schlüssel, Warteschlange), `js/v59-logik.js` (Rechenlogik ohne DOM:
   Check-in, Gefühl gegen Morgenwerte, Heute geplant, Trainingslast, CSS), `js/v59.js` (Check-in, Einstellungen, Laktat bestätigen …),
-  `tools/eingang.mjs` (eingang/ einlesen, aufräumen, prüfen), `tools/eingaben_lib.mjs` (Zuordnung Eingaben → merge_daily.py), `tests/test_v59.cjs`
+  `tools/eingang.mjs` (eingang/ einlesen, aufräumen, prüfen), `tools/eingaben_lib.mjs` (Zuordnung Eingaben → merge_daily.py), `tests/test_v59.cjs`,
+  `tools/last.py` (V5.9.1 Trainingslast `tl2` mit der LT2, Vergleich; Abschnitt «FTP und Trainingslast»)
 - **V5.8:** keine neuen Dateien; Rechenlogik in `js/route.js` (Abschnitte von Hand, Skitourennetz, Hangneigung, MTB-Abfahrt, Wegende, drei
   Rennradvarianten, Windpfeile), Oberfläche in `js/routen-ui.js`, Ringe «Heute» in `js/formkurve.js` (`FK.ringeVerlauf`) und `js/v55.js` (`V55.ringe`)
 - `tests/test_formkurve.cjs`, `tests/test_route.cjs`, `tests/test_analyse.cjs`, `tests/test_training.cjs`, `tests/test_tools.py` – Abnahmetests (erfundene Werte; `tests/fixtures/` = echte
@@ -347,10 +348,21 @@ Kein Live-Push, wenn ein Test fehlschlägt. Screenshots mit echten Daten nie ins
 - Auf Silas' Wunsch sind die FTP-Karten (Fortschritt «Trainingslast: Garmin-FTP …», Leistung «Rad: FTP und Watt/kg») ausgeblendet
   (`data-ausgeblendet`); Daten und Werkzeuge bleiben. Er trainiert nach Laktat und testet keine FTP.
 - `tss` ist die ursprüngliche Trainingslast (Rad mit der in Garmin eingestellten FTP). Sie wird nie überschrieben.
-- Die Seite rechnet daneben eine Probe aus NP und `ftp_e` (geschätzte FTP des Radsystems zum damaligen Datum,
-  neue Fahrten ohne `ftp_e` mit `ftp_est.now`). `config.load_model` steuert, was die Seite verwendet:
-  `"garmin"` (Standard) oder `"ftp_est"`. Auf `"ftp_est"` erst umstellen, wenn Silas die Probe bestätigt.
-- `config.ftp` bleibt der Garmin-Wert (für die bisherige Berechnung im Nacht-Update).
+- **V5.9.1 last-2.0 (E1):** `tl2` je Aktivität neben `tss` (`tools/last.py`, rechnet `merge_daily.py` bei jedem Einspielen für alle
+  Aktivitäten neu, also auch im Nacht-Update): Rad mit NP = Timer-Dauer × (NP / LT2)² × 100, LT2 aus `config.last_ref.rad` (je Datum der
+  letzte Test davor, vor dem ersten der erste, gekennzeichnet; nie FTP, keine Umrechnung zwischen Leistungsmessern); sonst `tl2` = `tss`.
+  Hinterlegt seit 9.11.2026: die LT2-Vorschau aus dem Rad-Stufentest 29.4.2026, «vorläufig» (Test nicht ausbelastet; Wert nur verschlüsselt
+  in den Daten, nie in Doku oder Tests). Vergleich: `python3 -I tools/last.py data.json
+  --vergleich [--wochen 12] [--bis JJJJ-MM-TT]`.
+- **Neuer Rad-Stufentest:** erst nach B1 (bestätigt) und `check_referenz.py` «GESAMT: bestanden» einen Eintrag ergänzen
+  (`ab` = Testdatum, `lt2_w`, `lt2_genau_w`, `methode`, `test` = ID in `schwellen.tests`, `quelle`, `status`, `festgelegt`) – mit Silas' Okay
+  zur Methode, nie eine Schwelle ausserhalb der Stufen. Über `work/new.json` `"config": {"last_ref": {…}}` mit der **ganzen** Liste (config
+  ersetzt den Schlüssel), dann `merge_daily.py`. Ältere Einträge bleiben (Fahrten davor rechnen weiter mit ihnen).
+- `config.load_model` steuert, was die Seite verwendet: `"garmin"` (Standard, `tss` wie geliefert), `"last-2.0"` (`tl2`; erst nach Silas'
+  Okay zum Vergleich) oder `"ftp_est"` (alte Probe aus NP und `ftp_e`, nicht mehr verfolgt). Die Seite zeigt den Vergleich in Fortschritt
+  «Wochenlast je Sportart».
+- `config.ftp` bleibt der Garmin-Wert (für `tss` im Nacht-Update); die Seite braucht ihn mit last-2.0 nicht mehr.
+- Einspielen ohne Garmin-Daten (nur `config`, Laktat, Eingaben) lässt `updated` («Daten vom …») stehen.
 
 ## Laktat (kommt über den Chat)
 - **Kurzcheck** (meist Zwift, Block z. B. 10 min @ 220 W, Laktat am Ende des Blocks): Einheit finden, Block über Runden
