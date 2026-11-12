@@ -584,6 +584,32 @@ check("Nacht-Update danach: gleiche Tage und Workouts ersetzt, nicht ergänzt",
       [d["date"] for d in _n10["days"]] == ["2026-11-09", "2026-11-10"] and _n10["days"][1]["kcalOut"] == 2750
       and [p["title"] for p in _n10["planned"]] == ["Alt", "Lauf locker", "Rad"] and len(_n10["workouts_neu"]) == 1 and _n10.get("updated_lauf") == "Nacht-Update")
 
+# ---------- V5.9.6 Laktat-Einzelmessungen über die Zeit (laktat-drift-1.0, erfundene Sekundenreihe) ----------
+import series as SER14  # noqa: E402
+import laktat_vorschau as LV14  # noqa: E402
+_S14 = SER14.Session()
+_S14.sport, _S14.start = 2, 1_000_000
+_ts, _pw = [], []
+for _i in range(0, 600):                     # 10 min fahren (Timer läuft)
+    _ts.append(_S14.start + _i); _pw.append(220)
+for _i in range(600, 640):                   # 40 s angehalten, Timer läuft weiter (0 W)
+    _ts.append(_S14.start + _i); _pw.append(0)
+_t = _S14.start + 640 + 90                   # 90 s Lücke: Timer gestoppt für die Messung
+for _i in range(0, 120):                     # weiterfahren
+    _ts.append(_t + _i); _pw.append(215)
+_S14.ts, _S14.pw = _ts, _pw
+_S14.cad = [85 if p_ else 0 for p_ in _pw]
+_S14.hr = [140] * len(_ts)
+_z14 = LV14.zeitpunkt(_S14, _S14.start + 599)
+check("Laktat-Zeitpunkt: Fahrzeit bis zum Blockende, Pause bis zum Weiterfahren und gestoppter Timer",
+      _z14 == {"t_s": 600, "el_s": 599, "pause_s": 40 + 90, "pause_timer_s": 90}, str(_z14))
+_D14 = {"laktat_vorschau": [{"id": "check-z", "art": "check", "status": "vorschau", "sport": "rad", "datum": "2026-05-10", "aktivitaet": "g9", "datei": "Notiz",
+        "fenster": ["18:00:00", "18:09:59"], "zeilen": [{"x": 220, "la": 1.4, "quelle": {"stelle": "Notiz"}}],
+        "kandidaten": [{"x": 220, "hr": 140, "np": 221, "uhr": "18:10", "kj_vor": 120, "win_s": 600, "hr30": 141, **_z14}]}], "lactate": [], "audit": []}
+merge_daily.laktat_uebernehmen(_D14, "check-z")
+_e14 = _D14["lactate"][0]
+check("Bestätigung (B1) nimmt Zeitpunkt, Pause und Fenster mit", _e14["t_s"] == 600 and _e14["pause_timer_s"] == 90 and _e14["fenster"] == ["18:00:00", "18:09:59"] and _e14["uhr"] == "18:10", str(_e14))
+
 # ---------- V5.9.4 Testkalender mit CSS-Tests (css-2.0) ----------
 _t13 = tempfile.mkdtemp()
 json.dump({"activities": [], "days": [], "config": {}, "updated": "08.11.2026 23:26", "tests": [{"date": "2026-11-21", "kind": "check", "note": "x", "status": "vorschlag"}]}, open(os.path.join(_t13, "d.json"), "w"))

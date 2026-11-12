@@ -1,5 +1,24 @@
 # Änderungen
 
+## V5.9.6 · 12.11.2026 · Laktat-Einzelmessungen über die Zeit (laktat-drift-1.0)
+Wunsch vom 12.11.: Einzelmessungen filtern, beim Antippen mehr Infos, und sehen, ob Laktat bei gleicher Leistung mit der Zeit steigt.
+
+- **«Einzelmessungen» zeigt die Werte über die Zeit in der Einheit** (Fahrzeit bis zum Blockende) statt über die Leistung, wo Messungen
+  derselben Einheit aufeinander lagen. Eine Linie verbindet nur Messungen derselben Einheit bei gleicher Leistung (±5 %); gestrichelt =
+  Vorschau. Ohne Fahrzeit aus der FIT-Datei gilt die Uhrzeit des Blockendes minus Start (gekennzeichnet «ab Start»), sonst bleibt die Zeit offen.
+- **Antippen zeigt mehr:** Zeitpunkt in der Einheit, Pause für die Messung (bis zum Weiterfahren, davon Timer gestoppt), Vorbelastung und
+  unter «In dieser Einheit» alle Messungen der Einheit mit der Veränderung je Paar (Laktat, Puls, Leistung, Minuten dazwischen) und dem Urteil
+  «steigt», «gleich», «sinkt» oder «nicht vergleichbar».
+- **Regel laktat-drift-1.0:** gleiche Leistung = höchstens 5 % Unterschied; ein Unterschied zählt erst, wenn er grösser ist als
+  2·√(σ₁² + σ₂²) mit σ = max(0,15 mmol/l; 7,5 %) je Wert (Messfehler wie schwellen-1.0), sonst «gleich».
+- `tools/laktat_vorschau.py` rechnet je Check-Block `t_s` (Fahrzeit), `el_s` (ab Start), `pause_s` und `pause_timer_s`; die Bestätigung
+  (B1, `merge_daily.py`) nimmt sie mit Fenster, Uhrzeit, Vorbelastung und Puls der letzten 30 s in `lactate` mit. Die beiden Checks vom
+  11.11. sind damit ergänzt (nur neue Felder, Werte unverändert).
+
+Geprüft: `test_formkurve.cjs` (Zeitpunkt aus Fahrzeit bzw. Uhrzeit, über Mitternacht, offen ohne Zeit; «gleich», «steigt», «nicht
+vergleichbar»), `test_tools.py` (Fahrzeit, Pause und gestoppter Timer aus einer erfundenen Sekundenreihe; B1 nimmt die Felder mit),
+E2E 390 × 844 (Filter, Diagramm über die Zeit, Antippen, Wechsel zwischen Messungen derselben Einheit, ohne Programmfehler).
+
 ## V5.9.4 · 9.11.2026 · Paket 4 «Schwimmen – nur der CSS-Test zählt» (css-2.0)
 Auftrag V5.9, Entscheid E6 (nur der CSS-Test zählt; Termine wie im Auftrag).
 

@@ -75,6 +75,30 @@ test("Einzelmessung: anklickbar, kein Kurvensegment, keine Schwelle", () => {
   assert.ok(FK.qualityFlags(L.singles[0]).includes("Vorschau: noch nicht bestätigt"));
 });
 
+test("Einzelmessungen über die Zeit (laktat-drift-1.0): gleiche Einheit und Leistung → Urteil mit Messgenauigkeit", () => {
+  const D = { schwellen: SCHWELLEN, laktat_vorschau: [], activities: [{ id: "a1", start: "18:00", name: "Rolle" }, { id: "a2", start: "07:30", name: "Lang" }],
+    lactate: [
+      { id: "c1", kind: "check", date: "2026-05-10", sport: "rad", w: 205, lactate: 1.4, hr_avg: 140, activity: "a1", t_s: 1800, pause_s: 70, pause_timer_s: 60 },
+      { id: "c2", kind: "check", date: "2026-05-10", sport: "rad", w: 207, lactate: 1.6, hr_avg: 142, activity: "a1", t_s: 5400 },
+      { id: "c3", kind: "check", date: "2026-05-17", sport: "rad", w: 210, lactate: 1.3, hr_avg: 138, activity: "a2", uhr: "08:15" },
+      { id: "c4", kind: "check", date: "2026-05-17", sport: "rad", w: 211, lactate: 2.4, hr_avg: 151, activity: "a2", uhr: "10:45" },
+      { id: "c5", kind: "check", date: "2026-05-17", sport: "rad", w: 250, lactate: 2.6, hr_avg: 158, activity: "a2", uhr: "11:30" }] };
+  const L = FK.lactateData(D);
+  assert.equal(L.singles.find((x) => x.id === "c1").pause_timer_s, 60, "Pause und Zeitpunkt gehen mit");
+  const V = FK.laktatVerlauf(L.singles, D.activities);
+  assert.equal(V.length, 2);
+  const g1 = V.find((g) => g.aktivitaet === "a1");
+  assert.deepEqual(g1.punkte.map((p) => [p.t_min, p.t_art]), [[30, "fahrzeit"], [90, "fahrzeit"]]);
+  assert.equal(g1.paare[0].urteil, "gleich", "+0,2 mmol/l liegt innerhalb ±0,42");
+  assert.equal(g1.paare[0].grenze, 0.42);
+  const g2 = V.find((g) => g.aktivitaet === "a2");
+  assert.deepEqual(g2.punkte.map((p) => [p.t_min, p.t_art]), [[45, "ab_start"], [195, "ab_start"], [240, "ab_start"]], "ohne Fahrzeit: Uhrzeit minus Start");
+  assert.deepEqual(g2.paare.map((q) => q.urteil), ["steigt", "nicht vergleichbar"], "+1,1 mmol/l bei gleicher Leistung steigt; 211 → 250 W nicht vergleichbar");
+  assert.equal(FK.laktatZeit({ ende: "00:20" }, { start: "23:50" }).min, 30, "über Mitternacht");
+  assert.deepEqual(FK.laktatZeit({}, null), { min: null, art: null }, "ohne Zeit: offen, nie geraten");
+  assert.equal(FK.VERSIONS.laktat_drift, "laktat-drift-1.0");
+});
+
 /* ---------- Readiness ---------- */
 const base = (f) => days("2026-01-01", 70, (i) => ({ hrv: 80 + ((i * 7) % 5) - 2, rhr: 46 + (i % 3) - 1, sleepH: 7.5, ...((f && f(i)) || {}) }));
 const ACTS = Array.from({ length: 70 }, (_, i) => ({ date: FK.addDays("2026-01-01", i), tss: 60, sport: "rad" }));

@@ -11,7 +11,7 @@
     cockpit: "cockpit-1.0", readiness: "readiness-1.0", langfahrt: "langfahrt-2.0", koppel: "koppel-1.1",
     fueling: "fueling-1.0", eta: "eta-1.0", cda: "cda-1.0", fit: "fit-js-1.0", wetter: "wetter-1.0",
     pmc: "pmc-2.0", zonen: "zonenverteilung-2.0", orientierung: "langfahrt-orientierung-1.0", entwicklung: "entwicklung-1.0", laufeffizienz: "laufeffizienz-1.0",
-    ringe: "ringe-1.0",
+    ringe: "ringe-1.0", laktat_drift: "laktat-drift-1.0",
   };
   const DAY = 864e5;
   const isNum = (v) => typeof v === "number" && isFinite(v);
@@ -127,7 +127,9 @@
       seen.add(l.id || `${l.date}-${l.sport}`);
       singles.push({ id: l.id || `${l.date}-${l.sport}`, datum: l.date, sport: l.sport || "rad", x: l.w ?? (l.pace_s ? 3600 / l.pace_s : null), soll: l.w ?? null,
         la: l.lactate, hf: l.hr_avg ?? null, hf_max: l.hr_max ?? null, np: l.np ?? null, drift: l.drift ?? null, block: l.block ?? null,
-        aktivitaet: l.activity || null, quelle: l.quelle || "Chat", status: "bestätigt", zuordnung: l.zuordnung || null, hinweise: l.note ? [l.note] : [] });
+        aktivitaet: l.activity || null, quelle: l.quelle || "Chat", status: "bestätigt", zuordnung: l.zuordnung || null, hinweise: l.note ? [l.note] : [],
+        t_s: l.t_s ?? null, el_s: l.el_s ?? null, pause_s: l.pause_s ?? null, pause_timer_s: l.pause_timer_s ?? null, ende: l.uhr || null,
+        fenster: l.fenster || null, kj_vor: l.kj_vor ?? null, dauer_s: l.win_s ?? null, hf30: l.hr30 ?? null });
     }
     for (const p of D.laktat_vorschau || []) {
       if (p.art !== "check" || p.status !== "vorschau" || seen.has(p.id)) continue;
@@ -137,10 +139,49 @@
         hf_max: k ? k.hr_max : null, hf60: k ? k.hr60 : null, hf30: k ? k.hr30 : null, np: k ? k.np : null, drift: k ? k.drift : null,
         dauer_s: k ? k.win_s : null, ende: k ? k.uhr : null, fenster: p.fenster || null, kj_vor: k ? k.kj_vor : null, cad: k ? k.cad : null,
         block: p.block || (k && k.uhr) || null, kandidaten: (p.kandidaten || []).length, aktivitaet: p.aktivitaet, quelle: (z.quelle && z.quelle.stelle) || p.datei,
-        status: "vorschau", zuordnung: p.zuordnung, regel: p.regel, hinweise: p.hinweise || [] });
+        status: "vorschau", zuordnung: p.zuordnung, regel: p.regel, hinweise: p.hinweise || [],
+        t_s: k ? k.t_s ?? null : null, el_s: k ? k.el_s ?? null : null, pause_s: k ? k.pause_s ?? null : null, pause_timer_s: k ? k.pause_timer_s ?? null : null });
     }
     singles.sort((a, b) => a.datum.localeCompare(b.datum));
     return { tests, singles };
+  };
+  /* ---------------- laktat-drift-1.0: Einzelmessungen über die Zeit in der Einheit ---------------- */
+  FK.LAKTAT_DRIFT = { gleich_rel: 0.05, sigma_min: 0.15, sigma_rel: 0.075, z: 2 };   // Messfehler wie schwellen-1.0
+  const hmMin = (s) => { const m = /^(\d{1,2}):(\d{2})/.exec(s || ""); return m ? +m[1] * 60 + +m[2] : null; };
+  /** Zeit in der Einheit am Blockende (min): Fahrzeit (Timer) aus der FIT-Datei, sonst Uhrzeit des Blockendes minus Start (ab Start, ±1 min). */
+  FK.laktatZeit = function (s, act) {
+    if (s.t_s != null) return { min: s.t_s / 60, art: "fahrzeit" };
+    const e = hmMin(s.ende || (s.fenster && s.fenster[1])), a = hmMin(act && act.start);
+    if (e != null && a != null) { let d = e - a; if (d < 0) d += 1440; return { min: d, art: "ab_start" }; }
+    return { min: null, art: null };
+  };
+  /** Einzelmessungen je Einheit mit Zeitpunkt; je zwei aufeinanderfolgende Messungen bei gleicher Leistung (±5 %) ein Urteil:
+   *  Unterschied grösser als 2·√(σ1² + σ2²) mit σ = max(0,15 mmol/l; 7,5 %) → «steigt»/«sinkt», sonst «gleich» (innerhalb der Messgenauigkeit). */
+  FK.laktatVerlauf = function (singles, acts) {
+    const P = FK.LAKTAT_DRIFT, byId = new Map((acts || []).map((a) => [a.id, a])), G = new Map();
+    for (const s of singles || []) {
+      const key = s.aktivitaet || `${s.datum}|${s.id}`, z = FK.laktatZeit(s, byId.get(s.aktivitaet));
+      if (!G.has(key)) G.set(key, { aktivitaet: s.aktivitaet || null, datum: s.datum, sport: s.sport, name: (byId.get(s.aktivitaet) || {}).name || null, punkte: [] });
+      G.get(key).punkte.push(Object.assign({}, s, { t_min: z.min, t_art: z.art }));
+    }
+    const sig = (la) => Math.max(P.sigma_min, P.sigma_rel * la);
+    const out = [];
+    for (const g of G.values()) {
+      g.punkte.sort((a, b) => (a.t_min ?? 1e9) - (b.t_min ?? 1e9));
+      g.paare = [];
+      for (let i = 1; i < g.punkte.length; i++) {
+        const a = g.punkte[i - 1], b = g.punkte[i];
+        if (a.la == null || b.la == null) continue;
+        const gleich = a.x != null && b.x != null && Math.abs(b.x - a.x) <= P.gleich_rel * Math.max(a.x, b.x);
+        const grenze = P.z * Math.sqrt(sig(a.la) ** 2 + sig(b.la) ** 2), dla = b.la - a.la;
+        g.paare.push({ von: a.id, bis: b.id, dt_min: a.t_min != null && b.t_min != null ? b.t_min - a.t_min : null, dla: Math.round(dla * 100) / 100,
+          dhf: a.hf != null && b.hf != null ? Math.round((b.hf - a.hf) * 10) / 10 : null, dx: a.x != null && b.x != null ? Math.round((b.x - a.x) * 10) / 10 : null,
+          grenze: Math.round(grenze * 100) / 100, gleiche_leistung: gleich,
+          urteil: !gleich ? "nicht vergleichbar" : dla > grenze ? "steigt" : dla < -grenze ? "sinkt" : "gleich" });
+      }
+      out.push(g);
+    }
+    return out.sort((a, b) => a.datum.localeCompare(b.datum));
   };
   function pickCandidate(p) {
     const c = p.kandidaten || [];

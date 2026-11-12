@@ -113,6 +113,12 @@ def laktat_uebernehmen(D, pid):
              "block": p.get("block"), "activity": p.get("aktivitaet"), "zuordnung": p.get("zuordnung"),
              "note": "; ".join(p.get("hinweise") or []), "quelle": (z.get("quelle") or {}).get("stelle") or p.get("datei"),
              "bestaetigt": dt.date.today().isoformat()}
+        # V5.9.6 laktat-drift-1.0: Zeitpunkt in der Einheit und Pause für die Messung mitnehmen (für «Einzelmessungen über die Zeit»)
+        for f in ("t_s", "el_s", "pause_s", "pause_timer_s", "uhr", "kj_vor", "win_s", "hr30"):
+            if k.get(f) is not None:
+                e[f] = k[f]
+        if p.get("fenster"):
+            e["fenster"] = p["fenster"]
     _upsert(D, "lactate", [e], idf=lambda x: x.get("id"), what="Laktat")
     p["status"] = "übernommen"
     return True

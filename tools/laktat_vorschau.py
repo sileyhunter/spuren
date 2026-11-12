@@ -152,6 +152,49 @@ except Exception:  # pragma: no cover
     ZRH_TZ = ZRH
 
 
+def zeitpunkt(S, t1):
+    """V5.9.6 (laktat-drift-1.0): Blockende in der Einheit und die Pause für die Messung danach.
+    t_s = Fahrzeit (Timer) bis zum Blockende: Abstände zwischen Datensätzen bis 10 s zählen ganz, längere Lücken
+    (Timer gestoppt) als 1 s. el_s = Zeit ab Start (Uhr). pause_s = vom Blockende bis zum Weiterfahren (mind. 30 s am Stück),
+    pause_timer_s = davon mit gestopptem Timer. Ohne Anhalten in den 3 min nach dem Block: pause_s = 0."""
+    ts = S.ts
+    if not ts or t1 is None:
+        return {}
+    k = max((i for i, t in enumerate(ts) if t <= t1), default=None)
+    if k is None:
+        return {}
+    fahr = 1.0
+    for i in range(1, k + 1):
+        d = ts[i] - ts[i - 1]
+        fahr += d if d <= 10 else 1
+    out = {"t_s": int(round(fahr)), "el_s": int(round(t1 - S.start)) if S.start else None}
+    j0, stop0 = None, None
+    for i in range(k + 1, len(ts)):
+        if ts[i] - t1 > 180:
+            break
+        if ts[i] - ts[i - 1] > 10:
+            j0, stop0 = i, ts[i - 1] + 1
+            break
+        if not stufen._ride(S, i):
+            j0, stop0 = i, ts[i]
+            break
+    if j0 is None:
+        out["pause_s"], out["pause_timer_s"] = 0, 0
+        return out
+    m = None
+    for i in range(j0, len(ts)):
+        seg = range(i, min(i + 30, len(ts)))
+        if len(seg) == 30 and all(stufen._ride(S, q) for q in seg) and all(ts[q] - ts[q - 1] <= 2 for q in seg if q > i):
+            m = i
+            break
+    ende = ts[m] if m is not None else ts[-1]
+    out["pause_s"] = int(round(ende - stop0))
+    out["pause_timer_s"] = int(sum(ts[i] - ts[i - 1] - 1 for i in range(max(j0, 1), (m if m is not None else len(ts) - 1) + 1) if ts[i] - ts[i - 1] > 10))
+    if m is None:
+        out["pause_s"] = None                  # nicht weitergefahren (Ende der Einheit)
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("data")
@@ -230,6 +273,7 @@ def main():
                     if abs(r["level"] - x) <= TOL["rad"] and len(ride) >= 300:
                         r["ride"] = ride
                         b = stufen.block(S, r)
+                        b.update(zeitpunkt(S, b["t1"]))             # V5.9.6 laktat-drift-1.0: Zeit in der Einheit, Pause für die Messung
                         b["uhr"] = dt.datetime.fromtimestamp(b.pop("t1"), dt.timezone.utc).astimezone(ZRH_TZ).strftime("%H:%M")
                         b.pop("t0", None)
                         cand.append(b)

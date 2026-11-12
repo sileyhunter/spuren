@@ -18,7 +18,8 @@
   const BADGE = { "vorläufig": "warn", "nicht bestimmbar": "muted", "bestätigt": "ok", "vorschau": "next", "bestimmbar": "ok", "entwurf": "next", "aktiv": "ok", "bereit": "ok", "normal": "info", "vorsichtig": "warn",
     "nicht beurteilbar": "muted", "unbekannt": "muted", "niedrige Qualität": "muted", "FIT-abgeleitet": "info", "verbessert": "ok", "stabil": "info", "unklar": "muted", "verschlechtert": "warn",
     "vorschlag": "next", "auswählen": "next", "getrennt": "muted", "nicht validiert": "warn", "explorativ": "muted",
-    "offen": "next", "verbessern": "warn", "manueller Videovergleich": "info", "extern analysiert": "info", "nicht protokolliert": "muted", "gesendet": "info", "geplant": "info" };
+    "offen": "next", "verbessern": "warn", "manueller Videovergleich": "info", "extern analysiert": "info", "nicht protokolliert": "muted", "gesendet": "info", "geplant": "info",
+    "steigt": "warn", "gleich": "ok", "sinkt": "info", "nicht vergleichbar": "muted" };
   V.badge = (s, extra) => `<span class="badge ${BADGE[s] || ""}">${esc(s)}${extra ? " · " + esc(extra) : ""}</span>`;
   const TEST_COLORS = ["#148a7e", "#7a68d8", "#d9694a", "#3a7bd5", "#8a9a2b"];
   const SINGLE_COLOR = "#e08a3c";
@@ -224,6 +225,7 @@
       ) + (singles.length ? `<span class="chip static"><span class="dia" style="background:${SINGLE_COLOR}"></span>Einzelmessungen aus dem Training (${singles.length})</span>` : "");
     $("lz-legend").querySelectorAll("[data-f]").forEach((b) => b.addEventListener("click", () => { LZ.filter = b.dataset.f; LZ.sel = null; V.laktat(); }));
     $("lz-legend").querySelectorAll("[data-t]").forEach((b) => b.addEventListener("click", () => { const id = b.dataset.t; LZ.shown = LZ.shown.includes(id) ? LZ.shown.filter((x) => x !== id) : LZ.shown.concat(id); V.laktat(); }));
+    if (LZ.filter === "einzel") { drawEinzel(singles); return; }
     const prots = [...new Set(shown.map((t) => t.protokoll))];
     const ref = shown.filter((t) => t.protokoll === prots[0]).slice(-1)[0];
     const r = ref && lt(ref);
@@ -258,6 +260,49 @@
     $("lz-list").innerHTML = `<table class="t"><tr><th>Messpunkt</th><th>${u}</th><th>mmol/l</th><th>Puls</th><th></th></tr>${rows.map((r, i) => `<tr><td>${esc(r.lab)}</td><td>${num(r.x, u === "W" ? 0 : 2)}</td><td>${num(r.la, 1)}</td><td>${num(r.hf)}</td><td><button class="btn" data-i="${i}">öffnen</button></td></tr>`).join("")}</table>`;
     $("lz-list").querySelectorAll("[data-i]").forEach((b) => b.addEventListener("click", () => { LZ.sel = rows[+b.dataset.i].r; drawDetail(); $("lz-detail").focus(); }));
   }
+  /* V5.9.6 laktat-drift-1.0: Einzelmessungen über die Zeit in der Einheit, gleiche Einheit und gleiche Leistung verbunden */
+  const zeitTxt = (p) => (p.t_min == null ? "Zeit offen" : p.t_art === "fahrzeit" ? `Min ${C.mmss(Math.round(p.t_min * 60))}` : `Min ~${num(p.t_min)} ab Start`);
+  const xTxt = (x, u) => (x == null ? "–" : u === "W" ? `${num(x)} W` : `${FK().pace(3600 / x)} /km`);
+  function drawEinzel(singles) {
+    const u = unitOf(LZ.sport), G = FK().laktatVerlauf(singles, C.D.activities);
+    const pal = [SINGLE_COLOR, C.css("--accent"), C.css("--lt2"), C.css("--sleep"), C.css("--muted")];
+    const mitZeit = G.filter((g) => g.punkte.some((p) => p.t_min != null));
+    const ohne = G.flatMap((g) => g.punkte.filter((p) => p.t_min == null));
+    const ds = mitZeit.map((g, i) => {
+      const P = g.punkte.filter((p) => p.t_min != null), xs = P.map((p) => p.x).filter((x) => x != null), col = pal[i % pal.length];
+      const gleich = xs.length && Math.max(...xs) - Math.min(...xs) <= FK().LAKTAT_DRIFT.gleich_rel * Math.max(...xs);
+      const xl = !xs.length ? "" : gleich ? ` · ${xTxt(xs.reduce((s, x) => s + x, 0) / xs.length, u)}` : " · verschiedene Leistung";
+      return { type: "line", label: `${dch(g.datum)}${xl}`, showLine: !!gleich && P.length > 1, tension: 0, borderWidth: 1.5, borderColor: col, backgroundColor: col,
+        borderDash: P.some((p) => p.status === "vorschau") ? [5, 4] : [], pointStyle: "rectRot", pointRadius: 7, pointHoverRadius: 9,
+        data: P.map((p) => ({ x: Math.round(p.t_min * 10) / 10, y: p.la, _r: { k: "einzel", id: p.id }, _p: p })) };
+    });
+    C.chart("c-lac", { type: "line", data: { datasets: ds }, options: {
+      parsing: { xAxisKey: "x", yAxisKey: "y" }, interaction: { mode: "nearest", intersect: true },
+      onClick: (e, els, ch) => { if (!els.length) return; LZ.sel = ch.data.datasets[els[0].datasetIndex].data[els[0].index]._r; drawDetail(); },
+      scales: { x: { type: "linear", min: 0, title: { display: true, text: "Zeit in der Einheit bis zum Blockende (min)" } }, y: { min: 0, title: { display: true, text: "Blutlaktat (mmol/l)" } } },
+      plugins: { legend: { display: true, position: "bottom", labels: { boxWidth: 12, usePointStyle: true } }, tooltip: { callbacks: { label: (c) => { const p = c.raw._p;
+        return `${dch(p.datum)} · ${zeitTxt(p)} · ${xTxt(p.x, u)} · ${num(p.la, 1)} mmol/l${p.hf != null ? ` · Puls ${num(p.hf)}` : ""}${p.status === "vorschau" ? " (Vorschau)" : ""}`; } } } },
+    } });
+    $("lz-note").innerHTML = `Einzelmessungen nach der Zeit in der Einheit (Fahrzeit bis zum Ende des Blocks). Eine Linie verbindet nur Messungen derselben Einheit bei gleicher Leistung (±5 %); gestrichelt = noch Vorschau. `
+      + `Ein Unterschied zählt erst, wenn er grösser ist als die Messgenauigkeit (je Wert ±0,15 mmol/l bzw. 7,5 %), Regel ${esc(FK().VERSIONS.laktat_drift)}.`
+      + (ohne.length ? ` Ohne Zeitpunkt in der Einheit: ${ohne.map((p) => dch(p.datum)).join(", ")}.` : "");
+    const rows = mitZeit.flatMap((g) => g.punkte.map((p) => ({ lab: `${dch(g.datum)} · ${zeitTxt(p)}`, x: p.x, la: p.la, hf: p.hf, r: { k: "einzel", id: p.id } })))
+      .concat(ohne.map((p) => ({ lab: `${dch(p.datum)} · Zeit offen`, x: p.x, la: p.la, hf: p.hf, r: { k: "einzel", id: p.id } })));
+    $("lz-list").innerHTML = `<table class="t"><tr><th>Messpunkt</th><th>${u}</th><th>mmol/l</th><th>Puls</th><th></th></tr>${rows.map((r, i) => `<tr><td>${esc(r.lab)}</td><td>${num(r.x, u === "W" ? 0 : 2)}</td><td>${num(r.la, 1)}</td><td>${num(r.hf)}</td><td><button class="btn" data-i="${i}">öffnen</button></td></tr>`).join("")}</table>`;
+    $("lz-list").querySelectorAll("[data-i]").forEach((b) => b.addEventListener("click", () => { LZ.sel = rows[+b.dataset.i].r; drawDetail(); $("lz-detail").focus(); }));
+  }
+  /** «In dieser Einheit»: alle Messungen derselben Einheit, Veränderung je Paar mit Urteil (laktat-drift-1.0). */
+  function einheitBox(s, u) {
+    const g = FK().laktatVerlauf(LZ.L.singles.filter((x) => x.sport === s.sport), C.D.activities).find((x) => x.punkte.some((p) => p.id === s.id));
+    if (!g || g.punkte.length < 2) return "";
+    const byId = new Map(g.punkte.map((p) => [p.id, p]));
+    const pts = g.punkte.map((p) => `<li><button type="button" class="linkbtn" data-lzsel="${esc(p.id)}"${p.id === s.id ? ' aria-current="true"' : ""}>${esc(zeitTxt(p))} · ${xTxt(p.x, u)} · <b>${num(p.la, 1)} mmol/l</b>${p.hf != null ? ` · Puls ${num(p.hf)}` : ""}</button></li>`).join("");
+    const paare = g.paare.map((q) => { const a = byId.get(q.von), b = byId.get(q.bis), sg = (v, d) => (v > 0 ? "+" : v < 0 ? "−" : "±") + num(Math.abs(v), d);
+      return `<li>${esc(zeitTxt(a))} → ${esc(zeitTxt(b))}${q.dt_min != null ? ` (${q.dt_min >= 0 ? "+" : "−"}${num(Math.abs(q.dt_min))} min)` : ""}: Laktat ${sg(q.dla, 1)} mmol/l${q.dhf != null ? `, Puls ${sg(q.dhf, 1)}` : ""}`
+        + `${q.dx != null ? `, Leistung ${xTxt(a.x, u)} → ${xTxt(b.x, u)}` : ""} ${V.badge(q.urteil)}`
+        + `<small class="hint" style="display:block">${q.urteil === "nicht vergleichbar" ? "Leistung unterscheidet sich um mehr als 5 %." : `Grenze ±${num(q.grenze, 2)} mmol/l (Messgenauigkeit beider Werte).`}</small></li>`; }).join("");
+    return `<h3 class="mini-h">In dieser Einheit</h3><ul class="lz-einheit">${pts}</ul>${paare ? `<ul class="lz-paare">${paare}</ul>` : ""}`;
+  }
   function drawDetail() {
     const box = $("lz-detail"), u = unitOf(LZ.sport);
     const L = LZ.L;
@@ -278,11 +323,15 @@
         ${kv([["Art", "Einzelmessung im Training"], ["Sportart", s.sport === "lauf" ? "Laufen" : "Rad"], ["Gerät", geraet], ["Ziel", s.soll != null ? `${num(s.soll)} ${u}` : null], ["Ist (Median im Block)", s.x != null ? `${num(s.x)} ${u} ${V.prov("fit")}` : null],
           ["NP im Block", s.np != null ? `${num(s.np)} W` : null], ["Puls Ø / max", s.hf != null ? `${num(s.hf)} / ${num(s.hf_max)} bpm` : null], ["Puls letzte 30 s", s.hf30 != null ? `${num(s.hf30)} bpm` : null],
           ["Block", s.fenster ? `${s.fenster[0].slice(0, 5)}–${s.fenster[1].slice(0, 5)}` : s.ende ? `endet ${s.ende}` : null], ["Dauer", s.dauer_s ? C.mmss(s.dauer_s) + " min" : null],
+          ["Zeitpunkt in der Einheit", (() => { const z = FK().laktatZeit(s, a); return z.min == null ? null : z.art === "fahrzeit" ? `${C.mmss(s.t_s)} Fahrzeit bis zum Blockende${s.ende ? ` (${esc(s.ende)} Uhr)` : ""}` : `~${num(z.min)} min ab Start (aus der Uhrzeit)`; })()],
+          ["Pause für die Messung", s.pause_s != null ? (s.pause_s ? `${C.mmss(s.pause_s)} min bis zum Weiterfahren${s.pause_timer_s ? `, davon ${C.mmss(s.pause_timer_s)} Timer gestoppt` : ""}` : "keine (weitergefahren)") : null],
           ["Vorbelastung (Arbeit vor dem Block)", s.kj_vor != null ? `${num(s.kj_vor)} kJ` : null], ["Abnahme", esc((s.regel && /Blut|Ende/i.test(s.regel) ? s.regel : (s.hinweise || []).find((h) => /Blut|Ende/i.test(h))) || "Zeitpunkt nicht erfasst")],
           ["Ruhezeit vor der Abnahme", "nicht erfasst"], ["Zuordnung", esc(s.zuordnung || "offen")], ["Quelle", esc(s.quelle)]])}
+        ${einheitBox(s, u)}
         ${flags.length ? `<ul class="flags">${flags.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>` : ""}
         ${(s.hinweise || []).length ? `<p class="hint">${s.hinweise.map(esc).join(" · ")}</p>` : ""}
         <p class="hint">Einzelwerte zeigen den Verlauf bei fixer Leistung; LT1/LT2 entstehen nur aus Stufentests.</p>`;
+      box.querySelectorAll("[data-lzsel]").forEach((b) => b.addEventListener("click", () => { LZ.sel = { k: "einzel", id: b.dataset.lzsel }; drawDetail(); }));
       return;
     }
     if (LZ.sel.k === "entwurf") {
