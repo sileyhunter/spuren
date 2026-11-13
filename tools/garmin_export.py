@@ -11,7 +11,8 @@ Zuordnung (gleiche Felder wie im Nacht-Update, CLAUDE.md):
     sleepStress = avgSleepStress (1 Nachkommastelle)
   Nur Nächte mit gemessenem Schlaf: nicht «OFF_WRIST» oder «UNCONFIRMED», Summe der Phasen > 0.
 - *_healthStatusData.json (Gesundheitsstatus, bei Silas seit Herbst 2025), je Tag metrics:
-    hrv = HRV (Nachtmittel), rhr = HR – nur mit --gesundheit (erst nach Abgleich mit der Garmin-Verbindung, siehe CLAUDE.md)
+    hrv = HRV (Nachtmittel). Am 13.11.2026 gegen die Garmin-Verbindung geprüft: an 145 von 146 gemeinsamen Tagen gleich.
+    «HR» ist der mittlere Puls im Schlaf, nicht der Ruhepuls (0 von 384 Tagen gleich wie resting_heart_rate) – wird nie übernommen.
 - TrainingReadinessDTO_*.json (mehrere Einträge je Tag):
     readiness = score, readinessLevel = level des Eintrags «AFTER_WAKEUP_RESET» (Readiness nach dem Aufwachen), bei älteren Einträgen
     ohne inputContext der Eintrag des Tages. Mehrere solche Einträge mit verschiedenem Wert (Mittagsschlaf, neue Synchronisation): Tag leer.
@@ -20,7 +21,7 @@ Nichts wird geschätzt; fehlt ein Wert, bleibt er leer.
 Einspielen (merge_daily.py, Schlüssel «garmin_verlauf», kommt verschlüsselt über die Seite): nur fehlende Felder füllen, nie überschreiben;
 das Nachholen über die Garmin-Verbindung (HRV, Ruhepuls vor dem Gesundheitsstatus) läuft weiter, wo es war.
 
-  python3 -I tools/garmin_export.py lesen <ordner> [<ordner> …] <aus.json> [--gesundheit]
+  python3 -I tools/garmin_export.py lesen <ordner> [<ordner> …] <aus.json> [--ohne-gesundheit]
   python3 -I tools/garmin_export.py zeigen <aus.json>
 """
 import collections
@@ -85,7 +86,7 @@ def schlaf(eintraege):
 
 
 def gesundheit(eintraege):
-    """healthStatusData-Einträge → {Datum: {hrv, rhr}} (Garmin-Gesundheitsstatus, Werte der Nacht)."""
+    """healthStatusData-Einträge → {Datum: {hrv}} (Garmin-Gesundheitsstatus, Nachtmittel). «HR» ist kein Ruhepuls und bleibt weg."""
     out = {}
     for h in eintraege:
         d = h.get("calendarDate") if isinstance(h, dict) else None
@@ -95,8 +96,6 @@ def gesundheit(eintraege):
         t = {}
         if _zahl(m.get("HRV")) and m["HRV"] > 0:
             t["hrv"] = int(round(m["HRV"]))
-        if _zahl(m.get("HR")) and m["HR"] > 0:
-            t["rhr"] = int(round(m["HR"]))
         if t:
             out[d] = t
     return out
@@ -128,7 +127,7 @@ def readiness(eintraege, mehrdeutig=None):
     return out
 
 
-def lesen(ordner, mit_gesundheit=False, erstellt=None):
+def lesen(ordner, mit_gesundheit=True, erstellt=None):
     """Export-Ordner (entpackt) → Verlauf im Format spuren-garmin-verlauf-1."""
     S = schlaf([x for p in _dateien(ordner, "*_sleepData.json") for x in _laden(p)])
     H = gesundheit([x for p in _dateien(ordner, "*_healthStatusData.json") for x in _laden(p)]) if mit_gesundheit else {}
@@ -206,7 +205,7 @@ def einspielen(D, G, heute=None):
                "tage": len(tage), "neue_tage": neu, "gefuellt": dict(gefuellt), "verworfen": fehler}
     D["garmin_export"] = [x for x in D.get("garmin_export", []) if x.get("id") != G["id"]] + [eintrag]
     D.setdefault("audit", []).append({"zeit": jetzt, "was": "Garmin-Verlauf eingespielt", "id": G["id"], "gefuellt": dict(gefuellt), "neue_tage": neu})
-    D.setdefault("versions", {})["garmin_export"] = {"v": V, "text": "Garmin-Datenexport: Schlaf, Readiness (und Gesundheitsstatus, wenn geprüft) "
+    D.setdefault("versions", {})["garmin_export"] = {"v": V, "text": "Garmin-Datenexport: Schlaf, Readiness und HRV aus dem Gesundheitsstatus "
                                                     "füllen nur fehlende Tageswerte; nie überschrieben, nie geschätzt"}
     teile = ", ".join(f"{k} {n}" for k, n in gefuellt.items()) or "nichts neu"
     return f"Garmin-Verlauf {G['id']}: {len(tage)} Tage geprüft, {neu} neue Tage, gefüllt: {teile}" + (f"; verworfen: {'; '.join(fehler)}" if fehler else "")
@@ -215,8 +214,8 @@ def einspielen(D, G, heute=None):
 def main():
     a = sys.argv[1:]
     if len(a) >= 3 and a[0] == "lesen":
-        mit = "--gesundheit" in a
-        rest = [x for x in a[1:] if x != "--gesundheit"]
+        mit = "--ohne-gesundheit" not in a
+        rest = [x for x in a[1:] if x != "--ohne-gesundheit"]
         G = lesen(rest[:-1], mit_gesundheit=mit)
         with open(rest[-1], "w", encoding="utf-8") as f:
             json.dump(G, f, ensure_ascii=False, separators=(",", ":"))

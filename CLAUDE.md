@@ -226,8 +226,9 @@ Silas lädt Teile seines Garmin-Datenexports hoch (z. B. «Archiv.zip» mit `*_s
 `TrainingReadinessDTO_*.json`). Gleiche Dateien nur einmal (Prüfsumme); jedes ZIP in einen eigenen, leeren Ordner ausserhalb des Repos entpacken.
 1. `python3 -I tools/garmin_export.py lesen <ordner> [<ordner> …] work/garmin-verlauf.json` → Schlafdauer (Tief + Leicht + REM, ohne Wachzeit),
    Schlafwert, Stress im Schlaf (nicht OFF_WRIST/UNCONFIRMED) und Readiness nach dem Aufwachen (`AFTER_WAKEUP_RESET`; mehrere verschiedene
-   Aufwach-Werte am selben Tag → Tag leer, nie geraten). Gesundheitsstatus (HRV, HR) nur mit `--gesundheit`, erst nach Abgleich mit der
-   Garmin-Verbindung (gleiche Tage, gleiche Werte). Ausgabe prüfen (Zeitraum, Anzahl je Feld, Stichproben gegen die Rohdateien).
+   Aufwach-Werte am selben Tag → Tag leer, nie geraten) und HRV aus dem Gesundheitsstatus. Am 13.11.2026 gegen die Daten der Garmin-Verbindung
+   geprüft: Schlafdauer und Schlafwert gleich (1502 bzw. 1431 Nächte), HRV an 145 von 146 Tagen gleich; «HR» im Gesundheitsstatus ist der
+   mittlere Puls im Schlaf, nicht der Ruhepuls (0 von 384 gleich) und wird nie übernommen. Ausgabe prüfen (Zeitraum, Anzahl je Feld, Stichproben).
 2. Mit `SPUREN_PW`: entschlüsseln, `{"garmin_verlauf": <Datei>}` als JSON schreiben und mit `merge_daily.py` einspielen, verschlüsseln, pushen.
    Ohne Passwort (Normalfall im Chat): die Datei mit Datum im Namen an Silas senden; er wählt sie auf der Seite unter Einstellungen →
    «Garmin-Verlauf einlesen» (die Seite prüft sie, «Direkt speichern» bringt sie verschlüsselt nach `eingang/`), das nächste Update spielt sie ein.

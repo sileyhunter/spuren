@@ -805,9 +805,9 @@ _T = {t["date"]: t for t in _G["tage"]}
 check("Garmin-Export: Schlaf ohne Wachzeit (Tief + Leicht + REM), Schlafwert, Stress im Schlaf; ohne REM nur Tief + Leicht",
       _T["2026-01-10"]["sleepH"] == 6.5 and _T["2026-01-10"]["sleepScore"] == 88 and _T["2026-01-10"]["sleepStress"] == 12.3
       and _T["2021-03-01"]["sleepH"] == 7.0 and "sleepScore" not in _T["2021-03-01"], str(_G["tage"]))
-check("Garmin-Export: Nacht ohne Uhr (OFF_WRIST) und unbestätigte Nacht ohne Schlafwerte; Gesundheitsstatus nur auf Wunsch",
-      "sleepH" not in _T.get("2026-01-11", {}) and "2026-01-12" not in _T and "hrv" not in _T["2026-01-10"]
-      and {k: v for k, v in GX.lesen([_gx], mit_gesundheit=True)["tage"][-1].items() if k in ("hrv", "rhr")} == {"hrv": 80, "rhr": 48})
+check("Garmin-Export: Nacht ohne Uhr (OFF_WRIST) und unbestätigte Nacht ohne Schlafwerte; HRV aus dem Gesundheitsstatus, dessen «HR» nie als Ruhepuls",
+      "sleepH" not in _T.get("2026-01-11", {}) and "2026-01-12" not in _T and _T["2026-01-10"]["hrv"] == 80 and "rhr" not in _T["2026-01-10"]
+      and "hrv" not in GX.lesen([_gx], mit_gesundheit=False)["tage"][-1])
 check("Garmin-Export: Readiness nach dem Aufwachen; zwei verschiedene Aufwach-Werte → Tag leer (nicht geraten); nach Training zählt nicht; alter Eintrag ohne inputContext",
       _T["2026-01-10"]["readiness"] == 71 and _T["2026-01-10"]["readinessLevel"] == "HIGH" and "readiness" not in _T.get("2026-01-11", {})
       and "2026-01-12" not in _T and _T["2024-09-01"]["readiness"] == 30 and _G["ausgelassen"] == {"readiness_mehrdeutig": 1}, str(_G))
