@@ -152,10 +152,10 @@
       ${W.SKALA_REIHE.map((k) => `<span class="${an(k) ? "an" : ""}" style="--zc:${W.ZONEN[k].farbe}"></span>`).join("")}</div>
       <div class="ek-fokus">${F.map((f) => `<span>${W.zchip(f.key)}<small>${isNum(f.anteil) ? Math.round(f.anteil * 100) + " %" : "Dauer offen"}</small></span>`).join("") || `<span class="muted">Ohne Zielbereiche keine Fokus-Intensität.</span>`}</div>`;
   }
-  H.einheit = function (key) {
+  H.einheit = function (key, opt) {   // V6.6: opt wie bei einheitP (z. B. nachher: «Zurück» führt ins Tagesblatt)
     C = UI() && UI().C; if (!C) return;
     const e = finde(key); if (!e) return;
-    blatt(e, key, null);
+    blatt(e, key, opt || null);
   };
   /** V6.5: beliebige Einheit als Blatt (z. B. aus der Enduco-Bibliothek): p wie ein Kalendereintrag, opt.extra = HTML vor dem Fuss,
    *  opt.datumText statt des Datums (z. B. «exportiert am …»). Ohne «Passende Route finden». */
@@ -277,16 +277,17 @@
     const WORT = { ist: "erledigt", plan: "geplant", verpasst: "geplant, keine Aktivität dieser Sportart erfasst" };
     const tage = w.tage.map((t) => {
       const lab = `${tagText(t.iso)}: ${t.zeichen.length ? t.zeichen.map((z) => `${SPORT_WORT[z.sport] || z.sport} ${WORT[z.art]}`).join(", ") : "nichts"}`;
-      return `<div class="wl-tag${t.heute ? " heute" : ""}" role="listitem" aria-label="${esc(lab)}"><span class="wl-wt">${t.wt}</span><span class="wl-d">${+t.iso.slice(8)}</span>
-        <span class="wl-sp">${t.zeichen.slice(0, 3).map((z) => `<i class="${z.art}" style="--sp:${spFarbe(z.sport)}">${W.sportIcon(z.sport, 14)}</i>`).join("")}${t.zeichen.length > 3 ? `<small>+${t.zeichen.length - 3}</small>` : ""}</span></div>`;
+      return `<button type="button" class="wl-tag${t.heute ? " heute" : ""}" data-wltag="${esc(t.iso)}" aria-label="${esc(lab)}"><span class="wl-wt">${t.wt}</span><span class="wl-d">${+t.iso.slice(8)}</span>
+        <span class="wl-sp">${t.zeichen.slice(0, 3).map((z) => `<i class="${z.art}" style="--sp:${spFarbe(z.sport)}">${W.sportIcon(z.sport, 14)}</i>`).join("")}${t.zeichen.length > 3 ? `<small>+${t.zeichen.length - 3}</small>` : ""}</span></button>`;
     }).join("");
     const bar = (a, b) => (b > 0 ? Math.min(100, Math.round((a / b) * 100)) : 0);
-    box.innerHTML = `<div class="wl" role="list">${tage}</div>
+    box.innerHTML = `<div class="wl" role="group" aria-label="Diese Woche, Tag antippen für die Einheiten">${tage}</div>
       <div class="wl-fort">
         <div><span>Trainings</span><b>${w.n_ist} <small>/ ${w.n_woche}</small></b><i style="--p:${bar(w.n_ist, w.n_woche)}%"></i></div>
         <div><span>Dauer</span><b>${esc(W.dauerText(w.s_ist))} <small>/ ${esc(W.dauerText(w.s_woche))}</small></b><i style="--p:${bar(w.s_ist, w.s_woche)}%"></i></div></div>
       <p class="hint">Erledigt = erfasste Aktivitäten (kommen mit dem Nacht-Update); geplant = Garmin-Kalender. Ausgefüllt = erledigt, Rand = geplant, grau = geplant, aber an diesem Tag keine Aktivität dieser Sportart erfasst.
         Woche = erledigt + noch geplant + verpasst${w.n_verpasst ? ` (${w.n_verpasst} verpasst)` : ""}.</p>`;
+    box.querySelectorAll("[data-wltag]").forEach((b) => (b.onclick = () => { if (window.APP && window.APP.tagBlatt) window.APP.tagBlatt(b.dataset.wltag); }));   // V6.6
   }
 
   /* ---------- Klicks ---------- */

@@ -116,9 +116,11 @@ test("Schritte für die Liste: Wiederholungen als Block, Zieltexte, Bezeichnunge
   assert.equal(V6.schrittTyp(B[1].schritte[1], wo), "Erholung");
   const lauf = TR.workout({ title: "L", sport: "lauf", steps: [{ type: "interval", end_condition: "time", end_condition_value: 1200, target_type: "speed.zone", target_value_low: 2.5, target_value_high: 2.7778 }] }, { zonen: Z });
   assert.equal(V6.zielText(lauf.schritte[0], lauf), "6:00–6:40 /km");
-  assert.equal(V6.dauerText(2156), "36m");
-  assert.equal(V6.dauerText(4500), "1h 15m");
-  assert.equal(V6.dauerText(330), "5m 30s");
+  assert.equal(V6.dauerText(2156), "36 min");
+  assert.equal(V6.dauerText(4500), "1:15 h");
+  assert.equal(V6.dauerText(7200), "2:00 h");
+  assert.equal(V6.dauerText(45), "45 s");
+  assert.equal(V6.dauerText(330), "5:30 min");
   assert.equal(V6.distanzText(1300), "1,3 km");
   assert.equal(V6.distanzText(850), "850 m");
 });

@@ -147,13 +147,14 @@
     const z = V6.ZONEN[key] || V6.ZONEN.offen;
     return `<span class="zchip" style="--zc:${z.farbe};background:${V6.rgba(z.farbe, 0.2)}">${z.kurz ? z.kurz + "·" : ""}${esc(z.name)}</span>`;
   };
+  /** Dauer als «1:15 h», «36 min», «5:30 min», «45 s» (V6.6, Teil 0: nie «m» für Minuten – beim Schwimmen las sich «56m» wie Meter). */
   V6.dauerText = function (s) {
     if (!isNum(s)) return "–";
     s = s >= 600 ? Math.round(s / 60) * 60 : Math.round(s);      // ab 10 min auf ganze Minuten
     const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
-    if (h) return `${h}h${m ? " " + String(m).padStart(2, "0") + "m" : ""}`;
-    if (m) return `${m}m${x ? " " + x + "s" : ""}`;
-    return `${x}s`;
+    if (h) return `${h}:${String(m).padStart(2, "0")} h`;
+    if (m) return x ? `${m}:${String(x).padStart(2, "0")} min` : `${m} min`;
+    return `${x} s`;
   };
   const fmtMs = (s) => { s = Math.round(s); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
   V6.distanzText = (m) => (!isNum(m) ? "–" : m >= 1000 ? `${(m / 1000).toFixed(m % 1000 ? 1 : 0).replace(".", ",")} km` : `${Math.round(m)} m`);
@@ -306,6 +307,8 @@
     check: '<path d="M12 20s-7.5-4.5-7.5-10.1A4.2 4.2 0 0 1 12 7.3a4.2 4.2 0 0 1 7.5 2.6C19.5 15.5 12 20 12 20z"/><path d="m9 12.2 2.1 2.1 4-4.2"/>',
     plus: '<circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v7M8.5 12h7"/>',
     zurueck: '<path d="m14.5 5.5-6.5 6.5 6.5 6.5"/>',
+    rueckgaengig: '<path d="M9 7 5 11l4 4"/><path d="M5 11h9a5 5 0 0 1 0 10h-3"/>',      // V6.6: eigener Pfeil «letzten Schritt zurück»
+    loeschen: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12M10.5 10.5v5M13.5 10.5v5"/>',   // V6.6: eigener Papierkorb «alle Punkte löschen»
     weiter: '<path d="m9.5 5.5 6.5 6.5-6.5 6.5"/>',
     ablauf: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.5M4 12h.5M4 18h.5"/>',
     fokus: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8"/>',

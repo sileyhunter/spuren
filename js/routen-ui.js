@@ -105,6 +105,7 @@
 
   /* ---------------- Aufbau ---------------- */
   function skeleton() {
+    const ic = (k) => (window.V6 ? window.V6.icon(k, 20) : k === "rueckgaengig" ? "↶" : "⌫");   // V6.6: eigene Symbole
     const el = $("planner");
     el.className = "planner rp";
     el.setAttribute("aria-label", "Routenplaner");
@@ -115,6 +116,8 @@
           <div class="rp-title"><h2>Route planen</h2><p class="hint" id="rp-sub"></p></div>
           <div class="rp-hbtn">
             <button class="btn" id="rp-add" aria-pressed="true" title="Tippen in die Karte setzt Punkte">＋ Punkt</button>
+            <button class="btn rp-ib" id="rp-undo-k" title="Letzten Schritt rückgängig" aria-label="Letzten Schritt rückgängig">${ic("rueckgaengig")}</button>
+            <button class="btn rp-ib" id="rp-clear" title="Alle Punkte löschen (mit ↶ zurückholen)" aria-label="Alle Punkte löschen">${ic("loeschen")}</button>
             <button class="btn" id="rp-rev" title="Reihenfolge umdrehen und neu routen" aria-label="Route umkehren">⇄</button>
             <button class="btn rp-x" id="pl-close" aria-label="Planer schliessen">✕</button>
           </div>
@@ -162,9 +165,16 @@
         <div class="row rp-save" id="rp-saverow" hidden>
           <input type="text" id="pl-name" placeholder="Name der Route" aria-label="Name der Route">
           <button class="btn" id="pl-save">Speichern</button>
-          <button class="btn primary" id="pl-gpx">GPX</button>
+          <button class="btn primary" id="pl-gpx" title="Teilen-Menü des Geräts">GPX teilen</button>
+          <button class="btn" id="pl-gpx-dl" title="Als Datei sichern (iPhone: Dateien → Downloads)">GPX in Dateien</button>
         </div>
         <p class="hint" id="pl-msg" role="status"></p>
+        <details class="rp-garmin" id="rp-garmin" hidden><summary>So kommt die Strecke auf Fenix und Edge</summary>
+          <ol><li>«GPX in Dateien» tippen: Die Datei landet in der Dateien-App (Downloads).</li>
+            <li>In der Dateien-App die Datei lange drücken → Teilen → Garmin Connect (allenfalls unter «Mehr»).</li>
+            <li>Streckentyp wählen (z. B. Rennrad) und speichern; in Garmin Connect bei der Strecke «An Gerät senden».</li></ol>
+          <p class="hint">Fehlt Garmin Connect im Teilen-Menü, verdrängt es oft eine andere App, die GPX öffnet. Sonst geht es in Garmin Connect im
+            Browser: Training → Strecken → Importieren. Direkt aus dem Notebook senden kommt später (nur eigene Strecken, mit deiner Freigabe).</p></details>
         <details class="rp-src" id="rp-srcbox"><summary>Herkunft, Methode, Annahmen</summary><div id="rp-src"></div></details>
         <div class="sr-only" id="rp-live" aria-live="polite"></div>
       </div>`;
@@ -1476,7 +1486,7 @@
     box.hidden = false;
     const pw = RT.pausenSumme(pausenList());
     box.innerHTML = `<label>Start <input type="datetime-local" id="rp-start" value="${localInput(ST.startUnix)}"></label>
-      <label>Pausen <select id="rp-pause" ${pw ? "disabled" : ""}>${pw ? `<option>an Wegpunkten: ${Math.round(pw / 60)} min</option>` : `<option value="auto" ${ST.pause === "auto" ? "selected" : ""}>${esc(pauseShareText())}</option>${[0, 10, 15, 20, 30, 45, 60, 90].map((x) => `<option value="${x}" ${String(ST.pause) === String(x) ? "selected" : ""}>${x ? "+" + x + " min" : "keine"}</option>`).join("")}`}</select></label>`;
+      <label title="Halte unterwegs: «wie bisher» = dein üblicher Stopp-Anteil aus früheren Touren; verschiebt Ankunft und Wetter entlang der Strecke">Stopps unterwegs <select id="rp-pause" ${pw ? "disabled" : ""}>${pw ? `<option>an Wegpunkten: ${Math.round(pw / 60)} min</option>` : `<option value="auto" ${ST.pause === "auto" ? "selected" : ""}>${esc(pauseShareText())}</option>${[0, 10, 15, 20, 30, 45, 60, 90].map((x) => `<option value="${x}" ${String(ST.pause) === String(x) ? "selected" : ""}>${x ? "+" + x + " min" : "keine"}</option>`).join("")}`}</select></label>`;
     $("rp-start").onchange = (e) => { const [dd, tt] = String(e.target.value).split("T"); if (dd && tt) { ST.startUnix = FK.zurichToUnix(dd, tt.slice(0, 5)); effortChanged(); maybeWeather(true); } };
     if (!pw) $("rp-pause").onchange = (e) => { ST.pause = e.target.value; renderInt(); renderKpis(); renderArr(); };
   }
@@ -1584,7 +1594,8 @@
     renderKpis();
     $("rp-ana").hidden = !route;
     $("rp-saverow").hidden = !route && !ST.vias.length;
-    $("pl-gpx").disabled = !route; $("pl-gpx").title = route ? "" : "Erst nach erfolgreichem Routing";
+    $("pl-gpx").disabled = !route; $("pl-gpx").title = route ? "Teilen-Menü des Geräts" : "Erst nach erfolgreichem Routing";
+    $("pl-gpx-dl").disabled = !route; $("rp-garmin").hidden = !route;
     renderGap(); renderSki(); renderGravel(); renderWhen(); renderVar(); renderMtb(); renderAlt(); renderWinter(); renderTabs(); renderLegend(); renderInt(); renderArr(); renderWx(); renderSrc();
     renderMap();
     requestAnimationFrame(() => { drawChart(); renderInfo(); });
@@ -1702,6 +1713,9 @@
     $("rp-loop").onclick = () => { if (ST.vias.length < 2) return; const a = ST.vias[0], b = ST.vias[ST.vias.length - 1]; if (a[0] === b[0] && a[1] === b[1]) return; const v = ST.vias.slice(); einfuegen(v, v.length, a.slice(), (ST.names || [])[0] || null); ST.handNach[v.length - 2] = null; setVias(v, "Rundtour", { fit: false }); };
     $("rp-undo").onclick = () => { if (!history.length) return; const h = history.pop(); if (Array.isArray(h)) { ST.vias = h; } else { ST.vias = h.vias; ST.names = h.names; ST.pausen = h.pausen; ST.handNach = h.handNach; } renderVias(); reroute(false); };
     $("rp-new").onclick = () => { history.push({ vias: ST.vias.slice(), names: par("names"), pausen: par("pausen"), handNach: par("handNach") }); ST.vias = []; ST.names = []; ST.pausen = []; ST.handNach = []; ST.editId = null; ST.manual = false; $("pl-name").value = ""; $("pl-msg").textContent = ""; setAddMode(true); renderVias(); reroute(false); };
+    // V6.6 (Teil 0): «Rückgängig» und «Alle Punkte löschen» auch im eingeklappten Blatt (vorher nur unten in der Werkzeugzeile)
+    $("rp-undo-k").onclick = () => $("rp-undo").click();
+    $("rp-clear").onclick = () => { if (!ST.vias.length) return; $("rp-new").click(); $("rp-sub").textContent = "Alle Punkte gelöscht – ↶ holt sie zurück. Tippe in die Karte: Start setzen."; };
     $("rp-tabs").addEventListener("click", (e) => {
       const b = e.target.closest("[data-t]"); if (!b) return;
       if (ST.activeAnalysisTab === b.dataset.t) return;
@@ -1723,7 +1737,8 @@
     });
     $("pl-close").onclick = () => C.close && C.close();
     $("pl-save").onclick = save;
-    $("pl-gpx").onclick = gpx;
+    $("pl-gpx").onclick = () => gpx(false);
+    $("pl-gpx-dl").onclick = () => gpx(true);
   }
 
   /* ---------------- Speichern / GPX / Laden ---------------- */
@@ -1775,13 +1790,21 @@
     ST.editId = rec.id;
     msg(route ? `«${name}» ist unter «Meine Routen» gespeichert (mit Linie, auch offline).` : `«${name}» als Entwurf gespeichert (nur Wegpunkte, ${ST.error ? "Routing fehlgeschlagen" : "noch nicht geroutet"}).`);
   }
-  async function gpx() {
+  async function gpx(alsDatei) {
     const msg = (t) => ($("pl-msg").textContent = t);
     if (!route) { msg("GPX gibt es nur für eine erfolgreich berechnete Route – nie als Ersatzlinie."); return; }
     const name = $("pl-name").value.trim() || (window.TRUI && window.TRUI.gpxName && window.TRUI.gpxName()) || `${sportDef().label} ${C.dateCH(C.iso(C.today))}`;
     const file = name.replace(/[^\wäöüÄÖÜ -]+/g, "").trim().replace(/\s+/g, "-") + ".gpx";
     const extra = window.TRUI && window.TRUI.gpxExtras ? window.TRUI.gpxExtras(route, sim) : null;
-    msg(await C.shareOrDownload(file, RT.gpx(route, name, ST.names, extra)));
+    const text = RT.gpx(route, name, ST.names, extra);
+    if (alsDatei) { dateiSichern(file, text); msg(`«${file}» gesichert – weiter mit «So kommt die Strecke auf Fenix und Edge».`); $("rp-garmin").open = true; return; }
+    msg(await C.shareOrDownload(file, text));
+  }
+  /** V6.6 (Teil 0): GPX als Datei sichern statt teilen – im Teilen-Menü fehlt Garmin Connect oft, aus der Dateien-App klappt es meist. */
+  function dateiSichern(file, text) {
+    const blob = new Blob([text], { type: "application/gpx+xml" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = file;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   }
   function loadSaved(rec) {
     open();

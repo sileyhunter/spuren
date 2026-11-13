@@ -479,7 +479,9 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
 .rp-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
 .rp-head h2 { margin: 0 0 2px; font: 600 20px/1.2 var(--f-body); }
 .rp-x { min-width: 40px; justify-content: center; }
-.rp-hbtn { display: flex; gap: 6px; flex: none; }
+.rp-hbtn { display: flex; gap: 6px; flex: none; margin-left: auto; }
+.rp-head { flex-wrap: wrap; } .rp-title { flex: 1 1 150px; min-width: 150px; }   /* V6.6: Knöpfe rutschen bei Platzmangel unter den Titel */
+.rp-hbtn .rp-ib { min-width: 42px; padding: 0 9px; display: inline-flex; align-items: center; justify-content: center; }
 .rp-hbtn .btn { min-height: 38px; }
 .rp-hbtn .btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
 .rp-mini { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; min-height: 0; }
@@ -663,6 +665,8 @@ table.t.rp-vt td:first-child { min-width: 64px; } .rp-vt .rp-vbtn { margin-top: 
 .rp-radf label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); gap: 2px; }
 .rp-radf label.ck { flex-direction: row; align-items: center; grid-column: 1 / -1; gap: 6px; color: var(--fg); }
 .rp-src summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+.rp-save { flex-wrap: wrap; } .rp-save input { flex: 1 1 100%; }   /* V6.6: GPX teilen und GPX in Dateien */
+.rp-garmin { margin: 4px 0 8px; font-size: 13px; } .rp-garmin summary { cursor: pointer; color: var(--accent-text, var(--accent)); } .rp-garmin ol { margin: 6px 0; padding-left: 20px; }
 .map-wrap.planning .legend, .map-wrap.planning .mobile-filter, .map-wrap.planning #heat-status { display: none !important; }
 #view-karte.planning { grid-template-columns: minmax(0, 1fr); }
 #view-karte.planning aside.panel { display: none; }
@@ -1028,7 +1032,6 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
           <div class="row"><button class="btn" id="cal-prev" aria-label="Vorheriger Monat">‹</button><button class="btn" id="cal-today">Heute</button><button class="btn" id="cal-next" aria-label="Nächster Monat">›</button></div>
         </div>
         <div class="tablewrap"><div class="cal" id="cal"></div></div>
-        <div class="cal-day" id="cal-day" hidden></div>
         <div class="cal-legend" id="cal-legend"></div>
       </div>
       <div class="card w12">
@@ -2943,7 +2946,7 @@ function planLoad(id) {
   window.RTUI.loadSaved(r);
 }
 function initPlanner() {
-  window.APP = { showTab, setPlanActive };     // V5.7: Trainingskalender öffnet Karte und Planer (Smart Training Routes)
+  window.APP = { showTab, setPlanActive, tagBlatt: (ds) => TABS.kalender.blatt(ds) };     // V5.7: Trainingskalender öffnet Karte und Planer; V6.6: Tagesblatt
   document.getElementById("btn-plan").addEventListener("click", () => setPlanActive(!plan.active));
   if (!window.RTUI || !window.RT) {
     document.getElementById("btn-plan").title = "Routenplaner konnte nicht geladen werden";
@@ -3311,12 +3314,11 @@ const TABS = {
       const go = (n) => { this.month = n == null ? new Date(today.getFullYear(), today.getMonth(), 1) : new Date(this.month.getFullYear(), this.month.getMonth() + n, 1); this.draw(); };
       document.getElementById("cal-prev").addEventListener("click", () => go(-1));
       document.getElementById("cal-next").addEventListener("click", () => go(1));
-      document.getElementById("cal-today").addEventListener("click", () => { go(null); this.day(iso(today), true); });
+      document.getElementById("cal-today").addEventListener("click", () => { this.sel = iso(today); go(null); });
       document.getElementById("cal").addEventListener("click", (e) => { const c = e.target.closest(".day"); if (c) this.day(c.dataset.d); });
       // V6.4.4 (Audit D21): Tage mit role=button auch mit Enter und Leertaste; Fokus bleibt nach dem Neuzeichnen auf dem Tag
       document.getElementById("cal").addEventListener("keydown", (e) => { const c = e.target.closest(".day[data-d]"); if (!c || (e.key !== "Enter" && e.key !== " ")) return; e.preventDefault();
-        const d = c.dataset.d; this.day(d); const n = document.querySelector(`#cal .day[data-d="${d}"]`); if (n) n.focus(); });
-      document.getElementById("cal-day").addEventListener("click", (e) => { const b = e.target.closest("[data-ek]"); if (b && window.V6H) window.V6H.einheit(b.dataset.ek); });
+        this.day(c.dataset.d); });   // V6.6: Fokus geht ins Tagesblatt und beim Schliessen zurück auf den Tag (V59.modalZu)
       const ic = (k) => (window.V6 ? V6.icon(k, 14) : "");
       document.getElementById("cal-legend").innerHTML = `<span><i class="c-i ist" style="--sp:var(--sp-rad)">${window.V6 ? V6.sportIcon("rad", 12) : ""}</i>erledigt</span><span><i class="c-i plan" style="--sp:var(--sp-rad)">${window.V6 ? V6.sportIcon("rad", 12) : ""}</i>geplant (Garmin-Kalender)</span>` +
         `<span><i class="zpunkt" style="--zc:var(--zc-z3)"></i>Fokus-Intensität</span><span><i class="c-test"></i>Test</span><span class="c-flagge">${ic("flagge")}Rennen</span>`;
@@ -3357,14 +3359,19 @@ const TABS = {
       document.getElementById("cal").innerHTML = html;
       document.getElementById("cal").classList.toggle("v6", !!W6);
       drawTests();
-      if (this.sel) this.day(this.sel, true);
     },
-    day(ds, keep) {
-      const box = document.getElementById("cal-day");
-      if (!keep && this.sel === ds) { this.sel = null; box.hidden = true; this.draw(); return; }
+    /** V6.6 (Teil 0, kalender-2.0): Tag antippen markiert ihn und öffnet das Tagesblatt (vorher erschien die Liste unter dem Monat,
+        auf dem iPhone ausserhalb des Bildschirms). */
+    day(ds) {
       this.sel = ds;
+      document.querySelectorAll("#cal .day.sel").forEach((n) => n.classList.remove("sel"));
+      const c = document.querySelector(`#cal .day[data-d="${ds}"]`); if (c) c.classList.add("sel");
+      this.blatt(ds);
+    },
+    /** Tagesblatt: Absolviertes, Geplantes (Karten mit Mini-Profil), Tests und Rennen eines Tages; auch von «Diese Woche» (V6H). */
+    blatt(ds) {
+      if (!window.V59) return;
       const ev = calEvents(ds), W6 = window.V6, H6 = window.V6H;
-      box.hidden = false;
       const route = (e) => e.p && ["rad", "lauf", "wandern"].includes(e.p.sport) && window.TRUI && ds >= iso(addDays(today, -1)) ? ` <button class="btn ex-btn" data-str="${esc(ds)}|${e.pi}">Passende Route finden</button>` : "";
       const zeile = (e) => {
         if (e.a) {
@@ -3379,9 +3386,16 @@ const TABS = {
         if (e.cls === "test") return `<div class="cd-test"><i class="c-test"></i>${esc(e.text)}${e.title ? ` – ${esc(e.title)}` : ""}</div>`;
         return `<div>${esc(e.text)}${e.title && e.title !== e.text ? " – " + esc(e.title) : ""}${route(e)}</div>`;
       };
-      box.innerHTML = `<b class="cd-kopf">${pd(ds).toLocaleDateString("de-CH", { weekday: "long", day: "numeric", month: "long" })}</b>` + (ev.length ? ev.map(zeile).join("") : `<div class="hint">Kein Eintrag.</div>`)
-        + (window.TRUI ? window.TRUI.kalender(ds) : "");
-      if (!keep) this.draw();
+      const titel = pd(ds).toLocaleDateString("de-CH", { weekday: "long", day: "numeric", month: "long" });
+      const html = `<h2 id="v59-ov-h" tabindex="-1">${esc(titel)}</h2>
+        <div class="cal-day tb-liste">${ev.length ? ev.map(zeile).join("") : `<div class="hint">Kein Eintrag.</div>`}${window.TRUI ? window.TRUI.kalender(ds) : ""}</div>
+        <div class="blatt-fuss"><button type="button" class="btn-zurueck" data-x aria-label="Zurück">${W6 ? W6.icon("zurueck", 22) : "←"}</button></div>`;
+      const ov = V59.blatt("tag", html);
+      ov.querySelectorAll("[data-ek]").forEach((b) => (b.onclick = () => {
+        if (!H6) return;
+        H6.einheit(b.dataset.ek, { nachher: (o2) => o2.querySelectorAll("[data-x]").forEach((x) => (x.onclick = () => this.blatt(ds))) });
+      }));
+      ov.querySelectorAll("[data-str]").forEach((b) => b.addEventListener("click", () => V59.schliessen()));
     },
   },
 

@@ -269,6 +269,9 @@ svg.profil.gross { height: 120px; }
 
 .wl { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
 .wl-tag { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 4px 0 6px; }
+button.wl-tag { background: none; border: 0; border-radius: 12px; color: inherit; font: inherit; cursor: pointer; min-height: 44px; }   /* V6.6: Tag antippen */
+button.wl-tag:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.tb-liste { margin: 4px 0 8px; }
 .wl-wt { font-size: 11px; font-weight: 600; color: var(--faint); }
 .wl-d { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 600 14px/1 var(--f-body); font-variant-numeric: tabular-nums; }
 .wl-tag.heute .wl-d { background: #c9430a; color: #fff; }
@@ -409,6 +412,9 @@ nav.unter { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14
 #zv-box .zv-wahl { flex-wrap: wrap; gap: 8px; margin: 4px 0 8px; }
 #zv-box .zv-wahl label { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--muted); min-width: 0; }
 #zv-box .zv-wahl select { max-width: 100%; }
+#zv-box .zv-fix { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; color: var(--muted); min-width: 0; }   /* V6.6 */
+#zv-box .zv-fix b { color: var(--fg); font-size: 15px; }
+#zv-box .zv-weg { display: block; color: var(--muted); font-size: 12px; max-width: 34em; }
 #zv-box .zv-t { margin: 0 0 8px; max-width: 560px; }
 #zv-box .zv-t td:nth-child(2) { color: var(--muted); }
 #zv-box .zv-t tr.zv-lt td:first-child { font-weight: 600; }

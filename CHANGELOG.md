@@ -1,5 +1,21 @@
 # Änderungen
 
+## V6.6 · 13.11.2026 · Teil 0: Fehler in Bestehendem (Auftrag `docs/auftrag-etappen-6-8.md`)
+- **Tag antippen (kalender-2.0, Teil 1):** Im Kalender öffnet ein Tag jetzt ein Blatt mit Geplantem, Absolviertem, Tests und Rennen (vorher
+  erschien die Liste unter dem ganzen Monat, auf dem iPhone ausserhalb des Bildschirms). Auch die Tage unter Heute «Diese Woche» sind antippbar,
+  künftige ebenso. Aus der Einheit führt «Zurück» wieder ins Tagesblatt.
+- **trainingsroute-1.1:** «Training → Route» schlägt fürs Rennrad nie eine Route mit Gravel vor: Kandidaten mit mehr als 20 m Gravel (auch
+  «möglicherweise») werden verworfen; bleibt keiner, gibt es keinen Vorschlag, mit Grund. Vorher wurden sie nur abgewertet.
+- **Routenplaner:** «Letzten Schritt rückgängig» und «Alle Punkte löschen» (eigene Symbole) stehen im eingeklappten Blatt; gelöschte Punkte
+  holt ↶ zurück. «Pausen» heisst «Stopps unterwegs» und ist erklärt (verschieben Ankunft und Wetter, zählen nicht zur Trainingsdauer).
+- **GPX zu Garmin:** neben «GPX teilen» neu «GPX in Dateien» und die Schritte über die Dateien-App zu Garmin Connect (im Teilen-Menü fehlt
+  Garmin Connect oft).
+- **Zonen-Vorschlag:** Gibt es für LT1 oder LT2 nur eine gültige Methode, steht sie als Text da (statt einer gesperrten Auswahl), darunter die
+  nicht verwendeten Methoden mit Grund.
+- **Dauer:** überall «1:15 h», «36 min», «5:30 min» – nie mehr «m» für Minuten (beim Schwimmen las sich «56m» wie Meter).
+- Geprüft: `tests/test_training.cjs` (+ Rennrad ohne Gravel), `tests/test_v6.cjs` (Dauer), alle bisherigen Tests, Browser Demo und echte
+  Daten (390 px), Leck-Prüfung.
+
 ## V6.5 · 13.11.2026 · Etappe 5, Teil 2: «Ich folge» – deine Wahl je Tag
 - **planwahl-1.0:** In «Woche nach Modell» hält «Ich folge» je Tag fest, welchem Plan du folgst: Enduco, Vorschlag oder frei. Die Wahl geht
   verschlüsselt mit «Direkt speichern» (Eingabe `planwahl` → `plan_wahl`, gleicher Tag ersetzt mit Audit; `merge_daily.planwahl_pruefen`: Datum,

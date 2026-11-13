@@ -2,7 +2,7 @@
 
 Quelle: Nachricht von Silas am 13.11.2026 mit Bildschirmfotos der Seite und von enduco (nicht im Repository).
 Dieser Auftrag ist der Prompt für die nächsten Etappen. **Gebaut wird jede Etappe erst nach Silas' Okay**, auch Teil 0.
-Die offenen Punkte stehen kurz in `docs/offen-nach-v55.md` (Nr. 66–70); Entscheide, die Silas treffen muss, am Ende (E1–E4).
+Die offenen Punkte stehen kurz in `docs/offen-nach-v55.md` (Nr. 66–70); Silas' Entscheide vom 13.11.2026 am Ende (E1–E4).
 
 ## Was immer gilt
 - Sprache Deutsch (Schweiz), «ss» statt «ß». Jede neue oder geänderte Regel: Version, Test mit erfundenen Werten, `CHANGELOG.md`,
@@ -10,7 +10,7 @@ Die offenen Punkte stehen kurz in `docs/offen-nach-v55.md` (Nr. 66–70); Entsch
 - Gemessen, berechnet und geschätzt unterscheiden: Schätzungen mit «≈» und Grund, fehlend bleibt fehlend, nie raten.
 - Eingaben auf der Seite nur über «Direkt speichern» (EGS1 → `eingang/`), in `merge_daily.py` mit eigener Prüffunktion `…_pruefen`
   (Ablehnung mit Grund), gleiche ID ersetzt mit Audit. Die Demo speichert nichts.
-- Nach Garmin oder Enduco wird nichts geschrieben, ausser über den Weg, den Silas mit E3 freigibt. Enduco-Workouts nie ändern.
+- Nach Garmin wird nur geschrieben, was E3 freigibt (6.7: eigene Einheiten und Strecken); nach Enduco nie. Enduco-Workouts nie ändern.
 - enduco ist Vorbild für Aufbau und Bedienung (Wochenansicht, Tagesoptionen, «Training planen», Dauer-Regler), nie für Texte, Symbole,
   Bilder oder Workouts im Code; eigene Symbole in `V6.ICON`. Silas' eigene Enduco-Workouts aus Garmin dürfen als seine Daten erscheinen
   (wie in der Bibliothek). Keine Bilder oder Texte aus dem Internet kopieren.
@@ -21,7 +21,7 @@ Die offenen Punkte stehen kurz in `docs/offen-nach-v55.md` (Nr. 66–70); Entsch
 - Prüfen wie in `CLAUDE.md` («Prüfen vor jedem Push»), dazu Browser-Prüfung Demo und echte Daten (390 px, ohne Fehler in der Konsole).
   Nicht zwischen 22:45 und 23:15 pushen (Nacht-Update).
 
-## Reihenfolge (Vorschlag, Entscheid E1)
+## Reihenfolge (E1: «wie du willst» → so umgesetzt)
 Teil 0 (Fehler in Bestehendem, klein) → Etappe 6 (Kalender und Woche bearbeiten) → Etappe 7 (Routen) → Etappe 8 (Intensität, Tests, Analyse,
 Schwimmen). Etappe 6 zuerst, weil Wochenansicht, Tagesblatt und Wochenblatt die Grundlage für die anderen Bearbeitungen sind.
 
@@ -100,6 +100,25 @@ Schwimmen). Etappe 6 zuerst, weil Wochenansicht, Tagesblatt und Wochenblatt die 
 - «Diese Woche»: Tage antippbar (6.1). «Je Sportart»: Schwimmen, Rad und Laufen immer, mit geplant (Anzahl, Dauer) und absolviert (Anzahl,
   Dauer, km, TL); andere Sportarten nur, wenn absolviert. Befund: «Je Sportart» zeigt nur Absolviertes; eine Einheit vom selben Tag fehlt bis zum Nacht-Update.
 
+### 6.7 An Garmin senden (`garmin-senden-1.0`, E3; nach 6.1–6.6)
+- Gesendet werden nur Einheiten aus «Mein Plan» (Vorschlag, eigen, Bibliothek), nie etwas an Enduco; Enduco-Workouts werden nie geändert.
+  Eine Bibliotheks-Einheit wird nur im Garmin-Kalender eingeplant (das Workout gibt es dort schon); Vorschlag und eigene Einheiten werden als
+  neues Garmin-Workout hochgeladen (`upload_workout`, Ziele in Watt bzw. m/s aus dem aktiven Zonenprofil, Name mit Kennung «IN ·») und am Tag
+  eingeplant (`schedule_workout`). Eingeplante Workouts kommen beim Synchronisieren von selbst auf die Geräte (Fenix; Edge nur Rad).
+- **Von Hand:** im Tagesblatt und in der Wochenansicht «An Garmin senden» (Einheit, Tag oder Woche, bis eine Woche voraus). Die Seite legt den
+  Auftrag verschlüsselt in `eingang/` (`garmin_senden` → `merge_daily.garmin_senden_pruefen`), das nächste Nacht-Update sendet ihn. Sofort geht
+  es im Chat («schick die Einheiten vom …»).
+- **Automatisch:** je Tag einschaltbar («am Vortag um 23 Uhr senden», Standard aus). Das Nacht-Update sendet frühestens um 23:00 Ortszeit
+  (sonst wartet es), nach dem Einspielen des Eingangs, nur Einheiten von morgen, die noch nicht oder in anderer Fassung gesendet sind.
+- Gesendetes wird je Einheit vermerkt (`garmin`: Workout-ID, Kalender-ID, Fassung, Zeitpunkt). Ändert sich eine gesendete Einheit vor dem Tag:
+  die eigene alte Fassung in Garmin austragen und löschen (`unschedule_workout`, `delete_workout` nur für Workouts mit Vermerk), neu senden.
+  Nach dem Senden geänderte Einheiten zeigt die Seite mit «geändert – nochmals senden?». Fehler beim Senden: Grund auf der Seite, kein Abbruch
+  des Updates, Silas kurz informieren.
+- Strecken (7.2, 7.4): Hochladen als Garmin-Strecke (`upload_course`, Typ `road_biking`), aufs Gerät über «An Gerät senden» in Garmin Connect
+  (ob Strecken von selbst synchronisieren, an Silas' Geräten prüfen; nie behaupten).
+- Ändert die Aufträge Nacht-Update (Garmin schreiben, Commit wie bisher) und `CLAUDE.md` («Die Seite schreibt nichts nach Garmin» gilt
+  dann mit dieser Ausnahme). Tests: Umwandlung Plan → Garmin-Workout (Schritte, Wiederholungen, Ziele), Prüffunktion, «schon gesendet».
+
 ## Etappe 7 – Routen
 ### 7.1 Rennrad nie mit Gravel (`trainingsroute-1.1`)
 - Vorschläge A/B/C, «Andere Routen» und Varianten fürs Rennrad nur über das Profil ohne Gravel. Kandidat mit Gravel oder «möglicherweise
@@ -116,7 +135,7 @@ Schwimmen). Etappe 6 zuerst, weil Wochenansicht, Tagesblatt und Wochenblatt die 
 - GPX prüfen: ein Track mit Punkten und Höhen, Name ohne Sonderzeichen, Rundtour mit Endpunkt am Start; Intervall-Beginne als Wegpunkte.
 - Testseite für Silas (nur Demo-Route): drei Varianten (Typ `application/gpx+xml`, Typ `application/octet-stream`, Download). Er meldet,
   bei welcher Garmin Connect erscheint; die wird Standard. Nie behaupten, es auf dem iPhone geprüft zu haben.
-- Direkt an Garmin wie Komoot (`upload_course` über die Garmin-Verbindung) nur nach Entscheid E3.
+- Direkt an Garmin wie Komoot: über 6.7 (`upload_course`, E3).
 
 ### 7.3 Planer übersichtlicher (`planer-ui-2.0`)
 - Im eingeklappten Blatt immer sichtbar: «+ Punkt», «↶ Zurück» (letzter Schritt), «Alle Punkte löschen» (mit Bestätigung, rückgängig machbar).
@@ -136,7 +155,7 @@ Schwimmen). Etappe 6 zuerst, weil Wochenansicht, Tagesblatt und Wochenblatt die 
 ### 8.1 Intensität je Sportart: Grundlage · Schwelle · VO2max (`intensitaet-2.0`)
 - Drei Stufen je Sportart: Grundlage (immer dabei), Schwelle (mit Tempo und knapp unter LT2, Schwimmen CSS), VO2max (alle Intensitäten).
   Entspricht dem bisherigen «locker / Schwelle / alles»; alte Einträge gelten weiter (locker → Grundlage, schwelle → Schwelle,
-  alles → VO2max), `merge_daily.modell_pruefen` nimmt beide Schreibweisen. Entscheid E2: zusätzlich «Grundlage + VO2max ohne Schwelle».
+  alles → VO2max), `merge_daily.modell_pruefen` nimmt beide Schreibweisen. E2: VO2max schliesst alles ein, keine freie Kombination.
 - Wirkt auf Wochenvorschlag, Vorlagen (6.3) und Prüfung des Enduco-Plans wie bisher.
 
 ### 8.2 Testkalender auf der Seite bearbeiten (`testplan-1.1`)
@@ -162,16 +181,16 @@ Schwimmen). Etappe 6 zuerst, weil Wochenansicht, Tagesblatt und Wochenblatt die 
   Unbekannte Namen: «Noch keine Beschreibung» und eine Liste in den Daten, die ich im Chat ergänze.
 - Mehr Beinübungen in eigenen Worten (z. B. Kraulbeine mit Brett, Beine in Seitlage, Rückenbeine, Beine mit Flossen, Delfinbeine,
   senkrechte Beine).
-- Bilder: nichts aus dem Internet kopieren. Entscheid E4: Links zu frei zugänglichen Videos (öffnen ausserhalb), frei lizenzierte Bilder mit
-  Quelle und Lizenz, oder neue eigene Zeichnungen (die bisherigen wurden am 13.11.2026 auf Wunsch entfernt).
+- Bilder (E4): frei lizenzierte Bilder mit Quelle und Lizenz, möglichst alle aus **einer** Quelle, damit sie einheitlich aussehen; vor dem
+  Einbauen Lizenz je Bild prüfen (z. B. CC BY oder CC0, Namensnennung wie verlangt) und im Repository mit Quelle ablegen. Deckt keine einzelne
+  Quelle alle Übungen ab: Silas die Lücke nennen und fragen, statt Quellen zu mischen. Nie Bilder ohne freie Lizenz.
 
-## Entscheide von Silas
-- **E1 Reihenfolge:** wie oben (Teil 0 → 6 → 7 → 8) oder anders.
-- **E2 Intensität:** nur aufbauend (Grundlage → Schwelle → VO2max) oder zusätzlich «Grundlage + VO2max ohne Schwelle» (polarisiert).
-- **E3 Uhr und Garmin (vorher 5d):** Workouts aus «Mein Plan» und Strecken auf die Uhr: a) auf Zuruf im Chat (ich lade hoch und plane ein,
-  jedes Mal nach seinem Ja), b) Knopf auf der Seite, das Morgen-Update sendet (braucht seine dauerhafte Freigabe, nur neue Workouts und
-  Strecken, Enduco unberührt), c) noch nicht.
-- **E4 Bilder zu Übungen:** Videos verlinken, freie Bilder mit Quelle oder neue eigene Zeichnungen.
+## Entscheide von Silas (13.11.2026)
+- **E1 Reihenfolge:** «wie du willst» → Teil 0 → Etappe 6 → 7 → 8.
+- **E2 Intensität:** VO2max schliesst alles ein (nur aufbauend: Grundlage → Schwelle → VO2max).
+- **E3 Uhr und Garmin:** eigene Einheiten von Hand schon bis eine Woche vorher senden, wenn sie feststehen; automatisch nur am Vortag um
+  23 Uhr (bis etwa 23 Uhr passt Silas den nächsten Tag an, danach steht er). An Fenix und Edge. Umsetzung 6.7.
+- **E4 Bilder:** frei lizenzierte Bilder mit Quelle, möglichst alle aus derselben Quelle (8.5).
 
 ## Weiter offen (nicht Teil dieses Auftrags)
 GitHub-Historie (Nr. 58), Härtung der Seite und des Eingangs (Nr. 59–61), Zeitpunkt last-3.0, Abend-Check → Testplan.

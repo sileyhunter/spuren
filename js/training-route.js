@@ -14,7 +14,7 @@
 })(typeof self !== "undefined" ? self : this, function (RT, FK) {
   "use strict";
   const TR = {};
-  TR.VERSIONS = { workout: "workout-1.1", vorschlag: "trainingsroute-1.0", dauer: "dauer-1.0", intervalle: "intervall-rt-1.0",
+  TR.VERSIONS = { workout: "workout-1.1", vorschlag: "trainingsroute-1.1", dauer: "dauer-1.0", intervalle: "intervall-rt-1.0",
     wetter: "wetteroptimiert-1.0", ruhig: "ruhig-1.0", licht: "tageslicht-1.0", auswertung: "auswertung-rt-1.0" };
   const isNum = (v) => typeof v === "number" && isFinite(v);
   const RAD = Math.PI / 180, R_E = 6371008.8;
@@ -558,8 +558,21 @@
   };
   /** Drei verschiedene Vorschläge (≥ 15 % andere Wege), aber nie auf Kosten des Ziels: Ist die beste Route für B bzw. C dieselbe
    *  wie A, gilt eine andere nur, wenn sie höchstens 8 Punkte schlechter ist; sonst «wie A» – offen gesagt. */
+  /** trainingsroute-1.1 (V6.6, Teil 0): Rennrad-Vorschläge nie mit Gravel – Kandidaten mit mehr als 20 m Gravel (auch «möglicherweise»)
+   *  werden verworfen, bleibt keiner, gibt es keinen Vorschlag (mit Grund). Vorher wurden sie nur abgewertet und als «ungeeignet» markiert. */
+  TR.RENNRAD_GRAVEL_MAX = 20;
   TR.auswahl = function (pool, ctx) {
-    const ok = pool.filter((c) => c.K && !c.K.unzureichend);
+    let ok = pool.filter((c) => c.K && !c.K.unzureichend);
+    const out = { A: null, B: null, C: null, hinweise: [] };
+    if (ctx.sport === "rennrad") {
+      const mit = ok.filter((c) => isNum(c.K.gravel_m) && c.K.gravel_m > TR.RENNRAD_GRAVEL_MAX);
+      if (mit.length) {
+        ok = ok.filter((c) => !mit.includes(c));
+        out.gravel_verworfen = mit.length;
+        out.hinweise.push(ok.length ? `${mit.length} Kandidat${mit.length === 1 ? "" : "en"} mit Gravel verworfen (Rennrad: höchstens ${TR.RENNRAD_GRAVEL_MAX} m, auch «möglicherweise Gravel»).`
+          : `Keine Rennrad-Route ohne Gravel gefunden: alle ${mit.length} Kandidaten führen über Gravel (auch «möglicherweise»). Versuch einen anderen Startort, «Hin und zurück» oder plane im Planer von Hand.`);
+      }
+    }
     const best = (list, f) => list.filter((c) => f(c) != null).sort((a, b) => f(b) - f(a))[0] || null;
     const anders = (c, list) => list.every((x) => !x || !RT.istDoppelt(x.route, c.route));
     const nimm = (list, f, sperre) => {
@@ -569,7 +582,6 @@
       if (frei && f(frei) >= f(b) - 8) return { c: frei, fast: true };
       return { c: b, gleich: sperre.find((x) => x && (x === b || RT.istDoppelt(x.route, b.route))) };
     };
-    const out = { A: null, B: null, C: null, hinweise: [] };
     out.A = best(ok, (c) => c.sA.wert);
     if (!out.A) return out;
     if (ok.some((c) => c.sB)) {

@@ -501,9 +501,12 @@
       if (!v.ok) return `<section class="zv-sp">${titel}<p class="hint keep">Kein Vorschlag: ${esc(v.grund)}.</p></section>`;
       const sel = (which) => {
         const l = v[which], alle = l.alle || l.methoden;
-        const opts = [["mitte", alle.length > 1 ? `Mitte der Methoden (${zvX(sp, l.lo)} bis ${zvX(sp, l.hi)})` : `${namen[alle[0]] || alle[0]} · ${zvX(sp, l.x)}`]]
-          .concat(alle.length > 1 ? alle.map((k) => [k, `${namen[k] || k} · ${zvX(sp, t.methoden[k].x)}`]) : []);
-        return `<label>${which.toUpperCase()}<select data-zvsel="${sp}|${which}"${opts.length < 2 ? " disabled" : ""}>${opts.map(([k, txt]) => `<option value="${k}"${(ZV.wahl[sp][which] || "mitte") === k ? " selected" : ""}>${esc(txt)}</option>`).join("")}</select></label>`;
+        // V6.6 (Teil 0): ausgeschlossene Methoden mit Grund; bei nur einer gültigen Methode Text statt einer gesperrten Auswahl
+        const weg = Object.entries(t.methoden || {}).filter(([k, m]) => m && m.rolle === which.toUpperCase() && !alle.includes(k));
+        const wegTxt = weg.length ? `<small class="zv-weg">Nicht verwendet: ${weg.map(([k, m]) => `${esc(namen[k] || k)} – ${esc(m.grund || "nicht gültig")}`).join("; ")}</small>` : "";
+        if (alle.length < 2) return `<div class="zv-fix"><span>${which.toUpperCase()}</span><b>${esc(namen[alle[0]] || alle[0])} · ${esc(zvX(sp, l.x))}</b><small>einzige gültige Methode – darum nichts zu wählen</small>${wegTxt}</div>`;
+        const opts = [["mitte", `Mitte der Methoden (${zvX(sp, l.lo)} bis ${zvX(sp, l.hi)})`]].concat(alle.map((k) => [k, `${namen[k] || k} · ${zvX(sp, t.methoden[k].x)}`]));
+        return `<label>${which.toUpperCase()}<select data-zvsel="${sp}|${which}">${opts.map(([k, txt]) => `<option value="${k}"${(ZV.wahl[sp][which] || "mitte") === k ? " selected" : ""}>${esc(txt)}</option>`).join("")}</select>${wegTxt}</label>`;
       };
       const tabs = v.skalen.map((s) => {
         const a = basis && (basis.skalen || []).find((x) => x.key === s.key), ga = W.grenzenListe(a), gn = W.grenzenListe(s);

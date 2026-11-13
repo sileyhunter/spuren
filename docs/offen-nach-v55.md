@@ -181,5 +181,5 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
     «Stopps unterwegs» statt «Pausen»), Trainingsvorschlag auf der Karte antippen und als normale Route bearbeiten.
 69. **Etappe 8:** Intensität Grundlage · Schwelle · VO2max, Testkalender auf der Seite bearbeiten, Einzelmessungen ein- und ausblenden,
     Ausdauertrend nach Jahr, Quartal oder Monat, Schwimmübung im Workout antippen mit Beschreibung, mehr Beinübungen.
-70. **Entscheide Silas (E1–E4):** Reihenfolge; Intensität nur aufbauend oder auch «Grundlage + VO2max»; Workouts und Strecken auf die Uhr
-    (vorher 5d: auf Zuruf, Knopf mit Morgen-Update oder noch nicht); Bilder zu Übungen (Videos verlinken, freie Bilder, eigene Zeichnungen).
+70. **Entscheide Silas (13.11.2026, E1–E4):** Reihenfolge Teil 0 → 6 → 7 → 8; VO2max schliesst alles ein; eigene Einheiten von Hand bis eine
+    Woche voraus und automatisch nur am Vortag um 23 Uhr an Garmin (Fenix und Edge, 6.7); Übungsbilder frei lizenziert, möglichst aus einer Quelle.

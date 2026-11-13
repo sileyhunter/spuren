@@ -419,8 +419,9 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Ein-/Ausfahren und Erholung, nur Schritte mit Dauer (aktive Schritte ohne Dauer separat als «Dauer offen»), ab 10 %, höchstens drei. Trainingsstatus `status-1.0` aus der Form (Bänder nach Coggan); «Übertraining» nie.
 - Plan (V6.0.2, `js/v6-plan.js`): Rennen (A/B nach `V6.rennenPrio`, Streckenlängen nur bei bekanntem Format, keine Zielzeit erfunden),
   Phasen aus `AN.saison` als Zeitstrahl, Wochenübersicht (absolviert gefüllt, geplant als Rand, Phase als Streifen), Wochenstunden-Vorschlag
-  (`V56.saison`) und Testkalender. Kalender: Wochenband «KW · Phase · Stunden · TL», heute orange, Sport-Symbole, Fokus-Punkte, Tagesliste
-  mit Mini-Profilen (antippen öffnet die Einheit).
+  (`V56.saison`) und Testkalender. Kalender: Wochenband «KW · Phase · Stunden · TL», heute orange, Sport-Symbole, Fokus-Punkte; ein Tag
+  öffnet das Tagesblatt (V6.6, `TABS.kalender.blatt`, auch aus Heute «Diese Woche» über `APP.tagBlatt`) mit Mini-Profilen (antippen öffnet die
+  Einheit, «Zurück» führt ins Tagesblatt). Dauer immer als «1:15 h» bzw. «36 min» (`V6.dauerText`), nie «m» für Minuten.
 - Die Seite schreibt nichts nach Garmin oder Enduco: keine Knöpfe zum Anlegen, Verschieben, Starten oder Exportieren von Workouts.
 
 ## Trainingsmodell, Woche nach Modell und Wissen (V6.4, Etappe 4)
@@ -518,7 +519,8 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - Workout `workout-1.0`: Schritte aus der Garmin-Verbindung (Enduco schreibt Watt, Tempo in m/s oder Puls), Wiederholungen aufgefaltet;
   intensiv = Mitte des Zielbereichs ab Z3 des aktiven Zonenprofils; Leistung ≤ 150 überall → «Watt oder % FTP?» offen, nie geraten.
   Dauertraining (Grundlage, Sprints < 10 %, Trail, Wandern) Ziel ±5 %, sonst ±10 %. **Keine direkte Enduco-Schnittstelle**, Workouts nie ändern.
-- Vorschläge `trainingsroute-1.0`: Rundtour = Kreis durch den Start (3 Zwischenziele), 6 Richtungen, dann Radius nach der echten
+- Vorschläge `trainingsroute-1.1` (1.1 V6.6: Rennrad-Kandidaten mit mehr als 20 m Gravel, auch «möglicherweise», werden verworfen; bleibt keiner,
+  kein Vorschlag mit Grund): Rundtour = Kreis durch den Start (3 Zwischenziele), 6 Richtungen, dann Radius nach der echten
   Fahrzeit nachregeln (höchstens 2 Runden), Rennrad C mit dem velofreundlichen Profil; eine Anfrage je Kandidat (Mehrpunkt), Warteschlange
   höchstens 2 gleichzeitig (`anfragen-1.0`), gleiche URL nur einmal. Plandauer bleibt massgebend: Abweichung wird gezeigt, nie angepasst.
 - Intervalle `intervall-rt-1.0` (Abfahrt < −4 % über 200 m = ungeeignet, Unterbrechungen laut OSM-Knoten, Gravel beim Rennrad, Berg ≥ 4 %);

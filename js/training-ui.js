@@ -355,10 +355,11 @@
         <label>Sportart <select id="tr-sport">${sportOpts.map(([v, l]) => `<option value="${v}" ${TS.sport === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
         <label>Routenart <select id="tr-art">${[["rund", "Rundtour"], ["hin", "Hin und zurück"], ["ziel", "Zu einem Ziel"]].map(([v, l]) => `<option value="${v}" ${TS.routenart === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
         ${TS.routenart === "ziel" ? `<label>Ziel <select id="tr-zielort">${ortOptions(TS.zielId, TS.zielTemp, false)}</select></label>` : ""}
-        <label>Pausen <select id="tr-pz">${pause.map(([v, l]) => `<option value="${v}" ${TS.pz === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+        <label title="Geplante Halte (z. B. Kaffee): verschieben Ankunft, Tageslicht und Wetter entlang der Strecke, zählen nicht zur Trainingsdauer">Stopps unterwegs <select id="tr-pz">${pause.map(([v, l]) => `<option value="${v}" ${TS.pz === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
         <label>Trainingsziel <select id="tr-ziel">${arten.map(([v, l]) => `<option value="${v}" ${TS.artOv === v ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></label>
       </div>
       ${schotter ? `<label class="rp-opt"><input type="checkbox" id="tr-schotter" ${(TS.opts.schotter ?? schotter.standard) ? "checked" : ""}> ${esc(schotter.label)}</label>` : ""}
+      <p class="hint">Stopps unterwegs: geplante Halte (z. B. 1 × 15 min Kaffee). Sie verschieben Ankunft, Tageslicht und das Wetter entlang der Strecke, zählen aber nicht zur Trainingsdauer.</p>
       ${TS.routenart === "ziel" ? `<p class="hint">Zu einem Ziel: Die Strecke ist durch Start und Ziel gegeben – die Dauer wird nicht nachgeregelt, nur verglichen.</p>` : ""}
       ${pickTxt}${orteBox()}
       ${TS.fehler === "zustimmung" ? zustimmung() : TS.fehler ? `<p class="verdict bad">${esc(TS.fehler)}</p>` : ""}
@@ -451,7 +452,7 @@
     const err =r.fehler.length ? `<details class="tr-err"><summary>${r.fehler.length} Kandidat${r.fehler.length === 1 ? "" : "en"} ohne Route</summary><ul>${r.fehler.slice(0, 8).map((f) => `<li>${esc(f.text)}${f.detail ? ` <small>${esc(f.detail.slice(0, 120))}</small>` : ""}</li>`).join("")}</ul></details>` : "";
     if (!r.A) {
       const netz = r.fehler.length && r.fehler.every((f) => /Verbindung|erreichbar|Zeitüberschreitung|netz/i.test(f.text + " " + (f.detail || "")));
-      box.innerHTML = `<p class="verdict bad">${netz ? `Routing-Server nicht erreichbar (${r.fehler.length} Anfragen ohne Antwort): keine Vorschläge, es wird keine Ersatzlinie gezeichnet.` : `Keine Route berechnet. ${esc(r.fehler.length ? r.fehler[0].text : r.hinweise.join(" "))}`}</p>${err}`;
+      box.innerHTML = `<p class="verdict bad">${netz ? `Routing-Server nicht erreichbar (${r.fehler.length} Anfragen ohne Antwort): keine Vorschläge, es wird keine Ersatzlinie gezeichnet.` : `Keine Route berechnet. ${esc(r.gravel_verworfen ? r.hinweise[0] : r.fehler.length ? r.fehler[0].text : r.hinweise.join(" "))}`}</p>${err}`;
       return;
     }
     const m = modus(), rg = m === "watt" ? [60, 450, 5] : m === "pace" ? [180, 720, 5] : m === "hf" ? [90, 195, 1] : [50, 160, 5];
@@ -485,7 +486,7 @@
       <p class="hint">Plan ${dur(plan)} h · Prognose im Planer ${dur(dauer)} h${isNum(abw) ? ` (${abw >= 0 ? "+" : "−"}${num(Math.abs(abw * 100))} %)` : ""}. Zwischenziele verschieben, ergänzen oder umkehren ist im Planer möglich; die Intervalle wandern mit.</p>
       ${isNum(abw) && Math.abs(abw) > TS.wo.tol ? `<p class="verdict warn">Die Route passt nicht mehr zur Plandauer (±${num(TS.wo.tol * 100)} %). <button class="btn" data-tr="neu">Route neu berechnen</button></p>` : ""}
       ${r && I.length ? `<ol class="tr-ivs">${I.map((v) => `<li class="${v.note}"><b>${v.nr}</b> km ${isNum(v.d0) ? km(v.d0) : "–"}–${isNum(v.d1) ? km(v.d1) : "–"} · <span class="badge ${NOTE[v.note]}">${v.note}</span>${v.gruende.length ? ` <small>${esc(v.gruende.join("; "))}</small>` : ""}</li>`).join("")}</ol>` : ""}
-      <p class="hint">Export zu Garmin: unten im Planer «GPX» (Name und Intervall-Beginne als Wegpunkte), dann in Garmin Connect unter Training → Strecken → Importieren. Oder die GPX-Datei im Chat schicken – ich lade sie als Strecke hoch, aber nur mit deinem Ja.</p>
+      <p class="hint">Export zu Garmin: unten im Planer «GPX in Dateien» (Name und Intervall-Beginne als Wegpunkte), dann in der Dateien-App die Datei lange drücken → Teilen → Garmin Connect; oder in Garmin Connect im Browser unter Training → Strecken → Importieren. Oder die GPX-Datei im Chat schicken – ich lade sie als Strecke hoch, aber nur mit deinem Ja.</p>
       <div class="row"><button class="btn" data-tr="ende">Training beenden</button></div></div>`;
   }
 
