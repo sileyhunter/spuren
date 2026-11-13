@@ -32,6 +32,7 @@
       pb: [], css: [], fehler: [], rpe: [], intervalle: [], laktat_punkte: [], saison: [],
       trainingsrouten: [], startorte: null,   // V5.7: gewählte Trainingsrouten; Startorte als ganze Liste (null = keine lokale Änderung)
       routen: [], routen_entfernt: [], laktat_punkte_bestaetigt: [],   // V5.9.3: gespeicherte Routen auf alle Geräte, Laktat aus dem Explorer bestätigt
+      zonen: [],                                                      // V6.2.2: bestätigte Zonenprofile (zonenvorschlag-1.0) → zonen_add
       eg: { gesendet: {}, dateien: [] } }; },                          // V5.9.3 eingang-1.0: was schon direkt gesendet ist (js/eingang.js)
     async ensureVault() {
       if (this.vault) return this.vault;
@@ -74,6 +75,8 @@
       this.data.laktat_punkte = (this.data.laktat_punkte || []).filter((p) => !lpOk.has(p.id));                       // übernommen: die Daten gelten
       const rIds = new Set((D.routes || []).map((r) => r.id)), ges = (this.data.eg && this.data.eg.gesendet) || {};
       this.data.routen_entfernt = (this.data.routen_entfernt || []).filter((id) => rIds.has(id) || !ges["routen_entfernt|" + id]);   // bleibt, bis gesendet und aus den Daten weg
+      const zIds = new Set((D.zonen || []).map((z) => z.id));                                        // V6.2.2: eingespielte Zonenprofile gelten aus den Daten
+      this.data.zonen = (this.data.zonen || []).filter((z) => !zIds.has(z.id));
       if (this.data.eg && window.EG) this.data.eg.gesendet = window.EG.aufraeumen(this.data, this.data.eg.gesendet);
     },
     upsert(list, item, idf) { idf = idf || ((e) => e.id); const L = this.data[list]; const i = L.findIndex((e) => idf(e) === idf(item)); if (i >= 0) L[i] = item; else L.push(item); return this.save(); },
@@ -193,6 +196,7 @@
     drawMain(tests, L.singles.filter((s) => s.sport === LZ.sport));
     drawDetail();
     V.cockpit();
+    V.zonenVorschlag();                 // V6.2.2 zonenvorschlag-1.0
     drawTrend();
     drawMethods();
     V.library();
@@ -378,7 +382,8 @@
     const ck = FK().cockpit(C.D.zonen, C.D.schwellen, isoToday());
     if (!ck) { box.innerHTML = `<p class="hint">Noch kein Zonenprofil. Zonen entstehen nie automatisch aus LT1/LT2; sie werden mit deiner Freigabe gesetzt.</p>`; return; }
     const P = ck.profil;
-    $("zc-meta").innerHTML = `<b>${esc(P.name)}</b> ${V.badge(P.status)} ${V.prov("manuell", "Von Hand gesetzt")} · gültig ab ${dch(P.gueltig_ab)}${P.gueltig_bis ? " bis " + dch(P.gueltig_bis) : ""}
+    const ausLt = P.methodik && /^zonenvorschlag-/.test(P.methodik.art || "");
+    $("zc-meta").innerHTML = `<b>${esc(P.name)}</b> ${V.badge(P.status)} ${ausLt ? V.prov("berechnet", "Aus LT1/LT2 berechnet, von dir bestätigt") : V.prov("manuell", "Von Hand gesetzt")} · gültig ab ${dch(P.gueltig_ab)}${P.gueltig_bis ? " bis " + dch(P.gueltig_bis) : ""}
       <br><span class="hint">Freigabe: ${esc(P.freigabe.text)} Methodik: ${esc(P.methodik.text)}</span>`;
     $("zc-mode").querySelectorAll("button").forEach((b) => { b.setAttribute("aria-pressed", String(b.dataset.m === LZ.mode)); b.onclick = () => { LZ.mode = b.dataset.m; V.cockpit(); }; });
     box.innerHTML = ck.skalen.map((k, si) => scaleHTML(k, si, P)).join("");
@@ -412,8 +417,8 @@
       ${s.hinweis ? `<p class="hint">${esc(s.hinweis)}</p>` : ""}</section>`;
   }
   /** V6.0.2 (design-1.0): Zonen als Liste – Farbbalken links, Grenzen rechts, Unterzonen mit Punkt und Bereich. */
-  function zonenListe(s) {
-    const W = window.V6; if (!W || !LZ || LZ.mode !== "aktuell") return "";
+  function zonenListe(s, immer) {
+    const W = window.V6; if (!W || !LZ || (!immer && LZ.mode !== "aktuell")) return "";
     const pace = s.metrik === "pace", f = (v) => (pace ? FK().pace(v) : num(v)), u = pace ? " /km" : " " + s.unit;
     const bereich = (von, bis) => (von == null && bis == null ? "–" : von == null ? (pace ? `langsamer als ${f(bis)}${u}` : `bis ${f(bis)}${u}`)
       : bis == null ? (pace ? `schneller als ${f(von)}${u}` : `ab ${f(von)}${u}`) : `${f(von)}–${f(bis)}${u}`);
@@ -441,6 +446,96 @@
       <dt>Zonen</dt><dd>${esc(P.name)}<br><small>${grenz || "keine Angabe"}</small></dd>
       <dt>Freigabe</dt><dd>${esc(P.freigabe.art)} (${dch(P.freigabe.datum)}); Methodik ${P.methodik.bestaetigt ? "bestätigt" : "noch nicht bestätigt"}</dd></dl>
       ${cmp ? `<p class="hint"><b>Vergleich zum vorigen Test</b><br>${cmp}</p>` : ""}`;
+  }
+
+  /* ----- V6.2.2 Zonen-Vorschlag aus LT1/LT2 (zonenvorschlag-1.0, Rechnung in js/v62.js): gilt erst nach deiner Bestätigung ----- */
+  const ZV = { wahl: { rad: {}, lauf: {} } };
+  const zvSport = (sp) => (sp === "lauf" ? "Laufen" : "Rad");
+  const zvMetrik = (s) => `${s.disziplin === "lauf" ? "Laufen" : "Rad"} · ${{ leistung: "Leistung", puls: "Puls", pace: "Pace" }[s.metrik]}`;
+  const zvWert = (s, v) => (v == null ? "–" : s.metrik === "pace" ? FK().pace(v) + " /km" : `${num(v)} ${s.unit}`);
+  const zvX = (sp, x) => (x == null ? "–" : sp === "lauf" ? `${FK().pace(3600 / x)} /km` : `${num(x)} W`);
+  /** Neuester Stufentest je Sportart mit gerechneten Methoden (ein Vorschlag entsteht nur aus dem neuesten Test). */
+  function zvTest(sp) {
+    return ((C.D.schwellen && C.D.schwellen.tests) || []).filter((t) => (t.sport || "rad") === sp && t.methoden && Object.keys(t.methoden).length)
+      .sort((a, b) => b.datum.localeCompare(a.datum))[0] || null;
+  }
+  /** Auf diesem Gerät bestätigt, aber noch nicht eingespielt (neueste zuerst). */
+  function zvOffen() {
+    const ids = new Set((C.D.zonen || []).map((z) => z.id));
+    return (Inbox.data.zonen || []).filter((z) => !ids.has(z.id)).sort((a, b) => b.gueltig_ab.localeCompare(a.gueltig_ab) || b.id.localeCompare(a.id))[0] || null;
+  }
+  V.zonenVorschlag = function () {
+    const box = $("zv-box"), W = window.V62; if (!box) return;
+    if (!W || !W.zonenVorschlag) { box.innerHTML = `<p class="hint">Vorschlag nicht verfügbar.</p>`; return; }
+    const heute = isoToday(), offen = zvOffen(), aktiv = FK().activeProfile(C.D.zonen, heute), basis = offen || aktiv;
+    const namen = {}; for (const [k, m] of Object.entries((C.D.schwellen && C.D.schwellen.methoden) || {})) namen[k] = m.name || k;
+    const E = window.EG, gesendet = offen && E && E.istGesendet ? E.istGesendet(Inbox.data, "zonen", offen) : false;
+    const sps = offen ? Object.keys((offen.methodik && offen.methodik.je_sportart) || {}).map(zvSport).join(" und ") : "";
+    const abg = offen && gesendet ? (C.D.zonen_abgelehnt || []).find((x) => x.id === offen.id                // vom Update abgelehnt (merge_daily.zonen_pruefen),
+      && !(offen.freigabe && offen.freigabe.zeit && Date.parse(x.zeit) < Date.parse(offen.freigabe.zeit))) : null;   // aber nicht eine ältere Ablehnung
+    const kopf = abg ? `<div class="verdict warn" role="status">«${esc(offen.name)}» hat das Update nicht übernommen: ${esc(abg.grund)}. Deine bisherigen Zonen gelten weiter. <button class="btn" type="button" data-zvweg>Entfernen</button></div>`
+      : offen ? `<div class="verdict ok" role="status">Bestätigt am ${dch(offen.freigabe && offen.freigabe.datum)}: ${esc(sps)}-Zonen als «${esc(offen.name)}». `
+      + `${gesendet ? "Gesendet – das nächste Update übernimmt sie, danach gelten sie auf der Seite." : "Noch nicht gesendet: geht mit «Direkt speichern» bzw. dem Export."} `
+      + `Trag sie danach in Garmin und enduco ein; die Seite schreibt nichts dorthin.${gesendet ? "" : ` <button class="btn" type="button" data-zvweg>Zurücknehmen</button>`}</div>`
+      : aktiv && aktiv.methodik && aktiv.methodik.art === W.VERSIONS.zonenvorschlag && aktiv.gueltig_ab >= C.iso(new Date(C.today.getTime() - 21 * 864e5))
+        ? `<p class="hint keep">«${esc(aktiv.name)}» gilt seit ${dch(aktiv.gueltig_ab)} (aus LT1/LT2, von dir bestätigt). Schon in Garmin und enduco eingetragen? Die Grenzen stehen oben bei den vier Skalen.</p>` : "";
+    const VS = {};
+    const blocks = ["rad", "lauf"].map((sp) => {
+      const t = zvTest(sp);
+      if (!t) return `<section class="zv-sp"><h3 class="abschnitt">${zvSport(sp)}</h3><p class="hint">Noch kein Stufentest mit Laktat: kein Vorschlag.</p></section>`;
+      const v = (VS[sp] = W.zonenVorschlag(t, ZV.wahl[sp], { namen }));
+      const titel = `<h3 class="abschnitt">${zvSport(sp)} · Stufentest ${dch(t.datum)} <small>${esc(protName(t.protokoll))}</small></h3>
+        <p class="zv-status">${V.badge(t.datenstatus === "bestätigt" ? "bestätigt" : "vorschau")} ${t.ausbelastet === false ? V.badge("nicht ausbelastet") : t.ausbelastet ? V.badge("ausbelastet") : ""}</p>`;
+      if (!v.ok) return `<section class="zv-sp">${titel}<p class="hint keep">Kein Vorschlag: ${esc(v.grund)}.</p></section>`;
+      const sel = (which) => {
+        const l = v[which], alle = l.alle || l.methoden;
+        const opts = [["mitte", alle.length > 1 ? `Mitte der Methoden (${zvX(sp, l.lo)} bis ${zvX(sp, l.hi)})` : `${namen[alle[0]] || alle[0]} · ${zvX(sp, l.x)}`]]
+          .concat(alle.length > 1 ? alle.map((k) => [k, `${namen[k] || k} · ${zvX(sp, t.methoden[k].x)}`]) : []);
+        return `<label>${which.toUpperCase()}<select data-zvsel="${sp}|${which}"${opts.length < 2 ? " disabled" : ""}>${opts.map(([k, txt]) => `<option value="${k}"${(ZV.wahl[sp][which] || "mitte") === k ? " selected" : ""}>${esc(txt)}</option>`).join("")}</select></label>`;
+      };
+      const tabs = v.skalen.map((s) => {
+        const a = basis && (basis.skalen || []).find((x) => x.key === s.key), ga = W.grenzenListe(a), gn = W.grenzenListe(s);
+        const zeilen = ["Z1 | Z2", "Z2 | Z3 · LT1", "Z3 | Z4 · LT2", "Z4 | Z5"].map((n, i) => {
+          const d = ga[i] != null && gn[i] != null ? gn[i] - ga[i] : null;
+          const dt = d == null || d === 0 ? "" : ` <small class="hint">(${s.metrik === "pace" ? (d < 0 ? "−" : "+") + Math.abs(d) + " s" : (d > 0 ? "+" : "−") + num(Math.abs(d))})</small>`;
+          return `<tr${i === 1 || i === 2 ? ' class="zv-lt"' : ""}><td>${n}</td><td>${zvWert(s, ga[i])}</td><td><b>${zvWert(s, gn[i])}</b>${dt}</td></tr>`;
+        }).join("");
+        return `<div class="tablewrap"><table class="t zv-t" data-keine-liste><tr><th>${esc(zvMetrik(s))}</th><th>${esc(basis ? (offen ? "Bestätigt" : "Aktiv") : "Aktiv")}</th><th>Vorschlag</th></tr>${zeilen}</table></div>`;
+      }).join("");
+      const warn = [];
+      if (!v.bestaetigt) warn.push(`<p class="verdict warn">Die Laktatwerte dieses Tests sind noch Vorschau. Übernehmen geht erst, wenn du den Test in der Testbibliothek bestätigt hast (B1) und das Update ihn eingespielt hat.</p>`);
+      if (basis && basis.gueltig_ab > t.datum && !(basis.methodik && basis.methodik.je_sportart && basis.methodik.je_sportart[sp] && basis.methodik.je_sportart[sp].test === t.test))
+        warn.push(`<p class="hint keep">«${esc(basis.name)}» (gültig ab ${dch(basis.gueltig_ab)}) ist jünger als dieser Test. Übernimm den Vorschlag nur, wenn du sie ersetzen willst.</p>`);
+      const schon = basis && basis.methodik && basis.methodik.je_sportart && basis.methodik.je_sportart[sp];
+      const gleich = schon && schon.test === t.test && v.skalen.every((s) => JSON.stringify(W.grenzenListe(s)) === JSON.stringify(W.grenzenListe((basis.skalen || []).find((x) => x.key === s.key))));
+      return `<section class="zv-sp">${titel}<div class="row zv-wahl">${sel("lt1")}${sel("lt2")}</div>${tabs}
+        ${v.hinweise.length ? `<p class="hint">${v.hinweise.map(esc).join(" ")}</p>` : ""}${warn.join("")}
+        <div class="row"><button class="btn${gleich ? "" : " primary"}" type="button" data-zvok="${sp}"${v.bestaetigt && !gleich ? "" : " disabled"}>${gleich ? `${zvSport(sp)}: schon so übernommen` : `${zvSport(sp)}-Zonen übernehmen …`}</button></div></section>`;
+    }).join("");
+    const S = W.ZONEN_SKALA;
+    box.innerHTML = `${kopf}${blocks}
+      <p class="hint">Regel ${esc(W.VERSIONS.zonenvorschlag)}: ${esc(W.zonenRegelText())} Die Grenzen an LT1 und LT2 entsprechen den physiologischen Zonen von Swiss Olympic. Unterzonen wie FatMax übernimmt der Vorschlag nicht. Ohne deine Bestätigung ändert sich nichts.</p>
+      <p class="hint">Quellen: <a href="${esc(S.url)}" target="_blank" rel="noopener">${esc(S.quelle)}</a> · <a href="${esc(S.swiss_url)}" target="_blank" rel="noopener">${esc(S.swiss)}</a></p>`;
+    box.querySelectorAll("[data-zvsel]").forEach((el) => (el.onchange = () => { const [sp, which] = el.dataset.zvsel.split("|"); ZV.wahl[sp][which] = el.value; V.zonenVorschlag(); }));
+    box.querySelectorAll("[data-zvok]").forEach((b) => (b.onclick = () => zvBestaetigen(b.dataset.zvok, VS[b.dataset.zvok])));
+    const weg = box.querySelector("[data-zvweg]");
+    if (weg) weg.onclick = async () => { await Inbox.remove("zonen", offen.id); V.zonenVorschlag(); };
+  };
+  function zvBestaetigen(sp, v) {
+    const W = window.V62, B = window.V59; if (!W || !B || !v || !v.ok || !v.bestaetigt) return;
+    const heute = isoToday(), offen = zvOffen(), basis = offen || FK().activeProfile(C.D.zonen, heute);
+    const ids = new Set((C.D.zonen || []).map((z) => z.id)), stamm = "zonen-" + heute.replace(/-/g, "");
+    let id = offen && offen.gueltig_ab === heute ? offen.id : stamm;
+    for (let n = 2; ids.has(id); n++) id = `${stamm}-${n}`;
+    const prof = W.zonenProfil(basis, [v], { heute, id, zeit: new Date().toISOString() });
+    const meth = (l) => `${zvX(sp, l.x)}${l.hf != null ? ` · ${num(l.hf)} bpm` : ""} (${l.methoden.map((k) => esc(mName(k))).join(", ")}${l.methoden.length > 1 ? ", Mitte" : ""})`;
+    const unv = (prof.methodik.unveraendert || []).length ? `Unverändert bleiben: ${prof.methodik.unveraendert.map((k) => esc(zvMetrik((basis.skalen || []).find((s) => s.key === k) || { disziplin: k.split("_")[0], metrik: { w: "leistung", hf: "puls", pace: "pace" }[k.split("_")[1]] }))).join(", ")}.` : "";
+    const ov = B.blatt("zonen", `<h2 class="blatt-titel" id="v59-ov-h" tabindex="-1">${zvSport(sp)}-Zonen übernehmen</h2>
+      <p>Aus dem Stufentest vom ${dch(v.datum)}: LT1 ${meth(v.lt1)}, LT2 ${meth(v.lt2)}.</p>
+      ${v.skalen.map((s) => `<h3 class="abschnitt">${esc(zvMetrik(s))}</h3>${zonenListe(s, true)}`).join("")}
+      <p class="hint">Nach dem nächsten Update gilt ab heute «${esc(prof.name)}»; das bisherige Profil bleibt gespeichert (ersetzt). ${unv} Die Seite schreibt nichts nach Garmin oder enduco: Trag die Grenzen danach dort selbst ein.</p>
+      <div class="blatt-fuss"><button class="btn btn-zurueck" type="button" data-x>Zurück</button><button class="btn primary" type="button" data-ok>Zonen bestätigen</button></div>`);
+    ov.querySelector("[data-ok]").onclick = async () => { await Inbox.upsert("zonen", prof); B.schliessen(); V.zonenVorschlag(); };
   }
 
   /* ----- LT1/LT2 im Verlauf ----- */

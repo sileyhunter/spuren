@@ -1,5 +1,20 @@
 # Änderungen
 
+## V6.2.2 · 13.11.2026 · Etappe 2, Teil 2: Zonen-Vorschlag aus LT1/LT2 (zonenvorschlag-1.0)
+- **Vorschlag:** Unter Analyse → Laktat schlägt die Seite je Sportart Zonen aus dem neuesten Stufentest vor (`js/v62.js`): Grenze Z2/Z3 = LT1,
+  Z3/Z4 = LT2 (Mitte der gültigen Methoden oder eine gewählte Methode; Puls an der Schwelle aus der FIT-Datei). Z1/Z2 und Z4/Z5 sind nicht
+  gemessen: 0,81 × LT1 und 1,07 × LT2 (Leistung, Tempo) bzw. 0,88 × und 1,06 × (Puls), gleiche Verhältnisse wie in der Intensitätsskala nach
+  Tønnessen et al. 2024 (Sports Medicine 54); die Grenzen an LT1 und LT2 entsprechen den physiologischen Zonen von Swiss Olympic (2005).
+  Daneben stehen die aktiven Grenzen mit Unterschied. Ohne LT2 oder ohne Puls an der Schwelle wird nichts geraten.
+- **Bestätigen:** nur bei bestätigtem Test (B1). Das Blatt zeigt alle fünf Zonen; «Zonen bestätigen» legt ein neues Profil an (nur diese
+  Sportart ersetzt, der Rest unverändert, Freigabe mit Datum), «Direkt speichern» bringt es ins Update (`zonen` → `zonen_add`). Zurücknehmen
+  geht, solange es nicht gesendet ist. Danach trägst du die Grenzen in Garmin und enduco ein; die Seite schreibt nichts dorthin.
+- **Update:** `merge_daily.py` prüft jedes Profil (`zonen_pruefen`: Freigabe, lückenlose und geordnete Grenzen, Test bestätigt) und ersetzt das
+  bisherige aktive Profil (bleibt gespeichert, «ersetzt»). Abgelehnte Profile stehen mit Grund in `zonen_abgelehnt`; die Seite zeigt ihn.
+- Geprüft: `tests/test_v62.cjs` (+5: Faktoren, Rad mit Mitte der Methoden, gewählte Methode, Pace, kein Raten ohne LT2/Puls, Profil je Sportart),
+  `tests/test_tools.py` (+ Profil von der Seite übernommen, gleiche Fassung erweitert, fünf Ablehnungsgründe, Eingang → `zonen_add`), alle
+  bisherigen Tests, Demo im Browser (390 px und breit: Vorschau, bestätigter Test, Methode wählen, Blatt, Zurücknehmen, Ablehnung) ohne Programmfehler.
+
 ## V6.2.1 · 13.11.2026 · Garmin-Verlauf schneller nachholen
 - Das Nacht-Update holt Readiness und Stress jetzt mit 20 Tagen je Nacht nach und nimmt dafür die kleinen Abfragen
   (`get_stress_summary`, Readiness); Body Battery gibt es nur ab jetzt. So füllt sich der Verlauf ohne Garmin-Export.

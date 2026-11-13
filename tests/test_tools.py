@@ -506,7 +506,9 @@ _lp9 = {"id": "lp-g1-600", "act": "g1", "datum": "2026-11-09", "sport": "rad", "
         "abschnitt": {"von": 0, "bis": 600, "w": 220, "np": 225, "hr": 140, "pace": None, "grund": "gleichmässiger Block"}}
 _spec9 = [
     {"name": "20261110T060000Z-00000001.bin", "art": "eingaben", "zeit": "2026-11-10T06:00:00Z", "daten": {"befinden": [{"date": "2026-11-10", "muede": 2, "muskel": 3, "stress": 1}],
-     "routen": [{"id": "u-r1", "name": "Runde", "coords": [[9.5, 46.8], [9.51, 46.81]]}], "laktat_punkte": [_lp9]}},
+     "routen": [{"id": "u-r1", "name": "Runde", "coords": [[9.5, 46.8], [9.51, 46.81]]}], "laktat_punkte": [_lp9],
+     "zonen": [{"id": "zonen-20261110", "status": "aktiv", "gueltig_ab": "2026-11-10", "freigabe": {"datum": "2026-11-10"}, "methodik": {"art": "zonenvorschlag-1.0", "je_sportart": {"rad": {"test": "t-unbekannt"}}},
+                "skalen": [{"key": "rad_w", "disziplin": "rad", "metrik": "leistung", "zonen": [{"z": "Z1", "von": None, "bis": 150}, {"z": "Z2", "von": 150, "bis": None}]}]}]}},
     {"name": "20261110T061000Z-00000002.bin", "art": "eingaben", "zeit": "2026-11-10T06:10:00Z", "daten": {"befinden": [{"date": "2026-11-10", "muede": 2, "muskel": 3, "stress": 3}],
      "routen_entfernt": ["u-r0"], "css": [{"id": "css-2026-11-10-t", "datum": "2026-11-10", "t400": 400, "t200": 190, "css_s": 105, "becken": 25, "validiert": True, "v": "css-2.0"}]}},
     {"name": "20261110T062000Z-00000003.bin", "art": "bestaetigung", "zeit": "2026-11-10T06:20:00Z", "daten": {"laktat_punkte_bestaetigt": ["lp-g1-600"], "laktat_bestaetigt": ["check-test"]}},
@@ -529,11 +531,13 @@ check("Eingang: Seite verschlüsselt (EGS1), Werkzeug liest – Eingaben, Bestä
       and _L9["probe"] == ["20261110T062100Z-00000004.bin"] and sorted(x["name"] for x in _L9["abgelehnt"]) == ["20261110T062200Z-00000005.bin", "20261110T063000Z-0000000f.bin"], _o9 + _o9b)
 check("Eingang: gleiche ID → spätere Eingabe gewinnt; gelöschte Route geht mit", _A9["befinden_add"] == [{"date": "2026-11-10", "muede": 2, "muskel": 3, "stress": 3}]
       and [r["id"] for r in _A9["routen_add"]] == ["u-r1"] and _A9["routen_entfernt"] == ["u-r0"], json.dumps(_A9)[:300])
+check("Eingang: auf der Seite bestätigte Zonen gehen als zonen_add ins Update", [z["id"] for z in _A9.get("zonen_add", [])] == ["zonen-20261110"], json.dumps(_A9.get("zonen_add"))[:200])
 merge_daily.main(os.path.join(_t9, "data.json"), os.path.join(_t9, "work", "eingang_a.json"))
 _R9 = json.load(open(os.path.join(_t9, "data.json")))
 check("Eingang A eingespielt: Befinden, Route auf alle Geräte, alte Route entfernt (Audit), Laktatpunkt als Vorschau, CSS-Test vom Handy in css_tests",
       _R9["befinden"][0]["stress"] == 3 and [r["id"] for r in _R9["routes"]] == ["u-r1"] and any(a.get("was") == "Route entfernt" for a in _R9["audit"])
       and _R9["laktat_punkte"][0]["status"] == "vorschau" and not _R9.get("lactate") and [c["css_s"] for c in _R9.get("css_tests", [])] == [105])
+check("Eingang A: Zonen aus einem nicht bestätigten Test werden nicht übernommen", not any(z["id"] == "zonen-20261110" for z in _R9.get("zonen", [])))
 merge_daily.main(os.path.join(_t9, "data.json"), os.path.join(_t9, "work", "eingang_b.json"))
 _R9 = json.load(open(os.path.join(_t9, "data.json")))
 _k9 = {l["id"]: l for l in _R9.get("lactate", [])}
@@ -771,6 +775,42 @@ check("Tageswerte rückwirkend: ohne Zeiger die 20 Tage vor gestern; Readiness e
       and WL.offen({"config": {"wellness_backfill": "2024-08-05"}}, "2026-11-13")["readiness"] == ["2024-08-04", "2024-08-03", "2024-08-02", "2024-08-01"]
       and WL.offen({"config": {"wellness_backfill": "2020-01-04"}}, "2026-11-13")["tage"] == ["2020-01-03", "2020-01-02", "2020-01-01"]
       and WL.offen({"config": {"wellness_backfill": "2020-01-01"}}, "2026-11-13")["fertig"] is True, str(_o))
+
+# --- V6.2.2 zonenvorschlag-1.0: Zonenprofil von der Seite (erfundene Grenzen) ---
+def _skala(key, disziplin, metrik, g):
+    zs = [{"z": f"Z{i + 1}", "von": None if i == 0 else g[i - 1], "bis": None if i == 4 else g[i]} for i in range(5)]
+    return {"key": key, "disziplin": disziplin, "metrik": metrik, "zonen": zs}
+
+
+def _zprof(pid, test="t-b", rad=(150, 185, 230, 246), pace=(400, 330, 270, 250)):
+    return {"id": pid, "name": "Zonen vom 15.1.2026", "status": "aktiv", "gueltig_ab": "2026-01-15", "gueltig_bis": None,
+            "freigabe": {"art": "seite", "datum": "2026-01-15", "durch": "Silas"},
+            "methodik": {"art": "zonenvorschlag-1.0", "bestaetigt": True, "je_sportart": {"rad": {"test": test}}},
+            "skalen": [_skala("rad_w", "rad", "leistung", rad), _skala("lauf_pace", "lauf", "pace", pace)]}
+
+
+_DZ = {"zonen": [{"id": "alt", "status": "aktiv", "gueltig_ab": "2025-10-01", "skalen": []}],
+       "schwellen": {"tests": [{"test": "t-b", "datenstatus": "bestätigt"}, {"test": "t-v", "datenstatus": "vorschau"}]}}
+merge_daily.v5_merge(_DZ, {"zonen_add": [_zprof("zonen-20260115")]})
+check("Zonen von der Seite: aus bestätigtem Test übernommen, bisheriges Profil ersetzt (gültig bis zum neuen Datum)",
+      [z["id"] for z in _DZ["zonen"]] == ["alt", "zonen-20260115"] and _DZ["zonen"][0]["status"] == "ersetzt" and _DZ["zonen"][0]["gueltig_bis"] == "2026-01-15"
+      and _DZ["versions"]["zonenvorschlag"]["v"] == "zonenvorschlag-1.0", str(_DZ["zonen"]))
+merge_daily.v5_merge(_DZ, {"zonen_add": [dict(_zprof("zonen-20260115"), name="Zonen vom 15.1.2026 (Rad und Laufen)")]})
+check("Zonen: gleiche Fassung am selben Tag erweitert – ersetzt mit Audit, bleibt aktiv",
+      len(_DZ["zonen"]) == 2 and _DZ["zonen"][1]["status"] == "aktiv" and _DZ["zonen"][1]["name"].endswith("(Rad und Laufen)")
+      and any(a.get("was") == "Zonenprofil ersetzt" for a in _DZ["audit"]))
+for _bad, _grund in ((_zprof("z-v", test="t-v"), "nicht bestätigt (B1)"), (_zprof("z-o", rad=(150, 230, 185, 246)), "nicht geordnet"),
+                     (_zprof("z-p", pace=(250, 270, 330, 400)), "nicht geordnet"), (dict(_zprof("z-f"), freigabe={}), "ohne Freigabe"),
+                     (_zprof("demo-zonen"), "ohne gültige ID")):
+    _g = merge_daily.zonen_pruefen(_DZ, _bad)
+    merge_daily.v5_merge(_DZ, {"zonen_add": [_bad]})
+    check(f"Zonen nicht übernommen: {_grund}", not any(z["id"] == _bad["id"] for z in _DZ["zonen"]) and _DZ["zonen"][1]["status"] == "aktiv"
+          and _grund in (_g or ""), str(_g))
+_lz = dict(_zprof("z-l"))
+_lz["skalen"] = [dict(_lz["skalen"][0], zonen=[{"z": "Z1", "von": None, "bis": 150}, {"z": "Z2", "von": 160, "bis": None}])]
+check("Zonen: Lücke zwischen zwei Zonen wird abgelehnt", "nicht lückenlos" in (merge_daily.zonen_pruefen(_DZ, _lz) or ""))
+check("Zonen abgelehnt: Grund je Profil in den Daten (für die Seite), je ID nur einmal",
+      [x["id"] for x in _DZ.get("zonen_abgelehnt", [])] == ["z-v", "z-o", "z-p", "z-f", "demo-zonen"] and "B1" in _DZ["zonen_abgelehnt"][0]["grund"], str(_DZ.get("zonen_abgelehnt")))
 
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)

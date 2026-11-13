@@ -395,3 +395,15 @@ nav.unter { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14
 .tp-sp-form { flex-wrap: wrap; gap: 8px; align-items: flex-end; margin: 6px 0 4px; } .tp-sp-form label { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--muted); }
 .ek-test { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-left: 4px solid var(--accent); }
 .ek-test b { font-size: 16px; } .ek-test small { color: var(--muted); font-size: 12.5px; line-height: 1.4; }
+/* V6.2.2 Zonen-Vorschlag aus LT1/LT2 (zonenvorschlag-1.0) */
+#zv-box .zv-sp { margin: 0 0 14px; }
+#zv-box .zv-sp + .zv-sp { border-top: 1px solid var(--line); padding-top: 12px; }
+#zv-box .zv-sp h3 small { color: var(--muted); font-weight: 400; font-size: 12.5px; }
+#zv-box .zv-status { margin: 2px 0 8px; }
+#zv-box .zv-wahl { flex-wrap: wrap; gap: 8px; margin: 4px 0 8px; }
+#zv-box .zv-wahl label { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--muted); min-width: 0; }
+#zv-box .zv-wahl select { max-width: 100%; }
+#zv-box .zv-t { margin: 0 0 8px; max-width: 560px; }
+#zv-box .zv-t td:nth-child(2) { color: var(--muted); }
+#zv-box .zv-t tr.zv-lt td:first-child { font-weight: 600; }
+#zv-box .zv-t td:nth-child(n+2), #zv-box .zv-t th:nth-child(n+2) { text-align: right; white-space: nowrap; }

@@ -103,3 +103,13 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
     passen, stehen als Hinweis da (`notizen_hinweise`); nichts wird erraten. Neue Formate nur mit neuer Version (notizen-1.1) und Test.
 43. **Monatsexport und Wetter:** `import_export.py` baut die Aktivitäten aus FIT neu und übernimmt nur gid und Name; `wx` holt das
     Nacht-Update danach wieder (10 je Nacht). Die Notizen liegen deshalb getrennt je Garmin-ID (`garmin_notizen`) und gehen nicht verloren.
+
+## V6.2 Etappe 2 «Zonen, Last und Tests» (13.11.2026)
+44. **Zonen-Vorschlag (Silas):** Die Rad- und Lauf-Tests in den Daten sind teils noch Vorschau (B1 offen); bis zur Bestätigung zeigt die Seite
+    den Vorschlag, übernimmt ihn aber nicht. Der Rad-Test vom 29.4.2026 war nicht ausbelastet (LT2 nur Dickhuth); sinnvoll wird der Vorschlag
+    mit dem ausbelasteten Test am 5.12. Die aktiven Zonen vom 23.10.2026 nutzen auch Felddaten und sind jünger als die Tests: die Seite sagt das.
+45. **Innere Grenzen (zonenvorschlag-1.0):** Z1/Z2 und Z4/Z5 sind Verhältnisse aus einer allgemeinen Skala, keine Messung. Liegt der LT2-Puls
+    hoch (beim Laufen nahe am Maximalpuls), wird Z5 im Puls kaum erreichbar; dann Intervalle nach Tempo bzw. Leistung steuern. Eine Regel mit
+    Maximalpuls (eigene Version, Test) erst, wenn ein gemessener Maximalpuls in den Daten steht.
+46. **Nach neuen Zonen:** Die Aufträge «Morgen-Briefing» und «Abend-Check» enthalten die Zonen vom 23.10.2026 als Text. Nach einer Bestätigung
+    müssen sie im Chat nachgeführt werden (die Aufträge liegen nicht im Repository).

@@ -5,7 +5,9 @@ Format von new.json: siehe CLAUDE.md.
 """
 import datetime as dt
 import json
+import math
 import os
+import re
 import sys
 import zoneinfo
 
@@ -87,6 +89,38 @@ def _upsert(D, key, items, idf=lambda e: e["id"], what=None):
             lst.append(e)
             n_new += 1
     return n_new, n_rep
+
+
+def zonen_pruefen(D, z):
+    """V6.2.2: Zonenprofil vor dem Einspielen prüfen. None = in Ordnung, sonst der Grund (das Profil wird dann nicht übernommen).
+    Freigabe mit Datum, Skalen mit lückenlosen, streng geordneten Grenzen (Pace fallend); aus zonenvorschlag-* nur mit bestätigtem Test (B1)."""
+    if not isinstance(z, dict) or not z.get("id") or str(z["id"]).startswith("demo"):
+        return "ohne gültige ID"
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(z.get("gueltig_ab") or "")):
+        return "ohne Gültigkeitsdatum"
+    if not (z.get("freigabe") or {}).get("datum"):
+        return "ohne Freigabe"
+    sk = z.get("skalen")
+    if not isinstance(sk, list) or not sk:
+        return "ohne Skalen"
+    zahl = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+    for s in sk:
+        zs = s.get("zonen") if isinstance(s, dict) else None
+        if not isinstance(zs, list) or len(zs) < 2 or s.get("metrik") not in ("leistung", "puls", "pace") or s.get("disziplin") not in ("rad", "lauf", "schwimm"):
+            return f"Skala {s.get('key') if isinstance(s, dict) else '?'} unvollständig"
+        if zs[0].get("von") is not None or zs[-1].get("bis") is not None or any(a.get("bis") != b.get("von") for a, b in zip(zs, zs[1:])):
+            return f"Skala {s.get('key')}: Grenzen nicht lückenlos"
+        g = [x.get("bis") for x in zs[:-1]]
+        if not all(zahl(v) for v in g) or not all((a > b) if s["metrik"] == "pace" else (a < b) for a, b in zip(g, g[1:])):
+            return f"Skala {s.get('key')}: Grenzen nicht geordnet"
+    meth = z.get("methodik") or {}
+    if str(meth.get("art", "")).startswith("zonenvorschlag-"):
+        tests = {t.get("test"): t for t in (D.get("schwellen") or {}).get("tests", [])}
+        for sp, x in (meth.get("je_sportart") or {}).items():
+            t = tests.get((x or {}).get("test"))
+            if not t or t.get("datenstatus") != "bestätigt":
+                return f"{sp}: Stufentest {(x or {}).get('test')} nicht bestätigt (B1)"
+    return None
 
 
 def laktat_uebernehmen(D, pid):
@@ -183,14 +217,22 @@ def v5_merge(D, N):
         for a in D.get("activities", []):
             if (a.get("gid") == gid or a["id"] == gid) and not a.get("wx"):
                 a["wx"] = w
-    for z in N.get("zonen_add") or []:                  # neue Zonenversion nur mit Freigabe von Silas
-        if not (z.get("freigabe") or {}).get("datum"):
-            msg.append(f"Zonen {z.get('id')} ohne Freigabe nicht übernommen")
+    for z in N.get("zonen_add") or []:                  # neue Zonenversion nur mit Freigabe von Silas (V6.2.2: auch von der Seite, geprüft)
+        fehler = zonen_pruefen(D, z)
+        if fehler:
+            msg.append(f"Zonen {z.get('id') if isinstance(z, dict) else '?'} nicht übernommen: {fehler}")
+            if isinstance(z, dict) and z.get("id"):          # die Seite zeigt den Grund beim noch offenen Profil (V6.2.2)
+                abg = [x for x in D.get("zonen_abgelehnt", []) if x.get("id") != z["id"]]
+                abg.append({"id": z["id"], "grund": fehler, "zeit": dt.datetime.now(ZRH).isoformat(timespec="seconds")})
+                D["zonen_abgelehnt"] = abg[-20:]
             continue
         for old in D.setdefault("zonen", []):
-            if old.get("status") == "aktiv":
+            if old.get("status") == "aktiv" and old.get("id") != z["id"]:
                 old["status"], old["gueltig_bis"] = "ersetzt", z["gueltig_ab"]
         _upsert(D, "zonen", [z], what="Zonenprofil")
+        msg.append(f"Zonen {z['id']} übernommen (gültig ab {z['gueltig_ab']})")
+        if str((z.get("methodik") or {}).get("art", "")).startswith("zonenvorschlag-"):
+            D.setdefault("versions", {})["zonenvorschlag"] = {"v": z["methodik"]["art"], "text": "Zonen-Vorschlag aus LT1/LT2 (js/v62.js), gilt nur nach Bestätigung auf der Seite"}
     for pid in N.get("laktat_bestaetigt") or []:
         msg.append(f"B1 {pid}: {'übernommen' if laktat_uebernehmen(D, pid) else 'nicht gefunden oder schon übernommen'}")
     for pid in N.get("laktat_punkte_bestaetigt") or []:   # V5.9.3: Laktat aus dem Explorer, auf der Seite bestätigt

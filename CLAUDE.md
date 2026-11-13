@@ -55,7 +55,8 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
 - **V6.1 (Etappe 1 Daten):** `tools/wellness.py` (Readiness, Body Battery, Stress je Tag, wellness-1.0; `offen` = Tage zum Nachholen),
   `tools/notizen.py` (Garmin-Notizen speichern, Laktat und Verpflegung daraus als Vorschau, notizen-1.0; `offen` = Aktivitäten ohne Notiz),
   `js/v61.js` (ohne DOM: Garmin-Werte eines Tages, Datenlage je Wert, Notiz-Vorschauen), `tests/test_v61.cjs`
-- **V6.2 (Etappe 2):** `js/v62.js` (ohne DOM: Testplan testplan-1.0), `tests/test_v62.cjs`
+- **V6.2 (Etappe 2):** `js/v62.js` (ohne DOM: Testplan testplan-1.0, V6.2.2 Zonen-Vorschlag zonenvorschlag-1.0), `tests/test_v62.cjs`;
+  Oberfläche des Zonen-Vorschlags in `js/v5-ui.js` (`V.zonenVorschlag`, Karte `#zv-card` unter Laktat)
 - **V5.8:** keine neuen Dateien; Rechenlogik in `js/route.js` (Abschnitte von Hand, Skitourennetz, Hangneigung, MTB-Abfahrt, Wegende, drei
   Rennradvarianten, Windpfeile), Oberfläche in `js/routen-ui.js`, Ringe «Heute» in `js/formkurve.js` (`FK.ringeVerlauf`) und `js/v55.js` (`V55.ringe`)
 - `tests/test_formkurve.cjs`, `tests/test_route.cjs`, `tests/test_analyse.cjs`, `tests/test_training.cjs`, `tests/test_tools.py` – Abnahmetests (erfundene Werte; `tests/fixtures/` = echte
@@ -242,7 +243,7 @@ V5.6: zusätzlich `rpe` (→ `rpe`), `intervalle` (Korrekturen von Hand → `int
 zugeordnet → `laktat_punkte`, Status «vorschau») und `saison` (Stunden «jetzt»/«Spitze» → `saison_plan`); gleiche ID ersetzt mit Audit.
 V5.7: `startorte` (ganze Liste → `startorte`, alte Fassung ins Audit) und `trainingsrouten` (gewählte Vorschläge → `trainingsrouten`, gleiche
 ID ersetzt mit Audit). Startorte und Routen nur verschlüsselt (data.enc.json), nie offen ins Repository.
-V5.9.3: `routen` (im Planer gespeicherte Routen → `routes`, gleiche ID ersetzt mit Audit), `routen_entfernt` (auf der Seite gelöscht → aus
+V6.2.2: `zonen` (auf der Seite bestätigte Zonenprofile → `zonen_add`, geprüft wie oben). V5.9.3: `routen` (im Planer gespeicherte Routen → `routes`, gleiche ID ersetzt mit Audit), `routen_entfernt` (auf der Seite gelöscht → aus
 `routes` entfernt, alte Fassung ins Audit), `laktat_punkte_bestaetigt` («Laktat hier» aus dem Explorer auf der Seite bestätigt → Kurzcheck in
 `lactate`, Quelle «aus Explorer», Punkt «übernommen»; übernommene Punkte werden nie wieder «vorschau»). Befinden kommt aus dem Morgen-Check-in
 (`befinden-1.1`: Beine → `muskel`, Energie → `muede`, Kopf → `stress`, je 1–5; dazu `krank`, `notiz`; gleicher Tag ersetzt mit Audit).
@@ -262,8 +263,15 @@ V5.9.3: `routen` (im Planer gespeicherte Routen → `routes`, gleiche ID ersetzt
   Unsicherheit: 4000 Simulationen, Messfehler max(0,15 mmol/l; 7,5 %), je Test eigene Zufallsfolge. Puls an der Schwelle aus FIT (30 s vor der Entnahme).
 - Nach jeder Änderung an Laktatwerten: `python3 -I tools/migrate_v5.py data.json` (rechnet `schwellen`, legt fehlende V5-Listen an, Sicherung in
   `work/backup/`, Rückweg mit `--rollback <datei>`). `check_referenz.py` prüft die Schwellen gegen `referenz.schwellen_soll`.
-- Zonenprofile (`zonen`) sind versioniert und werden **nie** automatisch aus LT1/LT2 gerechnet. Neue Version nur über `"zonen_add"` mit
-  `freigabe.datum` (Silas' Freigabe); die alte wird «ersetzt». Aktiv: «Zonen vom 23.10.2026» (in Garmin eingetragen).
+- Zonenprofile (`zonen`) sind versioniert und werden **nie** ohne Silas' Freigabe aus LT1/LT2 gesetzt. Neue Version nur über `"zonen_add"` mit
+  `freigabe.datum`; die alte wird «ersetzt». Aktiv: «Zonen vom 23.10.2026» (in Garmin eingetragen).
+- **V6.2.2 Zonen-Vorschlag (zonenvorschlag-1.0, `js/v62.js`):** aus dem neuesten Stufentest je Sportart: Z2/Z3 = LT1, Z3/Z4 = LT2 (Mitte der
+  gültigen Methoden oder gewählte Methode, Puls an der Schwelle aus FIT); Z1/Z2 und Z4/Z5 im Verhältnis der Skala nach Tønnessen et al. 2024
+  (0,81/1,07 × bei Leistung und Tempo, 0,88/1,06 × beim Puls). Bestätigen nur bei bestätigtem Test (B1): die Seite legt ein Profil mit Freigabe
+  an (`Inbox.data.zonen` → «Direkt speichern» → `zonen_add`). `merge_daily.py` prüft es (`zonen_pruefen`: Freigabe, lückenlose und geordnete
+  Grenzen, Test in `schwellen.tests` bestätigt); Ablehnungen mit Grund in `zonen_abgelehnt` (die Seite zeigt sie). Nach einer Übernahme
+  Silas daran erinnern, die Grenzen in Garmin/enduco einzutragen, und die Zonen in den Aufträgen Morgen-Briefing und Abend-Check nachführen.
+  Nie Zonen nach Garmin schreiben.
 - Zonenverteilung «Mache ich das Richtige?» nutzt die Pulsgrenzen des aktiven Profils (ab dessen Gültigkeit), davor die Garmin-Zonen.
 
 ## Routenplaner (V5.3)
