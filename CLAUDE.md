@@ -67,6 +67,9 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   `js/v64-ui.js` (Plan: «Woche nach Modell» mit «Vergleich mit Enduco», «Vorschlag und Enduco über die Wochen», «Aufbau-Check», «Trainingsmodell»
   mit Intensität je Sportart; Ansicht «Wissen» unter Plan), `tests/test_v64.cjs`; Saison saison-1.2 in `js/analyse.js` (`AN.saison`,
   `AN.saisonStunden`, `AN.saisonVorgaben`)
+- **V6.5 (Etappe 5 Enduco-Bibliothek und Archiv):** `tools/bibliothek.py` (bib-1.0: jedes Enduco-Workout aus Garmin bleibt in `enduco_bib`,
+  mit Volltext, Schritten, Schwimmübungen, Terminen und Versionen; Startbestand aus der Garmin-Workout-Liste am 13.11.2026), `tools/archiv.mjs`
+  (archiv-1.0: privates Archiv `sileyhunter/spuren-archiv`, Abschnitt «Archiv»), `tests/test_archiv.cjs`
 - **V6.4.4 (Prüfung V6.4, `docs/AUDIT_V64.md`):** `tools/leck_pruefen.py` – Leck-Prüfung vor jedem Push: sucht echte Werte (IDs, Zonentexte und
   -grenzen, Schwellen, Distanzen mit Datum, Testtermine und Abwesenheiten, E-Mail) in allen getrackten Dateien, gibt nur Fundorte aus
 - **V5.8:** keine neuen Dateien; Rechenlogik in `js/route.js` (Abschnitte von Hand, Skitourennetz, Hangneigung, MTB-Abfahrt, Wegende, drei
@@ -88,10 +91,15 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
    - **Workout-Schritte (V5.7, für «Passende Route finden»):** für jede Einheit aus `get_scheduled_workouts` mit `workout_id`:
      `get_workout_by_id(workout_id)` (vereinfachte Form, nicht `raw`) und im `planned`-Eintrag ergänzen: `wid` = workout_id,
      `quelle` = `<provider> über Garmin` (z. B. «Enduco über Garmin»), `desc` = erster Satz der Beschreibung (höchstens 200 Zeichen),
-     `steps` = `segments[0].steps` unverändert (type, end_condition, end_condition_value, target_type, target_value_low/high,
-     secondary_target_*, repeat_count, steps). Danach `get_workouts`: Workouts mit `provider` «Enduco», `created_date` in den letzten
-     2 Tagen und nicht im Kalender → höchstens 5 als `"workouts_neu"` (je `get_workout_by_id`; Format unten; ersetzt die alte Liste).
+     `steps` = `segments[0].steps` unverändert (type, description, end_condition, end_condition_value, target_type, target_value_low/high,
+     secondary_target_*, repeat_count, stroke_type, equipment_type, steps). **V6.5 (Enduco-Bibliothek):** zusätzlich `desc_voll` =
+     `description` unverändert und vollständig, `geaendert` = `updated_date`, `erstellt` = `created_date`. Danach `get_workouts`: Workouts mit `provider` «Enduco», `created_date` in den letzten
+     2 Tagen und nicht im Kalender → höchstens 5 als `"workouts_neu"` (je `get_workout_by_id`; Format unten, mit denselben Feldern; ersetzt die alte Liste).
      Schlägt ein Abruf fehl: ohne Schritte weitermachen, kein Abbruch, keine Nachricht. Enduco-Workouts nie ändern.
+   - **Enduco-Bibliothek (V6.5, bib-1.0, `tools/bibliothek.py`):** Die Antwort von `get_workouts` ist gross und wird als Datei gespeichert;
+     den Pfad merken (die Datei nicht abschreiben). Nach dem Einspielen in Schritt 3: `python3 -I tools/bibliothek.py liste data.json <pfad>`
+     (alle Enduco-Workouts mit Volltext; nichts wird gelöscht, Änderungen werden neue Versionen). Kommt die Antwort ausnahmsweise direkt
+     statt als Datei: diesen Schritt weglassen. Fehlschlag: kein Abbruch, keine Nachricht.
    - **Tageswerte rückwirkend nachholen** (bis sie ab 2020 vorhanden sind): Startpunkt ist `config.days_backfill` in `data.json`,
      fehlt der Wert, das früheste Datum in `days`. Liegt er nach 2020-01-01, mit `get_sleep_summary_range` die 180 Nächte davor holen
      (zwei Abfragen à 90 Nächte, nie vor 2020-01-01) und als zusätzliche Einträge in `days` aufnehmen, nur `hrv`, `rhr`, `sleepH`,
@@ -129,8 +137,15 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
         Kein `get_user_summary` beim Nachholen (zu gross); Body Battery gibt es nur ab jetzt. Bei `"fertig": true` nichts nachholen.
      b) Notizen: `python3 -I tools/notizen.py offen data.json` nennt höchstens 20 Garmin-IDs ohne abgerufene Notiz; je ID `get_activity`
         → `"notizen_garmin": {"<ID>": <description oder null>}`.
-     Schlägt ein Abruf fehl: bei a) den Zeiger nicht verschieben, bei b) die ID weglassen (nächste Nacht erneut); kein Abbruch, keine Nachricht.
-3. `work/new.json` schreiben (Format unten, mit `"lauf": "nacht"`), dann `python3 -I tools/merge_daily.py data.json work/new.json work/fit.jsonl`.
+     c) Enduco-Bibliothek (V6.5): `python3 -I tools/bibliothek.py offen data.json` nennt unter `wids` höchstens 10 Workouts ohne Schritte;
+        je ID `get_workout_by_id(<ID>)` (vereinfachte Form) → `"enduco_schritte": [{"wid", "titel" = name, "sport", "erstellt" = created_date,
+        "geaendert" = updated_date, "desc_voll" = description, "steps" = segments[0].steps unverändert (alle Felder), "dauer_s" =
+        estimated_duration_seconds, "distanz_m" = estimated_distance_meters, "pool_m" = pool_length}]` (fehlende Felder weglassen).
+        Bei `"fertig": true` nichts nachholen.
+     Schlägt ein Abruf fehl: bei a) den Zeiger nicht verschieben, bei b) die ID weglassen (nächste Nacht erneut), bei c) `{"wid": <ID>, "fehlt": true}`
+     (nach drei Fehlversuchen fragt `offen` nicht mehr danach); kein Abbruch, keine Nachricht.
+3. `work/new.json` schreiben (Format unten, mit `"lauf": "nacht"`), dann `python3 -I tools/merge_daily.py data.json work/new.json work/fit.jsonl`
+   und `python3 -I tools/bibliothek.py liste data.json <pfad der get_workouts-Antwort>` (V6.5, siehe oben).
    **Eingaben vom Handy (V5.9.3, eingang-1.0, Abschnitt «Eingang»):** `SPUREN_PW=… node tools/eingang.mjs einlesen` (liest `eingang/*.bin`,
    schreibt `work/eingang_a.json`, `work/eingang_b.json`, `work/eingang_dateien.json`).
    - Gibt es `work/eingang_a.json`: `python3 -I tools/merge_daily.py data.json work/eingang_a.json`.
@@ -164,10 +179,14 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
             "bbSleep": 0, "bbHigh": 0, "bbLow": 0, "stress": 0, "stressHighMin": 0}],
   "weights": [{"date": "2026-10-30", "kg": 0, "ts_gmt": 0}],
   "planned": [{"date": "2026-11-02", "title": "", "sport": "rad", "dur_s": 3600, "wid": 0, "quelle": "Enduco über Garmin", "desc": "",
+               "desc_voll": "", "geaendert": "2026-11-01T20:00:00.0", "erstellt": "2026-11-01T20:00:00.0",
                "steps": [{"type": "warmup", "end_condition": "time", "end_condition_value": 600, "target_type": "power.zone",
                           "target_value_low": 120, "target_value_high": 180}]}],
   "planned_range": ["2026-10-31", "2026-11-14"],
-  "workouts_neu": [{"wid": 0, "title": "", "sport": "cycling", "dur_s": 0, "erstellt": "2026-11-08T07:39:40", "desc": "", "steps": []}],
+  "workouts_neu": [{"wid": 0, "title": "", "sport": "cycling", "dur_s": 0, "erstellt": "2026-11-08T07:39:40", "geaendert": "2026-11-08T07:39:40",
+                    "desc": "", "desc_voll": "", "steps": []}],
+  "enduco_schritte": [{"wid": 0, "titel": "", "sport": "swimming", "erstellt": "", "geaendert": "", "desc_voll": "", "steps": [],
+                       "distanz_m": 2000.0, "pool_m": 50.0}, {"wid": 0, "fehlt": true}],
   "food_logs": [{"date": "2026-11-08", "dailyCalories": 0, "dailyCarbs": 0, "hydration": {"valueInML": 0, "activityIntakeInML": 0, "sweatLossInML": 0, "lastEntryTimestampLocal": ""},
                  "items": [{"logId": "", "foodName": "", "brandName": null, "servingQty": 1.0, "numberOfUnits": 1.0, "servingUnit": "SERVING",
                             "calories": 0, "carbs": 0, "sodium": null, "mealName": "SNACKS", "mealTime": "10:45:00", "logTimestamp": "2026-11-08T12:52:14.000Z"}]}],
@@ -199,9 +218,10 @@ geschrieben, Enduco-Workouts werden nie geändert. Jeder Abruf, der fehlschlägt
      `get_user_summary(gestern)` → `stress`, `stressHighMin`, `bbHigh`, `bbLow` (und `bodyBattery`, `bbSleep`) für gestern. Kein Nachholen.
    - `get_scheduled_workouts` heute bis +14 Tage, je Einheit mit `workout_id` `get_workout_by_id` → `planned` und `planned_range`,
      genau wie im Nacht-Update (Workout-Schritte V5.7).
-   - `get_workouts` → `workouts_neu` wie im Nacht-Update (Enduco, letzte 2 Tage, nicht im Kalender, höchstens 5).
+   - `get_workouts` → `workouts_neu` wie im Nacht-Update (Enduco, letzte 2 Tage, nicht im Kalender, höchstens 5); den Pfad der gespeicherten
+     Antwort für die Enduco-Bibliothek merken (V6.5).
 3. `work/new.json` mit `"lauf": "morgen"` und nur diesen Feldern schreiben, `python3 -I tools/merge_daily.py data.json work/new.json` (ohne
-   fit.jsonl). Danach die Eingaben vom Handy wie im Nacht-Update (Schritt 3 «Eingaben vom Handy», mit Bestätigungen und Prüfung).
+   fit.jsonl), dann `python3 -I tools/bibliothek.py liste data.json <pfad der get_workouts-Antwort>` (V6.5; ohne Datei weglassen, kein Nachholen). Danach die Eingaben vom Handy wie im Nacht-Update (Schritt 3 «Eingaben vom Handy», mit Bestätigungen und Prüfung).
 4. `SPUREN_PW=… node tools/crypt.mjs encrypt data.json data.enc.json`, dann «Eingang aufräumen» wie im Nacht-Update (keine Sekundenreihen).
    Commit «Morgen-Update JJJJ-MM-TT» mit `data.enc.json` (und den Löschungen in `eingang/`), auf `main` pushen. Scheitert der Push: einmal
    `git pull --rebase`, erneut pushen. Gibt es dabei einen Konflikt in `data.enc.json`: `git rebase --abort`, `git reset --hard origin/main`,
@@ -211,7 +231,8 @@ geschrieben, Enduco-Workouts werden nie geändert. Jeder Abruf, der fehlschlägt
 Das Nacht-Update danach ersetzt dieselben Tage, Workouts und `workouts_neu` (nichts doppelt).
 
 ## Monatlicher Garmin-Export (FIT, volle Genauigkeit inkl. GPS-Spuren)
-Silas lädt `UploadedFiles_0-_Part*.zip` hoch. Jedes ZIP in einen eigenen, leeren Ordner ausserhalb des Repos entpacken.
+Silas lädt `UploadedFiles_0-_Part*.zip` hoch. Jedes ZIP in einen eigenen, leeren Ordner ausserhalb des Repos entpacken und (V6.5) unverändert
+im privaten Archiv ablegen (Abschnitt «Archiv», Art `garmin-export`).
 1. `python3 -I tools/classify.py <rohordner> work/files.json`
 2. `python3 -I tools/parse_activities.py work/files.json work/acts_raw.json`
 3. entschlüsseln, `python3 -I tools/import_export.py data.json work/acts_raw.json`.
@@ -231,9 +252,21 @@ Silas lädt `UploadedFiles_0-_Part*.zip` hoch. Jedes ZIP in einen eigenen, leere
    umbenannt; entfernt verwaiste, bricht das Löschen ab, wenn mehr als 5 % verwaist wären) und
    `SPUREN_PW=… node tools/serien_pruefen.mjs --git` («PRÜFUNG REIHEN: bestanden»), `data.enc.json` und `serien/` committen, pushen.
 
+## Archiv (spuren-archiv, V6.5, archiv-1.0)
+- Privates Repository `sileyhunter/spuren-archiv` (von Silas am 13.11.2026 angelegt) für Rohdaten, die nie ins öffentliche Repository gehören:
+  Garmin-Exporte (ZIP), FIT-Dateien, Momentaufnahmen aus der Garmin-Verbindung (z. B. die Workout-Liste), Laktat-Tabellen. Die Seite liest es nie.
+- Alles verschlüsselt mit `tools/archiv.mjs` (Format ARC1, Schlüssel aus dem Seitenpasswort mit eigenem Salz in `schluessel.json`, zufällige
+  Dateinamen, Namen und Prüfsummen nur im verschlüsselten `index.bin`, Teile zu höchstens 40 MiB). Gleicher Inhalt nur einmal; nie ändern oder löschen.
+- In einer Chat-Sitzung: `add_repo` (sileyhunter/spuren-archiv, push), nach `/home/claude/spuren-archiv` klonen, `SPUREN_PW=… node tools/archiv.mjs
+  ablegen /home/claude/spuren-archiv <datei> --art <art> [--name …] [--notiz …]`, dann `pruefen` («PRÜFUNG ARCHIV: bestanden»), Commit «Archiv: …»,
+  pushen (grosse Dateien Teil für Teil). Abgelegt werden: jedes hochgeladene Garmin-ZIP (Monatsexport und Datenexport, Art `garmin-export`),
+  Laktat-Tabellen (`laktat`), gelegentlich die Workout-Liste (`garmin-workouts`). Nacht- und Morgen-Update fassen das Archiv nicht an.
+- Nie Klartext ablegen; die Rohdateien bleiben ausserhalb beider Repositories in eigenen Ordnern und werden danach gelöscht.
+
 ## Garmin-Datenexport (Verlauf, V6.2.3, garmin-export-1.0)
 Silas lädt Teile seines Garmin-Datenexports hoch (z. B. «Archiv.zip» mit `*_sleepData.json`, `*_healthStatusData.json`,
-`TrainingReadinessDTO_*.json`). Gleiche Dateien nur einmal (Prüfsumme); jedes ZIP in einen eigenen, leeren Ordner ausserhalb des Repos entpacken.
+`TrainingReadinessDTO_*.json`). Gleiche Dateien nur einmal (Prüfsumme); jedes ZIP in einen eigenen, leeren Ordner ausserhalb des Repos entpacken
+und (V6.5) unverändert im privaten Archiv ablegen (Abschnitt «Archiv», Art `garmin-export`).
 1. `python3 -I tools/garmin_export.py lesen <ordner> [<ordner> …] work/garmin-verlauf.json` → Schlafdauer (Tief + Leicht + REM, ohne Wachzeit),
    Schlafwert, Stress im Schlaf (nicht OFF_WRIST/UNCONFIRMED) und Readiness nach dem Aufwachen (`AFTER_WAKEUP_RESET`; mehrere verschiedene
    Aufwach-Werte am selben Tag → Tag leer, nie geraten) und HRV aus dem Gesundheitsstatus. Am 13.11.2026 gegen die Daten der Garmin-Verbindung
@@ -502,7 +535,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Die exakten Grössen der SPS1-Dateien stehen in der Git-Historie.
 
 ## Prüfen vor jedem Push von Seite oder Werkzeugen
-`node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
+`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
 **Leck-Prüfung (V6.4.4):** `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json work/data.json`, `python3 -I tools/leck_pruefen.py work/data.json`
 («LECK-PRÜFUNG: bestanden»), danach `rm work/data.json`. Gilt für jeden Push von Seite, Werkzeugen, Tests oder Doku (nicht für die reinen Daten-Updates).
 Kein Live-Push, wenn ein Test oder die Leck-Prüfung fehlschlägt. Screenshots mit echten Daten nie ins Repo. **Ein Force-Push entfernt nichts von GitHub:**

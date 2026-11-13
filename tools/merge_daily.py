@@ -12,6 +12,7 @@ import sys
 import zoneinfo
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import bibliothek  # noqa: E402          V6.5: Enduco-Bibliothek (bib-1.0), nichts wird gelöscht
 import garmin_ernaehrung  # noqa: E402   V5.7.2: Garmin-Ernährungsprotokoll → Fueling
 import garmin_export  # noqa: E402       V6.2.3: Garmin-Datenexport (Verlauf), füllt nur fehlende Tageswerte
 import last  # noqa: E402                V5.9.1: Trainingslast mit LT2 (tl2, last-2.0)
@@ -292,7 +293,7 @@ def v5_merge(D, N):
         print("V5:", "; ".join(msg))
 
 
-GARMIN_KEYS = ("activities", "days", "weights", "planned", "planned_range", "workouts_neu", "food_logs", "wx", "notizen_garmin")
+GARMIN_KEYS = ("activities", "days", "weights", "planned", "planned_range", "workouts_neu", "food_logs", "wx", "notizen_garmin", "enduco_schritte")
 
 
 def main(data_path, new_path, fit_path=None):
@@ -402,6 +403,13 @@ def main(data_path, new_path, fit_path=None):
         D["planned"] = sorted(keep + N["planned"], key=lambda p: p["date"])
     if isinstance(N.get("workouts_neu"), list):             # V5.7: neue Enduco-Workouts ohne Kalenderdatum (ersetzt die Liste)
         D["workouts_neu"] = N["workouts_neu"][:8]
+    if N.get("planned") or N.get("workouts_neu") or N.get("enduco_schritte"):   # V6.5 bib-1.0: jedes Enduco-Workout bleibt erhalten
+        try:                                   # die Bibliothek darf das Update nie aufhalten
+            zb = bibliothek.einspielen(D, N)
+            if zb:
+                print(f"Enduco-Bibliothek: {json.dumps(zb, ensure_ascii=False)}")
+        except Exception as e:  # noqa: BLE001
+            print(f"Enduco-Bibliothek nicht ergänzt ({type(e).__name__}) – Update geht weiter")
 
     for l in N.get("lactate_add", []):
         lac = D.setdefault("lactate", [])

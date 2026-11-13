@@ -924,5 +924,79 @@ _lkf = {l.split(":")[0] for l in _lk.stdout.splitlines() if ":" in l and not l.s
 check("Leck-Prüfung: findet ID, Zonentext, Zonengrenzen, FTP, Distanz mit Datum, Testtermin und E-Mail – nie den Wert in der Ausgabe; erfundene Werte ok",
       _lk.returncode == 1 and _lkf == {"a.js", "b.md", "c.py", "d.cjs", "e.md", "f.md", "g.md"} and "12,34" not in _lk.stdout and "263" not in _lk.stdout, _lk.stdout)
 
+# ---------- V6.5 Enduco-Bibliothek (tools/bibliothek.py, bib-1.0) – erfundene Workouts ----------
+import bibliothek  # noqa: E402
+_S1 = [{"order": 1, "type": "warmup", "end_condition": "time", "end_condition_value": 600.0, "target_type": "power.zone", "target_value_low": 120.0, "target_value_high": 150.0},
+       {"order": 2, "type": "repeat", "end_condition": "iterations", "end_condition_value": 3.0, "repeat_count": 3, "step_count": 2, "steps": [
+           {"order": 3, "type": "interval", "description": "3 min hart", "end_condition": "time", "end_condition_value": 180.0, "target_type": "power.zone", "target_value_low": 260.0, "target_value_high": 280.0},
+           {"order": 4, "type": "recovery", "end_condition": "time", "end_condition_value": 120.0}]}]
+_LISTE = {"count": 4, "workouts": [
+    {"id": 1000000001, "name": "Beispiel Intervalle", "sport": "cycling", "provider": "Enduco", "created_date": "2026-01-10T20:00:00.0", "description": "Text A über Intervalle.", "estimated_duration_seconds": 3600},
+    {"id": 1000000002, "name": "Beispiel Grundlage", "sport": "running", "provider": "Enduco", "created_date": "2026-01-12T20:00:00.0", "description": "Text B.", "estimated_duration_seconds": 2700},
+    {"id": 1000000003, "name": "Beispiel Schwimmen", "sport": "swimming", "provider": "Enduco", "created_date": "2026-01-14T20:00:00.0", "description": "Text B."},
+    {"id": 1000000009, "name": "Eigenes Workout", "sport": "cycling", "provider": None, "created_date": "2026-01-15T20:00:00.0", "description": "privat"}]}
+_DB = {}
+_zl = bibliothek.einspielen_liste(_DB, _LISTE, "2026-01-20")
+_B = _DB["enduco_bib"]
+check("Bibliothek: Liste nur Enduco, Volltext je Text einmal, Sportart übersetzt",
+      _zl == {"neu": 3} and sorted(_B["workouts"]) == ["1000000001", "1000000002", "1000000003"] and len(_B["texte"]) == 2
+      and _B["workouts"]["1000000003"]["sport"] == "schwimm" and _DB["versions"]["enduco_bib"]["v"] == "bib-1.0", str(_zl))
+check("Bibliothek: Liste ein zweites Mal – nichts Neues, nichts doppelt", bibliothek.einspielen_liste(_DB, _LISTE, "2026-01-21") == {}
+      and all(len(w["versionen"]) == 1 for w in _B["workouts"].values()))
+_p = {"date": "2026-01-22", "title": "Beispiel Intervalle", "sport": "rad", "dur_s": 3600, "wid": 1000000001, "quelle": "Enduco über Garmin",
+      "desc": "Text A über Intervalle.", "desc_voll": "Text A über Intervalle.", "geaendert": "2026-01-10T20:00:00.0", "erstellt": "2026-01-10T20:00:00.0", "steps": _S1}
+_z = bibliothek.einspielen(_DB, {"planned": [_p]}, "2026-01-21")
+_w1 = _B["workouts"]["1000000001"]
+check("Bibliothek: Kalender ergänzt die Version aus der Liste (Schritte, Termin, Änderungsdatum) statt eine zweite anzulegen",
+      _z == {"ergaenzt": 1} and len(_w1["versionen"]) == 1 and _w1["versionen"][0]["steps"] == _S1 and _w1["termine"] == ["2026-01-22"]
+      and _w1["versionen"][0]["geaendert"] == "2026-01-10T20:00:00.0" and _w1["versionen"][0]["steps_quelle"] == "kalender", str(_w1))
+_S1b = copy.deepcopy(_S1)
+_S1b[1]["steps"][0]["target_value_low"] = 260.0000000001
+_S1b[1]["steps"][0].pop("description")
+del _S1b[0]["order"]
+bibliothek.einspielen(_DB, {"planned": [dict(_p, steps=_S1b, date="2026-01-23")]}, "2026-01-22")
+check("Bibliothek: dieselbe Fassung nochmals abgeschrieben (Rundung, ohne Text) – keine neue Version, Schritte bleiben die ersten",
+      len(_w1["versionen"]) == 1 and _w1["versionen"][0]["steps"] == _S1 and _w1["termine"] == ["2026-01-22", "2026-01-23"])
+_S2 = copy.deepcopy(_S1)
+_S2[1]["repeat_count"] = 4
+bibliothek.einspielen(_DB, {"planned": [dict(_p, steps=_S2, geaendert="2026-01-24T07:00:00.0", date="2026-01-25")]}, "2026-01-24")
+check("Bibliothek: Enduco ändert das Workout (neues Änderungsdatum) – neue Version, die alte bleibt",
+      len(_w1["versionen"]) == 2 and _w1["versionen"][0]["steps"] == _S1 and _w1["versionen"][1]["steps"] == _S2 and _w1["versionen"][1]["ab"] == "2026-01-24")
+_w2 = _B["workouts"]["1000000002"]
+bibliothek.einspielen(_DB, {"planned": [{"date": "2026-01-26", "title": "Beispiel Grundlage", "sport": "lauf", "wid": 1000000002, "quelle": "Enduco über Garmin",
+                                          "desc": "Text B.", "steps": _S1}]}, "2026-01-25")
+bibliothek.einspielen(_DB, {"planned": [{"date": "2026-01-26", "title": "Beispiel Grundlage", "sport": "lauf", "wid": 1000000002, "quelle": "Enduco über Garmin",
+                                          "desc": "Text B.", "steps": _S2}]}, "2026-01-26")
+check("Bibliothek: ohne Änderungsdatum zählt der Inhalt – andere Wiederholungen = neue Version, gleicher Text bleibt verknüpft",
+      len(_w2["versionen"]) == 2 and _w2["versionen"][1]["steps"] == _S2 and _w2["versionen"][0].get("text_h") and not _w2["versionen"][1].get("kurz"), str(_w2["versionen"]))
+check("Bibliothek: nur der erste Satz aus dem Kalender gilt nicht als Volltext", "Text B." in _B["texte"].values() and len(_B["texte"]) == 2)
+_o = bibliothek.offen(_DB, 15)
+check("Bibliothek: offen = neueste Version ohne Schritte, neueste zuerst", _o["wids"] == [1000000003] and _o["offen"] == 1 and not _o["fertig"], str(_o))
+for _i in range(3):
+    bibliothek.einspielen(_DB, {"enduco_schritte": [{"wid": 1000000003, "fehlt": True}]}, "2026-01-27")
+check("Bibliothek: nach drei Fehlversuchen nicht mehr offen (nie endlos)", bibliothek.offen(_DB)["wids"] == [] and bibliothek.offen(_DB)["fertig"])
+bibliothek.einspielen(_DB, {"enduco_schritte": [{"wid": 1000000003, "titel": "Beispiel Schwimmen", "sport": "swimming", "geaendert": "2026-01-14T20:00:00.0",
+                                                  "desc_voll": "Text B.", "distanz_m": 2000.0, "pool_m": 25.0,
+                                                  "steps": [{"order": 1, "type": "interval", "description": "4 × 50 m | Übung frei | 2:10/100m", "end_condition": "distance",
+                                                             "end_condition_value": 50.0, "stroke_type": "free", "equipment_type": "fins"}]}]}, "2026-01-28")
+_w3 = _B["workouts"]["1000000003"]
+check("Bibliothek: Schritte rückwirkend (Schwimmen mit Übung und Hilfsmittel unverändert)", len(_w3["versionen"]) == 1
+      and _w3["versionen"][0]["steps"][0]["equipment_type"] == "fins" and _w3["versionen"][0]["pool_m"] == 25.0 and "versuche" not in _w3, str(_w3))
+_L2 = copy.deepcopy(_LISTE)
+_L2["workouts"] = [w for w in _L2["workouts"] if w["id"] != 1000000002]
+bibliothek.einspielen_liste(_DB, _L2, "2026-01-29")
+check("Bibliothek: ein Workout fehlt in der Liste (in Garmin gelöscht) – bleibt erhalten", "1000000002" in _B["workouts"])
+_td = tempfile.mkdtemp()
+json.dump({"activities": [], "days": [], "planned": []}, open(os.path.join(_td, "d.json"), "w"))
+json.dump({"planned": [_p], "planned_range": ["2026-01-20", "2026-02-03"], "workouts_neu": [{"wid": 1000000005, "title": "Neu ohne Termin", "sport": "cycling",
+           "dur_s": 1800, "erstellt": "2026-01-21T10:00:00", "desc": "Kurz.", "desc_voll": "Kurz. Und mehr.", "steps": []}]}, open(os.path.join(_td, "n.json"), "w"))
+merge_daily.main(os.path.join(_td, "d.json"), os.path.join(_td, "n.json"))
+json.dump({"planned": [], "planned_range": ["2026-01-20", "2026-02-03"], "workouts_neu": []}, open(os.path.join(_td, "n.json"), "w"))
+merge_daily.main(os.path.join(_td, "d.json"), os.path.join(_td, "n.json"))
+_DM = json.load(open(os.path.join(_td, "d.json")))
+check("Bibliothek im Nacht-Update: Kalender und neue Workouts bleiben, auch wenn sie aus Kalender und Liste verschwinden",
+      sorted(_DM["enduco_bib"]["workouts"]) == ["1000000001", "1000000005"] and _DM["planned"] == [] and _DM["enduco_bib"]["workouts"]["1000000001"]["termine"] == ["2026-01-22"]
+      and "Kurz. Und mehr." in _DM["enduco_bib"]["texte"].values(), str(_DM.get("enduco_bib", {}).get("workouts", {}).keys()))
+
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)

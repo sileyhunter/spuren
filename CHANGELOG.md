@@ -1,5 +1,19 @@
 # Änderungen
 
+## V6.5 · 13.11.2026 · Etappe 5, Teil 1: Enduco-Bibliothek und privates Archiv
+- **Enduco-Bibliothek (bib-1.0, `tools/bibliothek.py`):** Jedes Enduco-Workout, das über Garmin kommt, bleibt erhalten – mit Volltext, Schritten
+  (beim Schwimmen mit Übung, Hilfsmittel und Pace je Abschnitt), Kalenderterminen und Versionen. Nichts wird gelöscht; ändert Enduco ein Workout
+  (neues Änderungsdatum in Garmin, sonst anderer Inhalt), entsteht eine neue Version, die alte bleibt. Eine nochmals abgeschriebene gleiche Fassung
+  (Rundung, fehlende Texte) zählt nicht als Änderung. Startbestand: die 332 Enduco-Workouts in Garmin seit April 2024 (Volltext, Dauer, Sportart);
+  Termine zählen ab jetzt, weil Garmin vergangene Kalendereinträge nicht aufhebt; die Schritte der älteren Workouts holt das Nacht-Update nach
+  (10 je Nacht). Nacht- und Morgen-Update übernehmen neu den ganzen Beschreibungstext und das Änderungsdatum.
+- **Privates Archiv (archiv-1.0, `tools/archiv.mjs`, Repository `spuren-archiv`):** Rohdaten (Garmin-Exporte, FIT, Momentaufnahmen aus Garmin,
+  Laktat-Tabellen) verschlüsselt, mit zufälligen Dateinamen und verschlüsseltem Verzeichnis, in Teilen unter 40 MiB; gleicher Inhalt nur einmal,
+  nichts wird geändert oder gelöscht; Prüfung vor jedem Push. Erster Inhalt: die Garmin-Workout-Liste vom 13.11.2026.
+- Geprüft: `tests/test_tools.py` (+ 13 Prüfungen Bibliothek: Liste nur Enduco, Kalender ergänzt statt verdoppelt, Abschrift ohne neue Version,
+  neue Version bei Änderung, nichts gelöscht, Fehlversuche, Nacht-Update), `tests/test_archiv.cjs` (neu: Passwort, Teile, Prüfsumme, kein
+  Klartext, Prüfung findet fehlende und veränderte Teile), alle bisherigen Tests, Leck-Prüfung.
+
 ## V6.4.4 · 13.11.2026 · Prüfung V6.4: Befunde behoben (`docs/AUDIT_V64.md`)
 Vier unabhängige Prüfungen (Rechenlogik, Wissen und Quellen, Datenschutz, Oberfläche); alle Befunde sind nachgeprüft und behoben oder als
 offen geführt (Oberfläche im zweiten Teil unten).
