@@ -1,4 +1,4 @@
-# Offen nach V5.5, V5.6 und V5.7 (Stand 8.11.2026)
+# Offen nach V5.5, V5.6 und V5.7 (Stand 13.11.2026)
 
 Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 
@@ -170,3 +170,16 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 65. **Oberfläche (Audit D, Rest):** Heute und Kalender zählen die Wochenstunden aller Sportarten, der Plan nur Schwimmen, Rad und Laufen –
     beschriftet, aber zwei Zahlen. Vergangene Phasen im Plan sind noch abgedunkelt (Kontrast nur aufgeklappt prüfbar). Safari/iOS und VoiceOver
     selbst sind nicht geprüft.
+
+## Wünsche vom 13.11.2026 (Auftrag `docs/auftrag-etappen-6-8.md`; gebaut wird erst nach Silas' Okay)
+66. **Teil 0, Fehler in Bestehendem:** Tagesdetail im Kalender liegt unter dem Bildschirmrand; Rennrad-Vorschläge mit Gravel; «Rückgängig» und
+    «Neu» im eingeklappten Planer verdeckt; LT-Auswahl mit nur einer gültigen Methode gesperrt statt erklärt; «≈ 56m» beim Schwimmen; GPX-Weg zu Garmin Connect.
+67. **Etappe 6, Kalender und Woche:** jeden Tag antippen (Tagesblatt, auch künftige Tage), Wochenansicht mit Umschalter Monat, Training hinzufügen
+    (Sportart, Art, Vorlage, Dauer), Tag sperren, Verschieben und Entfernen, Änderungen verwerfen / Rest der Woche neu planen / Woche leeren,
+    TL ≈ und Distanz ≈ geplanter Einheiten, jede KW im Plan antippen (Belastung 1–3 oder Erholung, Stunden, TL), «Je Sportart» mit allen drei Sportarten.
+68. **Etappe 7, Routen:** Rennrad nie mit Gravel, GPX-Export und Weg zu Garmin, Planer übersichtlicher (Zurück, Alle Punkte löschen, Reiter,
+    «Stopps unterwegs» statt «Pausen»), Trainingsvorschlag auf der Karte antippen und als normale Route bearbeiten.
+69. **Etappe 8:** Intensität Grundlage · Schwelle · VO2max, Testkalender auf der Seite bearbeiten, Einzelmessungen ein- und ausblenden,
+    Ausdauertrend nach Jahr, Quartal oder Monat, Schwimmübung im Workout antippen mit Beschreibung, mehr Beinübungen.
+70. **Entscheide Silas (E1–E4):** Reihenfolge; Intensität nur aufbauend oder auch «Grundlage + VO2max»; Workouts und Strecken auf die Uhr
+    (vorher 5d: auf Zuruf, Knopf mit Morgen-Update oder noch nicht); Bilder zu Übungen (Videos verlinken, freie Bilder, eigene Zeichnungen).
