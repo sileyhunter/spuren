@@ -30,6 +30,11 @@ test("Eingang: nur Neues und Geändertes wird gesendet, Bestätigungen in einer 
   assert.equal(EG.offen(Object.assign({}, data, { befinden: [{ stress: 2, muskel: 3, muede: 2, date: "2026-11-10" }] }), Object.assign({}, ges, o2.normal.keys)).n, 0, "Reihenfolge der Felder egal");
   data.startorte = [{ id: "o1", name: "Zuhause-Test", lon: 9.5, lat: 46.8 }];
   assert.ok(EG.offen(data, ges).normal.daten.startorte, "Startorte als ganze Liste");
+  const gv = { format: "spuren-garmin-verlauf-1", id: "0123456789abcdef", tage: [{ date: "2026-01-10", sleepH: 6.5 }] };   // V6.2.3
+  const o3 = EG.offen(Object.assign({}, data, { garmin_verlauf: gv }), ges);
+  assert.equal(o3.normal.daten.garmin_verlauf, gv, "Garmin-Verlauf geht einmal mit");
+  assert.equal(EG.offen(Object.assign({}, data, { garmin_verlauf: gv }), Object.assign({}, ges, o3.normal.keys)).normal.daten.garmin_verlauf, undefined, "gesendet: nicht noch einmal");
+  assert.ok(EG.offen(Object.assign({}, data, { garmin_verlauf: Object.assign({}, gv, { id: "fedcba9876543210" }) }), Object.assign({}, ges, o3.normal.keys)).normal.daten.garmin_verlauf, "neue Datei (andere ID): wieder");
 });
 test("Eingang: Sendeliste vergisst, was auf dem Gerät nicht mehr steht", () => {
   const data = { befinden: [{ date: "2026-11-10", muede: 1, muskel: 1, stress: 1 }] };

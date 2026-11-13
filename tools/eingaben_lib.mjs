@@ -27,6 +27,7 @@ export function fuerMerge(d, quelle) {
   };
   if (d.fueling_produkte) out.fueling_produkte = d.fueling_produkte;
   if (Array.isArray(d.startorte)) out.startorte = clean(d.startorte);     // V5.7: ganze Liste (Startorte bleiben verschlüsselt in data.enc.json)
+  if (d.garmin_verlauf && typeof d.garmin_verlauf === "object") out.garmin_verlauf = d.garmin_verlauf;   // V6.2.3: Garmin-Datenexport (merge_daily prüft)
   return out;
 }
 
@@ -46,6 +47,7 @@ export function zusammen(liste) {
     Object.assign(out.notizen, d.notizen || {});
     if (d.fueling_produkte) out.fueling_produkte = d.fueling_produkte;
     if (Array.isArray(d.startorte)) out.startorte = d.startorte;
+    if (d.garmin_verlauf && typeof d.garmin_verlauf === "object") out.garmin_verlauf = d.garmin_verlauf;   // V6.2.3: der spätere gewinnt
   }
   for (const [k, m] of Object.entries(L)) out[k] = [...m.values()];
   for (const [k, s] of Object.entries(mengen)) out[k] = [...s];

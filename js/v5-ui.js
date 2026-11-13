@@ -33,6 +33,7 @@
       trainingsrouten: [], startorte: null,   // V5.7: gewählte Trainingsrouten; Startorte als ganze Liste (null = keine lokale Änderung)
       routen: [], routen_entfernt: [], laktat_punkte_bestaetigt: [],   // V5.9.3: gespeicherte Routen auf alle Geräte, Laktat aus dem Explorer bestätigt
       zonen: [],                                                      // V6.2.2: bestätigte Zonenprofile (zonenvorschlag-1.0) → zonen_add
+      garmin_verlauf: null,                                           // V6.2.3: Garmin-Datenexport (Datei aus dem Chat) → garmin_verlauf
       eg: { gesendet: {}, dateien: [] } }; },                          // V5.9.3 eingang-1.0: was schon direkt gesendet ist (js/eingang.js)
     async ensureVault() {
       if (this.vault) return this.vault;
@@ -77,6 +78,8 @@
       this.data.routen_entfernt = (this.data.routen_entfernt || []).filter((id) => rIds.has(id) || !ges["routen_entfernt|" + id]);   // bleibt, bis gesendet und aus den Daten weg
       const zIds = new Set((D.zonen || []).map((z) => z.id));                                        // V6.2.2: eingespielte Zonenprofile gelten aus den Daten
       this.data.zonen = (this.data.zonen || []).filter((z) => !zIds.has(z.id));
+      const gv = this.data.garmin_verlauf;                                                          // V6.2.3: eingespielt → gilt aus den Daten
+      if (gv && (D.garmin_export || []).some((x) => x.id === gv.id)) this.data.garmin_verlauf = null;
       if (this.data.eg && window.EG) this.data.eg.gesendet = window.EG.aufraeumen(this.data, this.data.eg.gesendet);
     },
     upsert(list, item, idf) { idf = idf || ((e) => e.id); const L = this.data[list]; const i = L.findIndex((e) => idf(e) === idf(item)); if (i >= 0) L[i] = item; else L.push(item); return this.save(); },

@@ -1,5 +1,16 @@
 # Änderungen
 
+## V6.2.3 · 13.11.2026 · Garmin-Verlauf aus dem Datenexport (garmin-export-1.0)
+- **Leser:** `tools/garmin_export.py` liest den Garmin-Datenexport (Schlaf, Readiness; Format am echten Export geprüft) und schreibt eine
+  Verlauf-Datei: Schlafdauer ohne Wachzeit, Schlafwert, Stress im Schlaf, Readiness nach dem Aufwachen. Nächte ohne Uhr oder unbestätigt
+  bleiben leer; gibt es am selben Tag mehrere verschiedene Aufwach-Werte, bleibt die Readiness leer (nicht geraten). Gesundheitsstatus
+  (HRV, Ruhepuls) erst nach dem Abgleich mit der Garmin-Verbindung.
+- **Einlesen ohne Passwort im Chat:** Einstellungen → «Garmin-Verlauf einlesen» prüft die Datei auf dem Gerät (Zeitraum, Werte je Feld) und
+  schickt sie mit «Direkt speichern» verschlüsselt ins Update. Das Update füllt nur fehlende Tageswerte; was über die Garmin-Verbindung kommt,
+  bleibt massgebend, das Nachholen läuft weiter. Gleiche Datei wird nie doppelt eingespielt.
+- Geprüft: `tests/test_tools.py` (+ Schlaf, Readiness eindeutig/mehrdeutig, Prüfung, Einspielen ohne Überschreiben, Eingang), `tests/test_v61.cjs`
+  (+ Prüfung auf der Seite), `tests/test_v59.cjs` (+ Senden einmal je Datei), alle bisherigen Tests, Einstellungen im Browser (Demo, 390 px).
+
 ## V6.2.2 · 13.11.2026 · Etappe 2, Teil 2: Zonen-Vorschlag aus LT1/LT2 (zonenvorschlag-1.0)
 - **Vorschlag:** Unter Analyse → Laktat schlägt die Seite je Sportart Zonen aus dem neuesten Stufentest vor (`js/v62.js`): Grenze Z2/Z3 = LT1,
   Z3/Z4 = LT2 (Mitte der gültigen Methoden oder eine gewählte Methode; Puls an der Schwelle aus der FIT-Datei). Z1/Z2 und Z4/Z5 sind nicht

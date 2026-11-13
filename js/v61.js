@@ -59,5 +59,36 @@
     for (const e of fueling || []) { const a = e.activity_id && einheit(e.activity_id); if (a) hat.add(a); if (e.id) hat.add(e.id); }
     return (vorschauen || []).filter((p) => p.status === "vorschau" && !hat.has(p.id) && !hat.has(einheit(p.activity_id) || p.activity_id));
   };
+
+  /* ---------------- V6.2.3 Garmin-Verlauf aus dem Datenexport (garmin-export-1.0, Datei aus tools/garmin_export.py) ---------------- */
+  V61.VERSIONS.garmin_export = "garmin-export-1.0";
+  V61.VERLAUF = { format: "spuren-garmin-verlauf-1", max: 6000, level: ["POOR", "LOW", "MODERATE", "HIGH", "PRIME"],
+    bereich: { sleepH: [0, 16], sleepScore: [0, 100], sleepStress: [0, 100], hrv: [5, 250], rhr: [25, 120], readiness: [0, 100] },
+    namen: { sleepH: "Schlafdauer", sleepScore: "Schlafwert", sleepStress: "Stress im Schlaf", hrv: "HRV", rhr: "Ruhepuls", readiness: "Readiness", readinessLevel: "Readiness-Stufe" } };
+  /** Datei prüfen, bevor sie gesendet wird (gleiche Regeln wie tools/garmin_export.py pruefen; das Update prüft noch einmal).
+   *  → {ok, grund?, id, zeitraum, tage, anzahl {feld: n}, verworfen} */
+  V61.verlaufPruefen = function (G, heute) {
+    const R = V61.VERLAUF, nein = (grund) => ({ ok: false, grund });
+    if (!G || typeof G !== "object" || G.format !== R.format) return nein("Das ist keine Garmin-Verlauf-Datei.");
+    if (!/^[0-9a-f]{16}$/.test(String(G.id || "")) || !Array.isArray(G.tage)) return nein("Datei unvollständig (ID oder Tage fehlen).");
+    if (G.tage.length > R.max) return nein(`Zu viele Tage (${G.tage.length}).`);
+    const anzahl = {}, gut = [];
+    let verworfen = 0;
+    for (const t of G.tage) {
+      const d = t && t.date;
+      if (typeof d !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(d) || d < "2010-01-01" || d > heute) { verworfen++; continue; }
+      let n = 0, schlecht = false;
+      for (const [k, v] of Object.entries(t)) {
+        if (k === "date" || v == null) continue;
+        const ok = k === "readinessLevel" ? R.level.includes(v) : R.bereich[k] && isNum(v) && v >= R.bereich[k][0] && v <= R.bereich[k][1];
+        if (ok) { anzahl[k] = (anzahl[k] || 0) + 1; n++; } else schlecht = true;
+      }
+      if (schlecht) verworfen++;
+      if (n) gut.push(d);
+    }
+    if (!gut.length) return nein("Keine gültigen Tage in der Datei.");
+    gut.sort();
+    return { ok: true, id: G.id, zeitraum: [gut[0], gut[gut.length - 1]], tage: gut.length, anzahl, verworfen, erstellt: G.erstellt || null };
+  };
   return V61;
 });

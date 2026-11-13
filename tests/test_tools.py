@@ -507,6 +507,7 @@ _lp9 = {"id": "lp-g1-600", "act": "g1", "datum": "2026-11-09", "sport": "rad", "
 _spec9 = [
     {"name": "20261110T060000Z-00000001.bin", "art": "eingaben", "zeit": "2026-11-10T06:00:00Z", "daten": {"befinden": [{"date": "2026-11-10", "muede": 2, "muskel": 3, "stress": 1}],
      "routen": [{"id": "u-r1", "name": "Runde", "coords": [[9.5, 46.8], [9.51, 46.81]]}], "laktat_punkte": [_lp9],
+     "garmin_verlauf": {"format": "spuren-garmin-verlauf-1", "id": "0123456789abcdef", "tage": [{"date": "2026-11-01", "sleepH": 7.5, "readiness": 66, "readinessLevel": "HIGH"}]},
      "zonen": [{"id": "zonen-20261110", "status": "aktiv", "gueltig_ab": "2026-11-10", "freigabe": {"datum": "2026-11-10"}, "methodik": {"art": "zonenvorschlag-1.0", "je_sportart": {"rad": {"test": "t-unbekannt"}}},
                 "skalen": [{"key": "rad_w", "disziplin": "rad", "metrik": "leistung", "zonen": [{"z": "Z1", "von": None, "bis": 150}, {"z": "Z2", "von": 150, "bis": None}]}]}]}},
     {"name": "20261110T061000Z-00000002.bin", "art": "eingaben", "zeit": "2026-11-10T06:10:00Z", "daten": {"befinden": [{"date": "2026-11-10", "muede": 2, "muskel": 3, "stress": 3}],
@@ -532,12 +533,15 @@ check("Eingang: Seite verschlüsselt (EGS1), Werkzeug liest – Eingaben, Bestä
 check("Eingang: gleiche ID → spätere Eingabe gewinnt; gelöschte Route geht mit", _A9["befinden_add"] == [{"date": "2026-11-10", "muede": 2, "muskel": 3, "stress": 3}]
       and [r["id"] for r in _A9["routen_add"]] == ["u-r1"] and _A9["routen_entfernt"] == ["u-r0"], json.dumps(_A9)[:300])
 check("Eingang: auf der Seite bestätigte Zonen gehen als zonen_add ins Update", [z["id"] for z in _A9.get("zonen_add", [])] == ["zonen-20261110"], json.dumps(_A9.get("zonen_add"))[:200])
+check("Eingang: Garmin-Verlauf von der Seite geht unverändert ins Update", (_A9.get("garmin_verlauf") or {}).get("id") == "0123456789abcdef")
 merge_daily.main(os.path.join(_t9, "data.json"), os.path.join(_t9, "work", "eingang_a.json"))
 _R9 = json.load(open(os.path.join(_t9, "data.json")))
 check("Eingang A eingespielt: Befinden, Route auf alle Geräte, alte Route entfernt (Audit), Laktatpunkt als Vorschau, CSS-Test vom Handy in css_tests",
       _R9["befinden"][0]["stress"] == 3 and [r["id"] for r in _R9["routes"]] == ["u-r1"] and any(a.get("was") == "Route entfernt" for a in _R9["audit"])
       and _R9["laktat_punkte"][0]["status"] == "vorschau" and not _R9.get("lactate") and [c["css_s"] for c in _R9.get("css_tests", [])] == [105])
 check("Eingang A: Zonen aus einem nicht bestätigten Test werden nicht übernommen", not any(z["id"] == "zonen-20261110" for z in _R9.get("zonen", [])))
+check("Eingang A: Garmin-Verlauf eingespielt (Tag mit Schlaf und Readiness)", any(d.get("date") == "2026-11-01" and d.get("readiness") == 66 and d.get("sleepH") == 7.5 for d in _R9.get("days", []))
+      and _R9["garmin_export"][0]["id"] == "0123456789abcdef")
 merge_daily.main(os.path.join(_t9, "data.json"), os.path.join(_t9, "work", "eingang_b.json"))
 _R9 = json.load(open(os.path.join(_t9, "data.json")))
 _k9 = {l["id"]: l for l in _R9.get("lactate", [])}
@@ -775,6 +779,59 @@ check("Tageswerte rückwirkend: ohne Zeiger die 20 Tage vor gestern; Readiness e
       and WL.offen({"config": {"wellness_backfill": "2024-08-05"}}, "2026-11-13")["readiness"] == ["2024-08-04", "2024-08-03", "2024-08-02", "2024-08-01"]
       and WL.offen({"config": {"wellness_backfill": "2020-01-04"}}, "2026-11-13")["tage"] == ["2020-01-03", "2020-01-02", "2020-01-01"]
       and WL.offen({"config": {"wellness_backfill": "2020-01-01"}}, "2026-11-13")["fertig"] is True, str(_o))
+
+# --- V6.2.3 garmin-export-1.0: Garmin-Datenexport → Verlauf (Format wie im echten Export, erfundene Werte) ---
+import garmin_export as GX  # noqa: E402
+_gx = tempfile.mkdtemp()
+os.makedirs(os.path.join(_gx, "w")); os.makedirs(os.path.join(_gx, "m"))
+json.dump([
+    {"calendarDate": "2026-01-10", "sleepWindowConfirmationType": "ENHANCED_CONFIRMED_FINAL", "deepSleepSeconds": 3600, "lightSleepSeconds": 14400,
+     "remSleepSeconds": 5400, "awakeSleepSeconds": 900, "avgSleepStress": 12.34, "sleepScores": {"overallScore": 88}},
+    {"calendarDate": "2026-01-11", "sleepWindowConfirmationType": "OFF_WRIST", "deepSleepSeconds": 0, "lightSleepSeconds": 0, "awakeSleepSeconds": 0},
+    {"calendarDate": "2026-01-12", "sleepWindowConfirmationType": "UNCONFIRMED"},
+    {"calendarDate": "2021-03-01", "sleepWindowConfirmationType": "ENHANCED_CONFIRMED_FINAL", "deepSleepSeconds": 7200, "lightSleepSeconds": 18000, "awakeSleepSeconds": 600},
+    {"napList": [{"napTimeSec": 1200, "calendarDate": "2026-01-10"}], "retro": False}], open(os.path.join(_gx, "w", "2026-01-01_2026-04-01_12345678_sleepData.json"), "w"))
+json.dump([{"calendarDate": "2026-01-10", "metrics": [{"type": "HRV", "value": 80.0}, {"type": "HR", "value": 48.0}, {"type": "SPO2", "value": 96.0}]}],
+          open(os.path.join(_gx, "w", "2026-01-01_2026-04-01_12345678_healthStatusData.json"), "w"))
+json.dump([
+    {"calendarDate": "2026-01-10", "timestamp": "2026-01-10T05:30:00.0", "inputContext": "AFTER_WAKEUP_RESET", "score": 71, "level": "HIGH"},
+    {"calendarDate": "2026-01-10", "timestamp": "2026-01-10T09:00:00.0", "inputContext": "UPDATE_REALTIME_VARIABLES", "score": 60, "level": "MODERATE"},
+    {"calendarDate": "2026-01-11", "timestamp": "2026-01-11T05:30:00.0", "inputContext": "AFTER_WAKEUP_RESET", "score": 70, "level": "HIGH"},
+    {"calendarDate": "2026-01-11", "timestamp": "2026-01-11T13:00:00.0", "inputContext": "AFTER_WAKEUP_RESET", "score": 90, "level": "PRIME"},
+    {"calendarDate": "2026-01-12", "timestamp": "2026-01-12T17:00:00.0", "inputContext": "AFTER_POST_EXERCISE_RESET", "score": 40, "level": "LOW"},
+    {"calendarDate": "2024-09-01", "timestamp": "2024-09-01T06:00:00.0", "score": 30, "level": "LOW"}], open(os.path.join(_gx, "m", "TrainingReadinessDTO_20260101_20260401_12345678.json"), "w"))
+_G = GX.lesen([_gx], erstellt="2026-11-13T12:00:00+01:00")
+_T = {t["date"]: t for t in _G["tage"]}
+check("Garmin-Export: Schlaf ohne Wachzeit (Tief + Leicht + REM), Schlafwert, Stress im Schlaf; ohne REM nur Tief + Leicht",
+      _T["2026-01-10"]["sleepH"] == 6.5 and _T["2026-01-10"]["sleepScore"] == 88 and _T["2026-01-10"]["sleepStress"] == 12.3
+      and _T["2021-03-01"]["sleepH"] == 7.0 and "sleepScore" not in _T["2021-03-01"], str(_G["tage"]))
+check("Garmin-Export: Nacht ohne Uhr (OFF_WRIST) und unbestätigte Nacht ohne Schlafwerte; Gesundheitsstatus nur auf Wunsch",
+      "sleepH" not in _T.get("2026-01-11", {}) and "2026-01-12" not in _T and "hrv" not in _T["2026-01-10"]
+      and {k: v for k, v in GX.lesen([_gx], mit_gesundheit=True)["tage"][-1].items() if k in ("hrv", "rhr")} == {"hrv": 80, "rhr": 48})
+check("Garmin-Export: Readiness nach dem Aufwachen; zwei verschiedene Aufwach-Werte → Tag leer (nicht geraten); nach Training zählt nicht; alter Eintrag ohne inputContext",
+      _T["2026-01-10"]["readiness"] == 71 and _T["2026-01-10"]["readinessLevel"] == "HIGH" and "readiness" not in _T.get("2026-01-11", {})
+      and "2026-01-12" not in _T and _T["2024-09-01"]["readiness"] == 30 and _G["ausgelassen"] == {"readiness_mehrdeutig": 1}, str(_G))
+check("Garmin-Export: gleiche Daten → gleiche ID (Inhalt), Format für die Seite",
+      _G["format"] == "spuren-garmin-verlauf-1" and GX.lesen([_gx])["id"] == _G["id"] and _G["zeitraum"] == ["2021-03-01", "2026-01-10"])
+_bad = dict(_G, tage=_G["tage"] + [{"date": "2099-01-01", "sleepH": 7}, {"date": "2026-01-13", "sleepH": 40, "readiness": 50}, {"date": "2026-01-14", "foo": 1}])
+_ok, _f = GX.pruefen(_bad, "2026-11-13")
+check("Garmin-Verlauf prüfen: Datum in der Zukunft, Wert ausserhalb, unbekanntes Feld verworfen; gültige Werte desselben Tags bleiben",
+      [t["date"] for t in _ok][-1] == "2026-01-13" and "sleepH" not in _ok[-1] and _ok[-1]["readiness"] == 50 and len(_f) == 2
+      and GX.pruefen({"format": "x", "tage": []})[0] == [], str(_f))
+_DG = {"days": [{"date": "2026-01-10", "sleepH": 6.4, "hrv": 70}, {"date": "2025-12-01", "rhr": 50}], "config": {}}
+_m1 = GX.einspielen(_DG, _G, "2026-11-13")
+_d10 = next(d for d in _DG["days"] if d["date"] == "2026-01-10")
+check("Garmin-Verlauf einspielen: vorhandene Werte bleiben (Garmin-Verbindung massgebend), fehlende gefüllt, neue Tage, Nachholen läuft weiter",
+      _d10["sleepH"] == 6.4 and _d10["sleepScore"] == 88 and _d10["readiness"] == 71 and _d10["hrv"] == 70
+      and any(d["date"] == "2021-03-01" for d in _DG["days"]) and _DG["config"]["days_backfill"] == "2025-12-01"
+      and _DG["garmin_export"][0]["id"] == _G["id"] and _DG["garmin_export"][0]["neue_tage"] == 2, _m1)
+_n1 = len(_DG["days"])
+GX.einspielen(_DG, _G, "2026-11-13")
+check("Garmin-Verlauf: dieselbe Datei noch einmal → nichts doppelt", len(_DG["days"]) == _n1 and len(_DG["garmin_export"]) == 1 and _DG["garmin_export"][0]["gefuellt"] == {})
+_DG2 = {"days": [], "config": {"days_backfill": "2024-01-01"}}
+merge_daily.v5_merge(_DG2, {"garmin_verlauf": _G})
+check("Garmin-Verlauf über merge_daily (Eingang): eingespielt, gesetzter Zeiger fürs Nachholen bleibt",
+      len(_DG2["days"]) == len(_G["tage"]) and _DG2["config"]["days_backfill"] == "2024-01-01" and _DG2["versions"]["garmin_export"]["v"] == "garmin-export-1.0")
 
 # --- V6.2.2 zonenvorschlag-1.0: Zonenprofil von der Seite (erfundene Grenzen) ---
 def _skala(key, disziplin, metrik, g):

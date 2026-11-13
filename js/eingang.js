@@ -60,6 +60,8 @@
     for (const [k, v] of Object.entries(data.notizen || {})) if (neu(N, "notizen|" + k, EG.hash(EG.stabil(v)))) (N.daten.notizen = N.daten.notizen || {})[k] = v;
     if (data.fueling_produkte != null && neu(N, "fueling_produkte", EG.hash(EG.stabil(data.fueling_produkte)))) N.daten.fueling_produkte = data.fueling_produkte;
     if (Array.isArray(data.startorte) && neu(N, "startorte", EG.hash(EG.stabil(data.startorte)))) N.daten.startorte = data.startorte.map(sauber);
+    if (data.garmin_verlauf && typeof data.garmin_verlauf === "object" && neu(N, "garmin_verlauf|" + (data.garmin_verlauf.id || ""), "1"))
+      N.daten.garmin_verlauf = data.garmin_verlauf;                 // V6.2.3: Garmin-Datenexport, einmal je Datei (ID = Inhalt)
     return { normal: N, bestaetigung: B, n: N.n + B.n };
   };
   /** Ist dieser Eintrag mit genau diesem Inhalt schon gesendet? (Anzeige «gesendet · kommt mit dem nächsten Update») */

@@ -79,3 +79,18 @@ test("Laktat aus der Notiz: Kennzeichnung «laut Garmin-Notiz»; wörtliche Noti
   const b = FK.qualityFlags({ status: "bestätigt", hinweise: ["Werte laut Garmin-Notiz (…), nicht aus FIT nachgerechnet; Notiz: Wert ca. 1 min nach Abstechen; Laktat ca. 1,5"] });
   assert.ok(b.includes("Werte laut Garmin-Notiz, nicht aus FIT") && b.includes("Wert ungefähr (ca.)"), "eigener Hinweis mit «ca.» zählt weiter");
 });
+
+test("Garmin-Verlauf (V6.2.3): Datei prüfen wie im Update – Format, Zeitraum, Werte je Feld; Ungültiges verworfen, nie geraten", () => {
+  const G = { format: "spuren-garmin-verlauf-1", id: "0123456789abcdef", erstellt: "2026-11-13T12:00:00+01:00", tage: [
+    { date: "2021-03-01", sleepH: 7.0 }, { date: "2026-01-10", sleepH: 6.5, sleepScore: 88, sleepStress: 12.3, readiness: 71, readinessLevel: "HIGH" },
+    { date: "2026-01-11", sleepH: 40 }, { date: "2099-01-01", sleepH: 7 }, { date: "2026-01-12", readiness: 50, readinessLevel: "SUPER" }] };
+  const p = V61.verlaufPruefen(G, "2026-11-13");
+  assert.ok(p.ok);
+  assert.deepEqual(p.zeitraum, ["2021-03-01", "2026-01-12"]);
+  assert.equal(p.tage, 3, "Tag mit nur ungültigem Wert und Tag in der Zukunft zählen nicht");
+  assert.deepEqual(p.anzahl, { sleepH: 2, sleepScore: 1, sleepStress: 1, readiness: 2, readinessLevel: 1 });
+  assert.equal(p.verworfen, 3);
+  assert.equal(V61.verlaufPruefen({ format: "spuren-eingang-1", id: "0123456789abcdef", tage: [] }, "2026-11-13").ok, false);
+  assert.match(V61.verlaufPruefen({ format: "spuren-garmin-verlauf-1", id: "x", tage: [] }, "2026-11-13").grund, /unvollständig/);
+  assert.match(V61.verlaufPruefen(Object.assign({}, G, { tage: [{ date: "2026-01-11", hrv: 1 }] }), "2026-11-13").grund, /Keine gültigen Tage/);
+});

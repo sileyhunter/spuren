@@ -13,6 +13,7 @@ import zoneinfo
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import garmin_ernaehrung  # noqa: E402   V5.7.2: Garmin-Ernährungsprotokoll → Fueling
+import garmin_export  # noqa: E402       V6.2.3: Garmin-Datenexport (Verlauf), füllt nur fehlende Tageswerte
 import last  # noqa: E402                V5.9.1: Trainingslast mit LT2 (tl2, last-2.0)
 import notizen  # noqa: E402             V6.1: Garmin-Notizen, Laktat und Verpflegung daraus als Vorschau (notizen-1.0)
 import wellness  # noqa: E402            V6.1: Readiness, Body Battery, Stress je Tag (wellness-1.0)
@@ -246,6 +247,8 @@ def v5_merge(D, N):
             D["routes"] = [r for r in D["routes"] if r.get("id") != rid]
             D.setdefault("audit", []).append({"zeit": dt.datetime.now(ZRH).isoformat(timespec="seconds"), "was": "Route entfernt", "id": rid, "alt": alt})
             msg.append(f"Route {rid} entfernt")
+    if N.get("garmin_verlauf"):                          # V6.2.3: Garmin-Datenexport über die Seite; füllt nur fehlende Tageswerte
+        msg.append(garmin_export.einspielen(D, N["garmin_verlauf"]))
     if msg:
         print("V5:", "; ".join(msg))
 

@@ -407,3 +407,7 @@ nav.unter { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14
 #zv-box .zv-t td:nth-child(2) { color: var(--muted); }
 #zv-box .zv-t tr.zv-lt td:first-child { font-weight: 600; }
 #zv-box .zv-t td:nth-child(n+2), #zv-box .zv-t th:nth-child(n+2) { text-align: right; white-space: nowrap; }
+/* V6.2.3 Garmin-Verlauf einlesen (Einstellungen) */
+.es-datei { display: inline-flex; align-items: center; cursor: pointer; margin: 4px 0 8px; }
+.es-datei input[type="file"] { display: none; }
+#es-verlauf dl.dl { margin: 6px 0; }

@@ -57,6 +57,8 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   `js/v61.js` (ohne DOM: Garmin-Werte eines Tages, Datenlage je Wert, Notiz-Vorschauen), `tests/test_v61.cjs`
 - **V6.2 (Etappe 2):** `js/v62.js` (ohne DOM: Testplan testplan-1.0, V6.2.2 Zonen-Vorschlag zonenvorschlag-1.0), `tests/test_v62.cjs`;
   Oberfläche des Zonen-Vorschlags in `js/v5-ui.js` (`V.zonenVorschlag`, Karte `#zv-card` unter Laktat)
+- **V6.2.3:** `tools/garmin_export.py` – Garmin-Datenexport (DSGVO-Export) → Verlauf `spuren-garmin-verlauf-1` (garmin-export-1.0, Abschnitt
+  «Garmin-Datenexport»); Prüfung auf der Seite `V61.verlaufPruefen`, Einstellungen «Garmin-Verlauf einlesen» (`js/v59.js`)
 - **V5.8:** keine neuen Dateien; Rechenlogik in `js/route.js` (Abschnitte von Hand, Skitourennetz, Hangneigung, MTB-Abfahrt, Wegende, drei
   Rennradvarianten, Windpfeile), Oberfläche in `js/routen-ui.js`, Ringe «Heute» in `js/formkurve.js` (`FK.ringeVerlauf`) und `js/v55.js` (`V55.ringe`)
 - `tests/test_formkurve.cjs`, `tests/test_route.cjs`, `tests/test_analyse.cjs`, `tests/test_training.cjs`, `tests/test_tools.py` – Abnahmetests (erfundene Werte; `tests/fixtures/` = echte
@@ -219,6 +221,20 @@ Silas lädt `UploadedFiles_0-_Part*.zip` hoch. Jedes ZIP in einen eigenen, leere
    umbenannt; entfernt verwaiste, bricht das Löschen ab, wenn mehr als 5 % verwaist wären) und
    `SPUREN_PW=… node tools/serien_pruefen.mjs --git` («PRÜFUNG REIHEN: bestanden»), `data.enc.json` und `serien/` committen, pushen.
 
+## Garmin-Datenexport (Verlauf, V6.2.3, garmin-export-1.0)
+Silas lädt Teile seines Garmin-Datenexports hoch (z. B. «Archiv.zip» mit `*_sleepData.json`, `*_healthStatusData.json`,
+`TrainingReadinessDTO_*.json`). Gleiche Dateien nur einmal (Prüfsumme); jedes ZIP in einen eigenen, leeren Ordner ausserhalb des Repos entpacken.
+1. `python3 -I tools/garmin_export.py lesen <ordner> [<ordner> …] work/garmin-verlauf.json` → Schlafdauer (Tief + Leicht + REM, ohne Wachzeit),
+   Schlafwert, Stress im Schlaf (nicht OFF_WRIST/UNCONFIRMED) und Readiness nach dem Aufwachen (`AFTER_WAKEUP_RESET`; mehrere verschiedene
+   Aufwach-Werte am selben Tag → Tag leer, nie geraten). Gesundheitsstatus (HRV, HR) nur mit `--gesundheit`, erst nach Abgleich mit der
+   Garmin-Verbindung (gleiche Tage, gleiche Werte). Ausgabe prüfen (Zeitraum, Anzahl je Feld, Stichproben gegen die Rohdateien).
+2. Mit `SPUREN_PW`: entschlüsseln, `{"garmin_verlauf": <Datei>}` als JSON schreiben und mit `merge_daily.py` einspielen, verschlüsseln, pushen.
+   Ohne Passwort (Normalfall im Chat): die Datei mit Datum im Namen an Silas senden; er wählt sie auf der Seite unter Einstellungen →
+   «Garmin-Verlauf einlesen» (die Seite prüft sie, «Direkt speichern» bringt sie verschlüsselt nach `eingang/`), das nächste Update spielt sie ein.
+3. `garmin_export.einspielen` füllt nur fehlende Felder (vorhandene Werte aus der Garmin-Verbindung bleiben; das Nachholen über die Verbindung
+   überschreibt später mit den eigenen Werten), legt neue Tage an, setzt `config.days_backfill` nur, wenn er fehlt (auf den bisherigen Stand),
+   und vermerkt den Import in `garmin_export` (ID = Inhalt, gleiche Datei nie doppelt) und im Audit. Nie die Rohdateien oder die Datei committen.
+
 ## Eingaben von der Seite (V5: Fueling, Befinden, Tests vom Handy, Koppelläufe, Pläne, B1)
 **Seit V5.9.3 der Normalfall: «Direkt speichern»** (Abschnitt «Eingang»): Jede Eingabe geht verschlüsselt nach `eingang/`, Morgen- und
 Nacht-Update spielen sie ein. Der Export bleibt der Rückweg (ohne Schlüssel, ohne Netz, anderes Gerät):
@@ -243,7 +259,8 @@ V5.6: zusätzlich `rpe` (→ `rpe`), `intervalle` (Korrekturen von Hand → `int
 zugeordnet → `laktat_punkte`, Status «vorschau») und `saison` (Stunden «jetzt»/«Spitze» → `saison_plan`); gleiche ID ersetzt mit Audit.
 V5.7: `startorte` (ganze Liste → `startorte`, alte Fassung ins Audit) und `trainingsrouten` (gewählte Vorschläge → `trainingsrouten`, gleiche
 ID ersetzt mit Audit). Startorte und Routen nur verschlüsselt (data.enc.json), nie offen ins Repository.
-V6.2.2: `zonen` (auf der Seite bestätigte Zonenprofile → `zonen_add`, geprüft wie oben). V5.9.3: `routen` (im Planer gespeicherte Routen → `routes`, gleiche ID ersetzt mit Audit), `routen_entfernt` (auf der Seite gelöscht → aus
+V6.2.2: `zonen` (auf der Seite bestätigte Zonenprofile → `zonen_add`, geprüft wie oben). V6.2.3: `garmin_verlauf` (Datei aus
+`tools/garmin_export.py`, auf der Seite gewählt → `garmin_export.einspielen`, nur fehlende Tageswerte). V5.9.3: `routen` (im Planer gespeicherte Routen → `routes`, gleiche ID ersetzt mit Audit), `routen_entfernt` (auf der Seite gelöscht → aus
 `routes` entfernt, alte Fassung ins Audit), `laktat_punkte_bestaetigt` («Laktat hier» aus dem Explorer auf der Seite bestätigt → Kurzcheck in
 `lactate`, Quelle «aus Explorer», Punkt «übernommen»; übernommene Punkte werden nie wieder «vorschau»). Befinden kommt aus dem Morgen-Check-in
 (`befinden-1.1`: Beine → `muskel`, Energie → `muede`, Kopf → `stress`, je 1–5; dazu `krank`, `notiz`; gleicher Tag ersetzt mit Audit).

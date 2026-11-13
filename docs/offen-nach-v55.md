@@ -113,3 +113,8 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
     Maximalpuls (eigene Version, Test) erst, wenn ein gemessener Maximalpuls in den Daten steht.
 46. **Nach neuen Zonen:** Die Aufträge «Morgen-Briefing» und «Abend-Check» enthalten die Zonen vom 23.10.2026 als Text. Nach einer Bestätigung
     müssen sie im Chat nachgeführt werden (die Aufträge liegen nicht im Repository).
+47. **Garmin-Datenexport (V6.2.3):** Der Abgleich mit der Garmin-Verbindung war am 13.11. nicht möglich (Dienst nicht erreichbar). Darum
+    kein Gesundheitsstatus (HRV, Ruhepuls) im Verlauf; das Nachholen über die Verbindung überschreibt die eingelesenen Werte später mit den
+    eigenen, Abweichungen gleichen sich so aus. Im hochgeladenen Teil fehlten die Tagesübersichten (Stress und Body Battery je Tag) und die
+    Aktivitäten (FIT). Weitere Inhalte (Garmin-Trainingsstatus, akute Last, VO2max-Verlauf, Ausdauer- und Hill-Score, Hitze/Höhe,
+    Laufprognosen) sind nicht übernommen – erst bei Bedarf (Etappe 3 oder 10) mit eigener Version und Test.

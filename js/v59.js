@@ -256,6 +256,7 @@
           <p class="hint">Der Schlüssel liegt mit deinem Seitenschlüssel verschlüsselt auf diesem Gerät, nie im Repository. Risiko: Wer dein Gerät und dein Seitenpasswort hat, kann in dieses eine Repository schreiben, aber nirgends sonst. Widerrufen kannst du ihn jederzeit auf GitHub. Pro Gerät einmal einrichten.</p></details>
         ${(eg.dateien || []).length ? `<details><summary>Zuletzt gesendet</summary><ul class="es-l">${eg.dateien.slice(-8).reverse().map((d) => `<li>${new Date(d.zeit).toLocaleString("de-CH", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} · ${d.n} ${d.art === "bestaetigung" ? "Bestätigung" : "Eingabe"}${d.n === 1 ? "" : "n"}</li>`).join("")}</ul></details>` : ""}`}
       </section>
+      <section class="es" id="es-verlauf"><h3>Garmin-Verlauf einlesen</h3>${verlaufHtml()}</section>
       <section class="es" id="es-bed"><h3>Bedienung</h3>
         <div class="es-thema" role="radiogroup" aria-label="Darstellung"><span>Darstellung</span>
           <label class="row"><input type="radio" name="es-thema" value="dunkel" ${lsGet("sf.theme") === "hell" ? "" : "checked"}> Dunkel (Standard)</label>
@@ -279,8 +280,44 @@
       const s = new Set(V.eingeblendet()); if (cb.checked) s.add(cb.dataset.ein); else s.delete(cb.dataset.ein);
       lsSet(AUS_KEY, JSON.stringify([...s])); location.reload();
     }));
+    verlaufBinden(ov);
     if (abschnitt) { const el = ov.querySelector("#es-" + abschnitt); if (el) el.scrollIntoView({ block: "start" }); }
   };
+  /* ----- V6.2.3 Garmin-Verlauf aus dem Datenexport (Datei aus dem Chat, garmin-export-1.0): verschlüsselt über «Direkt speichern» ins Update ----- */
+  const fNamen = (anz) => Object.entries(anz || {}).filter(([k]) => k !== "readinessLevel").map(([k, n]) => `${esc((window.V61 && V61.VERLAUF.namen[k]) || k)} ${n}`).join(" · ");
+  function verlaufHtml() {
+    const I = UI().Inbox, gv = I.data && I.data.garmin_verlauf, imp = (C.D.garmin_export || []).slice(-1)[0];
+    const z = (a) => (a && a.length === 2 ? `${C.dateCH(a[0])}–${C.dateCH(a[1])}` : "–");
+    const gesendet = gv && ((I.data.eg && I.data.eg.gesendet) || {})["garmin_verlauf|" + gv.id] === "1";
+    return `${imp ? `<p class="es-st" role="status">Eingespielt am ${C.dateCH(String(imp.eingespielt || "").slice(0, 10))}: ${z(imp.zeitraum)}, ${imp.neue_tage} neue Tage; ergänzt: ${fNamen(imp.gefuellt) || "nichts (alles schon da)"}.</p>` : ""}
+      ${gv ? `<p class="es-st" role="status">Bereit: Verlauf ${z(gv.zeitraum)} (${(gv.tage || []).length} Tage). ${gesendet ? "Gesendet – das nächste Update spielt ihn ein." : C.IS_DEMO ? "In der Demo wird nichts gesendet." : "Geht mit «Direkt speichern» ins nächste Update."}</p>
+        ${gesendet ? "" : `<div class="row"><button class="btn" type="button" data-gv-weg>Entfernen</button></div>`}` : ""}
+      <p class="hint">Datei «garmin-verlauf-….json» aus dem Chat wählen (aus deinem Garmin-Datenexport: Schlafdauer, Schlafwert, Stress im Schlaf, Readiness).
+        Das Update füllt damit nur Tage und Werte, die noch fehlen; was über die Garmin-Verbindung kommt, bleibt massgebend. Die Datei geht verschlüsselt weg.</p>
+      <label class="btn es-datei">Datei wählen<input type="file" accept=".json,application/json" data-gv hidden></label>
+      <div data-gv-info aria-live="polite"></div>`;
+  }
+  function verlaufBinden(ov) {
+    const I = UI().Inbox, inp = ov.querySelector("[data-gv]"), info = ov.querySelector("[data-gv-info]"), weg = ov.querySelector("[data-gv-weg]");
+    if (weg) weg.onclick = async () => { I.data.garmin_verlauf = null; await I.save(); V.einstellungen("verlauf"); };
+    if (!inp || !info) return;
+    inp.onchange = async () => {
+      const f = inp.files && inp.files[0]; if (!f) return;
+      let G = null, p = null;
+      try {
+        if (f.size > 5e6) throw new Error("Datei zu gross.");
+        G = JSON.parse(await f.text());
+        p = window.V61 ? V61.verlaufPruefen(G, C.iso(C.today)) : { ok: false, grund: "Prüfung nicht verfügbar." };
+      } catch (e) { p = { ok: false, grund: e.message && /JSON/.test(e.message) ? "Datei ist kein lesbares JSON." : e.message || "Datei nicht lesbar." }; }
+      if (!p.ok) { info.innerHTML = `<p class="verdict warn">${esc(p.grund)}</p>`; return; }
+      const schon = (C.D.garmin_export || []).some((x) => x.id === p.id);
+      info.innerHTML = `<dl class="dl"><dt>Zeitraum</dt><dd>${C.dateCH(p.zeitraum[0])}–${C.dateCH(p.zeitraum[1])}</dd><dt>Tage</dt><dd>${p.tage}</dd>
+          <dt>Werte</dt><dd>${fNamen(p.anzahl)}</dd>${p.verworfen ? `<dt>Verworfen</dt><dd>${p.verworfen} Tage mit ungültigen Werten</dd>` : ""}</dl>
+        ${schon ? `<p class="hint keep">Diese Datei ist schon eingespielt.</p>` : `<div class="row"><button class="btn primary" type="button" data-gv-ok>Einlesen</button></div>`}`;
+      const ok = info.querySelector("[data-gv-ok]");
+      if (ok) ok.onclick = async () => { I.data.garmin_verlauf = G; await I.save(); V.einstellungen("verlauf"); };
+    };
+  }
 
   /* ----- 3c Laktat bestätigen: ganzer Test auf einmal, Abweichungen sichtbar ----- */
   V.testBestaetigen = function (id) {
