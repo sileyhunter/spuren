@@ -1032,11 +1032,29 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
         <div class="card-head"><div><h2>Geplant gegenüber absolviert</h2><div class="sub">Enduco-Workouts, wie sie auf der Uhr ausgeführt wurden: Dauer, Zielbereich, Hauptteil, Gefühl, gleiche Einheit früher</div></div></div>
         <div id="v56-plan"></div>
       </div>
-      <div class="card w12">
-        <div class="card-head"><div><h2>Saison bis Ironman Hamburg 2027</h2><div class="sub">Phasen, Erholung, Taper und Wochenstunden: Vorschlag gegenüber absolviert – Entscheidungshilfe, Enduco bleibt massgebend</div></div></div>
-        <div id="v56-saison"></div>
+    </div>
+  </section>
+
+  <!-- ================= PLAN (V6.0.2) ================= -->
+  <section class="view" id="view-plan" role="region" aria-label="Plan" hidden>
+    <div class="dash">
+      <div class="card w12" id="pl-rennen-card">
+        <div class="card-head"><div><h2>Rennen</h2></div></div>
+        <div class="pl-rennen" id="pl-rennen"></div>
+      </div>
+      <div class="card w12" id="pl-phasen-card">
+        <div class="card-head"><div><h2>Phasen</h2><div class="sub">Vom heutigen Stand bis zum Hauptrennen – antippen zeigt die Wochen</div></div></div>
+        <div id="pl-phasen"></div>
+      </div>
+      <div class="card w12" id="pl-wochen-card">
+        <div class="card-head"><div><h2>Wochenübersicht</h2><div class="sub">Stunden je Sportart: absolviert und geplant</div></div></div>
+        <div id="pl-wochen"></div>
       </div>
       <div class="card w12">
+        <div class="card-head"><div><h2>Wochenstunden-Vorschlag</h2><div class="sub">Phasen, Erholung, Taper und Wochenstunden: Vorschlag gegenüber absolviert – Entscheidungshilfe, Enduco bleibt massgebend</div></div></div>
+        <div id="v56-saison"></div>
+      </div>
+      <div class="card w12" id="pl-tests-card">
         <h2>Testkalender</h2>
         <div class="sub">Wann ein Stufentest, ein kurzer Laktat-Check oder ein CSS-Test (Schwimmen, 400 m und 200 m) Sinn macht. Kurz-Checks am besten am Ende einer lockeren Woche, damit die Werte vergleichbar sind. Die Vorschläge passe ich auf Wunsch an.</div>
         <div class="tablewrap"><table class="t" id="t-tests" data-liste></table></div>
@@ -1445,9 +1463,9 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <nav class="leiste" id="leiste" aria-label="Bereiche">
   <button type="button" data-gruppe="heute"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg><span>Heute</span></button>
   <button type="button" data-gruppe="kalender"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span>Kalender</span></button>
-  <button type="button" data-gruppe="karte"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4.5 3.5 6.5v13l5.5-2 6 2 5.5-2v-13l-5.5 2-6-2z"/><path d="M9 4.5v13M15 6.5v13"/></svg><span>Karte</span></button>
+  <button type="button" data-gruppe="plan"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 21V3.5"/><path d="M5.5 4.5h12l-2.5 4 2.5 4h-12"/></svg><span>Plan</span></button>
   <button type="button" data-gruppe="analyse"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 20.5h17"/><path d="M5 16l4.5-5 3.5 3 6-7.5"/><circle cx="19" cy="6.5" r="1.3"/></svg><span>Analyse</span></button>
-  <button type="button" data-gruppe="koerper"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 16c1.6 0 1.6-1.4 3.2-1.4s1.6 1.4 3.2 1.4 1.6-1.4 3.2-1.4 1.6 1.4 3.2 1.4 1.6-1.4 3.2-1.4 1.6 1.4 2.9 1.4"/><path d="M2.5 20c1.6 0 1.6-1.4 3.2-1.4s1.6 1.4 3.2 1.4 1.6-1.4 3.2-1.4 1.6 1.4 3.2 1.4 1.6-1.4 3.2-1.4 1.6 1.4 2.9 1.4"/><circle cx="14.5" cy="5.5" r="2"/><path d="M6.5 12.5l4-4.5 2.8 2.4 3.2-2"/></svg><span>Körper &amp; Schwimmen</span></button>
+  <button type="button" data-gruppe="karte"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4.5 3.5 6.5v13l5.5-2 6 2 5.5-2v-13l-5.5 2-6-2z"/><path d="M9 4.5v13M15 6.5v13"/></svg><span>Karte</span></button>
 </nav>
 <div class="v5-overlay" id="v5-test" hidden></div>
 <div class="v5-overlay" id="v59-ov" hidden></div>
@@ -1473,6 +1491,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <script src="js/v59.js"></script>
 <script src="js/v6.js"></script>
 <script src="js/v6-heute.js"></script>
+<script src="js/v6-plan.js"></script>
 <script>
 (() => {
   const b64d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
@@ -1881,17 +1900,17 @@ document.getElementById("banner").hidden = !D.demo;
 document.getElementById("countdowns").innerHTML = RACES.map((r) => `<div>${esc(r.short)} <b>${daysTo(r.date)}</b> Tage</div>`).join("");
 document.getElementById("stand").textContent = !D.demo && D.updated ? "Stand " + D.updated : "";
 
-const TAB_NAMES = ["karte", "heute", "kalender", "training", "laktat", "ausdauer", "leistung", "schwimmen", "koerper"];
+const TAB_NAMES = ["karte", "heute", "kalender", "plan", "training", "laktat", "ausdauer", "leistung", "schwimmen", "koerper"];
 /* V5.9.5 (bedienung-1.0): fünf Bereiche in einer Leiste unten. «Analyse» bündelt Fortschritt, Laktat & Zonen, Ausdauer und Leistung,
    «Körper & Schwimmen» die beiden Ansichten; innerhalb eines Bereichs wechselt eine Leiste oben (immer sichtbar beim Scrollen). */
-const GRUPPEN = { heute: ["heute"], kalender: ["kalender"], karte: ["karte"], analyse: ["training", "laktat", "ausdauer", "leistung"], koerper: ["koerper", "schwimmen"] };
+const GRUPPEN = { heute: ["heute"], kalender: ["kalender"], plan: ["plan"], analyse: ["training", "laktat", "ausdauer", "leistung", "koerper", "schwimmen"], karte: ["karte"] };   // V6.0.2: Plan neu, Körper und Schwimmen unter Analyse
 const UNTER_NAME = { training: "Fortschritt", laktat: "Laktat", ausdauer: "Ausdauer", leistung: "Leistung", koerper: "Körper", schwimmen: "Schwimmen" };
 const gruppeVon = (name) => Object.keys(GRUPPEN).find((g) => GRUPPEN[g].includes(name)) || "heute";
 for (const [g, views] of Object.entries(GRUPPEN)) {
   if (views.length < 2) continue;
   for (const v of views) {
     const sec = document.getElementById("view-" + v); if (!sec) continue;
-    const nav = document.createElement("nav"); nav.className = "unter"; nav.setAttribute("aria-label", g === "analyse" ? "Analyse" : "Körper und Schwimmen");
+    const nav = document.createElement("nav"); nav.className = "unter"; nav.setAttribute("aria-label", g === "analyse" ? "Analyse" : g);
     nav.innerHTML = views.map((x) => `<button type="button" data-tab="${x}" aria-pressed="${x === v}">${UNTER_NAME[x]}</button>`).join("");
     sec.insertBefore(nav, sec.firstChild);
   }
@@ -1902,6 +1921,8 @@ function showTab(name) {
   const g = gruppeVon(name);
   document.querySelectorAll("#leiste [data-gruppe]").forEach((b) => { if (b.dataset.gruppe === g) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
   document.querySelectorAll("nav.unter [data-tab]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tab === name)));
+  const aktivU = document.querySelector(`#view-${name} nav.unter [data-tab="${name}"]`);       // V6.0.2: gewählten Unterbereich in der Leiste oben sichtbar machen
+  if (aktivU && aktivU.parentElement.scrollWidth > aktivU.parentElement.clientWidth) { const n = aktivU.parentElement; n.scrollLeft = aktivU.offsetLeft - (n.clientWidth - aktivU.offsetWidth) / 2; }
   document.querySelectorAll("section.view").forEach((s) => (s.hidden = s.id !== "view-" + name));
   document.body.classList.toggle("plan-aktiv", name === "karte" && !!(window.RTUI && window.RTUI.active && window.RTUI.active()));
   if (name === "karte") { map?.resize(); }
@@ -3035,7 +3056,7 @@ function isoWeek(dt) { const d = new Date(dt); d.setHours(0, 0, 0, 0); d.setDate
 function v5Start() {
   if (!window.V5UI) return;
   V5_READY = V5UI.init({ D, chart, css, fmt, esc, dateCH, dLabel, pd, iso, today, SPORTS, IS_DEMO, hrsOf, shareOrDownload, ACT_BY_ID, charts, mmss, hmm, ringSVG, weights,
-    planRoute: () => (window.RTUI ? window.RTUI.planRoute() : null), pmcHeute: () => FK.pmcAnzeige(pmc().at(-1)) }).then(() => { if (window.V59) V59.init(V5UI.C); }).catch((e) => console.error(e));
+    planRoute: () => (window.RTUI ? window.RTUI.planRoute() : null), pmcHeute: () => FK.pmcAnzeige(pmc().at(-1)), races: () => (D.config?.races || RACES) }).then(() => { if (window.V59) V59.init(V5UI.C); }).catch((e) => console.error(e));
 }
 const charts = {};
 if (window.Chart) {
@@ -3184,43 +3205,79 @@ const TABS = {
       const go = (n) => { this.month = n == null ? new Date(today.getFullYear(), today.getMonth(), 1) : new Date(this.month.getFullYear(), this.month.getMonth() + n, 1); this.draw(); };
       document.getElementById("cal-prev").addEventListener("click", () => go(-1));
       document.getElementById("cal-next").addEventListener("click", () => go(1));
-      document.getElementById("cal-today").addEventListener("click", () => go(null));
+      document.getElementById("cal-today").addEventListener("click", () => { go(null); this.day(iso(today), true); });
       document.getElementById("cal").addEventListener("click", (e) => { const c = e.target.closest(".day"); if (c) this.day(c.dataset.d); });
-      document.getElementById("cal-legend").innerHTML = Object.entries(SPORTS).map(([k, s]) => `<span><span class="dot" style="background:${s.color}"></span>${s.label}</span>`).join("") +
-        `<span><span class="dot" style="background:none;border:1px dashed ${css("--muted")}"></span>Geplant (enduco)</span><span><span class="dot" style="background:${css("--warn")}"></span>Test</span><span><span class="dot" style="background:${css("--accent")}"></span>Rennen</span>`;
+      document.getElementById("cal-day").addEventListener("click", (e) => { const b = e.target.closest("[data-ek]"); if (b && window.V6H) window.V6H.einheit(b.dataset.ek); });
+      const ic = (k) => (window.V6 ? V6.icon(k, 14) : "");
+      document.getElementById("cal-legend").innerHTML = `<span><i class="c-i ist" style="--sp:var(--sp-rad)">${window.V6 ? V6.sportIcon("rad", 12) : ""}</i>erledigt</span><span><i class="c-i plan" style="--sp:var(--sp-rad)">${window.V6 ? V6.sportIcon("rad", 12) : ""}</i>geplant (Garmin-Kalender)</span>` +
+        `<span><i class="zpunkt" style="--zc:var(--zc-z3)"></i>Fokus-Intensität</span><span><i class="c-test"></i>Test</span><span class="c-flagge">${ic("flagge")}Rennen</span>`;
     },
+    /** V6.0.2 (design-1.0): Wochenband «KW · Phase · Stunden · Last», je Tag Datum (heute orange), Sport-Symbole erledigt/geplant,
+        Punkte der Fokus-Intensitäten, Test und Rennen; antippen zeigt die Tagesliste mit Mini-Profilen. */
     draw() {
-      const m = this.month, last = new Date(m.getFullYear(), m.getMonth() + 1, 0);
+      const m = this.month, last = new Date(m.getFullYear(), m.getMonth() + 1, 0), W6 = window.V6, H6 = window.V6H, t0 = iso(today);
       document.getElementById("cal-title").textContent = m.toLocaleDateString("de-CH", { month: "long", year: "numeric" });
-      let html = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((d) => `<div class="hd">${d}</div>`).join("") + `<div class="hd wkh">Woche</div>`;
+      let phasen = new Map();
+      try { if (W6 && window.AN && window.V5UI && V5UI.C) { const S = AN.saison(t0, W6.rennenPrio(V5UI.C.races())); if (S) phasen = new Map(S.wochen.map((w) => [w.woche, w.phase])); } } catch (e) { console.error(e); }
+      const PH = window.V6P ? V6P.PHASE : {};
+      let html = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((d) => `<div class="hd">${d}</div>`).join("");
       for (let w = mondayOf(m); w <= last; w = addDays(w, 7)) {
-        let h = 0, tss = 0;
+        let h = 0, tss = 0, tage = "";
         for (let i = 0; i < 7; i++) {
           const d = addDays(w, i), ds = iso(d), ev = calEvents(ds);
           ev.forEach((e) => { if (e.a) { h += e.a.dur / 3600; tss += e.a.tss || 0; } });
-          const cls = ["day", d.getMonth() !== m.getMonth() ? "out" : "", ds === iso(today) ? "today" : "", ds === this.sel ? "sel" : ""].join(" ");
-          html += `<div class="${cls}" data-d="${ds}"><span class="dn">${d.getDate()}</span>` + ev.slice(0, 4).map((e) => `<div class="ev ${e.cls}" style="${e.c ? "--c:" + e.c : ""}" title="${esc(e.title || "")}">${esc(e.text)}</div>`).join("") + (ev.length > 4 ? `<span class="dn">+${ev.length - 4}</span>` : "") + `</div>`;
+          const cls = ["day", d.getMonth() !== m.getMonth() ? "out" : "", ds === t0 ? "today" : "", ds === this.sel ? "sel" : ""].join(" ");
+          if (!W6) { tage += `<div class="${cls}" data-d="${ds}"><span class="dn">${d.getDate()}</span>` + ev.slice(0, 4).map((e) => `<div class="ev ${e.cls}" style="${e.c ? "--c:" + e.c : ""}">${esc(e.text)}</div>`).join("") + `</div>`; continue; }
+          const frei = ev.filter((e) => e.a).map((e) => e.a.sport), zeichen = [], fokus = [];
+          for (const e of ev.filter((x) => x.p)) {
+            const k = frei.indexOf(e.p.sport);
+            if (k >= 0) { frei.splice(k, 1); zeichen.push([e.p.sport, "ist"]); } else zeichen.push([e.p.sport, ds < t0 ? "verpasst" : "plan"]);
+            if (H6 && ds >= t0) for (const f of H6.fokus(e.p)) if (!fokus.includes(f)) fokus.push(f);
+          }
+          for (const sp of frei) zeichen.unshift([sp, "ist"]);
+          const test = ev.some((e) => e.cls === "test"), race = ev.some((e) => e.cls === "race");
+          const lab = ev.map((e) => (e.a ? e.a.name : e.title || e.text)).filter(Boolean).join(", ");
+          tage += `<div class="${cls}" data-d="${ds}" role="button" tabindex="0" aria-label="${esc(d.toLocaleDateString("de-CH", { weekday: "long", day: "numeric", month: "long" }) + (lab ? ": " + lab : ""))}">
+            <span class="dn">${d.getDate()}</span>${race ? `<span class="c-flagge">${W6.icon("flagge", 13)}</span>` : ""}
+            <span class="c-sp">${zeichen.slice(0, 3).map(([sp, a]) => `<i class="c-i ${a}" style="--sp:var(--sp-${["rad", "lauf", "schwimm", "wandern", "ski"].includes(sp) ? sp : "andere"})">${W6.sportIcon(sp, 12)}</i>`).join("")}${zeichen.length > 3 ? `<small>+${zeichen.length - 3}</small>` : ""}</span>
+            <span class="c-z">${fokus.slice(0, 3).map((k) => `<i class="zpunkt" style="--zc:${W6.ZONEN[k].farbe}"></i>`).join("")}${test ? `<i class="c-test" title="Test"></i>` : ""}</span></div>`;
         }
-        html += `<div class="wk">KW ${isoWeek(w)}<br><b>${hmm(h * 3600)}</b> h<br>${fmt(tss)} TL</div>`;
+        const ph = phasen.get(iso(w)), phv = ph && PH[ph] ? PH[ph] : null;
+        html += `<div class="wk-band"><b>KW ${isoWeek(w)}</b>${phv ? `<span class="wk-ph"><i style="background:var(${phv[1]})"></i>${esc(phv[0])}</span>` : ""}<span class="wk-sum">${h ? hmm(h * 3600) + " h" : "–"}${tss ? ` · ${fmt(tss)} TL` : ""}</span></div>` + tage;
       }
       document.getElementById("cal").innerHTML = html;
-      const tests = testsWithStatus(), next = tests.find((t) => !t.done && pd(t.date) >= today);
-      document.getElementById("t-tests").innerHTML = `<tr><th>Datum</th><th>Test</th><th>Warum</th><th>Status</th></tr>` + tests.map((t) =>
-        `<tr><td>${dateCH(t.date)}</td><td>${KIND[t.kind]}</td><td style="white-space:normal">${esc(t.note || "")}</td><td>${t.done ? `<span class="badge ok">erledigt</span>` : t === next ? `<span class="badge next">als Nächstes</span>` : pd(t.date) < today ? `<span class="badge">verpasst</span>` : t.status === "geplant" ? `<span class="badge info">geplant</span>` : `<span class="badge">Vorschlag</span>`}</td></tr>`).join("");
+      document.getElementById("cal").classList.toggle("v6", !!W6);
+      drawTests();
       if (this.sel) this.day(this.sel, true);
     },
     day(ds, keep) {
       const box = document.getElementById("cal-day");
       if (!keep && this.sel === ds) { this.sel = null; box.hidden = true; this.draw(); return; }
       this.sel = ds;
-      const ev = calEvents(ds);
+      const ev = calEvents(ds), W6 = window.V6, H6 = window.V6H;
       box.hidden = false;
-      box.innerHTML = `<b>${pd(ds).toLocaleDateString("de-CH", { weekday: "long", day: "numeric", month: "long" })}</b>` + (ev.length ? ev.map((e) => e.a
-        ? `<div><span class="dot" style="background:${e.c}"></span> ${esc(e.a.name)} · ${fmt(e.a.km, 1)} km · ${fmt(e.a.hm)} hm · ${hmm(e.a.dur)}${e.a.hr ? " · Ø " + e.a.hr + " bpm" : ""}${e.a.watt ? " · " + e.a.watt + " W" : ""} · TL ${fmt(e.a.tss)}${e.a._lt2vor ? " (LT2 des ersten Tests)" : ""}${e.a.wk ? `<br><small>Plan «${esc(e.a.wk.name || "")}»: ${e.a.wk.plan_s ? hmm(e.a.wk.plan_s) : e.a.wk.plan_m ? (e.a.wk.plan_m >= 2000 ? fmt(e.a.wk.plan_m / 1000, 1) + " km" : e.a.wk.plan_m + " m") : "Dauer offen"} geplant, ${hmm(e.a.wk.ist_s)} absolviert${e.a.wk.im_ziel != null ? `, ${e.a.wk.im_ziel} % im Ziel` : ""}</small>` : ""} <button class="btn ex-btn" data-ex="${esc(e.a.id)}">Analysieren</button></div>`
-        : `<div>${esc(e.text)}${e.title && e.title !== e.text ? " – " + esc(e.title) : ""}${e.p && ["rad", "lauf", "wandern"].includes(e.p.sport) && window.TRUI && ds >= iso(addDays(today, -1)) ? ` <button class="btn ex-btn" data-str="${esc(ds)}|${e.pi}">Passende Route finden</button>` : ""}</div>`).join("") : `<div class="hint">Kein Eintrag.</div>`)
+      const route = (e) => e.p && ["rad", "lauf", "wandern"].includes(e.p.sport) && window.TRUI && ds >= iso(addDays(today, -1)) ? ` <button class="btn ex-btn" data-str="${esc(ds)}|${e.pi}">Passende Route finden</button>` : "";
+      const zeile = (e) => {
+        if (e.a) {
+          const a = e.a, sp = ["rad", "lauf", "schwimm", "wandern", "ski"].includes(a.sport) ? a.sport : "andere";
+          return `<div class="cd-akt">${W6 ? `<span class="ek-sport" style="--sp:var(--sp-${sp})">${W6.sportIcon(a.sport, 20)}</span>` : `<span class="dot" style="background:${e.c}"></span>`}
+            <div class="cd-t"><b>${esc(a.name)}</b><small>${fmt(a.km, 1)} km · ${fmt(a.hm)} hm · ${hmm(a.dur)} h${a.hr ? " · Ø " + a.hr + " bpm" : ""}${a.watt ? " · " + a.watt + " W" : ""} · TL ${fmt(a.tss)}${a._lt2vor ? " (LT2 des ersten Tests)" : ""}</small>
+            ${a.wk ? `<small>Plan «${esc(a.wk.name || "")}»: ${a.wk.plan_s ? hmm(a.wk.plan_s) + " h" : a.wk.plan_m ? (a.wk.plan_m >= 2000 ? fmt(a.wk.plan_m / 1000, 1) + " km" : a.wk.plan_m + " m") : "Dauer offen"} geplant, ${hmm(a.wk.ist_s)} h absolviert${a.wk.im_ziel != null ? ` · <b class="cd-ziel">${a.wk.im_ziel} % im Ziel</b>` : ""}</small>` : ""}</div>
+            <button class="btn ex-btn" data-ex="${esc(a.id)}">Analysieren</button></div>`;
+        }
+        if (e.p && H6 && W6) return H6.karteHTML("p:" + e.pi, true) + route(e);
+        if (e.cls === "race") return `<div class="cd-rennen">${W6 ? W6.icon("flagge", 18) : ""}<b>${esc(e.title || e.text)}</b></div>`;
+        if (e.cls === "test") return `<div class="cd-test"><i class="c-test"></i>${esc(e.text)}${e.title ? ` – ${esc(e.title)}` : ""}</div>`;
+        return `<div>${esc(e.text)}${e.title && e.title !== e.text ? " – " + esc(e.title) : ""}${route(e)}</div>`;
+      };
+      box.innerHTML = `<b class="cd-kopf">${pd(ds).toLocaleDateString("de-CH", { weekday: "long", day: "numeric", month: "long" })}</b>` + (ev.length ? ev.map(zeile).join("") : `<div class="hint">Kein Eintrag.</div>`)
         + (window.TRUI ? window.TRUI.kalender(ds) : "");
       if (!keep) this.draw();
     },
+  },
+
+  plan: {                             // V6.0.2: Rennen, Phasen, Wochenübersicht (js/v6-plan.js), Saison-Vorschlag (V56), Testkalender
+    draw() { drawTests(); if (window.V6P && window.V5UI) V5_READY.then(() => { try { V6P.zeichnen(); } catch (e) { console.error(e); } }); },
   },
 
   training: {
@@ -3717,6 +3774,12 @@ const KIND = { stufentest: "Stufentest", check: "Laktat-Check", css: "CSS-Test" 
 const cssTests = () => (window.V5UI && V5UI.C && V5UI.merged ? V5UI.merged("css_tests", "css") : (D.css_tests || []));   // Daten + Gerät
 function testsWithStatus() {                  // Laktat-Tests über D.lactate, CSS-Tests über eingetragene CSS-Tests (V59L, ±4 Tage)
   return V59L.testsMitStatus(D.tests, D.lactate, cssTests());
+}
+function drawTests() {                         // Testkalender (seit V6.0.2 unter Plan)
+  const el = document.getElementById("t-tests"); if (!el) return;
+  const tests = testsWithStatus(), next = tests.find((t) => !t.done && pd(t.date) >= today);
+  el.innerHTML = `<tr><th>Datum</th><th>Test</th><th>Warum</th><th>Status</th></tr>` + tests.map((t) =>
+    `<tr><td>${dateCH(t.date)}</td><td>${KIND[t.kind]}</td><td style="white-space:normal">${esc(t.note || "")}</td><td>${t.done ? `<span class="badge ok">erledigt</span>` : t === next ? `<span class="badge next">als Nächstes</span>` : pd(t.date) < today ? `<span class="badge">verpasst</span>` : t.status === "geplant" ? `<span class="badge info">geplant</span>` : `<span class="badge">Vorschlag</span>`}</td></tr>`).join("");
 }
 function calEvents(ds) {
   const ev = [];

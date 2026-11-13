@@ -1,5 +1,24 @@
 # Änderungen
 
+## V6.0.2 · 13.11.2026 · Leiste Heute · Kalender · Plan · Analyse · Karte, neue Ansicht «Plan», Kalender neu
+Dritter Schritt der Layout-Vorlage vom 13.11. (Bilder Kalender, Plan und Rennen, Analyse).
+
+- **Leiste unten:** Heute · Kalender · Plan · Analyse · Karte (eigene Symbole). Körper und Schwimmen sind jetzt Unterbereiche von Analyse;
+  die Leiste oben lässt sich wischen und zeigt den gewählten Bereich.
+- **Plan:** Rennen als Kacheln (Fahne, A/B, Wochen und Tage bis zum Start, Streckenlängen nach Format – keine Zielzeit erfunden), die
+  Saisonphasen als senkrechter Zeitstrahl bis zum Hauptrennen (aktive Phase hervorgehoben mit «Woche x von y», Antippen zeigt die Wochen mit
+  Erholungswochen, Rennen, absolvierten und geplanten Stunden), Wochenübersicht der letzten 7 und nächsten 4 Wochen (Stunden je Sportart,
+  absolviert gefüllt, geplant als Rand, Phase als Farbstreifen), dazu der bisherige Wochenstunden-Vorschlag (saison-1.0, jetzt in den Farben
+  des Plans) und der Testkalender (beide bisher im Kalender).
+- **Kalender:** Wochenband «KW · Phase · Stunden · Trainingslast», heutiger Tag orange, je Tag Sport-Symbole (ausgefüllt = erledigt, Rand =
+  geplant, grau = geplant ohne Aktivität), Punkte der Fokus-Intensitäten geplanter Einheiten, Test und Rennen. Ein Tag zeigt die Tagesliste:
+  Aktivitäten mit Kennzahlen und «% im Ziel» (plan-1.0), geplante Einheiten als Karten mit Mini-Profil (antippen öffnet die Einheit).
+- «Geplant gegenüber absolviert» listet nur noch Tage bis heute; Schwimm-Workouts ohne Kalenderdauer zeigen die Dauer aus den Schritten
+  statt «0:00 h».
+
+Geprüft: `tests/test_v6.cjs` (+ Kalenderwoche, Rennen mit Priorität, Streckenlängen, Phasen), alle bisherigen Tests, Screenshots 390 px
+dunkel und hell (Plan, Kalender mit Tagesliste, Einheit aus dem Kalender, Analyse-Leiste), Demo ohne Programmfehler.
+
 ## V6.0.1 · 13.11.2026 · Heute neu: Kacheln, Begrüssung, Heutiges Training, Einheit, Wochenleiste (profil-1.0, status-1.0, workout-1.1)
 Zweiter Schritt der Layout-Vorlage vom 13.11. (Bilder Heute, Woche, Einheit).
 

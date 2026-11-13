@@ -158,3 +158,19 @@ test("Zonen-Chip und Farben: eine Zone, eine Farbe; Symbole eigen", () => {
   assert.equal(V6.gruss(13), "Guten Tag");
   assert.equal(V6.gruss(20), "Guten Abend");
 });
+
+test("Plan: Kalenderwoche, Rennen mit Priorität, Streckenlängen, Phasen als Zeitstrahl", () => {
+  assert.equal(V6.isoWoche("2026-11-13"), 46);
+  assert.equal(V6.isoWoche("2027-01-01"), 53, "1.1.2027 gehört zur KW 53 von 2026");
+  assert.equal(V6.isoWoche("2027-01-04"), 1);
+  const R = V6.rennenPrio([{ name: "Testrennen Langdistanz", date: "2027-07-01" }, { name: "Testrennen Halbdistanz", date: "2027-05-01" }]);
+  assert.deepEqual(R.map((r) => r.prio), ["B", "A"], "ohne Angabe ist das letzte Rennen das Hauptrennen");
+  assert.equal(V6.rennenPrio([{ name: "Ironman Hamburg", date: "2027-06-06" }, { name: "Spätes Rennen", date: "2027-09-01" }])[0].prio, "A", "Hamburg = A (saison-1.0)");
+  assert.deepEqual(V6.distanzen("Ironman 70.3 Testort").map((d) => d.km), [1.9, 90, 21.1]);
+  assert.deepEqual(V6.distanzen("Ironman Testort").map((d) => d.km), [3.8, 180, 42.2]);
+  assert.equal(V6.distanzen("Stadtlauf"), null, "unbekanntes Format: keine Strecken geraten");
+  const wochen = [{ woche: "2026-11-09", phase: "Grundlage" }, { woche: "2026-11-16", phase: "Grundlage" }, { woche: "2026-11-23", phase: "Aufbau" }, { woche: "2026-11-30", phase: "Taper" }];
+  const seg = V6.phasenSegmente(wochen, "2026-11-18");
+  assert.deepEqual(seg.map((x) => [x.phase, x.von, x.bis, x.wochen.length, x.aktiv]),
+    [["Grundlage", "2026-11-09", "2026-11-22", 2, true], ["Aufbau", "2026-11-23", "2026-11-29", 1, false], ["Taper", "2026-11-30", "2026-12-06", 1, false]]);
+});

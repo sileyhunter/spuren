@@ -247,6 +247,39 @@
     return { tage, n_ist, s_ist, n_offen, s_offen, n_verpasst, s_verpasst, n_woche: n_ist + n_offen + n_verpasst, s_woche: s_ist + s_offen + s_verpasst };
   };
 
+  /* ---------------- Plan (V6.0.2): Rennen, Phasen als Zeitstrahl ---------------- */
+  V6.isoWoche = function (iso) {
+    const d = new Date(iso + "T12:00:00Z"), t = new Date(d); t.setUTCDate(d.getUTCDate() + 3 - ((d.getUTCDay() + 6) % 7));
+    const j = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
+    return 1 + Math.round(((t - j) / 86400000 - 3 + ((j.getUTCDay() + 6) % 7)) / 7);
+  };
+  /** Rennen mit Priorität: ausdrücklich gesetzt, sonst Hamburg = A (saison-1.0), sonst das letzte Rennen = A, die übrigen B. */
+  V6.rennenPrio = function (races) {
+    const R = (races || []).filter((r) => r && r.date).map((r) => Object.assign({}, r)).sort((a, b) => a.date.localeCompare(b.date));
+    for (const r of R) if (!r.prio && /hamburg/i.test(r.name || "")) r.prio = "A";
+    if (R.length && !R.some((r) => r.prio === "A")) R[R.length - 1].prio = "A";
+    for (const r of R) if (!r.prio) r.prio = "B";
+    return R;
+  };
+  /** Offizielle Streckenlängen nach Rennformat (70.3 bzw. Halbdistanz, Ironman bzw. Langdistanz); sonst null – nie geraten. */
+  V6.distanzen = function (name) {
+    const n = String(name || "");
+    if (/70\.3|halbdistanz|half/i.test(n)) return [{ sport: "schwimm", km: 1.9 }, { sport: "rad", km: 90 }, { sport: "lauf", km: 21.1 }];
+    if (/ironman|langdistanz/i.test(n)) return [{ sport: "schwimm", km: 3.8 }, { sport: "rad", km: 180 }, { sport: "lauf", km: 42.2 }];
+    return null;
+  };
+  /** Wochen aus AN.saison zu Phasen zusammenfassen: [{ phase, von, bis, wochen, aktiv }]. */
+  V6.phasenSegmente = function (wochen, heuteISO) {
+    const out = [];
+    for (const w of wochen || []) {
+      const last = out[out.length - 1];
+      if (last && last.phase === w.phase) { last.wochen.push(w); last.bis = addDays(w.woche, 6); }
+      else out.push({ phase: w.phase, von: w.woche, bis: addDays(w.woche, 6), wochen: [w] });
+    }
+    for (const s of out) s.aktiv = !!heuteISO && heuteISO >= s.von && heuteISO <= s.bis;
+    return out;
+  };
+
   /* ---------------- Symbole (eigene, Linien 1,8 px) ---------------- */
   const svg = (inner, w) => `<svg viewBox="0 0 24 24" width="${w || 20}" height="${w || 20}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
   V6.ICON = {

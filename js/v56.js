@@ -94,7 +94,7 @@
     const el = $("v56-plan"); if (!el) return;
     const A = C.D.activities.filter((a) => a.wk).sort((x, y) => y.date.localeCompare(x.date));
     const F = window.FK, von = F.addDays(C.iso(C.today), -27);
-    const plan = (C.D.planned || []).filter((p) => p.date >= von);
+    const plan = (C.D.planned || []).filter((p) => p.date >= von && p.date <= C.iso(C.today));      // V6.0.2: nur bis heute (Zukunft steht im Kalender)
     const ist = (p) => C.D.activities.find((a) => a.date === p.date && (a.sport === p.sport || (p.sport === "rad" && a.sport === "rad")));
     el.innerHTML = `<p class="hint">Quelle der Pläne: das Workout, das auf der Uhr lief (aus der FIT-Datei), und der Garmin-Kalender. Enduco-Einheiten kommen über Garmin auf die Uhr; eine direkte Enduco-Schnittstelle gibt es hier nicht, und welcher Dienst ein Workout erstellt hat, steht nicht in der FIT-Datei. Zwift-Dateien enthalten keine Workout-Schritte. ${A.length} Einheiten mit Workout-Struktur seit ${A.length ? C.dateCH(A[A.length - 1].date) : "–"}.</p>
       <div class="tablewrap"><table class="t v56-pt"><tr><th>Datum</th><th>Workout</th><th>Plan</th><th>Ist</th><th>im Ziel</th><th>Hauptteil</th><th>RPE</th><th></th></tr>${A.slice(0, 12).map((a) => {
@@ -102,16 +102,21 @@
         const ht = h ? (a.sport === "rad" ? `${h.w ?? "–"} W` : h.v ? `${Math.floor(1000 / h.v / 60)}:${String(Math.round((1000 / h.v) % 60)).padStart(2, "0")}` : "–") + ` · ${h.hr ?? "–"} bpm` : "–";
         return `<tr><td>${C.dateCH(a.date)}</td><td class="wrap">${C.esc(a.wk.name || "")}${g ? `<br><small>früher ${C.dateCH(g.date)}: ${C.esc(g.text)}</small>` : ""}</td><td>${a.wk.plan_s ? C.hmm(a.wk.plan_s) : a.wk.plan_m ? (a.wk.plan_m >= 2000 ? C.fmt(a.wk.plan_m / 1000, 1) + " km" : a.wk.plan_m + " m") : "offen"}</td><td>${C.hmm(a.wk.ist_s)}</td>
           <td>${isNum(a.wk.im_ziel) ? a.wk.im_ziel + " %" : "–"}</td><td>${ht}</td><td>${r ? r.rpe : "–"}</td><td><button class="btn" data-ex="${C.esc(a.id)}">Details</button></td></tr>`; }).join("")}</table></div>
-      ${plan.length ? `<p class="hint">Garmin-Kalender, letzte 4 Wochen: ${plan.map((p) => `${C.dateCH(p.date)} «${C.esc(p.title)}» ${C.hmm(p.dur_s)} h → ${ist(p) ? "absolviert" : "keine Einheit gefunden"}`).join(" · ")}</p>` : ""}`;
+      ${plan.length ? `<p class="hint">Garmin-Kalender, letzte 4 Wochen: ${plan.map((p) => `${C.dateCH(p.date)} «${C.esc(p.title)}» ${(() => { const d = window.V6H ? window.V6H.planDauer(p) : p.dur_s; return d ? C.hmm(d) + " h" : "Dauer offen"; })()} → ${ist(p) ? "absolviert" : p.date === C.iso(C.today) ? "heute geplant" : "keine Einheit gefunden"}`).join(" · ")}</p>` : ""}`;
   };
 
   /* ======================= Kalender: Saison 2027 (saison-1.0) ======================= */
-  const PH_COL = { "Grundlage": "#cfe3f1", "Aufbau": "#9cc7e6", "Wettkampfspezifisch": "#5f9fd1", "Taper": "#f2c14e", "B-Rennen (Mini-Taper)": "#f6d98a" };
+  const PH_COL_HELL = { "Grundlage": "#cfe3f1", "Aufbau": "#9cc7e6", "Wettkampfspezifisch": "#5f9fd1", "Taper": "#f2c14e", "B-Rennen (Mini-Taper)": "#f6d98a" };
+  const PH_VAR = { "Grundlage": "--zc-z2", "Aufbau": "--zc-z3", "Wettkampfspezifisch": "--zc-z4", "Taper": "--zc-z5", "B-Rennen (Mini-Taper)": "--race" };   // V6: Farben wie im Plan
+  let PH_COL = PH_COL_HELL;
   V.saison = function (C) {
     const el = $("v56-saison"); if (!el) return;
     const F = window.FK, heute = C.iso(C.today);
-    const races = ((C.D.config || {}).races || []).map((r) => ({ ...r, prio: /hamburg/i.test(r.name) ? "A" : "B" }));
+    const races = window.V6 && C.races ? window.V6.rennenPrio(C.races()) : ((C.D.config || {}).races || []).map((r) => ({ ...r, prio: /hamburg/i.test(r.name) ? "A" : "B" }));
     const S = AN.saison(heute, races); if (!S) { el.innerHTML = `<p class="hint">Kein Hauptwettkampf in den Daten.</p>`; return; }
+    const dunkel = document.documentElement.dataset.theme !== "light";
+    PH_COL = dunkel ? Object.fromEntries(Object.entries(PH_VAR).map(([k, v]) => [k, C.css(v) || PH_COL_HELL[k]])) : PH_COL_HELL;
+    const F_VOR = dunkel ? C.css("--surface-2") : "#d7e6f2", F_ERH = dunkel ? C.css("--sheet") : "#e9eef2", F_IST = dunkel ? C.css("--good") : "#148a7e", F_LIN = dunkel ? "rgba(255,255,255,.08)" : "rgba(31,51,71,.1)";
     const lokal = ((UI().Inbox.data || {}).saison || [])[0] || (C.D.saison_plan || [])[0] || {};
     const ist8 = AN.wochenIst(C.D.activities, F.addDays(heute, -56), heute), h8 = [...ist8.values()].map((r) => r.rad + r.lauf + r.schwimm);
     const j52 = AN.wochenIst(C.D.activities, F.addDays(heute, -364), heute), h52 = [...j52.values()].map((r) => r.rad + r.lauf + r.schwimm).sort((a, b) => b - a);
@@ -127,14 +132,14 @@
     const Y = (v) => h - 22 - (v / maxH) * (h - 40);
     const svg = `<svg viewBox="0 0 ${w} ${h}" class="v56-saison" role="img" aria-label="Saison bis ${S.haupt.name}: Phasen, geplante und absolvierte Stunden je Woche">
       ${W.map((x, i) => `<rect x="${(34 + i * bw).toFixed(1)}" y="0" width="${(bw - 1).toFixed(1)}" height="14" fill="${PH_COL[x.phase] || "#ddd"}"><title>${x.woche}: ${x.phase}${x.erholung ? " · Erholungswoche" : ""}</title></rect>`).join("")}
-      ${W.map((x, i) => `<rect x="${(34 + i * bw + 1).toFixed(1)}" y="${Y(plan[i]).toFixed(1)}" width="${Math.max(1, bw - 3).toFixed(1)}" height="${(h - 22 - Y(plan[i])).toFixed(1)}" fill="${x.erholung ? "#e9eef2" : "#d7e6f2"}" stroke="${x.erholung ? "#9aa8b4" : "none"}" stroke-dasharray="2 2"><title>${x.woche}: Vorschlag ${plan[i]} h${x.erholung ? " (Erholung)" : ""}</title></rect>`).join("")}
-      ${W.map((x, i) => { const r = IST.get(x.woche); if (!r || x.woche > heute) return ""; const v = r.rad + r.lauf + r.schwimm; return `<circle cx="${(34 + i * bw + bw / 2).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="4.5" fill="#148a7e"><title>${x.woche}: absolviert ${v.toFixed(1)} h</title></circle>`; }).join("")}
+      ${W.map((x, i) => `<rect x="${(34 + i * bw + 1).toFixed(1)}" y="${Y(plan[i]).toFixed(1)}" width="${Math.max(1, bw - 3).toFixed(1)}" height="${(h - 22 - Y(plan[i])).toFixed(1)}" fill="${x.erholung ? F_ERH : F_VOR}" stroke="${x.erholung ? "#9aa8b4" : "none"}" stroke-dasharray="2 2"><title>${x.woche}: Vorschlag ${plan[i]} h${x.erholung ? " (Erholung)" : ""}</title></rect>`).join("")}
+      ${W.map((x, i) => { const r = IST.get(x.woche); if (!r || x.woche > heute) return ""; const v = r.rad + r.lauf + r.schwimm; return `<circle cx="${(34 + i * bw + bw / 2).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="4.5" fill="${F_IST}"><title>${x.woche}: absolviert ${v.toFixed(1)} h</title></circle>`; }).join("")}
       ${W.map((x, i) => (x.rennen.length ? `<text x="${Math.min(w - 30, 34 + i * bw + bw / 2).toFixed(1)}" y="${h - 4}" text-anchor="middle" class="v56-rl">${x.rennen.join(", ")}</text>` : "")).join("")}
-      ${[0, Math.round(maxH / 2), Math.round(maxH)].map((v) => `<text x="28" y="${(Y(v) + 4).toFixed(1)}" text-anchor="end" class="v56-ax">${v} h</text><line x1="34" x2="${w}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="rgba(31,51,71,.1)"/>`).join("")}
+      ${[0, Math.round(maxH / 2), Math.round(maxH)].map((v) => `<text x="28" y="${(Y(v) + 4).toFixed(1)}" text-anchor="end" class="v56-ax">${v} h</text><line x1="34" x2="${w}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="${F_LIN}"/>`).join("")}
     </svg>`;
     const naechste = W.filter((x) => x.woche >= F.addDays(heute, -6)).slice(0, 4);
     const ant = (() => { const r = { rad: 0, lauf: 0, schwimm: 0 }; for (const v of ist8.values()) { r.rad += v.rad; r.lauf += v.lauf; r.schwimm += v.schwimm; } const s = r.rad + r.lauf + r.schwimm || 1; return { rad: r.rad / s, lauf: r.lauf / s, schwimm: r.schwimm / s }; })();
-    el.innerHTML = `<div class="v56-legend">${Object.entries(PH_COL).map(([k, c]) => `<span><i style="background:${c}"></i>${k}</span>`).join("")}<span><i class="dot" style="background:#148a7e"></i>absolviert</span><span><i style="background:#d7e6f2"></i>Vorschlag</span></div>
+    el.innerHTML = `<div class="v56-legend">${Object.entries(PH_COL).map(([k, c]) => `<span><i style="background:${c}"></i>${k}</span>`).join("")}<span><i class="dot" style="background:${F_IST}"></i>absolviert</span><span><i style="background:${F_VOR}"></i>Vorschlag</span></div>
       <div class="v56-svgwrap">${svg}</div>
       <p class="hint">Deine Referenzen (Schwimmen, Rad, Laufen): letzte 8 Wochen Median ${h8.length ? C.fmt(median(h8), 1) : "–"} h; grösste Woche der letzten 52 Wochen ${h52.length ? C.fmt(h52[0], 1) : "–"} h; Ø der 4 grössten ${top4 ? C.fmt(top4, 1) : "–"} h.</p>
       <form class="css-form v56-sf" id="v56-sf"><div class="css-grid"><label>Stunden pro Woche jetzt<input name="j" type="number" step="0.5" min="2" max="30" value="${jetzt}"></label>
@@ -178,7 +183,8 @@
   /* ======================= Einbindung ======================= */
   V.zeichnen = function (tab, C) {
     if (tab === "heute") V.heute(C);
-    if (tab === "kalender") { V.plan(C); V.saison(C); }
+    if (tab === "kalender") V.plan(C);
+    if (tab === "plan") V.saison(C);                 // V6.0.2: Saison-Vorschlag unter Plan
     if (tab === "training") V.konstanz(C);
     if (tab === "ausdauer") { V.ermuedung(C); V.verpflegung(C); }
   };

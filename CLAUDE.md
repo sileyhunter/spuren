@@ -49,8 +49,9 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   `tools/eingang.mjs` (eingang/ einlesen, aufräumen, prüfen), `tools/eingaben_lib.mjs` (Zuordnung Eingaben → merge_daily.py), `tests/test_v59.cjs`,
   `tools/last.py` (V5.9.1 Trainingslast `tl2` mit der LT2, Vergleich; Abschnitt «FTP und Trainingslast»)
 - **V6.0:** `css/v6.css` (Design design-1.0: dunkel als Standard, Zonen-, Sport- und Statusfarben, Pillen, Blätter), `js/v6.js` (ohne DOM:
-  Zonen und Farben, Balkenprofil profil-1.0, Fokus, Trainingsstatus status-1.0, Wochenleiste, eigene Symbole), `js/v6-heute.js` (Heute: Kacheln,
-  Heutiges Training, Einheit, Optionen, Bereitschaft als Blätter, Wochenleiste), `tests/test_v6.cjs`
+  Zonen und Farben, Balkenprofil profil-1.0, Fokus, Trainingsstatus status-1.0, Wochenleiste, Rennen/Phasen, eigene Symbole), `js/v6-heute.js`
+  (Heute: Kacheln, Heutiges Training, Einheit, Optionen, Bereitschaft als Blätter, Wochenleiste), `js/v6-plan.js` (Plan: Rennen, Phasen,
+  Wochenübersicht), `tests/test_v6.cjs`
 - **V5.8:** keine neuen Dateien; Rechenlogik in `js/route.js` (Abschnitte von Hand, Skitourennetz, Hangneigung, MTB-Abfahrt, Wegende, drei
   Rennradvarianten, Windpfeile), Oberfläche in `js/routen-ui.js`, Ringe «Heute» in `js/formkurve.js` (`FK.ringeVerlauf`) und `js/v55.js` (`V55.ringe`)
 - `tests/test_formkurve.cjs`, `tests/test_route.cjs`, `tests/test_analyse.cjs`, `tests/test_training.cjs`, `tests/test_tools.py` – Abnahmetests (erfundene Werte; `tests/fixtures/` = echte
@@ -280,9 +281,10 @@ V5.9.3: `routen` (im Planer gespeicherte Routen → `routes`, gleiche ID ersetzt
   Nacht, Belastung = (1 − 2^(−TSS/CTL_Vortag)) · 100; alle 0–100 %, Lücken bleiben leer, Tag mit Datum. Kein medizinisches Mass.
 
 ## Bedienung V5.9.5 (bedienung-1.0)
-- Start auf «Heute» (Hash-Links wie `#laktat` oder `#checkin` gehen direkt). Fünf Bereiche in der Leiste unten (`#leiste`, `GRUPPEN` in
-  index.html): Heute · Kalender · Karte · Analyse (training, laktat, ausdauer, leistung) · Körper & Schwimmen (koerper, schwimmen); die
-  Ansichten (`section.view`, `showTab(name)`) bleiben einzeln, oben wechselt `nav.unter`. Im Planer (`body.plan-aktiv`) keine Leiste.
+- Start auf «Heute» (Hash-Links wie `#laktat`, `#plan` oder `#checkin` gehen direkt; `#checkin` öffnet das Check-in-Blatt). Fünf Bereiche in
+  der Leiste unten (`#leiste`, `GRUPPEN` in index.html, seit V6.0.2): Heute · Kalender · Plan · Analyse (training, laktat, ausdauer, leistung,
+  koerper, schwimmen) · Karte; die Ansichten (`section.view`, `showTab(name)`) bleiben einzeln, oben wechselt `nav.unter` (wischbar).
+  Im Planer (`body.plan-aktiv`) keine Leiste.
 - Info-Knopf (`V59.ansicht`): Erklärtexte (`.sub` ohne id, `.hint`) einer Karte mit Ergebnis liegen hinter «i»; Warnungen (`.warn-t`, `.down`),
   `.verdict`, Status (`role=status`, `aria-live`) und `.keep` nie verstecken. Neue Erklärtexte deshalb als `.hint`, Warnungen mit `.warn-t`.
 - Breite Tabellen: `data-liste` an der Tabelle (oder zu breit auf ≤ 640 px) → Liste (`.als-liste`, Spaltenname je Zelle). Tabellen, die
@@ -298,6 +300,10 @@ V5.9.3: `routen` (im Planer gespeicherte Routen → `routes`, gleiche ID ersetzt
   Einheit als Blatt), Wochenleiste. Balkenprofil `profil-1.0`: Breite = Dauer, Höhe = Lage im aktiven Zonenprofil, Farbe = Zone (Unterzonen
   aus dem Text der Zone, z. B. «FatMax 220–240»); ohne Zielbereich grau, ohne Dauer blass. Fokus = Zeitanteile der aktiven Schritte ohne
   Ein-/Ausfahren und Erholung, ab 10 %, höchstens drei. Trainingsstatus `status-1.0` aus der Form (Bänder nach Coggan); «Übertraining» nie.
+- Plan (V6.0.2, `js/v6-plan.js`): Rennen (A/B nach `V6.rennenPrio`, Streckenlängen nur bei bekanntem Format, keine Zielzeit erfunden),
+  Phasen aus `AN.saison` als Zeitstrahl, Wochenübersicht (absolviert gefüllt, geplant als Rand, Phase als Streifen), Wochenstunden-Vorschlag
+  (`V56.saison`) und Testkalender. Kalender: Wochenband «KW · Phase · Stunden · TL», heute orange, Sport-Symbole, Fokus-Punkte, Tagesliste
+  mit Mini-Profilen (antippen öffnet die Einheit).
 - Die Seite schreibt nichts nach Garmin oder Enduco: keine Knöpfe zum Anlegen, Verschieben, Starten oder Exportieren von Workouts.
 
 ## Meine Entwicklung und Regeln V5.5

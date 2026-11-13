@@ -36,7 +36,11 @@
     const p = art === "p" ? (D.planned || [])[+n] : art === "n" ? (D.workouts_neu || [])[+n] : null;
     return p ? einheit(p, key) : null;
   }
-  H.planDauer = function (p) { const e = einheit(p, null); return e.dauer; };
+  H.planDauer = function (p) { C = C || (UI() && UI().C); if (!C) return p.dur_s || null; const e = einheit(p, null); return e.dauer; };
+  /** Fokus-Intensitäten einer geplanten Einheit (für die Punkte im Kalender). */
+  H.fokus = function (p) { C = C || (UI() && UI().C); if (!C || !V6()) return []; const e = einheit(p, null); return e.pr ? e.pr.fokus.map((f) => f.key) : []; };
+  /** Karte einer Einheit (Kalender-Tagesliste): key «p:<Stelle in planned>» oder «n:<Stelle in workouts_neu>». */
+  H.karteHTML = function (key, klein) { C = C || (UI() && UI().C); if (!C || !V6()) return ""; const e = finde(key); return e ? karte(e, klein) : ""; };
 
   /* ---------- Zeichnen ---------- */
   H.zeichnen = function () {
@@ -91,7 +95,7 @@
     const q = e.p.quelle || (e.key[0] === "n" ? "neu von Enduco, noch ohne Datum" : "Garmin-Kalender");
     return `<div class="card ek-karte${klein ? " klein" : ""}">
       <div class="ek-oben"><span class="ek-sport" style="--sp:${spFarbe(e.sport)}">${V6().sportIcon(e.sport, klein ? 18 : 22)}</span>
-        <div class="ek-titel"><b>${esc(titel)}</b><span>${esc(SPORT_WORT[e.sport] || e.sport)} · ${esc(q)}</span></div>
+        <div class="ek-titel"><b>${esc(titel)}</b><span>${esc(SPORT_WORT[e.sport] || e.sport)}${klein && isNum(e.dauer) ? " · " + esc(geschaetzt(e) + V6().dauerText(e.dauer)) : ""} · ${esc(q)}</span></div>
         <div class="ek-chips">${chips(e, klein ? 2 : 3)}</div></div>
       ${klein ? "" : `<div class="ek-zahlen">${zahlen(e)}</div>`}
       ${e.pr && e.pr.balken.length ? V6().profilSVG(e.pr, { h: klein ? 28 : 44 }) : `<p class="ek-ohne">Keine Schritte im Kalender – Ziele siehe Garmin.</p>`}
