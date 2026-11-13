@@ -61,9 +61,10 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   Prüfung an den eigenen Daten ampel-pruefung-1.0 in `js/formkurve.js` (`FK.readiness`, `FK.ampelPruefung`), Anzeige in `js/v5-ui.js` (Tagesbereitschaft)
 - **V6.2.3:** `tools/garmin_export.py` – Garmin-Datenexport (DSGVO-Export) → Verlauf `spuren-garmin-verlauf-1` (garmin-export-1.0, Abschnitt
   «Garmin-Datenexport»); Prüfung auf der Seite `V61.verlaufPruefen`, Einstellungen «Garmin-Verlauf einlesen» (`js/v59.js`)
-- **V6.4 (Etappe 4 Modell und Wissen):** `js/v64.js` (ohne DOM: Trainingsmodelle modell-1.0, Woche nach Modell wochenplan-1.0, Aufteilung
-  aufteilung-1.0, Intensitätsverteilung tid-1.0), `js/wissen.js` (wissen-1.1: Kapitel in eigenen Worten, Quellen mit DOI), `js/v64-ui.js` (Plan:
-  «Woche nach Modell», «Trainingsmodell»; Ansicht «Wissen» unter Plan), `tests/test_v64.cjs`; Stundenregel saison-1.0 neu in `js/analyse.js`
+- **V6.4 (Etappe 4 Modell und Wissen):** `js/v64.js` (ohne DOM: Trainingsmodelle modell-1.0, Woche nach Modell wochenplan-1.1, Aufteilung
+  aufteilung-1.0, Intensitätsverteilung tid-1.0, V6.4.2 Intensität je Sportart intensitaet-1.0 und Aufbau-Check aufbau-1.0), `js/wissen.js`
+  (wissen-1.2: Kapitel in eigenen Worten, Quellen mit DOI), `js/v64-ui.js` (Plan: «Woche nach Modell», «Aufbau-Check», «Trainingsmodell» mit
+  Intensität je Sportart; Ansicht «Wissen» unter Plan), `tests/test_v64.cjs`; Stundenregel saison-1.0 neu in `js/analyse.js`
   (`AN.saisonStunden`, `AN.saisonVorgaben`, gleiche Regel wie zuvor in `js/v56.js`)
 - **V5.8:** keine neuen Dateien; Rechenlogik in `js/route.js` (Abschnitte von Hand, Skitourennetz, Hangneigung, MTB-Abfahrt, Wegende, drei
   Rennradvarianten, Windpfeile), Oberfläche in `js/routen-ui.js`, Ringe «Heute» in `js/formkurve.js` (`FK.ringeVerlauf`) und `js/v55.js` (`V55.ringe`)
@@ -380,7 +381,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   nächste leichter – eigene Regel), rennspezifisch (Tempo Rad 2 × 20, Laufen 3 × 10 min, Renntempo in den langen Einheiten, Koppellauf Sa) und
   **kombiniert = Standard** (von Silas gewählt am 13.11.2026): polarisiert bis zum Wechsel (vorgegeben 1. Februar im Jahr des Hauptrennens,
   auf der Seite änderbar), ab der Woche des Wechsels rennspezifisch. Die Wahl kommt nur über «Direkt speichern» (`modell` → `plan_modell`).
-- **Woche `wochenplan-1.0` (`V64.woche`):** Mo frei · Di Laufen (Schlüssel) und Schwimmkurs · Mi Rad locker · Do Rad (Schlüssel) und CSS-Schwimmen ·
+- **Woche `wochenplan-1.1` (`V64.woche`, 1.1 = mit Aufbau-Grenze und Intensität je Sportart):** Mo frei · Di Laufen (Schlüssel) und Schwimmkurs · Mi Rad locker · Do Rad (Schlüssel) und CSS-Schwimmen ·
   Fr Laufen locker · Sa lange Ausfahrt (+ Koppel) · So langer Lauf (+ Schwimmen). Stunden aus saison-1.0 (`AN.saisonStunden`/`AN.saisonVorgaben`),
   `aufteilung-1.0` Schwimmen 20 %, Rad 50 %, Laufen 30 % (eigene Festlegung); Anzahl je Sportart nach Stunden (unter 7 h je 2 Rad/Lauf, 1 Schwimmen);
   längste Einheit je Phase begrenzt (`V64.LANG`), Rest wird gemeldet, nie still verteilt. Erholungswoche: nur Rad-Schlüssel gekürzt, Laufen locker.
@@ -388,10 +389,21 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Vorschläge, nicht erledigt) ersetzen die Einheit derselben Sportart, Kurzcheck in einer lockeren Ausfahrt (±2 Tage); vor einem Stufentest wird
   die Schlüsseleinheit derselben Sportart in den 3 Tagen davor locker. Ziele aus dem aktiven Zonenprofil (`V64.ziel`), ohne Profil bzw. CSS-Test
   nichts geraten. Renntempo = Rad 95–100 % der Leistung an LT1, Laufen bis 3 % langsamer als an LT1 (eigene Festlegung), zählt als locker.
+- **Intensität je Sportart `intensitaet-1.0` (V6.4.2, `V64.kappen`, `V64.planStufe`):** je Sportart «nur locker», «bis Schwelle» (Tempo, knapp unter
+  LT2, CSS; keine VO2max-Intervalle) oder «alles» (Standard). Gespeichert im Eintrag «modell» (`intensitaet` = {schwimm, rad, lauf}, `vi`;
+  `merge_daily.modell_pruefen` lehnt unbekannte Sportarten oder Stufen ab). Der Vorschlag ersetzt eine Schlüsseleinheit über der Wahl durch die nächst
+  leichtere derselben Sportart (`V64.ERSATZ`; locker mit gleicher Dauer) und verschiebt nichts auf eine andere Sportart; die Prüfung der Verteilung
+  ist dann «nicht beurteilt» mit Grund. Enduco-Plan nur geprüft: Stufe aus den Zielen der Schritte, ohne Ziele aus dem Titel («laut Titel»).
+- **Aufbau-Check `aufbau-1.0` (V6.4.2, `V64.aufbau`, Karte `#ab-card` unter Plan):** jeder Lauf (0,5–100 km) gegen den längsten Lauf der 30 Tage
+  davor (frühere am selben Tag zählen), Klassen nach Frandsen et al. 2025 (bis 10 %, 10–30, 30–100, über 100 %; Raten 1,64/1,52/2,28 nur als
+  Beobachtung), Grenze für den nächsten Lauf = 10 % über dem längsten der 30 Tage (auf 0,1 km abgerundet, nur absolvierte Läufe), wann der
+  Referenzlauf wegfällt, geplante Enduco-Läufe (Distanz aus Pace-Zielen geschätzt, offene Schritte = «mind.»), Wochen-km Laufen, Schwimm-Meter,
+  Rad-Stunden (12 Wochen). Schwimmen und Rad ohne Grenze (keine geprüfte). Der Wochenvorschlag kürzt den langen und den lockeren Lauf unter die
+  Grenze (Distanz aus dem Zonenprofil, Z1 mit dem langsamen Rand von Z2), übrige Läufe nur als Hinweis; ohne Lauf-Pace-Zonen keine Begrenzung.
 - **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
   Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
   Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
-- **Wissen `wissen-1.1` (`js/wissen.js`, 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen»):** alle Modelle und Regeln der Seite in eigenen Worten (nie Text aus Studien oder Webseiten übernehmen),
+- **Wissen `wissen-1.2` (`js/wissen.js`, 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check):** alle Modelle und Regeln der Seite in eigenen Worten (nie Text aus Studien oder Webseiten übernehmen),
   jede Aussage mit Quelle `[[id]]` aus `WS.QUELLEN` (Autoren, Jahr, Titel, Zeitschrift, DOI; ohne DOI begründet), Kapitel-Verweise `[[#id]]`.
   Neue oder geänderte Regel: Kapitel und `WS.REGELN` nachführen; `tests/test_v64.cjs` prüft Verweise, DOI-Form, jede Quelle verwendet,
   Schweizer Schreibweise (kein ß) und keine Wattwerte in den Texten. Nie persönliche Zahlen in die Wissenstexte.

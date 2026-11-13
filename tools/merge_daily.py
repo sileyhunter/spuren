@@ -184,8 +184,12 @@ def laktatpunkt_uebernehmen(D, pid):
 MODELLE = ("kombiniert", "polarisiert", "pyramidal", "schwelle", "rennspezifisch")   # wie V64.MODELLE in js/v64.js
 
 
+INTENSITAET_STUFEN = ("locker", "schwelle", "alles")
+
+
 def modell_pruefen(m):
-    """V6.4 modell-1.0: Eintrag «modell» von der Seite → Fehlertext oder None (bekanntes Modell, Wechsel als Datum)."""
+    """V6.4 modell-1.0: Eintrag «modell» von der Seite → Fehlertext oder None (bekanntes Modell, Wechsel als Datum).
+    V6.4.2 intensitaet-1.0: optional «intensitaet» = {schwimm, rad, lauf} mit «locker», «schwelle» oder «alles»."""
     if not isinstance(m, dict) or m.get("id") != "modell":
         return "kein Eintrag «modell»"
     if m.get("modell") not in MODELLE:
@@ -194,6 +198,15 @@ def modell_pruefen(m):
         dt.date.fromisoformat(str(m.get("wechsel")))
     except ValueError:
         return "Wechsel ist kein Datum"
+    it = m.get("intensitaet")
+    if it is not None:
+        if not isinstance(it, dict) or not it:
+            return "Intensität je Sportart ist keine Liste"
+        for sp, st in it.items():
+            if sp not in ("schwimm", "rad", "lauf"):
+                return f"unbekannte Sportart {sp!r} bei der Intensität"
+            if st not in INTENSITAET_STUFEN:
+                return f"unbekannte Intensität {st!r} ({sp})"
     return None
 
 

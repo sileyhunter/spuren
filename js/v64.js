@@ -5,6 +5,11 @@
      nie nach Garmin oder Enduco geschrieben. Feste Wochenstruktur (Mo frei, Schlüsseleinheiten Di Laufen und Do Rad, lang Sa Rad und So Laufen).
    - aufteilung-1.0: Stunden Schwimmen 20 %, Rad 50 %, Laufen 30 % (eigene Festlegung, keine Studie).
    - tid-1.0: Zeit in drei Bereichen (locker < LT1 ≤ mittel < LT2 ≤ hart), Muster nach Treff et al. 2019 (Polarisierungsindex), Abgleich mit dem Modell.
+   - intensitaet-1.0 (V6.4.2): höchste Intensität je Sportart (nur locker / bis Schwelle / alles). Der Vorschlag ersetzt Schlüsseleinheiten darüber
+     durch die nächst leichtere derselben Sportart und verschiebt nichts auf eine andere Sportart; der Enduco-Plan wird nur dagegen geprüft.
+   - aufbau-1.0 (V6.4.2): jeder Lauf gegen den längsten Lauf der 30 Tage davor (Frandsen et al. 2025: Sprung ab mehr als 10 %), Grenze für den
+     nächsten Lauf, Wochen-km Laufen, Schwimm-Meter und Rad-Stunden. wochenplan-1.1: kein Lauf im Vorschlag über dieser Grenze (Distanz aus dem
+     Zonenprofil geschätzt; ohne Zonenprofil keine Begrenzung, nie geraten).
    Unbekannt bleibt unbekannt: ohne Zonenprofil keine Watt- oder Pace-Ziele, ohne CSS-Test kein Schwimmtempo. */
 (function (root, factory) {
   const V64 = factory();
@@ -12,7 +17,7 @@
   if (root) root.V64 = V64;
 })(typeof window !== "undefined" ? window : null, function () {
   "use strict";
-  const V64 = { VERSIONS: { modell: "modell-1.0", woche: "wochenplan-1.0", tid: "tid-1.0", aufteilung: "aufteilung-1.0" } };
+  const V64 = { VERSIONS: { modell: "modell-1.0", woche: "wochenplan-1.1", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.0", aufbau: "aufbau-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const T = (iso) => Date.parse(iso + "T12:00:00Z");
   const add = (iso, n) => new Date(T(iso) + n * 864e5).toISOString().slice(0, 10);
@@ -163,6 +168,47 @@
       ablauf: () => ["30 min locker mit 3 × 1 min zügig", "Material und Verpflegung bereitlegen"] },
   });
 
+  /* ---------------- Intensität je Sportart (intensitaet-1.0) ---------------- */
+  /** Stufen: «locker» (nur unter LT1, Renntempo zählt als locker), «schwelle» (bis knapp unter LT2, CSS), «alles» (auch VO2max).
+   *  Standard: überall «alles» = Vorschlag wie im Modell. Tests (Messung) und die Aktivierung vor dem Rennen gelten nicht als Training. */
+  V64.STUFEN = ["locker", "schwelle", "alles"];
+  V64.STUFE_TEXT = { locker: "nur locker", schwelle: "bis Schwelle", alles: "alles" };
+  const RANG = (V64.RANG = { locker: 0, schwelle: 1, alles: 2 });
+  V64.INTENSITAET_STANDARD = { schwimm: "alles", rad: "alles", lauf: "alles" };
+  V64.STUFE_BAUSTEIN = { rad_vo2: "alles", lauf_vo2: "alles", rad_schwelle: "schwelle", rad_laktat: "schwelle", rad_tempo: "schwelle",
+    lauf_tempo: "schwelle", lauf_laktat: "schwelle", schwimm_css: "schwelle" };
+  /** Ersatz derselben Sportart, wenn ein Baustein über der gewählten Stufe liegt. */
+  V64.ERSATZ = { rad_vo2: { schwelle: "rad_schwelle", locker: "rad_locker" }, lauf_vo2: { schwelle: "lauf_tempo", locker: "lauf_locker" },
+    rad_schwelle: { locker: "rad_locker" }, rad_laktat: { locker: "rad_locker" }, rad_tempo: { locker: "rad_locker" },
+    lauf_tempo: { locker: "lauf_locker" }, lauf_laktat: { locker: "lauf_locker" }, schwimm_css: { locker: "schwimm_locker" } };
+  /** Gespeicherte Wahl (Eintrag «modell») → { schwimm, rad, lauf }; fehlend oder unbekannt = «alles». */
+  V64.intensitaet = function (eintrag) {
+    const x = (eintrag && eintrag.intensitaet) || {}, out = {};
+    for (const sp of ["schwimm", "rad", "lauf"]) out[sp] = V64.STUFEN.includes(x[sp]) ? x[sp] : "alles";
+    return out;
+  };
+  /** Baustein-ID unter der Grenze «stufe» (unverändert, wenn erlaubt). */
+  V64.kappen = function (id, stufe) {
+    const s = V64.STUFE_BAUSTEIN[id] || "locker", g = RANG[stufe] != null ? RANG[stufe] : 2;
+    if (RANG[s] <= g) return id;
+    const E = V64.ERSATZ[id] || {};
+    return E[stufe] || E.locker || id;
+  };
+  /** Höchste Intensität einer geplanten Einheit (Enduco): aus den Zielen der Schritte (Balkenprofil); ohne Ziele aus dem Titel
+   *  (VO2max, anaerob, Sprint → «alles»; Schwelle, Tempo, Sweet Spot, CSS, Über-Unter → «schwelle»). → { stufe, quelle } oder null. */
+  V64.planStufe = function (balken, text) {
+    let best = null;
+    for (const b of balken || []) {
+      const k = V64.DREI[b && b.key], st = k === "hart" ? "alles" : k === "mittel" ? "schwelle" : k === "locker" ? "locker" : null;
+      if (st && (best == null || RANG[st] > RANG[best])) best = st;
+    }
+    if (best) return { stufe: best, quelle: "ziele" };
+    const t = String(text || "");
+    if (/vo\s*2|vo₂|anaerob|sprint/i.test(t)) return { stufe: "alles", quelle: "titel" };
+    if (/schwelle|threshold|sweet\s*spot|tempo|\bcss\b|über[- ]?unter/i.test(t)) return { stufe: "schwelle", quelle: "titel" };
+    return null;
+  };
+
   /** Einheit aus einem Baustein. o: { d, kurz, phase, css_s }. → { id, sport, titel, dauer, teile, minuten {locker, mittel, hart}, … } */
   V64.einheit = function (id, o) {
     const b = B[id]; if (!b) return null;
@@ -229,7 +275,7 @@
   const TAG = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 
   /** ctx: { woche (Montag), phase, erholung, stunden, modell (schon aufgelöst), tests [{date, kind, sport}], rennen [{date, name, short, prio}],
-   *  css_s, aufteilung }. → { v, woche, modell, phase, erholung, stunden, tage [{date, wt, ruhetag, notiz, einheiten}], minuten, tid, pruefung, hinweise } */
+   *  css_s, aufteilung, intensitaet {schwimm, rad, lauf}, laeufe (V64.laeufe der absolvierten Läufe), heute, skalen (für aufbau-1.0) }. → { v, woche, modell, phase, erholung, stunden, tage [{date, wt, ruhetag, notiz, einheiten}], minuten, tid, pruefung, hinweise } */
   V64.woche = function (ctx) {
     const c = ctx || {}, woche = montag(c.woche), M = V64.MODELLE[c.modell] && !V64.MODELLE[c.modell].teile ? V64.MODELLE[c.modell] : V64.MODELLE.polarisiert;
     const modell = Object.keys(V64.MODELLE).find((k) => V64.MODELLE[k] === M);
@@ -242,9 +288,29 @@
     const R = (c.rennen || []).filter((r) => r && r.date >= woche && r.date <= add(woche, 6)).sort((a, b) => a.date.localeCompare(b.date));
     const wenig = (t) => { if (!R.length) hinweise.push(t); };
     const tag = (wt) => tage[TAG.indexOf(wt)];
+    // intensitaet-1.0: Schlüsseleinheit über der gewählten Stufe → nächst leichtere derselben Sportart (gleiche Dauer, wenn locker)
+    const I = Object.assign({}, V64.INTENSITAET_STANDARD, c.intensitaet || {}), gekappt = [];
+    const gewaehlt = (sport, id, d) => {
+      const neu = V64.kappen(id, I[sport]);
+      if (neu === id) return V64.einheit(id, o(d));
+      const alt = V64.einheit(id, o(d)), e = V64.einheit(neu, o(B[neu].art === "locker" ? alt.dauer : d));
+      e.gekappt = alt.titel; gekappt.push({ sport, alt: alt.titel, neu: e.titel, stufe: I[sport] });
+      return e;
+    };
+    // aufbau-1.0: kein Lauf über der Grenze (10 % über dem längsten Lauf der 30 Tage davor); Distanz aus dem Zonenprofil geschätzt
+    let aufbauGekappt = false;
+    const laufMax = (datum, id, d) => {
+      if (!(d > 0) || !c.laeufe) return d;
+      const g = V64.laufGrenze(c.laeufe, datum, c.heute), km = g ? V64.kmSchaetzung(V64.einheit(id, o(d)), c.skalen) : null;
+      if (!g || !isNum(km) || km <= g.km) return d;
+      const m = Math.max(20, Math.floor((d * g.km) / km / 5) * 5);
+      aufbauGekappt = true;
+      hinweise.push(`${B[id].titel} am ${TAG[(new Date(T(datum)).getUTCDay() + 6) % 7]}: ${m} statt ${d} min (≈ ${km.toFixed(1).replace(".", ",")} km wären über deiner Aufbau-Grenze von ${String(g.km).replace(".", ",")} km)`);
+      return m;
+    };
 
     // Rad: Schlüssel (Do), lang (Sa), locker (Mi bei 3 Einheiten)
-    const radK = V64.einheit(M.schluessel.rad, o(null));
+    const radK = gewaehlt("rad", M.schluessel.rad, null);
     let radL = N.rad === 3 ? clamp(r5(0.25 * min.rad), 45, 90) : 0;
     let radLang = min.rad - radK.dauer - radL;
     if (radLang < 60) { radLang = Math.max(45, r5(min.rad - radK.dauer)); if (radL) wenig("Wenig Rad-Stunden: keine lockere Ausfahrt unter der Woche"); radL = 0; }
@@ -253,15 +319,19 @@
     if (rest >= 15 && radL) { const plus = Math.min(rest, 120 - radL); radL = r5(radL + plus); rest -= plus; }
     if (rest >= 15) wenig(`Rad: ${r5(rest)} min nicht verteilt (längste Ausfahrt in dieser Phase höchstens ${LANG.rad} min)`);
     // Laufen: Schlüssel (Di; Erholungswoche: locker), lang (So), locker (Fr), Koppel (Sa, rennspezifisch, nicht in Erholungswochen)
-    const laufK = erh ? V64.einheit("lauf_locker", o(Math.min(45, Math.max(30, r5(0.3 * min.lauf))))) : V64.einheit(M.schluessel.lauf, o(null));
+    const laufK = erh ? V64.einheit("lauf_locker", o(Math.min(45, Math.max(30, r5(0.3 * min.lauf))))) : gewaehlt("lauf", M.schluessel.lauf, null);
     const koppel = M.koppel && !erh ? (taper ? 15 : phase === "Wettkampfspezifisch" ? 30 : 20) : 0;
     let laufL = N.lauf === 3 ? clamp(r5(0.25 * min.lauf), 30, 60) : 0;
     let laufLang = min.lauf - laufK.dauer - laufL - koppel;
     if (laufLang < 40) { laufLang = Math.max(30, r5(min.lauf - laufK.dauer - koppel)); if (laufL) wenig("Wenig Lauf-Stunden: kein lockerer Lauf unter der Woche"); laufL = 0; }
     laufLang = r5(Math.min(laufLang, LANG.lauf));
+    const langId = M.renntempo && !erh ? "lauf_lang_rt" : "lauf_lang";
+    laufLang = laufMax(add(woche, 6), langId, laufLang);
     let restL = min.lauf - laufK.dauer - laufL - koppel - laufLang;
-    if (restL >= 10 && laufL) { const plus = Math.min(restL, 75 - laufL); laufL = r5(laufL + plus); restL -= plus; }
-    if (restL >= 10) wenig(`Laufen: ${r5(restL)} min nicht verteilt (längster Lauf in dieser Phase höchstens ${LANG.lauf} min)`);
+    if (restL >= 10 && laufL) { const plus = Math.min(restL, 75 - laufL); laufL = r5(laufL + plus); }
+    if (laufL) laufL = laufMax(add(woche, 4), "lauf_locker", laufL);
+    restL = min.lauf - laufK.dauer - laufL - koppel - laufLang;
+    if (restL >= 10) wenig(`Laufen: ${r5(restL)} min nicht verteilt (längster Lauf in dieser Phase höchstens ${LANG.lauf} min${aufbauGekappt ? "; Aufbau-Grenze" : ""})`);
     // Schwimmen: Kurs (Di), CSS (Do), locker (So)
     const sw = clamp(r5(min.schwimm / N.schwimm), 30, 75);
 
@@ -269,13 +339,16 @@
     tag("Di").einheiten.push(laufK, V64.einheit("schwimm_kurs", o(sw)));
     if (radL) tag("Mi").einheiten.push(V64.einheit("rad_locker", o(radL)));
     tag("Do").einheiten.push(radK);
-    if (N.schwimm >= 2) tag("Do").einheiten.push(V64.einheit("schwimm_css", o(sw)));
+    if (N.schwimm >= 2) tag("Do").einheiten.push(gewaehlt("schwimm", "schwimm_css", sw));
     if (laufL) tag("Fr").einheiten.push(V64.einheit("lauf_locker", o(laufL)));
     tag("Sa").einheiten.push(V64.einheit(M.renntempo && !erh ? "rad_lang_rt" : "rad_lang", o(radLang)));
     if (koppel) tag("Sa").einheiten.push(V64.einheit("lauf_koppel", o(koppel)));
-    tag("So").einheiten.push(V64.einheit(M.renntempo && !erh ? "lauf_lang_rt" : "lauf_lang", o(laufLang)));
+    tag("So").einheiten.push(V64.einheit(langId, o(laufLang)));
     if (N.schwimm >= 3) tag("So").einheiten.push(V64.einheit("schwimm_locker", o(sw)));
     if (erh) hinweise.push("Erholungswoche: nur eine Schlüsseleinheit (Rad, gekürzt); Laufen locker");
+    const SPW = { schwimm: "Schwimmen", rad: "Rad", lauf: "Laufen" };
+    for (const g of gekappt) hinweise.push(`${SPW[g.sport]}: «${g.neu}» statt «${g.alt}» (Intensität je Sportart: ${V64.STUFE_TEXT[g.stufe]})`);
+    if (gekappt.some((g) => g.sport !== "schwimm")) hinweise.push("Was du begrenzt, wird nicht auf eine andere Sportart verschoben.");
     if (taper && !erh) hinweise.push("Taper: Intensität bleibt, Umfang der Schlüsseleinheiten halbiert");
 
     // Rennen dieser Woche: Rennwoche (2 Tage vorher frei, Vortag Aktivierung, Renntag, danach frei)
@@ -316,14 +389,20 @@
       }
     }
 
+    if (c.laeufe) for (const t of tage) for (const e of t.einheiten) {         // aufbau-1.0: übrige Läufe nur melden (Aufbau ist nicht änderbar)
+      if (e.sport !== "lauf" || e.art === "test" || e.art === "lang" || (e.art === "locker" && t.wt === "Fr")) continue;
+      const g = V64.laufGrenze(c.laeufe, t.date, c.heute), km = g ? V64.kmSchaetzung(e, c.skalen) : null;
+      if (g && isNum(km) && km > g.km) hinweise.push(`${e.titel} am ${t.wt}: ≈ ${km.toFixed(1).replace(".", ",")} km, über deiner Aufbau-Grenze von ${String(g.km).replace(".", ",")} km – kürzer laufen`);
+    }
     const minuten = { schwimm: 0, rad: 0, lauf: 0 }, z = { locker: 0, mittel: 0, hart: 0 };
     for (const t of tage) for (const e of t.einheiten) {
       if (minuten[e.sport] != null) minuten[e.sport] += e.dauer;
       for (const k of ["locker", "mittel", "hart"]) z[k] += e.minuten[k];
     }
     minuten.total = minuten.schwimm + minuten.rad + minuten.lauf;
-    const tid = V64.tid(z), pruefung = V64.pruefen(modell, tid, { erholung: erh, taper, rennwoche: !!R.length });
+    const tid = V64.tid(z), pruefung = V64.pruefen(modell, tid, { erholung: erh, taper, rennwoche: !!R.length, gekappt: gekappt.length > 0 });
     return { v: V64.VERSIONS.woche, woche, modell, modellName: M.name, phase, erholung: erh, taper, stunden: H, tage, minuten, zonen: z, tid, pruefung, hinweise,
+      intensitaet: I, gekappt,
       regel: `${V64.VERSIONS.woche}: Mo frei · Di Laufen (Schlüssel) und Kurs · Mi Rad locker · Do Rad (Schlüssel) und Schwimmen · Fr Laufen locker · Sa lang Rad · So lang Laufen; ${V64.VERSIONS.aufteilung}: Schwimmen 20 %, Rad 50 %, Laufen 30 % (eigene Festlegung)` };
   };
 
@@ -356,6 +435,7 @@
     } else if (!E.muster.includes(t.muster)) pr.push(`Muster ${t.muster} statt ${E.muster.join(" oder ")}`);
     if (t.pct[0] < E.locker_min) pr.push(`locker ${t.pct[0]} % (Modell: mindestens ${E.locker_min} %)`);
     if (isNum(E.hart_max) && t.pct[2] > E.hart_max) pr.push(`hart ${t.pct[2]} % (Modell: höchstens ${E.hart_max} %)`);
+    if (pr.length && k.gekappt) return { ok: null, probleme: pr, text: `Anders als im Modell «${M.name}», weil du die Intensität je Sportart begrenzt hast: ${pr.join("; ")}.` };
     return { ok: !pr.length, probleme: pr, text: pr.length ? `Weicht vom Modell «${M.name}» ab: ${pr.join("; ")}.` : `Passt zum Modell «${M.name}» (${t.muster}).` };
   };
   /** Bereiche aus dem Balkenprofil einer geplanten Einheit (V6.profil: balken [{key, d (s)}]); ohne Ziel = offen. */
@@ -363,6 +443,78 @@
     const z = { locker: 0, mittel: 0, hart: 0, offen: 0 };
     for (const b of balken || []) { if (!isNum(b.d)) continue; const k = V64.DREI[b.key]; if (k) z[k] += b.d; else z.offen += b.d; }
     return z;
+  };
+
+  /* ---------------- Aufbau-Check (aufbau-1.0) ---------------- */
+  /** Frandsen et al. 2025: Lauf gegen den längsten Lauf der 30 Tage davor; bis 10 % = Referenz, darüber Sprung. Rate an Überlastungsverletzungen
+   *  in der Studie (adjustierte Hazard-Rate-Ratio) je Klasse – Beobachtung, keine Vorhersage für einzelne Läufe. */
+  V64.HRR = { klein: 1.64, mittel: 1.52, gross: 2.28 };
+  V64.KLASSE_TEXT = { ok: "bis 10 %", klein: "kleiner Sprung (10–30 %)", mittel: "mittlerer Sprung (30–100 %)", gross: "grosser Sprung (über 100 %)", ohne: "kein Lauf in den 30 Tagen davor" };
+  V64.sprungKlasse = (r) => (r == null ? "ohne" : r <= 0.1 ? "ok" : r <= 0.3 ? "klein" : r <= 1 ? "mittel" : "gross");
+  const km1 = (x) => Math.floor(x * 10 + 1e-9) / 10;                       // Grenze abgerundet auf 0,1 km
+  /** Absolvierte Läufe (0,5–100 km wie in der Studie), nach Datum und Startzeit. */
+  V64.laeufe = (acts) => (acts || []).filter((a) => a && a.sport === "lauf" && isNum(a.km) && a.km >= 0.5 && a.km <= 100 && /^\d{4}-\d{2}-\d{2}$/.test(a.date || ""))
+    .map((a) => ({ date: a.date, start: a.start || "", km: a.km, min: (a.mv || a.dur || 0) / 60, name: a.name || "", id: a.id || null }))
+    .sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start));
+  /** Grenze für einen Lauf am «datum»: 10 % über dem längsten absolvierten Lauf im Fenster [datum − 30, datum − 1] (nur Läufe bis «heute»). */
+  V64.laufGrenze = function (laeufe, datum, heute) {
+    const von = add(datum, -30), bis = heute && heute < datum ? heute : add(datum, -1);
+    let ref = null;
+    for (const r of laeufe || []) if (r.date >= von && r.date <= bis && (!ref || r.km >= ref.km)) ref = r;
+    return ref ? { km: km1(ref.km * 1.1), ref } : null;
+  };
+  /** Geschätzte Distanz einer vorgeschlagenen Laufeinheit aus dem Zonenprofil (Pace je Abschnitt; Z1 und Trab mit dem langsamen Rand von Z2,
+   *  also eher zu viel). Ohne Lauf-Pace-Zonen: null. */
+  V64.kmSchaetzung = function (e, skalen) {
+    if (!e || e.sport !== "lauf") return null;
+    const sk = skalen && skalen.lauf_pace, z2 = zone(sk, 2), z3 = zone(sk, 3), z5 = zone(sk, 5);
+    if (!z2 || !isNum(z2.von) || !isNum(z2.bis)) return null;
+    const p2 = (z2.von + z2.bis) / 2, z3ok = z3 && isNum(z3.von) && isNum(z3.bis);
+    const P = { z1: z2.von, pause: z2.von, z2: p2, renntempo: z3ok ? z3.von * 1.015 : null, z3: z3ok ? (z3.von + z3.bis) / 2 : null, z3o: z3ok ? z3.bis : null,
+      vo2: z5 && isNum(z5.von) ? z5.von : null };
+    let km = 0;
+    for (const [k, m] of e.teile) { const p = P[k]; if (!isNum(p) || p <= 0) return null; km += (m * 60) / p; }
+    return km;
+  };
+  /** Distanz eines geplanten Laufs (TR.workout): Distanzschritte plus Zeitschritte mit Pace-Ziel (Mitte). Offene Schritte → vollst false. */
+  V64.planKm = function (wo) {
+    if (!wo || !Array.isArray(wo.schritte) || !wo.schritte.length) return null;
+    let m = 0, vollst = true, geschaetzt = false;
+    for (const s of wo.schritte) {
+      if (isNum(s.distanz_m)) { m += s.distanz_m; continue; }
+      const z = s.ziel, p = isNum(s.mitte) ? s.mitte : z && z.art === "pace" && isNum(z.lo) && isNum(z.hi) ? (z.lo + z.hi) / 2 : null;
+      if (isNum(s.dauer_s) && z && z.art === "pace" && isNum(p) && p > 0) { m += (s.dauer_s / p) * 1000; geschaetzt = true; } else vollst = false;
+    }
+    return { km: m / 1000, vollst, geschaetzt };
+  };
+  /** acts: alle Aktivitäten; heute: ISO. → { v, naechster, grenze {km, ref, bis}, danach {ab, km, ref}, laeufe30, spruenge, wochen } */
+  V64.aufbau = function (acts, heute, opt) {
+    const o = Object.assign({ wochen: 12 }, opt || {}), L = V64.laeufe(acts);
+    for (let i = 0; i < L.length; i++) {                                     // jeder Lauf gegen den längsten der 30 Tage davor (frühere am selben Tag zählen)
+      const r = L[i], von = add(r.date, -30); let ref = null;
+      for (let j = i - 1; j >= 0 && L[j].date >= von; j--) if (!ref || L[j].km > ref.km) ref = L[j];
+      r.ref = ref ? { date: ref.date, km: ref.km } : null; r.anteil = ref ? r.km / ref.km - 1 : null; r.klasse = V64.sprungKlasse(r.anteil);
+    }
+    const naechster = L.some((r) => r.date === heute) ? add(heute, 1) : heute;
+    const g = V64.laufGrenze(L, naechster, heute);
+    let danach = null;
+    if (g) {
+      let m = null; for (const r of L) if (r.date > g.ref.date && r.date <= heute && (!m || r.km >= m.km)) m = r;
+      danach = { ab: add(g.ref.date, 31), km: m ? km1(m.km * 1.1) : null, ref: m };
+    }
+    const mo = montag(heute), von0 = add(mo, -7 * (o.wochen - 1)), wochen = [];
+    for (let k = o.wochen - 1; k >= 0; k--) {
+      const w = add(mo, -7 * k), e = add(w, 6), A = (acts || []).filter((a) => a && a.date >= w && a.date <= e);
+      const la = A.filter((a) => a.sport === "lauf" && isNum(a.km)), sw = A.filter((a) => a.sport === "schwimm" && isNum(a.km)), ra = A.filter((a) => a.sport === "rad");
+      const h = (a) => (a.mv || a.dur || 0) / 3600, sum = (X, f) => X.reduce((s, a) => s + f(a), 0), mx = (X, f) => X.reduce((s, a) => Math.max(s, f(a)), 0);
+      wochen.push({ woche: w, laufend: w === mo, lauf_km: sum(la, (a) => a.km), lauf_n: la.length, lauf_max: mx(la, (a) => a.km),
+        schwimm_m: Math.round(sum(sw, (a) => a.km) * 1000), schwimm_n: sw.length, schwimm_max_m: Math.round(mx(sw, (a) => a.km) * 1000),
+        rad_h: sum(ra, h), rad_n: ra.length, rad_max_h: mx(ra, h) });
+    }
+    const spruenge = L.filter((r) => r.date >= von0 && r.date <= heute && ["klein", "mittel", "gross"].includes(r.klasse)).reverse()
+      .map((r) => ({ date: r.date, km: r.km, ref: r.ref, anteil: r.anteil, klasse: r.klasse, name: r.name }));
+    return { v: V64.VERSIONS.aufbau, heute, naechster, grenze: g ? { km: g.km, ref: g.ref, bis: add(g.ref.date, 30) } : null, danach,
+      laeufe30: L.filter((r) => r.date >= add(naechster, -30) && r.date <= heute).length, spruenge, wochen, laeufe: L };
   };
   return V64;
 });

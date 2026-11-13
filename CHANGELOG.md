@@ -1,5 +1,19 @@
 # Änderungen
 
+## V6.4.2 · 13.11.2026 · Aufbau-Check und Intensität je Sportart
+- **Aufbau-Check (aufbau-1.0)**, neue Karte unter Plan: Grenze für den nächsten Lauf (10 % über dem längsten Lauf der letzten 30 Tage, nach
+  Frandsen et al. 2025), bis wann der Referenzlauf zählt und was danach gilt, geplante Enduco-Läufe der nächsten 14 Tage gegen die Grenze
+  (Distanz aus den Pace-Zielen geschätzt), Sprünge der letzten 12 Wochen mit Klasse, Verlauf von Lauf-km, Schwimm-Metern und Rad-Stunden.
+- **Intensität je Sportart (intensitaet-1.0)** im Trainingsmodell: Schwimmen, Rad und Laufen je «nur locker», «bis Schwelle» oder «alles».
+  Der Wochenvorschlag nimmt bei einer Schlüsseleinheit über der Wahl die nächst leichtere derselben Sportart und verschiebt nichts; «Woche nach
+  Modell» zeigt, wo der Enduco-Plan darüber liegt (aus den Zielen der Schritte, sonst laut Titel). Gespeichert verschlüsselt im Eintrag «modell».
+- **Woche nach Modell (wochenplan-1.1):** langer und lockerer Lauf bleiben unter der Aufbau-Grenze (Distanz aus dem Zonenprofil geschätzt);
+  übrige Läufe darüber werden gemeldet.
+- **Wissen (wissen-1.2):** Kapitel «Sportarten verteilen und Umfang aufbauen» um Intensität je Sportart und den Aufbau-Check ergänzt
+  (Millet et al. 2009, Etxebarria et al. 2019); zwei neue Regeln in der Regelliste.
+- Geprüft: `tests/test_v64.cjs` (+ Intensität, Enduco-Stufe, Aufbau-Klassen, Grenze und Fenster, Begrenzung im Vorschlag, Distanz geplanter
+  Läufe), `tests/test_tools.py` (+ Intensität übernehmen und ablehnen), alle bisherigen Tests.
+
 ## V6.4.1 · 13.11.2026 · Wissen: Sportarten verteilen und Umfang aufbauen
 - **Neues Kapitel (wissen-1.1)** unter Plan → Wissen: wie die Stunden auf Schwimmen, Rad und Laufen verteilt werden (aufteilung-1.0 neben den
   Trainingsstunden von Freizeit-Ironman-Athleten und den Anteilen im Rennen), was sich zwischen den Sportarten überträgt, wo Überlastungen

@@ -136,3 +136,8 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 53. **Wissen aktuell halten:** Neue Regel oder Version → Kapitel und `WS.REGELN` nachführen. Die Studienlage zur Reihenfolge polarisiert →
     rennspezifisch ist offen (Filipas 2022 fand die umgekehrte Reihenfolge bei Läufern besser); nach der Saison mit den eigenen Daten prüfen.
 
+54. **Aufbau-Check auf «Heute»:** Liegt der geplante Lauf des Tages über der Aufbau-Grenze, steht das bisher nur unter Plan → Aufbau-Check.
+    Ein Hinweis in der Karte «Heutiges Training» wäre direkter (gleiche Rechnung `V64.planKm`/`V64.laufGrenze`, keine neue Regel).
+55. **Intensität je Sportart und Enduco:** Die Stufe einer Enduco-Einheit ohne Ziele in den Schritten (z. B. Schwimmen) kommt aus dem Titel.
+    Enduco selbst lässt sich nicht einstellen; ob eine Einheit trotzdem gemacht wird, entscheidet Silas. Nach einigen Wochen prüfen, ob die
+    Titel-Regel Fehlalarme gibt.
