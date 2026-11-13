@@ -1,5 +1,31 @@
 # Änderungen
 
+## V6.0.1 · 13.11.2026 · Heute neu: Kacheln, Begrüssung, Heutiges Training, Einheit, Wochenleiste (profil-1.0, status-1.0, workout-1.1)
+Zweiter Schritt der Layout-Vorlage vom 13.11. (Bilder Heute, Woche, Einheit).
+
+- **Drei Kacheln oben:** Ampel (Bereitschaft heute, Antippen → Blatt mit Gründen, Erholung/Schlaf/Belastung und «Einzelheiten»),
+  Status (Trainingsstatus aus der Form, Antippen → «Optionen für heute») und Check-in (offen, erledigt oder später).
+- **Begrüssung** mit einem Satz zur Lage (geplante Einheiten und Vorschlag der Bereitschaft) und den Knöpfen «Heute nicht» und «Check-in».
+  Der **Check-in ist ein Blatt**: drei Fragen mit Symbol, grossem Wert («Eher frisch») und Farbskala mit fünf Punkten (Türkis = bestens …
+  Pink = schlecht), gespeichert wird mit «Speichern» (weiter befinden-1.1, drei Fragen 1–5 nach E5). Der Link `#checkin` öffnet das Blatt.
+- **Heutiges Training** als Karten: Sport-Symbol, Name, Quelle, Dauer, Distanz, Zeit ab Zone 3, bis drei Zonen-Chips und das Balkenprofil
+  (Breite = Dauer, Höhe = Lage in der Zone, Farbe = Zone; `profil-1.0`). «Neu von Enduco, noch ohne Datum» klein darunter.
+- **Einheit als Blatt:** Kennzahlen, Zonenskala mit Fokus-Intensitäten (Anteil der aktiven Schritte ohne Ein-/Ausfahren und Erholung),
+  grosses Balkenprofil mit Zeitachse, Schritte mit Dauer oder Strecke, Zielbereich, Kadenz, Name (Schwimmen) und Zonen-Chip, Wiederholungen
+  als Block «3 × Sweet Spot», Beschreibung, Hinweise und «Passende Route finden». Die Seite ändert nichts in Enduco oder Garmin.
+- **Optionen für heute:** Fitness, Ermüdung, Form und Trainingsstatus mit Mini-Skala; Aktionen Check-in, Passende Route, Verpflegung,
+  Laktat, CSS-Test, Kalender. **Trainingsstatus `status-1.0`:** Form > +25 Formverlust, +5…+25 Erholt, −10…+5 Erhaltung, −30…−10 Produktiv,
+  < −30 Hohe Belastung (Bänder nach Coggan, eigene Wörter; «Übertraining» wird nie aus Zahlen behauptet).
+- **Wochenleiste Mo–So:** heutiger Tag orange, Sport-Symbole ausgefüllt = erledigt, Rand = geplant, grau = geplant ohne Aktivität dieser
+  Sportart; Fortschritt Trainings und Dauer = erledigt / (erledigt + noch geplant + verpasst). Die Tabelle je Sportart liegt darunter.
+- **Workout lesen `workout-1.1`:** feste Pausen («Break: 30s») zählen als Zeit statt als offener Schritt; Schwimmstrecken werden aus der Pace
+  in der Beschreibung geschätzt (lockere Strecken ohne Pace mit der langsamsten Pace des Workouts, als «≈» gekennzeichnet); die Dauer aus den
+  Schritten gilt nur, wenn jeder Schritt eine Zeit oder Schätzung hat (sonst die Dauer laut Kalender).
+- Demo: heute immer ein Rad- und ein Schwimm-Workout, Beispielzonen mit FatMax, Sweet Spot und VO2max (alles erfunden).
+
+Geprüft: `tests/test_v6.cjs` (Zonen inkl. Unterzonen und Pace, Schwimm-Beschreibungen, workout-1.1, Profil und Fokus, Blöcke und
+Zieltexte, Statusbänder, Wochenleiste), alle bisherigen Tests, Screenshots 390 × 844 dunkel und hell sowie 1280 px (erfundene Daten).
+
 ## V6.0.0 · 13.11.2026 · Design: dunkel als Standard (design-1.0, enduco als Vorbild)
 Vorlage «Layout-Referenz: enduco als Vorbild» (13.11.): Aufbau, Bedienlogik und Farbsprache der Intensitäten übernehmen, eigene Farbtöne,
 Symbole und Texte.

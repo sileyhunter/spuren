@@ -968,12 +968,13 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
   <!-- ================= HEUTE ================= -->
   <section class="view" id="view-heute" role="region" aria-label="Heute" hidden>
     <div class="dash">
-      <div class="card w12 ci-card" id="checkin-card"><div id="checkin" aria-live="polite"><p class="hint">Check-in wird geladen …</p></div></div>
-      <div class="card w12 hp-card" id="heute-plan-card"><div id="heute-plan" aria-live="polite"></div></div>
-      <div class="card w12 bk-card" id="bereit-kurz-card"><div id="bereit-kurz"><p class="hint">Bereitschaft wird berechnet …</p></div></div>
+      <div class="v6-voll v6-kacheln" id="heute-kacheln" role="group" aria-label="Bereitschaft, Status und Check-in"></div>
+      <div class="card w12 ci-card gruss-karte" id="checkin-card"><div id="checkin" aria-live="polite"><p class="hint">Check-in wird geladen …</p></div></div>
+      <div class="v6-voll ek-liste" id="heute-plan" aria-live="polite"></div>
       <div class="card w12" id="woche-card">
-        <h2>Diese Woche</h2>
-        <div class="tablewrap"><table class="t" id="t-week" data-liste></table></div>
+        <div class="card-head"><div><h2>Diese Woche</h2></div></div>
+        <div id="wochen-leiste"></div>
+        <details class="wl-je"><summary>Je Sportart</summary><div class="tablewrap"><table class="t" id="t-week" data-liste></table></div></details>
       </div>
       <div class="card w12" id="ringe-card">
         <div class="card-head"><div><h2>Erholung, Schlaf, Belastung</h2><div class="sub" id="ringe-sub"></div></div>
@@ -1470,6 +1471,8 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <script src="js/explorer.js"></script>
 <script src="js/v56.js"></script>
 <script src="js/v59.js"></script>
+<script src="js/v6.js"></script>
+<script src="js/v6-heute.js"></script>
 <script>window.SPUREN_DEMO = true;</script>
 <script>
 (() => {
@@ -1780,10 +1783,22 @@ function makeDemo() {
   // V5.7: Beispiel-Workouts in der Form der Garmin-Verbindung (erfundene Werte)
   const pz = (s, lo, hi, type) => ({ type: type || "interval", end_condition: "time", end_condition_value: s, target_type: "power.zone", target_value_low: lo, target_value_high: hi });
   const vz = (s, lo, hi, type) => ({ type: type || "interval", end_condition: "time", end_condition_value: s, target_type: "speed.zone", target_value_low: lo, target_value_high: hi });
-  const PLAN = { 1: ["Schwimmen Technik", "schwimm", 2700], 2: ["Rad Grundlage", "rad", 5400, [pz(600, 120, 180, "warmup"), pz(4200, 190, 220), pz(600, 120, 180, "cooldown")]],
-    3: ["Lauf locker", "lauf", 3000, [vz(3000, 2.9, 3.2)]], 4: ["Rad Sweet Spot", "rad", 4500, [pz(900, 120, 180, "warmup"), { type: "repeat", end_condition: "iterations", end_condition_value: 3, repeat_count: 3, steps: [pz(600, 250, 270), pz(300, 150, 190, "rest")] }, pz(900, 120, 180, "cooldown")]],
-    6: ["Lange Ausfahrt", "rad", 10800, [pz(10800, 180, 210)]], 0: ["Langer Lauf", "lauf", 5400, [vz(5400, 2.8, 3.1)]] };
-  const planned = []; for (let i = 1; i <= 14; i++) { const d = addDays(today, i), q = PLAN[d.getDay()]; if (q) planned.push(Object.assign({ date: iso(d), title: q[0], sport: q[1], dur_s: q[2] }, q[3] ? { steps: q[3], quelle: "Beispiel-Workout" } : {})); }
+  // V6.0.1: Schwimm-Workout mit Strecken, Pace in der Beschreibung und festen Pausen (erfundene Texte und Werte)
+  const sw = (m, typ, text) => ({ type: typ || "interval", end_condition: "distance", end_condition_value: m, description: text });
+  const sp = (s) => ({ type: "rest", end_condition: "fixed.rest", end_condition_value: s, description: `Pause: ${s}s` });
+  const rep = (n, steps) => ({ type: "repeat", end_condition: "iterations", end_condition_value: n, repeat_count: n, steps });
+  const SCHWIMM = [sw(200, "warmup", "Einschwimmen | Erholung | 2:45min/100m"), rep(4, [sw(50, "interval", "Technik Abschlag | Grundlage | 2:40min/100m"), sp(15)]),
+    rep(5, [sw(100, "interval", "Hauptserie | Tempo | 2:12min/100m"), sp(20)]), rep(4, [sw(50, "interval", "Kurz und schnell | VO2max | 1:58min/100m"), sp(30)]), sw(200, "cooldown", "Ausschwimmen | Erholung | 2:45min/100m")];
+  const PLAN = { 1: ["Schwimmen Technik", "schwimm", null, SCHWIMM], 2: ["Rad Grundlage", "rad", 5400, [pz(600, 120, 180, "warmup"), pz(4200, 170, 195), pz(600, 120, 180, "cooldown")]],
+    3: ["Lauf locker", "lauf", 3000, [vz(600, 2.6, 2.75, "warmup"), vz(2100, 2.8, 2.95), vz(300, 2.6, 2.75, "cooldown")]],
+    4: ["Rad Sweet Spot", "rad", 4500, [pz(900, 120, 180, "warmup"), rep(3, [pz(600, 232, 245), pz(300, 150, 190, "rest")]), pz(900, 120, 180, "cooldown")]],
+    5: ["Rad Sweet Spot", "rad", 4500, [pz(900, 120, 180, "warmup"), rep(3, [pz(600, 232, 245), pz(300, 150, 190, "rest")]), pz(900, 120, 180, "cooldown")]],
+    6: ["Lange Ausfahrt", "rad", 10800, [pz(1200, 130, 170, "warmup"), pz(8400, 180, 200), pz(1200, 130, 170, "cooldown")]],
+    0: ["Langer Lauf", "lauf", 5400, [vz(5400, 2.75, 2.95)]] };
+  const planned = []; for (let i = 0; i <= 14; i++) { const d = addDays(today, i), q = PLAN[d.getDay()]; if (q) planned.push(Object.assign({ date: iso(d), title: q[0], sport: q[1], dur_s: q[2] }, q[3] ? { steps: q[3], quelle: "Beispiel-Workout" } : {})); }
+  if (!planned.some((x) => x.date === iso(today) && x.sport === "schwimm")) planned.unshift({ date: iso(today), title: "Schwimmen Technik", sport: "schwimm", dur_s: null, steps: SCHWIMM, quelle: "Beispiel-Workout" });
+  const workouts_neu = [{ wid: 900001, title: "Lauf Schwelle (Beispiel)", sport: "running", dur_s: 3600, erstellt: ago(1) + "T07:30:00", desc: "", quelle: "Beispiel-Workout",
+    steps: [vz(900, 2.6, 2.8, "warmup"), rep(3, [vz(480, 3.45, 3.6), vz(180, 2.6, 2.8, "rest")]), vz(720, 2.6, 2.8, "cooldown")] }];
   const points = [
     { id: "demo-p1", name: "Jagdposten Waldrand (Beispiel)", cat: "jagd", lat: 46.8742, lon: 8.2911 },
     { id: "demo-p2", name: "Jagdposten Lichtung (Beispiel)", cat: "jagd", lat: 46.8611, lon: 8.3127 },
@@ -1791,7 +1806,7 @@ function makeDemo() {
     { id: "demo-p4", name: "Badestelle See (Beispiel)", cat: "bad", lat: 46.884, lon: 8.228 },
   ];
   const routes = [{ id: "demo-r1", name: "Passfahrt (Beispielroute)", coords: path([8.252, 46.905], 1.2, 22, 0.4).map(([x, y]) => [+x.toFixed(5), +y.toFixed(5)]) }];
-  return { demo: true, activities: acts, days, weights, ftp, ftp_est, pdc, lactate, points, routes, tests, planned, stufen, laktat_vorschau, protokolle, versions, referenz };
+  return { demo: true, activities: acts, days, weights, ftp, ftp_est, pdc, lactate, points, routes, tests, planned, workouts_neu, stufen, laktat_vorschau, protokolle, versions, referenz };
 }
 
 /* =====================================================================
@@ -1883,7 +1898,7 @@ for (const [g, views] of Object.entries(GRUPPEN)) {
   }
 }
 function showTab(name) {
-  if (name === "checkin") { name = "heute"; setTimeout(() => document.getElementById("checkin-card")?.scrollIntoView({ block: "start" }), 60); }   // V5.9.3: Link aus dem Morgen-Briefing
+  if (name === "checkin") { name = "heute"; window.V59_CI_AUF = true; if (window.V59 && window.V5UI && V5UI.C) setTimeout(() => V59.checkin(), 60); }   // V5.9.3/V6.0.1: Link aus dem Morgen-Briefing öffnet das Check-in-Blatt
   if (!TAB_NAMES.includes(name)) name = "heute";
   const g = gruppeVon(name);
   document.querySelectorAll("#leiste [data-gruppe]").forEach((b) => { if (b.dataset.gruppe === g) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
@@ -3021,7 +3036,7 @@ function isoWeek(dt) { const d = new Date(dt); d.setHours(0, 0, 0, 0); d.setDate
 function v5Start() {
   if (!window.V5UI) return;
   V5_READY = V5UI.init({ D, chart, css, fmt, esc, dateCH, dLabel, pd, iso, today, SPORTS, IS_DEMO, hrsOf, shareOrDownload, ACT_BY_ID, charts, mmss, hmm, ringSVG, weights,
-    planRoute: () => (window.RTUI ? window.RTUI.planRoute() : null) }).then(() => { if (window.V59) V59.init(V5UI.C); }).catch((e) => console.error(e));
+    planRoute: () => (window.RTUI ? window.RTUI.planRoute() : null), pmcHeute: () => FK.pmcAnzeige(pmc().at(-1)) }).then(() => { if (window.V59) V59.init(V5UI.C); }).catch((e) => console.error(e));
 }
 const charts = {};
 if (window.Chart) {

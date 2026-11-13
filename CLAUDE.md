@@ -48,6 +48,9 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   Check-in, Gefühl gegen Morgenwerte, Heute geplant, Trainingslast, CSS), `js/v59.js` (Check-in, Einstellungen, Laktat bestätigen …),
   `tools/eingang.mjs` (eingang/ einlesen, aufräumen, prüfen), `tools/eingaben_lib.mjs` (Zuordnung Eingaben → merge_daily.py), `tests/test_v59.cjs`,
   `tools/last.py` (V5.9.1 Trainingslast `tl2` mit der LT2, Vergleich; Abschnitt «FTP und Trainingslast»)
+- **V6.0:** `css/v6.css` (Design design-1.0: dunkel als Standard, Zonen-, Sport- und Statusfarben, Pillen, Blätter), `js/v6.js` (ohne DOM:
+  Zonen und Farben, Balkenprofil profil-1.0, Fokus, Trainingsstatus status-1.0, Wochenleiste, eigene Symbole), `js/v6-heute.js` (Heute: Kacheln,
+  Heutiges Training, Einheit, Optionen, Bereitschaft als Blätter, Wochenleiste), `tests/test_v6.cjs`
 - **V5.8:** keine neuen Dateien; Rechenlogik in `js/route.js` (Abschnitte von Hand, Skitourennetz, Hangneigung, MTB-Abfahrt, Wegende, drei
   Rennradvarianten, Windpfeile), Oberfläche in `js/routen-ui.js`, Ringe «Heute» in `js/formkurve.js` (`FK.ringeVerlauf`) und `js/v55.js` (`V55.ringe`)
 - `tests/test_formkurve.cjs`, `tests/test_route.cjs`, `tests/test_analyse.cjs`, `tests/test_training.cjs`, `tests/test_tools.py` – Abnahmetests (erfundene Werte; `tests/fixtures/` = echte
@@ -286,6 +289,17 @@ V5.9.3: `routen` (im Planer gespeicherte Routen → `routes`, gleiche ID ersetzt
   nie Liste werden sollen: `data-keine-liste`.
 - Ausblenden statt löschen: `hidden data-ausgeblendet="Grund"` an der Karte (mit id); Einstellungen → «Ausgeblendete Karten» blendet je Gerät ein.
 
+## Design V6 (design-1.0, Vorlage «enduco als Vorbild» vom 13.11.2026)
+- Übernommen werden Aufbau, Bedienlogik und Farbsprache, nie Texte, Logos, Symbole, Fotos oder Grafiken von enduco; eigene Symbole in `V6.ICON`.
+- Eine Zone, eine Farbe: nur über `--zc-…` (css/v6.css) bzw. `V6.ZONEN`; Sportarten `--sp-…`, Monitoring `--mon-…`, Rennen und heute `--race`.
+  Dunkel ist Standard, «Hell» je Gerät (`sf.theme`). Neue Blätter über `V59.blatt(art, html)` mit `.blatt-titel`, `.blatt-fuss` (Zurück links
+  `.btn-zurueck`, Hauptaktion rechts `.btn.primary`), Kennzahlen als `.kv`, Abschnittstitel als `.abschnitt`.
+- Heute (V6.0.1): Kacheln Ampel/Status/Check-in, Begrüssung mit Check-in-Blatt, Heutiges Training (Karten mit Zonen-Chips und Balkenprofil,
+  Einheit als Blatt), Wochenleiste. Balkenprofil `profil-1.0`: Breite = Dauer, Höhe = Lage im aktiven Zonenprofil, Farbe = Zone (Unterzonen
+  aus dem Text der Zone, z. B. «FatMax 220–240»); ohne Zielbereich grau, ohne Dauer blass. Fokus = Zeitanteile der aktiven Schritte ohne
+  Ein-/Ausfahren und Erholung, ab 10 %, höchstens drei. Trainingsstatus `status-1.0` aus der Form (Bänder nach Coggan); «Übertraining» nie.
+- Die Seite schreibt nichts nach Garmin oder Enduco: keine Knöpfe zum Anlegen, Verschieben, Starten oder Exportieren von Workouts.
+
 ## Meine Entwicklung und Regeln V5.5
 - Vergleiche nur aus `eb`-Blöcken (Rad 190–210 W je System Rolle/Rennrad/MTB, Laufen 5:20–5:40/km flach), Urteil `entwicklung-1.0`
   (mind. 3 je Zeitraum, Bootstrap-Intervall, Guards Hitze/Höhe/Drift/Ausreisser). Laktat zählt erst bestätigt (B1), CSS nur aus Tests.
@@ -313,6 +327,8 @@ V5.9.3: `routen` (im Planer gespeicherte Routen → `routes`, gleiche ID ersetzt
   je Garmin-Pulszone ist ein Modell; Richtwert Jeukendrup 2014. Nie Gelmengen oder Stoffwechselwerte erfinden.
 
 ## V5.7: Smart Training Routes (Trainingskalender und Routenplaner, kein eigener Tab)
+- Workout `workout-1.1` (V6.0.1): feste Pause (`fixed.rest`) = Zeit; Schwimmstrecken aus der Pace der Beschreibung geschätzt («≈»); Dauer aus den
+  Schritten nur, wenn jeder Schritt eine Zeit oder Schätzung hat, sonst laut Kalender.
 - Workout `workout-1.0`: Schritte aus der Garmin-Verbindung (Enduco schreibt Watt, Tempo in m/s oder Puls), Wiederholungen aufgefaltet;
   intensiv = Mitte des Zielbereichs ab Z3 des aktiven Zonenprofils; Leistung ≤ 150 überall → «Watt oder % FTP?» offen, nie geraten.
   Dauertraining (Grundlage, Sprints < 10 %, Trail, Wandern) Ziel ±5 %, sonst ±10 %. **Keine direkte Enduco-Schnittstelle**, Workouts nie ändern.
@@ -341,7 +357,7 @@ V5.9.3: `routen` (im Planer gespeicherte Routen → `routes`, gleiche ID ersetzt
   Die exakten Grössen der SPS1-Dateien stehen in der Git-Historie.
 
 ## Prüfen vor jedem Push von Seite oder Werkzeugen
-`node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
+`node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
 Kein Live-Push, wenn ein Test fehlschlägt. Screenshots mit echten Daten nie ins Repo.
 
 ## FTP und Trainingslast

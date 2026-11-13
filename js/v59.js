@@ -21,8 +21,10 @@
     window.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("v59-ov").hidden) V.schliessen(); });
   };
 
-  /* ======================= Morgen-Check-in (befinden-1.1) ======================= */
-  const CI = { edit: false, wahl: {}, krank: false, krankListe: [], notiz: "", notizOffen: false, geladen: null, gerade: false };
+  /* ======================= Morgen-Check-in (befinden-1.1) =======================
+   * V6.0.1: Begrüssungskarte auf «Heute» (ein Satz zur Lage, «Heute nicht» und «Check-in») und das Blatt mit den drei Fragen als Farbskala
+   * (1 = bestens … 5 = schlecht, Türkis → Pink). Gespeichert wird mit «Speichern» (wie bisher als «befinden», verschlüsselt). */
+  const CI = { wahl: {}, krank: false, krankListe: [], notiz: "", geladen: null };
   const befHeute = () => (UI() ? UI().befinden().find((b) => b.date === heuteISO()) : null) || null;
   /** Steht der Eintrag schon in den Daten, ist er gesendet oder wartet er? */
   function syncText(b) {
@@ -36,39 +38,45 @@
     return `<span class="ci-s${st.zustand === "fehler" ? " down" : ""}">${st.zustand === "sendet" ? "wird gesendet …" : st.zustand === "fehler" ? esc(st.text) : "wartet, geht von selbst raus"}</span>`;
   }
   const wort = (f, v) => (v === 1 ? f.lo : v === 5 ? f.hi : v === 3 ? "mittel" : v < 3 ? "eher " + f.lo : "eher " + f.hi);
+  const gross1 = (t) => String(t).charAt(0).toUpperCase() + String(t).slice(1);
+  const FRAGE_TEXT = { muskel: ["beine", "Wie fühlen sich deine Beine an?"], muede: ["energie", "Wie viel Energie hast du?"], stress: ["kopf", "Wie ruhig ist dein Kopf?"] };
+  const ico = (k, w) => (window.V6 ? window.V6.icon(k, w) : "");
+  /** Ein Satz zur Lage: geplante Einheit(en) und Bereitschaft (nur aus vorhandenen Werten). */
+  function lageSatz() {
+    const r = UI() && UI().lastReadiness, E = L().geplantAm(C.D.planned, heuteISO());
+    const titel = (p) => `«${p.title || SPORT_WORT[p.sport] || "Training"}»`;
+    const teil1 = E.length === 1 ? `Heute steht ${titel(E[0].p)} an (${SPORT_WORT[E[0].p.sport] || E[0].p.sport || "Training"}).`
+      : E.length > 1 ? `Heute stehen ${E.length} Einheiten an: ${E.map((e) => titel(e.p)).join(" und ")}.` : "Heute ist nichts geplant.";
+    let teil2 = "";
+    if (r) teil2 = E.length ? r.empfehlung : { bereit: "Die Morgenwerte sehen gut aus.", normal: "Die Morgenwerte liegen im üblichen Bereich.",
+      vorsichtig: r.empfehlung, "nicht beurteilbar": "Für eine Einschätzung fehlen Morgenwerte." }[r.status] || "";
+    return esc(teil1) + (teil2 ? " " + esc(teil2) : "");
+  }
   V.checkin = function () {
     const box = $("checkin"); if (!box || !C || !L()) return;
     const day = heuteISO(), b = befHeute(), F = L().FRAGEN;
-    if (CI.geladen !== day) { Object.assign(CI, { edit: false, wahl: {}, krank: false, krankListe: [], notiz: "", notizOffen: false, geladen: day }); }
-    const karte = $("checkin-card");
-    if (b && !CI.edit) {
-      if (karte) karte.classList.add("ci-fertig");
-      box.innerHTML = `<div class="ci-done" role="status"><span class="ci-ok" aria-hidden="true">✓</span><div><b>Befinden heute</b> ${F.map((f) => `${f.label} <b>${b[f.k] ?? "–"}</b><small> ${isNum(b[f.k]) ? esc(wort(f, b[f.k])) : ""}</small>`).join(" · ")}${b.krank ? ` · <b class="down">${esc(b.krank.join(", "))}</b>` : ""}${b.notiz ? ` · «${esc(b.notiz)}»` : ""}
-        <div class="ci-meta">${syncText(b)} <button class="lnk" data-ci="edit">ändern</button></div></div></div>`;
-      bind(box); return;
-    }
-    if (karte) karte.classList.remove("ci-fertig");
-    if (!b && lsGet("sf.ci.aus") === day && !CI.edit) {
-      box.innerHTML = `<div class="ci-done"><span>Check-in heute übersprungen.</span> <button class="lnk" data-ci="neu">Doch eintragen</button></div>`;
-      bind(box); return;
-    }
-    if (CI.edit && b && !CI.gerade) {
-      CI.gerade = true;
-      CI.wahl = { muskel: b.muskel, muede: b.muede, stress: b.stress };
-      CI.krank = !!(b.krank && b.krank.length); CI.krankListe = (b.krank || []).filter((k) => L().KRANK.includes(k)); CI.notiz = b.notiz || "";
-    }
-    box.innerHTML = `<div class="ci" role="group" aria-label="Morgen-Check-in">
-      <div class="ci-head"><div><h2>${CI.edit ? "Befinden ändern" : "Guten Morgen"}</h2><div class="sub">${CI.edit ? "Jeder Tipp speichert sofort." : "Wie geht's? Drei Tipps, fertig."}</div></div>
-        ${CI.edit ? `<button class="btn" type="button" data-ci="fertig">Fertig</button>` : `<button class="lnk" type="button" data-ci="aus">heute nicht</button>`}</div>
-      ${F.map((f) => `<div class="ci-q"><span class="ci-l" id="ci-l-${f.k}">${f.label}</span>
-        <div class="ci-b" role="radiogroup" aria-labelledby="ci-l-${f.k}">${[1, 2, 3, 4, 5].map((v) => `<button type="button" role="radio" class="ci-v v${v}" aria-checked="${CI.wahl[f.k] === v}" aria-label="${f.label} ${v}: ${esc(wort(f, v))}" data-q="${f.k}" data-v="${v}">${v}${v === 1 ? `<span class="ci-w" aria-hidden="true">${f.lo}</span>` : v === 5 ? `<span class="ci-w" aria-hidden="true">${f.hi}</span>` : ""}</button>`).join("")}</div></div>`).join("")}
-      <div class="ci-x"><label class="ci-k"><input type="checkbox" data-ci="krank" ${CI.krank ? "checked" : ""}> krank oder verletzt</label>
-        ${CI.notizOffen || CI.notiz ? "" : `<button type="button" class="lnk" data-ci="notiz">＋ Notiz</button>`}</div>
-      ${CI.krank ? `<div class="chips ci-kl" role="group" aria-label="Was genau? (optional)">${L().KRANK.map((k) => `<button type="button" class="chip" aria-pressed="${CI.krankListe.includes(k)}" data-kr="${esc(k)}">${esc(k)}</button>`).join("")}</div>` : ""}
-      ${CI.notizOffen || CI.notiz ? `<input class="ci-n" type="text" maxlength="280" placeholder="Notiz (optional), z. B. schlecht geschlafen" aria-label="Notiz zum Befinden" value="${esc(CI.notiz)}">` : ""}
-    </div>`;
-    bind(box);
+    if (CI.geladen !== day) Object.assign(CI, { wahl: {}, krank: false, krankListe: [], notiz: "", geladen: day });
+    const h = new Date().getHours(), gruss = window.V6 ? window.V6.gruss(h) : "Guten Morgen";
+    const karte = $("checkin-card"); if (karte) karte.classList.toggle("ci-fertig", !!b);
+    let unten;
+    if (b) unten = `<div class="ci-done" role="status"><span class="ci-ok" aria-hidden="true">✓</span><div><b>Befinden heute</b> ${F.map((f) => `${f.label} <b>${b[f.k] ?? "–"}</b><small> ${isNum(b[f.k]) ? esc(wort(f, b[f.k])) : ""}</small>`).join(" · ")}${b.krank ? ` · <b class="down">${esc(b.krank.join(", "))}</b>` : ""}${b.notiz ? ` · «${esc(b.notiz)}»` : ""}
+        <div class="ci-meta">${syncText(b)}</div></div></div>
+      <div class="gr-knoepfe"><button class="btn" type="button" data-ci="blatt">Ändern</button></div>`;
+    else if (lsGet("sf.ci.aus") === day) unten = `<p class="gr-zeile">Check-in heute übersprungen.</p><div class="gr-knoepfe"><button class="btn" type="button" data-ci="neu">Doch eintragen</button></div>`;
+    else unten = `<div class="gr-knoepfe"><button class="btn gross" type="button" data-ci="aus">Heute nicht</button><button class="btn primary gross" type="button" data-ci="blatt">${ico("check", 20)} Check-in</button></div>`;
+    box.innerHTML = `<div class="gruss"><h2>${esc(gruss)}</h2><p class="gr-lage">${lageSatz()}</p>${unten}</div>`;
+    bindKarte(box);
+    if (window.V59_CI_AUF) { window.V59_CI_AUF = false; if (!b) V.checkinBlatt(); }
   };
+  function bindKarte(box) {
+    box.querySelectorAll("[data-ci]").forEach((btn) => (btn.onclick = () => {
+      const a = btn.dataset.ci;
+      if (a === "blatt") V.checkinBlatt();
+      if (a === "aus") { lsSet("sf.ci.aus", heuteISO()); V.checkin(); V.heuteOben(); }
+      if (a === "neu") { lsSet("sf.ci.aus", null); V.checkinBlatt(); }
+      if (a === "einst") V.einstellungen("direkt");
+    }));
+  }
   async function speichern() {
     const alt = befHeute();
     const b = L().checkinEintrag(heuteISO(), CI.wahl, { krank: CI.krank ? (CI.krankListe.length ? CI.krankListe : true) : null, notiz: CI.notiz, nachtdienst: alt && alt.nachtdienst });
@@ -79,35 +87,56 @@
     return true;
   }
   const alleDa = () => L().FRAGEN.every((f) => Number.isInteger(CI.wahl[f.k]));
-  function bind(box) {
-    box.querySelectorAll("[data-q]").forEach((btn) => (btn.onclick = async () => {
-      const q = btn.dataset.q, v = +btn.dataset.v;
-      if (CI.wahl[q] === v && !CI.edit) return;
+  /** Check-in als Blatt: drei Fragen, je Symbol, Frage, grosser Wert und Farbskala mit fünf Punkten. */
+  V.checkinBlatt = function () {
+    if (!C || !L()) return;
+    const day = heuteISO(), b = befHeute(), F = L().FRAGEN;
+    if (CI.geladen !== day) CI.geladen = day;
+    if (b) Object.assign(CI, { wahl: { muskel: b.muskel, muede: b.muede, stress: b.stress }, krank: !!(b.krank && b.krank.length),
+      krankListe: (b.krank || []).filter((k) => L().KRANK.includes(k)), notiz: b.notiz || "" });
+    const frage = (f) => {
+      const v = CI.wahl[f.k], [ic, text] = FRAGE_TEXT[f.k] || ["check", f.label];
+      return `<div class="ci-frage" data-f="${f.k}"><h3 class="abschnitt">${ico(ic, 15)}${esc(f.label)}</h3><p class="ci-text" id="ci-l-${f.k}">${esc(text)}</p>
+        <b class="ci-wert" aria-live="polite">${Number.isInteger(v) ? esc(gross1(wort(f, v))) : "–"}</b>
+        <div class="ci-skala" role="radiogroup" aria-labelledby="ci-l-${f.k}">${[1, 2, 3, 4, 5].map((n) => `<button type="button" role="radio" class="ci-p" style="--ci:var(--ci${n})" aria-checked="${v === n}" aria-label="${esc(f.label)} ${n}: ${esc(wort(f, n))}" data-q="${f.k}" data-v="${n}"></button>`).join("")}</div>
+        <div class="ci-enden" aria-hidden="true"><span>${esc(f.lo)}</span><span>${esc(f.hi)}</span></div></div>`;
+    };
+    const html = `<div class="blatt-titel">${ico("check", 34)}<h2 id="v59-ov-h" tabindex="-1">Check-in</h2><p class="sub">${b ? "Befinden von heute ändern" : "Wie geht es dir heute? Drei Tipps, dann speichern."}</p></div>
+      ${F.map(frage).join("")}
+      <div class="ci-x"><label class="ci-k"><input type="checkbox" data-ci="krank" ${CI.krank ? "checked" : ""}> krank oder verletzt</label></div>
+      <div class="chips ci-kl" role="group" aria-label="Was genau? (optional)" ${CI.krank ? "" : "hidden"}>${L().KRANK.map((k) => `<button type="button" class="chip" aria-pressed="${CI.krankListe.includes(k)}" data-kr="${esc(k)}">${esc(k)}</button>`).join("")}</div>
+      <input class="ci-n" type="text" maxlength="280" placeholder="Notiz (optional), z. B. schlecht geschlafen" aria-label="Notiz zum Befinden" value="${esc(CI.notiz)}">
+      <div class="blatt-fuss"><button type="button" class="btn-zurueck" data-x aria-label="Zurück ohne zu speichern">${ico("zurueck", 22)}</button>
+        <button type="button" class="btn primary gross" data-ci="speichern" ${alleDa() ? "" : "disabled"}>Speichern</button></div>`;
+    const ov = oeffne("checkin", html);
+    bindBlatt(ov);
+  };
+  function bindBlatt(ov) {
+    const F = L().FRAGEN, save = ov.querySelector('[data-ci="speichern"]');
+    ov.querySelectorAll("[data-q]").forEach((btn) => (btn.onclick = () => {
+      const q = btn.dataset.q, v = +btn.dataset.v, f = F.find((x) => x.k === q);
       CI.wahl[q] = v;
-      if (alleDa()) { await speichern(); if (!CI.edit) { CI.gerade = false; } }
-      V.checkin();
-      if (!alleDa()) { const next = L().FRAGEN.find((f) => !Number.isInteger(CI.wahl[f.k])); const el = next && box.querySelector(`[data-q="${next.k}"]`); if (el) el.focus({ preventScroll: true }); }
+      const blk = btn.closest(".ci-frage");
+      blk.querySelectorAll("[data-q]").forEach((x) => x.setAttribute("aria-checked", String(+x.dataset.v === v)));
+      blk.querySelector(".ci-wert").textContent = gross1(wort(f, v));
+      save.disabled = !alleDa();
+      const next = F.find((x) => !Number.isInteger(CI.wahl[x.k]));
+      if (next) { const el = ov.querySelector(`.ci-frage[data-f="${next.k}"]`); if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
     }));
-    box.querySelectorAll("[data-kr]").forEach((btn) => (btn.onclick = async () => {
+    const kr = ov.querySelector('[data-ci="krank"]'), kl = ov.querySelector(".ci-kl");
+    if (kr) kr.onchange = () => { CI.krank = kr.checked; if (!CI.krank) { CI.krankListe = []; kl.querySelectorAll("[data-kr]").forEach((x) => x.setAttribute("aria-pressed", "false")); } kl.hidden = !CI.krank; };
+    ov.querySelectorAll("[data-kr]").forEach((btn) => (btn.onclick = () => {
       const k = btn.dataset.kr; CI.krankListe = CI.krankListe.includes(k) ? CI.krankListe.filter((x) => x !== k) : CI.krankListe.concat(k);
-      if (alleDa()) await speichern(); V.checkin();
+      btn.setAttribute("aria-pressed", String(CI.krankListe.includes(k)));
     }));
-    const kr = box.querySelector('[data-ci="krank"]');
-    if (kr) kr.onchange = async () => { CI.krank = kr.checked; if (!CI.krank) CI.krankListe = []; if (alleDa()) await speichern(); V.checkin(); };
-    const n = box.querySelector(".ci-n");
-    if (n) n.onchange = async () => { CI.notiz = n.value.trim(); if (alleDa()) await speichern(); };
-    box.querySelectorAll("[data-ci]").forEach((btn) => {
-      const a = btn.dataset.ci;
-      if (a === "krank") return;
-      btn.onclick = () => {
-        if (a === "notiz") { CI.notizOffen = true; V.checkin(); const el = box.querySelector(".ci-n"); if (el) el.focus(); }
-        if (a === "aus") { lsSet("sf.ci.aus", heuteISO()); V.checkin(); }
-        if (a === "neu") { lsSet("sf.ci.aus", null); V.checkin(); }
-        if (a === "edit") { CI.edit = true; CI.gerade = false; V.checkin(); }
-        if (a === "fertig") { if (n) CI.notiz = n.value.trim(); const fertig = async () => { if (alleDa()) await speichern(); CI.edit = false; CI.gerade = false; V.checkin(); }; fertig(); }
-        if (a === "einst") V.einstellungen("direkt");
-      };
-    });
+    const n = ov.querySelector(".ci-n");
+    if (n) n.oninput = () => { CI.notiz = n.value.trim(); };
+    save.onclick = async () => {
+      if (!alleDa()) return;
+      save.disabled = true; save.textContent = "Speichert …";
+      try { await speichern(); lsSet("sf.ci.aus", null); V.schliessen(); V.checkin(); V.heuteOben(); }
+      catch (e) { console.error(e); save.disabled = false; save.textContent = "Speichern"; }
+    };
   }
   /** Gefühl gegen Morgenwerte (ab 20 Morgen mit Check-in; ersetzt die RPE-Kalibrierung der Einheiten). */
   V.gefuehlKarte = function () {
@@ -124,46 +153,12 @@
       <p class="hint">Gefühl = Mittel aus Beine, Energie und Kopf. HRV und Ruhepuls gegen deine eigenen 60 Tage davor, Schlaf = Garmin-Schlafwert der Nacht, Last = Trainingslast am Vortag (alle Sportarten). |ρ| ab 0.3 = brauchbar. Nur Zusammenhang, keine Ursache. Regel ${esc(K.v)}.</p>`;
   };
 
-  /* ======================= Heute oben: geplant (morgen-1.0) und Bereitschaft in einem Satz ======================= */
+  /* ======================= Heute oben (V6.0.1): Kacheln, Heutiges Training, Wochenleiste – in js/v6-heute.js =======================
+   * Ersetzt «Heute geplant» und «Bereitschaft in einem Satz» (morgen-1.0): dieselben Daten, jetzt als Kacheln, Karten und Blätter. */
   const SPORT_WORT = { rad: "Rad", lauf: "Laufen", schwimm: "Schwimmen", wandern: "Wandern", ski: "Ski", andere: "Training", kraft: "Kraft" };
   V.heuteOben = function () {
     if (!C || !L()) return;
-    V.heutePlan(); V.bereitKurz();
-  };
-  V.heutePlan = function () {
-    const box = $("heute-plan"); if (!box) return;
-    const D = C.D, day = heuteISO(), TR = window.TR, st = L().standText(D.updated, day, D.updated_lauf);
-    const E = L().geplantAm(D.planned, day);
-    const zeile = ({ i, p }) => {
-      let wo = null; try { wo = TR && TR.workout ? TR.workout(Object.assign({}, p, { sport_plan: p.sport }), {}) : null; } catch (e) { wo = null; }
-      const dauer = wo && isNum(wo.dauer_s) ? wo.dauer_s : isNum(p.dur_s) ? p.dur_s : null;
-      const ziele = wo && wo.schritte && wo.schritte.length ? TR.strukturText(wo) : null;
-      const route = ["rad", "lauf", "wandern"].includes(p.sport) && window.TRUI && !C.IS_DEMO;
-      return `<div class="hp-wo"><div class="hp-k"><b>${esc(p.title || SPORT_WORT[p.sport] || "Training")}</b><span class="hp-m">${esc(SPORT_WORT[p.sport] || p.sport || "")}${dauer ? ` · ${C.hmm(dauer)} h` : ""}</span></div>
-        ${ziele ? `<p class="hp-z">${esc(ziele)}</p>` : `<p class="hp-z muted">Keine Schritte im Kalender – Ziele siehe Garmin.</p>`}
-        ${wo && wo.hinweise && wo.hinweise.length ? `<p class="hint warn-t">${esc(wo.hinweise[0])}</p>` : ""}
-        <div class="hp-f"><span class="hp-q">${esc(p.quelle || "Garmin-Kalender")}</span>${route ? `<button class="btn" type="button" data-str="${esc(day)}|${i}">Passende Route finden</button>` : ""}</div></div>`;
-    };
-    const neu = (D.workouts_neu || []).slice(0, 3);
-    box.innerHTML = `<div class="hp-head"><h2>Heute geplant</h2><span class="hp-stand">${st && E.length ? esc(st.text) : ""}</span></div>
-      ${E.length ? E.map(zeile).join("") : `<p class="hp-leer">Für heute noch kein Workout in Garmin${st ? ` (${esc(st.text)})` : ""}.</p>`}
-      ${!E.length && neu.length ? `<p class="hint">Neu von Enduco, noch ohne Datum: ${neu.map((w) => esc(w.title || "Workout")).join(", ")} – im Planer unter «Passende Route finden» wählbar.</p>` : ""}`;
-  };
-  V.bereitKurz = function () {
-    const box = $("bereit-kurz"); if (!box) return;
-    const r = UI() && UI().lastReadiness, F = window.FK, D = C.D, day = heuteISO();
-    if (!r) { box.innerHTML = `<p class="hint">Bereitschaft wird berechnet …</p>`; return; }
-    const wort = { bereit: "Bereit", normal: "Normal", vorsichtig: "Vorsicht bei Intensität", "nicht beurteilbar": "Nicht beurteilbar" }[r.status] || r.status;
-    let ring = null, tag = null;
-    if (F && F.ringeVerlauf) {
-      for (let i = 0; i < 8 && !ring; i++) { const d = L().addDays(day, -i), x = (D.days || []).find((z) => z.date === d); if (x && (isNum(x.hrv) || isNum(x.rhr) || isNum(x.sleepScore))) { tag = d; ring = F.ringeVerlauf(D.days, D.activities, d, 1)[0]; } }
-    }
-    const st = L().standText(D.updated, day, D.updated_lauf);
-    const pill = (lab, v, farbe) => `<span class="bk-r"><i style="background:${v == null ? C.css("--muted") : farbe}"></i>${lab} <b>${v == null ? "–" : v + " %"}</b></span>`;
-    box.innerHTML = `<p class="bk-satz rd-${r.status.replace(/ /g, "-")}"><b>${esc(wort)}:</b> ${esc(r.empfehlung)}${r.gruende && r.gruende.length ? ` <span class="bk-g">(${esc(r.gruende.slice(0, 3).join(", "))})</span>` : ""}</p>
-      ${ring ? `<div class="bk-ringe" role="group" aria-label="Erholung, Schlaf, Belastung">${pill("Erholung", ring.erholung, C.css(F.ringFarbe(ring.erholung) === "gut" ? "--good" : F.ringFarbe(ring.erholung) === "mittel" ? "--warn" : "--bad"))}${pill("Schlaf", ring.schlaf, C.css("--sleep"))}${pill("Belastung", ring.belastung, C.css("--strain"))}</div>` : ""}
-      <p class="bk-stand">${tag && tag !== day ? `Morgenwerte vom ${esc(C.dateCH(tag))}` : tag ? "Morgenwerte von heute" : "Keine Morgenwerte"}${st ? ` · ${esc(st.text)}` : ""} · <button class="lnk" type="button" data-bk="mehr">Einzelheiten</button></p>`;
-    const m = box.querySelector('[data-bk="mehr"]'); if (m) m.onclick = () => { const el = $("ringe-card"); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };
+    if (window.V6H) { try { window.V6H.zeichnen(); } catch (e) { console.error(e); } }
   };
 
   /* ======================= Bedienung (bedienung-1.0): Info-Knopf und Tabellen als Liste ======================= */
@@ -224,6 +219,7 @@
     const h = $("v59-ov-h"); if (h) h.focus();
     return ov;
   }
+  V.blatt = oeffne;                  // V6.0.1: Blätter für Check-in, Einheit, Optionen, Bereitschaft (js/v6-heute.js)
   V.schliessen = function () { const ov = $("v59-ov"); ov.hidden = true; ov.innerHTML = ""; V._ovArt = null; document.body.classList.remove("noscroll"); };
 
   /* ----- Einstellungen: Direkt speichern, ausgeblendete Karten ----- */

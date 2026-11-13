@@ -14,7 +14,7 @@
 })(typeof self !== "undefined" ? self : this, function (RT, FK) {
   "use strict";
   const TR = {};
-  TR.VERSIONS = { workout: "workout-1.0", vorschlag: "trainingsroute-1.0", dauer: "dauer-1.0", intervalle: "intervall-rt-1.0",
+  TR.VERSIONS = { workout: "workout-1.1", vorschlag: "trainingsroute-1.0", dauer: "dauer-1.0", intervalle: "intervall-rt-1.0",
     wetter: "wetteroptimiert-1.0", ruhig: "ruhig-1.0", licht: "tageslicht-1.0", auswertung: "auswertung-rt-1.0" };
   const isNum = (v) => typeof v === "number" && isFinite(v);
   const RAD = Math.PI / 180, R_E = 6371008.8;
@@ -24,7 +24,7 @@
   const mmss = (s) => { if (!isNum(s)) return "–"; s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return h ? `${h}:${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}` : `${m}:${String(x).padStart(2, "0")}`; };
   TR.mmss = mmss;
 
-  /* ======================= Workout lesen (workout-1.0) =======================
+  /* ======================= Workout lesen (workout-1.1) =======================
    * Garmin-Workout (Enduco schreibt Watt, Tempo in m/s oder Puls direkt in die Schritte); Wiederholungen aufgefaltet.
    * Intensiv = Mitte des Zielbereichs ab Zone 3 des aktiven Zonenprofils (Watt/Puls ≥ Z3-Grenze, Pace ≤ Z3-Grenze);
    * ohne Zonenprofil relativ zum Grundwert (≥ +15 % Watt/Puls bzw. ≥ 8 % schneller). */
@@ -61,6 +61,8 @@
     }
     return null;
   }
+  /** Pace pro 100 m aus einer Schwimm-Beschreibung («… | Endurance | 02:22min/100m») in s; sonst null. */
+  TR.pace100 = function (text) { const m = /(\d{1,2}):(\d{2})\s*min\s*\/\s*100\s*m/i.exec(String(text || "")); return m ? +m[1] * 60 + +m[2] : null; };
   const mitteVon = (z) => (!z ? null : z.art === "pace" ? (isNum(z.v) ? 1000 / z.v : (z.lo + z.hi) / 2) : (z.lo + z.hi) / 2);
   /** Schritte (Garmin, vereinfachte Form der Verbindung) mit Wiederholungen auffalten. */
   TR.auffalten = function (steps, Z, sport) {
@@ -79,8 +81,10 @@
         const ec = String(st.end_condition || "").toLowerCase(), val = +st.end_condition_value;
         const cad = /cadence/i.test(String(st.secondary_target_type || "")) ? { lo: +st.secondary_target_value_low, hi: +st.secondary_target_value_high }
           : /cadence/i.test(String(st.target_type || "")) ? { lo: +st.target_value_low, hi: +st.target_value_high } : null;
-        out.push({ i: out.length, typ: TYP[t] || "interval", dauer_s: ec === "time" && val > 0 ? val : null, distanz_m: ec === "distance" && val > 0 ? val : null,
-          offen: !(ec === "time" || ec === "distance"), ziel: zielAus(st, Z, sport), cad, gruppe: gi, wdh: rep });
+        const zeit = ec === "time" || ec === "fixed.rest";      // workout-1.1: feste Pause («Break: 30s») ist eine Zeit, kein offener Schritt
+        out.push({ i: out.length, typ: TYP[t] || "interval", dauer_s: zeit && val > 0 ? val : null, distanz_m: ec === "distance" && val > 0 ? val : null,
+          offen: !(zeit || ec === "distance"), ziel: zielAus(st, Z, sport), cad, gruppe: gi, wdh: rep,
+          ec: ec || null, val: isNum(val) ? val : null, text: st.description ? String(st.description).slice(0, 300) : null });
       }
     };
     walk(steps, null, null);
@@ -106,17 +110,23 @@
     const wattUnklar = pw.length > 0 && pw.every((s) => s.ziel.hi <= 150);
     if (wattUnklar) hinweise.push("Leistungsziele ≤ 150: Watt oder % FTP? Nicht geraten – Intensität bitte mit dem Regler setzen.");
     for (const s of L) s.mitte = s.ziel && s.ziel.art === modus && !(wattUnklar && modus === "watt") ? mitteVon(s.ziel) : null;
-    // Dauer der Distanzschritte nur als Schätzung (Flachtempo); offene Schritte (Runde drücken) haben keine Dauer
+    // Dauer der Distanzschritte nur als Schätzung (Flachtempo); offene Schritte (Runde drücken) haben keine Dauer.
+    // workout-1.1: Schwimmen aus der Pace in der Schritt-Beschreibung («02:22min/100m»), lockere Strecken ohne Pace mit der langsamsten Pace des Workouts.
+    const p100 = sport === "schwimm" ? L.map((s) => TR.pace100(s.text)).filter(isNum) : [];
+    const pLocker = p100.length ? Math.max(...p100) : null;
     for (const s of L) if (!isNum(s.dauer_s) && isNum(s.distanz_m)) {
       if (modus === "pace" && isNum(s.mitte)) s.dauer_est = s.distanz_m * s.mitte / 1000;
       else if (modus === "watt" && isNum(s.mitte)) s.dauer_est = s.distanz_m / FK.speedFromPower(s.mitte, { m: 85, cda: 0.3, crr: 0.004, grade: 0, rho: 1.18, wind: 0, eta: 0.976, vmax: 20 });
+      else if (sport === "schwimm") { const q = TR.pace100(s.text); if (isNum(q)) { s.dauer_est = s.distanz_m / 100 * q; s.pace100 = q; } else if (isNum(pLocker)) { s.dauer_est = s.distanz_m / 100 * pLocker; s.pace100_locker = pLocker; } }
     }
     const zeit = (s) => (isNum(s.dauer_s) ? s.dauer_s : isNum(s.dauer_est) ? s.dauer_est : 0);
     const alleZeit = L.length > 0 && L.every((s) => isNum(s.dauer_s));
+    const vollst = L.length > 0 && L.every((s) => isNum(s.dauer_s) || isNum(s.dauer_est));   // jede Dauer bekannt oder geschätzt
     const summe = sum(L, zeit);
     const planDauer = isNum(p.dur_s) && p.dur_s > 0 ? p.dur_s : isNum(p.estimated_duration_seconds) ? p.estimated_duration_seconds : null;
-    const dauer_s = alleZeit ? summe : summe > 0 && !L.some((s) => s.offen) ? summe : planDauer;
-    const dauer_quelle = alleZeit ? "Summe der Workout-Schritte" : summe > 0 && !L.some((s) => s.offen) ? "Workout-Schritte (Distanzschritte geschätzt)" : planDauer ? "Dauer laut Kalender" : null;
+    const dauer_s = alleZeit ? summe : vollst && summe > 0 ? summe : planDauer;
+    const dauer_quelle = alleZeit ? "Summe der Workout-Schritte" : vollst && summe > 0 ? (sport === "schwimm" ? "Workout-Schritte (Strecken aus der Pace der Beschreibung geschätzt)" : "Workout-Schritte (Distanzschritte geschätzt)") : planDauer ? "Dauer laut Kalender" : null;
+    const distanz_m = L.some((s) => isNum(s.distanz_m)) ? sum(L, (s) => (isNum(s.distanz_m) ? s.distanz_m : 0)) : null;
     if (L.some((s) => s.offen)) hinweise.push("Workout mit offenen Schritten (Runde drücken): Dauer dieser Schritte unbekannt.");
     // Intensität je Schritt
     const z3 = sport === "rad" ? (modus === "hf" ? Z.z3.rad_hf : Z.z3.rad_w) : sport === "lauf" ? (modus === "hf" ? Z.z3.lauf_hf : Z.z3.lauf_pace) : null;
@@ -148,7 +158,7 @@
     return {
       v: TR.VERSIONS.workout, id: p.id || (p.wid ? "w" + p.wid : null), wid: p.wid || p.workout_id || null, titel: p.title || p.name || "Training", datum: p.date || null,
       sport, quelle: p.quelle || (raw.length ? "Workout aus Garmin" : p.manuell ? "eigene Angaben" : "Kalender (ohne Schritte)"),
-      beschreibung: p.desc || p.description || "", schritte: L, gruppen: F.gruppen, modus, wattUnklar, haupt, intens, dauer_s, dauer_quelle,
+      beschreibung: p.desc || p.description || "", schritte: L, gruppen: F.gruppen, modus, wattUnklar, haupt, intens, dauer_s, dauer_quelle, distanz_m,
       art, art_text: ART_TEXT[art], intensiv_s: tInt, intensiv_anteil: anteil, dauertraining, tol: dauertraining ? 0.05 : 0.1,
       zonen: Z.name, hinweise,
     };
