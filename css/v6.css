@@ -585,3 +585,26 @@ details.ws-k > summary:focus-visible { outline: 2px solid var(--accent); outline
 .k-farbe { color: var(--kc); } :root[data-theme="light"] .k-farbe { color: color-mix(in srgb, var(--kc) 70%, #000); }
 /* V6.4.4 (Audit D10): Sprungziele nicht unter der klebenden Leiste oben */
 section.view:has(> nav.unter) * { scroll-margin-top: 66px; }
+
+/* ======================= V6.5 Enduco-Bibliothek (js/v65-ui.js) ======================= */
+.kv.bib-kv { grid-template-columns: repeat(2, minmax(0, 1fr)); } @media (min-width: 640px) { .kv.bib-kv { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.bib-je { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+.bib-je span { display: inline-flex; align-items: center; gap: 6px; } .bib-je i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.bib-seg { margin: 12px 0 8px; } .bib-seg button { min-height: 36px; padding: 6px 12px; font-weight: 600; font-size: 13.5px; }
+.bib-filter { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-bottom: 8px; }
+.bib-filter input, .bib-filter select { min-height: 44px; padding: 8px 12px; font-size: 16px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--fg); }
+.bib-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.bib-e { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; width: 100%; text-align: left; border: 0; cursor: pointer;
+  background: var(--surface-2); color: var(--fg); border-radius: 14px; padding: 8px 10px; font: inherit; min-height: 52px; }
+.bib-e:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; } .bib-e:active { transform: scale(.99); }
+.bib-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; } .bib-t b { font-size: 14.5px; font-weight: 650; overflow-wrap: anywhere; }
+.bib-t small { font-size: 12.5px; color: var(--muted); }
+.bib-r { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; } .bib-ok { font-size: 11.5px; font-weight: 650; color: var(--good); }
+:root[data-theme="light"] .bib-ok { color: #136b46; }
+.bib-mehr { width: 100%; margin-top: 4px; }
+.bib-svg { width: 100%; height: auto; display: block; margin-top: 4px; }
+.bib-vers, .bib-lauf { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.45; display: flex; flex-direction: column; gap: 4px; }
+.bib-lauf { list-style: none; padding-left: 0; } .bib-lauf li { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.bib-ue { border: 0; background: none; padding: 0; font: inherit; color: var(--accent-text); text-align: left; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.bib-se summary { cursor: pointer; color: var(--muted); font-size: 13.5px; padding: 8px 0; }
+.bib-leg { margin-top: 6px; } .bib-leg b { font-size: 12px; font-weight: 650; color: var(--muted); margin-right: 2px; } .bib-leg i.rund { border-radius: 50%; }

@@ -10,7 +10,13 @@
 - **Privates Archiv (archiv-1.0, `tools/archiv.mjs`, Repository `spuren-archiv`):** Rohdaten (Garmin-Exporte, FIT, Momentaufnahmen aus Garmin,
   Laktat-Tabellen) verschlüsselt, mit zufälligen Dateinamen und verschlüsseltem Verzeichnis, in Teilen unter 40 MiB; gleicher Inhalt nur einmal,
   nichts wird geändert oder gelöscht; Prüfung vor jedem Push. Erster Inhalt: die Garmin-Workout-Liste vom 13.11.2026.
-- Geprüft: `tests/test_tools.py` (+ 13 Prüfungen Bibliothek: Liste nur Enduco, Kalender ergänzt statt verdoppelt, Abschrift ohne neue Version,
+- **Ansicht «Bibliothek» (Plan → Bibliothek, bibliothek-1.0):** alle Enduco-Workouts mit Suche (Titel, Text, Übung), Sportart und Stufe; antippen
+  öffnet das gewohnte Einheit-Blatt mit Ablauf, Zielen, Text, Fassungen, Terminen und ob das Workout auf der Uhr lief (mit «Analysieren»).
+  **Enduco über die Monate (monate-1.0):** geplante Stunden je Sportart und Anteil der Stufen – was Enduco geplant hat, nicht was du gemacht hast.
+  **Schwimmübungen aus Enduco (uebungen-1.0):** Übungen und Serien aus den Schritt-Texten mit Anzahl Workouts, Metern, Hilfsmitteln und
+  letztem Einsatz; antippen sucht die Workouts dazu.
+- Geprüft: `tests/test_v65.cjs` (neu: Liste, Termin oder Export, Text voll oder erster Satz, «gelaufen», Filter, Übungen mit Wiederholungen
+  und Hilfsmitteln, Monate), `tests/test_tools.py` (+ 13 Prüfungen Bibliothek: Liste nur Enduco, Kalender ergänzt statt verdoppelt, Abschrift ohne neue Version,
   neue Version bei Änderung, nichts gelöscht, Fehlversuche, Nacht-Update), `tests/test_archiv.cjs` (neu: Passwort, Teile, Prüfsumme, kein
   Klartext, Prüfung findet fehlende und veränderte Teile), alle bisherigen Tests, Leck-Prüfung.
 

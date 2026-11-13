@@ -69,7 +69,9 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   `AN.saisonStunden`, `AN.saisonVorgaben`)
 - **V6.5 (Etappe 5 Enduco-Bibliothek und Archiv):** `tools/bibliothek.py` (bib-1.0: jedes Enduco-Workout aus Garmin bleibt in `enduco_bib`,
   mit Volltext, Schritten, Schwimmübungen, Terminen und Versionen; Startbestand aus der Garmin-Workout-Liste am 13.11.2026), `tools/archiv.mjs`
-  (archiv-1.0: privates Archiv `sileyhunter/spuren-archiv`, Abschnitt «Archiv»), `tests/test_archiv.cjs`
+  (archiv-1.0: privates Archiv `sileyhunter/spuren-archiv`, Abschnitt «Archiv»), `tests/test_archiv.cjs`; `js/v65.js` (ohne DOM: Liste bibliothek-1.0,
+  Enduco über die Monate monate-1.0, Schwimmübungen uebungen-1.0), `js/v65-ui.js` (Ansicht «Bibliothek» unter Plan; eine Einheit öffnet das
+  Einheit-Blatt über `V6H.einheitP`), `tests/test_v65.cjs`
 - **V6.4.4 (Prüfung V6.4, `docs/AUDIT_V64.md`):** `tools/leck_pruefen.py` – Leck-Prüfung vor jedem Push: sucht echte Werte (IDs, Zonentexte und
   -grenzen, Schwellen, Distanzen mit Datum, Testtermine und Abwesenheiten, E-Mail) in allen getrackten Dateien, gibt nur Fundorte aus
 - **V5.8:** keine neuen Dateien; Rechenlogik in `js/route.js` (Abschnitte von Hand, Skitourennetz, Hangneigung, MTB-Abfahrt, Wegende, drei
@@ -391,7 +393,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 
 ## Bedienung V5.9.5 (bedienung-1.0)
 - Start auf «Heute» (Hash-Links wie `#laktat`, `#plan`, `#wissen` oder `#checkin` gehen direkt; `#checkin` öffnet das Check-in-Blatt). Fünf Bereiche in
-  der Leiste unten (`#leiste`, `GRUPPEN` in index.html, seit V6.0.2): Heute · Kalender · Plan (plan, wissen; V6.4) · Analyse (training, laktat, ausdauer, leistung,
+  der Leiste unten (`#leiste`, `GRUPPEN` in index.html, seit V6.0.2): Heute · Kalender · Plan (plan, wissen; V6.4; bibliothek, V6.5) · Analyse (training, laktat, ausdauer, leistung,
   koerper, schwimmen) · Karte; die Ansichten (`section.view`, `showTab(name)`) bleiben einzeln, oben wechselt `nav.unter` (wischbar).
   Im Planer (`body.plan-aktiv`) keine Leiste.
 - Info-Knopf (`V59.ansicht`): Erklärtexte (`.sub` ohne id, `.hint`) einer Karte mit Ergebnis liegen hinter «i»; Warnungen (`.warn-t`, `.down`),
@@ -535,7 +537,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Die exakten Grössen der SPS1-Dateien stehen in der Git-Historie.
 
 ## Prüfen vor jedem Push von Seite oder Werkzeugen
-`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
+`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
 **Leck-Prüfung (V6.4.4):** `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json work/data.json`, `python3 -I tools/leck_pruefen.py work/data.json`
 («LECK-PRÜFUNG: bestanden»), danach `rm work/data.json`. Gilt für jeden Push von Seite, Werkzeugen, Tests oder Doku (nicht für die reinen Daten-Updates).
 Kein Live-Push, wenn ein Test oder die Leck-Prüfung fehlschlägt. Screenshots mit echten Daten nie ins Repo. **Ein Force-Push entfernt nichts von GitHub:**

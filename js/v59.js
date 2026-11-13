@@ -166,7 +166,7 @@
   const ERKL = '.card-head .sub:not([id]), .card > .sub:not([id]), .card > h2 + .sub:not([id]), .card p.hint, .card div.hint, .card .td-dq';
   const BLEIBT = '[role="status"], [aria-live], .warn-t, .down, .verdict, .keep, .ci, .ci *, .ci-done, .ci-done *, .hp-leer, .syncbar, .syncbar *, .info-knopf';
   const WARN_IN = '[role="status"], [aria-live], .warn-t, .down, .verdict, .keep';
-  const ERGEBNIS = 'canvas, table, ul, ol, dl, .kv, .verdict, .rg, .dev-num, .ci, .ci-done, .race, .cal, .rd-status, .td-tiles, .td-verdict, input, textarea, .bk-satz, .hp-wo, .hp-leer, img, .dev-tile';
+  const ERGEBNIS = 'canvas, svg.bib-svg, table, ul, ol, dl, .kv, .verdict, .rg, .dev-num, .ci, .ci-done, .race, .cal, .rd-status, .td-tiles, .td-verdict, input, textarea, .bk-satz, .hp-wo, .hp-leer, img, .dev-tile';
   const LISTEN_IN = ["#v56-plan", "#v56-saison", "#v56-ermuedung"];
   V.erklImmer = () => lsGet("sf.erkl.immer") === "1";
   function infoKarte(card) {

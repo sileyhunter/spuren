@@ -155,6 +155,16 @@
   H.einheit = function (key) {
     C = UI() && UI().C; if (!C) return;
     const e = finde(key); if (!e) return;
+    blatt(e, key, null);
+  };
+  /** V6.5: beliebige Einheit als Blatt (z. B. aus der Enduco-Bibliothek): p wie ein Kalendereintrag, opt.extra = HTML vor dem Fuss,
+   *  opt.datumText statt des Datums (z. B. «exportiert am …»). Ohne «Passende Route finden». */
+  H.einheitP = function (p, opt) {
+    C = UI() && UI().C; if (!C || !V6()) return;
+    blatt(einheit(p, null), "x", opt || {});
+  };
+  function blatt(e, key, opt) {
+    opt = opt || {};
     const W = V6(), titel = e.p.title || e.p.name || SPORT_WORT[e.sport] || "Training";
     const q = e.p.quelle || (key[0] === "n" ? "Enduco über Garmin, noch ohne Datum" : "Garmin-Kalender");
     const total = e.pr ? e.pr.breite_s : 0, ca = e.pr && e.pr.ohneDauer ? "≈ " : "";
@@ -164,7 +174,7 @@
     const route = ROUTBAR.includes(e.sport) && window.TRUI && !C.IS_DEMO;
     const rKey = key[0] === "p" ? `${e.p.date}|${key.slice(2)}` : null;
     const html = `<div class="ek-blatt-kopf"><span class="ek-sport gross" style="--sp:${spFarbe(e.sport)}">${W.sportIcon(e.sport, 28)}</span>
-        <div><h2 id="v59-ov-h" tabindex="-1">${esc(titel)}</h2><p class="sub">${e.p.date ? esc(tagText(e.p.date)) + " · " : ""}${esc(SPORT_WORT[e.sport] || e.sport)} · ${esc(q)}</p></div></div>
+        <div><h2 id="v59-ov-h" tabindex="-1">${esc(titel)}</h2><p class="sub">${opt.datumText ? esc(opt.datumText) + " · " : e.p.date ? esc(tagText(e.p.date)) + " · " : ""}${esc(SPORT_WORT[e.sport] || e.sport)} · ${esc(q)}</p></div></div>
       <div class="kv ek-kv">${kv.map(([w, l]) => `<div><b>${esc(w)}</b><span>${esc(l)}</span></div>`).join("")}</div>
       ${e.wo && e.wo.schritte.length ? `
       <h3 class="abschnitt">${W.icon("fokus", 15)}Fokus-Intensitäten</h3>${zonenSkala(e)}
@@ -174,15 +184,17 @@
       <ol class="ek-schritte">${schritteListe(e)}</ol>` : `<p class="ek-ohne">Keine Schritte im Kalender – Ziele siehe Garmin.</p>`}
       ${e.wo && e.wo.beschreibung ? `<h3 class="abschnitt">Beschreibung</h3><p class="ek-text">${esc(e.wo.beschreibung)}</p>` : ""}
       ${e.wo && e.wo.hinweise.length ? e.wo.hinweise.map((h) => `<p class="warn-t">${esc(h)}</p>`).join("") : ""}
+      ${opt.extra || ""}
       <p class="ek-quelle">Dauer: ${esc((e.wo && e.wo.dauer_quelle) || "unbekannt")}. Zonen und Farben: ${esc((e.wo && e.wo.zonen) || "kein aktives Zonenprofil")}; Balkenhöhe = Lage in der Zone (${esc(W.VERSIONS.profil)}, ${esc(TR().VERSIONS.workout)}). Nur lesen – geändert wird in Enduco bzw. Garmin.</p>
       <div class="blatt-fuss"><button type="button" class="btn-zurueck" data-x aria-label="Zurück">${W.icon("zurueck", 22)}</button>
-        ${route && rKey ? `<button type="button" class="btn primary gross" data-str="${esc(rKey)}">${W.icon("route", 20)} Passende Route finden</button>`
+        ${key === "x" ? "" : route && rKey ? `<button type="button" class="btn primary gross" data-str="${esc(rKey)}">${W.icon("route", 20)} Passende Route finden</button>`
           : route && key[0] === "n" && e.p.wid ? `<button type="button" class="btn primary gross" data-v6str="n:${esc(e.p.wid)}">${W.icon("route", 20)} Passende Route finden</button>` : ""}</div>`;
     const ov = V59().blatt("einheit", html);
     const sb = ov.querySelector("[data-str]"); if (sb) sb.addEventListener("click", () => V59().schliessen());
     const nb = ov.querySelector("[data-v6str]");
     if (nb) nb.onclick = () => { V59().schliessen(); if (window.APP) { window.APP.showTab("karte"); window.APP.setPlanActive(true); } window.TRUI.show({ key: nb.dataset.v6str }); };
-  };
+    if (opt.nachher) opt.nachher(ov);
+  }
 
   /* ---------- Optionen für heute ---------- */
   function gehe(view, id) {

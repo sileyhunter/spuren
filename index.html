@@ -1092,6 +1092,24 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
     </div>
   </section>
 
+  <!-- ================= BIBLIOTHEK (V6.5) ================= -->
+  <section class="view" id="view-bibliothek" role="region" aria-label="Enduco-Bibliothek" hidden>
+    <div class="dash">
+      <div class="card w12" id="bib-card">
+        <div class="card-head"><div><h2>Enduco-Bibliothek</h2><div class="sub" id="bib-sub">Jedes Enduco-Workout, das über Garmin kam – mit Text, Schritten, Terminen und Fassungen</div></div></div>
+        <div id="bib-inhalt"></div>
+      </div>
+      <div class="card w12" id="bib-monate-card">
+        <div class="card-head"><div><h2>Enduco über die Monate</h2><div class="sub">Geplante Stunden je Sportart und Anteil der Stufen</div></div></div>
+        <div id="bib-monate"></div>
+      </div>
+      <div class="card w12" id="bib-uebungen-card">
+        <div class="card-head"><div><h2>Schwimmübungen aus Enduco</h2><div class="sub">Übungen und Serien aus den Schwimm-Workouts</div></div></div>
+        <div id="bib-uebungen"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- ================= TRAINING ================= -->
   <section class="view" id="view-training" role="region" aria-label="Fortschritt" hidden>
     <div class="dash">
@@ -1532,6 +1550,8 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <script src="js/v64.js"></script>
 <script src="js/wissen.js"></script>
 <script src="js/v64-ui.js"></script>
+<script src="js/v65.js"></script>
+<script src="js/v65-ui.js"></script>
 <script>
 (() => {
   const b64d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
@@ -1869,6 +1889,17 @@ function makeDemo() {
   planned.sort((x, y) => x.date.localeCompare(y.date));
   const workouts_neu = [{ wid: 900001, title: "Lauf Schwelle (Beispiel)", sport: "running", dur_s: 3600, erstellt: ago(1) + "T07:30:00", desc: "", quelle: "Beispiel-Workout",
     steps: [vz(900, 2.6, 2.8, "warmup"), rep(3, [vz(480, 3.45, 3.6), vz(180, 2.6, 2.8, "rest")]), vz(720, 2.6, 2.8, "cooldown")] }];
+  // V6.5 Demo: erfundene Enduco-Bibliothek (bib-1.0) aus dem Beispielplan, dazu ältere Workouts für «über die Monate» (Texte erfunden)
+  const SCHWIMM_UE = [sw(200, "warmup", "Einschwimmen | Recovery | 2:45min/100m"), rep(4, [Object.assign(sw(50, "other", "½Lanes | Abschlag mit Pause | Endurance | 2:50min/100m"), { equipment_type: "fins" }), sp(10)]),
+    rep(4, [sw(50, "other", "½Lanes | Faustschwimmen | Endurance | 2:45min/100m"), sp(10)]), rep(6, [sw(100, "interval", "2Lanes | Grundlagenausdauer | Endurance | 2:20min/100m"), sp(20)]), sw(200, "cooldown", "Ausschwimmen | Recovery | 2:45min/100m")];
+  const enduco_bib = { v: "bib-1.0", workouts: {}, texte: {}, stand: iso(today), liste_stand: iso(today) };
+  const BIB_TEXT = { rad: "Beispieltext: gleichmässige Ausfahrt mit klaren Zielbereichen (erfunden).", lauf: "Beispieltext: Lauf mit ruhigem Beginn und klarer Struktur (erfunden).", schwimm: "Beispieltext: Technikteil, dann eine Serie im Grundlagenbereich (erfunden)." };
+  let bibWid = 910000;
+  const bibAdd = (titel, sport, dur, steps, erstellt, termin, alt) => { const id = String(bibWid++), th = "demo-" + sport; enduco_bib.texte[th] = BIB_TEXT[sport];
+    const v = { ab: erstellt, gesehen: erstellt, text_h: th, dauer_s: dur || null, steps: steps || null };
+    enduco_bib.workouts[id] = { wid: id, titel, sport, erstellt: erstellt + "T20:00:00.0", termine: termin ? [termin] : [], versionen: alt ? [Object.assign({}, v, { dauer_s: alt, steps: null }), Object.assign({}, v, { ab: ago(2) })] : [v] }; };
+  for (const p of planned) bibAdd(p.title, p.sport, p.dur_s, p.sport === "schwimm" ? SCHWIMM_UE : p.steps, iso(addDays(new Date(p.date + "T12:00:00"), -1)), p.date, p.date === iso(addDays(today, 2)) ? 3000 : null);
+  for (let w = 5; w <= 40; w++) for (const dow of [1, 2, 4, 6]) { const q = PLAN[dow]; bibAdd(q[0], q[1], q[2], w % 3 ? null : q[3], ago(7 * w + dow), null); }
   const points = [
     { id: "demo-p1", name: "Jagdposten Waldrand (Beispiel)", cat: "jagd", lat: 46.8742, lon: 8.2911 },
     { id: "demo-p2", name: "Jagdposten Lichtung (Beispiel)", cat: "jagd", lat: 46.8611, lon: 8.3127 },
@@ -1891,7 +1922,7 @@ function makeDemo() {
       pruefung_text: "Summe der Zeilen 50 g KH = Total laut Notiz 50 g", hinweise: [], gi: [], notiz: "" });
   }
   return { demo: true, activities: acts, days, weights, ftp, ftp_est, pdc, lactate, points, routes, tests, planned, workouts_neu, stufen, laktat_vorschau, protokolle, versions, referenz,
-    garmin_notizen, fueling_vorschau };
+    garmin_notizen, fueling_vorschau, enduco_bib };
 }
 
 /* =====================================================================
@@ -1968,11 +1999,11 @@ document.getElementById("banner").hidden = !D.demo;
 document.getElementById("countdowns").innerHTML = RACES.map((r) => `<div>${esc(r.short)} <b>${daysTo(r.date)}</b> Tage</div>`).join("");
 document.getElementById("stand").textContent = !D.demo && D.updated ? "Stand " + D.updated : "";
 
-const TAB_NAMES = ["karte", "heute", "kalender", "plan", "wissen", "training", "laktat", "ausdauer", "leistung", "schwimmen", "koerper"];
+const TAB_NAMES = ["karte", "heute", "kalender", "plan", "wissen", "bibliothek", "training", "laktat", "ausdauer", "leistung", "schwimmen", "koerper"];
 /* V5.9.5 (bedienung-1.0): fünf Bereiche in einer Leiste unten. «Analyse» bündelt Fortschritt, Laktat & Zonen, Ausdauer und Leistung,
    «Körper & Schwimmen» die beiden Ansichten; innerhalb eines Bereichs wechselt eine Leiste oben (immer sichtbar beim Scrollen). */
-const GRUPPEN = { heute: ["heute"], kalender: ["kalender"], plan: ["plan", "wissen"], analyse: ["training", "laktat", "ausdauer", "leistung", "koerper", "schwimmen"], karte: ["karte"] };   // V6.0.2: Plan neu, Körper und Schwimmen unter Analyse; V6.4: Wissen unter Plan
-const UNTER_NAME = { plan: "Plan", wissen: "Wissen", training: "Fortschritt", laktat: "Laktat", ausdauer: "Ausdauer", leistung: "Leistung", koerper: "Körper", schwimmen: "Schwimmen" };
+const GRUPPEN = { heute: ["heute"], kalender: ["kalender"], plan: ["plan", "wissen", "bibliothek"], analyse: ["training", "laktat", "ausdauer", "leistung", "koerper", "schwimmen"], karte: ["karte"] };   // V6.0.2: Plan neu, Körper und Schwimmen unter Analyse; V6.4: Wissen unter Plan; V6.5: Bibliothek unter Plan
+const UNTER_NAME = { plan: "Plan", wissen: "Wissen", bibliothek: "Bibliothek", training: "Fortschritt", laktat: "Laktat", ausdauer: "Ausdauer", leistung: "Leistung", koerper: "Körper", schwimmen: "Schwimmen" };
 const gruppeVon = (name) => Object.keys(GRUPPEN).find((g) => GRUPPEN[g].includes(name)) || "heute";
 for (const [g, views] of Object.entries(GRUPPEN)) {
   if (views.length < 2) continue;
@@ -3358,6 +3389,9 @@ const TABS = {
   },
   wissen: {                           // V6.4: Modelle, Laktat, Messungen und Regeln mit Quellen (js/wissen.js, js/v64-ui.js)
     draw() { if (window.V64UI) (window.V5UI ? V5_READY : Promise.resolve()).then(() => { try { V64UI.wissenZeichnen(); } catch (e) { console.error(e); } }); },
+  },
+  bibliothek: {                       // V6.5: Enduco-Bibliothek, Enduco über die Monate, Schwimmübungen (js/v65.js, js/v65-ui.js)
+    draw() { if (window.V65UI && window.V5UI) V5_READY.then(() => { try { V65UI.zeichnen(); } catch (e) { console.error(e); } }); },
   },
 
   training: {
