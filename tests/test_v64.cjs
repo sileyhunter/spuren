@@ -198,7 +198,7 @@ test("Speichern: Liste «modell» auf Seite, Eingang und Werkzeugen gleich; Mode
   assert.deepEqual(py[1].split(",").map((x) => x.trim().replace(/"/g, "")).filter(Boolean).sort(), V64.REIHE.slice().sort());
 });
 
-/* ---------------- Wissen (wissen-1.0) ---------------- */
+/* ---------------- Wissen (wissen-1.1) ---------------- */
 test("Wissen: Kapitel eindeutig, vollständig, Verweise auflösbar", () => {
   const ids = WS.KAPITEL.map((k) => k.id);
   assert.equal(new Set(ids).size, ids.length, "Kapitel-IDs eindeutig");
@@ -240,4 +240,16 @@ test("Wissen: Regel-Liste verweist auf vorhandene Versionen und Kapitel", () => 
     assert.ok(text && WS.kapitel(kap), `${mod}.${key}: Kapitel ${kap}`);
   }
   for (const k of WS.KAPITEL) for (const [mod, key] of k.seite || []) assert.ok(M[mod] && M[mod].VERSIONS[key], `${k.id}: ${mod}.${key}`);
+});
+
+test("Wissen 1.1: Kapitel «aufbau» mit Laufaufbau, Scores und Aufteilung", () => {
+  const WS = require("../js/wissen.js");
+  assert.equal(WS.VERSION, "wissen-1.1");
+  const k = WS.kapitel("aufbau");
+  assert.ok(k, "Kapitel aufbau fehlt");
+  const v = WS.verweise(k.text.join(" ") + " " + k.kurz);
+  for (const q of ["frandsen2025", "knechtle2011", "millet2002", "buist2008", "lauersen2014", "garmin2025last", "impellizzeri2021"]) assert.ok(v.quellen.includes(q), q);
+  for (const q of k.quellen) assert.ok(v.quellen.includes(q), "Liste ohne Verweis im Text: " + q);
+  assert.ok(WS.REGELN.some((r) => r[0] === "V64" && r[1] === "aufteilung" && r[3] === "aufbau"));
+  assert.ok(WS.kapitel("modelle").text.join(" ").includes("[[#aufbau]]"));
 });

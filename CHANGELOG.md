@@ -1,5 +1,13 @@
 # Änderungen
 
+## V6.4.1 · 13.11.2026 · Wissen: Sportarten verteilen und Umfang aufbauen
+- **Neues Kapitel (wissen-1.1)** unter Plan → Wissen: wie die Stunden auf Schwimmen, Rad und Laufen verteilt werden (aufteilung-1.0 neben den
+  Trainingsstunden von Freizeit-Ironman-Athleten und den Anteilen im Rennen), was sich zwischen den Sportarten überträgt, wo Überlastungen
+  entstehen, Belastung gegen Belastbarkeit, wie man den Laufumfang aufbaut (10-%-Regel pro Woche, Sprünge über zwei Wochen, einzelner Lauf
+  gegen den längsten der letzten 30 Tage), Krafttraining, die Scores (Belastungsverhältnis mit Kritik, Laufbelastbarkeit, Einzellauf) und
+  Schwimmen und Rad. 15 neue Quellen (DOI bzw. Garmin-Handbuch als Herstellerangabe). Die Regel «Stunden je Sportart» verweist neu hierher.
+- Geprüft: `tests/test_v64.cjs` (+ Kapitel, Verweise, Quellenliste, Regel-Verweis), alle bisherigen Tests.
+
 ## V6.4.0 · 13.11.2026 · Etappe 4: Trainingsmodell, Woche nach Modell und Wissen
 - **Trainingsmodell (modell-1.0):** Unter Plan wählbar: polarisiert, pyramidal, Schwelle mit Laktat (norwegisch), rennspezifisch und
   **kombiniert** (Standard: Winter polarisiert, ab 1. Februar rennspezifisch; Datum änderbar). Gespeichert verschlüsselt mit «Direkt

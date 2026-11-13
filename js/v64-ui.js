@@ -1,5 +1,5 @@
 /* V6.4 Etappe 4 · Oberfläche: Plan → «Woche nach Modell» und «Trainingsmodell», Ansicht «Wissen» (Plan → Wissen).
-   Rechenlogik in js/v64.js (modell-1.0, wochenplan-1.0, tid-1.0), Inhalte in js/wissen.js (wissen-1.0).
+   Rechenlogik in js/v64.js (modell-1.0, wochenplan-1.0, tid-1.0), Inhalte in js/wissen.js (wissen-1.1).
    Das Modell wird verschlüsselt über «Direkt speichern» gespeichert (Liste «modell» → plan_modell). Die Seite schreibt nichts nach
    Garmin oder Enduco; der Wochenvorschlag steht neben dem Enduco-Plan. Links mit data-wissen="<Kapitel>" öffnen das Wissen überall. */
 (function () {
@@ -197,7 +197,8 @@
     const W = WS();
     return String(t)
       .replace(/\[\[[a-z0-9-]+\]\](?:\s*\[\[[a-z0-9-]+\]\])*/g, (m) => `(${m.match(/[a-z0-9-]+/g).map(zitat).join("; ")})`)
-      .replace(/\[\[#([a-z0-9-]+)\]\]/g, (_, id) => { const k = W.kapitel(id); return `<a href="#wissen" class="ws-kap" data-wissen="${esc(id)}">«${esc(k ? k.titel : id)}»</a>`; });
+      .replace(/\[\[#([a-z0-9-]+)\]\]/g, (_, id) => { const k = W.kapitel(id); return `<a href="#wissen" class="ws-kap" data-wissen="${esc(id)}">«${esc(k ? k.titel : id)}»</a>`; })
+      .replace(/(\d) %/g, "$1&nbsp;%");   // «10 %» nicht umbrechen
   }
   function quelleVoll(id) {
     const q = WS().QUELLEN[id], l = WS().link(id);
