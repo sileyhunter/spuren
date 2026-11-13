@@ -244,7 +244,7 @@ test("Wissen: Regel-Liste verweist auf vorhandene Versionen und Kapitel", () => 
 
 test("Wissen 1.2/1.3: Kapitel «aufbau» und «vergleich» mit Quellen und Regeln", () => {
   const WS = require("../js/wissen.js");
-  assert.equal(WS.VERSION, "wissen-1.4");
+  assert.equal(WS.VERSION, "wissen-1.5");
   const k = WS.kapitel("aufbau");
   assert.ok(k, "Kapitel aufbau fehlt");
   const v = WS.verweise(k.text.join(" ") + " " + k.kurz);
@@ -496,7 +496,7 @@ test("Wissen 1.4 (Audit V6.4): Versionsangaben in den Texten entsprechen dem Cod
   const text = WS.KAPITEL.map((k) => k.text.join(" ") + " " + k.kurz).join(" ");
   const alt = [...text.matchAll(/\b([a-z]+(?:-[a-z]+)*)-(\d+\.\d+)\b/g)].map((m) => m[0]).filter((v) => { const p = v.replace(/-\d+\.\d+$/, ""); return aktuell.has(p) && aktuell.get(p) !== v; });
   assert.deepEqual(alt, [], "veraltete Versionen im Wissenstext");
-  assert.ok(/readiness-2\.1/.test(text) && /saison-1\.2/.test(text) && /aufbau-1\.1/.test(text) && /vergleich-1\.1/.test(text) && /intensitaet-1\.1/.test(text));
+  assert.ok(/readiness-2\.1/.test(text) && /saison-1\.2/.test(text) && /aufbau-1\.1/.test(text) && /vergleich-1\.2/.test(text) && /intensitaet-1\.1/.test(text));
   // Audit B: Titel Rosenblat 2019, sechsstufige Skala, keine «trainierbare» Ermüdungsresistenz, Muñoz 2014b nicht als Überlegenheit
   assert.match(WS.QUELLEN.rosenblat2019.t, /intensity distribution on endurance sport performance/);
   assert.ok(!/Fünf-Zonen-Skala|trainierbare Eigenschaft|Hälfte der Wiederholungen|Stark für die VO2max/.test(text + JSON.stringify(WS.QUELLEN)));
@@ -526,4 +526,28 @@ test("Vergleich (Audit V6.4 D12): laufende Woche – jeder Unterschied nennt sei
   const mitFenster = r.unterschiede.filter((u) => ["stunden", "sportart", "hart", "schwelle", "lang", "frei"].includes(u.art));
   assert.ok(mitFenster.length >= 2);
   for (const u of mitFenster) assert.match(u.text, /\(bis Do 19\.11\.\)/, u.text);
+});
+test("Vergleich 1.2 (V6.5 planwahl-1.0): Wahl je Tag – Abweichung je Sportart nur für abgeschlossene Tage mit bekannter Dauer", () => {
+  const w = woche({ stunden: 9 });                                     // Woche ab 16.11.2026
+  const di = w.tage[1], vMin = di.einheiten.filter((e) => e.sport === "lauf").reduce((s, e) => s + e.dauer, 0);
+  const enduco = [{ date: "2026-11-17", sport: "rad", titel: "Beispiel Rad", dauer_s: 3600, stufe: "locker" },
+    { date: "2026-11-18", sport: "lauf", titel: "Beispiel ohne Dauer", dauer_s: null, stufe: "locker" }];
+  const ist = [{ date: "2026-11-17", sport: "lauf", dauer_s: vMin * 60 }, { date: "2026-11-18", sport: "lauf", dauer_s: 1800 }, { date: "2026-11-19", sport: "rad", dauer_s: 3600 }];
+  const wahl = { "2026-11-16": "frei", "2026-11-17": "vorschlag", "2026-11-18": "enduco", "2026-11-20": "enduco", "2026-11-21": "quatsch" };
+  const r = V64.vergleich({ w, enduco, ist, heute: "2026-11-20", wahl });
+  assert.equal(r.v, "vergleich-1.2");
+  const g = r.gewaehlt;
+  assert.deepEqual(g.n, { enduco: 2, vorschlag: 1, frei: 1 }, "unbekannte Wahl zählt nicht");
+  const t = Object.fromEntries(g.tage.map((x) => [x.date, x]));
+  assert.equal(t["2026-11-16"].abw_min, null, "frei = keinem Plan gefolgt: nicht mit einem leeren Plan verglichen");
+  assert.equal(t["2026-11-16"].ist_min, 0);
+  const radV = di.einheiten.filter((e) => e.sport !== "lauf").reduce((s, e) => s + e.dauer, 0);   // Dienstag: Laufen und Schwimmkurs
+  assert.ok(radV > 0);
+  assert.equal(t["2026-11-17"].abw_min, radV, "Lauf wie im Vorschlag, nur das Schwimmen des Vorschlags fehlt (je Sportart gezählt)");
+  assert.equal(t["2026-11-18"].abw_min, null, "Enduco-Einheit ohne Dauer: nicht beurteilt");
+  assert.equal(t["2026-11-20"].ist_min, null, "heute zählt noch nicht");
+  assert.equal(g.fertig, 1, "nur Tage mit Enduco oder Vorschlag"); assert.equal(g.abw_min, radV); assert.equal(g.ohneDauer, 1, "frei zählt nicht als «ohne Dauer»");
+  assert.deepEqual(V64.vergleich({ w, enduco: [], ist: [], heute: "2026-11-20", wahl: new Map([["2026-11-17", "vorschlag"]]) }).gewaehlt.n, { enduco: 0, vorschlag: 1, frei: 0 }, "auch ohne Enduco-Daten");
+  const fr = V64.vergleich({ w, enduco, ist, heute: "2026-11-20", wahl: { "2026-11-19": "frei" } }).gewaehlt;
+  assert.equal(fr.tage[0].ist_min, 60); assert.equal(fr.tage[0].abw_min, null); assert.equal(fr.fertig, 0, "frei mit Training: keine Abweichung zu einem leeren Plan");
 });

@@ -289,8 +289,36 @@ def v5_merge(D, N):
             continue
         a, b = _upsert(D, "plan_modell", [m], what="Trainingsmodell")
         msg.append(f"Trainingsmodell {m['modell']}" + (f" (Wechsel {m['wechsel']})" if m["modell"] == "kombiniert" else "") + (" übernommen" if a or b else " unverändert"))
+    for w in N.get("planwahl_add") or []:                # V6.5 planwahl-1.0: welchem Plan Silas an einem Tag folgt (nur zum Vergleich)
+        fehler = planwahl_pruefen(w)
+        if fehler:
+            msg.append(f"Wahl nicht übernommen: {fehler}")
+            continue
+        a, b = _upsert(D, "plan_wahl", [w], what="Wahl des Plans")
+        if a or b:
+            msg.append(f"Wahl {w['date']}: {w['wahl']}")
     if msg:
         print("V5:", "; ".join(msg))
+
+
+PLANWAHL = ("enduco", "vorschlag", "frei")
+
+
+def planwahl_pruefen(w):
+    """V6.5 planwahl-1.0: Eintrag «planwahl» von der Seite → Fehlertext oder None (ID «pw-JJJJ-MM-TT», Datum, Wahl)."""
+    if not isinstance(w, dict):
+        return "kein Eintrag"
+    try:
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(w.get("date"))):
+            raise ValueError
+        dt.date.fromisoformat(str(w.get("date")))
+    except ValueError:
+        return "kein Datum"
+    if w.get("id") != "pw-" + w["date"]:
+        return "ID passt nicht zum Datum"
+    if w.get("wahl") not in PLANWAHL:
+        return f"unbekannte Wahl {w.get('wahl')!r}"
+    return None
 
 
 GARMIN_KEYS = ("activities", "days", "weights", "planned", "planned_range", "workouts_neu", "food_logs", "wx", "notizen_garmin", "enduco_schritte")

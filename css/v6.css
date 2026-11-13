@@ -608,3 +608,9 @@ section.view:has(> nav.unter) * { scroll-margin-top: 66px; }
 .bib-ue { border: 0; background: none; padding: 0; font: inherit; color: var(--accent-text); text-align: left; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 .bib-se summary { cursor: pointer; color: var(--muted); font-size: 13.5px; padding: 8px 0; }
 .bib-leg { margin-top: 6px; } .bib-leg b { font-size: 12px; font-weight: 650; color: var(--muted); margin-right: 2px; } .bib-leg i.rund { border-radius: 50%; }
+/* V6.5 Wahl je Tag (planwahl-1.0) */
+.mo-wahl { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+.mo-wahl > span { font: 700 10px/1 var(--f-body); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin-right: 1px; }
+.mo-wahl button { border: 1px solid var(--line-2); background: transparent; color: var(--muted); border-radius: 999px; padding: 4px 9px; font: 600 12px var(--f-body); min-height: 32px; cursor: pointer; }
+.mo-wahl button[aria-pressed="true"] { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+.mo-wahl button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

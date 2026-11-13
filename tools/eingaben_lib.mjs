@@ -12,6 +12,7 @@ export const LISTEN = {
   laktat_punkte: (e) => e.id, saison: (e) => e.id, trainingsrouten: (e) => e.id, routen: (e) => e.id,
   zonen: (e) => e.id,                                                                   // V6.2.2: auf der Seite bestätigte Zonenprofile
   modell: (e) => e.id,                                                                  // V6.4: gewähltes Trainingsmodell (modell-1.0)
+  planwahl: (e) => e.id,                                                                // V6.5: Wahl je Tag Enduco / Vorschlag (planwahl-1.0)
 };
 
 /** Entschlüsselte Eingaben (Struktur wie Inbox.data) → Eingabe für merge_daily.py. */
@@ -26,6 +27,7 @@ export function fuerMerge(d, quelle) {
     routen_add: clean(d.routen), routen_entfernt: d.routen_entfernt || [], laktat_punkte_bestaetigt: d.laktat_punkte_bestaetigt || [],   // V5.9.3
     zonen_add: clean(d.zonen),                                                          // V6.2.2 zonenvorschlag-1.0 (merge_daily prüft Freigabe und Test)
     modell_add: clean(d.modell),                                                        // V6.4 modell-1.0 (merge_daily prüft Modell und Datum)
+    planwahl_add: clean(d.planwahl),                                                    // V6.5 planwahl-1.0 (merge_daily prüft Datum und Wahl)
   };
   if (d.fueling_produkte) out.fueling_produkte = d.fueling_produkte;
   if (Array.isArray(d.startorte)) out.startorte = clean(d.startorte);     // V5.7: ganze Liste (Startorte bleiben verschlüsselt in data.enc.json)

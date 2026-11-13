@@ -924,6 +924,17 @@ _lkf = {l.split(":")[0] for l in _lk.stdout.splitlines() if ":" in l and not l.s
 check("Leck-Prüfung: findet ID, Zonentext, Zonengrenzen, FTP, Distanz mit Datum, Testtermin und E-Mail – nie den Wert in der Ausgabe; erfundene Werte ok",
       _lk.returncode == 1 and _lkf == {"a.js", "b.md", "c.py", "d.cjs", "e.md", "f.md", "g.md"} and "12,34" not in _lk.stdout and "263" not in _lk.stdout, _lk.stdout)
 
+# ---------- V6.5 Wahl je Tag (planwahl-1.0) ----------
+_DW = {}
+merge_daily.v5_merge(_DW, {"planwahl_add": [{"id": "pw-2026-03-02", "date": "2026-03-02", "wahl": "vorschlag", "v": "planwahl-1.0"},
+                                             {"id": "pw-2026-03-03", "date": "2026-03-03", "wahl": "enduco", "v": "planwahl-1.0"},
+                                             {"id": "pw-20260304", "date": "20260304", "wahl": "enduco"}, {"id": "pw-2026-03-05", "date": "2026-03-05", "wahl": "beides"},
+                                             {"id": "pw-2026-03-01", "date": "2026-03-06", "wahl": "frei"}]})
+merge_daily.v5_merge(_DW, {"planwahl_add": [{"id": "pw-2026-03-02", "date": "2026-03-02", "wahl": "enduco", "v": "planwahl-1.0"}]})
+check("Wahl je Tag: nur gültiges Datum, passende ID und bekannte Wahl; gleiche ID ersetzt mit Audit",
+      [(w["date"], w["wahl"]) for w in _DW.get("plan_wahl", [])] == [("2026-03-02", "enduco"), ("2026-03-03", "enduco")]
+      and any(a.get("was") == "Wahl des Plans ersetzt" for a in _DW.get("audit", [])), str(_DW.get("plan_wahl")))
+
 # ---------- V6.5 Enduco-Bibliothek (tools/bibliothek.py, bib-1.0) – erfundene Workouts ----------
 import bibliothek  # noqa: E402
 _S1 = [{"order": 1, "type": "warmup", "end_condition": "time", "end_condition_value": 600.0, "target_type": "power.zone", "target_value_low": 120.0, "target_value_high": 150.0},

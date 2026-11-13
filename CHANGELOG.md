@@ -1,5 +1,16 @@
 # Änderungen
 
+## V6.5 · 13.11.2026 · Etappe 5, Teil 2: «Ich folge» – deine Wahl je Tag
+- **planwahl-1.0:** In «Woche nach Modell» hält «Ich folge» je Tag fest, welchem Plan du folgst: Enduco, Vorschlag oder frei. Die Wahl geht
+  verschlüsselt mit «Direkt speichern» (Eingabe `planwahl` → `plan_wahl`, gleicher Tag ersetzt mit Audit; `merge_daily.planwahl_pruefen`: Datum,
+  ID «pw-Datum», bekannte Wahl). Sie ändert nichts in Enduco oder Garmin. Keine Knöpfe an Renntagen und an Tagen, an denen weder Vorschlag noch Enduco etwas planen.
+- **vergleich-1.2:** Der Vergleich zeigt deine Wahl der Woche und für abgeschlossene Tage, wie weit das Absolvierte neben dem gewählten Plan lag
+  (Minuten je Sportart als Betrag, Schwimmen, Rad, Laufen). «Frei» = keinem Plan gefolgt: gezählt, aber nicht mit einem leeren Plan verglichen.
+  Tage mit Enduco-Einheiten ohne bekannte Dauer zählen nicht und werden genannt. Die Wochenliste «Vorschlag und Enduco über die Wochen» nennt die Wahl je Woche. Welcher Plan besser ist, sagt das weiterhin nicht.
+- **wissen-1.5:** Kapitel «Vorschlag und Enduco vergleichen» um «Deine Wahl je Tag» ergänzt.
+- Geprüft: `tests/test_v64.cjs` (+ Wahl je Tag: Abweichung je Sportart, nur abgeschlossene Tage, Dauer offen, frei ohne Vergleich), `tests/test_tools.py`
+  (+ Wahl je Tag: falsches Datum, falsche ID und unbekannte Wahl abgelehnt, gleicher Tag ersetzt mit Audit), alle bisherigen Tests, Leck-Prüfung.
+
 ## V6.5 · 13.11.2026 · Etappe 5, Teil 1: Enduco-Bibliothek und privates Archiv
 - **Enduco-Bibliothek (bib-1.0, `tools/bibliothek.py`):** Jedes Enduco-Workout, das über Garmin kommt, bleibt erhalten – mit Volltext, Schritten
   (beim Schwimmen mit Übung, Hilfsmittel und Pace je Abschnitt), Kalenderterminen und Versionen. Nichts wird gelöscht; ändert Enduco ein Workout

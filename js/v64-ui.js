@@ -1,7 +1,8 @@
 /* V6.4 Etappe 4 · Oberfläche: Plan → «Woche nach Modell» und «Trainingsmodell», Ansicht «Wissen» (Plan → Wissen).
    Rechenlogik in js/v64.js (modell-1.0, wochenplan-1.2, tid-1.0, intensitaet-1.1, aufbau-1.1), Inhalte in js/wissen.js.
    V6.4.2: Karte «Aufbau-Check» (Plan) und «Intensität je Sportart» im Trainingsmodell (gespeichert im selben Eintrag «modell»).
-   V6.4.3: «Woche nach Modell» auch für vergangene Wochen (nachgerechnet mit dem Stand vor dem Montag) mit «Vergleich mit Enduco» (vergleich-1.1)
+   V6.4.3: «Woche nach Modell» auch für vergangene Wochen (nachgerechnet mit dem Stand vor dem Montag) mit «Vergleich mit Enduco» (vergleich-1.1;
+   V6.5 vergleich-1.2: «Ich folge» je Tag, gespeichert als Eingabe «planwahl» → plan_wahl)
    und Karte «Vorschlag und Enduco über die Wochen».
    Das Modell wird verschlüsselt über «Direkt speichern» gespeichert (Liste «modell» → plan_modell). Die Seite schreibt nichts nach
    Garmin oder Enduco; der Wochenvorschlag steht neben dem Enduco-Plan. Links mit data-wissen="<Kapitel>" öffnen das Wissen überall. */
@@ -81,6 +82,21 @@
     const uhr = V64().enducoAusUhr((C.D.activities || []).filter((a) => a && a.date >= mo && a.date <= bis), P);
     return { P, stunden: s / 3600, z, mit, ohne, stufen, liste: liste.concat(uhr) };
   }
+  /** V6.5 planwahl-1.0: deine Wahl je Tag (Daten, darüber die noch nicht eingespielten Eingaben auf diesem Gerät). */
+  function wahlMap() {
+    const m = new Map();
+    for (const w of (C.D.plan_wahl || [])) if (w && w.date) m.set(w.date, w.wahl);
+    const lok = UI() && UI().Inbox && UI().Inbox.data ? UI().Inbox.data.planwahl || [] : [];
+    for (const w of lok) if (w && w.date) m.set(w.date, w.wahl);
+    return m;
+  }
+  const WAHL_WORT = { enduco: "Enduco", vorschlag: "Vorschlag", frei: "frei" };
+  async function wahlSetzen(date, wahl) {
+    const I = UI() && UI().Inbox; if (!I || !I.data) return;
+    await I.upsert("planwahl", { id: "pw-" + date, date, wahl, v: "planwahl-1.0", gespeichert: new Date().toISOString() });
+    wocheZeichnen();
+    try { verlaufZeichnen(); } catch (e) { console.error(e); }
+  }
   /** Absolvierte Einheiten einer Woche (Schwimmen, Rad, Laufen) für vergleich-1.1. */
   function istWoche(mo) {
     const bis = V64().addDays(mo, 6);
@@ -125,9 +141,15 @@
   const STUFE_WORT = { alles: "hart", schwelle: "Schwelle", locker: "locker", test: "Test", offen: "offen" };
   function stufeTag(st) { const k = STUFE_WORT[st] ? st : "offen"; return `<span class="vg-st ${k}">${STUFE_WORT[k]}</span>`; }
   const wtag = (iso) => ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"][new Date(iso + "T12:00:00").getDay()];
+  /** V6.5: Zusammenfassung deiner Wahl je Tag (vergleich-1.2). */
+  function wahlHTML(g) {
+    if (!g || !(g.n.enduco + g.n.vorschlag + g.n.frei)) return "";
+    const n = [g.n.enduco ? `Enduco an ${g.n.enduco} ${g.n.enduco === 1 ? "Tag" : "Tagen"}` : "", g.n.vorschlag ? `Vorschlag an ${g.n.vorschlag}` : "", g.n.frei ? `frei an ${g.n.frei}` : ""].filter(Boolean).join(", ");
+    return `<p class="vg-ist keep">Deine Wahl: ${esc(n)}.${g.fertig ? ` An ${g.fertig} abgeschlossenen ${g.fertig === 1 ? "Tag" : "Tagen"} mit Enduco oder Vorschlag lag das Training ${hm(g.abw_min)} h neben dem gewählten Plan (geplant ${hm(g.plan_min)} h, absolviert ${hm(g.ist_min)} h; je Sportart gezählt).` : g.n.enduco + g.n.vorschlag ? " Noch kein abgeschlossener Tag mit Enduco oder Vorschlag." : ""}${g.n.frei ? " Frei gewählte Tage werden nicht mit einem Plan verglichen." : ""}${g.ohneDauer ? ` ${g.ohneDauer} ${g.ohneDauer === 1 ? "Tag" : "Tage"} ohne bekannte Enduco-Dauer nicht gezählt.` : ""}</p>`;
+  }
   function vergleichHTML(VG, K) {
     const titel = `<h3 class="abschnitt">Vergleich mit Enduco</h3>`;
-    if (VG.leer) return `${titel}<p class="vg-leer">${K.vorbei ? "Für diese Woche gibt es keine Enduco-Daten (weder im Garmin-Kalender noch als Workout auf der Uhr)." : "Von Enduco steht für diese Woche noch nichts im Garmin-Kalender – du exportierst meist am Vortag."}</p>`;
+    if (VG.leer) return `${titel}${wahlHTML(VG.gewaehlt)}<p class="vg-leer">${K.vorbei ? "Für diese Woche gibt es keine Enduco-Daten (weder im Garmin-Kalender noch als Workout auf der Uhr)." : "Von Enduco steht für diese Woche noch nichts im Garmin-Kalender – du exportierst meist am Vortag."}</p>`;
     // V6.4.4 (Audit D11): Enduco nur teilweise bekannt → Summen und Stufen als «mind.», nicht als Vergleich
     const S = VG.summen, teil = !!(VG.abdeckung && !VG.sicher), mind = (x) => (teil ? `mind. ${x}` : x), zeile = (n, a, b) => `<tr><th scope="row">${n}</th><td>${a}</td><td>${b}</td></tr>`;
     const zelle = (x) => `${hm(x.min)}${x.n ? ` <small>(${x.n})</small>` : ""}${x.offen ? ` <small>+${x.offen} ohne Dauer</small>` : ""}`;
@@ -141,21 +163,22 @@
         ${zeile("<b>Total</b>", `<b>${mind(zelle(S.E.total))}</b>`, `<b>${zelle(S.V.total)}</b>`)}
         ${zeile("hart", mind(VG.stufen.E.alles.length), VG.stufen.V.alles.length)}${zeile("Tempo, Schwelle", mind(VG.stufen.E.schwelle.length), VG.stufen.V.schwelle.length)}</tbody></table>
       ${teil ? `<p class="vg-fenster">Enduco nur teilweise bekannt: «mind.» = was im Kalender oder auf der Uhr stand.</p>` : ""}
-      ${ist}
+      ${ist}${wahlHTML(VG.gewaehlt)}
       ${VG.unterschiede.length ? `<ul class="mo-hinweise vg-u">${VG.unterschiede.map((u) => `<li${u.art === "abdeckung" ? ' class="warn-t"' : ""}>${esc(u.text)}</li>`).join("")}</ul>` : `<p class="vg-leer">Keine grossen Unterschiede in Stunden, Intensität und langen Einheiten.</p>`}`;
   }
   /** Karte «Vorschlag und Enduco über die Wochen»: letzte 8 Wochen, je nachgerechneter Vorschlag gegen Enduco und Absolviertes. */
   function verlaufZeichnen() {
     const box = $("vg-verlauf"); if (!box) return;
-    const V = V64(), h = heuteISO(), rows = []; let nE = 0, nV = 0, nG = 0;
+    const V = V64(), h = heuteISO(), rows = [], WM = wahlMap(); let nE = 0, nV = 0, nG = 0;
     for (let off = -1; off >= -8; off--) {
-      const K = kontext(off), w = K.w, E = enducoWoche(w.woche), VG = V.vergleich({ w, enduco: E.liste, ist: istWoche(w.woche), heute: h });
+      const K = kontext(off), w = K.w, E = enducoWoche(w.woche), VG = V.vergleich({ w, enduco: E.liste, ist: istWoche(w.woche), heute: h, wahl: WM });
       const kw = V6().isoWoche(w.woche), S = VG.summen, iMin = VG.I.reduce((a, x) => a + x.min, 0);
       const urteil = VG.naeher ? VG.naeher.urteil : null;
       if (urteil === "Enduco") nE++; else if (urteil === "Vorschlag") nV++; else if (urteil === "ähnlich") nG++;
       const info = VG.leer ? "keine Enduco-Daten" : !VG.sicher ? `Enduco nur teilweise bekannt (${VG.abdeckung.mitPlan} von ${VG.abdeckung.n} Einheiten)`
         : `Enduco ${hm(S.E.total.min)} h · Vorschlag ${hm(S.V.total.min)} h · absolviert ${hm(iMin)} h · hart ${VG.stufen.E.alles.length}/${VG.stufen.V.alles.length}`;
-      rows.push(`<li><button type="button" class="vg-w" data-vgw="${off}"><span class="vg-wk"><b>KW ${kw}</b> ${esc(dkurz(w.woche))}–${esc(dkurz(V.addDays(w.woche, 6)))}<small>${esc(info)}</small></span>${urteil ? `<span class="vg-urteil ${urteil === "Enduco" ? "e" : urteil === "Vorschlag" ? "v" : "g"}">${urteil === "ähnlich" ? "ähnlich" : `näher an ${urteil === "Enduco" ? "Enduco" : "Vorschlag"}`}</span>` : ""}</button></li>`);
+      const gw = VG.gewaehlt, gwText = gw && (gw.n.enduco || gw.n.vorschlag) ? ` · gewählt: ${[gw.n.enduco ? `Enduco ${gw.n.enduco}` : "", gw.n.vorschlag ? `Vorschlag ${gw.n.vorschlag}` : ""].filter(Boolean).join(", ")}` : "";
+      rows.push(`<li><button type="button" class="vg-w" data-vgw="${off}"><span class="vg-wk"><b>KW ${kw}</b> ${esc(dkurz(w.woche))}–${esc(dkurz(V.addDays(w.woche, 6)))}<small>${esc(info + gwText)}</small></span>${urteil ? `<span class="vg-urteil ${urteil === "Enduco" ? "e" : urteil === "Vorschlag" ? "v" : "g"}">${urteil === "ähnlich" ? "ähnlich" : `näher an ${urteil === "Enduco" ? "Enduco" : "Vorschlag"}`}</span>` : ""}</button></li>`);
     }
     const n = nE + nV + nG;
     box.innerHTML = `<p class="vg-sum keep" role="status">${n ? `In ${n} ${n === 1 ? "Woche" : "Wochen"} mit bekanntem Enduco-Plan: ${nE}× näher an Enduco, ${nV}× näher am Vorschlag${nG ? `, ${nG}× ähnlich` : ""}.` : "Noch keine Woche, in der der Enduco-Plan genug bekannt ist – der Vergleich füllt sich mit jeder Woche."}</p>
@@ -178,7 +201,7 @@
   function wocheZeichnen() {
     const box = $("mo-woche"); if (!box) return;
     const K = (LETZTE = kontext(WOCHE)), w = K.w, E = enducoWoche(w.woche), h = heuteISO(), V = V64();
-    const VG = V.vergleich({ w, enduco: E.liste, ist: istWoche(w.woche), heute: h });
+    const WM = wahlMap(), VG = V.vergleich({ w, enduco: E.liste, ist: istWoche(w.woche), heute: h, wahl: WM });
     const planDauer = (p) => (H() && H().planDauer ? H().planDauer(p) : p.dur_s);
     const tage = w.tage.map((t, ti) => {
       const ist = (C.D.activities || []).filter((a) => a.date === t.date), plan = E.P.filter((p) => p.date === t.date);
@@ -192,7 +215,10 @@
       const end = eTag.length || andere.length ? `<p class="mo-neben"><span class="mo-q">Enduco</span>${eTag.map((x) => `${esc(x.titel)}${isNum(x.min) ? " " + hm(x.min) : ""} ${stufeTag(x.stufe)}${x.herkunft === "uhr" ? " <small>(Uhr)</small>" : ""}`)
         .concat(andere.map((p) => { const d = planDauer(p); return `${esc(p.title || SPORT_WORT[p.sport] || "Einheit")}${isNum(d) ? " " + hm(d / 60) : ""}`; })).join(" · ")}</p>` : "";
       const done = ist.length ? `<p class="mo-neben ist"><span class="mo-q">absolviert</span>${ist.map((a) => `${esc(SPORT_WORT[a.sport] || a.sport)} ${hm((a.mv || a.dur || 0) / 60)}`).join(" · ")}</p>` : "";
-      return `<li class="mo-tag${t.date === h ? " heute" : ""}${t.date < h ? " vorbei" : ""}"><div class="mo-tk"><b>${esc(t.wt)}</b><small>${esc(dkurz(t.date))}</small></div><div class="mo-te">${vor}${end}${done}</div></li>`;
+      const wa = WM.get(t.date) || null, wahlOk = !t.rennen && (t.einheiten.length || eTag.length || wa);   // V6.5 planwahl-1.0
+      const wahl = wahlOk ? `<div class="mo-wahl" role="group" aria-label="${esc(t.wt)} ${esc(dkurz(t.date))}: welchem Plan folgst du?"><span>Ich folge</span>${V.WAHLEN.map((k) =>
+        `<button type="button" data-mowahl="${esc(t.date)}|${k}" aria-pressed="${wa === k}">${WAHL_WORT[k]}</button>`).join("")}</div>` : "";
+      return `<li class="mo-tag${t.date === h ? " heute" : ""}${t.date < h ? " vorbei" : ""}"><div class="mo-tk"><b>${esc(t.wt)}</b><small>${esc(dkurz(t.date))}</small></div><div class="mo-te">${vor}${end}${done}${wahl}</div></li>`;
     }).join("");
     const tE = V.tid(E.z), pE = tE ? V.pruefen(w.modell, tE, { erholung: w.erholung, taper: w.taper, rennwoche: w.tage.some((t) => t.rennen) }) : null;
     const I = istTid(), tI = V.tid(I.z);
@@ -214,9 +240,10 @@
       ${konflikt ? `<h3 class="abschnitt">Enduco und deine Intensität je Sportart</h3><ul class="mo-hinweise mo-konflikt">${konflikt}</ul>
         <p class="hint">Enduco lässt sich hier nicht ändern; die Seite zeigt nur, wo sein Plan über deiner Wahl liegt (${esc(V.VERSIONS.intensitaet)}: aus den Zielen der Schritte, ohne Ziele aus dem Titel).</p>` : ""}
       <div class="row mo-knoepfe"><button type="button" class="btn" data-wissen="modelle">Vorschlag erklärt</button><button type="button" class="btn" data-wissen="tid">Verteilung erklärt</button></div>
-      <p class="hint">${K.vorbei ? "Vergangene Woche: so hätte die Seite am Montag geplant – Saison ab jener Woche, Stunden aus den 8 Wochen davor (von Hand gesetzte nur, wenn sie damals schon galten), CSS, Läufe und Aufbau-Grenze bis zum Sonntag davor, Tests der Woche auch wenn inzwischen erledigt; Modell, Intensität je Sportart und Zonenprofil wie heute eingestellt (Testvorschläge nach Regel gibt es nur ab heute). " : ""}Vorschlag neben Enduco (${esc(V.VERSIONS.woche)}, ${esc(V.VERSIONS.tid)}, ${esc(V.VERSIONS.vergleich)}): Phase und Stunden aus dem Wochenstunden-Vorschlag${K.ausSaison ? "" : " (Woche ausserhalb der Saisonplanung: Stunden «jetzt»)"}, Tests aus dem Testkalender, Ziele aus dem aktiven Zonenprofil${K.css ? `, CSS vom ${esc(dch(K.css.datum))}` : ", noch kein CSS-Test"}. Vorschlag und Enduco werden nach den Zielen der Abschnitte gezählt (nur die Arbeitsintervalle hart), Absolviertes nach Puls. Stunden nur Schwimmen, Rad und Laufen (Heute und Kalender zählen alle Sportarten); «Enduco bekannt» = Garmin-Kalender (Dauer aus den Workout-Schritten) und Workouts, die nur auf der Uhr liefen – darum kann es etwas mehr sein als «geplant» unter Phasen. Nichts wird nach Garmin oder Enduco geschrieben.</p>`;
+      <p class="hint">${K.vorbei ? "Vergangene Woche: so hätte die Seite am Montag geplant – Saison ab jener Woche, Stunden aus den 8 Wochen davor (von Hand gesetzte nur, wenn sie damals schon galten), CSS, Läufe und Aufbau-Grenze bis zum Sonntag davor, Tests der Woche auch wenn inzwischen erledigt; Modell, Intensität je Sportart und Zonenprofil wie heute eingestellt (Testvorschläge nach Regel gibt es nur ab heute). " : ""}Vorschlag neben Enduco (${esc(V.VERSIONS.woche)}, ${esc(V.VERSIONS.tid)}, ${esc(V.VERSIONS.vergleich)}): Phase und Stunden aus dem Wochenstunden-Vorschlag${K.ausSaison ? "" : " (Woche ausserhalb der Saisonplanung: Stunden «jetzt»)"}, Tests aus dem Testkalender, Ziele aus dem aktiven Zonenprofil${K.css ? `, CSS vom ${esc(dch(K.css.datum))}` : ", noch kein CSS-Test"}. Vorschlag und Enduco werden nach den Zielen der Abschnitte gezählt (nur die Arbeitsintervalle hart), Absolviertes nach Puls. «Ich folge» hält je Tag fest, welchem Plan du folgst (verschlüsselt mit «Direkt speichern», ${esc(V.VERSIONS.vergleich)}); es ändert nichts in Enduco oder Garmin. Stunden nur Schwimmen, Rad und Laufen (Heute und Kalender zählen alle Sportarten); «Enduco bekannt» = Garmin-Kalender (Dauer aus den Workout-Schritten) und Workouts, die nur auf der Uhr liefen – darum kann es etwas mehr sein als «geplant» unter Phasen. Nichts wird nach Garmin oder Enduco geschrieben.</p>`;
     box.querySelectorAll("[data-mow]").forEach((b) => (b.onclick = () => { WOCHE = +b.dataset.mow; wocheZeichnen(); }));
     box.querySelectorAll("[data-moe]").forEach((b) => (b.onclick = () => { const [ti, ei] = b.dataset.moe.split(":").map(Number); M.einheit(ti, ei); }));
+    box.querySelectorAll("[data-mowahl]").forEach((b) => (b.onclick = () => { const [d, k] = b.dataset.mowahl.split("|"); wahlSetzen(d, k); }));   // V6.5 planwahl-1.0
   }
 
   /** Blatt einer vorgeschlagenen Einheit: Ablauf, Ziele aus dem Zonenprofil, Zweck und Quellen. */

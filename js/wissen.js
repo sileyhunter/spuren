@@ -1,4 +1,4 @@
-/* V6.4 Wissen (wissen-1.4): Erklärungen zu allen Modellen und Regeln der Seite – Zonen, Laktat und Messung, Schwellen-Methoden,
+/* V6.4 Wissen (wissen-1.5; 1.5 = V6.5 Wahl je Tag und Bibliothek im Kapitel «vergleich»): Erklärungen zu allen Modellen und Regeln der Seite – Zonen, Laktat und Messung, Schwellen-Methoden,
    Intensitätsverteilung, Trainingsmodelle, Periodisierung, Taper, Langdistanz, Intervalle, Last, Erholung, Schwimmen, Verpflegung.
    Alle Texte in eigenen Worten (keine Zitate), jede Aussage mit Quelle; [[id]] im Text verweist auf WS.QUELLEN (DOI-Link).
    Ohne DOM (Inhalt), Anzeige in index.html (Ansicht «Wissen» unter Plan). */
@@ -8,7 +8,7 @@
   if (root) root.WS = WS;
 })(typeof window !== "undefined" ? window : null, function () {
   "use strict";
-  const WS = { VERSION: "wissen-1.4" };
+  const WS = { VERSION: "wissen-1.5" };
 
   /* ---------------- Quellen: Autoren, Jahr, Titel, Zeitschrift, DOI (oder URL) und der Kern in einem Satz (eigene Worte) ---------------- */
   WS.QUELLEN = {
@@ -333,10 +333,11 @@
 
     { id: "vergleich", titel: "Vorschlag und Enduco vergleichen", kurz: "Die Seite stellt ihren Vorschlag neben die Enduco-Einheiten und dein Training: Stunden, harte Einheiten, lange Einheiten, freie Tage. Ob ein Plan besser ist, zeigen Unterschiede allein nicht – das zeigt erst die Entwicklung, und nur, wenn du einem Plan auch folgst.",
       text: [
-        "<b>Was verglichen wird.</b> Je Woche: Stunden und Anzahl Einheiten je Sportart, wie viele Einheiten hart sind (über LT2, VO2max) und wie viele im Tempo- und Schwellenbereich liegen, die längste Ausfahrt und der längste Lauf und die freien Tage. Dazu, welchem Plan dein Training näher war: Die Seite zählt die Abweichung der Stunden je Sportart zum Enduco-Plan und zum Vorschlag zusammen; liegen beide weniger als eine Viertelstunde auseinander, heisst es «ähnlich» (vergleich-1.1). Sportarten, bei denen die Dauer einer Enduco-Einheit nicht bekannt ist (Workout auf der Uhr mit Schritten nach Strecke oder bis Taste), zählen dafür auf keiner Seite; ist das mehr als die Hälfte deines Trainings, gibt es kein Urteil. Die gelaufene Zeit gilt nie als Plan.",
+        "<b>Was verglichen wird.</b> Je Woche: Stunden und Anzahl Einheiten je Sportart, wie viele Einheiten hart sind (über LT2, VO2max) und wie viele im Tempo- und Schwellenbereich liegen, die längste Ausfahrt und der längste Lauf und die freien Tage. Dazu, welchem Plan dein Training näher war: Die Seite zählt die Abweichung der Stunden je Sportart zum Enduco-Plan und zum Vorschlag zusammen; liegen beide weniger als eine Viertelstunde auseinander, heisst es «ähnlich» (vergleich-1.2). Sportarten, bei denen die Dauer einer Enduco-Einheit nicht bekannt ist (Workout auf der Uhr mit Schritten nach Strecke oder bis Taste), zählen dafür auf keiner Seite; ist das mehr als die Hälfte deines Trainings, gibt es kein Urteil. Die gelaufene Zeit gilt nie als Plan.",
         "<b>Woher die Enduco-Einheiten kommen.</b> Die Seite hat keine direkte Verbindung zu Enduco. Sie sieht, was im Garmin-Kalender steht – du exportierst meist am Vortag, darum ist die laufende Woche erst nach und nach bekannt –, und die Workouts, die auf der Uhr liefen. Ausgelassene Einheiten und Zwift-Einheiten ohne Workout auf der Uhr fehlen. Ein verschobenes Workout (im Kalender an einem anderen Tag, dort nicht gelaufen) zählt nur einmal. Wochen, in denen weniger als 60 % deiner Einheiten einen Enduco-Eintrag haben, bekommen darum kein Urteil. Die Intensität einer Enduco-Einheit kommt aus den Zielen ihrer Schritte, ohne Ziele aus dem Titel («laut Titel»).",
         "<b>Der Vorschlag für vergangene Wochen.</b> Er wird so nachgerechnet, wie die Seite am Montag jener Woche geplant hätte: Saison ab jener Woche, Stunden aus den 8 abgeschlossenen Wochen davor (von Hand gesetzte nur, wenn sie damals schon galten), CSS-Test, Läufe und Aufbau-Grenze bis zum Sonntag davor, Tests der Woche auch wenn sie inzwischen erledigt sind. Modell, Intensität je Sportart und Zonenprofil sind die heutigen ([[#modelle]], [[#aufbau]]).",
         "<b>Ist der Vorschlag besser?</b> Aus den Unterschieden allein lässt sich das nicht sagen. Bei einer einzelnen Person ist es ohnehin schwierig: Messfehler und schwankende Tagesform überdecken kleine Effekte, und wie gut ein Training wirkt, kann selbst bei derselben Person von Mal zu Mal verschieden sein. Belastbare Aussagen brauchen darum wiederholte Messungen und wiederholte Trainingsphasen [[hecksteden2015]]. Praktisch heisst das: einem Plan über einen ganzen Block folgen, vorher und nachher dieselben Kennzahlen messen – Laktat und Puls bei gleicher Leistung ([[#laktat-messen]]), den CSS-Test ([[#schwimmen]]) und den Puls in gleichmässigen Abschnitten unter «Meine Entwicklung» – und das wiederholen. Auch dann bleibt offen, ob ein Unterschied am Plan liegt oder an der Saison (Begründung, keine Studie).",
+        "<b>Deine Wahl je Tag.</b> Du kannst je Tag festhalten, welchem Plan du folgst: Enduco, dem Vorschlag oder keinem (frei). Für abgeschlossene Tage mit Enduco oder dem Vorschlag zählt die Seite dann, wie weit dein Training vom gewählten Plan abwich – je Sportart, als Stunden; Tage mit Einheiten ohne bekannte Dauer bleiben aussen vor, frei gewählte Tage auch, weil es dort keinen Plan gibt (vergleich-1.2). Das hält fest, wem du gefolgt bist. Ob das besser gewirkt hat, beantwortet die Wahl nicht; dafür braucht es viele Wochen und die Entwicklung deiner Werte (siehe oben). Alle Enduco-Workouts, auch geänderte Fassungen, hebt die Seite in der Bibliothek unter Plan auf.",
         "<b>Was die Unterschiede trotzdem zeigen.</b> Sie machen sichtbar, wo die Pläne grundsätzlich anders denken: etwa mehr Tempo- und Schwellenarbeit (pyramidal) gegenüber zwei klar harten Einheiten und sonst locker (polarisiert, [[#tid]]), wie schnell der lange Lauf wächst ([[#aufbau]]) oder wie viele Stunden geplant sind.",
       ],
       seite: [["V64", "vergleich"], ["AN", "saison"]], quellen: ["hecksteden2015"] },
@@ -423,7 +424,7 @@
     ["V64", "aufteilung", "Stunden je Sportart", "aufbau"],
     ["V64", "aufbau", "Aufbau-Check: Lauf gegen den längsten der 30 Tage davor", "aufbau"],
     ["V64", "intensitaet", "Intensität je Sportart", "aufbau"],
-    ["V64", "vergleich", "Vergleich mit Enduco", "vergleich"],
+    ["V64", "vergleich", "Vergleich mit Enduco und deine Wahl je Tag", "vergleich"],
     ["V64", "tid", "Intensitätsverteilung und Abgleich", "tid"],
     ["V62", "testplan", "Tests im Plan", "laktat-messen"],
     ["V62", "zonenvorschlag", "Zonen aus LT1 und LT2", "zonen"],

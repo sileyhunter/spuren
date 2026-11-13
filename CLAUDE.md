@@ -63,7 +63,7 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   «Garmin-Datenexport»); Prüfung auf der Seite `V61.verlaufPruefen`, Einstellungen «Garmin-Verlauf einlesen» (`js/v59.js`)
 - **V6.4 (Etappe 4 Modell und Wissen):** `js/v64.js` (ohne DOM: Trainingsmodelle modell-1.0, Woche nach Modell wochenplan-1.2, Aufteilung
   aufteilung-1.0, Intensitätsverteilung tid-1.0, V6.4.2 Intensität je Sportart intensitaet-1.1 und Aufbau-Check aufbau-1.1, V6.4.3 Vergleich mit
-  Enduco vergleich-1.1, Stand vergangener Wochen `V64.stand`), `js/wissen.js` (wissen-1.4: Kapitel in eigenen Worten, Quellen mit DOI),
+  Enduco vergleich-1.2 (1.2 = V6.5 Wahl je Tag), Stand vergangener Wochen `V64.stand`), `js/wissen.js` (wissen-1.5: Kapitel in eigenen Worten, Quellen mit DOI),
   `js/v64-ui.js` (Plan: «Woche nach Modell» mit «Vergleich mit Enduco», «Vorschlag und Enduco über die Wochen», «Aufbau-Check», «Trainingsmodell»
   mit Intensität je Sportart; Ansicht «Wissen» unter Plan), `tests/test_v64.cjs`; Saison saison-1.2 in `js/analyse.js` (`AN.saison`,
   `AN.saisonStunden`, `AN.saisonVorgaben`)
@@ -306,7 +306,8 @@ zugeordnet → `laktat_punkte`, Status «vorschau») und `saison` (Stunden «jet
 V5.7: `startorte` (ganze Liste → `startorte`, alte Fassung ins Audit) und `trainingsrouten` (gewählte Vorschläge → `trainingsrouten`, gleiche
 ID ersetzt mit Audit). Startorte und Routen nur verschlüsselt (data.enc.json), nie offen ins Repository.
 V6.2.2: `zonen` (auf der Seite bestätigte Zonenprofile → `zonen_add`, geprüft wie oben). V6.4: `modell` (gewähltes Trainingsmodell
-→ `modell_add` → `plan_modell`; `merge_daily.modell_pruefen`: bekanntes Modell, Wechsel als Datum; gleiche ID ersetzt mit Audit). V6.2.3: `garmin_verlauf` (Datei aus
+→ `modell_add` → `plan_modell`; `merge_daily.modell_pruefen`: bekanntes Modell, Wechsel als Datum; gleiche ID ersetzt mit Audit). V6.5: `planwahl`
+(«Ich folge» je Tag → `planwahl_add` → `plan_wahl`; `merge_daily.planwahl_pruefen`: Datum, ID «pw-Datum», Wahl enduco/vorschlag/frei; gleicher Tag ersetzt mit Audit). V6.2.3: `garmin_verlauf` (Datei aus
 `tools/garmin_export.py`, auf der Seite gewählt → `garmin_export.einspielen`, nur fehlende Tageswerte; mehrere Dateien vor einem Update werden seit
 V6.4.4 alle eingespielt, `garmin_verlauf` darf eine Liste sein). V5.9.3: `routen` (im Planer gespeicherte Routen → `routes`, gleiche ID ersetzt mit Audit), `routen_entfernt` (auf der Seite gelöscht → aus
 `routes` entfernt, alte Fassung ins Audit), `laktat_punkte_bestaetigt` («Laktat hier» aus dem Explorer auf der Seite bestätigt → Kurzcheck in
@@ -450,7 +451,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Grenze (Distanz aus dem Zonenprofil, Z1 mit dem langsamen Rand von Z2; nach dem Kürzen nachgeprüft, liegt auch die Untergrenze von 20 min darüber,
   ausdrücklich gemeldet), übrige Läufe nur als Hinweis; ohne Lauf-Pace-Zonen keine Begrenzung. aufbau-1.1: kein Lauf in den 30 Tagen davor (Pause) →
   langer und lockerer Lauf höchstens 30 min locker (`V64.PAUSE_MIN`, eigene Festlegung), harte Läufe gemeldet; ohne Läufe in den Daten nichts begrenzt.
-- **Vergleich mit Enduco `vergleich-1.1` (V6.4.3; 1.1 V6.4.4; `V64.vergleich`, `V64.enducoAusUhr`, `V64.stand`):** Woche nach Modell wählbar «Letzte · Diese Woche · Nächste»,
+- **Vergleich mit Enduco `vergleich-1.2` (V6.4.3; 1.1 V6.4.4; 1.2 V6.5 Wahl je Tag, siehe Ende; `V64.vergleich`, `V64.enducoAusUhr`, `V64.stand`, `V64.wahlAuswerten`):** Woche nach Modell wählbar «Letzte · Diese Woche · Nächste»,
   ältere über die Karte `#vg-card` (letzte 8 Wochen). Vergangene Wochen nachgerechnet, wie die Seite am Montag geplant hätte (`V64.stand`: Saison ab
   jener Woche, Stunden aus den 8 abgeschlossenen Wochen davor – von Hand gesetzte nur, wenn sie vor dem Montag gespeichert wurden –, CSS, Läufe und
   Aufbau-Grenze bis zum Sonntag davor, Tests der Woche auch wenn inzwischen erledigt; Modell, Intensität je Sportart und Zonenprofil von heute,
@@ -462,6 +463,10 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   derselben Sportart am selben Tag), sonst kein Urteil; Sportarten mit Enduco-Einheiten ohne Dauer zählen dafür auf keiner Seite (sind sie mehr als
   die Hälfte des Absolvierten: kein Urteil). Titel-Regel: VO2max/anaerob/Sprint/Neuro = hart, Schwelle/Tempo/Sweet Spot/CSS/Über-Unter =
   Schwelle, Fatmax/Grundlage/locker = locker, sonst offen. Welcher Plan besser ist, sagt der Vergleich nicht (Kapitel «vergleich»).
+  **Wahl je Tag `planwahl-1.0` (V6.5):** «Ich folge» Enduco · Vorschlag · frei je Tag (nicht an Renntagen, nur an Tagen mit Einheiten in einem der
+  Pläne), gespeichert über «Direkt speichern» (`planwahl` → `plan_wahl`); für abgeschlossene Tage mit Enduco oder Vorschlag die Abweichung des
+  Absolvierten vom gewählten Plan (Minuten je Sportart als Betrag), ohne Tage mit Enduco-Einheiten ohne Dauer; «frei» wird gezählt, nie mit einem
+  leeren Plan verglichen. Die Wahl ändert nichts in Enduco oder Garmin.
 - **Saison `saison-1.2` (V6.4.3/V6.4.4):** «jetzt» = Median der 8 abgeschlossenen Wochen vor der laufenden (die laufende zählt nicht mit; 1.2: jede
   Woche zählt, auch ohne Schwimmen/Rad/Laufen mit 0 h – nach einer Pause beginnt der Vorschlag tiefer; Wochen vor der ersten Aktivität nicht),
   «Spitze» aus den 52 Wochen davor. 1.2: auch der 3:1-Rhythmus ist fest am Hauptrennen verankert (rückwärts ab der Woche vor dem Taper jede 4. Woche
@@ -471,9 +476,9 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
   Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
   Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
-- **Wissen `wissen-1.4` (`js/wissen.js`, 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
+- **Wissen `wissen-1.5` (`js/wissen.js`, 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
   1.3: Kapitel «Vorschlag und Enduco vergleichen», 1.4: Prüfung der Quellen – Formulierungen nicht stärker als die Studien, eigene Festlegungen
-  gekennzeichnet, Versionen wie im Code):** alle Modelle und Regeln der Seite in eigenen Worten (nie Text aus Studien oder Webseiten übernehmen),
+  gekennzeichnet, Versionen wie im Code, 1.5: Wahl je Tag und Bibliothek im Kapitel «vergleich»):** alle Modelle und Regeln der Seite in eigenen Worten (nie Text aus Studien oder Webseiten übernehmen),
   jede Aussage mit Quelle `[[id]]` aus `WS.QUELLEN` (Autoren, Jahr, Titel, Zeitschrift, DOI; ohne DOI begründet), Kapitel-Verweise `[[#id]]`.
   Neue oder geänderte Regel: Kapitel und `WS.REGELN` nachführen; `tests/test_v64.cjs` prüft Verweise, DOI-Form, jede Quelle verwendet,
   Schweizer Schreibweise (kein ß) und keine Wattwerte in den Texten. Nie persönliche Zahlen in die Wissenstexte.
