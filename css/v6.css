@@ -369,3 +369,11 @@ nav.unter button { flex: none; padding: 7px 14px; overflow: visible; }
 .cal-day .ek-karte { background: var(--surface-2); }
 @media (max-width: 420px) { .cd-akt { grid-template-columns: auto minmax(0, 1fr); } .cd-akt .ex-btn { grid-column: 1 / -1; } }
 nav.unter { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%); mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%); }
+.zliste { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.zliste li { position: relative; display: flex; justify-content: space-between; gap: 10px; align-items: center; background: var(--surface-2); border-radius: 10px; padding: 9px 12px 9px 16px; font-size: 13.5px; }
+.zliste li::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; border-radius: 10px 0 0 10px; background: var(--zc); }
+.zliste li.unter { background: transparent; padding: 3px 12px 3px 30px; font-size: 12.5px; color: var(--muted); }
+.zliste li.unter::before { display: none; }
+.zliste .zl-n { display: inline-flex; align-items: center; gap: 6px; } .zliste .zl-n b { color: var(--zc); }
+.zliste .zl-w { font-variant-numeric: tabular-nums; white-space: nowrap; }
+:root[data-theme="light"] .zliste li { background: var(--bg); } :root[data-theme="light"] .zliste .zl-n b { color: color-mix(in srgb, var(--zc) 55%, #000); }

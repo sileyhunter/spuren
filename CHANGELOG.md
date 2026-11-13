@@ -1,5 +1,11 @@
 # Änderungen
 
+## V6.0.3 · 13.11.2026 · Trainingszonen als Liste (Vorlage Bild 7)
+- Unter jeder Skala von «Trainingszonen: alle vier Skalen» (Laktat) stehen die Zonen als Liste: Farbbalken links in der Zonenfarbe, Name
+  (Erholung, Grundlage, Tempo, Schwelle, Intensiv) und Grenzen rechts, darunter die Unterzonen aus dem Text der Zone (FatMax, Sweet Spot,
+  VO2max) mit Punkt und Bereich. Pace als «langsamer als …» / «schneller als …». Nur in der Ansicht «Aktuell».
+- Geprüft: `tests/test_v6.cjs` (Zonenliste mit Unterzonen, auch Pace), Screenshot 390 px.
+
 ## V6.0.2 · 13.11.2026 · Leiste Heute · Kalender · Plan · Analyse · Karte, neue Ansicht «Plan», Kalender neu
 Dritter Schritt der Layout-Vorlage vom 13.11. (Bilder Kalender, Plan und Rennen, Analyse).
 

@@ -408,8 +408,17 @@
     const none = !k.aktuell ? `<span class="hint">Kein Test dieser Disziplin mit diesem Protokoll: keine Schwellen.</span>` : LZ.mode !== "aktuell" && !k.vorher ? `<span class="hint">Kein vorheriger vergleichbarer Test (gleiche Sportart, gleiches Protokoll).</span>` : "";
     const name = `${s.disziplin === "rad" ? "Rad" : "Laufen"} / ${{ leistung: "Leistung", puls: "Herzfrequenz", pace: "Pace" }[s.metrik]} (${s.metrik === "pace" ? "min/km" : s.unit})`;
     return `<section class="zscale" aria-label="${esc(name)}"><div class="zhead"><h3>${esc(name)}</h3>${s.metrik === "pace" ? `<span class="hint">langsam → schnell</span>` : ""}${na}</div>
-      <div class="zbar" role="group" aria-label="Zonen ${esc(name)}">${segs}${marks}</div><div class="zticks" aria-hidden="true">${ticks}</div>${none}
+      <div class="zbar" role="group" aria-label="Zonen ${esc(name)}">${segs}${marks}</div><div class="zticks" aria-hidden="true">${ticks}</div>${none}${zonenListe(s)}
       ${s.hinweis ? `<p class="hint">${esc(s.hinweis)}</p>` : ""}</section>`;
+  }
+  /** V6.0.2 (design-1.0): Zonen als Liste – Farbbalken links, Grenzen rechts, Unterzonen mit Punkt und Bereich. */
+  function zonenListe(s) {
+    const W = window.V6; if (!W || !LZ || LZ.mode !== "aktuell") return "";
+    const pace = s.metrik === "pace", f = (v) => (pace ? FK().pace(v) : num(v)), u = pace ? " /km" : " " + s.unit;
+    const bereich = (von, bis) => (von == null && bis == null ? "–" : von == null ? (pace ? `langsamer als ${f(bis)}${u}` : `bis ${f(bis)}${u}`)
+      : bis == null ? (pace ? `schneller als ${f(von)}${u}` : `ab ${f(von)}${u}`) : `${f(von)}–${f(bis)}${u}`);
+    return `<ul class="zliste">${W.zonenZeilen(s.zonen).map((z) => `<li style="--zc:${W.ZONEN[z.key].farbe}"><span class="zl-n"><b>${esc(z.kurz)}</b> ${esc(z.name)}</span><span class="zl-w">${esc(bereich(z.von, z.bis))}</span></li>`
+      + z.unter.map((x) => `<li class="unter" style="--zc:${(W.ZONEN[x.key] || W.ZONEN.offen).farbe}"><span class="zl-n"><i class="zpunkt"></i>${esc(x.name)}</span><span class="zl-w">${esc(f(x.lo))}–${esc(f(x.hi))}${esc(u)}</span></li>`).join("")).join("")}</ul>`;
   }
   function popHTML(k, w, which, P) {
     const s = k.skala, m = (w === "vorher" ? k.vorher : k.aktuell)[which];

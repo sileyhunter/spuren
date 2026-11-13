@@ -247,6 +247,15 @@
     return { tage, n_ist, s_ist, n_offen, s_offen, n_verpasst, s_verpasst, n_woche: n_ist + n_offen + n_verpasst, s_woche: s_ist + s_offen + s_verpasst };
   };
 
+  /** Zonenliste einer Skala (Vorlage Bild 7): je Zone Farbe, Name und Grenzen, darunter die Unterzonen aus dem Text der Zone. */
+  V6.zonenZeilen = function (zonen) {
+    return (zonen || []).map((z, i) => {
+      const key = "z" + (i + 1), Z = V6.ZONEN[key] || V6.ZONEN.offen;
+      return { key, kurz: z.z || Z.kurz, name: Z.name, von: isNum(z.von) ? z.von : null, bis: isNum(z.bis) ? z.bis : null,
+        unter: V6.unterbereiche(z).map((u) => ({ key: u.key, name: (V6.ZONEN[u.key] || {}).name || u.key, lo: u.lo, hi: u.hi })) };
+    });
+  };
+
   /* ---------------- Plan (V6.0.2): Rennen, Phasen als Zeitstrahl ---------------- */
   V6.isoWoche = function (iso) {
     const d = new Date(iso + "T12:00:00Z"), t = new Date(d); t.setUTCDate(d.getUTCDate() + 3 - ((d.getUTCDay() + 6) % 7));

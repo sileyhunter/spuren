@@ -174,3 +174,12 @@ test("Plan: Kalenderwoche, Rennen mit Priorität, Streckenlängen, Phasen als Ze
   assert.deepEqual(seg.map((x) => [x.phase, x.von, x.bis, x.wochen.length, x.aktiv]),
     [["Grundlage", "2026-11-09", "2026-11-22", 2, true], ["Aufbau", "2026-11-23", "2026-11-29", 1, false], ["Taper", "2026-11-30", "2026-12-06", 1, false]]);
 });
+
+test("Zonenliste: Name und Grenzen je Zone, Unterzonen aus dem Text", () => {
+  const Zl = V6.zonenZeilen(ZONEN[0].skalen[0].zonen);
+  assert.deepEqual(Zl.map((z) => [z.kurz, z.name, z.von, z.bis]), [["Z1", "Erholung", null, 150], ["Z2", "Grundlage", 150, 200], ["Z3", "Tempo", 200, 240], ["Z4", "Schwelle", 240, 270], ["Z5", "Intensiv", 270, null]]);
+  assert.deepEqual(Zl[1].unter, [{ key: "fatmax", name: "FatMax", lo: 180, hi: 195 }]);
+  assert.deepEqual(Zl[2].unter.map((u) => u.name), ["Sweet Spot"]);
+  assert.deepEqual(Zl[4].unter.map((u) => [u.name, u.lo, u.hi]), [["VO2max", 280, 320]]);
+  assert.deepEqual(V6.zonenZeilen(ZONEN[0].skalen[1].zonen)[1].unter, [{ key: "fatmax", name: "FatMax", lo: 345, hi: 360 }], "Pace-Unterzone in s/km");
+});
