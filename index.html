@@ -10,8 +10,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Ironman Notebook">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#f4f7f9">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#000000">
+<script>/* V6.0 design-1.0: dunkel als Standard, «Hell» in den Einstellungen (vor dem ersten Zeichnen setzen) */
+try { if (localStorage.getItem((/demo\.html$/.test(location.pathname) ? "demo." : "") + "sf.theme") === "hell") { document.documentElement.dataset.theme = "light";
+  document.querySelector('meta[name="theme-color"]').setAttribute("content", "#f4f7f9"); } } catch (e) {}</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.css">
 <style>
@@ -825,6 +828,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
   .tablewrap:has(> table.t.als-liste) { overflow: visible; }
 }
 </style>
+<link rel="stylesheet" href="css/v6.css">
 </head>
 <body>
 <div class="lock" id="lock" hidden>
@@ -1545,14 +1549,16 @@ if (!Array.prototype.at) Array.prototype.at = function (i) { i = Math.trunc(i) |
 /* =====================================================================
    Grundlagen
    ===================================================================== */
-const SPORTS = {
-  rad: { label: "Rad", color: "#f2a33a" },
-  lauf: { label: "Lauf", color: "#ef4b5c" },
-  schwimm: { label: "Schwimmen", color: "#3fb6e8" },
-  wandern: { label: "Wandern", color: "#8ccf6b" },
-  ski: { label: "Ski & Skitour", color: "#7fa6c9" },
-  andere: { label: "Andere", color: "#a78bfa" },
+const KARTE_FARBE = { rad: "#f2a33a", lauf: "#ef4b5c", schwimm: "#3fb6e8", wandern: "#8ccf6b", ski: "#7fa6c9", andere: "#a78bfa" };   // Spuren auf der Karte (swisstopo)
+const SPORTS = {   // V6.0: Farben der Sportarten aus css/v6.css (--sp-…), überall ausser auf der Karte
+  rad: { label: "Rad", color: "#6ce0a4" },
+  lauf: { label: "Lauf", color: "#6a59ea" },
+  schwimm: { label: "Schwimmen", color: "#66e2e6" },
+  wandern: { label: "Wandern", color: "#d2a865" },
+  ski: { label: "Ski & Skitour", color: "#a9c4ff" },
+  andere: { label: "Andere", color: "#8e8e93" },
 };
+try { const cs = getComputedStyle(document.documentElement); for (const k of Object.keys(SPORTS)) { const v = cs.getPropertyValue("--sp-" + k).trim(); if (v) SPORTS[k].color = v; } } catch (e) {}
 const POINT_CATS = {
   jagd: { label: "Jagdposten", color: "#c08a4a" },
   wasser: { label: "Wasserstelle", color: "#3fb6e8" },
@@ -1933,7 +1939,7 @@ function renderSummary(list) {
 const scheduleRebuild = debounce(() => rebuildTracks(false), 220);
 function buildFilterUI() {
   const fs = document.getElementById("f-sport");
-  fs.innerHTML = Object.entries(SPORTS).map(([k, s]) => `<button class="chip" data-k="${k}" aria-pressed="true"><span class="dot" style="background:${s.color}"></span>${s.label}</button>`).join("");
+  fs.innerHTML = Object.entries(SPORTS).map(([k, s]) => `<button class="chip" data-k="${k}" aria-pressed="true"><span class="dot" style="background:${KARTE_FARBE[k]}"></span>${s.label}</button>`).join("");
   fs.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
     const k = b.dataset.k; filt.sports.has(k) ? filt.sports.delete(k) : filt.sports.add(k);
     b.setAttribute("aria-pressed", String(filt.sports.has(k))); scheduleRebuild();
@@ -2104,7 +2110,7 @@ if (!store.get("sf.jagd", false)) pointCats.delete("jagd");      // Jagdposten n
 const WMTS = (layer, ext) => `https://wmts.geo.admin.ch/1.0.0/${layer}/default/current/3857/{z}/{x}/{y}.${ext}`;
 const SWISSTOPO = '© <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a>';
 const HEAT_RAMP = ["interpolate", ["linear"], ["get", "h"], 0, "#5e0b18", 0.2, "#9a1a1c", 0.4, "#d8401c", 0.6, "#f78a1d", 0.8, "#fcd34d", 1, "#fffdf0"];
-const SPORT_COLOR = ["match", ["get", "sport"], ...Object.entries(SPORTS).flatMap(([k, s]) => [k, s.color]), SPORTS.andere.color];
+const SPORT_COLOR = ["match", ["get", "sport"], ...Object.entries(KARTE_FARBE).flatMap(([k, c]) => [k, c]), KARTE_FARBE.andere];
 const EMPTY = { type: "FeatureCollection", features: [] };
 const lineGeo = (items) => ({ type: "FeatureCollection", features: items.filter((x) => x.coords && x.coords.length > 1).map((x) => ({ type: "Feature", properties: { id: x.id, name: x.name || "" }, geometry: { type: "LineString", coordinates: x.coords } })) });
 const pointGeo = () => ({ type: "FeatureCollection", features: allPoints().filter((p) => pointCats.has(p.cat in POINT_CATS ? p.cat : "sonst")).map((p) => ({
@@ -2256,7 +2262,7 @@ function showHits(list) {
   document.getElementById("hits-title").textContent = `${list.length} ${list.length === 1 ? "Aktivität" : "Aktivitäten"} an dieser Stelle`;
   document.getElementById("hits-hint").hidden = true;
   const el = document.getElementById("hits");
-  el.innerHTML = list.map((a) => `<div class="item"><button class="main" data-id="${esc(a.id)}"><span class="dot" style="background:${(SPORTS[a.sport] || SPORTS.andere).color}"></span>
+  el.innerHTML = list.map((a) => `<div class="item"><button class="main" data-id="${esc(a.id)}"><span class="dot" style="background:${KARTE_FARBE[a.sport] || KARTE_FARBE.andere}"></span>
     <span>${esc(a.name)}<br><small>${dateCH(a.date)} · ${fmt(a.km, 1)} km · ${fmt(a.hm)} hm · ${hmm(a.dur)}${a.wx && !a.indoor ? ` · ${fmt(a.wx.temperature)} °C, Wind ${fmt(a.wx.wind_speed)} km/h ${esc(String(a.wx.wind_direction_compass || "").toUpperCase())} <span class="prov prov-wetter" title="Garmin-Wetter um ${esc(String(a.wx.issue_time || "").slice(11, 16))} UTC. ${esc(window.FK ? FK.wxQuality(a.wx, a.coords && a.coords[0]).text : "")}. Wetterstation oder Modell, nicht am Ort gemessen.">Wetter ${esc(window.FK ? FK.wxQuality(a.wx, a.coords && a.coords[0]).stufe : "")}</span>` : ""}</small></span>
     <small>${a.watt ? a.watt + " W" : a.hr ? a.hr + " bpm" : ""}</small></button><button class="del ex-btn" data-ex="${esc(a.id)}">Analysieren</button>${a.wx && !a.indoor && window.V53 ? `<button class="del wxcopy" data-id="${esc(a.id)}" title="Wettertext für die Strava-Beschreibung kopieren">Wetter kopieren</button>` : ""}</div>`).join("");
   el.querySelectorAll(".main").forEach((b) => b.addEventListener("click", () => selectActivity(b.dataset.id, true)));
@@ -3295,7 +3301,7 @@ const TABS = {
         einheitenProWoche: acts.length / n, stundenProWoche: acts.reduce((s, a) => s + hrsOf(a), 0) / n, sportName: name });
       const v = document.getElementById("z-verdict");
       v.className = "verdict" + (V.status === "unsicher" ? " unsure" : ""); v.textContent = V.text;
-      const A = FK.anteile(S.profil.z), G = FK.anteile(S.garmin.z), lab = ["locker", "mittel", "hart"], col = ["--good", "--warn", "--bad"];
+      const A = FK.anteile(S.profil.z), G = FK.anteile(S.garmin.z), lab = ["locker", "mittel", "hart"], col = ["--zc-z2", "--zc-z3", "--zc-z5"];   // V6.0: Zonenfarben
       document.getElementById("z-kv").innerHTML = (A ? lab.map((l, j) => `<div><span><i class="dot" style="background:${css(col[j])}"></i>${l}</span><b>${FK.fmtH(S.profil.z[j])}</b><small>${A.pct[j]} %</small></div>`).join("") : "") +
         `<p class="hint">${A ? `Nenner: ${FK.fmtH(S.profil.s)} Pulszeit mit gültigen Schwellen, ${S.profil.n} ${S.profil.n === 1 ? "Einheit" : "Einheiten"}.${A.summe !== 100 ? ` Anteile einzeln gerundet (Summe ${A.summe} %).` : ""}` : ""}` +
         `${G ? ` Dazu ${FK.fmtH(S.garmin.s)} in ${S.garmin.n} ${S.garmin.n === 1 ? "Einheit" : "Einheiten"} nur mit Garmin-Pulszonen (blasse Balken, nicht beurteilt).` : ""}` +
@@ -3322,9 +3328,9 @@ const TABS = {
       document.getElementById("pmc-note").textContent = pa.fitness == null ? "" : `${pa.fitness} − ${pa.ermuedung} = ${sg(pa.form)} (gerundete Werte; genau ${fmt(pa.form_exakt, 1)}). ` +
         `Vor der Trainingslast von heute (bisher ${fmt(pa.last)}) lag die Form bei ${sg(pa.form_tagesbeginn)} – Werte von gestern Abend, so zeigen es manche Programme. ${pmcStand()} Regel ${pa.v}.`;
       chart("c-pmc", { type: "line", data: { labels: p.map((x) => dLabel(x.date)), datasets: [
-        { label: "Fitness", data: p.map((x) => +x.ctl.toFixed(1)), borderColor: css("--strain"), backgroundColor: css("--strain") + "26", fill: true, pointRadius: 0, tension: 0.3 },
-        { label: "Ermüdung", data: p.map((x) => +x.atl.toFixed(1)), borderColor: css("--sleep"), pointRadius: 0, tension: 0.3, borderWidth: 1.5 },
-        { label: "Form", data: p.map((x) => +x.tsb.toFixed(1)), borderColor: css("--accent"), pointRadius: 0, tension: 0.3, yAxisID: "y2" },
+        { label: "Fitness", data: p.map((x) => +x.ctl.toFixed(1)), borderColor: css("--mon-fit"), backgroundColor: css("--mon-fit") + "26", fill: true, pointRadius: 0, tension: 0.3 },
+        { label: "Ermüdung", data: p.map((x) => +x.atl.toFixed(1)), borderColor: css("--mon-erm"), pointRadius: 0, tension: 0.3, borderWidth: 1.5 },
+        { label: "Form", data: p.map((x) => +x.tsb.toFixed(1)), borderColor: css("--mon-form"), pointRadius: 0, tension: 0.3, yAxisID: "y2" },
       ] }, options: { interaction: { mode: "index", intersect: false }, scales: { x: { ticks: { maxTicksLimit: 12 } }, y: { title: { display: true, text: "Trainingslast pro Tag" } }, y2: { position: "right", grid: { display: false }, title: { display: true, text: "Form" } } }, plugins: legendBottom } });
     },
     lastWoche() {                     // V5.9.1 last-2.0: Wochenlast je Sportart in Farbe; Vergleich Garmin-FTP → LT2 (bis zum Okay nur Vorschlag)

@@ -1,5 +1,18 @@
 # Änderungen
 
+## V6.0.0 · 13.11.2026 · Design: dunkel als Standard (design-1.0, enduco als Vorbild)
+Vorlage «Layout-Referenz: enduco als Vorbild» (13.11.): Aufbau, Bedienlogik und Farbsprache der Intensitäten übernehmen, eigene Farbtöne,
+Symbole und Texte.
+
+- **Dunkles Design als Standard** (Seite schwarz, Karten #1f1f22, Blätter #141416, Leiste #18181b, Text #fcfcfc/#a4a4a7/#78787c), «Hell» bleibt
+  unter Einstellungen → Bedienung → Darstellung wählbar (je Gerät). Neue Datei `css/v6.css`; die Logos erscheinen im Dunkeln hell auf schwarz.
+- **Eine Zone, eine Farbe** (eigene Töne, Z2 nahe #4E66FF): Z1 #5a49e2 · Z2 #4f69f8 · FatMax #7ab4fa · Z3 #27bdd8 · Sweet Spot #69e4e6 ·
+  Z4 #6ce0a4 · Z5 #fdc22b · Anaerob #f9a71a · Neuro #d6573f · Sprint #dc3f8d. «Mache ich das Richtige?» zeigt locker/mittel/hart in Zonenfarben.
+- **Sportarten** Schwimmen türkis, Rad grün, Laufen violett (Wandern sand, Ski eisblau, Andere grau); die Spuren auf der Karte behalten ihre auf
+  swisstopo abgestimmten Farben. **Fitness grün, Ermüdung türkis, Form blau.**
+- **Bausteine:** Knöpfe als Pillen (Hauptaktion weiss, Nebenaktion grau), Segmente und Chips dunkel, Kennzahlen mit grosser Zahl und grauer
+  Beschriftung darunter, Abschnittstitel klein in Grossbuchstaben, Blätter von unten mit Griff (Einstellungen, Bestätigen, Test starten).
+
 ## V5.9.6 · 12.11.2026 · Laktat-Einzelmessungen über die Zeit (laktat-drift-1.0)
 Wunsch vom 12.11.: Einzelmessungen filtern, beim Antippen mehr Infos, und sehen, ob Laktat bei gleicher Leistung mit der Zeit steigt.
 

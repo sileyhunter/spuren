@@ -260,7 +260,11 @@
           <p class="hint">Der Schlüssel liegt mit deinem Seitenschlüssel verschlüsselt auf diesem Gerät, nie im Repository. Risiko: Wer dein Gerät und dein Seitenpasswort hat, kann in dieses eine Repository schreiben, aber nirgends sonst. Widerrufen kannst du ihn jederzeit auf GitHub. Pro Gerät einmal einrichten.</p></details>
         ${(eg.dateien || []).length ? `<details><summary>Zuletzt gesendet</summary><ul class="es-l">${eg.dateien.slice(-8).reverse().map((d) => `<li>${new Date(d.zeit).toLocaleString("de-CH", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} · ${d.n} ${d.art === "bestaetigung" ? "Bestätigung" : "Eingabe"}${d.n === 1 ? "" : "n"}</li>`).join("")}</ul></details>` : ""}`}
       </section>
-      <section class="es" id="es-bed"><h3>Bedienung</h3><label class="row"><input type="checkbox" data-erkl ${V.erklImmer() ? "checked" : ""}> <span>Erklärtexte, Regeln und Quellen immer zeigen (sonst hinter dem Knopf <b>i</b> je Karte)</span></label></section>
+      <section class="es" id="es-bed"><h3>Bedienung</h3>
+        <div class="es-thema" role="radiogroup" aria-label="Darstellung"><span>Darstellung</span>
+          <label class="row"><input type="radio" name="es-thema" value="dunkel" ${lsGet("sf.theme") === "hell" ? "" : "checked"}> Dunkel (Standard)</label>
+          <label class="row"><input type="radio" name="es-thema" value="hell" ${lsGet("sf.theme") === "hell" ? "checked" : ""}> Hell</label></div>
+        <label class="row"><input type="checkbox" data-erkl ${V.erklImmer() ? "checked" : ""}> <span>Erklärtexte, Regeln und Quellen immer zeigen (sonst hinter dem Knopf <b>i</b> je Karte)</span></label></section>
       <section class="es" id="es-aus"><h3>Ausgeblendete Karten</h3><p class="hint">Ausgeblendet heisst nicht gelöscht: Die Daten bleiben. Einblenden gilt für dieses Gerät.</p>
         <ul class="es-l">${karten.map((el) => `<li><label class="row"><input type="checkbox" data-ein="${esc(el.id)}" ${ein.has(el.id) ? "checked" : ""}> <span><b>${esc(titel(el))}</b><br><small>${esc(el.dataset.ausblendbar)}</small></span></label></li>`).join("") || "<li>Keine.</li>"}</ul></section>`);
     const f = ov.querySelector("#es-gh"), msg = ov.querySelector("#es-msg");
@@ -272,6 +276,7 @@
       if (a === "weg") { E.schluesselEntfernen(); V.einstellungen(); return; }
       b.disabled = false;
     }));
+    ov.querySelectorAll('input[name="es-thema"]').forEach((r) => (r.onchange = () => { lsSet("sf.theme", r.value === "hell" ? "hell" : null); location.reload(); }));
     const ek = ov.querySelector("[data-erkl]");
     if (ek) ek.onchange = () => { lsSet("sf.erkl.immer", ek.checked ? "1" : null); const v = document.querySelector("section.view:not([hidden])"); if (v) V.ansicht(v.id.slice(5)); };
     ov.querySelectorAll("[data-ein]").forEach((cb) => (cb.onchange = () => {
