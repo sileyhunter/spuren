@@ -389,3 +389,9 @@ nav.unter { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14
 .ex-notiz p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0 0; font-size: 13px; line-height: 1.45; color: var(--fg); background: var(--surface-2); border-radius: 12px; padding: 10px 12px; }
 .td-lage-t td.l { white-space: normal; } .td-lage-t td:not(.l), .td-lage-t th:not(.l) { text-align: right; white-space: nowrap; }
 .fu-pv-kopf { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+/* V6.2 Testplan: Abwesenheiten */
+.tp-sp { list-style: none; margin: 6px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.tp-sp li { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: var(--surface-2); border-radius: 12px; padding: 6px 6px 6px 12px; }
+.tp-sp-form { flex-wrap: wrap; gap: 8px; align-items: flex-end; margin: 6px 0 4px; } .tp-sp-form label { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--muted); }
+.ek-test { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-left: 4px solid var(--accent); }
+.ek-test b { font-size: 16px; } .ek-test small { color: var(--muted); font-size: 12.5px; line-height: 1.4; }

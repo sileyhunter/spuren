@@ -1057,6 +1057,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
         <h2>Testkalender</h2>
         <div class="sub">Wann ein Stufentest, ein kurzer Laktat-Check oder ein CSS-Test (Schwimmen, 400 m und 200 m) Sinn macht. Kurz-Checks am besten am Ende einer lockeren Woche, damit die Werte vergleichbar sind. Die Vorschläge passe ich auf Wunsch an.</div>
         <div class="tablewrap"><table class="t" id="t-tests" data-liste></table></div>
+        <div id="tp-extra"></div>
       </div>
     </div>
   </section>
@@ -1474,6 +1475,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="js/formkurve.js"></script>
 <script src="js/v61.js"></script>
+<script src="js/v62.js"></script>
 <script src="js/eingang.js"></script>
 <script src="js/v59-logik.js"></script>
 <script src="js/route.js"></script>
@@ -3081,7 +3083,7 @@ function isoWeek(dt) { const d = new Date(dt); d.setHours(0, 0, 0, 0); d.setDate
 function v5Start() {
   if (!window.V5UI) return;
   V5_READY = V5UI.init({ D, chart, css, fmt, esc, dateCH, dLabel, pd, iso, today, SPORTS, IS_DEMO, hrsOf, shareOrDownload, ACT_BY_ID, charts, mmss, hmm, ringSVG, weights,
-    planRoute: () => (window.RTUI ? window.RTUI.planRoute() : null), pmcHeute: () => FK.pmcAnzeige(pmc().at(-1)), races: () => (D.config?.races || RACES) }).then(() => { if (window.V59) V59.init(V5UI.C); }).catch((e) => console.error(e));
+    planRoute: () => (window.RTUI ? window.RTUI.planRoute() : null), pmcHeute: () => FK.pmcAnzeige(pmc().at(-1)), races: () => (D.config?.races || RACES), tests: () => testsWithStatus() }).then(() => { if (window.V59) V59.init(V5UI.C); }).catch((e) => console.error(e));
 }
 const charts = {};
 if (window.Chart) {
@@ -3801,20 +3803,60 @@ function renderSteps() {          // Testzentrum (Umsetzungsplan A5): Stufen aus
       : `<tr><td colspan="6">Noch keine Vorlagen.</td></tr>`);
 }
 const KIND = { stufentest: "Stufentest", check: "Laktat-Check", css: "CSS-Test" };
+const testName = (t) => KIND[t.kind] + (t.kind === "stufentest" && t.sport ? (t.sport === "lauf" ? " Laufen" : " Rad") : "");
 const cssTests = () => (window.V5UI && V5UI.C && V5UI.merged ? V5UI.merged("css_tests", "css") : (D.css_tests || []));   // Daten + Gerät
-function testsWithStatus() {                  // Laktat-Tests über D.lactate, CSS-Tests über eingetragene CSS-Tests (V59L, ±4 Tage)
-  return V59L.testsMitStatus(D.tests, D.lactate, cssTests());
+/* V6.2 testplan-1.0: Tests nach festen Regeln vorgeschlagen (js/v62.js); eingetragene Termine gehen vor, Abwesenheiten in den Notizen («tp-sperren») */
+let TP_CACHE = null;
+function tpNotizen() { return Object.assign({}, D.notizen || {}, (window.V5UI && V5UI.Inbox && V5UI.Inbox.data && V5UI.Inbox.data.notizen) || {}); }
+function tpSperren() { try { const v = tpNotizen()["tp-sperren"]; const L = typeof v === "string" ? JSON.parse(v) : v; return Array.isArray(L) ? L.filter((x) => x && x.von && x.bis) : []; } catch (e) { return []; } }
+function testplanSeite() {
+  if (TP_CACHE) return TP_CACHE;
+  const leer = { vorschlaege: [], konflikte: [] };
+  if (!window.V62 || !window.AN || !window.V6) return leer;
+  try {
+    const heute = iso(today), rennen = V6.rennenPrio((D.config && D.config.races) || RACES), S = AN.saison(heute, rennen);
+    if (!S) return leer;
+    const lac = D.lactate || [], st = (D.schwellen && D.schwellen.tests) || [];
+    const stufen = (sp) => [...lac.filter((l) => l.kind === "stufentest" && (l.sport || "rad") === sp).map((l) => ({ date: l.date, ausbelastet: l.ausbelastet })),
+      ...st.filter((t) => (t.sport || "rad") === sp && t.datum).map((t) => ({ date: t.datum, ausbelastet: t.ausbelastet }))];
+    TP_CACHE = V62.testplan({ heute, bis: S.haupt.date, wochen: S.wochen, rennen, fest: D.tests || [], planned: D.planned || [], sperren: tpSperren(),
+      erledigt: { css: cssTests().map((c) => c.datum).filter(Boolean), rad: stufen("rad"), lauf: stufen("lauf"),
+        check: [...lac.filter((l) => l.kind === "check").map((l) => l.date), ...(D.laktat_vorschau || []).filter((p) => p.art === "check").map((p) => p.datum)].filter(Boolean) } });
+  } catch (e) { console.error(e); return leer; }
+  return TP_CACHE;
+}
+function testsWithStatus() {                  // Laktat-Tests über D.lactate, CSS-Tests über eingetragene CSS-Tests (V59L, ±4 Tage); dazu Vorschläge (V6.2)
+  return V59L.testsMitStatus([...(D.tests || []), ...testplanSeite().vorschlaege], D.lactate, cssTests()).sort((a, b) => a.date.localeCompare(b.date));
 }
 function drawTests() {                         // Testkalender (seit V6.0.2 unter Plan)
   const el = document.getElementById("t-tests"); if (!el) return;
   const tests = testsWithStatus(), next = tests.find((t) => !t.done && pd(t.date) >= today);
   el.innerHTML = `<tr><th>Datum</th><th>Test</th><th>Warum</th><th>Status</th></tr>` + tests.map((t) =>
-    `<tr><td>${dateCH(t.date)}</td><td>${KIND[t.kind]}</td><td style="white-space:normal">${esc(t.note || "")}</td><td>${t.done ? `<span class="badge ok">erledigt</span>` : t === next ? `<span class="badge next">als Nächstes</span>` : pd(t.date) < today ? `<span class="badge">verpasst</span>` : t.status === "geplant" ? `<span class="badge info">geplant</span>` : `<span class="badge">Vorschlag</span>`}</td></tr>`).join("");
+    `<tr><td>${dateCH(t.date)}</td><td>${testName(t)}</td><td style="white-space:normal">${esc(t.note || "")}${t.regel ? ` <small class="hint">(${esc(t.regel)})</small>` : ""}</td><td>${t.done ? `<span class="badge ok">erledigt</span>` : t === next ? `<span class="badge next">als Nächstes</span>` : pd(t.date) < today ? `<span class="badge">verpasst</span>` : t.status === "geplant" ? `<span class="badge info">geplant</span>` : `<span class="badge">Vorschlag</span>`}</td></tr>`).join("");
+  tpExtra();
 }
+/** V6.2: Regelverstösse bei eingetragenen Terminen (nie still geändert) und Abwesenheiten, in denen keine Tests geplant werden. */
+function tpExtra() {
+  const box = document.getElementById("tp-extra"); if (!box) return;
+  const tp = testplanSeite(), sp = tpSperren(), I = window.V5UI && V5UI.Inbox;
+  box.innerHTML = `${tp.konflikte.map((k) => `<p class="verdict warn">${esc(k.text)}.${k.vorschlag ? ` Vorschlag nach Regel: ${dateCH(k.vorschlag)}${k.folge ? ` – ${esc(k.folge)}` : ""}.` : ""}</p>`).join("")}
+    <h3 class="mini-h">Abwesenheiten – keine Tests</h3>
+    ${sp.length ? `<ul class="tp-sp">${sp.map((x, i) => `<li><span>${dateCH(x.von)}–${dateCH(x.bis)}${x.grund ? " · " + esc(x.grund) : ""}</span><button class="btn" type="button" data-tpx="${i}" aria-label="Abwesenheit entfernen">×</button></li>`).join("")}</ul>` : `<p class="hint">Noch keine eingetragen (z. B. Ferien oder Reisen ohne Messgeräte).</p>`}
+    ${I ? `<form class="tp-sp-form row" id="tp-sp-form"><label>von<input type="date" name="von" required></label><label>bis<input type="date" name="bis" required></label>
+      <label>Grund<input type="text" name="grund" maxlength="40" placeholder="z. B. Ferien"></label><button class="btn" type="submit">Hinzufügen</button></form>` : ""}
+    <p class="hint">Regeln ${esc((window.V62 && V62.VERSIONS.testplan) || "testplan-1.0")}: CSS alle 6–8 Wochen am gleichen Wochentag, Rad-Stufentest alle 8 Wochen am Samstag einer Erholungswoche
+      (zuerst ein ausbelasteter, wenn der letzte es nicht war), Lauf-Stufentest alle 8–12 Wochen in einer anderen Erholungswoche, Kurzcheck alle 2 Wochen in einer Grundlagenfahrt;
+      kein Stufentest 14 Tage vor einem Rennen, in der Woche danach und im Taper. Eingetragene Termine gehen vor. Gespeichert wird verschlüsselt mit «Direkt speichern».</p>`;
+  const sichern = async (L) => { I.data.notizen = Object.assign({}, I.data.notizen, { "tp-sperren": L.length ? JSON.stringify(L) : null }); await I.save(); TP_CACHE = null; drawTests(); };
+  box.querySelectorAll("[data-tpx]").forEach((b) => (b.onclick = () => sichern(sp.filter((_, i) => i !== +b.dataset.tpx))));
+  const f = document.getElementById("tp-sp-form");
+  if (f) f.onsubmit = (e) => { e.preventDefault(); const von = f.von.value, bis = f.bis.value; if (!von || !bis || bis < von) return; sichern(sp.concat({ von, bis, grund: f.grund.value.trim() || null })); };
+}
+
 function calEvents(ds) {
   const ev = [];
   (D.config?.races || RACES).forEach((r) => { if (r.date === ds) ev.push({ cls: "race", text: r.short || r.name, title: r.name }); });
-  testsWithStatus().forEach((t) => { if (t.date === ds) ev.push({ cls: "test", text: (t.done ? "✓ " : "") + KIND[t.kind], title: t.note || "" }); });
+  testsWithStatus().forEach((t) => { if (t.date === ds) ev.push({ cls: "test", text: (t.done ? "✓ " : "") + testName(t) + (t.status === "vorschlag" && !t.done ? " (Vorschlag)" : ""), title: t.note || "" }); });
   (D.lactate || []).forEach((l) => { if (l.date === ds && !(D.tests || []).some((t) => t.kind === l.kind && Math.abs(pd(l.date) - pd(t.date)) <= 4 * DAY)) ev.push({ cls: "test", text: "✓ " + KIND[l.kind], title: l.block || "" }); });
   cssTests().forEach((c) => { if (c.datum === ds && !(D.tests || []).some((t) => t.kind === "css" && Math.abs(pd(c.datum) - pd(t.date)) <= 4 * DAY)) ev.push({ cls: "test", text: "✓ CSS-Test", title: Number.isFinite(FK.css(c.t400, c.t200)) ? `CSS ${mmss(FK.css(c.t400, c.t200))} /100 m` : "" }); });
   D.activities.forEach((a) => { if (a.date === ds) ev.push({ cls: "", c: (SPORTS[a.sport] || SPORTS.andere).color, text: `${a.typ || SPORTS[a.sport].label} ${hmm(a.dur)}`, title: a.name, a }); });

@@ -108,8 +108,17 @@
     box.innerHTML = `<div class="ek-kopfzeile"><div><h2>Heutiges Training</h2>${st ? `<span class="ek-stand">${esc(st.text)}</span>` : ""}</div>
         <button type="button" class="btn" data-v6="optionen">Optionen ${V6().icon("plus", 18)}</button></div>
       ${E.length ? E.map((e) => karte(e)).join("") : `<div class="card ek-leer"><p>Für heute ist in Garmin nichts geplant.</p></div>`}
-      ${N.length ? `<h3 class="abschnitt ek-neu-h">${V6().icon("plus", 15)}Neu von Enduco, noch ohne Datum</h3>${N.map((e) => karte(e, true)).join("")}` : ""}`;
+      ${N.length ? `<h3 class="abschnitt ek-neu-h">${V6().icon("plus", 15)}Neu von Enduco, noch ohne Datum</h3>${N.map((e) => karte(e, true)).join("")}` : ""}
+      ${testHinweis(day)}`;
     binden(box);
+  }
+  /** V6.2 testplan-1.0: Test heute oder morgen (eingetragen oder Vorschlag nach Regel) – nur Hinweis, nichts wird nach Garmin geschrieben. */
+  function testHinweis(day) {
+    if (!C.tests) return "";
+    const morgen = L().addDays ? L().addDays(day, 1) : null, NAME = { stufentest: "Stufentest", check: "Laktat-Kurzcheck", css: "CSS-Test" };
+    const T = C.tests().filter((t) => !t.done && (t.date === day || t.date === morgen));
+    return T.map((t) => `<div class="card ek-test"><span class="abschnitt">${V6().icon("ampel", 15)}${t.date === day ? "Test heute" : "Test morgen"}${t.status === "vorschlag" ? " · Vorschlag" : ""}</span>
+      <b>${esc(NAME[t.kind] || t.kind)}${t.kind === "stufentest" && t.sport ? (t.sport === "lauf" ? " Laufen" : " Rad") : ""}</b><small>${esc(t.note || "")}</small></div>`).join("");
   }
 
   /* ---------- Einheit als Blatt ---------- */

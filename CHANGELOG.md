@@ -1,5 +1,17 @@
 # Änderungen
 
+## V6.2.0 · 13.11.2026 · Etappe 2, Teil 1: Tests planen sich selbst ein (testplan-1.0)
+- **Testplan:** CSS-Test, Rad- und Lauf-Stufentest und Laktat-Kurzcheck werden nach den am 13.11. bestätigten Abständen vorgeschlagen
+  (`js/v62.js`): CSS alle 6–8 Wochen am gleichen Wochentag, Rad-Stufentest alle 8 Wochen am Samstag einer Erholungswoche (zuerst ein
+  ausbelasteter, wenn der letzte es nicht war), Lauf-Stufentest alle 8–12 Wochen in einer anderen Erholungswoche, Kurzcheck alle 2 Wochen in
+  einer Grundlagenfahrt aus dem Garmin-Kalender. Kein Stufentest 14 Tage vor einem Rennen, in der Woche danach und im Taper.
+- **Anzeige:** Vorschläge im Testkalender (mit Regel), im Kalender («Vorschlag») und auf Heute als Hinweis «Test heute/morgen».
+  Eingetragene Termine gehen vor; verletzt einer die Regeln (zu kurzer Abstand, Abwesenheit, Rennen), steht der Grund mit einem Vorschlag da.
+- **Abwesenheiten:** im Testkalender eintragen (von–bis, Grund); dort plant der Testplan nichts. Gespeichert verschlüsselt mit «Direkt speichern».
+
+Geprüft: `tests/test_v62.cjs` (neu: Erholungswochen, Rennabstand, Taper, Lauf ≠ Rad-Woche, CSS-Regelverstoss mit Vorschlag, Kurzcheck
+in der Grundlagenfahrt), alle bisherigen Tests, Screenshots 390 px (Testkalender, Abwesenheit eintragen, Kalender), Demo ohne Programmfehler.
+
 ## V6.1.0 · 13.11.2026 · Etappe 1 «Daten»: Readiness, Body Battery, Stress, Garmin-Notizen (wellness-1.0, notizen-1.0, datenlage-1.0)
 Erste Etappe aus «Plan in Etappen: Ironman Notebook statt enduco» (Entscheide vom 13.11.).
 

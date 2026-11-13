@@ -55,6 +55,7 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
 - **V6.1 (Etappe 1 Daten):** `tools/wellness.py` (Readiness, Body Battery, Stress je Tag, wellness-1.0; `offen` = Tage zum Nachholen),
   `tools/notizen.py` (Garmin-Notizen speichern, Laktat und Verpflegung daraus als Vorschau, notizen-1.0; `offen` = Aktivitäten ohne Notiz),
   `js/v61.js` (ohne DOM: Garmin-Werte eines Tages, Datenlage je Wert, Notiz-Vorschauen), `tests/test_v61.cjs`
+- **V6.2 (Etappe 2):** `js/v62.js` (ohne DOM: Testplan testplan-1.0), `tests/test_v62.cjs`
 - **V5.8:** keine neuen Dateien; Rechenlogik in `js/route.js` (Abschnitte von Hand, Skitourennetz, Hangneigung, MTB-Abfahrt, Wegende, drei
   Rennradvarianten, Windpfeile), Oberfläche in `js/routen-ui.js`, Ringe «Heute» in `js/formkurve.js` (`FK.ringeVerlauf`) und `js/v55.js` (`V55.ringe`)
 - `tests/test_formkurve.cjs`, `tests/test_route.cjs`, `tests/test_analyse.cjs`, `tests/test_training.cjs`, `tests/test_tools.py` – Abnahmetests (erfundene Werte; `tests/fixtures/` = echte
@@ -388,7 +389,7 @@ V5.9.3: `routen` (im Planer gespeicherte Routen → `routes`, gleiche ID ersetzt
   Die exakten Grössen der SPS1-Dateien stehen in der Git-Historie.
 
 ## Prüfen vor jedem Push von Seite oder Werkzeugen
-`node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
+`node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
 Kein Live-Push, wenn ein Test fehlschlägt. Screenshots mit echten Daten nie ins Repo.
 
 ## FTP und Trainingslast
@@ -450,6 +451,13 @@ vor Jesolo, 13.5.2027 nach Jesolo, vor Hamburg – nicht an Kursabenden und nich
 optional), über «Direkt speichern» → `css_tests`. Rohpace aus Garmin, Videovergleich und Fehlerboard sind ausgeblendet (Daten bleiben);
 Technik wertet Claude im Chat aus (Videos Bild für Bild), nie auf der Seite.
 Protokoll-Vorlagen: `protokolle` (Liste mit `id name sport ablauf blut ende rahmen status`), ändern über `"protokolle": [ … ]` in `work/new.json`.
+**Testplan (V6.2, testplan-1.0, `js/v62.js`):** Die Seite schlägt Tests nach festen Regeln selbst vor (Status «vorschlag», Regel sichtbar), in
+Testkalender, Kalender und auf Heute (heute/morgen): CSS alle 6–8 Wochen am gleichen Wochentag wie zuletzt; Rad-Stufentest alle 8 Wochen am Samstag
+einer Erholungswoche (saison-1.0), zuerst ein ausbelasteter, wenn der letzte es nicht war; Lauf-Stufentest alle 8–12 Wochen in einer anderen
+Erholungswoche; Kurzcheck alle 2 Wochen in einer Grundlagenfahrt (rollend 8 Wochen, nicht 4 Tage neben einem Stufentest); kein Stufentest 14 Tage
+vor einem Rennen, in der Woche danach und im Taper. Eingetragene Termine (`tests`) gehen vor; Regelverstösse werden mit einem Vorschlag gezeigt,
+nie still geändert. Abwesenheiten («keine Tests») trägt Silas auf der Seite ein (Notiz `tp-sperren`, verschlüsselt über «Direkt speichern»);
+nie Reisedaten in Doku, Code oder Tests schreiben. Nach Garmin wird nichts geschrieben.
 
 ## Test-Workouts (A9)
 `python3 -I tools/workouts.py <ordner>` erzeugt `.zwo` (Zwift, ftpOverride 100 → Power 1.2 = 120 W) und `.garmin.json`
