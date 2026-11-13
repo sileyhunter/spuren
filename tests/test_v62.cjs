@@ -141,3 +141,34 @@ test("Zonenprofil: nur die bestätigte Sportart ersetzt, Rest unverändert; am s
   assert.deepEqual(p2.methodik.unveraendert, []);
   assert.match(p2.freigabe.text, /Rad und Laufen/);
 });
+
+test("Testplan (Audit V6.4 B4): kein Kurzcheck im Abstand von 4 Tagen oder weniger zu einem Stufentest – auch nicht in der Grundlagenfahrt daneben", () => {
+  const P = V62.testplan({ heute: "2026-11-16", bis: "2027-08-01", wochen: [], rennen: [], sperren: [], erledigt: { css: [], rad: [], lauf: [], check: [] },
+    fest: [{ date: "2026-11-21", kind: "stufentest", sport: "rad", status: "geplant" }], planned: [{ date: "2026-11-19", sport: "rad", dur_s: 5400, title: "Grundlage 1:30" }] });
+  const C = P.vorschlaege.filter((v) => v.kind === "check");
+  assert.ok(C.length >= 1);
+  assert.ok(C.every((c) => Math.abs(tage(c.date, "2026-11-21")) > V62.REGEL.check.stufentest_t), C.map((c) => c.date).join(", "));
+});
+test("Testplan (Audit V6.4 B5/B6): eingetragener Lauf-Stufentest (auch ohne Feld sport) sperrt seine Woche für den Rad-Vorschlag", () => {
+  const W = []; for (let i = 0; i < 16; i++) W.push({ woche: V62.addDays("2026-11-16", 7 * i), phase: "Grundlage", erholung: i % 4 === 1 });
+  for (const f of [{ date: "2026-11-28", kind: "stufentest", sport: "lauf", status: "geplant" }, { date: "2026-11-26", kind: "stufentest", note: "Lauf-Stufentest Bahn", status: "geplant" }]) {
+    const P = V62.testplan({ heute: "2026-11-16", bis: "2027-08-01", wochen: W, rennen: [], planned: [], sperren: [], fest: [f],
+      erledigt: { css: [], rad: [{ date: "2026-09-01", ausbelastet: true }], lauf: [], check: [] } });
+    const rad = P.vorschlaege.filter((v) => v.kind === "stufentest" && v.sport === "rad").map((v) => v.date);
+    assert.ok(rad.length >= 1 && !rad.some((d) => d >= "2026-11-23" && d <= "2026-11-29"), rad.join(", "));
+    assert.ok(!P.vorschlaege.some((v) => v.kind === "stufentest" && v.sport === "lauf" && v.date <= "2026-12-31"), "der eingetragene Lauf-Test zählt");
+  }
+  assert.equal(V62.testSport({ kind: "stufentest", note: "Laufband" }), "lauf"); assert.equal(V62.testSport({ kind: "stufentest" }), "rad");
+  assert.deepEqual(V62.testSporten({ kind: "stufentest", note: "Basistest Rad und Lauf" }), ["rad", "lauf"]); assert.equal(V62.testSport({ kind: "stufentest", note: "Rad und Lauf" }), "beide");
+  assert.equal(V62.testSport({ kind: "css" }), "schwimm"); assert.equal(V62.testSport({ kind: "check", sport: "lauf" }), "lauf");
+});
+test("Testplan (Audit V6.4 B21): CSS-Vorschlag 6–8 Wochen nach dem letzten, auch wenn der Wochentag wechselt; sonst sichtbar begründet", () => {
+  // letzter Test Samstag, eingetragener Termin an einem Montag in der Zukunft (gibt den Wochentag vor)
+  const ctx = (sperren) => ({ heute: "2026-11-16", bis: "2027-08-01", wochen: [], rennen: [], planned: [], fest: [{ date: "2027-03-01", kind: "css", status: "geplant" }],
+    sperren, erledigt: { css: ["2026-11-14"], rad: [], lauf: [], check: [] } });
+  const frei = V62.testplan(ctx([])).vorschlaege.filter((v) => v.kind === "css");
+  assert.ok(frei.length >= 1 && wt(frei[0].date) === 1 && tage("2026-11-14", frei[0].date) >= 42 && tage("2026-11-14", frei[0].date) <= 56, frei.map((v) => v.date).join(", "));
+  // 6- und 7-Wochen-Montag abwesend: der nächste Montag liegt nach 8 Wochen – dann mit Begründung, nie still
+  const weg = V62.testplan(ctx([{ von: "2026-12-26", bis: "2027-01-10", grund: "weg" }])).vorschlaege.filter((v) => v.kind === "css");
+  assert.ok(tage("2026-11-14", weg[0].date) > 56 && /kein Termin frei/.test(weg[0].note), weg[0].date + " " + weg[0].note);
+});

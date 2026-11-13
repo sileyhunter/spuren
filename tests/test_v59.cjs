@@ -137,17 +137,27 @@ test("Trainingslast last-2.0: Referenz je Datum (letzter Test davor, vorher der 
 
 /* ---------------- css-2.0 (Testkalender mit CSS-Tests) ---------------- */
 test("Testkalender: CSS-Tests gelten als erledigt mit einem eingetragenen CSS-Test bis 4 Tage daneben; Laktat-Tests wie bisher", () => {
-  const tests = [{ date: "2026-11-19", kind: "css", note: "Ausgangswert", status: "geplant" }, { date: "2027-01-07", kind: "css", note: "vor Thailand", status: "geplant" },
-    { date: "2026-11-21", kind: "check", note: "x", status: "vorschlag" }, { date: "2026-12-05", kind: "stufentest", note: "y", status: "vorschlag" }];
-  const css = [{ id: "c1", datum: "2026-11-20", t400: 400, t200: 190 }, { id: "c2", datum: "2027-01-12", t400: 395, t200: 188 }];
-  const lac = [{ kind: "check", date: "2026-11-24" }, { kind: "stufentest", date: "2026-11-20" }];
+  const tests = [{ date: "2026-12-03", kind: "css", note: "erster", status: "geplant" }, { date: "2027-02-11", kind: "css", note: "zweiter", status: "geplant" },
+    { date: "2026-12-05", kind: "check", note: "x", status: "vorschlag" }, { date: "2026-12-19", kind: "stufentest", note: "y", status: "vorschlag" }];
+  const css = [{ id: "c1", datum: "2026-12-04", t400: 400, t200: 190 }, { id: "c2", datum: "2027-02-16", t400: 395, t200: 188 }];
+  const lac = [{ kind: "check", date: "2026-12-08" }, { kind: "stufentest", date: "2026-12-04" }];
   const S = L.testsMitStatus(tests, lac, css);
   assert.deepEqual(S.map((t) => [t.kind, t.done, t.doneDate || null]),
-    [["css", true, "2026-11-20"], ["css", false, null], ["check", true, "2026-11-24"], ["stufentest", false, null]],
+    [["css", true, "2026-12-04"], ["css", false, null], ["check", true, "2026-12-08"], ["stufentest", false, null]],
     "CSS 1 Tag daneben erledigt, 5 Tage daneben nicht; Check 3 Tage daneben erledigt; ein CSS-Test erledigt nie einen Laktat-Test");
   assert.equal(L.testsMitStatus(null, null, null).length, 0);
-  const P = L.cssPlan(tests, css, "2026-11-25");
-  assert.deepEqual(P.liste.map((t) => t.date), ["2026-11-19", "2027-01-07"], "nur CSS-Tests, nach Datum");
-  assert.equal(P.naechster.date, "2027-01-07");
-  assert.equal(L.cssPlan(tests, css.concat([{ datum: "2027-01-08", t400: 1, t200: 0.5 }]), "2026-11-25").naechster, null, "alle erledigt → kein nächster");
+  const P = L.cssPlan(tests, css, "2026-12-09");
+  assert.deepEqual(P.liste.map((t) => t.date), ["2026-12-03", "2027-02-11"], "nur CSS-Tests, nach Datum");
+  assert.equal(P.naechster.date, "2027-02-11");
+  assert.equal(L.cssPlan(tests, css.concat([{ datum: "2027-02-12", t400: 1, t200: 0.5 }]), "2026-12-09").naechster, null, "alle erledigt → kein nächster");
+});
+
+test("Testkalender (Audit V6.4 B6/B20): Sportart auch ohne Feld sport (aus der Notiz); ein Rad-Stufentest erledigt keinen Lauf-Stufentest", () => {
+  const tests = [{ date: "2026-11-26", kind: "stufentest", note: "Lauf-Stufentest auf der Bahn", status: "geplant" }, { date: "2026-12-05", kind: "stufentest", note: "Rolle", status: "geplant" },
+    { date: "2026-12-10", kind: "css", status: "geplant" }];
+  const S = L.testsMitStatus(tests, [{ kind: "stufentest", sport: "rad", date: "2026-11-28" }, { kind: "stufentest", date: "2026-12-06" }], []);
+  assert.deepEqual(S.map((t) => [t.sport, t.done]), [["lauf", false], ["rad", true], ["schwimm", false]], "Lauf-Test bleibt offen; Laktat-Eintrag ohne Sportart = Rad");
+  const B = L.testsMitStatus([{ date: "2026-12-05", kind: "stufentest", note: "Test Rad und Lauf" }], [{ kind: "stufentest", sport: "rad", date: "2026-12-05" }], []);
+  assert.deepEqual([B[0].sport, B[0].done], ["beide", false], "gemeinsamer Test erst erledigt, wenn beide gemacht sind");
+  assert.equal(L.testsMitStatus([{ date: "2026-12-05", kind: "stufentest", note: "Test Rad und Lauf" }], [{ kind: "stufentest", sport: "rad", date: "2026-12-05" }, { kind: "stufentest", sport: "lauf", date: "2026-12-06" }], [])[0].done, true);
 });

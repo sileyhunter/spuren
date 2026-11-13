@@ -2,7 +2,7 @@
    Bis der eigene Plan läuft, sind es Vorschläge in Kalender und Testkalender; nach Garmin wird nichts geschrieben.
    Regeln (Abstände von Silas bestätigt am 13.11.2026):
    - CSS-Test alle 6–8 Wochen (zuerst 7, sonst 6 oder 8), am selben Wochentag wie der letzte (Kursabende bleiben frei), nicht in der Woche vor einem Rennen.
-   - Rad-Stufentest alle 8 Wochen am Samstag einer Erholungswoche (saison-1.1); war der letzte nicht ausbelastet, als Nächstes ein ausbelasteter.
+   - Rad-Stufentest alle 8 Wochen am Samstag einer Erholungswoche (saison-1.2); war der letzte nicht ausbelastet, als Nächstes ein ausbelasteter.
    - Lauf-Stufentest alle 8–12 Wochen, ebenfalls am Ende einer Erholungswoche, aber nie in derselben Woche wie der Rad-Test.
    - Kurzcheck alle 2 Wochen in einer Grundlagenfahrt (mind. 60 min); entfällt, wenn ein Stufentest (Rad oder Lauf) innerhalb von 4 Tagen liegt.
    - Kein Stufentest in den 14 Tagen vor einem Rennen, in der Woche danach und im Taper; kein Test in eingetragenen Abwesenheiten.
@@ -41,12 +41,29 @@
     for (let i = 0; i < 8; i++, d = add(d, 7)) if (ok(d)) return d;
     return null;
   }
-  /** Termin im Fenster 6–8 Wochen nach prev (zuerst 7, dann 6, dann 8 Wochen, gleicher Wochentag); sonst der nächste erlaubte danach. */
+  /** Termin im Fenster 6–8 Wochen nach prev am gegebenen Wochentag, der 7. Woche am nächsten (Audit V6.4 B21: nie über 8 Wochen, auch wenn
+   *  der Wochentag wechselt); sonst der nächste erlaubte danach. */
   function imFenster(prev, wochentag, ok) {
-    const R = V62.REGEL.css;
-    for (const w of [R.ziel_w, R.min_w, R.max_w]) { const d = naechster(add(prev, w * 7), wochentag, () => true); if (d && ok(d)) return d; }
+    const R = V62.REGEL.css, kand = [];
+    for (let d = naechster(add(prev, R.min_w * 7), wochentag, () => true); d && tage(prev, d) <= R.max_w * 7; d = add(d, 7)) kand.push(d);
+    kand.sort((a, b) => Math.abs(tage(prev, a) - R.ziel_w * 7) - Math.abs(tage(prev, b) - R.ziel_w * 7) || a.localeCompare(b));
+    for (const d of kand) if (ok(d)) return d;
     return naechster(add(prev, R.max_w * 7 + 1), wochentag, ok);
   }
+  /** Sportarten eines Tests (Audit V6.4 B6/B20, für Testplan, Testkalender und Woche nach Modell): ausdrücklich gesetzt, sonst CSS = Schwimmen,
+   *  Kurzcheck = Rad, Stufentest laut Notiz (Testkalender-Format ohne Feld sport): «Lauf» → Laufen, «Rad» und «Lauf» → beide, sonst Rad. */
+  V62.testSporten = function (t) {
+    if (!t) return [];
+    if (["schwimm", "rad", "lauf"].includes(t.sport)) return [t.sport];
+    if (t.kind === "css") return ["schwimm"];
+    if (t.kind === "check") return ["rad"];
+    if (t.kind !== "stufentest") return [];
+    const n = String(t.note || ""), lauf = /lauf/i.test(n), rad = /\brad\b|velo|bike/i.test(n);
+    return lauf && rad ? ["rad", "lauf"] : lauf ? ["lauf"] : ["rad"];
+  };
+  /** Eine Sportart («beide» bei einem gemeinsamen Rad- und Lauf-Stufentest) – für Anzeige und Status. */
+  V62.testSport = (t) => { const S = V62.testSporten(t); return S.length > 1 ? "beide" : S[0] || null; };
+  const montagVon = (iso) => add(iso, -((wt(iso) + 6) % 7));
   /** Grundlagenfahrt im Garmin-Kalender (Titel/Beschreibung, mind. 60 min, keine harte Einheit). */
   V62.grundlage = function (p) {
     if (!p || p.sport !== "rad" || (p.dur_s || 0) < 3600) return false;
@@ -54,7 +71,7 @@
     return /grundlage|ausdauer|fat ?max|basis|endurance|base|\bz2\b|locker|ga1/i.test(t) && !/intervall|vo2|schwelle|sweet|tempo|sprint|test|threshold/i.test(t);
   };
 
-  /** Testplan. ctx: heute, bis (Hauptrennen), wochen (saison-1.1: woche = Montag, phase, erholung), rennen [{date, short}],
+  /** Testplan. ctx: heute, bis (Hauptrennen), wochen (saison-1.2: woche = Montag, phase, erholung), rennen [{date, short}],
    *  erledigt {css: [Datum], rad: [{date, ausbelastet}], lauf: [{date, ausbelastet}], check: [Datum]},
    *  fest (Testkalender: {date, kind, sport?}), planned (Garmin-Kalender), sperren [{von, bis, grund}].
    *  Ergebnis: {vorschlaege: [{date, kind, sport, note, status: "vorschlag", regel}], konflikte: [{date, kind, text, vorschlag}], regel}. */
@@ -63,23 +80,26 @@
     const wochen = (ctx.wochen || []).slice().sort((a, b) => a.woche.localeCompare(b.woche));
     const phase = (d) => { let p = null; for (const w of wochen) if (w.woche <= d) p = w; else break; return p && tage(p.woche, d) < 7 ? p.phase : null; };
     const fest = (ctx.fest || []).filter((f) => f && f.date && f.kind);
-    const festSport = (f) => f.sport || (f.kind === "stufentest" ? (/lauf/i.test(f.note || "") ? "lauf" : "rad") : f.kind === "check" ? "rad" : null);
+    const festSport = (f) => V62.testSporten(f);
     const vorschlaege = [], konflikte = [];
 
     /* ----- Stufentests Rad und Lauf: Samstag einer Erholungswoche ----- */
     const erh = wochen.filter((w) => w.erholung).map((w) => add(w.woche, 5)).filter((d) => d >= add(heute, R.stufen.frueh_t) && d <= bis);
     const okStufe = (d) => !sperre(d, ctx.sperren) && !rennenNah(d, ctx.rennen, R.stufen.vor_rennen_t, R.stufen.nach_rennen_t) && phase(d) !== "Taper";
     const belegt = new Set();
+    // Audit V6.4 B5: eingetragene Stufentests der anderen Sportart sperren ihre Woche (nie Rad und Laufen in derselben Woche)
+    const festWochen = (sp) => new Set(fest.filter((f) => f.kind === "stufentest" && festSport(f).includes(sp)).map((f) => montagVon(f.date)));
+    const andereWoche = { rad: festWochen("lauf"), lauf: festWochen("rad") };
     for (const sport of ["rad", "lauf"]) {
       const done = ((ctx.erledigt || {})[sport] || []).filter((x) => x && x.date && x.date <= heute).sort((a, b) => a.date.localeCompare(b.date));
-      const fix = fest.filter((f) => f.kind === "stufentest" && festSport(f) === sport && f.date >= heute).map((f) => f.date).sort();
+      const fix = fest.filter((f) => f.kind === "stufentest" && festSport(f).includes(sport) && f.date >= heute).map((f) => f.date).sort();
       let ref = done.length ? done[done.length - 1] : null, nichtAus = !!(ref && ref.ausbelastet === false && sport === "rad");
       const minT = sport === "rad" ? R.rad.min_t : R.lauf.min_t;
       for (const d of erh) {
         const f = fix.find((x) => Math.abs(tage(x, d)) <= 21);
         if (f) { ref = { date: f }; nichtAus = false; if (sport === "rad") belegt.add(d); continue; }
         if (ref && !nichtAus && tage(ref.date, d) < minT) continue;
-        if (!okStufe(d) || (sport === "lauf" && belegt.has(d))) continue;
+        if (!okStufe(d) || (sport === "lauf" && belegt.has(d)) || andereWoche[sport].has(montagVon(d))) continue;
         let note;
         if (sport === "rad") note = nichtAus ? `Ausbelasteter Stufentest am Ende der Erholungswoche – der letzte (${ch(ref.date)}) war nicht ausbelastet`
           : ref ? `Am Ende der Erholungswoche, 8 Wochen nach dem letzten (${ch(ref.date)})` : "Erster Rad-Stufentest, am Ende der Erholungswoche";
@@ -119,7 +139,8 @@
         const d = ref ? imFenster(ref, tagCss, okCss) : naechster(heute, tagCss, okCss);
         if (!d || (a ? tage(d, a) < R.css.min_w * 7 : d > bis)) break;
         vorschlaege.push({ date: d, kind: "css", sport: "schwimm", status: "vorschlag", regel: V62.VERSIONS.testplan,
-          note: ref ? `400 m und 200 m, ${Math.round(tage(ref, d) / 7)} Wochen nach dem letzten (${ch(ref)})` : "400 m und 200 m – erster CSS-Test" });
+          note: ref ? `400 m und 200 m, ${Math.round(tage(ref, d) / 7)} Wochen nach dem letzten (${ch(ref)})${tage(ref, d) > R.css.max_w * 7 ? " – in 6–8 Wochen war an diesem Wochentag kein Termin frei" : ""}`
+            : "400 m und 200 m – erster CSS-Test" });
         ref = d;
       }
       if (a) ref = a;
@@ -128,7 +149,9 @@
     /* ----- Kurzcheck: alle 2 Wochen in einer Grundlagenfahrt, rollend 8 Wochen ----- */
     const stufenTage = [...vorschlaege.filter((v) => v.kind === "stufentest").map((v) => v.date), ...fest.filter((f) => f.kind === "stufentest").map((f) => f.date)];
     const checkFix = fest.filter((f) => f.kind === "check" && f.date >= heute).map((f) => f.date);
-    const okCheck = (d) => !sperre(d, ctx.sperren) && !rennenNah(d, ctx.rennen, R.check.vor_rennen_t, R.check.nach_rennen_t);
+    // Audit V6.4 B4: auch der gewählte Tag (nicht nur der Stichtag) liegt mehr als 4 Tage neben jedem Stufentest
+    const okCheck = (d) => !sperre(d, ctx.sperren) && !rennenNah(d, ctx.rennen, R.check.vor_rennen_t, R.check.nach_rennen_t)
+      && !stufenTage.some((s) => Math.abs(tage(s, d)) <= R.check.stufentest_t);
     const cd = ((ctx.erledigt || {}).check || []).filter((d) => d && d <= heute).sort();
     let due = cd.length ? add(cd[cd.length - 1], R.check.abstand_t) : heute;
     if (due < heute) due = heute;

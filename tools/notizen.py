@@ -360,6 +360,11 @@ def _fueling_vorschau(a, fu, ref):
             "pruefung": pr, "pruefung_text": txt, "hinweise": hw, "gi": [], "notiz": ""}
 
 
+def _aus_notiz(p):
+    """Stammt die Vorschau aus der Garmin-Notiz (notizen-1.0)? Andere Herkunft mit gleicher ID wird nie angefasst."""
+    return p.get("quelle_art") == "notiz" or str(p.get("regel", "")).startswith("notizen-")
+
+
 def _ersetzen(D, liste, neu, was):
     """Eigene Vorschau ersetzen (alte Fassung ins Audit) oder anhängen; gibt 1 zurück, wenn neu."""
     alt = next((x for x in liste if x.get("id") == neu["id"]), None)
@@ -393,6 +398,11 @@ def ableiten(D):
             neu = _laktat_vorschau(a, e, ref)
             alt = next((p for p in LV if p.get("id") == neu["id"]), None)
             if alt and alt.get("status") != "vorschau":
+                soll_la.add(neu["id"])
+                continue
+            if alt and not _aus_notiz(alt):
+                # Audit V6.4 B2: gleiche ID, aber nicht aus der Notiz (z. B. mit laktat_vorschau.py --extra aus FIT nachgerechnet) –
+                # nie durch die Notiz-Fassung ersetzen; bestätigt wird, was Silas gesehen hat
                 soll_la.add(neu["id"])
                 continue
             schon = _gleiche_messung(D, refs, neu["kandidaten"][0]["t_s"], e["la"], neu["id"])

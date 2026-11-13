@@ -1,6 +1,6 @@
 /* V6.0.2 Plan (design-1.0): Rennen als Kacheln (Fahne, A/B, Countdown, Streckenlängen), Saisonphasen als senkrechter Zeitstrahl
    (aktive Phase hervorgehoben, Antippen öffnet die Wochen) und Wochenstunden je Sportart (absolviert und geplant, Phasen auf der Zeitachse).
-   Phasen aus AN.saison (saison-1.1, nur Vorschlag); geplant = Garmin-Kalender. Die Seite schreibt nichts nach Garmin oder Enduco. */
+   Phasen aus AN.saison (saison-1.2, nur Vorschlag); geplant = Garmin-Kalender. Die Seite schreibt nichts nach Garmin oder Enduco. */
 (function () {
   "use strict";
   const P = (window.V6P = window.V6P || {});
@@ -48,14 +48,17 @@
     const box = $("pl-phasen"); if (!box) return;
     const W = V6(), h = heuteISO();
     if (!S) { box.innerHTML = `<p class="ek-ohne">Ohne Hauptrennen keine Phasen.</p>`; return; }
-    const seg = W.phasenSegmente(S.wochen, h), R = rennen(), ist = AN().wochenIst(C.D.activities, S.wochen[0].woche, FK().addDays(S.wochen[S.wochen.length - 1].woche, 6));
+    // saison-1.2: die laufende Phase ganz (ab ihrem Beginn), damit «Woche x von y» stimmt; Grundlage hat keinen festen Beginn
+    const L = S.alle && S.ab ? S.alle.filter((w) => w.woche >= S.ab) : S.wochen;
+    const seg = W.phasenSegmente(L, h), R = rennen(), ist = AN().wochenIst(C.D.activities, L[0].woche, FK().addDays(L[L.length - 1].woche, 6));
     const plan = new Map();
     for (const p of C.D.planned || []) { if (!p.date) continue; const mo = W.montag(p.date); plan.set(mo, (plan.get(mo) || 0) + ((window.V6H ? window.V6H.planDauer(p) : p.dur_s) || 0) / 3600); }
     const hh = (x) => (isNum(x) && x > 0 ? (Math.round(x * 2) / 2).toString().replace(".", ",") + " h" : "–");
     const items = [];
     seg.forEach((s) => {
       const [name, farbe] = P.PHASE[s.phase] || [s.phase, "--muted"], n = s.wochen.length;
-      const wi = s.aktiv ? s.wochen.findIndex((w) => h >= w.woche && h <= FK().addDays(w.woche, 6)) + 1 : 0;
+      const wa = s.aktiv ? s.wochen.find((w) => h >= w.woche && h <= FK().addDays(w.woche, 6)) : null;
+      const wiText = wa && isNum(wa.phaseNr) && (wa.basis || wa.phase) === s.phase ? ` · Woche ${wa.phaseNr} von ${wa.phaseN}` : "";
       const wochen = s.wochen.map((w) => {
         const r = ist.get(w.woche), istH = r ? r.rad + r.lauf + r.schwimm + r.andere : null, jetzt = h >= w.woche && h <= FK().addDays(w.woche, 6);
         return `<li class="${jetzt ? "jetzt" : ""}"><span>KW ${W.isoWoche(w.woche)} · ${esc(dkurz(w.woche))}–${esc(dkurz(FK().addDays(w.woche, 6)))}</span>
@@ -64,7 +67,7 @@
       }).join("");
       items.push(`<li class="pl-ph${s.aktiv ? " aktiv" : ""}${s.bis < h ? " vorbei" : ""}" style="--ph:var(${farbe})">
         <button type="button" class="pl-ph-k" aria-expanded="false"><span class="pl-punkt" aria-hidden="true"></span>
-          <span class="pl-ph-t"><b>${esc(name)}</b><small>${esc(dch(s.von))} – ${esc(dch(s.bis))} · ${n} ${n === 1 ? "Woche" : "Wochen"}${s.aktiv ? ` · Woche ${wi} von ${n}` : ""}</small></span>
+          <span class="pl-ph-t"><b>${esc(name)}</b><small>${esc(dch(s.von))} – ${esc(dch(s.bis))} · ${n} ${n === 1 ? "Woche" : "Wochen"}${wiText}</small></span>
           ${s.aktiv ? `<span class="pl-jetzt">jetzt</span>` : ""}${W.icon("runter", 18)}</button>
         <ul class="pl-wochen" hidden>${wochen}</ul></li>`);
       for (const r of R) if (r.date >= s.von && r.date <= s.bis)

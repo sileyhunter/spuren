@@ -68,7 +68,7 @@
     const tag = morgenTag(), pa = C.pmcHeute ? C.pmcHeute() : null, st = pa ? V6().status(pa.form) : null;
     const b = befundHeute(), aus = !b && ciAus();
     const sg = (v) => (v > 0 ? "+" + v : v < 0 ? "−" + Math.abs(v) : "0");
-    const ciSub = b ? (b._lokal ? (C.IS_DEMO ? "nur hier (Demo)" : "auf dem Gerät") : "in den Daten") : aus ? "übersprungen" : "3 kurze Fragen";
+    const ciSub = b ? (b._lokal ? (C.IS_DEMO ? "nur hier (Demo)" : "auf dem Gerät") : "in den Daten") : aus ? "übersprungen" : "4 kurze Fragen";
     box.innerHTML = `
       <button type="button" class="kachel" data-v6="bereit" aria-label="Ampel, Bereitschaft heute: ${esc(bw)} – Einzelheiten">
         <span class="k-kopf">${V6().icon("ampel", 15)}Ampel</span><b class="k-wert" style="color:var(${bf})">${esc(bw)}</b>
@@ -83,7 +83,7 @@
   }
 
   /* ---------- Heutiges Training ---------- */
-  function chips(e, max) { return e.pr && e.pr.fokus.length ? e.pr.fokus.slice(0, max || 3).map((f) => V6().zchip(f.key)).join("") : ""; }
+  function chips(e, max) { const F = e.pr ? e.pr.fokus.concat(e.pr.fokusOffen || []) : []; return F.length ? F.slice(0, max || 3).map((f) => V6().zchip(f.key)).join("") : ""; }
   function zahlen(e) {
     const z = [[geschaetzt(e) + V6().dauerText(e.dauer), "Dauer"]];
     const dist = e.wo && isNum(e.wo.distanz_m) ? e.wo.distanz_m : null;
@@ -120,7 +120,7 @@
     const morgen = L().addDays ? L().addDays(day, 1) : null, NAME = { stufentest: "Stufentest", check: "Laktat-Kurzcheck", css: "CSS-Test" };
     const T = C.tests().filter((t) => !t.done && (t.date === day || t.date === morgen));
     return T.map((t) => `<div class="card ek-test"><span class="abschnitt">${V6().icon("ampel", 15)}${t.date === day ? "Test heute" : "Test morgen"}${t.status === "vorschlag" ? " · Vorschlag" : ""}</span>
-      <b>${esc(NAME[t.kind] || t.kind)}${t.kind === "stufentest" && t.sport ? (t.sport === "lauf" ? " Laufen" : " Rad") : ""}</b><small>${esc(t.note || "")}</small></div>`).join("");
+      <b>${esc(NAME[t.kind] || t.kind)}${t.kind === "stufentest" && t.sport ? ({ lauf: " Laufen", rad: " Rad", beide: " Rad und Laufen" }[t.sport] || "") : ""}</b><small>${esc(t.note || "")}</small></div>`).join("");
   }
 
   /* ---------- Einheit als Blatt ---------- */
@@ -146,11 +146,11 @@
     }).join("");
   }
   function zonenSkala(e) {
-    const W = V6(), fokus = new Map((e.pr ? e.pr.fokus : []).map((f) => [f.key === "vo2" ? "vo2" : f.key, f.anteil]));
+    const W = V6(), F = e.pr ? e.pr.fokus.concat(e.pr.fokusOffen || []) : [], fokus = new Map(F.map((f) => [f.key, f.anteil]));
     const an = (k) => fokus.has(k) || (k === "vo2" && fokus.has("z5"));
-    return `<div class="zskala" role="img" aria-label="Zonenskala, hervorgehoben: ${esc((e.pr ? e.pr.fokus : []).map((f) => W.ZONEN[f.key].name).join(", ") || "keine")}">
+    return `<div class="zskala" role="img" aria-label="Zonenskala, hervorgehoben: ${esc(F.map((f) => W.ZONEN[f.key].name).join(", ") || "keine")}">
       ${W.SKALA_REIHE.map((k) => `<span class="${an(k) ? "an" : ""}" style="--zc:${W.ZONEN[k].farbe}"></span>`).join("")}</div>
-      <div class="ek-fokus">${(e.pr ? e.pr.fokus : []).map((f) => `<span>${W.zchip(f.key)}<small>${Math.round(f.anteil * 100)} %</small></span>`).join("") || `<span class="muted">Ohne Zielbereiche keine Fokus-Intensität.</span>`}</div>`;
+      <div class="ek-fokus">${F.map((f) => `<span>${W.zchip(f.key)}<small>${isNum(f.anteil) ? Math.round(f.anteil * 100) + " %" : "Dauer offen"}</small></span>`).join("") || `<span class="muted">Ohne Zielbereiche keine Fokus-Intensität.</span>`}</div>`;
   }
   H.einheit = function (key) {
     C = UI() && UI().C; if (!C) return;
@@ -197,7 +197,7 @@
     const lage = pa ? W.statusLage(pa.form) : null;
     const E = H.heute(), rE = E.find((e) => ROUTBAR.includes(e.sport));
     const akt = [
-      ["check", "Check-in", befundHeute() ? "Befinden von heute ansehen oder ändern" : "Drei kurze Fragen zum Befinden", "checkin"],
+      ["check", "Check-in", befundHeute() ? "Befinden von heute ansehen oder ändern" : "Vier kurze Fragen zum Befinden", "checkin"],
       ["energie", "Verpflegung erfassen", "Fueling einer Einheit (Ausdauer)", "fueling"],
       ["trend", "Laktat eintragen", "Kurzcheck oder Stufentest (Laktat)", "laktat"],
       ["schwimm", "CSS-Test eintragen", "400 m und 200 m (Schwimmen)", "css"],

@@ -126,6 +126,8 @@ check("V6.4.2 Intensität je Sportart übernommen", D["plan_modell"][0].get("int
 merge_daily.v5_merge(D, {"modell_add": [dict(_m2, intensitaet={"rad": "maximal"}), dict(_m2, intensitaet={"kraft": "alles"}), dict(_m2, intensitaet="alles")]})
 check("V6.4.2 Intensität: unbekannte Stufe, Sportart oder Form abgelehnt", D["plan_modell"][0].get("intensitaet", {}).get("lauf") == "locker" and len(D["plan_modell"]) == 1)
 check("V6.4.2 Intensität: Prüfung nennt den Grund", merge_daily.modell_pruefen(dict(_m2, intensitaet={"rad": "maximal"})) == "unbekannte Intensität 'maximal' (rad)")
+check("Trainingsmodell (Audit V6.4 B22): Wechsel nur als JJJJ-MM-TT – andere ISO-Formen abgelehnt",
+      [merge_daily.modell_pruefen(dict(_m1, wechsel=w)) for w in ("20270315", "2027-W11-1", "2027-02-01")] == ["Wechsel ist kein Datum", "Wechsel ist kein Datum", None])
 merge_daily.v5_merge(D, {"laktat_bestaetigt": ["demo-test"]})
 check("B1: Vorschau nach Bestätigung als Laktatmessung", len(D["lactate"]) == 1 and D["lactate"][0]["stages"][0]["quelle"] and D["laktat_vorschau"][0]["status"] == "übernommen")
 S2 = schwellen.rechne(D)
@@ -275,7 +277,7 @@ swim = [{"i": 0, "typ": "einlaufen", "dauer": "distanz", "m": 200}, {"i": 1, "ty
 check("Plan: Schwimm-Workout nach Distanz – Plandauer unbekannt statt Teilsumme, Distanz 200 + 4 × 50 m",
       serien.plan_gesamt(swim) is None and serien.plan_distanz(swim) == 400, f"{serien.plan_gesamt(swim)} {serien.plan_distanz(swim)}")
 FE = 631065600
-W6 = {"name": "Test", "geraet": {"ftp": 324}, "steps": [{"i": 0, "typ": "aktiv", "ziel": "leistung", "lo": 190, "hi": 260, "einheit": "W?", "s": 1200}],
+W6 = {"name": "Test", "geraet": {"ftp": 200}, "steps": [{"i": 0, "typ": "aktiv", "ziel": "leistung", "lo": 190, "hi": 260, "einheit": "W?", "s": 1200}],
       "laps": [(1700000000 - FE, 1700000000 - FE + 1200, 1200000, 0)]}
 A6 = serien.abgleich(S6, W6)
 check("Plan: Enduco-Watt ohne Versatz als Watt gelesen (passt zur gefahrenen Leistung)", A6["schritte"][0]["einheit"] == "W" and A6["schritte"][0]["lo"] == 190 and "Watt gelesen" in A6["schritte"][0]["bezug"], str(A6["schritte"][0]))
@@ -528,7 +530,8 @@ _spec9 = [
      "zonen": [{"id": "zonen-20261110", "status": "aktiv", "gueltig_ab": "2026-11-10", "freigabe": {"datum": "2026-11-10"}, "methodik": {"art": "zonenvorschlag-1.0", "je_sportart": {"rad": {"test": "t-unbekannt"}}},
                 "skalen": [{"key": "rad_w", "disziplin": "rad", "metrik": "leistung", "zonen": [{"z": "Z1", "von": None, "bis": 150}, {"z": "Z2", "von": 150, "bis": None}]}]}]}},
     {"name": "20261110T061000Z-00000002.bin", "art": "eingaben", "zeit": "2026-11-10T06:10:00Z", "daten": {"befinden": [{"date": "2026-11-10", "muede": 2, "muskel": 3, "stress": 3}],
-     "routen_entfernt": ["u-r0"], "css": [{"id": "css-2026-11-10-t", "datum": "2026-11-10", "t400": 400, "t200": 190, "css_s": 105, "becken": 25, "validiert": True, "v": "css-2.0"}]}},
+     "routen_entfernt": ["u-r0"], "css": [{"id": "css-2026-11-10-t", "datum": "2026-11-10", "t400": 400, "t200": 190, "css_s": 105, "becken": 25, "validiert": True, "v": "css-2.0"}],
+     "garmin_verlauf": {"format": "spuren-garmin-verlauf-1", "id": "fedcba9876543210", "tage": [{"date": "2026-11-02", "sleepH": 6.9}]}}},
     {"name": "20261110T062000Z-00000003.bin", "art": "bestaetigung", "zeit": "2026-11-10T06:20:00Z", "daten": {"laktat_punkte_bestaetigt": ["lp-g1-600"], "laktat_bestaetigt": ["check-test"]}},
     {"name": "20261110T062100Z-00000004.bin", "art": "probe", "zeit": "2026-11-10T06:21:00Z", "daten": {"probe": True}},
     {"name": "20261110T062200Z-00000005.bin", "art": "eingaben", "zeit": "2026-11-10T06:22:00Z", "demo": True, "daten": {"befinden": [{"date": "2026-11-10", "muede": 5, "muskel": 5, "stress": 5}]}},
@@ -550,7 +553,8 @@ check("Eingang: Seite verschlüsselt (EGS1), Werkzeug liest – Eingaben, Bestä
 check("Eingang: gleiche ID → spätere Eingabe gewinnt; gelöschte Route geht mit", _A9["befinden_add"] == [{"date": "2026-11-10", "muede": 2, "muskel": 3, "stress": 3}]
       and [r["id"] for r in _A9["routen_add"]] == ["u-r1"] and _A9["routen_entfernt"] == ["u-r0"], json.dumps(_A9)[:300])
 check("Eingang: auf der Seite bestätigte Zonen gehen als zonen_add ins Update", [z["id"] for z in _A9.get("zonen_add", [])] == ["zonen-20261110"], json.dumps(_A9.get("zonen_add"))[:200])
-check("Eingang: Garmin-Verlauf von der Seite geht unverändert ins Update", (_A9.get("garmin_verlauf") or {}).get("id") == "0123456789abcdef")
+check("Eingang: Garmin-Verläufe von der Seite gehen unverändert ins Update – zwei vor einem Update beide (Audit V6.4 B9)",
+      [g["id"] for g in _A9.get("garmin_verlauf") or []] == ["0123456789abcdef", "fedcba9876543210"], json.dumps(_A9.get("garmin_verlauf"))[:200])
 check("Eingang: gewähltes Trainingsmodell geht als modell_add ins Update (V6.4)", [m["modell"] for m in _A9.get("modell_add", [])] == ["schwelle"], json.dumps(_A9.get("modell_add")))
 merge_daily.main(os.path.join(_t9, "data.json"), os.path.join(_t9, "work", "eingang_a.json"))
 _R9 = json.load(open(os.path.join(_t9, "data.json")))
@@ -558,6 +562,8 @@ check("Eingang A eingespielt: Befinden, Route auf alle Geräte, alte Route entfe
       _R9["befinden"][0]["stress"] == 3 and [r["id"] for r in _R9["routes"]] == ["u-r1"] and any(a.get("was") == "Route entfernt" for a in _R9["audit"])
       and _R9["laktat_punkte"][0]["status"] == "vorschau" and not _R9.get("lactate") and [c["css_s"] for c in _R9.get("css_tests", [])] == [105]
       and [m["modell"] for m in _R9.get("plan_modell", [])] == ["schwelle"])
+check("Eingang A eingespielt: beide Garmin-Verläufe eingespielt (Audit V6.4 B9)", sorted(g["id"] for g in _R9.get("garmin_export", [])) == ["0123456789abcdef", "fedcba9876543210"],
+      str(_R9.get("garmin_export")))
 check("Eingang A: Zonen aus einem nicht bestätigten Test werden nicht übernommen", not any(z["id"] == "zonen-20261110" for z in _R9.get("zonen", [])))
 check("Eingang A: Garmin-Verlauf eingespielt (Tag mit Schlaf und Readiness)", any(d.get("date") == "2026-11-01" and d.get("readiness") == 66 and d.get("sleepH") == 7.5 for d in _R9.get("days", []))
       and _R9["garmin_export"][0]["id"] == "0123456789abcdef")
@@ -640,7 +646,7 @@ check("Bestätigung (B1) nimmt Zeitpunkt, Pause und Fenster mit", _e14["t_s"] ==
 # ---------- V5.9.4 Testkalender mit CSS-Tests (css-2.0) ----------
 _t13 = tempfile.mkdtemp()
 json.dump({"activities": [], "days": [], "config": {}, "updated": "08.11.2026 23:26", "tests": [{"date": "2026-11-21", "kind": "check", "note": "x", "status": "vorschlag"}]}, open(os.path.join(_t13, "d.json"), "w"))
-json.dump({"tests": [{"date": "2026-11-19", "kind": "css", "note": "Ausgangswert", "status": "geplant"}, {"date": "2026-11-21", "kind": "check", "note": "x", "status": "vorschlag"}]},
+json.dump({"tests": [{"date": "2026-12-03", "kind": "css", "note": "erster", "status": "geplant"}, {"date": "2026-11-21", "kind": "check", "note": "x", "status": "vorschlag"}]},
           open(os.path.join(_t13, "n.json"), "w"))
 merge_daily.main(os.path.join(_t13, "d.json"), os.path.join(_t13, "n.json"))
 _d13 = json.load(open(os.path.join(_t13, "d.json")))
@@ -772,6 +778,17 @@ check("Notiz geändert: Vorschau neu (2,3 statt 2,1 mmol/l), übernommene Messun
       and _d22["garmin_notizen"]["g777"]["text"] is None
       and {a["was"] for a in _d22["audit"]} >= {"Garmin-Notiz geändert", "Garmin-Notiz gelöscht", "Laktat-Vorschau ersetzt (Notiz geändert)", "Laktat-Vorschau entfernt (nicht mehr in der Notiz)"},
       str({a["was"] for a in _d22["audit"]}))
+# Audit V6.4 B2: aus FIT nachgerechnete Vorschau mit derselben ID (laktat_vorschau.py --extra) bleibt beim nächsten Update stehen
+_d23 = copy.deepcopy(_d22)
+_fit = {"id": "ln-g501-95", "status": "vorschau", "art": "check", "sport": "rad", "datum": "2026-11-03", "aktivitaet": "g501", "datei": "Garmin-Verbindung",
+        "zeilen": [{"x": 203, "la": 2.3, "quelle": {"stelle": "Chat"}}], "zuordnung": "unklar", "regel": "1 Blöcke bei 203 W in der Aktivität; Zuordnung offen",
+        "kandidaten": [{"x": 203, "hr": 144, "np": 205, "t_s": 5660, "uhr": "19:34", "hr30": 146}], "fenster": ["19:24:20", "19:34:20"], "hinweise": []}
+_d23["laktat_vorschau"] = [p for p in _d23["laktat_vorschau"] if p["id"] != "ln-g501-95"] + [copy.deepcopy(_fit)]
+_n23 = len(_d23.get("audit", []))
+NZ.ableiten(_d23)
+_p23 = next(p for p in _d23["laktat_vorschau"] if p["id"] == "ln-g501-95")
+check("Notizen (Audit V6.4 B2): aus FIT nachgerechnete Vorschau mit gleicher ID wird nicht durch die Notiz-Fassung ersetzt und nicht entfernt",
+      _p23 == _fit and not any("Laktat-Vorschau" in a["was"] for a in _d23["audit"][_n23:]), str(_p23.get("regel")))
 check("Notizen offen: Aktivitäten mit Garmin-ID ohne abgerufene Notiz, neueste zuerst",
       NZ.offen({"activities": [{"gid": "g1", "date": "2026-01-01"}, {"gid": "g2", "date": "2026-02-01"}, {"id": "x", "date": "2026-03-01"}, {"gid": "g3", "date": "2025-12-01"}],
                 "garmin_notizen": {"g3": {"text": None}}}, 5) == (["2", "1"], 2))
@@ -887,6 +904,25 @@ _lz["skalen"] = [dict(_lz["skalen"][0], zonen=[{"z": "Z1", "von": None, "bis": 1
 check("Zonen: Lücke zwischen zwei Zonen wird abgelehnt", "nicht lückenlos" in (merge_daily.zonen_pruefen(_DZ, _lz) or ""))
 check("Zonen abgelehnt: Grund je Profil in den Daten (für die Seite), je ID nur einmal",
       [x["id"] for x in _DZ.get("zonen_abgelehnt", [])] == ["z-v", "z-o", "z-p", "z-f", "demo-zonen"] and "B1" in _DZ["zonen_abgelehnt"][0]["grund"], str(_DZ.get("zonen_abgelehnt")))
+
+# ---------- V6.4.4 Leck-Prüfung (tools/leck_pruefen.py) mit erfundenen «echten» Werten in einem Test-Repository ----------
+_tl = tempfile.mkdtemp()
+_DL = {"activities": [{"id": "g10000000123", "gid": "g10000000123", "sport": "lauf", "date": "2026-03-05", "km": 12.34}],
+       "zonen": [{"id": "z", "skalen": [{"key": "rad_w", "unit": "W", "zonen": [{"z": "Z1", "von": None, "bis": 143}, {"z": "Z2", "von": 143, "bis": 197, "text": "FatMax 171–183"},
+                                                                          {"z": "Z3", "von": 197, "bis": 229}, {"z": "Z4", "von": 229, "bis": 251}, {"z": "Z5", "von": 251, "bis": None}]}]}],
+       "schwellen": {"tests": [{"lt2": {"x": 231}}]}, "config": {"ftp": 263},
+       "tests": [{"date": "2027-02-18", "kind": "css", "note": "nach dem Lager"}]}
+json.dump(_DL, open(os.path.join(_tl, "data.json"), "w"))
+os.makedirs(os.path.join(_tl, "repo"))
+_files = {"a.js": "// Beispiel: FatMax 171–183\n", "b.md": "Zonen 143, 197 und 229 W\n", "c.py": "ftp = 263  # FTP\n", "d.cjs": 'x("g10000000123")\n',
+          "e.md": "Lauf am 5.3.2026: 12,34 km\n", "f.md": "CSS 18.2.2027 nach dem Lager\n", "g.md": "kontakt" + "@" + "beispiel.ch\n", "ok.md": "FatMax a–b, FTP 200, 10 km am 1.1.2026\n"}
+for n, t in _files.items():
+    open(os.path.join(_tl, "repo", n), "w", encoding="utf-8").write(t)
+subprocess.run(["git", "init", "-q"], cwd=os.path.join(_tl, "repo"))
+_lk = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "tools", "leck_pruefen.py"), os.path.join(_tl, "data.json")], cwd=os.path.join(_tl, "repo"), capture_output=True, text=True)
+_lkf = {l.split(":")[0] for l in _lk.stdout.splitlines() if ":" in l and not l.startswith("LECK")}
+check("Leck-Prüfung: findet ID, Zonentext, Zonengrenzen, FTP, Distanz mit Datum, Testtermin und E-Mail – nie den Wert in der Ausgabe; erfundene Werte ok",
+      _lk.returncode == 1 and _lkf == {"a.js", "b.md", "c.py", "d.cjs", "e.md", "f.md", "g.md"} and "12,34" not in _lk.stdout and "263" not in _lk.stdout, _lk.stdout)
 
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)

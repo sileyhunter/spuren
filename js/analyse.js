@@ -1,7 +1,7 @@
 /* Ironman Notebook – V5.6 Analyse-Rechenkern (ohne DOM, in Node testbar).
  * Aktivitäts-Explorer (explorer-1.0): Reihe entpacken, Kennzahlen eines Abschnitts, NP, Drift, Intervalle, Blockvergleich.
  * Geplant/Ist (plan-1.0, aus tools/serien.py), Ermüdungsresistenz (ermuedung-1.0), RPE/Belastung (rpe-1.0),
- * Energie (energie-1.0), Saison (saison-1.1). Unbekannt bleibt unbekannt (null), nie 0. */
+ * Energie (energie-1.0), Saison (saison-1.2). Unbekannt bleibt unbekannt (null), nie 0. */
 (function (root, factory) {
   const AN = factory(root.FK || (typeof require === "function" ? require("./formkurve.js") : null));
   if (typeof module === "object" && module.exports) module.exports = AN;
@@ -9,7 +9,7 @@
 })(typeof window !== "undefined" ? window : globalThis, function (FK) {
   "use strict";
   const AN = {};
-  AN.VERSIONS = { explorer: "explorer-1.0", intervalle: "intervalle-1.0", plan: "plan-1.0", ermuedung: "ermuedung-1.0", rpe: "rpe-1.0", energie: "energie-1.0", saison: "saison-1.1" };
+  AN.VERSIONS = { explorer: "explorer-1.0", intervalle: "intervalle-1.0", plan: "plan-1.0", ermuedung: "ermuedung-1.0", rpe: "rpe-1.0", energie: "energie-1.0", saison: "saison-1.2" };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const mean = (a) => { let s = 0, n = 0; for (const x of a) if (isNum(x)) { s += x; n++; } return n ? s / n : null; };
   const maxOf = (a) => { let m = null; for (const x of a) if (isNum(x) && (m == null || x > m)) m = x; return m; };
@@ -211,32 +211,48 @@
     return { kcal: null, quelle: "unbekannt" };
   };
 
-  /* ---------------- Saison (saison-1.1) ---------------- */
-  /** Phasen rückwärts vom Hauptwettkampf: Taper 2 Wochen, Wettkampfspezifisch 8, Aufbau 2 × 8, Grundlage bis heute; B-Rennen mit
-   *  Mini-Taper 1 Woche und 1 Woche Erholung. Erholungswoche alle 4 Wochen (3:1). Nur Vorschlag, frei änderbar. */
+  /* ---------------- Saison (saison-1.2) ---------------- */
+  /** Phasen rückwärts vom Hauptwettkampf: Taper 2 Wochen, Wettkampfspezifisch 8, Aufbau 2 × 8, davor Grundlage. B-Rennen: Woche mit
+   *  Mini-Taper, die Woche danach Erholung. saison-1.2 (Audit V6.4, B1): auch der 3:1-Rhythmus ist fest am Hauptrennen verankert – rückwärts ab
+   *  der Woche vor dem Taper ist jede 4. Woche Erholung (die drei Wochen vor dem Taper sind Belastungswochen). Eine Erholungswoche aus dem
+   *  Rhythmus entfällt in der Woche vor einem B-Rennen und in den zwei Wochen nach dessen Erholungswoche (sonst drei leichte Wochen in Folge
+   *  bzw. nur eine Belastungswoche dazwischen). Bis 1.1 begann der Rhythmus bei «heute» und rückte jede Woche weiter. Nur Rennen ab der
+   *  laufenden Woche können Hauptrennen sein. wochen = ab der laufenden Woche; alle = dazu die Wochen von Aufbau bis Taper davor; ab = Beginn
+   *  der laufenden Phase (Grundlage: die laufende Woche). Je Woche phaseNr/phaseN = Woche x von y der Phase (Grundlage ohne festen Beginn: null).
+   *  Nur Vorschlag, frei änderbar. */
   AN.saison = function (heute, rennen, opt) {
     opt = Object.assign({ taper: 2, spezifisch: 8, aufbau: 16, rhythmus: 4 }, opt || {});
-    const A = (rennen || []).filter((r) => r.prio !== "C").sort((x, y) => x.date.localeCompare(y.date));
-    const haupt = A.find((r) => r.prio === "A") || A[A.length - 1];
-    if (!haupt || !FK) return null;
+    if (!FK || !heute) return null;
     const wk = (d) => FK.addDays(d, -((new Date(d + "T12:00:00Z").getUTCDay() + 6) % 7));   // Montag der Woche
-    const ziel = wk(haupt.date), w0 = wk(heute), wochen = [];
-    for (let d = w0; d <= ziel; d = FK.addDays(d, 7)) wochen.push(d);
-    const N = wochen.length, rest = (i) => N - 1 - i;
-    const phase = (i) => (rest(i) < opt.taper ? "Taper" : rest(i) < opt.taper + opt.spezifisch ? "Wettkampfspezifisch" : rest(i) < opt.taper + opt.spezifisch + opt.aufbau ? "Aufbau" : "Grundlage");
-    const out = wochen.map((d, i) => ({ woche: d, phase: phase(i), erholung: false, rennen: (rennen || []).filter((r) => r.date >= d && r.date <= FK.addDays(d, 6)).map((r) => r.short || r.name) }));
-    let seit = 0;
-    for (let i = 0; i < out.length; i++) {
-      const w = out[i];
-      if (w.phase === "Taper") continue;
-      const b = A.find((r) => r !== haupt && r.date >= w.woche && r.date <= FK.addDays(w.woche, 6));
-      if (b) { w.phase = "B-Rennen (Mini-Taper)"; if (out[i + 1] && out[i + 1].phase !== "Taper") { out[i + 1].erholung = true; out[i + 1].grund = "nach " + (b.short || b.name); i++; } seit = 0; continue; }
-      seit++;
-      if (seit === opt.rhythmus) { w.erholung = true; w.grund = `${opt.rhythmus - 1}:1-Rhythmus`; seit = 0; }
+    const nWo = (a, b) => Math.round((Date.parse(b + "T12:00:00Z") - Date.parse(a + "T12:00:00Z")) / 6048e5);
+    const w0 = wk(heute);
+    const A = (rennen || []).filter((r) => r && r.date && r.prio !== "C").sort((x, y) => x.date.localeCompare(y.date));
+    const kommend = A.filter((r) => wk(r.date) >= w0);
+    const haupt = kommend.find((r) => r.prio === "A") || kommend[kommend.length - 1];
+    if (!haupt) return null;
+    const ziel = wk(haupt.date), T = opt.taper, SP = T + opt.spezifisch, AU = SP + opt.aufbau, rest = (d) => nWo(d, ziel);
+    const basis = (d) => { const r = rest(d); return r < T ? "Taper" : r < SP ? "Wettkampfspezifisch" : r < AU ? "Aufbau" : "Grundlage"; };
+    const nr = (d) => { const r = rest(d); return r < T ? [T - r, T] : r < SP ? [SP - r, opt.spezifisch] : r < AU ? [AU - r, opt.aufbau] : [null, null]; };
+    const bWo = new Map(), bErh = new Map();                 // B-Rennen (auch vergangene) vor dem Taper des Hauptrennens
+    for (const r of A) { const m = wk(r.date); if (r !== haupt && m <= ziel && rest(m) >= T && !bWo.has(m)) bWo.set(m, r); }
+    for (const [m, r] of bWo) { const n = FK.addDays(m, 7); if (!bWo.has(n) && rest(n) >= T) bErh.set(n, r); }   // zwei in Folge: nach dem zweiten
+    const ohneRhythmus = (d) => bWo.has(FK.addDays(d, 7)) || bErh.has(FK.addDays(d, -7)) || bErh.has(FK.addDays(d, -14));
+    const start = [w0, FK.addDays(ziel, -7 * (AU - 1))].sort()[0], alle = [];
+    for (let d = start; d <= ziel; d = FK.addDays(d, 7)) {
+      const [n, N] = nr(d), w = { woche: d, phase: basis(d), erholung: false, phaseNr: n, phaseN: N,
+        rennen: (rennen || []).filter((r) => r && r.date >= d && r.date <= FK.addDays(d, 6)).map((r) => r.short || r.name) };
+      if (w.phase !== "Taper") {
+        if (bWo.has(d)) { w.basis = w.phase; w.phase = "B-Rennen (Mini-Taper)"; }
+        else if (bErh.has(d)) { const b = bErh.get(d); w.erholung = true; w.grund = "nach " + (b.short || b.name); }
+        else if ((rest(d) - T + 1) % opt.rhythmus === 0 && !ohneRhythmus(d)) { w.erholung = true; w.grund = `${opt.rhythmus - 1}:1-Rhythmus`; }
+      }
+      alle.push(w);
     }
-    return { haupt, wochen: out, regel: AN.VERSIONS.saison, annahmen: `Taper ${opt.taper} Wochen, wettkampfspezifisch ${opt.spezifisch}, Aufbau ${opt.aufbau}, Erholung jede ${opt.rhythmus}. Woche, B-Rennen mit Mini-Taper und Erholungswoche danach` };
+    const n0 = nr(w0)[0], ab = n0 ? FK.addDays(w0, -7 * (n0 - 1)) : w0;
+    return { haupt, wochen: alle.filter((w) => w.woche >= w0), alle, ab, regel: AN.VERSIONS.saison,
+      annahmen: `Taper ${opt.taper} Wochen, wettkampfspezifisch ${opt.spezifisch}, Aufbau ${opt.aufbau}; Erholung jede ${opt.rhythmus}. Woche, fest ab ${haupt.short || haupt.name} gezählt (die ${opt.rhythmus - 1} Wochen vor dem Taper sind Belastung); B-Rennen mit Mini-Taper und Erholungswoche danach` };
   };
-  /** Stunden je Woche (saison-1.1, V6.4 ausgelagert aus js/v56.js): linear von «jetzt» bis zur Spitzenwoche vor dem Taper;
+  /** Stunden je Woche (seit saison-1.1, V6.4 ausgelagert aus js/v56.js): linear von «jetzt» bis zur Spitzenwoche vor dem Taper;
    *  Erholungswochen 65 %, Woche mit B-Rennen 50 %, Taper 60 % und 40 % der Spitze; auf halbe Stunden gerundet. W = AN.saison(…).wochen. */
   AN.saisonStunden = function (W, jetzt, spitze) {
     const iT = W.findIndex((w) => w.phase === "Taper"), N = iT > 0 ? iT : W.length;
@@ -246,14 +262,20 @@
       return Math.round(ziel * (w.erholung ? 0.65 : w.phase.startsWith("B-Rennen") ? 0.5 : 1) * 2) / 2;
     });
   };
-  /** Vorbelegung (saison-1.1): «jetzt» = Median der 8 abgeschlossenen Wochen vor der Woche von «heute» (Schwimmen, Rad, Laufen; Wochen ganz ohne
-   *  Aktivität zählen nicht; ohne Daten 8 h), «Spitze» = grösserer Wert aus 1.35 × jetzt und dem Ø der 4 grössten Wochen der 52 davor – nie über
-   *  die eigene Erfahrung hinaus geraten. Werte von der Seite gehen vor. 1.1: die laufende Woche zählt nicht mehr mit (vorher halbe Woche im
-   *  Median) – so bleibt der Vorschlag die ganze Woche gleich und lässt sich für vergangene Wochen genau so nachrechnen (vergleich-1.0). */
+  /** Vorbelegung (seit saison-1.1): «jetzt» = Median der 8 abgeschlossenen Wochen vor der Woche von «heute» (Schwimmen, Rad, Laufen; ohne Daten
+   *  8 h), «Spitze» = grösserer Wert aus 1.35 × jetzt und dem Ø der 4 grössten Wochen der 52 davor – nie über die eigene Erfahrung hinaus
+   *  geraten. Werte von der Seite gehen vor. 1.1: die laufende Woche zählt nicht mehr mit (vorher halbe Woche im Median) – so bleibt der
+   *  Vorschlag die ganze Woche gleich und lässt sich für vergangene Wochen genau so nachrechnen (vergleich-1.1). 1.2 (Audit V6.4 B16): jede der
+   *  8 Wochen zählt, auch ohne Schwimmen, Rad und Laufen (0 h, z. B. Pause oder nur Skitouren) – nach einer Pause beginnt der Vorschlag tiefer;
+   *  Wochen vor der ersten Aktivität in den Daten zählen nicht (keine Daten ist keine Pause). */
   AN.saisonVorgaben = function (acts, heute, lokal) {
     lokal = lokal || {};
-    const mo = FK.addDays(heute, -((new Date(heute + "T12:00:00Z").getUTCDay() + 6) % 7)), bis = FK.addDays(mo, -1);
-    const ist8 = AN.wochenIst(acts, FK.addDays(mo, -56), bis), h8 = [...ist8.values()].map((r) => r.rad + r.lauf + r.schwimm);
+    const wkM = (d) => FK.addDays(d, -((new Date(d + "T12:00:00Z").getUTCDay() + 6) % 7));
+    const mo = wkM(heute), bis = FK.addDays(mo, -1);
+    const erste = (acts || []).reduce((m, a) => (a && a.date && (!m || a.date < m) ? a.date : m), null);
+    const von8 = erste ? [FK.addDays(mo, -56), wkM(erste)].sort()[1] : mo;
+    const ist8 = AN.wochenIst(acts, von8, bis), h8 = [];
+    for (let d = von8; d < mo; d = FK.addDays(d, 7)) { const r = ist8.get(d); h8.push(r ? r.rad + r.lauf + r.schwimm : 0); }
     const j52 = AN.wochenIst(acts, FK.addDays(mo, -364), bis), h52 = [...j52.values()].map((r) => r.rad + r.lauf + r.schwimm).sort((a, b) => b - a);
     const top4 = h52.length >= 4 ? (h52[0] + h52[1] + h52[2] + h52[3]) / 4 : null;
     const jetzt = isNum(lokal.jetzt) ? lokal.jetzt : h8.length ? Math.round(median(h8) * 2) / 2 : 8;

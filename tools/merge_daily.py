@@ -189,12 +189,14 @@ INTENSITAET_STUFEN = ("locker", "schwelle", "alles")
 
 def modell_pruefen(m):
     """V6.4 modell-1.0: Eintrag «modell» von der Seite → Fehlertext oder None (bekanntes Modell, Wechsel als Datum).
-    V6.4.2 intensitaet-1.0: optional «intensitaet» = {schwimm, rad, lauf} mit «locker», «schwelle» oder «alles»."""
+    V6.4.2 intensitaet-1.0/1.1: optional «intensitaet» = {schwimm, rad, lauf} mit «locker», «schwelle» oder «alles»."""
     if not isinstance(m, dict) or m.get("id") != "modell":
         return "kein Eintrag «modell»"
     if m.get("modell") not in MODELLE:
         return f"unbekanntes Modell {m.get('modell')!r}"
-    try:
+    try:                                                 # Audit V6.4 B22: nur JJJJ-MM-TT, wie die Seite liest (fromisoformat nähme auch «20270315»)
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(m.get("wechsel"))):
+            raise ValueError
         dt.date.fromisoformat(str(m.get("wechsel")))
     except ValueError:
         return "Wechsel ist kein Datum"
@@ -276,8 +278,9 @@ def v5_merge(D, N):
             D["routes"] = [r for r in D["routes"] if r.get("id") != rid]
             D.setdefault("audit", []).append({"zeit": dt.datetime.now(ZRH).isoformat(timespec="seconds"), "was": "Route entfernt", "id": rid, "alt": alt})
             msg.append(f"Route {rid} entfernt")
-    if N.get("garmin_verlauf"):                          # V6.2.3: Garmin-Datenexport über die Seite; füllt nur fehlende Tageswerte
-        msg.append(garmin_export.einspielen(D, N["garmin_verlauf"]))
+    gv = N.get("garmin_verlauf")                         # V6.2.3: Garmin-Datenexport über die Seite; füllt nur fehlende Tageswerte
+    for G in (gv if isinstance(gv, list) else [gv] if gv else []):   # Audit V6.4 B9: mehrere Verläufe aus dem Eingang, jeder einzeln
+        msg.append(garmin_export.einspielen(D, G))
     for m in N.get("modell_add") or []:                  # V6.4 modell-1.0: gewähltes Trainingsmodell (nur Vorschlag; Enduco/Garmin bleiben unverändert)
         fehler = modell_pruefen(m)
         if fehler:

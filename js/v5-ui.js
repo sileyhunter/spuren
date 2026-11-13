@@ -752,7 +752,7 @@
   /* ======================= Heute: Bereitschaft ======================= */
   const RD = { n: 21 };
   V.befinden = () => V.merged("befinden", "befinden", (e) => e.date);
-  /* V6.3 ampel-pruefung-1.0: Puls bei gleicher Leistung je Ampel-Stand jenes Morgens (formkurve.js), einmal je Seitenaufruf gerechnet */
+  /* V6.3 ampel-pruefung-1.1 (1.1: Morgen-Stand ohne die Last des Tages): Puls bei gleicher Leistung je Ampel-Stand jenes Morgens (formkurve.js), einmal je Seitenaufruf gerechnet */
   let AP = null;
   function ampelPruefungZeigen() {
     const box = $("rd-pruef-box"); if (!box) return;

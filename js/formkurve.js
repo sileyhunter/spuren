@@ -8,7 +8,7 @@
   "use strict";
   const FK = {};
   FK.VERSIONS = {
-    cockpit: "cockpit-1.0", readiness: "readiness-2.0", ampel_pruefung: "ampel-pruefung-1.0", langfahrt: "langfahrt-2.0", koppel: "koppel-1.1",
+    cockpit: "cockpit-1.0", readiness: "readiness-2.1", ampel_pruefung: "ampel-pruefung-1.1", langfahrt: "langfahrt-2.0", koppel: "koppel-1.1",
     fueling: "fueling-1.0", eta: "eta-1.0", cda: "cda-1.0", fit: "fit-js-1.0", wetter: "wetter-1.0",
     pmc: "pmc-2.0", zonen: "zonenverteilung-2.0", orientierung: "langfahrt-orientierung-1.0", entwicklung: "entwicklung-1.0", laufeffizienz: "laufeffizienz-1.0",
     ringe: "ringe-1.0", laktat_drift: "laktat-drift-1.0",
@@ -209,7 +209,7 @@
     return f;
   };
 
-  /* ---------------- Readiness (readiness-2.0; bis V6.2 readiness-1.0) ---------------- */
+  /* ---------------- Readiness (readiness-2.1; V6.3 readiness-2.0, bis V6.2 readiness-1.0) ---------------- */
   const HRV_OK = (v) => isNum(v) && v >= 10 && v <= 250;
   const RHR_OK = (v) => isNum(v) && v >= 25 && v <= 120;
   /** Tageslast (TSS-Summe) je Datum. */
@@ -418,13 +418,14 @@
       const st = s0 < 5 ? "sehr kurz" : (s0 < 6 || (isNum(sm) && s0 < sm - 1.5)) ? "kurz" : "ausreichend";
       ind.schlaf = { status: st, wert: +s0.toFixed(2), ref: isNum(sm) ? +sm.toFixed(1) : null, score: get(0).sleepScore ?? null };
     }
-    // Belastung: 7 Tage gegen 28 Tage (je Woche), dazu 3 Tage gegen üblich
+    // Belastung: 7 Tage gegen 28 Tage (je Woche), dazu 3 Tage gegen üblich. readiness-2.1 (Audit V6.4 B3): bis gestern – die Ampel ist der
+    // Stand am Morgen; eine Einheit des Tages ändert sie nicht mehr (bis 2.0 zählte der Tag selbst mit, auch in ampel-pruefung-1.0)
     const L = FK.dailyLoad(acts);
     const sumL = (a, b) => { let s = 0; for (let i = a; i <= b; i++) s += L.get(FK.addDays(dateISO, i)) || 0; return s; };
     const anyHist = (acts || []).some((a) => a.date && a.date <= FK.addDays(dateISO, -21));
     if (!anyHist) ind.last = { status: "unbekannt", grund: "weniger als 3 Wochen Trainingsdaten" };
     else {
-      const a7 = sumL(-6, 0), c28 = sumL(-27, 0) / 4, a3 = sumL(-2, 0), t3 = sumL(-27, 0) / 28 * 3;
+      const a7 = sumL(-7, -1), c28 = sumL(-28, -1) / 4, a3 = sumL(-3, -1), t3 = sumL(-28, -1) / 28 * 3;
       const acwr = c28 > 0 ? a7 / c28 : null;
       const st = (acwr != null && acwr > 1.5) || (t3 > 0 && a3 > 2.2 * t3) ? "hoch" : (acwr != null && acwr < 0.6) ? "tief" : "üblich";
       ind.last = { status: st, akut7: Math.round(a7), chronisch7: Math.round(c28), verhaeltnis: acwr != null ? +acwr.toFixed(2) : null, tage3: Math.round(a3) };
@@ -486,10 +487,10 @@
       harte_einheit: status === "bereit" || status === "normal" ? "möglich" : "nicht empfohlen", nachtdienst: shift };
   };
   const fmt1 = (v) => (Math.round(v * 10) / 10).toLocaleString("de-CH");
-  /* ---------------- Ampel an den eigenen Daten prüfen (ampel-pruefung-1.0, V6.3) ----------------
+  /* ---------------- Ampel an den eigenen Daten prüfen (ampel-pruefung-1.1; V6.3 1.0) ----------------
    * Gleichmässige 10-min-Blöcke (eb-1.0: Rad um 200 W, Laufen um 5:30/km, je System) zeigen den Puls bei gleicher Leistung. Je Block der
    * Unterschied zum Mittel derselben Blockart in den 60 Tagen davor (mind. 4 Blöcke), gruppiert nach dem Ampel-Stand jenes Morgens
-   * (nur Werte bis zu diesem Tag) und nach Garmins Readiness. Höherer Puls bei gleicher Leistung = die Leistung kostete mehr.
+   * (Morgenwerte des Tages, Last bis zum Vortag – 1.1, Audit V6.4 B3: 1.0 zählte die Einheit des Tages mit) und nach Garmins Readiness. Höherer Puls bei gleicher Leistung = die Leistung kostete mehr.
    * Beobachtung, kein Beweis (Hitze, Höhe, Trinken, Gerät wirken mit); Gruppen unter 5 Blöcken ohne Mittelwert. */
   FK.ampelPruefung = function (days, acts, befinden, bisISO, opt) {
     opt = Object.assign({ tage: 60, minRef: 4, minGruppe: 5 }, opt || {});

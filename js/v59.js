@@ -88,7 +88,7 @@
     return true;
   }
   const alleDa = () => L().FRAGEN.every((f) => Number.isInteger(CI.wahl[f.k]));
-  /** Check-in als Blatt: drei Fragen, je Symbol, Frage, grosser Wert und Farbskala mit fünf Punkten. */
+  /** Check-in als Blatt (befinden-2.0): vier Fragen, je Symbol, Frage, grosser Wert und Farbskala mit sieben Stufen. */
   V.checkinBlatt = function () {
     if (!C || !L()) return;
     const day = heuteISO(), b = befHeute(), F = L().FRAGEN;

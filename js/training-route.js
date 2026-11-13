@@ -62,6 +62,16 @@
     return null;
   }
   /** Pace pro 100 m aus einer Schwimm-Beschreibung («… | Endurance | 02:22min/100m») in s; sonst null. */
+  /** Intensitätswörter in Schwimm-Schritten (Feld der Enduco-Beschreibung) → Zone; Reihenfolge zählt (anaerob vor aerob). Auch für js/v6.js. */
+  TR.SCHWIMM_WORT = [[/sprint/i, "sprint"], [/neuro/i, "neuro"], [/anaerob/i, "anaerob"], [/vo\s*[2₂]\s*max/i, "vo2"], [/threshold|schwelle/i, "z4"],
+    [/sweet\s*spot/i, "sweet"], [/tempo/i, "z3"], [/fat\s*max/i, "fatmax"], [/endurance|grundlage|ausdauer|aerob/i, "z2"], [/recovery|erholung|regeneration|warm\s*up|cool\s*down|einschwimmen|ausschwimmen|locker/i, "z1"]];
+  TR.schwimmWortZone = (t) => { for (const [re, k] of TR.SCHWIMM_WORT) if (re.test(t)) return k; return null; };
+  /** Zone eines Schwimm-Schritts: zuerst ein kurzes Feld mit dem Intensitätswort, sonst irgendein Wort (ohne Abschluss und Pause). */
+  TR.schwimmZone = function (text) {
+    const felder = String(text || "").split("|").map((f) => f.trim()).filter((f) => f && !/^finish\b|^ziel\b|^break\b|^pause\b/i.test(f));
+    for (const f of felder) if (/^[a-zäöü₂0-9 \-]{3,20}$/i.test(f) && f.split(/\s+/).length <= 2) { const k = TR.schwimmWortZone(f); if (k) return k; }
+    return TR.schwimmWortZone(felder.join(" | "));
+  };
   TR.pace100 = function (text) { const m = /(\d{1,2}):(\d{2})\s*min\s*\/\s*100\s*m/i.exec(String(text || "")); return m ? +m[1] * 60 + +m[2] : null; };
   const mitteVon = (z) => (!z ? null : z.art === "pace" ? (isNum(z.v) ? 1000 / z.v : (z.lo + z.hi) / 2) : (z.lo + z.hi) / 2);
   /** Schritte (Garmin, vereinfachte Form der Verbindung) mit Wiederholungen auffalten. */
@@ -112,12 +122,16 @@
     for (const s of L) s.mitte = s.ziel && s.ziel.art === modus && !(wattUnklar && modus === "watt") ? mitteVon(s.ziel) : null;
     // Dauer der Distanzschritte nur als Schätzung (Flachtempo); offene Schritte (Runde drücken) haben keine Dauer.
     // workout-1.1: Schwimmen aus der Pace in der Schritt-Beschreibung («02:22min/100m»), lockere Strecken ohne Pace mit der langsamsten Pace des Workouts.
+    // Audit V6.4 B24: wie beschrieben nur lockere (Zone Z1, Z2, FatMax laut Text; ohne Wort: Ein-/Ausschwimmen, Erholung) – sonst offen, nie geraten.
     const p100 = sport === "schwimm" ? L.map((s) => TR.pace100(s.text)).filter(isNum) : [];
     const pLocker = p100.length ? Math.max(...p100) : null;
     for (const s of L) if (!isNum(s.dauer_s) && isNum(s.distanz_m)) {
       if (modus === "pace" && isNum(s.mitte)) s.dauer_est = s.distanz_m * s.mitte / 1000;
       else if (modus === "watt" && isNum(s.mitte)) s.dauer_est = s.distanz_m / FK.speedFromPower(s.mitte, { m: 85, cda: 0.3, crr: 0.004, grade: 0, rho: 1.18, wind: 0, eta: 0.976, vmax: 20 });
-      else if (sport === "schwimm") { const q = TR.pace100(s.text); if (isNum(q)) { s.dauer_est = s.distanz_m / 100 * q; s.pace100 = q; } else if (isNum(pLocker)) { s.dauer_est = s.distanz_m / 100 * pLocker; s.pace100_locker = pLocker; } }
+      else if (sport === "schwimm") {
+        const q = TR.pace100(s.text), k = TR.schwimmZone(s.text), locker = k ? ["z1", "z2", "fatmax"].includes(k) : ["warmup", "cooldown", "rest"].includes(s.typ);
+        if (isNum(q)) { s.dauer_est = s.distanz_m / 100 * q; s.pace100 = q; } else if (isNum(pLocker) && locker) { s.dauer_est = s.distanz_m / 100 * pLocker; s.pace100_locker = pLocker; }
+      }
     }
     const zeit = (s) => (isNum(s.dauer_s) ? s.dauer_s : isNum(s.dauer_est) ? s.dauer_est : 0);
     const alleZeit = L.length > 0 && L.every((s) => isNum(s.dauer_s));

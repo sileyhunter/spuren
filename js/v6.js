@@ -1,10 +1,11 @@
 /* V6.0 Bausteine (design-1.0, profil-1.0, status-1.0): Zonen und Farben aus einer Quelle, Balkenprofil einer Einheit, Fokus-Intensitäten,
    Trainingsstatus aus der Form, Wochenleiste, eigene Symbole. Rechenteile ohne DOM (auch unter Node testbar). */
 (function (root, factory) {
-  const V6 = factory();
-  if (typeof module === "object" && module.exports) module.exports = V6;
+  const node = typeof module === "object" && module.exports;
+  const V6 = factory(node ? require("./training-route.js") : root && root.TR);   // TR: Schwimm-Intensitätswörter (eine Regel)
+  if (node) module.exports = V6;
   if (root) root.V6 = V6;
-})(typeof window !== "undefined" ? window : null, function () {
+})(typeof window !== "undefined" ? window : null, function (TRm) {
   "use strict";
   const V6 = { VERSIONS: { design: "design-1.0", profil: "profil-1.0", status: "status-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
@@ -39,7 +40,7 @@
   const SKALA = { rad: { watt: "rad_w", hf: "rad_hf" }, lauf: { pace: "lauf_pace", hf: "lauf_hf" }, wandern: { hf: "lauf_hf" } };
   V6.skalaKey = (sport, art) => (SKALA[sport] || {})[art] || null;
   const mmss = (t) => { const m = /(\d{1,2}):(\d{2})/.exec(t); return m ? +m[1] * 60 + +m[2] : null; };
-  /** Unterbereiche aus dem Text einer Zone, z. B. «FatMax 220–240», «SweetSpot ca. 276–290», «VO2max ca. 315–360», «FatMax 5:00–5:21». */
+  /** Unterbereiche aus dem Text einer Zone, z. B. «FatMax a–b», «SweetSpot ca. a–b», «VO2max ca. a–b», «FatMax m:ss–m:ss» (Watt bzw. Pace). */
   V6.unterbereiche = function (z) {
     const out = [], t = String((z && z.text) || "");
     const re = /(fat\s*max|sweet\s*spot|vo2\s*max|anaerob\w*|neuro|sprint)[^0-9]*?(\d{1,2}:\d{2}|\d+)\s*[–-]\s*(\d{1,2}:\d{2}|\d+)/gi;
@@ -71,14 +72,9 @@
   };
   /** Schwimmen (Beschreibung im Schritt, z. B. «3Lanes | Grundlagenausdauer | Endurance | 02:22min/100m | Finish Lane: Recovery»):
    *  zuerst ein Feld, das nur aus dem Intensitätswort besteht, sonst das erste Stichwort im Text ohne den Teil «Finish Lane: …». */
-  const SCHWIMM_WORT = [[/sprint/i, "sprint"], [/neuro/i, "neuro"], [/anaerob/i, "anaerob"], [/vo\s*[2₂]\s*max/i, "vo2"], [/threshold|schwelle/i, "z4"],
-    [/sweet\s*spot/i, "sweet"], [/tempo/i, "z3"], [/fat\s*max/i, "fatmax"], [/endurance|grundlage|ausdauer|aerob/i, "z2"], [/recovery|erholung|regeneration|warm\s*up|cool\s*down|einschwimmen|ausschwimmen|locker/i, "z1"]];
-  const wortZone = (t) => { for (const [re, k] of SCHWIMM_WORT) if (re.test(t)) return k; return null; };
-  V6.schwimmZone = function (text) {
-    const felder = String(text || "").split("|").map((f) => f.trim()).filter((f) => f && !/^finish\b|^ziel\b|^break\b|^pause\b/i.test(f));
-    for (const f of felder) if (/^[a-zäöü₂0-9 \-]{3,20}$/i.test(f) && f.split(/\s+/).length <= 2) { const k = wortZone(f); if (k) return k; }
-    return wortZone(felder.join(" | "));
-  };
+  // Schwimm-Intensität aus der Beschreibung: eine Regel für Profil und Dauer-Schätzung (js/training-route.js, TR.SCHWIMM_WORT)
+  const wortZone = (t) => TRm.schwimmWortZone(t);
+  V6.schwimmZone = (text) => TRm.schwimmZone(text);
   /** Name des Schritts aus der Beschreibung (ohne Bahnen, Intensitätswort, Pace und «Finish Lane …»); sonst null. */
   V6.schrittName = function (text) {
     const f = String(text || "").split("|").map((x) => x.trim()).filter(Boolean)
@@ -123,12 +119,15 @@
     out.breite_s = t;
     // Zeit ab Zone 3 (Tempo und härter) aus den Zonen der Schritte; Schritte ohne Dauer zählen nicht
     out.intensiv_s = out.balken.filter((b) => isNum(b.d) && b.key !== "pause" && b.key !== "offen" && V6.ZONEN[b.key].stufe >= 3).reduce((a, b) => a + b.d, 0);
-    // Fokus: Zeitanteile der aktiven Schritte (ohne Ein-/Ausfahren, Erholungsschritte und Pausen), ab 10 %, höchstens drei, härteste zuerst
+    // Fokus: Zeitanteile der aktiven Schritte (ohne Ein-/Ausfahren, Erholungsschritte und Pausen), ab 10 %, höchstens drei, härteste zuerst.
+    // Audit V6.4 B18: nur Schritte mit Dauer zählen (nie der Platzhalter); Zonen aktiver Schritte ohne Dauer stehen getrennt in fokusOffen
     const akt = out.balken.filter((b) => b.typ !== "warmup" && b.typ !== "cooldown" && b.typ !== "rest" && b.key !== "pause" && b.key !== "offen");
-    const sum = akt.reduce((s, b) => s + b.w, 0), je = {};
-    for (const b of akt) je[b.key] = (je[b.key] || 0) + b.w;
-    out.fokus = Object.entries(je).map(([key, w]) => ({ key, anteil: sum ? w / sum : 0 })).filter((f) => f.anteil >= 0.1)
-      .sort((a, b) => V6.ZONEN[b.key].stufe - V6.ZONEN[a.key].stufe).slice(0, 3);
+    const mitD = akt.filter((b) => !b.ohneDauer), sum = mitD.reduce((s, b) => s + b.d, 0), je = {};
+    for (const b of mitD) je[b.key] = (je[b.key] || 0) + b.d;
+    const hart = (a, b) => V6.ZONEN[b.key].stufe - V6.ZONEN[a.key].stufe;
+    out.fokus = Object.entries(je).map(([key, w]) => ({ key, anteil: sum ? w / sum : 0 })).filter((f) => f.anteil >= 0.1).sort(hart).slice(0, 3);
+    out.fokusOffen = [...new Set(akt.filter((b) => b.ohneDauer).map((b) => b.key))].filter((k) => !out.fokus.some((f) => f.key === k))
+      .map((key) => ({ key, anteil: null })).sort(hart);
     return out;
   };
   /** SVG des Profils (gross in der Einheit, klein in Karten). */
@@ -202,12 +201,12 @@
     { key: "verlust", name: "Formverlust", ab: 25, farbe: "#f9a71a", text: "lange wenig Belastung – die Fitness sinkt" },
     { key: "erholt", name: "Erholt", ab: 5, farbe: "#6a59ea", text: "frisch, gut für Rennen und Tests" },
     { key: "erhaltung", name: "Erhaltung", ab: -10, farbe: "#7ab4fa", text: "Belastung und Erholung im Gleichgewicht" },
-    { key: "produktiv", name: "Produktiv", ab: -30, farbe: "#6ce0a4", text: "Belastung, die die Fitness aufbaut" },
+    { key: "produktiv", name: "Produktiv", ab: -30, inkl: true, farbe: "#6ce0a4", text: "Belastung, die die Fitness aufbaut" },   // −30 … −10 (B17)
     { key: "ueberlastung", name: "Hohe Belastung", ab: -Infinity, farbe: "#fdc22b", text: "deutlich mehr Belastung als gewohnt – Erholung im Blick behalten" },
   ];
   V6.status = function (form) {
     if (!isNum(form)) return null;
-    return V6.STATUS.find((b) => form > b.ab) || V6.STATUS[V6.STATUS.length - 1];
+    return V6.STATUS.find((b) => (b.inkl ? form >= b.ab : form > b.ab)) || V6.STATUS[V6.STATUS.length - 1];
   };
   /** Mini-Skala: Bänder von −40 bis +35 (links hohe Belastung, rechts Formverlust) und Lage der Form darauf (0…1). */
   V6.STATUS_SKALA = { min: -40, max: 35 };
@@ -262,7 +261,7 @@
     const j = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
     return 1 + Math.round(((t - j) / 86400000 - 3 + ((j.getUTCDay() + 6) % 7)) / 7);
   };
-  /** Rennen mit Priorität: ausdrücklich gesetzt, sonst Hamburg = A (saison-1.1), sonst das letzte Rennen = A, die übrigen B. */
+  /** Rennen mit Priorität: ausdrücklich gesetzt, sonst Hamburg = A (seit saison-1.1), sonst das letzte Rennen = A, die übrigen B. */
   V6.rennenPrio = function (races) {
     const R = (races || []).filter((r) => r && r.date).map((r) => Object.assign({}, r)).sort((a, b) => a.date.localeCompare(b.date));
     for (const r of R) if (!r.prio && /hamburg/i.test(r.name || "")) r.prio = "A";

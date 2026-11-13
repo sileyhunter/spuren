@@ -1,5 +1,35 @@
 # Änderungen
 
+## V6.4.4 · 13.11.2026 · Prüfung V6.4: Befunde behoben (`docs/AUDIT_V64.md`)
+Vier unabhängige Prüfungen (Rechenlogik, Wissen und Quellen, Datenschutz, Oberfläche); die Befunde aus Rechenlogik, Wissen und Datenschutz sind
+nachgeprüft und behoben oder als offen geführt, die Oberfläche folgt in einem eigenen Schritt.
+- **saison-1.2:** Der 3:1-Rhythmus ist fest am Hauptrennen verankert (rückwärts ab der Woche vor dem Taper jede 4. Woche Erholung; B-Rennen mit
+  Mini-Taper und Erholungswoche danach, eine Rhythmus-Erholung direkt davor oder kurz danach entfällt). Bis 1.1 begann er bei «heute»: Die
+  Erholungswoche rückte jede Woche weiter, «diese Woche» war nie eine, und der Rad-Stufentest kam nie an. «Woche x von y» zählt ab dem Beginn
+  der Phase. Wochen ohne Schwimmen, Rad und Laufen zählen für «jetzt» mit 0 Stunden (nach einer Pause beginnt der Vorschlag tiefer).
+- **readiness-2.1 / ampel-pruefung-1.1:** Die Last zählt nur bis gestern – die Ampel ist der Stand am Morgen, ein Training am selben Tag ändert
+  sie nicht mehr (auch nicht in der Prüfung an deinen Daten). Prüfung wiederholt: ein Block wechselte die Gruppe, die Entscheide von 2.0 gelten.
+- **Notizen:** Eine aus FIT nachgerechnete Laktat-Vorschau mit derselben ID wird beim nächsten Update nicht mehr durch die Notiz-Fassung ersetzt.
+- **Testplan (Regeln wie beschrieben):** Kurzcheck auch am gewählten Tag nicht 4 Tage neben einem Stufentest; eingetragene Lauf-Stufentests
+  sperren ihre Woche für den Rad-Vorschlag; CSS-Vorschläge 6–8 Wochen nach dem letzten (sonst mit Begründung). Sportart eines Tests ohne Feld
+  `sport` aus der Notiz (`V62.testSport`, gemeinsamer Rad- und Lauf-Test = beide), auch im Testkalender, auf «Heute» und in der Woche nach Modell;
+  ein Rad-Stufentest hakt keinen Lauf-Stufentest mehr ab.
+- **wochenplan-1.2 / aufbau-1.1:** nach einer Laufpause (kein Lauf in 30 Tagen) höchstens 30 min locker, harte Läufe gemeldet; gekürzte Läufe mit
+  der Schätzung nachgeprüft; mehr Stunden als geplant (Mindestdauern) wird gemeldet; Erholungswoche mit lockerem Schwimmen; Taper-Text wie
+  gerechnet (ein Drittel bis die Hälfte weniger Wiederholungen). Vergangene Wochen mit dem Stand vom Montag (`V64.stand`).
+- **vergleich-1.1:** Ein verschobenes Enduco-Workout zählt nur einmal; Uhr-Workouts ohne Plandauer bleiben «ohne Dauer» (nie die gelaufene Zeit
+  als Plan), ihre Sportart zählt für «näher an» nicht. **intensitaet-1.1:** Version für die Titel-Regel aus V6.4.3 nachgeführt.
+- Kleineres: Statusband −30 = «Produktiv» wie im Regeltext; Fokus nur aus Schritten mit Dauer (harte ohne Dauer als «Dauer offen»); harte
+  Schwimmstrecken ohne Pace nicht mehr geschätzt; Wechsel «kombiniert» bei Rennen am 29.2. und ohne Hauptrennen nicht mehr von der Geräteuhr
+  abhängig; Laufen Z1 «langsamer als»; Trainingsmodell nur mit Datum JJJJ-MM-TT; zwei Garmin-Verläufe vor einem Update werden beide eingespielt;
+  Check-in-Texte «4 Fragen».
+- **Wissen (wissen-1.4):** alle 84 Quellen geprüft; Titel Rosenblat 2019 korrigiert, sechsstufige Skala nach Tønnessen 2024, Formulierungen
+  nicht stärker als die Studien (u. a. Muñoz 2014, Frandsen 2025, Maunder 2021, Millet 2000), eigene Festlegungen gekennzeichnet, Ampel-Text mit
+  Nacht-HRV und Lastverhältnis; Regelliste um Verpflegung, Koppelläufe und Ringe ergänzt; Test: Versionen in den Texten wie im Code.
+- **Datenschutz:** echte Werte aus Doku und Tests entfernt (Unterzonen-Beispiele, Testtermine mit Reisebezug, eine Aktivitäts-ID, ein FTP-Wert);
+  neue Leck-Prüfung `tools/leck_pruefen.py` vor jedem Push; `.gitignore` erweitert; entschlüsselte Datei nur für den eigenen Benutzer lesbar; Seite mit `noindex`.
+- Geprüft: alle Tests (+ 30 neue Prüfungen zu den Befunden), Leck-Prüfung, Demo und eigene Daten im Browser (390 px) ohne Programmfehler.
+
 ## V6.4.3 · 13.11.2026 · Vorschlag und Enduco im Vergleich
 - **Vergleich mit Enduco (vergleich-1.0):** «Woche nach Modell» zeigt neu auch die letzte Woche (ältere über die neue Karte «Vorschlag und Enduco
   über die Wochen»), bei jeder Enduco-Einheit die Stufe (hart, Schwelle, locker, offen) und einen Abschnitt «Vergleich mit Enduco»: Stunden und
@@ -222,8 +252,8 @@ E2E 390 × 844 (Filter, Diagramm über die Zeit, Antippen, Wechsel zwischen Mess
 ## V5.9.4 · 9.11.2026 · Paket 4 «Schwimmen – nur der CSS-Test zählt» (css-2.0)
 Auftrag V5.9, Entscheid E6 (nur der CSS-Test zählt; Termine wie im Auftrag).
 
-- **Testkalender mit CSS-Tests** (400 m und 200 m) an fünf Donnerstagen: 19.11.2026 Ausgangswert, 7.1.2027 vor Thailand, 11.2.2027 nach dem
-  Trainingslager, 25.3.2027 vier Wochen vor Jesolo, 13.5.2027 nach Jesolo, vor Hamburg (Status «geplant»). Ein eingetragener CSS-Test bis
+- **Testkalender mit CSS-Tests** (400 m und 200 m) an fünf Terminen bis zum Hauptrennen (Status «geplant»; die Termine stehen nur verschlüsselt
+  in den Daten). Ein eingetragener CSS-Test bis
   4 Tage daneben hakt den Termin ab; ein Test ausserhalb des Plans erscheint im Kalender als «✓ CSS-Test».
 - **Eintragen mit zwei Zeiten:** Datum, 400 m und 200 m – fertig. Becken, Reihenfolge, Pause, Wassertemperatur, Zeitnahme, Einschwimmen und
   Notiz liegen unter «Mehr Angaben» (sonst 25-m-Becken, 400 → 200, 10 min Pause, von Hand gestoppt). Der Test geht über «Direkt speichern»

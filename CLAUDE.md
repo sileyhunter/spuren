@@ -61,11 +61,14 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   Prüfung an den eigenen Daten ampel-pruefung-1.0 in `js/formkurve.js` (`FK.readiness`, `FK.ampelPruefung`), Anzeige in `js/v5-ui.js` (Tagesbereitschaft)
 - **V6.2.3:** `tools/garmin_export.py` – Garmin-Datenexport (DSGVO-Export) → Verlauf `spuren-garmin-verlauf-1` (garmin-export-1.0, Abschnitt
   «Garmin-Datenexport»); Prüfung auf der Seite `V61.verlaufPruefen`, Einstellungen «Garmin-Verlauf einlesen» (`js/v59.js`)
-- **V6.4 (Etappe 4 Modell und Wissen):** `js/v64.js` (ohne DOM: Trainingsmodelle modell-1.0, Woche nach Modell wochenplan-1.1, Aufteilung
-  aufteilung-1.0, Intensitätsverteilung tid-1.0, V6.4.2 Intensität je Sportart intensitaet-1.0 und Aufbau-Check aufbau-1.0, V6.4.3 Vergleich mit
-  Enduco vergleich-1.0), `js/wissen.js` (wissen-1.3: Kapitel in eigenen Worten, Quellen mit DOI), `js/v64-ui.js` (Plan: «Woche nach Modell» mit
-  «Vergleich mit Enduco», «Vorschlag und Enduco über die Wochen», «Aufbau-Check», «Trainingsmodell» mit Intensität je Sportart; Ansicht «Wissen»
-  unter Plan), `tests/test_v64.cjs`; Stundenregel saison-1.1 in `js/analyse.js` (`AN.saisonStunden`, `AN.saisonVorgaben`)
+- **V6.4 (Etappe 4 Modell und Wissen):** `js/v64.js` (ohne DOM: Trainingsmodelle modell-1.0, Woche nach Modell wochenplan-1.2, Aufteilung
+  aufteilung-1.0, Intensitätsverteilung tid-1.0, V6.4.2 Intensität je Sportart intensitaet-1.1 und Aufbau-Check aufbau-1.1, V6.4.3 Vergleich mit
+  Enduco vergleich-1.1, Stand vergangener Wochen `V64.stand`), `js/wissen.js` (wissen-1.4: Kapitel in eigenen Worten, Quellen mit DOI),
+  `js/v64-ui.js` (Plan: «Woche nach Modell» mit «Vergleich mit Enduco», «Vorschlag und Enduco über die Wochen», «Aufbau-Check», «Trainingsmodell»
+  mit Intensität je Sportart; Ansicht «Wissen» unter Plan), `tests/test_v64.cjs`; Saison saison-1.2 in `js/analyse.js` (`AN.saison`,
+  `AN.saisonStunden`, `AN.saisonVorgaben`)
+- **V6.4.4 (Prüfung V6.4, `docs/AUDIT_V64.md`):** `tools/leck_pruefen.py` – Leck-Prüfung vor jedem Push: sucht echte Werte (IDs, Zonentexte und
+  -grenzen, Schwellen, Distanzen mit Datum, Testtermine und Abwesenheiten, E-Mail) in allen getrackten Dateien, gibt nur Fundorte aus
 - **V5.8:** keine neuen Dateien; Rechenlogik in `js/route.js` (Abschnitte von Hand, Skitourennetz, Hangneigung, MTB-Abfahrt, Wegende, drei
   Rennradvarianten, Windpfeile), Oberfläche in `js/routen-ui.js`, Ringe «Heute» in `js/formkurve.js` (`FK.ringeVerlauf`) und `js/v55.js` (`V55.ringe`)
 - `tests/test_formkurve.cjs`, `tests/test_route.cjs`, `tests/test_analyse.cjs`, `tests/test_training.cjs`, `tests/test_v64.cjs`, `tests/test_tools.py` – Abnahmetests (erfundene Werte; `tests/fixtures/` = echte
@@ -269,7 +272,8 @@ V5.7: `startorte` (ganze Liste → `startorte`, alte Fassung ins Audit) und `tra
 ID ersetzt mit Audit). Startorte und Routen nur verschlüsselt (data.enc.json), nie offen ins Repository.
 V6.2.2: `zonen` (auf der Seite bestätigte Zonenprofile → `zonen_add`, geprüft wie oben). V6.4: `modell` (gewähltes Trainingsmodell
 → `modell_add` → `plan_modell`; `merge_daily.modell_pruefen`: bekanntes Modell, Wechsel als Datum; gleiche ID ersetzt mit Audit). V6.2.3: `garmin_verlauf` (Datei aus
-`tools/garmin_export.py`, auf der Seite gewählt → `garmin_export.einspielen`, nur fehlende Tageswerte). V5.9.3: `routen` (im Planer gespeicherte Routen → `routes`, gleiche ID ersetzt mit Audit), `routen_entfernt` (auf der Seite gelöscht → aus
+`tools/garmin_export.py`, auf der Seite gewählt → `garmin_export.einspielen`, nur fehlende Tageswerte; mehrere Dateien vor einem Update werden seit
+V6.4.4 alle eingespielt, `garmin_verlauf` darf eine Liste sein). V5.9.3: `routen` (im Planer gespeicherte Routen → `routes`, gleiche ID ersetzt mit Audit), `routen_entfernt` (auf der Seite gelöscht → aus
 `routes` entfernt, alte Fassung ins Audit), `laktat_punkte_bestaetigt` («Laktat hier» aus dem Explorer auf der Seite bestätigt → Kurzcheck in
 `lactate`, Quelle «aus Explorer», Punkt «übernommen»; übernommene Punkte werden nie wieder «vorschau»). Befinden kommt aus dem Morgen-Check-in
 (`befinden-2.0` seit V6.3: Schlaf → `schlaf`, Energie → `muede`, Beine → `muskel`, Kopf → `stress`, je 1–7 mit `skala: 7` (1 = sehr gut,
@@ -340,9 +344,11 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   den Abfahrten (`RT.istDoppelt` mit Bereichen), nie aus der ganzen Route mit dem gemeinsamen Aufstieg.
 - Rennrad `varianten-3.0`: direkteste, velofreundliche, ruhigste (consider_traffic 1) – alle über das Profil ohne Gravel; `alternativen-1.1` ohne
   zusätzlichen Gravel. Windpfeile `windpfeile-1.1`: 3–20, Gegen-/Rückenwind ±5 km/h, abschaltbar (`sf.rt.windkarte`).
-- **Ampel `readiness-2.0` (V6.3, Etappe 3):** wie readiness-1.0 (HRV-7-Tage gegen eigene 60 Tage nach Plews/Buchheit, Ruhepuls 3 Tage, Schlaf,
+- **Ampel `readiness-2.1` (V6.3, Etappe 3; 2.1 V6.4.4):** wie readiness-1.0 (HRV-7-Tage gegen eigene 60 Tage nach Plews/Buchheit, Ruhepuls 3 Tage, Schlaf,
   Last 7/28 Tage, Befinden, Krankheit), dazu: Befinden als Anteil auf der Skala (belastet ab 0,75, mittel ab 0,5; vier Fragen inkl. Schlaf);
-  Schlaf 5–6 h nur noch Hinweis (unter 5 h weiter starkes Zeichen). Grundlage `ampel-pruefung-1.0` (`FK.ampelPruefung`): Puls in gleichmässigen
+  Schlaf 5–6 h nur noch Hinweis (kein Warnzeichen, aber dann nicht «bereit»; unter 5 h weiter starkes Zeichen). **readiness-2.1 (V6.4.4):** Last
+  nur bis gestern (die Ampel ist der Stand am Morgen; eine Einheit des Tages ändert sie nicht). Grundlage `ampel-pruefung-1.1` (`FK.ampelPruefung`,
+  1.1 mit dem Morgen-Stand ohne die Last des Tages; am 13.11.2026 wiederholt, die Entscheide von 2.0 bestätigt): Puls in gleichmässigen
   10-min-Blöcken (`eb`) gegen dieselbe Blockart in den 60 Tagen davor, je Ampel-Stand jenes Morgens; am 13.11.2026 an den eigenen
   Daten geprüft, daraus die beiden Änderungen (Schlaf 5–6 h nur Hinweis; Garmins Readiness nur gezeigt, nicht in die Ampel eingerechnet). Die Seite zeigt die Prüfung live unter «Passt die Ampel zu dir?» (Gruppen unter 5 Blöcken ohne Wert).
   Keine Zahlen daraus in Doku oder Tests schreiben; Regeländerung = neue Version und neue Prüfung.
@@ -367,8 +373,8 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   `.btn-zurueck`, Hauptaktion rechts `.btn.primary`), Kennzahlen als `.kv`, Abschnittstitel als `.abschnitt`.
 - Heute (V6.0.1): Kacheln Ampel/Status/Check-in, Begrüssung mit Check-in-Blatt, Heutiges Training (Karten mit Zonen-Chips und Balkenprofil,
   Einheit als Blatt), Wochenleiste. Balkenprofil `profil-1.0`: Breite = Dauer, Höhe = Lage im aktiven Zonenprofil, Farbe = Zone (Unterzonen
-  aus dem Text der Zone, z. B. «FatMax 220–240»); ohne Zielbereich grau, ohne Dauer blass. Fokus = Zeitanteile der aktiven Schritte ohne
-  Ein-/Ausfahren und Erholung, ab 10 %, höchstens drei. Trainingsstatus `status-1.0` aus der Form (Bänder nach Coggan); «Übertraining» nie.
+  aus dem Text der Zone, z. B. «FatMax a–b»); ohne Zielbereich grau, ohne Dauer blass. Fokus = Zeitanteile der aktiven Schritte ohne
+  Ein-/Ausfahren und Erholung, nur Schritte mit Dauer (aktive Schritte ohne Dauer separat als «Dauer offen»), ab 10 %, höchstens drei. Trainingsstatus `status-1.0` aus der Form (Bänder nach Coggan); «Übertraining» nie.
 - Plan (V6.0.2, `js/v6-plan.js`): Rennen (A/B nach `V6.rennenPrio`, Streckenlängen nur bei bekanntem Format, keine Zielzeit erfunden),
   Phasen aus `AN.saison` als Zeitstrahl, Wochenübersicht (absolviert gefüllt, geplant als Rand, Phase als Streifen), Wochenstunden-Vorschlag
   (`V56.saison`) und Testkalender. Kalender: Wochenband «KW · Phase · Stunden · TL», heute orange, Sport-Symbole, Fokus-Punkte, Tagesliste
@@ -381,41 +387,53 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   nächste leichter – eigene Regel), rennspezifisch (Tempo Rad 2 × 20, Laufen 3 × 10 min, Renntempo in den langen Einheiten, Koppellauf Sa) und
   **kombiniert = Standard** (von Silas gewählt am 13.11.2026): polarisiert bis zum Wechsel (vorgegeben 1. Februar im Jahr des Hauptrennens,
   auf der Seite änderbar), ab der Woche des Wechsels rennspezifisch. Die Wahl kommt nur über «Direkt speichern» (`modell` → `plan_modell`).
-- **Woche `wochenplan-1.1` (`V64.woche`, 1.1 = mit Aufbau-Grenze und Intensität je Sportart):** Mo frei · Di Laufen (Schlüssel) und Schwimmkurs · Mi Rad locker · Do Rad (Schlüssel) und CSS-Schwimmen ·
-  Fr Laufen locker · Sa lange Ausfahrt (+ Koppel) · So langer Lauf (+ Schwimmen). Stunden aus saison-1.1 (`AN.saisonStunden`/`AN.saisonVorgaben`),
+- **Woche `wochenplan-1.2` (`V64.woche`, 1.1 = mit Aufbau-Grenze und Intensität je Sportart; 1.2 = Prüfung V6.4, siehe unten):** Mo frei · Di Laufen (Schlüssel) und Schwimmkurs · Mi Rad locker · Do Rad (Schlüssel) und CSS-Schwimmen ·
+  Fr Laufen locker · Sa lange Ausfahrt (+ Koppel) · So langer Lauf (+ Schwimmen). Stunden aus saison-1.2 (`AN.saisonStunden`/`AN.saisonVorgaben`),
   `aufteilung-1.0` Schwimmen 20 %, Rad 50 %, Laufen 30 % (eigene Festlegung); Anzahl je Sportart nach Stunden (unter 7 h je 2 Rad/Lauf, 1 Schwimmen);
-  längste Einheit je Phase begrenzt (`V64.LANG`), Rest wird gemeldet, nie still verteilt. Erholungswoche: nur Rad-Schlüssel gekürzt, Laufen locker.
-  Taper: Schlüssel halbiert, Intensität bleibt. Rennwoche: 2 Tage vorher frei, Vortag Aktivierung, danach frei. Tests der Woche (Testkalender und
+  längste Einheit je Phase begrenzt (`V64.LANG`), Rest wird gemeldet, nie still verteilt; mehr als geplant (Mindestdauern bei wenigen Stunden)
+  ebenso. Erholungswoche: nur Rad-Schlüssel gekürzt, Laufen und Schwimmen locker. Taper: Schlüssel mit einem Drittel bis der Hälfte weniger
+  Wiederholungen, Intensität bleibt. Rennwoche: 2 Tage vorher frei, Vortag Aktivierung, danach frei. Tests der Woche (Testkalender und
   Vorschläge, nicht erledigt) ersetzen die Einheit derselben Sportart, Kurzcheck in einer lockeren Ausfahrt (±2 Tage); vor einem Stufentest wird
-  die Schlüsseleinheit derselben Sportart in den 3 Tagen davor locker. Ziele aus dem aktiven Zonenprofil (`V64.ziel`), ohne Profil bzw. CSS-Test
+  die Schlüsseleinheit derselben Sportart in den 3 Tagen davor locker. Sportart eines Tests über `V62.testSport` (fehlt `sport`: aus der Notiz).
+  Ziele aus dem aktiven Zonenprofil (`V64.ziel`; Laufen Z1 «langsamer als»), ohne Profil bzw. CSS-Test
   nichts geraten. Renntempo = Rad 95–100 % der Leistung an LT1, Laufen bis 3 % langsamer als an LT1 (eigene Festlegung), zählt als locker.
-- **Intensität je Sportart `intensitaet-1.0` (V6.4.2, `V64.kappen`, `V64.planStufe`):** je Sportart «nur locker», «bis Schwelle» (Tempo, knapp unter
+- **Intensität je Sportart `intensitaet-1.1` (V6.4.2; 1.1 = Titel-Regel mit Neuro und locker, V6.4.3, Version nachgeführt in V6.4.4; `V64.kappen`, `V64.planStufe`):** je Sportart «nur locker», «bis Schwelle» (Tempo, knapp unter
   LT2, CSS; keine VO2max-Intervalle) oder «alles» (Standard). Gespeichert im Eintrag «modell» (`intensitaet` = {schwimm, rad, lauf}, `vi`;
   `merge_daily.modell_pruefen` lehnt unbekannte Sportarten oder Stufen ab). Der Vorschlag ersetzt eine Schlüsseleinheit über der Wahl durch die nächst
   leichtere derselben Sportart (`V64.ERSATZ`; locker mit gleicher Dauer) und verschiebt nichts auf eine andere Sportart; die Prüfung der Verteilung
   ist dann «nicht beurteilt» mit Grund. Enduco-Plan nur geprüft: Stufe aus den Zielen der Schritte, ohne Ziele aus dem Titel («laut Titel»).
-- **Aufbau-Check `aufbau-1.0` (V6.4.2, `V64.aufbau`, Karte `#ab-card` unter Plan):** jeder Lauf (0,5–100 km) gegen den längsten Lauf der 30 Tage
+- **Aufbau-Check `aufbau-1.1` (V6.4.2; 1.1 V6.4.4: Laufpause und Nachprüfung, siehe Ende; `V64.aufbau`, Karte `#ab-card` unter Plan):** jeder Lauf (0,5–100 km) gegen den längsten Lauf der 30 Tage
   davor (frühere am selben Tag zählen), Klassen nach Frandsen et al. 2025 (bis 10 %, 10–30, 30–100, über 100 %; Raten 1,64/1,52/2,28 nur als
   Beobachtung), Grenze für den nächsten Lauf = 10 % über dem längsten der 30 Tage (auf 0,1 km abgerundet, nur absolvierte Läufe), wann der
   Referenzlauf wegfällt, geplante Enduco-Läufe (Distanz aus Pace-Zielen geschätzt, offene Schritte = «mind.»), Wochen-km Laufen, Schwimm-Meter,
   Rad-Stunden (12 Wochen). Schwimmen und Rad ohne Grenze (keine geprüfte). Der Wochenvorschlag kürzt den langen und den lockeren Lauf unter die
-  Grenze (Distanz aus dem Zonenprofil, Z1 mit dem langsamen Rand von Z2), übrige Läufe nur als Hinweis; ohne Lauf-Pace-Zonen keine Begrenzung.
-- **Vergleich mit Enduco `vergleich-1.0` (V6.4.3, `V64.vergleich`, `V64.enducoAusUhr`):** Woche nach Modell wählbar «Letzte · Diese Woche · Nächste»,
-  ältere über die Karte `#vg-card` (letzte 8 Wochen). Vergangene Wochen nachgerechnet, wie die Seite am Montag geplant hätte (Saison ab jener Woche,
-  Stunden aus den 8 abgeschlossenen Wochen davor, CSS bis dahin; Modell, Intensität je Sportart und Zonenprofil von heute, gekennzeichnet). Enduco =
-  Garmin-Kalender, dazu Workouts auf der Uhr (`wk`), wo am selben Tag für dieselbe Sportart nichts im Kalender stand (ohne Tests); Zwift ohne
-  Uhr-Workout und ausgelassene Einheiten fehlen. Fenster: vergangene Wochen ganz, sonst Pläne bis zum letzten Enduco-Tag, Absolviertes bis gestern.
+  Grenze (Distanz aus dem Zonenprofil, Z1 mit dem langsamen Rand von Z2; nach dem Kürzen nachgeprüft, liegt auch die Untergrenze von 20 min darüber,
+  ausdrücklich gemeldet), übrige Läufe nur als Hinweis; ohne Lauf-Pace-Zonen keine Begrenzung. aufbau-1.1: kein Lauf in den 30 Tagen davor (Pause) →
+  langer und lockerer Lauf höchstens 30 min locker (`V64.PAUSE_MIN`, eigene Festlegung), harte Läufe gemeldet; ohne Läufe in den Daten nichts begrenzt.
+- **Vergleich mit Enduco `vergleich-1.1` (V6.4.3; 1.1 V6.4.4; `V64.vergleich`, `V64.enducoAusUhr`, `V64.stand`):** Woche nach Modell wählbar «Letzte · Diese Woche · Nächste»,
+  ältere über die Karte `#vg-card` (letzte 8 Wochen). Vergangene Wochen nachgerechnet, wie die Seite am Montag geplant hätte (`V64.stand`: Saison ab
+  jener Woche, Stunden aus den 8 abgeschlossenen Wochen davor – von Hand gesetzte nur, wenn sie vor dem Montag gespeichert wurden –, CSS, Läufe und
+  Aufbau-Grenze bis zum Sonntag davor, Tests der Woche auch wenn inzwischen erledigt; Modell, Intensität je Sportart und Zonenprofil von heute,
+  gekennzeichnet). Enduco = Garmin-Kalender, dazu Workouts auf der Uhr (`wk`), wo am selben Tag für dieselbe Sportart nichts im Kalender stand (ohne
+  Tests; ein verschobenes Workout – gleicher Titel ±2 Tage im Kalender, dort nicht gelaufen – zählt nur einmal; Dauer = Plandauer `wk.plan_s`, ohne sie
+  «ohne Dauer», nie die gelaufene Zeit); Zwift ohne Uhr-Workout und ausgelassene Einheiten fehlen. Fenster: vergangene Wochen ganz, sonst Pläne bis zum letzten Enduco-Tag, Absolviertes bis gestern.
   Vergleich je Sportart (Stunden, Anzahl), Stufen (hart, Tempo/Schwelle), längste Einheiten, freie Tage, Unterschiede in Worten; «näher an» =
   kleinere Summe der Stunden-Abweichungen je Sportart (±15 min = «ähnlich»), nur bei Abdeckung ≥ 60 % (absolvierte Einheiten mit Enduco-Eintrag
-  derselben Sportart am selben Tag), sonst kein Urteil. Titel-Regel: VO2max/anaerob/Sprint/Neuro = hart, Schwelle/Tempo/Sweet Spot/CSS/Über-Unter =
+  derselben Sportart am selben Tag), sonst kein Urteil; Sportarten mit Enduco-Einheiten ohne Dauer zählen dafür auf keiner Seite (sind sie mehr als
+  die Hälfte des Absolvierten: kein Urteil). Titel-Regel: VO2max/anaerob/Sprint/Neuro = hart, Schwelle/Tempo/Sweet Spot/CSS/Über-Unter =
   Schwelle, Fatmax/Grundlage/locker = locker, sonst offen. Welcher Plan besser ist, sagt der Vergleich nicht (Kapitel «vergleich»).
-- **Saison `saison-1.1` (V6.4.3):** «jetzt» = Median der 8 abgeschlossenen Wochen vor der laufenden (die laufende zählt nicht mehr mit), «Spitze» aus
-  den 52 Wochen davor – der Vorschlag bleibt die ganze Woche gleich und lässt sich für vergangene Wochen genau so nachrechnen.
+- **Saison `saison-1.2` (V6.4.3/V6.4.4):** «jetzt» = Median der 8 abgeschlossenen Wochen vor der laufenden (die laufende zählt nicht mit; 1.2: jede
+  Woche zählt, auch ohne Schwimmen/Rad/Laufen mit 0 h – nach einer Pause beginnt der Vorschlag tiefer; Wochen vor der ersten Aktivität nicht),
+  «Spitze» aus den 52 Wochen davor. 1.2: auch der 3:1-Rhythmus ist fest am Hauptrennen verankert (rückwärts ab der Woche vor dem Taper jede 4. Woche
+  Erholung; B-Rennen: Mini-Taper, Woche danach Erholung, Rhythmus-Erholung direkt davor oder 1–2 Wochen nach dieser entfällt) – unabhängig vom
+  Rechentag. `AN.saison(...).wochen` ab der laufenden Woche, `alle`/`ab` mit der laufenden Phase ab ihrem Beginn (`phaseNr`/`phaseN` = Woche x von y;
+  Grundlage ohne festen Beginn). Nur kommende Rennen können Hauptrennen sein.
 - **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
   Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
   Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
-- **Wissen `wissen-1.3` (`js/wissen.js`, 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
-  1.3: Kapitel «Vorschlag und Enduco vergleichen»):** alle Modelle und Regeln der Seite in eigenen Worten (nie Text aus Studien oder Webseiten übernehmen),
+- **Wissen `wissen-1.4` (`js/wissen.js`, 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
+  1.3: Kapitel «Vorschlag und Enduco vergleichen», 1.4: Prüfung der Quellen – Formulierungen nicht stärker als die Studien, eigene Festlegungen
+  gekennzeichnet, Versionen wie im Code):** alle Modelle und Regeln der Seite in eigenen Worten (nie Text aus Studien oder Webseiten übernehmen),
   jede Aussage mit Quelle `[[id]]` aus `WS.QUELLEN` (Autoren, Jahr, Titel, Zeitschrift, DOI; ohne DOI begründet), Kapitel-Verweise `[[#id]]`.
   Neue oder geänderte Regel: Kapitel und `WS.REGELN` nachführen; `tests/test_v64.cjs` prüft Verweise, DOI-Form, jede Quelle verwendet,
   Schweizer Schreibweise (kein ß) und keine Wattwerte in den Texten. Nie persönliche Zahlen in die Wissenstexte.
@@ -436,7 +454,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - Geplant vs. Ist `plan-1.0`: nur das Workout, das auf der Uhr lief (FIT `workout`/`workout_step`, Runden mit `wkt_step_index`) und der
   Garmin-Kalender. **Keine direkte Enduco-Schnittstelle behaupten**; Enduco-Workouts nie ändern. Leistungsziele ≤ 1000 je Workout als
   Watt oder % FTP nach der gefahrenen Leistung gelesen und offen ausgewiesen. Plandauer nur, wenn jeder Schritt eine Zeit hat (sonst «offen»).
-- Saison `saison-1.1` (Phasen wie 1.0): Phasen rückwärts ab Hamburg (A), Jesolo als B-Rennen; Stunden nur als Vorschlag aus den eigenen Wochen, nie als
+- Saison `saison-1.2` (Phasen wie 1.0, Rhythmus seit 1.2 fest): Phasen rückwärts ab Hamburg (A), Jesolo als B-Rennen; Stunden nur als Vorschlag aus den eigenen Wochen, nie als
   Vorgabe und nie nach Garmin/Enduco geschrieben.
 - Ermüdung `ermuedung-1.0`: Puls früh gegen spät bei gleicher Leistung bzw. Pace in derselben Einheit; beste 20 min ab Stunde 2–5.
   «Meine Entwicklung» urteilt darüber nur mit `entwicklung-1.0` (mind. 3 je Zeitraum, Intervall).
@@ -448,7 +466,8 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   je Garmin-Pulszone ist ein Modell; Richtwert Jeukendrup 2014. Nie Gelmengen oder Stoffwechselwerte erfinden.
 
 ## V5.7: Smart Training Routes (Trainingskalender und Routenplaner, kein eigener Tab)
-- Workout `workout-1.1` (V6.0.1): feste Pause (`fixed.rest`) = Zeit; Schwimmstrecken aus der Pace der Beschreibung geschätzt («≈»); Dauer aus den
+- Workout `workout-1.1` (V6.0.1): feste Pause (`fixed.rest`) = Zeit; Schwimmstrecken aus der Pace der Beschreibung geschätzt («≈»), lockere Strecken
+  ohne Pace mit der langsamsten Pace des Workouts, harte ohne Pace bleiben offen (Intensitätswörter `TR.SCHWIMM_WORT`, auch für `V6.schwimmZone`); Dauer aus den
   Schritten nur, wenn jeder Schritt eine Zeit oder Schätzung hat, sonst laut Kalender.
 - Workout `workout-1.0`: Schritte aus der Garmin-Verbindung (Enduco schreibt Watt, Tempo in m/s oder Puls), Wiederholungen aufgefaltet;
   intensiv = Mitte des Zielbereichs ab Z3 des aktiven Zonenprofils; Leistung ≤ 150 überall → «Watt oder % FTP?» offen, nie geraten.
@@ -479,7 +498,10 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 
 ## Prüfen vor jedem Push von Seite oder Werkzeugen
 `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
-Kein Live-Push, wenn ein Test fehlschlägt. Screenshots mit echten Daten nie ins Repo.
+**Leck-Prüfung (V6.4.4):** `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json work/data.json`, `python3 -I tools/leck_pruefen.py work/data.json`
+(«LECK-PRÜFUNG: bestanden»), danach `rm work/data.json`. Gilt für jeden Push von Seite, Werkzeugen, Tests oder Doku (nicht für die reinen Daten-Updates).
+Kein Live-Push, wenn ein Test oder die Leck-Prüfung fehlschlägt. Screenshots mit echten Daten nie ins Repo. **Ein Force-Push entfernt nichts von GitHub:**
+hängende Commits bleiben per SHA öffentlich abrufbar – echte Werte darum gar nicht erst committen.
 
 ## FTP und Trainingslast
 - Auf Silas' Wunsch sind die FTP-Karten (Fortschritt «Trainingslast: Garmin-FTP …», Leistung «Rad: FTP und Watt/kg») ausgeblendet
@@ -513,7 +535,8 @@ Kein Live-Push, wenn ein Test fehlschlägt. Screenshots mit echten Daten nie ins
   Vorschau an (notizen-1.0, «ln-<gid>-<Minute>», Werte laut Notiz, nicht aus FIT nachgerechnet; nichts doppelt zu `lactate`, anderen Vorschauen
   oder `laktat_punkte`). Nachrechnen aus FIT wie bisher über `laktat_vorschau.py --extra` mit derselben ID, `aktivitaet_garmin` (gespeicherte
   `get_activity_fit_data`-Antwort), `aktivitaet_id` und `fenster` (Ortszeit des Blocks; hat Silas vor dem Abstechen schon angehalten, das
-  Fenster bis zum Anhalten nehmen und das im Hinweis sagen). Bestätigung (B1) auf der Seite oder im Chat («bestätigt» → `"laktat_bestaetigt": [ids]`).
+  Fenster bis zum Anhalten nehmen und das im Hinweis sagen). Seit V6.4.4 bleibt eine so nachgerechnete Vorschau beim nächsten Update stehen
+  (`notizen.ableiten` ersetzt nur Vorschauen, die selbst aus der Notiz stammen). Bestätigung (B1) auf der Seite oder im Chat («bestätigt» → `"laktat_bestaetigt": [ids]`).
 - **V5.9.6 Einzelmessungen über die Zeit (`laktat-drift-1.0`):** `laktat_vorschau.py` rechnet je Check-Block `t_s` (Fahrzeit bis zum Blockende),
   `el_s`, `pause_s`, `pause_timer_s`; B1 übernimmt sie nach `lactate`. Die Seite («Einzelmessungen») zeigt Laktat über die Zeit in der Einheit,
   verbindet nur gleiche Einheit und gleiche Leistung (±5 %) und urteilt «steigt/gleich/sinkt» erst über 2·√(σ₁² + σ₂²), σ = max(0,15; 7,5 %).
@@ -533,17 +556,18 @@ Wegpunkte, z. B. Jagdposten aus Garmin Explore: GPX in einen eigenen, leeren Ord
 ## Testkalender
 `tests` in den Daten: `[{"date":"…","kind":"stufentest"|"check"|"css","note":"…","status":"vorschlag"|"geplant"}]`.
 Änderungen über `"tests": [ … ]` (ersetzt die ganze Liste) in `work/new.json`. Erledigt: Laktat-Tests durch einen Eintrag in `lactate` gleicher
-Art, CSS-Tests durch einen CSS-Test in `css_tests` (bzw. auf dem Gerät), je höchstens 4 Tage daneben (`V59L.testsMitStatus`).
+Art (Stufentests nur derselben Sportart, `V62.testSport`; fehlt `sport` im Testkalender, gilt «Lauf» in der Notiz), CSS-Tests durch einen CSS-Test in `css_tests` (bzw. auf dem Gerät), je höchstens 4 Tage daneben (`V59L.testsMitStatus`).
 **Schwimmen (V5.9.4, css-2.0, E6):** Als Schwimm-Massstab zählt nur der CSS-Test (400 m und 200 m; CSS = (T400 − T200) ÷ 2 pro 100 m).
-Termine (`kind` «css», «geplant»): 19.11.2026 Ausgangswert, 7.1.2027 vor Thailand, 11.2.2027 nach dem Trainingslager, 25.3.2027 vier Wochen
-vor Jesolo, 13.5.2027 nach Jesolo, vor Hamburg – nicht an Kursabenden und nicht in Thailand. Eintrag auf der Seite mit zwei Zeiten (Rest
+Termine (`kind` «css», «geplant») stehen nur verschlüsselt im Testkalender (nicht an Kursabenden und nie während Abwesenheiten; Termine und
+Abwesenheiten nie in Doku, Code oder Tests). Eintrag auf der Seite mit zwei Zeiten (Rest
 optional), über «Direkt speichern» → `css_tests`. Rohpace aus Garmin, Videovergleich und Fehlerboard sind ausgeblendet (Daten bleiben);
 Technik wertet Claude im Chat aus (Videos Bild für Bild), nie auf der Seite.
 Protokoll-Vorlagen: `protokolle` (Liste mit `id name sport ablauf blut ende rahmen status`), ändern über `"protokolle": [ … ]` in `work/new.json`.
 **Testplan (V6.2, testplan-1.0, `js/v62.js`):** Die Seite schlägt Tests nach festen Regeln selbst vor (Status «vorschlag», Regel sichtbar), in
 Testkalender, Kalender und auf Heute (heute/morgen): CSS alle 6–8 Wochen am gleichen Wochentag wie zuletzt; Rad-Stufentest alle 8 Wochen am Samstag
-einer Erholungswoche (saison-1.1), zuerst ein ausbelasteter, wenn der letzte es nicht war; Lauf-Stufentest alle 8–12 Wochen in einer anderen
-Erholungswoche; Kurzcheck alle 2 Wochen in einer Grundlagenfahrt (rollend 8 Wochen, nicht 4 Tage neben einem Stufentest); kein Stufentest 14 Tage
+einer Erholungswoche (saison-1.2), zuerst ein ausbelasteter, wenn der letzte es nicht war; Lauf-Stufentest alle 8–12 Wochen in einer anderen
+Erholungswoche (auch eingetragene Lauf-Tests sperren ihre Woche für den Rad-Vorschlag und umgekehrt); Kurzcheck alle 2 Wochen in einer Grundlagenfahrt
+(rollend 8 Wochen, der gewählte Tag nicht 4 Tage neben einem Stufentest); CSS-Vorschläge nur 6–8 Wochen nach dem letzten, sonst mit Begründung; kein Stufentest 14 Tage
 vor einem Rennen, in der Woche danach und im Taper. Eingetragene Termine (`tests`) gehen vor; Regelverstösse werden mit einem Vorschlag gezeigt,
 nie still geändert. Abwesenheiten («keine Tests») trägt Silas auf der Seite ein (Notiz `tp-sperren`, verschlüsselt über «Direkt speichern»);
 nie Reisedaten in Doku, Code oder Tests schreiben. Nach Garmin wird nichts geschrieben.

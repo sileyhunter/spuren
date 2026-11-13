@@ -146,3 +146,22 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
     Wenn die Einstellungen oft wechseln: Vorschlag jede Woche am Montag einfrieren (Nacht-Update), statt nachzurechnen.
 57. **«jetzt» nach einer Pause:** Der Median der 8 Wochen davor reagiert langsam (nach der Pause im September liegt der Vorschlag deutlich unter
     dem, was trainiert wird). Silas kann «jetzt» und «Spitze» im Wochenstunden-Vorschlag selbst setzen; eine andere Regel nur mit neuer Version.
+
+## Prüfung V6.4 (13.11.2026, `docs/AUDIT_V64.md`)
+58. **Hängende Commits auf GitHub (Entscheid Silas):** Zwei alte Commits mit dem damaligen Zonenprofil und ein Commit mit Laufdistanzen sind
+    in keinem Branch mehr, aber per SHA öffentlich abrufbar; dazu stehen bis V6.4.3 Unterzonen-Beispiele und Testtermine in der Historie.
+    Wege: GitHub Support bitten, die hängenden Commits und gecachten Ansichten zu entfernen; das Repository privat schalten (Pages braucht dann
+    ein bezahltes Konto) oder neu aufsetzen (neuer Schreibschlüssel fürs Handy, Pages neu aktivieren). Kopien in fremden Archiven lassen sich
+    nicht zurückholen; ein neues Zonenprofil nach dem nächsten Test entwertet die alten Werte.
+59. **Seite im Browser härten (Vorschläge):** Schlüssel nicht als Rohdaten im Browser-Speicher, «Merken» standardmässig aus, Knopf «Abmelden»;
+    Routen, Punkte, Rad- und Zielwerte in den verschlüsselten Tresor; Bibliotheken mit SRI-Prüfsumme oder im Repository, Content-Security-Policy,
+    kein JSONP-Rückfall, Schriften lokal; keine Referrer-Angabe an Dritte (`noindex` ist seit V6.4.4 gesetzt). Jeweils mit Test und ohne Live-Prüfung (Netz gesperrt)
+    nur, wo die Dienste es sicher erlauben.
+60. **Eingang (Vorschlag):** eigenes Repository nur für `eingang/` mit eigenem Schlüssel (der heutige darf den veröffentlichten Branch ändern),
+    nur feingranulare Schlüssel, Commit-Identität ausdrücklich auf eine noreply-Adresse.
+61. **Persönlicher Kontext im Code:** Rennen (Namen, Daten) stehen in `index.html`; sie könnten nur verschlüsselt in `config.races` liegen.
+    Die Reihen in `serien/` sind grösstenteils noch SPS1 mit exakter Grösse (neu schreiben hilft nur für die Zukunft).
+62. **Wissen:** Die Trainingsstunden aus Knechtle et al. 2011 sind nicht gegen den Volltext geprüft (nicht erreichbar). Testplan,
+    Sollband lange Ausfahrt und «Meine Entwicklung» sind in den Kapiteln nur erwähnt, nicht erklärt.
+63. **Gemeinsamer Stufentest im Testkalender:** Ein Eintrag «Rad und Lauf» gilt jetzt als zwei Tests am selben Tag. Besser wären zwei Einträge
+    mit Feld `sport`, wenn die Termine das nächste Mal ersetzt werden.

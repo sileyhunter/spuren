@@ -29,14 +29,14 @@ export function fuerMerge(d, quelle) {
   };
   if (d.fueling_produkte) out.fueling_produkte = d.fueling_produkte;
   if (Array.isArray(d.startorte)) out.startorte = clean(d.startorte);     // V5.7: ganze Liste (Startorte bleiben verschlüsselt in data.enc.json)
-  if (d.garmin_verlauf && typeof d.garmin_verlauf === "object") out.garmin_verlauf = d.garmin_verlauf;   // V6.2.3: Garmin-Datenexport (merge_daily prüft)
+  if (d.garmin_verlauf && typeof d.garmin_verlauf === "object") out.garmin_verlauf = d.garmin_verlauf;   // V6.2.3: Garmin-Datenexport, einer oder eine Liste (merge_daily prüft jeden)
   return out;
 }
 
 /** Mehrere Eingaben der Reihe nach zusammenführen (ältere zuerst): gleiche ID → spätere gewinnt; Mengen vereinigt;
  *  eine gelöschte Route verdrängt eine frühere Fassung derselben Route und umgekehrt. */
 export function zusammen(liste) {
-  const L = {}, mengen = { archiv: new Set(), laktat_bestaetigt: new Set(), laktat_punkte_bestaetigt: new Set() }, weg = new Set();
+  const L = {}, mengen = { archiv: new Set(), laktat_bestaetigt: new Set(), laktat_punkte_bestaetigt: new Set() }, weg = new Set(), gv = new Map();
   const out = { notizen: {} };
   for (const d of liste) {
     for (const [k, idf] of Object.entries(LISTEN)) for (const e of d[k] || []) {
@@ -49,8 +49,10 @@ export function zusammen(liste) {
     Object.assign(out.notizen, d.notizen || {});
     if (d.fueling_produkte) out.fueling_produkte = d.fueling_produkte;
     if (Array.isArray(d.startorte)) out.startorte = d.startorte;
-    if (d.garmin_verlauf && typeof d.garmin_verlauf === "object") out.garmin_verlauf = d.garmin_verlauf;   // V6.2.3: der spätere gewinnt
+    // V6.2.3: Garmin-Verläufe je ID sammeln (Audit V6.4 B9: bis dahin gewann der spätere, der frühere ging verloren, seine Datei wurde aufgeräumt)
+    for (const g of [].concat(d.garmin_verlauf || [])) if (g && typeof g === "object") gv.set(typeof g.id === "string" && g.id ? g.id : `ohne-id-${gv.size}`, g);
   }
+  if (gv.size) out.garmin_verlauf = [...gv.values()];
   for (const [k, m] of Object.entries(L)) out[k] = [...m.values()];
   for (const [k, s] of Object.entries(mengen)) out[k] = [...s];
   out.routen_entfernt = [...weg];

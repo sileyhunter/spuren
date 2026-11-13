@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
 <title>Ironman Notebook</title>
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-192.png">
@@ -3285,7 +3286,7 @@ const TABS = {
       const m = this.month, last = new Date(m.getFullYear(), m.getMonth() + 1, 0), W6 = window.V6, H6 = window.V6H, t0 = iso(today);
       document.getElementById("cal-title").textContent = m.toLocaleDateString("de-CH", { month: "long", year: "numeric" });
       let phasen = new Map();
-      try { if (W6 && window.AN && window.V5UI && V5UI.C) { const S = AN.saison(t0, W6.rennenPrio(V5UI.C.races())); if (S) phasen = new Map(S.wochen.map((w) => [w.woche, w.phase])); } } catch (e) { console.error(e); }
+      try { if (W6 && window.AN && window.V5UI && V5UI.C) { const S = AN.saison(t0, W6.rennenPrio(V5UI.C.races())); if (S) phasen = new Map((S.alle || S.wochen).map((w) => [w.woche, w.phase])); } } catch (e) { console.error(e); }
       const PH = window.V6P ? V6P.PHASE : {};
       let html = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((d) => `<div class="hd">${d}</div>`).join("");
       for (let w = mondayOf(m); w <= last; w = addDays(w, 7)) {
@@ -3845,7 +3846,7 @@ function renderSteps() {          // Testzentrum (Umsetzungsplan A5): Stufen aus
       : `<tr><td colspan="6">Noch keine Vorlagen.</td></tr>`);
 }
 const KIND = { stufentest: "Stufentest", check: "Laktat-Check", css: "CSS-Test" };
-const testName = (t) => KIND[t.kind] + (t.kind === "stufentest" && t.sport ? (t.sport === "lauf" ? " Laufen" : " Rad") : "");
+const testName = (t) => KIND[t.kind] + (t.kind === "stufentest" && t.sport ? ({ lauf: " Laufen", rad: " Rad", beide: " Rad und Laufen" }[t.sport] || "") : "");
 const cssTests = () => (window.V5UI && V5UI.C && V5UI.merged ? V5UI.merged("css_tests", "css") : (D.css_tests || []));   // Daten + Gerät
 /* V6.2 testplan-1.0: Tests nach festen Regeln vorgeschlagen (js/v62.js); eingetragene Termine gehen vor, Abwesenheiten in den Notizen («tp-sperren») */
 let TP_CACHE = null;

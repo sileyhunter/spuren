@@ -68,6 +68,11 @@ test("workout-1.1: feste Pause ist Zeit, Schwimmstrecken aus der Pace geschätzt
     { type: "cooldown", end_condition: "time", end_condition_value: 600 }] }, { zonen: Z });
   assert.equal(lauf.dauer_s, 3000);
   assert.equal(lauf.dauer_quelle, "Dauer laut Kalender");
+  // Audit V6.4 B24: harte Strecke ohne Pace (Sprint) nie mit der langsamsten Pace geschätzt → Dauer laut Kalender
+  const sprint = TR.workout({ title: "Sprint", sport: "schwimm", dur_s: 2400, steps: [sw(200, "warmup", "Warm Up | Recovery | 03:00min/100m"),
+    sw(200, "other", "1Lane | Kurze Serie | Sprint")] }, { zonen: Z });
+  assert.equal(sprint.schritte[1].dauer_est, undefined);
+  assert.equal(sprint.dauer_s, 2400); assert.equal(sprint.dauer_quelle, "Dauer laut Kalender");
 });
 
 test("profil-1.0: Balken je Schritt, Fokus ohne Ein-/Ausfahren und Erholung, Zeit ab Zone 3", () => {
@@ -91,6 +96,12 @@ test("profil-1.0: Balken je Schritt, Fokus ohne Ein-/Ausfahren und Erholung, Zei
   assert.equal(off.ohneDauer, 1);
   assert.equal(off.dauer_s, null);
   assert.ok(V6.profilSVG(off).includes('fill-opacity=".45"'));
+  // Audit V6.4 B18: Fokus nur aus Schritten mit Dauer; harte Schritte ohne Dauer separat («Dauer offen»), nie mit dem Platzhalter gezählt
+  const mix = V6.profil(TR.workout({ title: "mix", sport: "rad", steps: [pz(1800, 150, 190), { type: "interval", end_condition: "lap.button", target_type: "power.zone", target_value_low: 250, target_value_high: 270 },
+    { type: "interval", end_condition: "lap.button", target_type: "power.zone", target_value_low: 250, target_value_high: 270 }] }, { zonen: Z }), Z.skalen);
+  assert.deepEqual(mix.fokus.map((f) => [f.key, f.anteil]), [["z2", 1]]);
+  assert.deepEqual(mix.fokusOffen.map((f) => f.anteil), [null]);
+  assert.ok(V6.ZONEN[mix.fokusOffen[0].key].stufe >= 4, "der harte Schritt bleibt sichtbar");
 });
 
 test("Schritte für die Liste: Wiederholungen als Block, Zieltexte, Bezeichnungen", () => {
@@ -117,7 +128,8 @@ test("status-1.0: Bänder nach Coggan, Grenzen, Skala lückenlos", () => {
   assert.equal(V6.status(25).key, "erholt");
   assert.equal(V6.status(5).key, "erhaltung");
   assert.equal(V6.status(-10).key, "produktiv");
-  assert.equal(V6.status(-30).key, "ueberlastung");
+  assert.equal(V6.status(-30).key, "produktiv", "−30 … −10 Produktiv (Regeltext; Audit V6.4 B17)");
+  assert.equal(V6.status(-31).key, "ueberlastung");
   assert.equal(V6.status(null), null);
   assert.ok(!V6.STATUS.some((b) => /übertraining/i.test(b.name)), "Übertraining wird nie aus Zahlen behauptet");
   const B = V6.statusBaender();

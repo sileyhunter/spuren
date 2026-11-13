@@ -244,7 +244,7 @@ test("Wissen: Regel-Liste verweist auf vorhandene Versionen und Kapitel", () => 
 
 test("Wissen 1.2/1.3: Kapitel «aufbau» und «vergleich» mit Quellen und Regeln", () => {
   const WS = require("../js/wissen.js");
-  assert.equal(WS.VERSION, "wissen-1.3");
+  assert.equal(WS.VERSION, "wissen-1.4");
   const k = WS.kapitel("aufbau");
   assert.ok(k, "Kapitel aufbau fehlt");
   const v = WS.verweise(k.text.join(" ") + " " + k.kurz);
@@ -258,7 +258,7 @@ test("Wissen 1.2/1.3: Kapitel «aufbau» und «vergleich» mit Quellen und Regel
   assert.ok(WS.REGELN.some((r) => r[0] === "V64" && r[1] === "vergleich" && r[3] === "vergleich"));
 });
 
-/* ---------------- V6.4.2: Intensität je Sportart (intensitaet-1.0) ---------------- */
+/* ---------------- V6.4.2: Intensität je Sportart (intensitaet-1.1) ---------------- */
 test("Intensität je Sportart: Standard «alles», Ersatz derselben Sportart, nichts verschoben", () => {
   assert.deepEqual(V64.intensitaet(null), { schwimm: "alles", rad: "alles", lauf: "alles" });
   assert.deepEqual(V64.intensitaet({ intensitaet: { rad: "locker", lauf: "unsinn" } }), { schwimm: "alles", rad: "locker", lauf: "alles" });
@@ -302,7 +302,7 @@ test("Enduco gegen die Intensität: aus den Zielen der Schritte, sonst aus dem T
   assert.equal(V64.planStufe(null, "Kraft & Power"), null, "nicht beurteilbar bleibt offen");
 });
 
-/* ---------------- V6.4.2: Aufbau-Check (aufbau-1.0) ---------------- */
+/* ---------------- V6.4.2: Aufbau-Check (aufbau-1.1) ---------------- */
 const lauf = (date, km, start, extra) => Object.assign({ sport: "lauf", date, km, start: start || "08:00", mv: km * 330 }, extra || {});
 test("Aufbau: jeder Lauf gegen den längsten der 30 Tage davor, Klassen nach Frandsen 2025", () => {
   const acts = [lauf("2026-08-01", 30), lauf("2026-09-01", 8), lauf("2026-09-20", 10), lauf("2026-09-25", 10.9), lauf("2026-10-05", 13),
@@ -338,7 +338,7 @@ test("Aufbau: Grenze für einen Tag (nur absolvierte Läufe), danach und auf 0,1
   assert.equal(V64.aufbau([lauf("2026-11-13", 5)], "2026-11-13").naechster, "2026-11-14", "heute schon gelaufen: ab morgen");
 });
 
-test("wochenplan-1.1: kein Lauf im Vorschlag über der Aufbau-Grenze; ohne Zonenprofil keine Begrenzung", () => {
+test("wochenplan-1.2: kein Lauf im Vorschlag über der Aufbau-Grenze; ohne Zonenprofil keine Begrenzung", () => {
   const L = V64.laeufe([lauf("2026-11-01", 8)]);                       // Grenze 8,8 km
   const w = woche({ stunden: 12, laeufe: L, heute: "2026-11-13", skalen: SK });
   const so = w.tage[6].einheiten.find((e) => e.sport === "lauf"), fr = w.tage[4].einheiten.find((e) => e.sport === "lauf");
@@ -364,8 +364,8 @@ test("Geplanter Lauf: Distanz aus Distanzschritten und Pace-Zielen, offene Schri
   assert.equal(V64.planKm(null), null);
 });
 
-/* ---------------- V6.4.3: Vergleich mit Enduco (vergleich-1.0) ---------------- */
-test("Enduco von der Uhr: nur wo nichts im Kalender stand, ohne Tests, Dauer aus dem Workout", () => {
+/* ---------------- V6.4.3: Vergleich mit Enduco (vergleich-1.1) ---------------- */
+test("Enduco von der Uhr: nur wo nichts im Kalender stand, ohne Tests, Dauer = geplante Zeit (vergleich-1.1: nie die gelaufene)", () => {
   const acts = [
     { date: "2026-11-17", sport: "rad", wk: { name: "Kurze VO2max Intervalle ", plan_s: 3600, ist_s: 3500 } },
     { date: "2026-11-18", sport: "lauf", wk: { name: "Fatmax", plan_s: null, ist_s: 2700 } },
@@ -374,7 +374,30 @@ test("Enduco von der Uhr: nur wo nichts im Kalender stand, ohne Tests, Dauer aus
     { date: "2026-11-20", sport: "lauf" }];
   const U = V64.enducoAusUhr(acts, [{ date: "2026-11-20", sport: "lauf" }]);
   assert.deepEqual(U.map((x) => [x.date, x.titel, x.dauer_s, x.stufe, x.herkunft]), [
-    ["2026-11-17", "Kurze VO2max Intervalle", 3600, "alles", "uhr"], ["2026-11-18", "Fatmax", 2700, "locker", "uhr"]]);
+    ["2026-11-17", "Kurze VO2max Intervalle", 3600, "alles", "uhr"], ["2026-11-18", "Fatmax", null, "locker", "uhr"]]);
+  assert.match(U[1].dauerOffen, /Plandauer unbekannt/);
+});
+test("Vergleich 1.1 (Audit V6.4 B10): verschobenes Workout (Kalender Di, gefahren Mi) zählt einmal; am eigenen Tag gelaufen = zwei Einheiten", () => {
+  const kal = [{ date: "2026-11-17", sport: "rad", title: "Kurze VO2max Intervalle", dur_s: 3600 }];
+  const mi = { date: "2026-11-18", sport: "rad", wk: { name: "Kurze VO2max Intervalle", plan_s: 3600, ist_s: 3550 } };
+  assert.equal(V64.enducoAusUhr([mi], kal).length, 0, "verschoben: steht schon im Kalender");
+  const di = { date: "2026-11-17", sport: "rad", wk: { name: "Kurze VO2max Intervalle", plan_s: 3600 } };
+  assert.equal(V64.enducoAusUhr([di, mi], kal).length, 1, "Di lief nach Plan, Mi ein zweites Mal");
+  assert.equal(V64.enducoAusUhr([{ ...mi, date: "2026-11-21" }], kal).length, 1, "mehr als 2 Tage daneben: eigene Einheit");
+});
+test("Vergleich 1.1 (Audit V6.4 B11): Sportart mit Enduco-Einheit ohne Dauer zählt für «näher an» nicht", () => {
+  const w = woche({ stunden: 9 });
+  const enduco = [{ date: "2026-11-17", sport: "rad", titel: "VO2max", dauer_s: 3600, stufe: "alles" },
+    { date: "2026-11-18", sport: "schwimm", titel: "Technik", dauer_s: null, stufe: "locker", herkunft: "uhr" }];
+  const ist = [{ date: "2026-11-17", sport: "rad", dauer_s: 3600 }, { date: "2026-11-18", sport: "schwimm", dauer_s: 1800 }];
+  const VG = V64.vergleich({ w, enduco, ist, heute: "2026-11-19" });
+  assert.deepEqual(VG.naeher.ohne, ["schwimm"]);
+  assert.equal(VG.naeher.E, 0, "nur Rad verglichen: Enduco 60 min = absolviert 60 min");
+  // mehr als die Hälfte des Trainings ohne bekannte Enduco-Dauer: kein Urteil, mit Grund
+  const nur = V64.vergleich({ w, enduco: [{ date: "2026-11-17", sport: "rad", titel: "Grundlage mit Sprints", dauer_s: null, stufe: "locker", herkunft: "uhr" }],
+    ist: [{ date: "2026-11-17", sport: "rad", dauer_s: 5400 }], heute: "2026-11-18" });
+  assert.equal(nur.naeher, null);
+  assert.ok(nur.unterschiede.some((u) => u.art === "dauer" && /Rad/.test(u.text)));
 });
 
 test("Vergleich: Fenster, Summen, Stufen, Unterschiede und welchem Plan das Training näher war", () => {
@@ -404,4 +427,86 @@ test("Vergleich: Fenster, Summen, Stufen, Unterschiede und welchem Plan das Trai
   assert.equal(r2.vorbei, true); assert.equal(r2.planBis, "2026-11-22"); assert.equal(r2.abdeckung.mitPlan, 2); assert.equal(r2.sicher, false);
   assert.equal(r2.naeher, null);
   assert.ok(r2.unterschiede.some((u) => u.art === "abdeckung") && !r2.unterschiede.some((u) => ["stunden", "hart", "frei"].includes(u.art)));
+});
+
+/* ---------------- Audit V6.4: aufbau-1.1, wochenplan-1.2, Stand vergangener Wochen, Wechseldatum, Texte ---------------- */
+test("aufbau-1.1 (B8): nach einer Laufpause (kein Lauf in 30 Tagen) langer und lockerer Lauf höchstens 30 min locker, harte Läufe gemeldet", () => {
+  const w = woche({ phase: "Aufbau", stunden: 12, laeufe: V64.laeufe([lauf("2026-10-06", 12)]), heute: "2026-11-15", skalen: SK });
+  const so = w.tage[6].einheiten.find((e) => e.sport === "lauf");
+  assert.deepEqual([so.id, so.dauer], ["lauf_locker", V64.PAUSE_MIN]);
+  assert.ok(w.hinweise.some((h) => /kein Lauf in den 30 Tagen davor/.test(h)));
+  assert.ok(w.hinweise.some((h) => /am Di: kein Lauf in den 30 Tagen davor – harte Läufe/.test(h)));
+  assert.equal(V64.VERSIONS.aufbau, "aufbau-1.1");
+  // ohne Läufe in den Daten: keine Begrenzung (nicht bestimmbar)
+  assert.ok(woche({ phase: "Aufbau", stunden: 12, laeufe: [], heute: "2026-11-15", skalen: SK }).tage[6].einheiten.find((e) => e.sport === "lauf").dauer > V64.PAUSE_MIN);
+});
+test("aufbau-1.1 (B12): gekürzter Lauf mit der Schätzung nachgeprüft; liegt auch die Untergrenze darüber, ausdrücklich gemeldet", () => {
+  const w = woche({ stunden: 9, laeufe: V64.laeufe([lauf("2026-11-10", 1)]), heute: "2026-11-15", skalen: SK });
+  assert.ok(w.hinweise.some((h) => /auch mit 20 min .* über deiner Aufbau-Grenze von 1,1 km – kürzer laufen oder auslassen/.test(h)), w.hinweise.join(" | "));
+  for (let km10 = 60; km10 <= 160; km10 += 7) {                        // Renntempo-Schluss: nie über der Grenze, wenn über 20 min
+    const g = km10 / 10, Lx = V64.laeufe([lauf("2026-11-01", g / 1.1 + 0.001)]);
+    for (const stunden of [8, 12, 16]) {
+      const x = woche({ phase: "Wettkampfspezifisch", stunden, modell: "rennspezifisch", laeufe: Lx, heute: "2026-11-15", skalen: SK });
+      const e = x.tage[6].einheiten.find((y) => y.sport === "lauf");
+      if (e.dauer > 20) assert.ok(V64.kmSchaetzung(e, SK) <= V64.laufGrenze(Lx, "2026-11-22", "2026-11-15").km + 1e-9, `${g} km, ${stunden} h`);
+    }
+  }
+});
+test("wochenplan-1.2 (B13/B14): zu wenig Zeit gemeldet; Erholungswoche nur eine Schlüsseleinheit; Taper-Text wie gerechnet", () => {
+  const w2 = woche({ stunden: 2 });
+  assert.ok(w2.minuten.total > 2 * 60 && w2.hinweise.some((h) => /statt 2:00 h/.test(h)), w2.hinweise.join(" | "));
+  const e = woche({ stunden: 9, erholung: true });
+  assert.equal(alle(e).filter((x) => /^schluessel/.test(x.art)).length, 1, "nur die Rad-Schlüsseleinheit");
+  assert.ok(alle(e).some((x) => x.id === "schwimm_locker") && !alle(e).some((x) => x.id === "schwimm_css"));
+  assert.ok(woche({ stunden: 9, phase: "Taper" }).hinweise.some((h) => /einem Drittel bis der Hälfte/.test(h)));
+  assert.equal(V64.VERSIONS.woche, "wochenplan-1.2");
+});
+test("Stand vergangener Wochen (B7): wie am Montag – Läufe bis Sonntag davor, erledigte Tests bleiben, Stunden von Hand nur, wenn sie damals galten", () => {
+  const acts = [lauf("2026-10-20", 10), lauf("2026-11-03", 16)], mo = "2026-11-02";
+  const tests = [{ date: "2026-11-05", kind: "css", status: "geplant", done: true }, { date: "2026-11-20", kind: "css", status: "geplant", done: false }];
+  const st = V64.stand(mo, "2026-11-13", tests, { jetzt: 12, geaendert: "2026-11-10T07:00:00Z" });
+  assert.equal(st.vorbei, true); assert.equal(st.heute, "2026-11-01");
+  assert.deepEqual(st.tests.map((t) => [t.date, t.done, t.erledigt]), [["2026-11-05", false, true]]);
+  assert.deepEqual(st.lokal, {}, "erst nach dem Montag gesetzt");
+  assert.equal(V64.stand(mo, "2026-11-13", [], { jetzt: 12, geaendert: "2026-10-30T07:00:00Z" }).lokal.jetzt, 12);
+  const basis = { woche: mo, phase: "Grundlage", stunden: 12, modell: "polarisiert", laeufe: V64.laeufe(acts), skalen: SK };
+  const amMontag = V64.woche({ ...basis, heute: mo }), nach = V64.woche({ ...basis, heute: st.heute, tests: st.tests });
+  assert.equal(nach.tage[6].einheiten.find((e) => e.sport === "lauf").dauer, amMontag.tage[6].einheiten.find((e) => e.sport === "lauf").dauer);
+  assert.ok(nach.tage[3].einheiten.some((e) => e.test === "css"), "der damals geplante CSS-Test steht im Plan");
+  const jetzt = V64.stand("2026-11-09", "2026-11-13", tests, { jetzt: 12, geaendert: "2026-11-10T07:00:00Z" });
+  assert.deepEqual([jetzt.vorbei, jetzt.heute, jetzt.lokal.jetzt], [false, "2026-11-13", 12]);
+});
+test("Wechsel «kombiniert» (B15): Rennen am 29.2. im Vorjahr; ohne Hauptrennen nie von der Uhr abhängig – polarisiert", () => {
+  assert.equal(V64.wechselStandard("2028-02-29"), "2027-02-01");
+  assert.equal(V64.wechselStandard(null, "2026-11-16"), "2027-02-01"); assert.equal(V64.wechselStandard(null, "2027-03-01"), "2028-02-01");
+  for (const mo of ["2026-11-16", "2027-01-04", "2027-03-01", "2027-06-07"]) assert.equal(V64.modellFuer(V64.wahl(null, null, mo), mo), "polarisiert", mo);
+});
+test("Ziele (B23): Laufen Z1 «langsamer als», Rad «unter»; Titel-Regel als intensitaet-1.1 (B25)", () => {
+  assert.match(V64.ziel("z1", "lauf", SK), /^langsamer als 6:20\/km/);
+  assert.match(V64.ziel("z1", "rad", SK), /^unter 160 W/);
+  assert.equal(V64.VERSIONS.intensitaet, "intensitaet-1.1");
+  assert.deepEqual(["Neuro Aktivierung", "Locker 60", "Sweet Spot"].map((t) => V64.planStufe(null, t).stufe), ["alles", "locker", "schwelle"]);
+});
+
+test("Wissen 1.4 (Audit V6.4): Versionsangaben in den Texten entsprechen dem Code", () => {
+  const TR = require("../js/training-route.js");
+  const aktuell = new Map();
+  for (const V of [FK.VERSIONS, AN.VERSIONS, V64.VERSIONS, V62.VERSIONS, L.VERSIONS, V6.VERSIONS, TR.VERSIONS])
+    for (const v of Object.values(V || {})) { const m = /^(.*)-(\d+\.\d+)$/.exec(v); if (m) aktuell.set(m[1], v); }
+  const text = WS.KAPITEL.map((k) => k.text.join(" ") + " " + k.kurz).join(" ");
+  const alt = [...text.matchAll(/\b([a-z]+(?:-[a-z]+)*)-(\d+\.\d+)\b/g)].map((m) => m[0]).filter((v) => { const p = v.replace(/-\d+\.\d+$/, ""); return aktuell.has(p) && aktuell.get(p) !== v; });
+  assert.deepEqual(alt, [], "veraltete Versionen im Wissenstext");
+  assert.ok(/readiness-2\.1/.test(text) && /saison-1\.2/.test(text) && /aufbau-1\.1/.test(text) && /vergleich-1\.1/.test(text) && /intensitaet-1\.1/.test(text));
+  // Audit B: Titel Rosenblat 2019, sechsstufige Skala, keine «trainierbare» Ermüdungsresistenz, Muñoz 2014b nicht als Überlegenheit
+  assert.match(WS.QUELLEN.rosenblat2019.t, /intensity distribution on endurance sport performance/);
+  assert.ok(!/Fünf-Zonen-Skala|trainierbare Eigenschaft|Hälfte der Wiederholungen|Stark für die VO2max/.test(text + JSON.stringify(WS.QUELLEN)));
+  assert.match(WS.QUELLEN.munoz2014b.kern, /nicht gesichert/);
+});
+
+test("Woche (Audit V6.4 B6): gemeinsamer Rad- und Lauf-Stufentest ohne Feld sport setzt beide Tests ein", () => {
+  const w = woche({ stunden: 9, tests: [{ date: "2026-11-21", kind: "stufentest", note: "Basistest Rad und Lauf", status: "vorschlag" }] });
+  const sa = w.tage[5].einheiten.map((e) => e.id);
+  assert.ok(sa.includes("test_rad") && sa.includes("test_lauf"), sa.join(", "));
+  const nurLauf = woche({ stunden: 9, tests: [{ date: "2026-11-21", kind: "stufentest", note: "Lauf-Stufentest Bahn" }] });
+  assert.ok(nurLauf.tage[5].einheiten.some((e) => e.id === "test_lauf") && !nurLauf.tage[5].einheiten.some((e) => e.id === "test_rad"), "Lauf-Test ersetzt keine Rad-Einheit");
 });

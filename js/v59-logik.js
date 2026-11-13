@@ -2,9 +2,9 @@
  * befinden-2.0 (Morgen-Check-in mit vier Fragen und sieben Stufen, Gefühl gegen Morgenwerte; V6.3), morgen-1.0 (Heute geplant), last-2.0 (Trainingslast mit LT2),
  * css-2.0 (Schwimmen nur mit CSS-Test). Grundsätze: fehlend bleibt fehlend (null), nie geschätzt; jede Zahl nennt ihre Quelle. */
 (function (root, factory) {
-  if (typeof module === "object" && module.exports) module.exports = factory();
-  else root.V59L = factory();
-})(typeof self !== "undefined" ? self : this, function () {
+  if (typeof module === "object" && module.exports) module.exports = factory(require("./v62.js"));
+  else root.V59L = factory(root.V62);
+})(typeof self !== "undefined" ? self : this, function (V62) {
   "use strict";
   const L = {};
   L.VERSIONS = { befinden: "befinden-2.0", eingang: "eingang-1.0", morgen: "morgen-1.0", last: "last-2.0", css: "css-2.0", bedienung: "bedienung-1.0" };
@@ -124,12 +124,21 @@
   L.tageAbstand = tage;
   L.TEST_TOLERANZ_TAGE = 4;
   /** Testkalender mit Status: Laktat-Tests (stufentest, check) erledigt durch einen Laktat-Eintrag gleicher Art, CSS-Tests durch einen
-   *  eingetragenen CSS-Test (Feld datum) – jeweils höchstens 4 Tage neben dem geplanten Datum. */
+   *  eingetragenen CSS-Test (Feld datum) – jeweils höchstens 4 Tage neben dem geplanten Datum. Stufentests nur durch einen Test derselben
+   *  Sportart (Audit V6.4 B20); jeder Test bekommt seine Sportart (V62.testSport, B6), auch wenn sie im Testkalender fehlt. */
   L.testsMitStatus = function (tests, lactate, css) {
     return (tests || []).map((t) => {
-      const hit = t.kind === "css" ? (css || []).find((c) => c && c.datum && tage(c.datum, t.date) <= L.TEST_TOLERANZ_TAGE)
-        : (lactate || []).find((l) => l && l.kind === t.kind && l.date && tage(l.date, t.date) <= L.TEST_TOLERANZ_TAGE);
-      return Object.assign({}, t, { done: !!hit, doneDate: hit ? hit.datum || hit.date : undefined });
+      const sport = V62 && V62.testSport ? V62.testSport(t) : t.sport || null;
+      const sporten = V62 && V62.testSporten ? V62.testSporten(t) : [t.sport || "rad"];
+      const nah = (l) => l && l.kind === t.kind && l.date && tage(l.date, t.date) <= L.TEST_TOLERANZ_TAGE;
+      let hit;
+      if (t.kind === "css") hit = (css || []).find((c) => c && c.datum && tage(c.datum, t.date) <= L.TEST_TOLERANZ_TAGE);
+      else if (t.kind !== "stufentest") hit = (lactate || []).find(nah);
+      else {                                                   // Stufentest: je Sportart ein Test derselben Sportart (gemeinsamer Test: beide)
+        const je = sporten.map((sp) => (lactate || []).find((l) => nah(l) && (l.sport || "rad") === sp));
+        hit = je.every(Boolean) ? je.sort((x, y) => String(y.date).localeCompare(String(x.date)))[0] : null;
+      }
+      return Object.assign({}, t, { sport: sport || t.sport, done: !!hit, doneDate: hit ? hit.datum || hit.date : undefined });
     });
   };
   /** Geplante CSS-Tests mit Status und der nächste offene ab heute (für die CSS-Karte und «Meine Entwicklung»). */

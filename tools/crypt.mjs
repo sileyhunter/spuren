@@ -34,7 +34,7 @@ if (mode === "encrypt") {
   const d = createDecipheriv("aes-256-gcm", key, ub64(p.iv));
   d.setAuthTag(raw.subarray(raw.length - 16));
   const pt = Buffer.concat([d.update(raw.subarray(0, raw.length - 16)), d.final()]);
-  writeFileSync(out, pt);
+  writeFileSync(out, pt, { mode: 0o600 });             // Klartext nur für den eigenen Benutzer lesbar (Audit V6.4 C, N4)
   console.log(`entschlüsselt: ${out}`);
 } else {
   console.error("Modus muss encrypt oder decrypt sein");

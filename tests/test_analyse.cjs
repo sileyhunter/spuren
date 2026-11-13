@@ -101,6 +101,38 @@ test("Saison: Taper 2 Wochen vor Hamburg, B-Rennen mit Mini-Taper und Erholung, 
   assert.equal(S.haupt.short, "Hamburg");
 });
 
+test("Saison saison-1.2 (Audit V6.4 B1): Erholungswochen fest am Hauptrennen, unabhängig vom Rechentag", () => {
+  const R = [{ name: "Rennen B", short: "B", date: "2027-04-24", prio: "B" }, { name: "Rennen A", short: "A", date: "2027-06-06", prio: "A" }];
+  const erh = (S) => new Map(S.wochen.map((w) => [w.woche, !!w.erholung]));
+  let jetztErholung = 0;
+  for (let i = 0; i < 20; i++) {
+    const h = FK.addDays("2026-11-16", 7 * i), a = erh(AN.saison(h, R)), b = erh(AN.saison(FK.addDays(h, 7), R)), c = erh(AN.saison(FK.addDays(h, 3), R));
+    for (const [wo, e] of b) assert.equal(a.get(wo), e, `Woche ${wo}: gleich, ob am ${h} oder eine Woche später gerechnet`);
+    for (const [wo, e] of c) assert.equal(a.get(wo), e, "auch mitten in der Woche gleich");
+    if (a.get(h)) jetztErholung++;
+  }
+  assert.ok(jetztErholung >= 4, "«diese Woche» ist regelmässig eine Erholungswoche (1.1: nie)");
+  const S = AN.saison("2026-11-16", R), W = S.alle, idx = (d) => W.findIndex((w) => w.woche === d);
+  const t = W.findIndex((w) => w.phase === "Taper");
+  assert.deepEqual(W.slice(t - 3, t).map((w) => w.erholung), [false, false, false], "drei Belastungswochen vor dem Taper");
+  assert.equal(W[t - 4].erholung, true, "davor eine Erholungswoche");
+  // B-Rennen in der Woche ab 19.4.: Woche danach Erholung, Rhythmus-Erholung nicht direkt davor
+  assert.equal(W[idx("2027-04-19")].phase, "B-Rennen (Mini-Taper)"); assert.equal(W[idx("2027-04-19")].basis, "Wettkampfspezifisch");
+  assert.equal(W[idx("2027-04-26")].erholung, true); assert.equal(W[idx("2027-04-26")].grund, "nach B");
+  // Woche x von y: am 1.3.2027 Aufbau Woche 13 von 16, ab = Beginn der Phase (nicht heute)
+  const M = AN.saison("2027-03-03", R), w = M.wochen[0];
+  assert.deepEqual([w.phase, w.phaseNr, w.phaseN, M.ab], ["Aufbau", 13, 16, "2026-12-07"]);
+  assert.equal(AN.saison("2026-11-16", R).wochen[0].phaseNr, null, "Grundlage ohne festen Beginn");
+  // B-Rennen so gelegt, dass die Rhythmus-Erholung in die Woche davor bzw. 1–2 Wochen nach der Erholung fiele: entfällt
+  for (const bDatum of ["2027-03-13", "2027-02-20", "2027-02-13"]) {
+    const X = AN.saison("2026-11-16", [{ name: "B", short: "B", date: bDatum, prio: "B" }, R[1]]).alle, j = X.findIndex((w) => w.phase.startsWith("B-Rennen"));
+    assert.equal(X[j - 1].erholung, false, `${bDatum}: nicht drei leichte Wochen in Folge`);
+    assert.equal(X[j + 1].erholung, true);
+    assert.ok(!X[j + 2].erholung && !X[j + 3].erholung, `${bDatum}: nach der Erholung zuerst wieder Belastung`);
+  }
+  assert.equal(AN.saison("2027-06-07", R), null, "Hauptrennen vorbei: keine Saison mehr (nie ein vergangenes Rennen als Ziel)");
+});
+
 test("Saison-Stunden (V6.4 aus js/v56.js ausgelagert): linear bis zur Spitze, Erholung 65 %, B-Rennen 50 %, Taper 60/40 %", () => {
   const W = [{ phase: "Grundlage" }, { phase: "Aufbau" }, { phase: "Aufbau", erholung: true }, { phase: "B-Rennen (Mini-Taper)" }, { phase: "Wettkampfspezifisch" }, { phase: "Taper" }, { phase: "Taper" }];
   assert.deepEqual(AN.saisonStunden(W, 8, 12), [8, 9, 6.5, 5.5, 12, 7, 5]);   // 8 + 4·i/4; 10 × 0.65 = 6.5; 11 × 0.5 = 5.5; 12 × 0.6 = 7.2 → 7; 12 × 0.4 = 4.8 → 5
@@ -114,11 +146,16 @@ test("Saison-Stunden (V6.4 aus js/v56.js ausgelagert): linear bis zur Spitze, Er
   assert.equal(AN.saisonVorgaben(acts, "2026-11-08").jetzt, 8);
   const mehr = acts.concat([{ date: "2026-11-10", sport: "rad", mv: 20 * 3600 }]);
   assert.deepEqual([AN.saisonVorgaben(mehr, "2026-11-13").jetzt, AN.saisonVorgaben(mehr, "2026-11-13").spitze], [9, 12], "Training dieser Woche ändert den Vorschlag nicht");
-  assert.equal(AN.VERSIONS.saison, "saison-1.1");
+  assert.equal(AN.VERSIONS.saison, "saison-1.2");
+  // saison-1.2 (Audit V6.4 B16): Wochen ohne Schwimmen, Rad und Laufen zählen mit 0 h – Skitouren-Wochen und leere Wochen gleich; vor der ersten Aktivität nicht
+  const zehn = ["2026-09-14", "2026-09-21", "2026-09-28", "2026-10-05"].map((d) => ({ date: d, sport: "rad", mv: 10 * 3600 }));
+  const ski = zehn.concat(["2026-10-12", "2026-10-19", "2026-10-26", "2026-11-02"].map((d) => ({ date: d, sport: "andere", mv: 6 * 3600 })));
+  assert.equal(AN.saisonVorgaben(ski, "2026-11-09").jetzt, 5); assert.equal(AN.saisonVorgaben(zehn, "2026-11-09").jetzt, 5, "Pause zählt wie Skitouren-Wochen");
+  assert.equal(AN.saisonVorgaben(zehn.slice(2), "2026-10-12").jetzt, 10, "Wochen vor der ersten Aktivität sind keine Pause");
 });
 
 test("Dateiname der Reihe wie tools/serien_crypt.mjs (SHA-256 aus Salz und ID, 24 Hex-Zeichen)", async () => {
-  const soll = require("node:crypto").createHash("sha256").update("0f1e2d:g24916684687").digest("hex").slice(0, 24);
-  assert.equal(await AN.serieName("0f1e2d", "g24916684687"), soll);
-  assert.notEqual(await AN.serieName("0f1e2e", "g24916684687"), soll, "anderes Salz, anderer Name");
+  const soll = require("node:crypto").createHash("sha256").update("0f1e2d:g10000000001").digest("hex").slice(0, 24);
+  assert.equal(await AN.serieName("0f1e2d", "g10000000001"), soll);
+  assert.notEqual(await AN.serieName("0f1e2e", "g10000000001"), soll, "anderes Salz, anderer Name");
 });

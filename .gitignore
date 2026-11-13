@@ -2,3 +2,20 @@ data.json
 work/
 __pycache__/
 *.pyc
+# Rohdaten und Klartext nie ins öffentliche Repository (Audit V6.4 C, N5)
+*.fit
+*.FIT
+*.zip
+*.gpx
+*.xlsx
+*.xls
+*.csv
+spuren-eingaben-*.json
+garmin-verlauf*.json
+*.bak
+.env
+*.png
+*.jpg
+*.jpeg
+!icon-*.png
+!logo*.jpg
