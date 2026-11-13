@@ -316,6 +316,7 @@
     trend: '<path d="m4 16 5-5 4 3 7-7M15 7h5v5"/>',
     status: '<path d="M3 12h4l2.5-6 5 12 2.5-6h4"/>',
     ampel: '<rect x="7" y="2.5" width="10" height="19" rx="4"/><circle cx="12" cy="7.5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="16.5" r="1.6"/>',
+    schlaf: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
     beine: '<path d="M9 3.5v7l-2 9.5h3l2-7 2 7h3l-2-9.5v-7"/>', energie: '<path d="M13 2.5 5 13.5h6l-1 8 8-11h-6l1-8z"/>', kopf: '<circle cx="12" cy="10" r="6.5"/><path d="M9.5 16.5V21M14.5 16.5V21M9.5 9.5h.5M14 9.5h.5"/>',
   };
   V6.icon = (k, w) => svg(V6.ICON[k] || V6.ICON.andere, w);

@@ -1,5 +1,5 @@
 /* Ironman Notebook – V5.9 Rechenlogik ohne DOM (Browser: window.V59L, Node: require).
- * befinden-1.1 (Morgen-Check-in, Gefühl gegen Morgenwerte), morgen-1.0 (Heute geplant), last-2.0 (Trainingslast mit LT2),
+ * befinden-2.0 (Morgen-Check-in mit vier Fragen und sieben Stufen, Gefühl gegen Morgenwerte; V6.3), morgen-1.0 (Heute geplant), last-2.0 (Trainingslast mit LT2),
  * css-2.0 (Schwimmen nur mit CSS-Test). Grundsätze: fehlend bleibt fehlend (null), nie geschätzt; jede Zahl nennt ihre Quelle. */
 (function (root, factory) {
   if (typeof module === "object" && module.exports) module.exports = factory();
@@ -7,37 +7,58 @@
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
   const L = {};
-  L.VERSIONS = { befinden: "befinden-1.1", eingang: "eingang-1.0", morgen: "morgen-1.0", last: "last-2.0", css: "css-2.0", bedienung: "bedienung-1.0" };
+  L.VERSIONS = { befinden: "befinden-2.0", eingang: "eingang-1.0", morgen: "morgen-1.0", last: "last-2.0", css: "css-2.0", bedienung: "bedienung-1.0" };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const addDays = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
   L.addDays = addDays;
 
-  /* ======================= befinden-1.1: Morgen-Check-in ======================= */
-  /** Drei Fragen mit je fünf Knöpfen. Sie füllen dieselben Felder wie das bisherige Befinden (die Bereitschaft rechnet unverändert):
-   *  Beine → muskel (1 frisch … 5 schwer), Energie → muede (1 voll … 5 leer), Kopf → stress (1 ruhig … 5 gestresst). */
+  /* ======================= befinden-2.0: Morgen-Check-in (V6.3, Etappe 3) ======================= */
+  /** Vier Fragen mit sieben Stufen: 1 = sehr gut … 4 = durchschnittlich … 7 = sehr schlecht (Türkis → Pink). Felder: schlaf (neu), muede,
+   *  muskel, stress, dazu skala: 7. Ältere Einträge (befinden-1.1: drei Fragen, 1–5, ohne skala) bleiben unverändert; gerechnet wird mit dem
+   *  Anteil auf der eigenen Skala (L.befindenAnteil: 0 = bestens, 1 = schlechteste Stufe), so passen alte und neue Einträge zusammen. */
+  L.SKALA = 7;
   L.FRAGEN = [
-    { k: "muskel", label: "Beine", lo: "frisch", hi: "schwer" },
-    { k: "muede", label: "Energie", lo: "voll", hi: "leer" },
-    { k: "stress", label: "Kopf", lo: "ruhig", hi: "gestresst" },
+    { k: "schlaf", label: "Schlaf", lo: "erholsam", hi: "unruhig", text: "Wie erholsam war deine Nacht?" },
+    { k: "muede", label: "Energie", lo: "viel", hi: "wenig", text: "Wie viel Energie hast du?" },
+    { k: "muskel", label: "Beine", lo: "frisch", hi: "schwer", text: "Wie fühlen sich deine Beine an?" },
+    { k: "stress", label: "Kopf", lo: "ruhig", hi: "gestresst", text: "Wie ruhig ist dein Kopf?" },
   ];
+  L.KERN = ["muede", "muskel", "stress"];               // in befinden-1.1 und 2.0 vorhanden
   L.KRANK = ["Erkältung", "Halsweh", "Fieber", "Magen-Darm", "Verletzung"];
-  /** Antworten → Befinden-Eintrag (nur gültige Werte 1–5; ohne alle drei kein Eintrag). */
+  /** Wort zu einer Stufe (7er-Skala): sehr frisch, frisch, eher frisch, durchschnittlich, eher schwer, schwer, sehr schwer. */
+  L.wort = (f, v) => (v === 4 ? "durchschnittlich" : v === 1 ? "sehr " + f.lo : v === 7 ? "sehr " + f.hi : v === 2 ? f.lo : v === 6 ? f.hi : v === 3 ? "eher " + f.lo : v === 5 ? "eher " + f.hi : "–");
+  /** Wort zu einem gespeicherten Wert auf der Skala des Eintrags (alte Einträge 1–5: frisch, eher frisch, mittel, eher schwer, schwer). */
+  L.wortVon = function (b, f) {
+    const v = b ? b[f.k] : null;
+    if (!Number.isInteger(v)) return "";
+    if (L.skalaVon(b) === 7) return L.wort(f, v);
+    return v === 1 ? f.lo : v === 5 ? f.hi : v === 3 ? "mittel" : v < 3 ? "eher " + f.lo : "eher " + f.hi;
+  };
+  /** Skala eines Eintrags: 7 bei befinden-2.0 (skala: 7), sonst 5 (befinden-1.0/1.1). */
+  L.skalaVon = (b) => (b && (b.skala === 7 || b.v === "befinden-2.0") ? 7 : 5);
+  /** Anteil auf der Skala (0 = bestens … 1 = schlechteste Stufe); ungültig oder fehlend → null. */
+  L.befindenAnteil = function (b, k) {
+    const sk = L.skalaVon(b), v = b ? b[k] : null;
+    return Number.isInteger(v) && v >= 1 && v <= sk ? (v - 1) / (sk - 1) : null;
+  };
+  /** Antworten → Befinden-Eintrag (alle vier Fragen 1–7; sonst kein Eintrag). */
   L.checkinEintrag = function (datum, w, extra) {
     extra = extra || {};
-    const ok = (v) => Number.isInteger(v) && v >= 1 && v <= 5;
+    const ok = (v) => Number.isInteger(v) && v >= 1 && v <= L.SKALA;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(datum)) || !L.FRAGEN.every((f) => ok(w && w[f.k]))) return null;
-    const b = { date: datum, muede: w.muede, muskel: w.muskel, stress: w.stress, quelle: "checkin", v: L.VERSIONS.befinden, erfasst: extra.erfasst || new Date().toISOString() };
+    const b = { date: datum, schlaf: w.schlaf, muede: w.muede, muskel: w.muskel, stress: w.stress, skala: L.SKALA, quelle: "checkin", v: L.VERSIONS.befinden,
+      erfasst: extra.erfasst || new Date().toISOString() };
     if (extra.krank) b.krank = Array.isArray(extra.krank) && extra.krank.length ? extra.krank.slice() : ["krank oder verletzt"];
     if (extra.nachtdienst) b.nachtdienst = true;
     const n = String(extra.notiz || "").trim(); if (n) b.notiz = n.slice(0, 280);
     return b;
   };
-  /** Gefühl 1–5 (5 = bestens): Mittel der drei Antworten, umgedreht. Fehlt eine Antwort → null. */
+  /** Gefühl 1–5 (5 = bestens) aus dem mittleren Anteil aller beantworteten Fragen; die drei Kernfragen müssen da sein (sonst null).
+   *  Für befinden-1.1 identisch mit früher: 6 − Mittel der drei Antworten. */
   L.gefuehl = function (b) {
-    if (!b) return null;
-    const v = L.FRAGEN.map((f) => b[f.k]);
-    if (!v.every((x) => isNum(x) && x >= 1 && x <= 5)) return null;
-    return 6 - v.reduce((s, x) => s + x, 0) / v.length;
+    if (!b || !L.KERN.every((k) => L.befindenAnteil(b, k) != null)) return null;
+    const a = L.FRAGEN.map((f) => L.befindenAnteil(b, f.k)).filter((x) => x != null);
+    return 5 - 4 * (a.reduce((s, x) => s + x, 0) / a.length);
   };
   /** Rangkorrelation nach Spearman (gleiche Werte → mittlerer Rang). Unter 3 Paaren null. */
   L.spearman = function (xs, ys) {

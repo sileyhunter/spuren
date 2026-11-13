@@ -8,7 +8,7 @@
   "use strict";
   const FK = {};
   FK.VERSIONS = {
-    cockpit: "cockpit-1.0", readiness: "readiness-1.0", langfahrt: "langfahrt-2.0", koppel: "koppel-1.1",
+    cockpit: "cockpit-1.0", readiness: "readiness-2.0", ampel_pruefung: "ampel-pruefung-1.0", langfahrt: "langfahrt-2.0", koppel: "koppel-1.1",
     fueling: "fueling-1.0", eta: "eta-1.0", cda: "cda-1.0", fit: "fit-js-1.0", wetter: "wetter-1.0",
     pmc: "pmc-2.0", zonen: "zonenverteilung-2.0", orientierung: "langfahrt-orientierung-1.0", entwicklung: "entwicklung-1.0", laufeffizienz: "laufeffizienz-1.0",
     ringe: "ringe-1.0", laktat_drift: "laktat-drift-1.0",
@@ -209,7 +209,7 @@
     return f;
   };
 
-  /* ---------------- Readiness (readiness-1.0) ---------------- */
+  /* ---------------- Readiness (readiness-2.0; bis V6.2 readiness-1.0) ---------------- */
   const HRV_OK = (v) => isNum(v) && v >= 10 && v <= 250;
   const RHR_OK = (v) => isNum(v) && v >= 25 && v <= 120;
   /** Tageslast (TSS-Summe) je Datum. */
@@ -430,10 +430,17 @@
       ind.last = { status: st, akut7: Math.round(a7), chronisch7: Math.round(c28), verhaeltnis: acwr != null ? +acwr.toFixed(2) : null, tage3: Math.round(a3) };
     }
     // Befinden (eigene Angabe) und Krankheitszeichen
-    if (!today) ind.befinden = { status: "nicht angegeben" };
+    // readiness-2.0: Befinden auf der Skala des Eintrags (befinden-2.0: 1–7, ältere 1–5) als Anteil 0 (bestens) … 1 (schlechteste Stufe);
+    // belastet ab 0,75 (5er: 4–5, 7er: 6–7), mittel ab 0,5 (5er: 3, 7er: 4–5) – für alte Einträge genau wie readiness-1.0
+    const BEF = [["schlaf", "Schlaf"], ["muede", "Energie"], ["muskel", "Beine"], ["stress", "Kopf"]];
+    const skB = today && (today.skala === 7 || today.v === "befinden-2.0") ? 7 : 5;
+    const antB = (k) => (today && Number.isInteger(today[k]) && today[k] >= 1 && today[k] <= skB ? (today[k] - 1) / (skB - 1) : null);
+    const teileB = BEF.map(([k, l]) => ({ k, l, v: today ? today[k] : null, a: antB(k) })).filter((x) => x.a != null);
+    if (!today || !teileB.length) ind.befinden = { status: "nicht angegeben" };
     else {
-      const worst = Math.max(today.muede || 0, today.muskel || 0, today.stress || 0);
-      ind.befinden = { status: worst >= 4 ? "belastet" : worst === 3 ? "mittel" : worst > 0 ? "gut" : "nicht angegeben", muede: today.muede ?? null, muskel: today.muskel ?? null, stress: today.stress ?? null };
+      const worst = Math.max(...teileB.map((x) => x.a));
+      ind.befinden = { status: worst >= 0.75 ? "belastet" : worst >= 0.5 ? "mittel" : "gut", skala: skB, schlaf: today.schlaf ?? null, muede: today.muede ?? null, muskel: today.muskel ?? null, stress: today.stress ?? null,
+        belastet: teileB.filter((x) => x.a >= 0.75).map((x) => `${x.l} ${x.v}/${skB}`) };
     }
     const krank = today && Array.isArray(today.krank) && today.krank.length ? today.krank : null;
     if (krank) ind.krank = { status: "angegeben", zeichen: krank };
@@ -442,13 +449,14 @@
     const reasons = []; let strong = 0, weak = 0;
     const add = (w, txt, kind) => { reasons.push({ w, txt, kind }); };
     if (krank) { strong++; add(10, `Krankheitszeichen angegeben (${krank.join(", ")})`, "krank"); }
-    if (ind.befinden.status === "belastet") { strong++; add(8, `Befinden: ${[today.muede >= 4 ? `Müdigkeit ${today.muede}/5` : null, today.muskel >= 4 ? `Muskeln ${today.muskel}/5` : null, today.stress >= 4 ? `Stress ${today.stress}/5` : null].filter(Boolean).join(", ")} (deine Angabe)`, "befinden"); }
+    if (ind.befinden.status === "belastet") { strong++; add(8, `Befinden: ${ind.befinden.belastet.join(", ")} (deine Angabe)`, "befinden"); }
     if (ind.hrv.status === "deutlich unter Referenz") { strong++; add(7, `HRV 7 Tage Ø ${ind.hrv.wert7} ms deutlich unter deiner Referenz (${ind.hrv.refLo}–${ind.hrv.refHi} ms)`, "hrv"); }
     else if (ind.hrv.status === "unter Referenz") { weak++; add(5, `HRV 7 Tage Ø ${ind.hrv.wert7} ms unter deiner Referenz (${ind.hrv.refLo}–${ind.hrv.refHi} ms)`, "hrv"); }
     if (ind.rhr.status === "deutlich erhöht") { strong++; add(7, `Ruhepuls 3 Tage Ø ${fmt1(ind.rhr.wert3)} bpm, ${fmt1(ind.rhr.diff)} über Referenz ${fmt1(ind.rhr.ref)}`, "rhr"); }
     else if (ind.rhr.status === "erhöht") { weak++; add(5, `Ruhepuls 3 Tage Ø ${fmt1(ind.rhr.wert3)} bpm, ${fmt1(ind.rhr.diff)} über Referenz ${fmt1(ind.rhr.ref)}`, "rhr"); }
     if (ind.schlaf.status === "sehr kurz") { strong++; add(6, `Schlaf ${fmt1(ind.schlaf.wert)} h`, "schlaf"); }
-    else if (ind.schlaf.status === "kurz") { weak++; add(4, `Schlaf ${fmt1(ind.schlaf.wert)} h${ind.schlaf.ref ? ` (sonst Ø ${fmt1(ind.schlaf.ref)} h)` : ""}`, "schlaf"); }
+    // readiness-2.0 (an deinen Daten geprüft, ampel-pruefung-1.0): 5–6 h Schlaf zeigten keinen höheren Puls bei gleicher Leistung → nur Hinweis
+    else if (ind.schlaf.status === "kurz") add(1, `Schlaf ${fmt1(ind.schlaf.wert)} h${ind.schlaf.ref ? ` (sonst Ø ${fmt1(ind.schlaf.ref)} h)` : ""} – nur Hinweis`, "schlaf-info");
     if (ind.last.status === "hoch") { weak++; add(4, `Belastung hoch: 7 Tage ${ind.last.akut7} gegen Ø ${ind.last.chronisch7} je Woche`, "last"); }
     if (ind.befinden.status === "mittel") add(2, "Befinden mittel (deine Angabe)", "befinden");
     const objKnown = ["hrv", "rhr", "schlaf"].filter((k) => ind[k] && !["unbekannt", "nicht vergleichbar"].includes(ind[k].status));
@@ -478,6 +486,28 @@
       harte_einheit: status === "bereit" || status === "normal" ? "möglich" : "nicht empfohlen", nachtdienst: shift };
   };
   const fmt1 = (v) => (Math.round(v * 10) / 10).toLocaleString("de-CH");
+  /* ---------------- Ampel an den eigenen Daten prüfen (ampel-pruefung-1.0, V6.3) ----------------
+   * Gleichmässige 10-min-Blöcke (eb-1.0: Rad um 200 W, Laufen um 5:30/km, je System) zeigen den Puls bei gleicher Leistung. Je Block der
+   * Unterschied zum Mittel derselben Blockart in den 60 Tagen davor (mind. 4 Blöcke), gruppiert nach dem Ampel-Stand jenes Morgens
+   * (nur Werte bis zu diesem Tag) und nach Garmins Readiness. Höherer Puls bei gleicher Leistung = die Leistung kostete mehr.
+   * Beobachtung, kein Beweis (Hitze, Höhe, Trinken, Gerät wirken mit); Gruppen unter 5 Blöcken ohne Mittelwert. */
+  FK.ampelPruefung = function (days, acts, befinden, bisISO, opt) {
+    opt = Object.assign({ tage: 60, minRef: 4, minGruppe: 5 }, opt || {});
+    const tagOf = new Map((days || []).map((d) => [d.date, d]));
+    const E = (acts || []).filter((a) => a.eb && isNum(a.eb.hr) && a.date && (!bisISO || a.date <= bisISO))
+      .map((a) => ({ date: a.date, n: dayNum(a.date), art: `${a.eb.art}|${a.indoor ? "rolle" : a.typ || ""}`, hr: a.eb.hr })).sort((x, y) => x.n - y.n);
+    const zeilen = [];
+    for (const e of E) {
+      const ref = E.filter((x) => x.art === e.art && e.n - x.n >= 1 && e.n - x.n <= opt.tage);
+      if (ref.length < opt.minRef) continue;
+      const r = FK.readiness(days, acts, befinden, e.date);
+      zeilen.push({ date: e.date, d: e.hr - mean(ref.map((x) => x.hr)), status: r.status, garmin: (tagOf.get(e.date) || {}).readinessLevel || null });
+    }
+    const gruppen = (key, reihe) => reihe.map((k) => { const v = zeilen.filter((z) => z[key] === k).map((z) => z.d);
+      return { k, n: v.length, mittel: v.length >= opt.minGruppe ? +mean(v).toFixed(1) : null }; });
+    return { v: FK.VERSIONS.ampel_pruefung, n: zeilen.length, von: zeilen.length ? zeilen[0].date : null, bis: zeilen.length ? zeilen[zeilen.length - 1].date : null,
+      ampel: gruppen("status", ["bereit", "normal", "vorsichtig", "nicht beurteilbar"]), garmin: gruppen("garmin", ["PRIME", "HIGH", "MODERATE", "LOW", "POOR"]) };
+  };
   const labelOf = (k) => ({ hrv: "HRV", rhr: "Ruhepuls", schlaf: "Schlaf" }[k] || k);
   /** Verlauf für die Trendgrafik (21 oder 42 Tage): Tageswerte und Referenzband der HRV. */
   FK.readinessTrend = function (days, acts, befinden, endISO, n) {

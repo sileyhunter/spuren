@@ -150,7 +150,24 @@ test("Readiness: vier Nachtdienst-Tage → Schlaf nicht vergleichbar", () => {
 test("Readiness: Schlafdefizit und Stress → vorsichtig mit Begründung", () => {
   const r = FK.readiness(base((i) => (i === 69 ? { sleepH: 4.5 } : {})), ACTS, [{ date: D70, stress: 4 }], D70);
   assert.equal(r.status, "vorsichtig");
-  assert.ok(r.gruende.some((g) => /Schlaf/.test(g)) && r.gruende.some((g) => /Stress/.test(g)));
+  assert.ok(r.gruende.some((g) => /Schlaf/.test(g)) && r.gruende.some((g) => /Kopf 4\/5/.test(g)), "alter Eintrag (1–5) wie bisher: 4 von 5 = belastet");
+});
+test("Readiness 2.0: Check-in mit sieben Stufen (befinden-2.0) – 6/7 belastet, 4–5/7 mittel, Schlaf-Frage zählt mit", () => {
+  const r = FK.readiness(base(), ACTS, [{ date: D70, skala: 7, v: "befinden-2.0", schlaf: 6, muede: 2, muskel: 3, stress: 1 }], D70);
+  assert.equal(r.indikatoren.befinden.status, "belastet");
+  assert.equal(r.status, "vorsichtig");
+  assert.ok(r.gruende.some((g) => /Schlaf 6\/7/.test(g)));
+  const m = FK.readiness(base(), ACTS, [{ date: D70, skala: 7, v: "befinden-2.0", schlaf: 2, muede: 5, muskel: 3, stress: 1 }], D70);
+  assert.equal(m.indikatoren.befinden.status, "mittel");
+  const g = FK.readiness(base(), ACTS, [{ date: D70, skala: 7, v: "befinden-2.0", schlaf: 3, muede: 3, muskel: 2, stress: 1 }], D70);
+  assert.equal(g.indikatoren.befinden.status, "gut");
+});
+test("Readiness 2.0: 5–6 h Schlaf nur Hinweis (an den eigenen Daten geprüft), unter 5 h weiter ein starkes Zeichen", () => {
+  const r = FK.readiness(base((i) => (i === 69 ? { sleepH: 5.5 } : {})), ACTS, [], D70);
+  assert.equal(r.indikatoren.schlaf.status, "kurz");
+  assert.notEqual(r.status, "vorsichtig");
+  assert.ok(r.alle_gruende.some((x) => x.kind === "schlaf-info" && /nur Hinweis/.test(x.txt)));
+  assert.equal(FK.readiness(base((i) => (i === 69 ? { sleepH: 4.5 } : {})), ACTS, [], D70).status, "vorsichtig");
 });
 test("Readiness: Lastvariante – hohe Woche allein ist ein schwaches Zeichen", () => {
   const acts = ACTS.map((a, i) => (i > 62 ? { ...a, tss: 220 } : a));
@@ -601,4 +618,17 @@ test("ringe-1.0: Erholung aus HRV und Ruhepuls gegen eigene 60 Tage, Schlaf nur 
   const V = FK.ringeVerlauf(days, acts, heute, 7);
   assert.equal(V.length, 7); assert.equal(V[6].date, heute); assert.ok(V.every((x) => x.v === "ringe-1.0"));
   assert.equal(FK.ringeVerlauf([], [], heute, 3)[0].belastung, null, "ohne Daten: unbekannt");
+});
+
+test("Ampel-Prüfung (ampel-pruefung-1.0): Puls bei gleicher Leistung je Ampel-Stand, nur gegen die 60 Tage davor, kleine Gruppen ohne Mittelwert", () => {
+  // 70 Tage normale Morgenwerte, an Tag 69 und 70 Ruhepuls deutlich erhöht (→ Vorsicht); jeden zweiten Tag ein 200-W-Block
+  const dd = days("2026-01-01", 70, (i) => ({ hrv: 80 + ((i * 7) % 5) - 2, rhr: i >= 64 ? 58 : 46 + (i % 3) - 1, sleepH: 7.5 }));
+  const acts = []; for (let i = 0; i < 70; i += 2) acts.push({ id: "a" + i, date: dd[i].date, sport: "rad", tss: 60, indoor: true, eb: { v: "eb-1.0", art: "rad200", n: 1, w: 200, hr: i >= 64 ? 150 : 140 } });
+  const P = FK.ampelPruefung(dd, acts, [], dd[69].date);
+  assert.equal(P.v, "ampel-pruefung-1.0");
+  const vor = P.ampel.find((g) => g.k === "vorsichtig"), norm = P.ampel.find((g) => g.k === "normal" || g.k === "bereit");
+  assert.ok(vor.n >= 1 && vor.n < 5 && vor.mittel === null, "weniger als 5 Blöcke: kein Mittelwert");
+  assert.ok(P.n > 20 && norm && norm.n >= 5);
+  const P2 = FK.ampelPruefung(dd, acts, [], dd[69].date, { minGruppe: 1 });
+  assert.ok(P2.ampel.find((g) => g.k === "vorsichtig").mittel > 5, "an Vorsicht-Tagen höherer Puls bei gleicher Leistung");
 });

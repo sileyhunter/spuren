@@ -70,16 +70,23 @@ test("Eingang: verständliche Meldungen für Schlüssel- und Netzfehler", () => 
   assert.match(EG.fehlerText(503), /nichts geht verloren/);
 });
 
-/* ---------------- befinden-1.1 ---------------- */
-test("Check-in: drei Tipps füllen dieselben Felder wie das Befinden (Beine → Muskeln, Energie → Müdigkeit, Kopf → Stress)", () => {
-  const b = L.checkinEintrag("2026-11-10", { muskel: 4, muede: 2, stress: 1 }, { notiz: "  gut geschlafen ", erfasst: "2026-11-10T06:50:00Z" });
-  assert.deepEqual(b, { date: "2026-11-10", muede: 2, muskel: 4, stress: 1, quelle: "checkin", v: "befinden-1.1", erfasst: "2026-11-10T06:50:00Z", notiz: "gut geschlafen" });
-  assert.equal(L.checkinEintrag("2026-11-10", { muskel: 4, muede: 2 }), null, "ohne alle drei kein Eintrag");
-  assert.equal(L.checkinEintrag("2026-11-10", { muskel: 6, muede: 2, stress: 1 }), null, "nur 1–5");
-  assert.deepEqual(L.checkinEintrag("2026-11-10", { muskel: 1, muede: 1, stress: 1 }, { krank: true }).krank, ["krank oder verletzt"]);
-  assert.deepEqual(L.checkinEintrag("2026-11-10", { muskel: 1, muede: 1, stress: 1 }, { krank: ["Fieber"] }).krank, ["Fieber"]);
-  assert.equal(L.gefuehl(b), 6 - 7 / 3);
-  assert.equal(L.gefuehl({ muede: 2, muskel: 3 }), null, "fehlt eine Antwort → unbekannt");
+/* ---------------- befinden-2.0 (V6.3) ---------------- */
+test("Check-in 2.0: vier Fragen mit sieben Stufen (Schlaf, Energie, Beine, Kopf); alte Einträge mit fünf Stufen bleiben gültig", () => {
+  const b = L.checkinEintrag("2026-11-10", { schlaf: 2, muskel: 6, muede: 4, stress: 1 }, { notiz: "  gut geschlafen ", erfasst: "2026-11-10T06:50:00Z" });
+  assert.deepEqual(b, { date: "2026-11-10", schlaf: 2, muede: 4, muskel: 6, stress: 1, skala: 7, quelle: "checkin", v: "befinden-2.0", erfasst: "2026-11-10T06:50:00Z", notiz: "gut geschlafen" });
+  assert.equal(L.checkinEintrag("2026-11-10", { muskel: 4, muede: 2, stress: 1 }), null, "ohne alle vier kein Eintrag");
+  assert.equal(L.checkinEintrag("2026-11-10", { schlaf: 1, muskel: 8, muede: 2, stress: 1 }), null, "nur 1–7");
+  assert.deepEqual(L.checkinEintrag("2026-11-10", { schlaf: 1, muskel: 1, muede: 1, stress: 1 }, { krank: true }).krank, ["krank oder verletzt"]);
+  assert.deepEqual(L.checkinEintrag("2026-11-10", { schlaf: 1, muskel: 1, muede: 1, stress: 1 }, { krank: ["Fieber"] }).krank, ["Fieber"]);
+  assert.ok(Math.abs(L.gefuehl(b) - (5 - 4 * ((1 / 6 + 3 / 6 + 5 / 6 + 0) / 4))) < 1e-12, "Gefühl 1–5 aus dem Anteil auf der 7er-Skala");
+  const alt = { date: "2026-11-01", muskel: 4, muede: 2, stress: 1, v: "befinden-1.1" };
+  assert.ok(Math.abs(L.gefuehl(alt) - (6 - 7 / 3)) < 1e-12, "alter Eintrag: genau wie bisher");
+  assert.equal(L.befindenAnteil(alt, "muskel"), 0.75);
+  assert.equal(L.befindenAnteil(b, "muskel"), 5 / 6);
+  assert.equal(L.gefuehl({ muede: 2, muskel: 3 }), null, "fehlt eine Kernfrage → unbekannt");
+  assert.equal(L.wortVon(alt, L.FRAGEN[2]), "eher schwer");
+  assert.equal(L.wortVon(b, L.FRAGEN[2]), "schwer");
+  assert.equal(L.wort(L.FRAGEN[3], 4), "durchschnittlich");
 });
 test("Rangkorrelation: bekannte Werte, gleiche Ränge gemittelt", () => {
   assert.equal(L.spearman([1, 2, 3, 4, 5], [5, 6, 7, 8, 7.5]), 0.9);

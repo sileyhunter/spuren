@@ -57,6 +57,8 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   `js/v61.js` (ohne DOM: Garmin-Werte eines Tages, Datenlage je Wert, Notiz-Vorschauen), `tests/test_v61.cjs`
 - **V6.2 (Etappe 2):** `js/v62.js` (ohne DOM: Testplan testplan-1.0, V6.2.2 Zonen-Vorschlag zonenvorschlag-1.0), `tests/test_v62.cjs`;
   Oberfläche des Zonen-Vorschlags in `js/v5-ui.js` (`V.zonenVorschlag`, Karte `#zv-card` unter Laktat)
+- **V6.3 (Etappe 3 Ampel und Check-in):** keine neuen Dateien; Check-in befinden-2.0 in `js/v59-logik.js`/`js/v59.js`, Ampel readiness-2.0 und
+  Prüfung an den eigenen Daten ampel-pruefung-1.0 in `js/formkurve.js` (`FK.readiness`, `FK.ampelPruefung`), Anzeige in `js/v5-ui.js` (Tagesbereitschaft)
 - **V6.2.3:** `tools/garmin_export.py` – Garmin-Datenexport (DSGVO-Export) → Verlauf `spuren-garmin-verlauf-1` (garmin-export-1.0, Abschnitt
   «Garmin-Datenexport»); Prüfung auf der Seite `V61.verlaufPruefen`, Einstellungen «Garmin-Verlauf einlesen» (`js/v59.js`)
 - **V5.8:** keine neuen Dateien; Rechenlogik in `js/route.js` (Abschnitte von Hand, Skitourennetz, Hangneigung, MTB-Abfahrt, Wegende, drei
@@ -264,7 +266,9 @@ V6.2.2: `zonen` (auf der Seite bestätigte Zonenprofile → `zonen_add`, geprüf
 `tools/garmin_export.py`, auf der Seite gewählt → `garmin_export.einspielen`, nur fehlende Tageswerte). V5.9.3: `routen` (im Planer gespeicherte Routen → `routes`, gleiche ID ersetzt mit Audit), `routen_entfernt` (auf der Seite gelöscht → aus
 `routes` entfernt, alte Fassung ins Audit), `laktat_punkte_bestaetigt` («Laktat hier» aus dem Explorer auf der Seite bestätigt → Kurzcheck in
 `lactate`, Quelle «aus Explorer», Punkt «übernommen»; übernommene Punkte werden nie wieder «vorschau»). Befinden kommt aus dem Morgen-Check-in
-(`befinden-1.1`: Beine → `muskel`, Energie → `muede`, Kopf → `stress`, je 1–5; dazu `krank`, `notiz`; gleicher Tag ersetzt mit Audit).
+(`befinden-2.0` seit V6.3: Schlaf → `schlaf`, Energie → `muede`, Beine → `muskel`, Kopf → `stress`, je 1–7 mit `skala: 7` (1 = sehr gut,
+4 = durchschnittlich, 7 = sehr schlecht); dazu `krank`, `notiz`; gleicher Tag ersetzt mit Audit. Ältere Einträge `befinden-1.1` (drei Fragen, 1–5,
+ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigenen Skala, `V59L.befindenAnteil`).
 
 ## Eingang (eingang/, V5.9.3 «Direkt speichern», eingang-1.0)
 - Die Seite legt jede Eingabe als `eingang/<JJJJMMTT>T<hhmmss>Z-<8 Hex>.bin` an (GitHub-Contents-API, Commit «Eingang»). Format EGS1:
@@ -330,6 +334,12 @@ V6.2.2: `zonen` (auf der Seite bestätigte Zonenprofile → `zonen_add`, geprüf
   den Abfahrten (`RT.istDoppelt` mit Bereichen), nie aus der ganzen Route mit dem gemeinsamen Aufstieg.
 - Rennrad `varianten-3.0`: direkteste, velofreundliche, ruhigste (consider_traffic 1) – alle über das Profil ohne Gravel; `alternativen-1.1` ohne
   zusätzlichen Gravel. Windpfeile `windpfeile-1.1`: 3–20, Gegen-/Rückenwind ±5 km/h, abschaltbar (`sf.rt.windkarte`).
+- **Ampel `readiness-2.0` (V6.3, Etappe 3):** wie readiness-1.0 (HRV-7-Tage gegen eigene 60 Tage nach Plews/Buchheit, Ruhepuls 3 Tage, Schlaf,
+  Last 7/28 Tage, Befinden, Krankheit), dazu: Befinden als Anteil auf der Skala (belastet ab 0,75, mittel ab 0,5; vier Fragen inkl. Schlaf);
+  Schlaf 5–6 h nur noch Hinweis (unter 5 h weiter starkes Zeichen). Grundlage `ampel-pruefung-1.0` (`FK.ampelPruefung`): Puls in gleichmässigen
+  10-min-Blöcken (`eb`) gegen dieselbe Blockart in den 60 Tagen davor, je Ampel-Stand jenes Morgens; am 13.11.2026 an den eigenen
+  Daten geprüft, daraus die beiden Änderungen (Schlaf 5–6 h nur Hinweis; Garmins Readiness nur gezeigt, nicht in die Ampel eingerechnet). Die Seite zeigt die Prüfung live unter «Passt die Ampel zu dir?» (Gruppen unter 5 Blöcken ohne Wert).
+  Keine Zahlen daraus in Doku oder Tests schreiben; Regeländerung = neue Version und neue Prüfung.
 - Heute `ringe-1.0` (`FK.ringeVerlauf`): Erholung Φ((z_lnHRV − z_Ruhepuls)/2) gegen 60 Tage (mind. 14 Werte), Schlaf = Garmin-Schlafwert genau dieser
   Nacht, Belastung = (1 − 2^(−TSS/CTL_Vortag)) · 100; alle 0–100 %, Lücken bleiben leer, Tag mit Datum. Kein medizinisches Mass.
 

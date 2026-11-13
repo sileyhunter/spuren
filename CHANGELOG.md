@@ -1,5 +1,16 @@
 # Änderungen
 
+## V6.3.0 · 13.11.2026 · Etappe 3: Check-in mit vier Fragen und sieben Stufen, Ampel an deinen Daten geprüft
+- **Check-in (befinden-2.0):** Schlaf, Energie, Beine und Kopf, je sieben Stufen von «sehr gut» über «durchschnittlich» bis «sehr schlecht»
+  (Türkis → Pink). Ältere Einträge mit fünf Stufen bleiben, wie sie sind; gerechnet wird mit dem Anteil auf der jeweiligen Skala.
+- **Ampel (readiness-2.0):** Befinden mit allen vier Fragen (belastet ab der zweitschlechtesten Stufe); 5–6 h Schlaf nur noch Hinweis, unter
+  5 h weiter ein starkes Zeichen. Garmins Readiness bleibt draussen.
+- **Prüfung an deinen Daten (ampel-pruefung-1.0):** «Passt die Ampel zu dir?» in der Tagesbereitschaft zeigt den Puls bei gleicher Leistung
+  (gleichmässige 10-min-Blöcke gegen die eigenen 60 Tage davor) je Ampel-Stand jenes Morgens und je Garmin-Readiness. Auf dieser Grundlage
+  wurden die beiden Änderungen oben entschieden.
+- Geprüft: `tests/test_formkurve.cjs` (+3: Befinden 7 Stufen, Schlaf nur Hinweis, Prüfung), `tests/test_v59.cjs` (Check-in 2.0, alte Einträge),
+  alle bisherigen Tests, Check-in und Tagesbereitschaft im Browser (Demo, 390 px).
+
 ## V6.2.3 · 13.11.2026 · Garmin-Verlauf aus dem Datenexport (garmin-export-1.0)
 - **Leser:** `tools/garmin_export.py` liest den Garmin-Datenexport (Schlaf, Readiness; Format am echten Export geprüft) und schreibt eine
   Verlauf-Datei: Schlafdauer ohne Wachzeit, Schlafwert, Stress im Schlaf, Readiness nach dem Aufwachen. Nächte ohne Uhr oder unbestätigt

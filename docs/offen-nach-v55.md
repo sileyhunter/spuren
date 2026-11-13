@@ -118,3 +118,11 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
     eigenen, Abweichungen gleichen sich so aus. Im hochgeladenen Teil fehlten die Tagesübersichten (Stress und Body Battery je Tag) und die
     Aktivitäten (FIT). Weitere Inhalte (Garmin-Trainingsstatus, akute Last, VO2max-Verlauf, Ausdauer- und Hill-Score, Hitze/Höhe,
     Laufprognosen) sind nicht übernommen – erst bei Bedarf (Etappe 3 oder 10) mit eigener Version und Test.
+
+## V6.3 Etappe 3 «Ampel und Check-in» (13.11.2026)
+48. **Prüfung der Ampel mit wenigen Fällen:** Einzelne Gruppen haben noch wenige gleichmässige Blöcke, und HRV fehlt in den älteren Jahren.
+    Die Entscheide (Schlaf 5–6 h nur Hinweis, Garmin-Readiness draussen) gelten als vorläufig; nach weiteren drei Monaten Check-ins neu prüfen
+    (auch: hilft die HRV-Regel bei dir, und wie gut sagt der neue Check-in den Puls bei gleicher Leistung voraus).
+49. **Weitere Zielgrössen:** Geprüft wird nur der Puls bei gleicher Leistung. Krankheitstage (Check-in «krank») und RPE der Einheiten kommen
+    dazu, sobald genug Einträge da sind.
+

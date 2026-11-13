@@ -12,7 +12,7 @@
   --sp-schwimm: #66e2e6; --sp-rad: #6ce0a4; --sp-lauf: #6a59ea; --sp-wandern: #d2a865; --sp-ski: #a9c4ff; --sp-andere: #8e8e93;
   --mon-fit: #6ce0a4; --mon-erm: #27bdd8; --mon-form: #4f69f8;
   --st-ueberl-hoch: #e8503a; --st-ueberl: #fdc22b; --st-prod: #6ce0a4; --st-erh: #7ab4fa; --st-erho: #6a59ea; --st-verlust: #f9a71a;
-  --race: #f5520c; --ci1: #2bd6cc; --ci2: #7bd18a; --ci3: #d6c35f; --ci4: #f4922c; --ci5: #e8405f;
+  --race: #f5520c; --c7-1: #27d7ce; --c7-2: #5fd6a0; --c7-3: #9bd36f; --c7-4: #d8c94f; --c7-5: #f2a23a; --c7-6: #ef6f4a; --c7-7: #e93b63; --ci1: #2bd6cc; --ci2: #7bd18a; --ci3: #d6c35f; --ci4: #f4922c; --ci5: #e8405f;
   --r-card: 20px; --r-sheet: 26px;
 }
 :root[data-theme="light"] { --btn-2: #e3e9ee; --btn-back: #d5dde3; --sheet: #ffffff; --nav: #ffffff; --faint: #8796a5; --accent-soft: #e6f2ef; }
@@ -411,3 +411,12 @@ nav.unter { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14
 .es-datei { display: inline-flex; align-items: center; cursor: pointer; margin: 4px 0 8px; }
 .es-datei input[type="file"] { display: none; }
 #es-verlauf dl.dl { margin: 6px 0; }
+/* V6.3 befinden-2.0: sieben Stufen, Türkis → Pink */
+.ci-skala.ci7 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.ci-skala.ci7::before { left: 7.14%; right: 7.14%; background: linear-gradient(90deg, var(--c7-1), var(--c7-2), var(--c7-3), var(--c7-4), var(--c7-5), var(--c7-6), var(--c7-7)); }
+.ci-skala.ci7 .ci-p::after { width: 16px; height: 16px; } .ci-skala.ci7 .ci-p[aria-checked="true"]::after { width: 30px; height: 30px; }
+
+/* V6.3 «Passt die Ampel zu dir?»: schmal genug für das Handy, keine Wischtabelle */
+.rd-pruef-was { font-size: .92em; color: var(--muted); margin: 6px 0 4px; }
+.rd-pruef-t { width: 100%; }
+.rd-pruef-t th:nth-child(n+2), .rd-pruef-t td:nth-child(n+2) { text-align: right; white-space: nowrap; }

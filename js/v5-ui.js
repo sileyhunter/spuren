@@ -751,6 +751,20 @@
   /* ======================= Heute: Bereitschaft ======================= */
   const RD = { n: 21 };
   V.befinden = () => V.merged("befinden", "befinden", (e) => e.date);
+  /* V6.3 ampel-pruefung-1.0: Puls bei gleicher Leistung je Ampel-Stand jenes Morgens (formkurve.js), einmal je Seitenaufruf gerechnet */
+  let AP = null;
+  function ampelPruefungZeigen() {
+    const box = $("rd-pruef-box"); if (!box) return;
+    if (!AP) { try { AP = FK().ampelPruefung(C.D.days, C.D.activities, V.befinden(), isoToday()); } catch (e) { console.error(e); box.innerHTML = `<p class="hint">Nicht berechenbar.</p>`; return; } }
+    const name = { bereit: "Bereit", normal: "Normal", vorsichtig: "Vorsicht", "nicht beurteilbar": "nicht beurteilbar", PRIME: "sehr hoch", HIGH: "hoch", MODERATE: "mittel", LOW: "tief", POOR: "sehr tief" };
+    const zeile = (g) => `<tr><td>${esc(name[g.k] || g.k)}</td><td>${g.n}</td><td>${g.mittel == null ? (g.n ? "zu wenige" : "–") : `${g.mittel > 0 ? "+" : g.mittel < 0 ? "−" : "±"}${num(Math.abs(g.mittel), 1)} bpm`}</td></tr>`;
+    box.innerHTML = AP.n < 10 ? `<p class="hint">Noch zu wenige gleichmässige Blöcke mit Vergleich (${AP.n}); die Prüfung braucht mindestens 10.</p>`
+      : `<p class="keep rd-pruef-was">Puls Δ = Puls bei gleicher Leistung gegenüber deinen 60 Tagen davor. Höher heisst: die gleiche Leistung kostete mehr.</p>
+      <div class="tablewrap"><table class="t rd-pruef-t" data-keine-liste><tr><th>Ampel</th><th>Anzahl</th><th>Puls Δ</th></tr>${AP.ampel.filter((g) => g.n).map(zeile).join("")}</table></div>
+      <div class="tablewrap"><table class="t rd-pruef-t" data-keine-liste><tr><th>Garmin</th><th>Anzahl</th><th>Puls Δ</th></tr>${AP.garmin.filter((g) => g.n).map(zeile).join("")}</table></div>
+      <p class="hint">Gleichmässige 10-min-Blöcke (Rad um 200 W, Laufen um 5:30/km), je Ampel-Stand bzw. Garmin-Readiness jenes Morgens.</p>
+      <p class="hint">${AP.n} Einheiten vom ${dch(AP.von)} bis ${dch(AP.bis)}. Beobachtung, kein Beweis: Hitze, Höhe, Trinken und Gerät wirken mit; Gruppen unter 5 Einheiten ohne Wert. Garmins Readiness fliesst nicht in die Ampel ein. Regel ${esc(AP.v)}.</p>`;
+  }
   V.heute = function () {
     const F = FK(), D = C.D, day = isoToday();
     const r = F.readiness(D.days, D.activities, V.befinden(), day);
@@ -770,8 +784,11 @@
       ${row("Belastung 7 Tage", ind.last.status === "unbekannt" ? ind.last.grund : `${ind.last.status} (${ind.last.akut7} / Ø ${ind.last.chronisch7})`, ind.last.status)}
       ${row("Befinden", ind.befinden.status === "nicht angegeben" ? "nicht angegeben (Check-in oben)" : ind.befinden.status, ind.befinden.status)}${ind.krank ? row("Krankheitszeichen", ind.krank.zeichen.join(", "), "erhöht") : ""}
       <p class="hint">Vertrauen ${esc(r.vertrauen)} · Vorschlag: ${esc(r.empfehlung)} ${r.nachtdienst ? "· Nachtdienst berücksichtigt" : ""}</p>
+      <details class="rd-pruef" id="rd-pruef"><summary>Passt die Ampel zu dir?</summary><div id="rd-pruef-box"><p class="hint">Wird beim Öffnen gerechnet …</p></div></details>
       <details class="rd-own"><summary>Selbst entscheiden${own ? " · " + esc(own) : ""}</summary><form class="inline" id="rd-own"><label>Heute mache ich<input type="text" name="t" value="${esc(own || "")}" placeholder="z. B. 60 min locker statt Intervalle"></label><button class="btn" type="submit">Speichern</button></form></details>
       <p class="hint">Kein medizinisches Diagnoseinstrument. Fehlende Werte werden nicht durch «normal» ersetzt. Version ${esc(r.v)}.</p>`;
+    const pr = $("rd-pruef");
+    if (pr) pr.ontoggle = () => { if (pr.open) ampelPruefungZeigen(); };
     $("rd-own").onsubmit = async (e) => { e.preventDefault(); Inbox.data.notizen = Object.assign({}, Inbox.data.notizen, { ["plan-" + day]: e.target.t.value.trim() }); await Inbox.save(); V.heute(); };
     const v = $("today-verdict");
     v.className = "verdict" + (r.status === "vorsichtig" ? " warn" : r.status === "nicht beurteilbar" ? " muted" : "");
