@@ -110,6 +110,15 @@ merge_daily.v5_merge(D, {"befinden_add": [{"date": "2026-01-11", "muede": 4}], "
 check("Befinden und Koppel-Entscheid gespeichert", D["befinden"][0]["muede"] == 4 and D["koppel"][0]["status"] == "getrennt")
 merge_daily.v5_merge(D, {"zonen_add": [{"id": "z-neu", "gueltig_ab": "2026-02-01", "skalen": []}]})
 check("Zonen: ohne Freigabe nicht übernommen", not any(z["id"] == "z-neu" for z in D["zonen"]))
+# V6.4 modell-1.0: Trainingsmodell von der Seite (ersetzt mit Audit, unbekanntes Modell oder kein Datum abgelehnt)
+_m1 = {"id": "modell", "modell": "kombiniert", "wechsel": "2027-02-01", "v": "modell-1.0", "geaendert": "2026-11-13T10:00:00Z"}
+merge_daily.v5_merge(D, {"modell_add": [_m1]})
+check("V6.4 Trainingsmodell übernommen", D.get("plan_modell") == [_m1], json.dumps(D.get("plan_modell")))
+merge_daily.v5_merge(D, {"modell_add": [dict(_m1, modell="pyramidal", geaendert="2026-11-14T10:00:00Z")]})
+check("V6.4 Trainingsmodell ersetzt, alte Wahl im Audit", D["plan_modell"][0]["modell"] == "pyramidal" and len(D["plan_modell"]) == 1
+      and any(a.get("was") == "Trainingsmodell ersetzt" and a.get("alt", {}).get("modell") == "kombiniert" for a in D["audit"]))
+merge_daily.v5_merge(D, {"modell_add": [dict(_m1, modell="erfunden"), dict(_m1, wechsel="Februar"), dict(_m1, id="anders")]})
+check("V6.4 Trainingsmodell: unbekannt, ohne Datum oder fremde ID abgelehnt", D["plan_modell"][0]["modell"] == "pyramidal" and len(D["plan_modell"]) == 1)
 merge_daily.v5_merge(D, {"laktat_bestaetigt": ["demo-test"]})
 check("B1: Vorschau nach Bestätigung als Laktatmessung", len(D["lactate"]) == 1 and D["lactate"][0]["stages"][0]["quelle"] and D["laktat_vorschau"][0]["status"] == "übernommen")
 S2 = schwellen.rechne(D)
@@ -508,6 +517,7 @@ _spec9 = [
     {"name": "20261110T060000Z-00000001.bin", "art": "eingaben", "zeit": "2026-11-10T06:00:00Z", "daten": {"befinden": [{"date": "2026-11-10", "muede": 2, "muskel": 3, "stress": 1}],
      "routen": [{"id": "u-r1", "name": "Runde", "coords": [[9.5, 46.8], [9.51, 46.81]]}], "laktat_punkte": [_lp9],
      "garmin_verlauf": {"format": "spuren-garmin-verlauf-1", "id": "0123456789abcdef", "tage": [{"date": "2026-11-01", "sleepH": 7.5, "readiness": 66, "readinessLevel": "HIGH"}]},
+     "modell": [{"id": "modell", "modell": "schwelle", "wechsel": "2027-02-01", "v": "modell-1.0", "geaendert": "2026-11-10T06:00:00Z"}],
      "zonen": [{"id": "zonen-20261110", "status": "aktiv", "gueltig_ab": "2026-11-10", "freigabe": {"datum": "2026-11-10"}, "methodik": {"art": "zonenvorschlag-1.0", "je_sportart": {"rad": {"test": "t-unbekannt"}}},
                 "skalen": [{"key": "rad_w", "disziplin": "rad", "metrik": "leistung", "zonen": [{"z": "Z1", "von": None, "bis": 150}, {"z": "Z2", "von": 150, "bis": None}]}]}]}},
     {"name": "20261110T061000Z-00000002.bin", "art": "eingaben", "zeit": "2026-11-10T06:10:00Z", "daten": {"befinden": [{"date": "2026-11-10", "muede": 2, "muskel": 3, "stress": 3}],
@@ -534,11 +544,13 @@ check("Eingang: gleiche ID → spätere Eingabe gewinnt; gelöschte Route geht m
       and [r["id"] for r in _A9["routen_add"]] == ["u-r1"] and _A9["routen_entfernt"] == ["u-r0"], json.dumps(_A9)[:300])
 check("Eingang: auf der Seite bestätigte Zonen gehen als zonen_add ins Update", [z["id"] for z in _A9.get("zonen_add", [])] == ["zonen-20261110"], json.dumps(_A9.get("zonen_add"))[:200])
 check("Eingang: Garmin-Verlauf von der Seite geht unverändert ins Update", (_A9.get("garmin_verlauf") or {}).get("id") == "0123456789abcdef")
+check("Eingang: gewähltes Trainingsmodell geht als modell_add ins Update (V6.4)", [m["modell"] for m in _A9.get("modell_add", [])] == ["schwelle"], json.dumps(_A9.get("modell_add")))
 merge_daily.main(os.path.join(_t9, "data.json"), os.path.join(_t9, "work", "eingang_a.json"))
 _R9 = json.load(open(os.path.join(_t9, "data.json")))
 check("Eingang A eingespielt: Befinden, Route auf alle Geräte, alte Route entfernt (Audit), Laktatpunkt als Vorschau, CSS-Test vom Handy in css_tests",
       _R9["befinden"][0]["stress"] == 3 and [r["id"] for r in _R9["routes"]] == ["u-r1"] and any(a.get("was") == "Route entfernt" for a in _R9["audit"])
-      and _R9["laktat_punkte"][0]["status"] == "vorschau" and not _R9.get("lactate") and [c["css_s"] for c in _R9.get("css_tests", [])] == [105])
+      and _R9["laktat_punkte"][0]["status"] == "vorschau" and not _R9.get("lactate") and [c["css_s"] for c in _R9.get("css_tests", [])] == [105]
+      and [m["modell"] for m in _R9.get("plan_modell", [])] == ["schwelle"])
 check("Eingang A: Zonen aus einem nicht bestätigten Test werden nicht übernommen", not any(z["id"] == "zonen-20261110" for z in _R9.get("zonen", [])))
 check("Eingang A: Garmin-Verlauf eingespielt (Tag mit Schlaf und Readiness)", any(d.get("date") == "2026-11-01" and d.get("readiness") == 66 and d.get("sleepH") == 7.5 for d in _R9.get("days", []))
       and _R9["garmin_export"][0]["id"] == "0123456789abcdef")

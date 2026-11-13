@@ -181,6 +181,22 @@ def laktatpunkt_uebernehmen(D, pid):
     return True
 
 
+MODELLE = ("kombiniert", "polarisiert", "pyramidal", "schwelle", "rennspezifisch")   # wie V64.MODELLE in js/v64.js
+
+
+def modell_pruefen(m):
+    """V6.4 modell-1.0: Eintrag «modell» von der Seite → Fehlertext oder None (bekanntes Modell, Wechsel als Datum)."""
+    if not isinstance(m, dict) or m.get("id") != "modell":
+        return "kein Eintrag «modell»"
+    if m.get("modell") not in MODELLE:
+        return f"unbekanntes Modell {m.get('modell')!r}"
+    try:
+        dt.date.fromisoformat(str(m.get("wechsel")))
+    except ValueError:
+        return "Wechsel ist kein Datum"
+    return None
+
+
 def v5_merge(D, N):
     """V5-Einträge aus der Seite (Export «Eingaben») oder dem Chat: Fueling, Befinden, Koppelläufe, Pläne, Tests, B1."""
     msg = []
@@ -249,6 +265,13 @@ def v5_merge(D, N):
             msg.append(f"Route {rid} entfernt")
     if N.get("garmin_verlauf"):                          # V6.2.3: Garmin-Datenexport über die Seite; füllt nur fehlende Tageswerte
         msg.append(garmin_export.einspielen(D, N["garmin_verlauf"]))
+    for m in N.get("modell_add") or []:                  # V6.4 modell-1.0: gewähltes Trainingsmodell (nur Vorschlag; Enduco/Garmin bleiben unverändert)
+        fehler = modell_pruefen(m)
+        if fehler:
+            msg.append(f"Trainingsmodell nicht übernommen: {fehler}")
+            continue
+        a, b = _upsert(D, "plan_modell", [m], what="Trainingsmodell")
+        msg.append(f"Trainingsmodell {m['modell']}" + (f" (Wechsel {m['wechsel']})" if m["modell"] == "kombiniert" else "") + (" übernommen" if a or b else " unverändert"))
     if msg:
         print("V5:", "; ".join(msg))
 

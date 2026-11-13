@@ -126,3 +126,13 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 49. **Weitere Zielgrössen:** Geprüft wird nur der Puls bei gleicher Leistung. Krankheitstage (Check-in «krank») und RPE der Einheiten kommen
     dazu, sobald genug Einträge da sind.
 
+## V6.4 Etappe 4 «Modell und Wissen» (13.11.2026)
+50. **Wochenstruktur fest:** Tage und Kurstag (Di) sind im Vorschlag fest (wochenplan-1.0). Eigene Tage, Abwesenheiten (Ferien, Reisen) und
+    Krafttraining kennt der Vorschlag noch nicht; das kommt mit dem eigenen Plan (spätere Etappe), jeweils mit neuer Version und Test.
+51. **Aufteilung 20/50/30 und Stunden:** Annahme, keine Studie. Die Stunden kommen aus dem Wochenstunden-Vorschlag («jetzt» = Median der
+    letzten 8 Wochen); liegt er tief, fallen die lockeren Einheiten unter der Woche weg. Werte «jetzt»/«Spitze» lassen sich dort anpassen.
+52. **Verteilung vergleichen:** Vorschlag und Enduco werden nach den Zielen der Abschnitte gezählt, Absolviertes nach Puls (unterschätzt harte
+    Anteile). Ein Vergleich nach Leistung/Pace je Abschnitt (aus den Sekundenreihen) wäre genauer – erst mit eigener Version und Test.
+53. **Wissen aktuell halten:** Neue Regel oder Version → Kapitel und `WS.REGELN` nachführen. Die Studienlage zur Reihenfolge polarisiert →
+    rennspezifisch ist offen (Filipas 2022 fand die umgekehrte Reihenfolge bei Läufern besser); nach der Saison mit den eigenen Daten prüfen.
+

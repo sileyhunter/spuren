@@ -109,6 +109,11 @@
   const PH_COL_HELL = { "Grundlage": "#cfe3f1", "Aufbau": "#9cc7e6", "Wettkampfspezifisch": "#5f9fd1", "Taper": "#f2c14e", "B-Rennen (Mini-Taper)": "#f6d98a" };
   const PH_VAR = { "Grundlage": "--zc-z2", "Aufbau": "--zc-z3", "Wettkampfspezifisch": "--zc-z4", "Taper": "--zc-z5", "B-Rennen (Mini-Taper)": "--race" };   // V6: Farben wie im Plan
   let PH_COL = PH_COL_HELL;
+  /** Stunden «jetzt»/«Spitze» von diesem Gerät oder aus den Daten (Eintrag «saison-2027»; V6.4: per ID, nicht mehr der erste Eintrag). */
+  V.saisonLokal = function (C) {
+    const finde = (L) => (L || []).find((e) => e && e.id === "saison-2027") || null;
+    return finde((UI().Inbox.data || {}).saison) || finde(C.D.saison_plan) || {};
+  };
   V.saison = function (C) {
     const el = $("v56-saison"); if (!el) return;
     const F = window.FK, heute = C.iso(C.today);
@@ -117,15 +122,9 @@
     const dunkel = document.documentElement.dataset.theme !== "light";
     PH_COL = dunkel ? Object.fromEntries(Object.entries(PH_VAR).map(([k, v]) => [k, C.css(v) || PH_COL_HELL[k]])) : PH_COL_HELL;
     const F_VOR = dunkel ? C.css("--surface-2") : "#d7e6f2", F_ERH = dunkel ? C.css("--sheet") : "#e9eef2", F_IST = dunkel ? C.css("--good") : "#148a7e", F_LIN = dunkel ? "rgba(255,255,255,.08)" : "rgba(31,51,71,.1)";
-    const lokal = ((UI().Inbox.data || {}).saison || [])[0] || (C.D.saison_plan || [])[0] || {};
-    const ist8 = AN.wochenIst(C.D.activities, F.addDays(heute, -56), heute), h8 = [...ist8.values()].map((r) => r.rad + r.lauf + r.schwimm);
-    const j52 = AN.wochenIst(C.D.activities, F.addDays(heute, -364), heute), h52 = [...j52.values()].map((r) => r.rad + r.lauf + r.schwimm).sort((a, b) => b - a);
-    const top4 = h52.length >= 4 ? (h52[0] + h52[1] + h52[2] + h52[3]) / 4 : null;
-    const jetzt = lokal.jetzt ?? (h8.length ? Math.round(median(h8) * 2) / 2 : 8);
-    const spitze = lokal.spitze ?? Math.round(Math.max(jetzt * 1.35, top4 || 0) * 2) / 2;   // nie über eigene Erfahrung hinaus geraten: Ø deiner 4 grössten Wochen
-    const W = S.wochen, iT = W.findIndex((w) => w.phase === "Taper"), N = iT > 0 ? iT : W.length;
-    const plan = W.map((w, i) => { if (w.phase === "Taper") return Math.round(spitze * (i === W.length - 1 ? 0.4 : 0.6) * 2) / 2; const ziel = jetzt + (spitze - jetzt) * Math.min(1, i / Math.max(1, N - 1));
-      return Math.round(ziel * (w.erholung ? 0.65 : w.phase.startsWith("B-Rennen") ? 0.5 : 1) * 2) / 2; });
+    const lokal = V.saisonLokal(C);
+    const { jetzt, spitze, h8, h52, top4, ist8 } = AN.saisonVorgaben(C.D.activities, heute, lokal);   // V6.4: Regel in js/analyse.js (auch für die Woche nach Modell)
+    const W = S.wochen, plan = AN.saisonStunden(W, jetzt, spitze);
     const IST = AN.wochenIst(C.D.activities, W[0].woche, F.addDays(W[W.length - 1].woche, 6));
     const enduco = new Map(); for (const p of C.D.planned || []) { const mo = F.addDays(p.date, -((new Date(p.date + "T12:00:00Z").getUTCDay() + 6) % 7)); enduco.set(mo, (enduco.get(mo) || 0) + (p.dur_s || 0) / 3600); }
     const w = 760, h = 240, bw = (w - 34) / W.length, maxH = Math.max(spitze, ...W.map((x) => { const r = IST.get(x.woche); return r ? r.rad + r.lauf + r.schwimm : 0; })) * 1.1;

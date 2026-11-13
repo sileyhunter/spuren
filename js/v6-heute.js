@@ -37,6 +37,8 @@
     return p ? einheit(p, key) : null;
   }
   H.planDauer = function (p) { C = C || (UI() && UI().C); if (!C) return p.dur_s || null; const e = einheit(p, null); return e.dauer; };
+  /** V6.4: Einheit mit Balkenprofil (für die Intensitätsverteilung des Enduco-Plans in «Woche nach Modell»). */
+  H.profilVon = function (p) { C = C || (UI() && UI().C); return C && V6() ? einheit(p, null) : null; };
   /** Fokus-Intensitäten einer geplanten Einheit (für die Punkte im Kalender). */
   H.fokus = function (p) { C = C || (UI() && UI().C); if (!C || !V6()) return []; const e = einheit(p, null); return e.pr ? e.pr.fokus.map((f) => f.key) : []; };
   /** Karte einer Einheit (Kalender-Tagesliste): key «p:<Stelle in planned>» oder «n:<Stelle in workouts_neu>». */

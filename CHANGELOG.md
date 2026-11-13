@@ -1,5 +1,25 @@
 # Änderungen
 
+## V6.4.0 · 13.11.2026 · Etappe 4: Trainingsmodell, Woche nach Modell und Wissen
+- **Trainingsmodell (modell-1.0):** Unter Plan wählbar: polarisiert, pyramidal, Schwelle mit Laktat (norwegisch), rennspezifisch und
+  **kombiniert** (Standard: Winter polarisiert, ab 1. Februar rennspezifisch; Datum änderbar). Gespeichert verschlüsselt mit «Direkt
+  speichern» (`modell` → `modell_add` → `plan_modell`, `merge_daily.py` prüft Modell und Datum, ersetzt mit Audit).
+- **Woche nach Modell (wochenplan-1.0):** diese und nächste Woche als Vorschlag neben dem Enduco-Plan: feste Wochenstruktur, Stunden aus dem
+  Wochenstunden-Vorschlag (saison-1.0), Aufteilung 20/50/30 (aufteilung-1.0, eigene Festlegung), Schlüsseleinheiten je Modell, Erholungs-,
+  Taper- und Rennwochen, Tests aus dem Testkalender (ersetzen die Einheit; vor einem Stufentest locker), Ziele in Watt, Pace und Puls aus dem
+  aktiven Zonenprofil, Schwimmen nach CSS. Jede Einheit als Blatt mit Ablauf, Zielen, Zweck und Studien.
+- **Intensitätsverteilung (tid-1.0):** Vorschlag, Enduco-Plan (aus den Workout-Schritten) und Absolviertes (letzte 4 Wochen, Puls) als
+  locker/mittel/hart mit Muster und Polarisierungsindex (Treff et al. 2019), abgeglichen mit dem gewählten Modell.
+- **Wissen (wissen-1.0):** neue Ansicht unter Plan mit 18 Kapiteln – Zonen, Laktat, Messen, Schwellen-Methoden, Intensitätsverteilung, die
+  Modelle, norwegische Methode, Periodisierung, Taper, Langdistanz, Intervalle, Trainingslast, Erholung und Ampel, CSS, Verpflegung, Regeln mit
+  Versionen – in eigenen Worten, mit 66 Quellen (DOI-Links), Suche und Verweisen aus Plan und Blättern (`data-wissen`).
+- Stundenregel saison-1.0 nach `js/analyse.js` verschoben (`AN.saisonStunden`, `AN.saisonVorgaben`), gleiche Werte wie zuvor; Blätter drücken
+  im Scrollen nichts mehr zusammen (Balkenprofil im Einheiten-Blatt blieb bei langem Inhalt 0 px hoch).
+- Geprüft: `tests/test_v64.cjs` (17 Tests: Modelle, Wechsel, Wochenstruktur und Stunden, Verteilung je Modell, Erholung, Taper, Tests, Rennwoche,
+  PI, Enduco-Balken, Ziele, Bausteine, Speichern, Wissen: Verweise, Quellen, Schreibweise, Regeln), `tests/test_analyse.cjs` (+ Stundenregel),
+  `tests/test_tools.py` (+ Trainingsmodell übernehmen, ersetzen, ablehnen, Eingang), alle bisherigen Tests; Plan, Blatt und Wissen im Browser
+  (Demo und eigene Daten, 390 px) ohne Programmfehler.
+
 ## V6.3.0 · 13.11.2026 · Etappe 3: Check-in mit vier Fragen und sieben Stufen, Ampel an deinen Daten geprüft
 - **Check-in (befinden-2.0):** Schlaf, Energie, Beine und Kopf, je sieben Stufen von «sehr gut» über «durchschnittlich» bis «sehr schlecht»
   (Türkis → Pink). Ältere Einträge mit fünf Stufen bleiben, wie sie sind; gerechnet wird mit dem Anteil auf der jeweiligen Skala.

@@ -236,6 +236,27 @@
     }
     return { haupt, wochen: out, regel: AN.VERSIONS.saison, annahmen: `Taper ${opt.taper} Wochen, wettkampfspezifisch ${opt.spezifisch}, Aufbau ${opt.aufbau}, Erholung jede ${opt.rhythmus}. Woche, B-Rennen mit Mini-Taper und Erholungswoche danach` };
   };
+  /** Stunden je Woche (saison-1.0, V6.4 ausgelagert aus js/v56.js, gleiche Regel): linear von «jetzt» bis zur Spitzenwoche vor dem Taper;
+   *  Erholungswochen 65 %, Woche mit B-Rennen 50 %, Taper 60 % und 40 % der Spitze; auf halbe Stunden gerundet. W = AN.saison(…).wochen. */
+  AN.saisonStunden = function (W, jetzt, spitze) {
+    const iT = W.findIndex((w) => w.phase === "Taper"), N = iT > 0 ? iT : W.length;
+    return W.map((w, i) => {
+      if (w.phase === "Taper") return Math.round(spitze * (i === W.length - 1 ? 0.4 : 0.6) * 2) / 2;
+      const ziel = jetzt + (spitze - jetzt) * Math.min(1, i / Math.max(1, N - 1));
+      return Math.round(ziel * (w.erholung ? 0.65 : w.phase.startsWith("B-Rennen") ? 0.5 : 1) * 2) / 2;
+    });
+  };
+  /** Vorbelegung (saison-1.0): «jetzt» = Median der letzten 8 Wochen (Schwimmen, Rad, Laufen; ohne Daten 8 h), «Spitze» = grösserer Wert
+   *  aus 1.35 × jetzt und dem Ø der 4 grössten Wochen der letzten 52 – nie über die eigene Erfahrung hinaus geraten. Werte von der Seite gehen vor. */
+  AN.saisonVorgaben = function (acts, heute, lokal) {
+    lokal = lokal || {};
+    const ist8 = AN.wochenIst(acts, FK.addDays(heute, -56), heute), h8 = [...ist8.values()].map((r) => r.rad + r.lauf + r.schwimm);
+    const j52 = AN.wochenIst(acts, FK.addDays(heute, -364), heute), h52 = [...j52.values()].map((r) => r.rad + r.lauf + r.schwimm).sort((a, b) => b - a);
+    const top4 = h52.length >= 4 ? (h52[0] + h52[1] + h52[2] + h52[3]) / 4 : null;
+    const jetzt = isNum(lokal.jetzt) ? lokal.jetzt : h8.length ? Math.round(median(h8) * 2) / 2 : 8;
+    const spitze = isNum(lokal.spitze) ? lokal.spitze : Math.round(Math.max(jetzt * 1.35, top4 || 0) * 2) / 2;
+    return { jetzt, spitze, h8, h52, top4, ist8 };
+  };
   /** Ist-Stunden je Woche und Sportart (Bewegungszeit) aus den Aktivitäten. */
   AN.wochenIst = function (acts, von, bis) {
     const m = new Map();

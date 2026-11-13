@@ -1045,6 +1045,14 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
         <div class="card-head"><div><h2>Phasen</h2><div class="sub">Vom heutigen Stand bis zum Hauptrennen – antippen zeigt die Wochen</div></div></div>
         <div id="pl-phasen"></div>
       </div>
+      <div class="card w12" id="mo-woche-card">
+        <div class="card-head"><div><h2>Woche nach Modell</h2><div class="sub" id="mo-woche-sub">Vorschlag aus Phase, Stunden und Trainingsmodell – neben dem Enduco-Plan</div></div></div>
+        <div id="mo-woche"></div>
+      </div>
+      <div class="card w12" id="mo-card">
+        <div class="card-head"><div><h2>Trainingsmodell</h2><div class="sub" id="mo-card-sub">Wie sich die Stunden auf locker, mittel und hart verteilen</div></div></div>
+        <div id="mo-wahl"></div>
+      </div>
       <div class="card w12" id="pl-wochen-card">
         <div class="card-head"><div><h2>Wochenübersicht</h2><div class="sub">Stunden je Sportart: absolviert und geplant</div></div></div>
         <div id="pl-wochen"></div>
@@ -1058,6 +1066,16 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
         <div class="sub">Wann ein Stufentest, ein kurzer Laktat-Check oder ein CSS-Test (Schwimmen, 400 m und 200 m) Sinn macht. Kurz-Checks am besten am Ende einer lockeren Woche, damit die Werte vergleichbar sind. Die Vorschläge passe ich auf Wunsch an.</div>
         <div class="tablewrap"><table class="t" id="t-tests" data-liste></table></div>
         <div id="tp-extra"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= WISSEN (V6.4) ================= -->
+  <section class="view" id="view-wissen" role="region" aria-label="Wissen" hidden>
+    <div class="dash">
+      <div class="card w12 ws-card" id="ws-card">
+        <div class="card-head"><div><h2>Wissen</h2><div class="sub" id="ws-sub">Modelle, Laktat, Messungen und Regeln dieser Seite – mit Quellen zum Nachlesen</div></div></div>
+        <div id="ws-inhalt"></div>
       </div>
     </div>
   </section>
@@ -1499,6 +1517,9 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <script src="js/v6.js"></script>
 <script src="js/v6-heute.js"></script>
 <script src="js/v6-plan.js"></script>
+<script src="js/v64.js"></script>
+<script src="js/wissen.js"></script>
+<script src="js/v64-ui.js"></script>
 <script>
 (() => {
   const b64d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
@@ -1928,11 +1949,11 @@ document.getElementById("banner").hidden = !D.demo;
 document.getElementById("countdowns").innerHTML = RACES.map((r) => `<div>${esc(r.short)} <b>${daysTo(r.date)}</b> Tage</div>`).join("");
 document.getElementById("stand").textContent = !D.demo && D.updated ? "Stand " + D.updated : "";
 
-const TAB_NAMES = ["karte", "heute", "kalender", "plan", "training", "laktat", "ausdauer", "leistung", "schwimmen", "koerper"];
+const TAB_NAMES = ["karte", "heute", "kalender", "plan", "wissen", "training", "laktat", "ausdauer", "leistung", "schwimmen", "koerper"];
 /* V5.9.5 (bedienung-1.0): fünf Bereiche in einer Leiste unten. «Analyse» bündelt Fortschritt, Laktat & Zonen, Ausdauer und Leistung,
    «Körper & Schwimmen» die beiden Ansichten; innerhalb eines Bereichs wechselt eine Leiste oben (immer sichtbar beim Scrollen). */
-const GRUPPEN = { heute: ["heute"], kalender: ["kalender"], plan: ["plan"], analyse: ["training", "laktat", "ausdauer", "leistung", "koerper", "schwimmen"], karte: ["karte"] };   // V6.0.2: Plan neu, Körper und Schwimmen unter Analyse
-const UNTER_NAME = { training: "Fortschritt", laktat: "Laktat", ausdauer: "Ausdauer", leistung: "Leistung", koerper: "Körper", schwimmen: "Schwimmen" };
+const GRUPPEN = { heute: ["heute"], kalender: ["kalender"], plan: ["plan", "wissen"], analyse: ["training", "laktat", "ausdauer", "leistung", "koerper", "schwimmen"], karte: ["karte"] };   // V6.0.2: Plan neu, Körper und Schwimmen unter Analyse; V6.4: Wissen unter Plan
+const UNTER_NAME = { plan: "Plan", wissen: "Wissen", training: "Fortschritt", laktat: "Laktat", ausdauer: "Ausdauer", leistung: "Leistung", koerper: "Körper", schwimmen: "Schwimmen" };
 const gruppeVon = (name) => Object.keys(GRUPPEN).find((g) => GRUPPEN[g].includes(name)) || "heute";
 for (const [g, views] of Object.entries(GRUPPEN)) {
   if (views.length < 2) continue;
@@ -3307,8 +3328,11 @@ const TABS = {
     },
   },
 
-  plan: {                             // V6.0.2: Rennen, Phasen, Wochenübersicht (js/v6-plan.js), Saison-Vorschlag (V56), Testkalender
-    draw() { drawTests(); if (window.V6P && window.V5UI) V5_READY.then(() => { try { V6P.zeichnen(); } catch (e) { console.error(e); } }); },
+  plan: {                             // V6.0.2: Rennen, Phasen, Wochenübersicht (js/v6-plan.js), Saison-Vorschlag (V56), Testkalender; V6.4: Woche nach Modell, Trainingsmodell (js/v64-ui.js)
+    draw() { drawTests(); if (window.V6P && window.V5UI) V5_READY.then(() => { try { V6P.zeichnen(); } catch (e) { console.error(e); } try { if (window.V64UI) V64UI.zeichnen(); } catch (e) { console.error(e); } }); },
+  },
+  wissen: {                           // V6.4: Modelle, Laktat, Messungen und Regeln mit Quellen (js/wissen.js, js/v64-ui.js)
+    draw() { if (window.V64UI) (window.V5UI ? V5_READY : Promise.resolve()).then(() => { try { V64UI.wissenZeichnen(); } catch (e) { console.error(e); } }); },
   },
 
   training: {

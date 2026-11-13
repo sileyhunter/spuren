@@ -61,9 +61,13 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   Prüfung an den eigenen Daten ampel-pruefung-1.0 in `js/formkurve.js` (`FK.readiness`, `FK.ampelPruefung`), Anzeige in `js/v5-ui.js` (Tagesbereitschaft)
 - **V6.2.3:** `tools/garmin_export.py` – Garmin-Datenexport (DSGVO-Export) → Verlauf `spuren-garmin-verlauf-1` (garmin-export-1.0, Abschnitt
   «Garmin-Datenexport»); Prüfung auf der Seite `V61.verlaufPruefen`, Einstellungen «Garmin-Verlauf einlesen» (`js/v59.js`)
+- **V6.4 (Etappe 4 Modell und Wissen):** `js/v64.js` (ohne DOM: Trainingsmodelle modell-1.0, Woche nach Modell wochenplan-1.0, Aufteilung
+  aufteilung-1.0, Intensitätsverteilung tid-1.0), `js/wissen.js` (wissen-1.0: Kapitel in eigenen Worten, Quellen mit DOI), `js/v64-ui.js` (Plan:
+  «Woche nach Modell», «Trainingsmodell»; Ansicht «Wissen» unter Plan), `tests/test_v64.cjs`; Stundenregel saison-1.0 neu in `js/analyse.js`
+  (`AN.saisonStunden`, `AN.saisonVorgaben`, gleiche Regel wie zuvor in `js/v56.js`)
 - **V5.8:** keine neuen Dateien; Rechenlogik in `js/route.js` (Abschnitte von Hand, Skitourennetz, Hangneigung, MTB-Abfahrt, Wegende, drei
   Rennradvarianten, Windpfeile), Oberfläche in `js/routen-ui.js`, Ringe «Heute» in `js/formkurve.js` (`FK.ringeVerlauf`) und `js/v55.js` (`V55.ringe`)
-- `tests/test_formkurve.cjs`, `tests/test_route.cjs`, `tests/test_analyse.cjs`, `tests/test_training.cjs`, `tests/test_tools.py` – Abnahmetests (erfundene Werte; `tests/fixtures/` = echte
+- `tests/test_formkurve.cjs`, `tests/test_route.cjs`, `tests/test_analyse.cjs`, `tests/test_training.cjs`, `tests/test_v64.cjs`, `tests/test_tools.py` – Abnahmetests (erfundene Werte; `tests/fixtures/` = echte
   Antworten einer lokalen BRouter-Instanz mit OSM-Testdaten Dreieich, ODbL); `docs/` – Konzept, Abnahme (`abnahme-v53.md`), Audit V5.5 (`AUDIT_V55.md`),
   Audit V5.6 (`AUDIT_V56.md`), Audit V5.7 (`AUDIT_V57.md`), offene Punkte (`offen-nach-v55.md`)
 
@@ -262,7 +266,8 @@ V5.6: zusätzlich `rpe` (→ `rpe`), `intervalle` (Korrekturen von Hand → `int
 zugeordnet → `laktat_punkte`, Status «vorschau») und `saison` (Stunden «jetzt»/«Spitze» → `saison_plan`); gleiche ID ersetzt mit Audit.
 V5.7: `startorte` (ganze Liste → `startorte`, alte Fassung ins Audit) und `trainingsrouten` (gewählte Vorschläge → `trainingsrouten`, gleiche
 ID ersetzt mit Audit). Startorte und Routen nur verschlüsselt (data.enc.json), nie offen ins Repository.
-V6.2.2: `zonen` (auf der Seite bestätigte Zonenprofile → `zonen_add`, geprüft wie oben). V6.2.3: `garmin_verlauf` (Datei aus
+V6.2.2: `zonen` (auf der Seite bestätigte Zonenprofile → `zonen_add`, geprüft wie oben). V6.4: `modell` (gewähltes Trainingsmodell
+→ `modell_add` → `plan_modell`; `merge_daily.modell_pruefen`: bekanntes Modell, Wechsel als Datum; gleiche ID ersetzt mit Audit). V6.2.3: `garmin_verlauf` (Datei aus
 `tools/garmin_export.py`, auf der Seite gewählt → `garmin_export.einspielen`, nur fehlende Tageswerte). V5.9.3: `routen` (im Planer gespeicherte Routen → `routes`, gleiche ID ersetzt mit Audit), `routen_entfernt` (auf der Seite gelöscht → aus
 `routes` entfernt, alte Fassung ins Audit), `laktat_punkte_bestaetigt` («Laktat hier» aus dem Explorer auf der Seite bestätigt → Kurzcheck in
 `lactate`, Quelle «aus Explorer», Punkt «übernommen»; übernommene Punkte werden nie wieder «vorschau»). Befinden kommt aus dem Morgen-Check-in
@@ -344,8 +349,8 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Nacht, Belastung = (1 − 2^(−TSS/CTL_Vortag)) · 100; alle 0–100 %, Lücken bleiben leer, Tag mit Datum. Kein medizinisches Mass.
 
 ## Bedienung V5.9.5 (bedienung-1.0)
-- Start auf «Heute» (Hash-Links wie `#laktat`, `#plan` oder `#checkin` gehen direkt; `#checkin` öffnet das Check-in-Blatt). Fünf Bereiche in
-  der Leiste unten (`#leiste`, `GRUPPEN` in index.html, seit V6.0.2): Heute · Kalender · Plan · Analyse (training, laktat, ausdauer, leistung,
+- Start auf «Heute» (Hash-Links wie `#laktat`, `#plan`, `#wissen` oder `#checkin` gehen direkt; `#checkin` öffnet das Check-in-Blatt). Fünf Bereiche in
+  der Leiste unten (`#leiste`, `GRUPPEN` in index.html, seit V6.0.2): Heute · Kalender · Plan (plan, wissen; V6.4) · Analyse (training, laktat, ausdauer, leistung,
   koerper, schwimmen) · Karte; die Ansichten (`section.view`, `showTab(name)`) bleiben einzeln, oben wechselt `nav.unter` (wischbar).
   Im Planer (`body.plan-aktiv`) keine Leiste.
 - Info-Knopf (`V59.ansicht`): Erklärtexte (`.sub` ohne id, `.hint`) einer Karte mit Ergebnis liegen hinter «i»; Warnungen (`.warn-t`, `.down`),
@@ -368,6 +373,29 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   (`V56.saison`) und Testkalender. Kalender: Wochenband «KW · Phase · Stunden · TL», heute orange, Sport-Symbole, Fokus-Punkte, Tagesliste
   mit Mini-Profilen (antippen öffnet die Einheit).
 - Die Seite schreibt nichts nach Garmin oder Enduco: keine Knöpfe zum Anlegen, Verschieben, Starten oder Exportieren von Workouts.
+
+## Trainingsmodell, Woche nach Modell und Wissen (V6.4, Etappe 4)
+- **Modelle `modell-1.0` (`V64.MODELLE`):** polarisiert (Schlüssel Rad 30/15, Laufen 4 × 4 min), pyramidal (Rad 3 × 15 min unter LT2, Laufen 4 × 4),
+  Schwelle mit Laktat/norwegisch (Rad 5 × 8, Laufen 6 × 5 min unter LT2, Laktat nach der 2. und 4. Wiederholung; über dem eigenen LT2-Wert die
+  nächste leichter – eigene Regel), rennspezifisch (Tempo Rad 2 × 20, Laufen 3 × 10 min, Renntempo in den langen Einheiten, Koppellauf Sa) und
+  **kombiniert = Standard** (von Silas gewählt am 13.11.2026): polarisiert bis zum Wechsel (vorgegeben 1. Februar im Jahr des Hauptrennens,
+  auf der Seite änderbar), ab der Woche des Wechsels rennspezifisch. Die Wahl kommt nur über «Direkt speichern» (`modell` → `plan_modell`).
+- **Woche `wochenplan-1.0` (`V64.woche`):** Mo frei · Di Laufen (Schlüssel) und Schwimmkurs · Mi Rad locker · Do Rad (Schlüssel) und CSS-Schwimmen ·
+  Fr Laufen locker · Sa lange Ausfahrt (+ Koppel) · So langer Lauf (+ Schwimmen). Stunden aus saison-1.0 (`AN.saisonStunden`/`AN.saisonVorgaben`),
+  `aufteilung-1.0` Schwimmen 20 %, Rad 50 %, Laufen 30 % (eigene Festlegung); Anzahl je Sportart nach Stunden (unter 7 h je 2 Rad/Lauf, 1 Schwimmen);
+  längste Einheit je Phase begrenzt (`V64.LANG`), Rest wird gemeldet, nie still verteilt. Erholungswoche: nur Rad-Schlüssel gekürzt, Laufen locker.
+  Taper: Schlüssel halbiert, Intensität bleibt. Rennwoche: 2 Tage vorher frei, Vortag Aktivierung, danach frei. Tests der Woche (Testkalender und
+  Vorschläge, nicht erledigt) ersetzen die Einheit derselben Sportart, Kurzcheck in einer lockeren Ausfahrt (±2 Tage); vor einem Stufentest wird
+  die Schlüsseleinheit derselben Sportart in den 3 Tagen davor locker. Ziele aus dem aktiven Zonenprofil (`V64.ziel`), ohne Profil bzw. CSS-Test
+  nichts geraten. Renntempo = Rad 95–100 % der Leistung an LT1, Laufen bis 3 % langsamer als an LT1 (eigene Festlegung), zählt als locker.
+- **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
+  Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
+  Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
+- **Wissen `wissen-1.0` (`js/wissen.js`):** alle Modelle und Regeln der Seite in eigenen Worten (nie Text aus Studien oder Webseiten übernehmen),
+  jede Aussage mit Quelle `[[id]]` aus `WS.QUELLEN` (Autoren, Jahr, Titel, Zeitschrift, DOI; ohne DOI begründet), Kapitel-Verweise `[[#id]]`.
+  Neue oder geänderte Regel: Kapitel und `WS.REGELN` nachführen; `tests/test_v64.cjs` prüft Verweise, DOI-Form, jede Quelle verwendet,
+  Schweizer Schreibweise (kein ß) und keine Wattwerte in den Texten. Nie persönliche Zahlen in die Wissenstexte.
+- Die Seite schreibt nichts nach Garmin oder Enduco: der Vorschlag steht neben dem Enduco-Plan, solange Enduco läuft.
 
 ## Meine Entwicklung und Regeln V5.5
 - Vergleiche nur aus `eb`-Blöcken (Rad 190–210 W je System Rolle/Rennrad/MTB, Laufen 5:20–5:40/km flach), Urteil `entwicklung-1.0`
@@ -426,7 +454,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Die exakten Grössen der SPS1-Dateien stehen in der Git-Historie.
 
 ## Prüfen vor jedem Push von Seite oder Werkzeugen
-`node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
+`node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
 Kein Live-Push, wenn ein Test fehlschlägt. Screenshots mit echten Daten nie ins Repo.
 
 ## FTP und Trainingslast

@@ -101,6 +101,17 @@ test("Saison: Taper 2 Wochen vor Hamburg, B-Rennen mit Mini-Taper und Erholung, 
   assert.equal(S.haupt.short, "Hamburg");
 });
 
+test("Saison-Stunden (V6.4 aus js/v56.js ausgelagert): linear bis zur Spitze, Erholung 65 %, B-Rennen 50 %, Taper 60/40 %", () => {
+  const W = [{ phase: "Grundlage" }, { phase: "Aufbau" }, { phase: "Aufbau", erholung: true }, { phase: "B-Rennen (Mini-Taper)" }, { phase: "Wettkampfspezifisch" }, { phase: "Taper" }, { phase: "Taper" }];
+  assert.deepEqual(AN.saisonStunden(W, 8, 12), [8, 9, 6.5, 5.5, 12, 7, 5]);   // 8 + 4·i/4; 10 × 0.65 = 6.5; 11 × 0.5 = 5.5; 12 × 0.6 = 7.2 → 7; 12 × 0.4 = 4.8 → 5
+  const acts = [];                                                       // erfundene Wochen: 6 h, 7 h, 9 h, 10 h, 12 h (Montag jeder Woche)
+  [["2026-10-05", 6], ["2026-10-12", 7], ["2026-10-19", 9], ["2026-10-26", 10], ["2026-11-02", 12]].forEach(([d, h]) => acts.push({ date: d, sport: "rad", mv: h * 3600 }));
+  const v = AN.saisonVorgaben(acts, "2026-11-08");
+  assert.equal(v.jetzt, 9); assert.equal(v.top4, (12 + 10 + 9 + 7) / 4); assert.equal(v.spitze, 12);   // max(1.35 × 9 = 12.15 → 12, 9.5)
+  assert.deepEqual(AN.saisonVorgaben(acts, "2026-11-08", { jetzt: 7, spitze: 11 }).spitze, 11, "Werte von der Seite gehen vor");
+  assert.equal(AN.saisonVorgaben([], "2026-11-08").jetzt, 8, "ohne Daten 8 h");
+});
+
 test("Dateiname der Reihe wie tools/serien_crypt.mjs (SHA-256 aus Salz und ID, 24 Hex-Zeichen)", async () => {
   const soll = require("node:crypto").createHash("sha256").update("0f1e2d:g24916684687").digest("hex").slice(0, 24);
   assert.equal(await AN.serieName("0f1e2d", "g24916684687"), soll);
