@@ -1,5 +1,36 @@
 # Änderungen
 
+## V6.6 · 13.11.2026 · Etappe 6: Kalender und Woche bearbeiten (Auftrag `docs/auftrag-etappen-6-8.md`, 6.1–6.6)
+- **Wochenansicht im Kalender (kalender-2.0):** Umschalter «Woche · Monat» (Standard Woche, je Gerät gemerkt). Die Woche zeigt oben Wochenart,
+  Stunden (Mein Plan / absolviert) und TL ≈, darunter die Tage untereinander mit den Einheiten als Karten, daneben Enduco aus dem Garmin-Kalender
+  und Absolviertes; Pfeile blättern wochenweise. Im Monat öffnet ein Tippen auf «KW» die Wochenansicht dieser Woche. Das Tagesblatt nennt KW,
+  Phase und Wochenart.
+- **Mein Plan (eigenplan-1.0):** Der Wochenvorschlag lässt sich je Tag bearbeiten: Training hinzufügen (Sportart → Vorlage mit Mini-Profil →
+  Dauer mit Regler und TL ≈ / Distanz ≈ → Speichern), Dauer ändern, verschieben, entfernen, Tag sperren. Vergangene und gesperrte Tage bleiben
+  unverändert. Wochenaktionen «Änderungen verwerfen» und «Woche leeren» (mit Rückfrage). Ein Tag, der wieder dem Vorschlag entspricht, gilt
+  nicht mehr als bearbeitet. Gespeichert wird verschlüsselt mit «Direkt speichern» (Eingabe `planwoche` → `plan_woche`; `merge_daily.planwoche_pruefen`:
+  Montag und ID, Tage in der Woche, eindeutige Einheiten, bekannte Quelle, Dauer 5–600 min, vergangene und gesperrte Tage unverändert; gleiche
+  Woche ersetzt mit Audit). Enduco-Einheiten bleiben, wie sie sind; nichts geht nach Garmin oder Enduco.
+- **Vorlagen (vorlagen-1.0):** die Bausteine der Trainingsmodelle (eigene Texte) für Schwimmen, Rad, Rad drinnen, Laufen, Laufen drinnen,
+  dazu Kraft/Athletik und Mobility (ohne Ziele) und Workouts aus der Enduco-Bibliothek (Dauer fest). Schlüsseleinheiten ab ihrer kurzen
+  Fassung; länger gewünscht = danach locker (Z2).
+- **TL ≈ und Distanz ≈ (tl-plan-1.0, eigene Festlegung):** geplante Einheiten aus dem aktiven Zonenprofil wie last-2.0 (Rad Leistung ÷ LT2,
+  Laufen Tempo an der LT2 ÷ Ziel-Tempo, je im Quadrat; Schwimmen Tempo ÷ CSS hoch drei; × Stunden × 100). Ohne Bezugswert keine Zahl, sonst
+  «mind.»; Tests, Kraft, Mobility und Bibliothek ohne TL.
+- **Aufbau (aufbau-1.1):** Ein Lauf über deiner Aufbau-Grenze oder nach einer Laufpause wird beim Hinzufügen, Ändern und im Tagesblatt gemeldet,
+  nicht verhindert.
+- **Plan (wochenblatt-1.0):** jede KW in «Phasen» ist antippbar und zeigt schon geschlossen die Wochenart (Belastung 1–3, Erholung, Taper,
+  Rennwoche) → Wochenblatt mit Stunden, TL ≈ geplant und absolviert, Schwimmen/Rad/Laufen, Schlüsseleinheiten und Tests, «Im Kalender öffnen».
+- **vergleich-1.3:** «Woche nach Modell» und der Vergleich mit Enduco nehmen die bearbeitete Woche (gekennzeichnet «bearbeitet»); Stunden und
+  Intensitätsverteilung werden aus deinen Einheiten neu gerechnet. Bibliotheks-Workouts zählen mit ihrer Stufe aus den Schritten bzw. laut Titel,
+  sonst «offen» (nie geraten).
+- **Heute «Je Sportart»:** Schwimmen, Rad und Laufen immer, mit «geplant (Garmin)».
+- **wissen-1.6:** Mein Plan (Kapitel «modelle»), TL ≈ geplanter Einheiten (Kapitel «last»), bearbeitete Woche im Vergleich (Kapitel «vergleich»).
+- Noch offen aus Etappe 6: «Rest der Woche neu planen» (wochenplan-1.3) und «An Garmin senden» (garmin-senden-1.0, 6.7).
+- Geprüft: `tests/test_v66.cjs` (neu: Vorlagen, Einheiten, Änderungsregeln, Verwerfen/Leeren, TL/km, Wochenart, bearbeitete Woche im Vergleich,
+  Aufbau-Hinweis), `tests/test_tools.py` (+ Mein Plan: Prüfung, Sperren, vergangene Tage, Audit; Eingang bis `plan_woche`), `tests/test_v64.cjs`
+  (vergleich-1.3, Versionen im Wissen inkl. V66), alle bisherigen Tests, Browser Demo und echte Daten (390 px, ohne Änderungen an echten Daten), Leck-Prüfung.
+
 ## V6.6 · 13.11.2026 · Teil 0: Fehler in Bestehendem (Auftrag `docs/auftrag-etappen-6-8.md`)
 - **Tag antippen (kalender-2.0, Teil 1):** Im Kalender öffnet ein Tag jetzt ein Blatt mit Geplantem, Absolviertem, Tests und Rennen (vorher
   erschien die Liste unter dem ganzen Monat, auf dem iPhone ausserhalb des Bildschirms). Auch die Tage unter Heute «Diese Woche» sind antippbar,

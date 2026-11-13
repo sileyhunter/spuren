@@ -72,6 +72,9 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   (archiv-1.0: privates Archiv `sileyhunter/spuren-archiv`, Abschnitt «Archiv»), `tests/test_archiv.cjs`; `js/v65.js` (ohne DOM: Liste bibliothek-1.0,
   Enduco über die Monate monate-1.0, Schwimmübungen uebungen-1.0), `js/v65-ui.js` (Ansicht «Bibliothek» unter Plan; eine Einheit öffnet das
   Einheit-Blatt über `V6H.einheitP`), `tests/test_v65.cjs`
+- **V6.6 (Etappe 6 Kalender und Woche bearbeiten):** `js/v66.js` (ohne DOM: Mein Plan eigenplan-1.0, Vorlagen vorlagen-1.0, TL ≈ und Distanz ≈
+  geplanter Einheiten tl-plan-1.0, Wochenart wochenblatt-1.0, Aufbau-Hinweis), `js/v66-ui.js` (Abschnitt «Mein Plan» im Tagesblatt, Training
+  hinzufügen, Einheit ändern, Wochenaktionen, Kalender-Wochenansicht kalender-2.0, Wochenblatt im Plan), `tests/test_v66.cjs`
 - **V6.4.4 (Prüfung V6.4, `docs/AUDIT_V64.md`):** `tools/leck_pruefen.py` – Leck-Prüfung vor jedem Push: sucht echte Werte (IDs, Zonentexte und
   -grenzen, Schwellen, Distanzen mit Datum, Testtermine und Abwesenheiten, E-Mail) in allen getrackten Dateien, gibt nur Fundorte aus
 - **V5.8:** keine neuen Dateien; Rechenlogik in `js/route.js` (Abschnitte von Hand, Skitourennetz, Hangneigung, MTB-Abfahrt, Wegende, drei
@@ -306,7 +309,9 @@ V5.6: zusätzlich `rpe` (→ `rpe`), `intervalle` (Korrekturen von Hand → `int
 zugeordnet → `laktat_punkte`, Status «vorschau») und `saison` (Stunden «jetzt»/«Spitze» → `saison_plan`); gleiche ID ersetzt mit Audit.
 V5.7: `startorte` (ganze Liste → `startorte`, alte Fassung ins Audit) und `trainingsrouten` (gewählte Vorschläge → `trainingsrouten`, gleiche
 ID ersetzt mit Audit). Startorte und Routen nur verschlüsselt (data.enc.json), nie offen ins Repository.
-V6.2.2: `zonen` (auf der Seite bestätigte Zonenprofile → `zonen_add`, geprüft wie oben). V6.4: `modell` (gewähltes Trainingsmodell
+V6.6: `planwoche` (Mein Plan einer Woche → `planwoche_add` → `plan_woche`, eigenplan-1.0; `merge_daily.planwoche_pruefen`: Montag, ID «wo-<Montag>»,
+Tage in der Woche, eindeutige Einheiten, Quelle vorschlag/eigen/bibliothek, Dauer 5–600 min, Tage vor der Änderung und gesperrte Tage unverändert
+gegenüber dem Stand davor; gleiche Woche ersetzt mit Audit). V6.2.2: `zonen` (auf der Seite bestätigte Zonenprofile → `zonen_add`, geprüft wie oben). V6.4: `modell` (gewähltes Trainingsmodell
 → `modell_add` → `plan_modell`; `merge_daily.modell_pruefen`: bekanntes Modell, Wechsel als Datum; gleiche ID ersetzt mit Audit). V6.5: `planwahl`
 («Ich folge» je Tag → `planwahl_add` → `plan_wahl`; `merge_daily.planwahl_pruefen`: Datum, ID «pw-Datum», Wahl enduco/vorschlag/frei; gleicher Tag ersetzt mit Audit). V6.2.3: `garmin_verlauf` (Datei aus
 `tools/garmin_export.py`, auf der Seite gewählt → `garmin_export.einspielen`, nur fehlende Tageswerte; mehrere Dateien vor einem Update werden seit
@@ -422,6 +427,12 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   (`V56.saison`) und Testkalender. Kalender: Wochenband «KW · Phase · Stunden · TL», heute orange, Sport-Symbole, Fokus-Punkte; ein Tag
   öffnet das Tagesblatt (V6.6, `TABS.kalender.blatt`, auch aus Heute «Diese Woche» über `APP.tagBlatt`) mit Mini-Profilen (antippen öffnet die
   Einheit, «Zurück» führt ins Tagesblatt). Dauer immer als «1:15 h» bzw. «36 min» (`V6.dauerText`), nie «m» für Minuten.
+- **Kalender und Mein Plan (V6.6, kalender-2.0, eigenplan-1.0):** «Woche · Monat» (Standard Woche, `sf.kal.ansicht`); Woche = Tage untereinander
+  mit Mein Plan, Enduco (Garmin-Kalender) und Absolviertem; im Monat öffnet «KW» die Woche (`TABS.kalender.zurWoche`, auch `APP.kalenderWoche`).
+  Mein Plan = Wochenvorschlag (`V64UI.kontextFuer`) mit `plan_woche` (`V66.meinPlan`); Änderungen nur über `V66.aendern` (vergangene und gesperrte
+  Tage nie), gespeichert mit «Direkt speichern». Bearbeitete Wochen: Stunden und Verteilung aus den eigenen Einheiten, «bearbeitet» sichtbar
+  (vergleich-1.3). TL ≈ und Distanz ≈ (tl-plan-1.0) sind Modelle, immer mit «≈»; ohne Bezugswert keine Zahl. Ein Lauf über der Aufbau-Grenze
+  wird gemeldet, nie verhindert. Die Seite schreibt auch hier nichts nach Garmin oder Enduco (6.7 «An Garmin senden» folgt nach Silas' Entscheid E3).
 - Die Seite schreibt nichts nach Garmin oder Enduco: keine Knöpfe zum Anlegen, Verschieben, Starten oder Exportieren von Workouts.
 
 ## Trainingsmodell, Woche nach Modell und Wissen (V6.4, Etappe 4)
@@ -453,7 +464,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Grenze (Distanz aus dem Zonenprofil, Z1 mit dem langsamen Rand von Z2; nach dem Kürzen nachgeprüft, liegt auch die Untergrenze von 20 min darüber,
   ausdrücklich gemeldet), übrige Läufe nur als Hinweis; ohne Lauf-Pace-Zonen keine Begrenzung. aufbau-1.1: kein Lauf in den 30 Tagen davor (Pause) →
   langer und lockerer Lauf höchstens 30 min locker (`V64.PAUSE_MIN`, eigene Festlegung), harte Läufe gemeldet; ohne Läufe in den Daten nichts begrenzt.
-- **Vergleich mit Enduco `vergleich-1.2` (V6.4.3; 1.1 V6.4.4; 1.2 V6.5 Wahl je Tag, siehe Ende; `V64.vergleich`, `V64.enducoAusUhr`, `V64.stand`, `V64.wahlAuswerten`):** Woche nach Modell wählbar «Letzte · Diese Woche · Nächste»,
+- **Vergleich mit Enduco `vergleich-1.3` (V6.4.3; 1.1 V6.4.4; 1.2 V6.5 Wahl je Tag, siehe Ende; 1.3 V6.6: bearbeitete Woche aus Mein Plan; `V64.vergleich`, `V64.enducoAusUhr`, `V64.stand`, `V64.wahlAuswerten`):** Woche nach Modell wählbar «Letzte · Diese Woche · Nächste»,
   ältere über die Karte `#vg-card` (letzte 8 Wochen). Vergangene Wochen nachgerechnet, wie die Seite am Montag geplant hätte (`V64.stand`: Saison ab
   jener Woche, Stunden aus den 8 abgeschlossenen Wochen davor – von Hand gesetzte nur, wenn sie vor dem Montag gespeichert wurden –, CSS, Läufe und
   Aufbau-Grenze bis zum Sonntag davor, Tests der Woche auch wenn inzwischen erledigt; Modell, Intensität je Sportart und Zonenprofil von heute,
@@ -478,9 +489,10 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
   Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
   Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
-- **Wissen `wissen-1.5` (`js/wissen.js`, 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
+- **Wissen `wissen-1.6` (`js/wissen.js`, 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
   1.3: Kapitel «Vorschlag und Enduco vergleichen», 1.4: Prüfung der Quellen – Formulierungen nicht stärker als die Studien, eigene Festlegungen
-  gekennzeichnet, Versionen wie im Code, 1.5: Wahl je Tag und Bibliothek im Kapitel «vergleich»):** alle Modelle und Regeln der Seite in eigenen Worten (nie Text aus Studien oder Webseiten übernehmen),
+  gekennzeichnet, Versionen wie im Code, 1.5: Wahl je Tag und Bibliothek im Kapitel «vergleich», 1.6: Mein Plan, TL ≈ geplanter Einheiten,
+  bearbeitete Woche im Vergleich):** alle Modelle und Regeln der Seite in eigenen Worten (nie Text aus Studien oder Webseiten übernehmen),
   jede Aussage mit Quelle `[[id]]` aus `WS.QUELLEN` (Autoren, Jahr, Titel, Zeitschrift, DOI; ohne DOI begründet), Kapitel-Verweise `[[#id]]`.
   Neue oder geänderte Regel: Kapitel und `WS.REGELN` nachführen; `tests/test_v64.cjs` prüft Verweise, DOI-Form, jede Quelle verwendet,
   Schweizer Schreibweise (kein ß) und keine Wattwerte in den Texten. Nie persönliche Zahlen in die Wissenstexte.
@@ -545,7 +557,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Die exakten Grössen der SPS1-Dateien stehen in der Git-Historie.
 
 ## Prüfen vor jedem Push von Seite oder Werkzeugen
-`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
+`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `node --test tests/test_v66.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
 **Leck-Prüfung (V6.4.4):** `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json work/data.json`, `python3 -I tools/leck_pruefen.py work/data.json`
 («LECK-PRÜFUNG: bestanden»), danach `rm work/data.json`. Gilt für jeden Push von Seite, Werkzeugen, Tests oder Doku (nicht für die reinen Daten-Updates).
 Kein Live-Push, wenn ein Test oder die Leck-Prüfung fehlschlägt. Screenshots mit echten Daten nie ins Repo. **Ein Force-Push entfernt nichts von GitHub:**

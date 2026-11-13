@@ -527,6 +527,10 @@ _spec9 = [
      "routen": [{"id": "u-r1", "name": "Runde", "coords": [[9.5, 46.8], [9.51, 46.81]]}], "laktat_punkte": [_lp9],
      "garmin_verlauf": {"format": "spuren-garmin-verlauf-1", "id": "0123456789abcdef", "tage": [{"date": "2026-11-01", "sleepH": 7.5, "readiness": 66, "readinessLevel": "HIGH"}]},
      "modell": [{"id": "modell", "modell": "schwelle", "wechsel": "2027-02-01", "v": "modell-1.0", "geaendert": "2026-11-10T06:00:00Z"}],
+     "planwahl": [{"id": "pw-2026-11-11", "date": "2026-11-11", "wahl": "vorschlag", "v": "planwahl-1.0"}],
+     "planwoche": [{"id": "wo-2026-11-09", "montag": "2026-11-09", "v": "eigenplan-1.0", "geaendert": "2026-11-10T06:00:00Z",
+                    "tage": {"2026-11-12": {"einheiten": [{"uid": "e-1", "quelle": "eigen", "vorlage": "rad_locker", "sport": "rad", "dauer": 75}], "gesperrt": False},
+                             "2026-11-14": {"einheiten": [], "gesperrt": True}}}],
      "zonen": [{"id": "zonen-20261110", "status": "aktiv", "gueltig_ab": "2026-11-10", "freigabe": {"datum": "2026-11-10"}, "methodik": {"art": "zonenvorschlag-1.0", "je_sportart": {"rad": {"test": "t-unbekannt"}}},
                 "skalen": [{"key": "rad_w", "disziplin": "rad", "metrik": "leistung", "zonen": [{"z": "Z1", "von": None, "bis": 150}, {"z": "Z2", "von": 150, "bis": None}]}]}]}},
     {"name": "20261110T061000Z-00000002.bin", "art": "eingaben", "zeit": "2026-11-10T06:10:00Z", "daten": {"befinden": [{"date": "2026-11-10", "muede": 2, "muskel": 3, "stress": 3}],
@@ -556,12 +560,19 @@ check("Eingang: auf der Seite bestätigte Zonen gehen als zonen_add ins Update",
 check("Eingang: Garmin-Verläufe von der Seite gehen unverändert ins Update – zwei vor einem Update beide (Audit V6.4 B9)",
       [g["id"] for g in _A9.get("garmin_verlauf") or []] == ["0123456789abcdef", "fedcba9876543210"], json.dumps(_A9.get("garmin_verlauf"))[:200])
 check("Eingang: gewähltes Trainingsmodell geht als modell_add ins Update (V6.4)", [m["modell"] for m in _A9.get("modell_add", [])] == ["schwelle"], json.dumps(_A9.get("modell_add")))
+check("Eingang: Wahl je Tag und Mein Plan gehen als planwahl_add und planwoche_add ins Update (V6.5, V6.6)",
+      [w["id"] for w in _A9.get("planwahl_add", [])] == ["pw-2026-11-11"] and [w["id"] for w in _A9.get("planwoche_add", [])] == ["wo-2026-11-09"],
+      json.dumps({k: _A9.get(k) for k in ("planwahl_add", "planwoche_add")})[:300])
 merge_daily.main(os.path.join(_t9, "data.json"), os.path.join(_t9, "work", "eingang_a.json"))
 _R9 = json.load(open(os.path.join(_t9, "data.json")))
 check("Eingang A eingespielt: Befinden, Route auf alle Geräte, alte Route entfernt (Audit), Laktatpunkt als Vorschau, CSS-Test vom Handy in css_tests",
       _R9["befinden"][0]["stress"] == 3 and [r["id"] for r in _R9["routes"]] == ["u-r1"] and any(a.get("was") == "Route entfernt" for a in _R9["audit"])
       and _R9["laktat_punkte"][0]["status"] == "vorschau" and not _R9.get("lactate") and [c["css_s"] for c in _R9.get("css_tests", [])] == [105]
       and [m["modell"] for m in _R9.get("plan_modell", [])] == ["schwelle"])
+check("Eingang A eingespielt: Wahl je Tag in plan_wahl, Mein Plan in plan_woche (mit gesperrtem Tag)",
+      [w["wahl"] for w in _R9.get("plan_wahl", [])] == ["vorschlag"] and [w["id"] for w in _R9.get("plan_woche", [])] == ["wo-2026-11-09"]
+      and _R9["plan_woche"][0]["tage"]["2026-11-14"]["gesperrt"] is True and _R9["plan_woche"][0]["tage"]["2026-11-12"]["einheiten"][0]["dauer"] == 75,
+      json.dumps({k: _R9.get(k) for k in ("plan_wahl", "plan_woche")})[:300])
 check("Eingang A eingespielt: beide Garmin-Verläufe eingespielt (Audit V6.4 B9)", sorted(g["id"] for g in _R9.get("garmin_export", [])) == ["0123456789abcdef", "fedcba9876543210"],
       str(_R9.get("garmin_export")))
 check("Eingang A: Zonen aus einem nicht bestätigten Test werden nicht übernommen", not any(z["id"] == "zonen-20261110" for z in _R9.get("zonen", [])))
@@ -934,6 +945,31 @@ merge_daily.v5_merge(_DW, {"planwahl_add": [{"id": "pw-2026-03-02", "date": "202
 check("Wahl je Tag: nur gültiges Datum, passende ID und bekannte Wahl; gleiche ID ersetzt mit Audit",
       [(w["date"], w["wahl"]) for w in _DW.get("plan_wahl", [])] == [("2026-03-02", "enduco"), ("2026-03-03", "enduco")]
       and any(a.get("was") == "Wahl des Plans ersetzt" for a in _DW.get("audit", [])), str(_DW.get("plan_wahl")))
+
+# ---------- V6.6 Mein Plan (eigenplan-1.0, planwoche_pruefen) ----------
+_WO = {"id": "wo-2026-03-02", "v": "eigenplan-1.0", "montag": "2026-03-02", "geaendert": "2026-03-04T19:00:00Z",
+       "tage": {"2026-03-05": {"gesperrt": False, "einheiten": [{"uid": "v-2026-03-05-0", "vorlage": "rad_schwelle", "dauer": 80, "quelle": "vorschlag"},
+                                                               {"uid": "e-1", "vorlage": "kraft", "dauer": 30, "quelle": "eigen"}]},
+                "2026-03-07": {"gesperrt": True, "einheiten": None}}}
+_DP = {}
+merge_daily.v5_merge(_DP, {"planwoche_add": [_WO]})
+check("Mein Plan: gültige Woche übernommen", [w["id"] for w in _DP.get("plan_woche", [])] == ["wo-2026-03-02"], str(_DP.get("plan_woche")))
+_bad = [dict(_WO, id="wo-2026-03-03", montag="2026-03-03"), dict(_WO, id="wo-2026-03-09"),
+        dict(_WO, tage={"2026-03-10": {"gesperrt": False, "einheiten": []}}),
+        dict(_WO, tage={"2026-03-05": {"gesperrt": False, "einheiten": [{"uid": "x", "vorlage": "kraft", "dauer": 700, "quelle": "eigen"}]}}),
+        dict(_WO, tage={"2026-03-05": {"gesperrt": False, "einheiten": [{"uid": "x", "vorlage": "kraft", "dauer": 30, "quelle": "fremd"}]}}),
+        dict(_WO, tage={"2026-03-05": {"gesperrt": False, "einheiten": [{"uid": "x", "dauer": 30, "quelle": "bibliothek", "sport": "rad"}]}})]
+check("Mein Plan: falscher Montag, falsche ID, Tag ausserhalb, Dauer, Quelle und Bibliothek ohne Workout abgelehnt",
+      all(merge_daily.planwoche_pruefen(w, None) for w in _bad), str([merge_daily.planwoche_pruefen(w, None) for w in _bad]))
+_gesp = dict(_WO, geaendert="2026-03-05T08:00:00Z", tage=dict(_WO["tage"], **{"2026-03-07": {"gesperrt": True, "einheiten": []}}))
+_zur = dict(_WO, geaendert="2026-03-06T08:00:00Z", tage=dict(_WO["tage"], **{"2026-03-05": {"gesperrt": False, "einheiten": []}}))
+_ent = dict(_WO, geaendert="2026-03-05T08:00:00Z", tage=dict(_WO["tage"], **{"2026-03-07": {"gesperrt": False, "einheiten": []}}))
+check("Mein Plan: gesperrter Tag und vergangene Tage unveränderlich, entsperren und ändern geht",
+      "gesperrt" in (merge_daily.planwoche_pruefen(_gesp, _WO) or "") and "zurück" in (merge_daily.planwoche_pruefen(_zur, _WO) or "")
+      and merge_daily.planwoche_pruefen(_ent, _WO) is None)
+merge_daily.v5_merge(_DP, {"planwoche_add": [_ent]})
+check("Mein Plan: gleiche Woche ersetzt mit Audit", _DP["plan_woche"][0]["tage"]["2026-03-07"]["gesperrt"] is False
+      and any(a.get("was") == "Mein Plan ersetzt" for a in _DP.get("audit", [])))
 
 # ---------- V6.5 Enduco-Bibliothek (tools/bibliothek.py, bib-1.0) – erfundene Workouts ----------
 import bibliothek  # noqa: E402

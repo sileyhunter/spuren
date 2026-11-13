@@ -309,6 +309,8 @@
     zurueck: '<path d="m14.5 5.5-6.5 6.5 6.5 6.5"/>',
     rueckgaengig: '<path d="M9 7 5 11l4 4"/><path d="M5 11h9a5 5 0 0 1 0 10h-3"/>',      // V6.6: eigener Pfeil «letzten Schritt zurück»
     loeschen: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12M10.5 10.5v5M13.5 10.5v5"/>',   // V6.6: eigener Papierkorb «alle Punkte löschen»
+    schloss: '<rect x="6" y="11" width="12" height="9" rx="2"/><path d="M9 11V8a3 3 0 0 1 6 0v3"/>',      // V6.6: eigenes Schloss «Tag gesperrt»
+    mehr: '<circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18" cy="12" r="1.3"/>',   // V6.6: «weitere Aktionen»
     weiter: '<path d="m9.5 5.5 6.5 6.5-6.5 6.5"/>',
     ablauf: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.5M4 12h.5M4 18h.5"/>',
     fokus: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8"/>',

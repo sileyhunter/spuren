@@ -10,9 +10,10 @@
    - aufbau-1.1 (V6.4.2, 1.1 Audit V6.4): jeder Lauf gegen den längsten Lauf der 30 Tage davor (Frandsen et al. 2025: Sprung ab mehr als 10 %), Grenze für den
      nächsten Lauf, Wochen-km Laufen, Schwimm-Meter und Rad-Stunden. Im Wochenvorschlag kein Lauf über dieser Grenze (Distanz aus dem
      Zonenprofil geschätzt; ohne Zonenprofil keine Begrenzung, nie geraten); ohne Lauf in den 30 Tagen davor höchstens 30 min locker.
-   - vergleich-1.2 (V6.4.3, 1.1 Audit V6.4, 1.2 V6.5): Vorschlag gegen Enduco (Garmin-Kalender) und Absolviertes je Woche: Stunden und Einheiten je Sportart, Stufen,
+   - vergleich-1.3 (V6.4.3, 1.1 Audit V6.4, 1.2 V6.5, 1.3 V6.6): Vorschlag gegen Enduco (Garmin-Kalender) und Absolviertes je Woche: Stunden und Einheiten je Sportart, Stufen,
      längste Einheiten, Unterschiede in Worten, welchem Plan das Absolvierte näher war; 1.2: deine Wahl je Tag (planwahl-1.0) und wie nah das
-     Absolvierte am gewählten Plan lag. Enduco ist nur bekannt, soweit exportiert.
+     Absolvierte am gewählten Plan lag; 1.3: hast du die Woche in Mein Plan bearbeitet (eigenplan-1.0, js/v66.js), ist «Vorschlag» diese
+     bearbeitete Woche (gekennzeichnet). Enduco ist nur bekannt, soweit exportiert.
    Unbekannt bleibt unbekannt: ohne Zonenprofil keine Watt- oder Pace-Ziele, ohne CSS-Test kein Schwimmtempo. */
 (function (root, factory) {
   const node = typeof module === "object" && module.exports;
@@ -21,7 +22,7 @@
   if (root) root.V64 = V64;
 })(typeof window !== "undefined" ? window : null, function (V62) {
   "use strict";
-  const V64 = { VERSIONS: { modell: "modell-1.0", woche: "wochenplan-1.2", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.1", aufbau: "aufbau-1.1", vergleich: "vergleich-1.2" } };
+  const V64 = { VERSIONS: { modell: "modell-1.0", woche: "wochenplan-1.2", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.1", aufbau: "aufbau-1.1", vergleich: "vergleich-1.3" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const T = (iso) => Date.parse(iso + "T12:00:00Z");
   const add = (iso, n) => new Date(T(iso) + n * 864e5).toISOString().slice(0, 10);
@@ -565,7 +566,8 @@
   const SPN = { schwimm: "Schwimmen", rad: "Rad", lauf: "Laufen" };
   const hmin = (m) => { const x = Math.round(m); return `${Math.floor(x / 60)}:${String(x % 60).padStart(2, "0")}`; };
   /** Stufe einer vorgeschlagenen Einheit (intensitaet-1.1): VO2max = «alles», Tempo/Schwelle/CSS = «schwelle», Test = «test», sonst «locker». */
-  V64.stufeVon = (e) => (e && e.art === "test" ? "test" : (e && V64.STUFE_BAUSTEIN[e.id]) || "locker");
+  //  vergleich-1.3: Einheiten aus der Bibliothek (Mein Plan) tragen ihre Stufe selbst (aus den Schritten bzw. laut Titel), sonst «offen».
+  V64.stufeVon = (e) => (e && e.art === "test" ? "test" : e && e.art === "bibliothek" ? e.stufe || "offen" : (e && V64.STUFE_BAUSTEIN[e.id]) || "locker");
   /** Enduco-Einheiten aus den Workouts, die auf der Uhr liefen (FIT «workout», Feld wk der Aktivität) – nur dort, wo am selben Tag für dieselbe
    *  Sportart nichts im Garmin-Kalender stand. Dauer = geplante Zeit des Workouts (Strecken-Schritte mit der gelaufenen Zeit), Stufe aus dem
    *  Titel. Tests (Stufentest, Kurzcheck, Laktat) zählen nicht als Enduco. Nur ausgeführte Einheiten: ausgelassene fehlen. */

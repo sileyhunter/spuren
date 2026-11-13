@@ -1028,10 +1028,12 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
     <div class="dash">
       <div class="card w12">
         <div class="card-head">
-          <div><h2 id="cal-title">Kalender</h2><div class="sub">Einheiten, geplante enduco-Einheiten, Tests und Rennen. Tippe auf einen Tag für Details.</div></div>
-          <div class="row"><button class="btn" id="cal-prev" aria-label="Vorheriger Monat">‹</button><button class="btn" id="cal-today">Heute</button><button class="btn" id="cal-next" aria-label="Nächster Monat">›</button></div>
+          <div><h2 id="cal-title">Kalender</h2><div class="sub">Mein Plan, Enduco aus dem Garmin-Kalender, Absolviertes, Tests und Rennen. Tippe auf einen Tag zum Ansehen und Bearbeiten.</div></div>
+          <div class="row"><button class="btn" id="cal-prev" aria-label="Zurück">‹</button><button class="btn" id="cal-today">Heute</button><button class="btn" id="cal-next" aria-label="Weiter">›</button></div>
         </div>
-        <div class="tablewrap"><div class="cal" id="cal"></div></div>
+        <div class="seg kal-ans" role="group" aria-label="Ansicht"><button type="button" data-kalans="woche">Woche</button><button type="button" data-kalans="monat">Monat</button></div>
+        <div class="tablewrap" id="cal-wrap"><div class="cal" id="cal"></div></div>
+        <div class="kal-woche" id="kal-woche" hidden></div>
         <div class="cal-legend" id="cal-legend"></div>
       </div>
       <div class="card w12">
@@ -1555,6 +1557,8 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <script src="js/v64-ui.js"></script>
 <script src="js/v65.js"></script>
 <script src="js/v65-ui.js"></script>
+<script src="js/v66.js"></script>
+<script src="js/v66-ui.js"></script>
 <script>window.SPUREN_DEMO = true;</script>
 <script>
 (() => {
@@ -2018,6 +2022,8 @@ for (const [g, views] of Object.entries(GRUPPEN)) {
     sec.insertBefore(nav, sec.firstChild);
   }
 }
+// V6.6 eigenplan-1.0: nach einer Änderung an «Mein Plan» die sichtbaren Ansichten neu zeichnen
+document.addEventListener("meinplan", () => { for (const n of ["kalender", "plan", "heute"]) { const t = TABS[n], v = document.getElementById("view-" + n); if (t && t.done && v && !v.hidden) { try { t.draw(); } catch (e) { console.error(e); } } } });
 function showTab(name) {
   if (name === "checkin") { name = "heute"; window.V59_CI_AUF = true; if (window.V59 && window.V5UI && V5UI.C) setTimeout(() => V59.checkin(), 60); }   // V5.9.3/V6.0.1: Link aus dem Morgen-Briefing öffnet das Check-in-Blatt
   if (!TAB_NAMES.includes(name)) name = "heute";
@@ -2946,7 +2952,8 @@ function planLoad(id) {
   window.RTUI.loadSaved(r);
 }
 function initPlanner() {
-  window.APP = { showTab, setPlanActive, tagBlatt: (ds) => TABS.kalender.blatt(ds) };     // V5.7: Trainingskalender öffnet Karte und Planer; V6.6: Tagesblatt
+  window.APP = { showTab, setPlanActive, tagBlatt: (ds) => TABS.kalender.blatt(ds),
+    kalenderWoche: (mo) => { showTab("kalender"); TABS.kalender.zurWoche(mo); } };   // V6.6     // V5.7: Trainingskalender öffnet Karte und Planer; V6.6: Tagesblatt
   document.getElementById("btn-plan").addEventListener("click", () => setPlanActive(!plan.active));
   if (!window.RTUI || !window.RT) {
     document.getElementById("btn-plan").title = "Routenplaner konnte nicht geladen werden";
@@ -3300,24 +3307,42 @@ const TABS = {
         if (window.V5UI) V5_READY.then(() => { V5UI.heute(); if (window.V59) { V59.checkin(); V59.heuteOben(); V59.gefuehlKarte(); } });
       }
       const w0 = mondayOf(today), wk = D.activities.filter((a) => inWeek(a, w0));
+      // V6.6 (6.6): Schwimmen, Rad und Laufen immer, mit geplant laut Garmin-Kalender (Dauer wie V6H.planDauer); andere Sportarten nur absolviert
+      const w0i = iso(w0), w6i = iso(addDays(w0, 6)), PL = (D.planned || []).filter((p) => p && p.date >= w0i && p.date <= w6i);
+      const pDauer = (p) => (window.V6H && window.V6H.planDauer ? window.V6H.planDauer(p) : p.dur_s) || 0;
       const rows = Object.entries(SPORTS).map(([k, s]) => {
-        const l = wk.filter((a) => a.sport === k); if (!l.length) return "";
-        return `<tr><td><span class="dot" style="background:${s.color};margin-right:8px"></span>${s.label}</td><td>${l.length}</td><td>${fmt(l.reduce((x, a) => x + a.km, 0), 1)}</td><td>${fmt(l.reduce((x, a) => x + a.hm, 0))}</td><td>${hmm(l.reduce((x, a) => x + a.dur, 0))}</td><td>${fmt(l.reduce((x, a) => x + (a.tss || 0), 0))}</td></tr>`;
+        const l = wk.filter((a) => a.sport === k), pl = PL.filter((p) => p.sport === k), immer = ["schwimm", "rad", "lauf"].includes(k);
+        if (!l.length && !(immer)) return "";
+        const geplant = pl.length ? `${pl.length} · ${hmm(pl.reduce((x, p) => x + pDauer(p), 0))}` : "–";
+        return `<tr><td><span class="dot" style="background:${s.color};margin-right:8px"></span>${s.label}</td><td>${l.length}</td><td>${l.length ? fmt(l.reduce((x, a) => x + a.km, 0), 1) : "–"}</td><td>${l.length ? fmt(l.reduce((x, a) => x + a.hm, 0)) : "–"}</td><td>${l.length ? hmm(l.reduce((x, a) => x + a.dur, 0)) : "–"}</td><td>${l.length ? fmt(l.reduce((x, a) => x + (a.tss || 0), 0)) : "–"}</td><td>${geplant}</td></tr>`;
       }).join("");
-      document.getElementById("t-week").innerHTML = `<tr><th>Sport</th><th>Einheiten</th><th>km</th><th>hm</th><th>Dauer</th><th>Trainingslast</th></tr>` + (rows || `<tr><td colspan="6">Diese Woche noch keine Aktivität.</td></tr>`);
+      document.getElementById("t-week").innerHTML = `<tr><th>Sport</th><th>Einheiten</th><th>km</th><th>hm</th><th>Dauer</th><th>Trainingslast</th><th>geplant (Garmin)</th></tr>` + rows;
     },
   },
 
   kalender: {
     init() {
       this.month = new Date(today.getFullYear(), today.getMonth(), 1);
-      const go = (n) => { this.month = n == null ? new Date(today.getFullYear(), today.getMonth(), 1) : new Date(this.month.getFullYear(), this.month.getMonth() + n, 1); this.draw(); };
+      this.ansicht = store.get("sf.kal.ansicht", "woche") === "monat" ? "monat" : "woche";       // V6.6 kalender-2.0: Woche (Standard) oder Monat
+      this.woche = iso(mondayOf(today));
+      document.querySelectorAll("[data-kalans]").forEach((b) => (b.onclick = () => {
+        if (b.dataset.kalans === "woche" && this.ansicht !== "woche") {          // vom Monat zur Woche: die gewählte Woche, wenn sie im Monat liegt, sonst heute bzw. die erste
+          const m0 = this.month, m1 = new Date(m0.getFullYear(), m0.getMonth() + 1, 0), w = pd(this.woche);
+          if (!(w >= mondayOf(m0) && w <= m1)) this.woche = iso(today >= mondayOf(m0) && today <= m1 ? mondayOf(today) : mondayOf(m0));
+        }
+        this.ansicht = b.dataset.kalans; store.set("sf.kal.ansicht", this.ansicht); this.draw(); }));
+      const go = (n) => {
+        if (this.ansicht === "woche" && window.V66UI) { this.woche = n == null ? iso(mondayOf(today)) : iso(addDays(pd(this.woche), 7 * n)); this.month = new Date(pd(this.woche).getFullYear(), pd(this.woche).getMonth(), 1); this.draw(); return; }
+        this.month = n == null ? new Date(today.getFullYear(), today.getMonth(), 1) : new Date(this.month.getFullYear(), this.month.getMonth() + n, 1); this.draw(); };
       document.getElementById("cal-prev").addEventListener("click", () => go(-1));
       document.getElementById("cal-next").addEventListener("click", () => go(1));
       document.getElementById("cal-today").addEventListener("click", () => { this.sel = iso(today); go(null); });
-      document.getElementById("cal").addEventListener("click", (e) => { const c = e.target.closest(".day"); if (c) this.day(c.dataset.d); });
+      document.getElementById("cal").addEventListener("click", (e) => { const k = e.target.closest("[data-kwmo]"); if (k) { this.zurWoche(k.dataset.kwmo); return; }   // V6.6: KW → Wochenansicht
+        const c = e.target.closest(".day"); if (c) this.day(c.dataset.d); });
       // V6.4.4 (Audit D21): Tage mit role=button auch mit Enter und Leertaste; Fokus bleibt nach dem Neuzeichnen auf dem Tag
-      document.getElementById("cal").addEventListener("keydown", (e) => { const c = e.target.closest(".day[data-d]"); if (!c || (e.key !== "Enter" && e.key !== " ")) return; e.preventDefault();
+      document.getElementById("cal").addEventListener("keydown", (e) => { if (e.key !== "Enter" && e.key !== " ") return;
+        const k = e.target.closest("[data-kwmo]"); if (k) { e.preventDefault(); this.zurWoche(k.dataset.kwmo); return; }
+        const c = e.target.closest(".day[data-d]"); if (!c) return; e.preventDefault();
         this.day(c.dataset.d); });   // V6.6: Fokus geht ins Tagesblatt und beim Schliessen zurück auf den Tag (V59.modalZu)
       const ic = (k) => (window.V6 ? V6.icon(k, 14) : "");
       document.getElementById("cal-legend").innerHTML = `<span><i class="c-i ist" style="--sp:var(--sp-rad)">${window.V6 ? V6.sportIcon("rad", 12) : ""}</i>erledigt</span><span><i class="c-i plan" style="--sp:var(--sp-rad)">${window.V6 ? V6.sportIcon("rad", 12) : ""}</i>geplant (Garmin-Kalender)</span>` +
@@ -3326,6 +3351,16 @@ const TABS = {
     /** V6.0.2 (design-1.0): Wochenband «KW · Phase · Stunden · Last», je Tag Datum (heute orange), Sport-Symbole erledigt/geplant,
         Punkte der Fokus-Intensitäten, Test und Rennen; antippen zeigt die Tagesliste mit Mini-Profilen. */
     draw() {
+      document.querySelectorAll("[data-kalans]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.kalans === (window.V66UI ? this.ansicht : "monat"))));
+      if (this.ansicht === "woche" && window.V66UI && window.V5UI && V5UI.C) {          // V6.6 kalender-2.0: Wochenansicht mit Mein Plan
+        const mo = this.woche, so = addDays(pd(mo), 6), box = document.getElementById("kal-woche");
+        document.getElementById("cal-title").textContent = `KW ${isoWeek(pd(mo))} · ${pd(mo).getDate()}.${pd(mo).getMonth() + 1}.–${so.getDate()}.${so.getMonth() + 1}.${so.getFullYear()}`;
+        document.getElementById("cal-wrap").hidden = true; document.getElementById("cal-legend").hidden = true; box.hidden = false;
+        try { box.innerHTML = V66UI.wocheHTML(mo); V66UI.wocheBinden(box, mo, () => this.draw()); } catch (e) { console.error(e); box.innerHTML = `<p class="warn-t">Woche nicht darstellbar.</p>`; }
+        drawTests();
+        return;
+      }
+      document.getElementById("cal-wrap").hidden = false; document.getElementById("cal-legend").hidden = false; document.getElementById("kal-woche").hidden = true;
       const m = this.month, last = new Date(m.getFullYear(), m.getMonth() + 1, 0), W6 = window.V6, H6 = window.V6H, t0 = iso(today);
       document.getElementById("cal-title").textContent = m.toLocaleDateString("de-CH", { month: "long", year: "numeric" });
       let phasen = new Map();
@@ -3354,12 +3389,15 @@ const TABS = {
             <span class="c-z">${fokus.slice(0, 3).map((k) => `<i class="zpunkt" style="--zc:${W6.ZONEN[k].farbe}"></i>`).join("")}${test ? `<i class="c-test" title="Test"></i>` : ""}</span></div>`;
         }
         const ph = phasen.get(iso(w)), phv = ph && PH[ph] ? PH[ph] : null;
-        html += `<div class="wk-band"><b>KW ${isoWeek(w)}</b>${phv ? `<span class="wk-ph"><i style="background:var(${phv[1]})"></i>${esc(phv[0])}</span>` : ""}<span class="wk-sum">${h ? hmm(h * 3600) + " h" : "–"}${tss ? ` · ${fmt(tss)} TL` : ""}</span></div>` + tage;
+        const kwKnopf = window.V66UI ? ` data-kwmo="${iso(w)}" role="button" tabindex="0" aria-label="KW ${isoWeek(w)}: Wochenansicht öffnen"` : "";   // V6.6 kalender-2.0
+        html += `<div class="wk-band"${kwKnopf}><b>KW ${isoWeek(w)}</b>${phv ? `<span class="wk-ph"><i style="background:var(${phv[1]})"></i>${esc(phv[0])}</span>` : ""}<span class="wk-sum">${h ? hmm(h * 3600) + " h" : "–"}${tss ? ` · ${fmt(tss)} TL` : ""}</span>${kwKnopf ? W6.icon("weiter", 14) : ""}</div>` + tage;
       }
       document.getElementById("cal").innerHTML = html;
       document.getElementById("cal").classList.toggle("v6", !!W6);
       drawTests();
     },
+    /** V6.6 kalender-2.0: Wochenansicht einer Woche (Montag ISO) – aus dem Monat (KW antippen) und aus dem Wochenblatt im Plan. */
+    zurWoche(mo) { this.ansicht = "woche"; store.set("sf.kal.ansicht", "woche"); this.woche = mo; this.month = new Date(pd(mo).getFullYear(), pd(mo).getMonth(), 1); this.draw(); },
     /** V6.6 (Teil 0, kalender-2.0): Tag antippen markiert ihn und öffnet das Tagesblatt (vorher erschien die Liste unter dem Monat,
         auf dem iPhone ausserhalb des Bildschirms). */
     day(ds) {
@@ -3387,7 +3425,9 @@ const TABS = {
         return `<div>${esc(e.text)}${e.title && e.title !== e.text ? " – " + esc(e.title) : ""}${route(e)}</div>`;
       };
       const titel = pd(ds).toLocaleDateString("de-CH", { weekday: "long", day: "numeric", month: "long" });
-      const html = `<h2 id="v59-ov-h" tabindex="-1">${esc(titel)}</h2>
+      let mein = ""; try { mein = window.V66UI ? V66UI.tagSektion(ds) : ""; } catch (e) { console.error(e); }   // V6.6 eigenplan-1.0
+      const html = `<h2 id="v59-ov-h" tabindex="-1">${esc(titel)}</h2>${mein}
+        ${mein ? `<h3 class="abschnitt">Garmin-Kalender, Absolviertes, Tests</h3>` : ""}
         <div class="cal-day tb-liste">${ev.length ? ev.map(zeile).join("") : `<div class="hint">Kein Eintrag.</div>`}${window.TRUI ? window.TRUI.kalender(ds) : ""}</div>
         <div class="blatt-fuss"><button type="button" class="btn-zurueck" data-x aria-label="Zurück">${W6 ? W6.icon("zurueck", 22) : "←"}</button></div>`;
       const ov = V59.blatt("tag", html);
@@ -3396,6 +3436,7 @@ const TABS = {
         H6.einheit(b.dataset.ek, { nachher: (o2) => o2.querySelectorAll("[data-x]").forEach((x) => (x.onclick = () => this.blatt(ds))) });
       }));
       ov.querySelectorAll("[data-str]").forEach((b) => b.addEventListener("click", () => V59.schliessen()));
+      if (mein && window.V66UI) V66UI.binden(ov, ds, () => this.blatt(ds));
     },
   },
 

@@ -234,7 +234,7 @@ test("Wissen: Schweizer Schreibweise (ss), keine Platzhalter, keine persönliche
 });
 
 test("Wissen: Regel-Liste verweist auf vorhandene Versionen und Kapitel", () => {
-  const M = { AN, FK, V62, V64, V59L: L };
+  const M = { AN, FK, V62, V64, V59L: L, V66: require("../js/v66.js") };
   for (const [mod, key, text, kap] of WS.REGELN) {
     assert.ok(M[mod] && M[mod].VERSIONS && M[mod].VERSIONS[key], `${mod}.${key}`);
     assert.ok(text && WS.kapitel(kap), `${mod}.${key}: Kapitel ${kap}`);
@@ -244,7 +244,7 @@ test("Wissen: Regel-Liste verweist auf vorhandene Versionen und Kapitel", () => 
 
 test("Wissen 1.2/1.3: Kapitel «aufbau» und «vergleich» mit Quellen und Regeln", () => {
   const WS = require("../js/wissen.js");
-  assert.equal(WS.VERSION, "wissen-1.5");
+  assert.equal(WS.VERSION, "wissen-1.6");
   const k = WS.kapitel("aufbau");
   assert.ok(k, "Kapitel aufbau fehlt");
   const v = WS.verweise(k.text.join(" ") + " " + k.kurz);
@@ -491,12 +491,12 @@ test("Ziele (B23): Laufen Z1 «langsamer als», Rad «unter»; Titel-Regel als i
 test("Wissen 1.4 (Audit V6.4): Versionsangaben in den Texten entsprechen dem Code", () => {
   const TR = require("../js/training-route.js");
   const aktuell = new Map();
-  for (const V of [FK.VERSIONS, AN.VERSIONS, V64.VERSIONS, V62.VERSIONS, L.VERSIONS, V6.VERSIONS, TR.VERSIONS])
+  for (const V of [FK.VERSIONS, AN.VERSIONS, V64.VERSIONS, V62.VERSIONS, L.VERSIONS, V6.VERSIONS, TR.VERSIONS, require("../js/v66.js").VERSIONS])
     for (const v of Object.values(V || {})) { const m = /^(.*)-(\d+\.\d+)$/.exec(v); if (m) aktuell.set(m[1], v); }
   const text = WS.KAPITEL.map((k) => k.text.join(" ") + " " + k.kurz).join(" ");
   const alt = [...text.matchAll(/\b([a-z]+(?:-[a-z]+)*)-(\d+\.\d+)\b/g)].map((m) => m[0]).filter((v) => { const p = v.replace(/-\d+\.\d+$/, ""); return aktuell.has(p) && aktuell.get(p) !== v; });
   assert.deepEqual(alt, [], "veraltete Versionen im Wissenstext");
-  assert.ok(/readiness-2\.1/.test(text) && /saison-1\.2/.test(text) && /aufbau-1\.1/.test(text) && /vergleich-1\.2/.test(text) && /intensitaet-1\.1/.test(text));
+  assert.ok(/readiness-2\.1/.test(text) && /saison-1\.2/.test(text) && /aufbau-1\.1/.test(text) && /vergleich-1\.3/.test(text) && /intensitaet-1\.1/.test(text));
   // Audit B: Titel Rosenblat 2019, sechsstufige Skala, keine «trainierbare» Ermüdungsresistenz, Muñoz 2014b nicht als Überlegenheit
   assert.match(WS.QUELLEN.rosenblat2019.t, /intensity distribution on endurance sport performance/);
   assert.ok(!/Fünf-Zonen-Skala|trainierbare Eigenschaft|Hälfte der Wiederholungen|Stark für die VO2max/.test(text + JSON.stringify(WS.QUELLEN)));
@@ -535,7 +535,7 @@ test("Vergleich 1.2 (V6.5 planwahl-1.0): Wahl je Tag – Abweichung je Sportart 
   const ist = [{ date: "2026-11-17", sport: "lauf", dauer_s: vMin * 60 }, { date: "2026-11-18", sport: "lauf", dauer_s: 1800 }, { date: "2026-11-19", sport: "rad", dauer_s: 3600 }];
   const wahl = { "2026-11-16": "frei", "2026-11-17": "vorschlag", "2026-11-18": "enduco", "2026-11-20": "enduco", "2026-11-21": "quatsch" };
   const r = V64.vergleich({ w, enduco, ist, heute: "2026-11-20", wahl });
-  assert.equal(r.v, "vergleich-1.2");
+  assert.equal(r.v, "vergleich-1.3");
   const g = r.gewaehlt;
   assert.deepEqual(g.n, { enduco: 2, vorschlag: 1, frei: 1 }, "unbekannte Wahl zählt nicht");
   const t = Object.fromEntries(g.tage.map((x) => [x.date, x]));

@@ -51,6 +51,7 @@
     // saison-1.2: die laufende Phase ganz (ab ihrem Beginn), damit «Woche x von y» stimmt; Grundlage hat keinen festen Beginn
     const L = S.alle && S.ab ? S.alle.filter((w) => w.woche >= S.ab) : S.wochen;
     const seg = W.phasenSegmente(L, h), R = rennen(), ist = AN().wochenIst(C.D.activities, L[0].woche, FK().addDays(L[L.length - 1].woche, 6));
+    const ART = window.V66 ? window.V66.wochenart(S.alle || S.wochen) : new Map();   // V6.6 wochenblatt-1.0: Belastung 1–3, Erholung, Taper, Rennwoche
     const plan = new Map();
     // V6.4.4 (D4/D14): wie der Vorschlag nur Schwimmen, Rad und Laufen; Dauer aus den Workout-Schritten wie überall (V6H.planDauer)
     for (const p of C.D.planned || []) { if (!p.date || !["schwimm", "rad", "lauf"].includes(p.sport)) continue; const mo = W.montag(p.date); plan.set(mo, (plan.get(mo) || 0) + ((window.V6H ? window.V6H.planDauer(p) : p.dur_s) || 0) / 3600); }
@@ -62,8 +63,9 @@
       const wiText = wa && isNum(wa.phaseNr) && (wa.basis || wa.phase) === s.phase ? ` · Woche ${wa.phaseNr} von ${wa.phaseN}` : "";
       const wochen = s.wochen.map((w) => {
         const r = ist.get(w.woche), istH = r ? r.rad + r.lauf + r.schwimm : null, jetzt = h >= w.woche && h <= FK().addDays(w.woche, 6);
-        return `<li class="${jetzt ? "jetzt" : ""}"><span>KW ${W.isoWoche(w.woche)} · ${esc(dkurz(w.woche))}–${esc(dkurz(FK().addDays(w.woche, 6)))}</span>
-          <span class="pl-w-tags">${w.erholung ? `<em class="pl-tag erh">Erholung</em>` : ""}${(w.rennen || []).map((x) => `<em class="pl-tag rennen">${esc(x)}</em>`).join("")}</span>
+        const art = ART.get(w.woche);
+        return `<li class="${jetzt ? "jetzt" : ""}${window.V66UI ? " pl-w-klick" : ""}" ${window.V66UI ? `data-kwblatt="${esc(w.woche)}" role="button" tabindex="0" aria-label="KW ${W.isoWoche(w.woche)}: Wochenblatt öffnen"` : ""}><span>KW ${W.isoWoche(w.woche)} · ${esc(dkurz(w.woche))}–${esc(dkurz(FK().addDays(w.woche, 6)))}</span>
+          <span class="pl-w-tags">${art ? `<em class="pl-tag${art.art === "erholung" ? " erh" : ""}">${esc(art.text)}</em>` : w.erholung ? `<em class="pl-tag erh">Erholung</em>` : ""}${(w.rennen || []).map((x) => `<em class="pl-tag rennen">${esc(x)}</em>`).join("")}</span>
           <span class="pl-w-h">${w.woche <= h ? `${hh(istH)} absolviert` : ""}${plan.get(w.woche) ? `${w.woche <= h ? " · " : ""}${hh(plan.get(w.woche))} geplant` : ""}</span></li>`;
       }).join("");
       items.push(`<li class="pl-ph${s.aktiv ? " aktiv" : ""}${s.bis < h ? " vorbei" : ""}" style="--ph:var(${farbe})">
@@ -76,6 +78,9 @@
     });
     box.innerHTML = `<ol class="pl-zeit">${items.join("")}</ol>
       <p class="hint">Phasen rückwärts ab ${esc(S.haupt.name)} (${esc(S.regel)}): ${esc(S.annahmen)}. Vorschlag zur Orientierung – massgebend bleibt der Plan in Enduco. Stunden wie der Vorschlag nur Schwimmen, Rad und Laufen: «absolviert» = Bewegungszeit, «geplant» = Garmin-Kalender (Dauer aus den Workout-Schritten, sonst laut Kalender).</p>`;
+    // V6.6 wochenblatt-1.0: jede KW antippen → Wochenblatt (Wochenart, Stunden, TL ≈, Schlüsseleinheiten)
+    box.querySelectorAll("[data-kwblatt]").forEach((li) => { li.onclick = () => window.V66UI.wochenblatt(li.dataset.kwblatt);
+      li.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); window.V66UI.wochenblatt(li.dataset.kwblatt); } }; });
     box.querySelectorAll(".pl-ph-k").forEach((b) => (b.onclick = () => {
       const ul = b.parentElement.querySelector(".pl-wochen"), auf = ul.hidden;
       ul.hidden = !auf; b.setAttribute("aria-expanded", String(auf)); b.parentElement.classList.toggle("offen", auf);

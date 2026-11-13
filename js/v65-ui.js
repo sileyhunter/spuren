@@ -33,6 +33,20 @@
   const stufeTag = (st) => `<span class="vg-st ${st === "alles" ? "alles" : st}">${STUFE_WORT[st] || "offen"}</span>`;
   const dauer = (e) => (isNum(e.dauer_s) && e.dauer_s > 0 ? V6().dauerText(e.dauer_s) : isNum(e.distanz_m) ? V6().distanzText(e.distanz_m) : "Dauer offen");
 
+  /** V6.6: ein Workout der Bibliothek als Einheit-Blatt öffnen (aus «Mein Plan», eigenplan-1.0). */
+  M.einheitWid = function (wid) {
+    C = UI() && UI().C; if (!C || !V65() || !H() || !C.D.enduco_bib) return;
+    const e = V65().eintraege(C.D.enduco_bib, C.D.activities || []).find((x) => +x.wid === +wid); if (!e) return;
+    H().einheitP(pVon(e), { datumText: "aus deiner Enduco-Bibliothek" });
+  };
+  /** V6.6 (vergleich-1.3): Stufe eines Bibliotheks-Workouts für Mein Plan (aus den Schritten, sonst laut Titel); null, wenn unbekannt. */
+  let EW = null, EW_B = null;
+  M.stufeWid = function (wid) {
+    C = UI() && UI().C; if (!C || !V65() || !C.D.enduco_bib) return null;
+    if (EW_B !== C.D.enduco_bib) { EW_B = C.D.enduco_bib; EW = V65().eintraege(C.D.enduco_bib, C.D.activities || []); }
+    const e = EW.find((x) => +x.wid === +wid);
+    return e ? stufeVon(e) : null;
+  };
   M.zeichnen = function () {
     C = UI() && UI().C; if (!C || !V65() || !V6()) return;
     const B = C.D.enduco_bib, box = $("bib-inhalt"); if (!box) return;

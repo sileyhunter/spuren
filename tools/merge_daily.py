@@ -297,6 +297,15 @@ def v5_merge(D, N):
         a, b = _upsert(D, "plan_wahl", [w], what="Wahl des Plans")
         if a or b:
             msg.append(f"Wahl {w['date']}: {w['wahl']}")
+    for w in N.get("planwoche_add") or []:              # V6.6 eigenplan-1.0: Mein Plan einer Woche (ganze Woche; gleiche ID ersetzt mit Audit)
+        vorher = next((x for x in D.get("plan_woche") or [] if isinstance(w, dict) and x.get("id") == w.get("id")), None)
+        fehler = planwoche_pruefen(w, vorher)
+        if fehler:
+            msg.append(f"Mein Plan nicht übernommen: {fehler}")
+            continue
+        a, b = _upsert(D, "plan_woche", [w], what="Mein Plan")
+        if a or b:
+            msg.append(f"Mein Plan Woche {w['montag']}")
     if msg:
         print("V5:", "; ".join(msg))
 
@@ -318,6 +327,73 @@ def planwahl_pruefen(w):
         return "ID passt nicht zum Datum"
     if w.get("wahl") not in PLANWAHL:
         return f"unbekannte Wahl {w.get('wahl')!r}"
+    return None
+
+
+PLANWOCHE_QUELLEN = ("vorschlag", "eigen", "bibliothek")
+
+
+def planwoche_pruefen(w, vorher=None):
+    """V6.6 eigenplan-1.0: Eintrag «planwoche» (Mein Plan einer Woche) → Fehlertext oder None. ID «wo-<Montag>», Tage nur in dieser Woche,
+    Einheiten mit eindeutiger Kennung, bekannter Quelle und Dauer 5–600 min. Unveränderlich gegenüber dem bisherigen Stand: Tage vor dem Tag
+    der Änderung (`geaendert`) und Tage, die gesperrt waren und gesperrt bleiben."""
+    if not isinstance(w, dict):
+        return "kein Eintrag"
+    try:
+        mo = dt.date.fromisoformat(str(w.get("montag")))
+    except ValueError:
+        return "kein Montag"
+    if mo.weekday() != 0:
+        return "die Woche beginnt nicht an einem Montag"
+    if w.get("id") != "wo-" + mo.isoformat():
+        return "ID passt nicht zur Woche"
+    tage = w.get("tage")
+    if not isinstance(tage, dict):
+        return "ohne Tage"
+    try:
+        ge = dt.date.fromisoformat(str(w.get("geaendert") or "")[:10])
+    except ValueError:
+        return "ohne Zeitpunkt der Änderung"
+    for d, t in tage.items():
+        try:
+            dd = dt.date.fromisoformat(str(d))
+        except ValueError:
+            return f"kein Datum {d!r}"
+        if not mo <= dd <= mo + dt.timedelta(days=6):
+            return f"{d} liegt nicht in dieser Woche"
+        if not isinstance(t, dict) or not isinstance(t.get("gesperrt", False), bool):
+            return f"{d}: ungültig"
+        E = t.get("einheiten")
+        if E is None:
+            continue
+        if not isinstance(E, list) or len(E) > 12:
+            return f"{d}: Einheiten ungültig"
+        uids = set()
+        for e in E:
+            if not isinstance(e, dict) or not isinstance(e.get("uid"), str) or not e["uid"] or e["uid"] in uids:
+                return f"{d}: Einheit ohne eindeutige Kennung"
+            uids.add(e["uid"])
+            if e.get("quelle") not in PLANWOCHE_QUELLEN:
+                return f"{d}: unbekannte Quelle"
+            if isinstance(e.get("dauer"), bool) or not isinstance(e.get("dauer"), (int, float)) or not 5 <= e["dauer"] <= 600:
+                return f"{d}: Dauer ausserhalb 5–600 min"
+            if e["quelle"] == "bibliothek":
+                if isinstance(e.get("wid"), bool) or not isinstance(e.get("wid"), int) or e.get("sport") not in ("rad", "lauf", "schwimm"):
+                    return f"{d}: Bibliothek ohne Workout oder Sportart"
+            elif not re.fullmatch(r"[a-z0-9_]{1,40}", str(e.get("vorlage") or "")):
+                return f"{d}: unbekannte Vorlage"
+    alt = (vorher or {}).get("tage") or {}
+    for d in set(tage) | set(alt):
+        try:
+            dd = dt.date.fromisoformat(str(d))
+        except ValueError:
+            continue
+        neu, vor = tage.get(d) or {}, alt.get(d) or {}
+        gleich = neu.get("einheiten") == vor.get("einheiten") and bool(neu.get("gesperrt")) == bool(vor.get("gesperrt"))
+        if dd < ge and not gleich:
+            return f"{d} lag beim Ändern schon zurück"
+        if vor.get("gesperrt") and neu.get("gesperrt") and neu.get("einheiten") != vor.get("einheiten"):
+            return f"{d} ist gesperrt"
     return None
 
 

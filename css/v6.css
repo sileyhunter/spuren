@@ -350,6 +350,10 @@ nav.unter button { flex: none; padding: 7px 14px; overflow: visible; }
 .cal.v6 .wk-band b { color: var(--fg); font-weight: 600; }
 .cal.v6 .wk-ph { display: inline-flex; align-items: center; gap: 5px; } .cal.v6 .wk-ph i { width: 14px; height: 5px; border-radius: 2px; }
 .cal.v6 .wk-sum { margin-left: auto; font-variant-numeric: tabular-nums; }
+/* V6.6 kalender-2.0: KW im Monat öffnet die Wochenansicht */
+.cal.v6 .wk-band[data-kwmo] { cursor: pointer; border-radius: 6px; }
+.cal.v6 .wk-band[data-kwmo] > svg { flex: none; color: var(--muted); }
+.cal.v6 .wk-band[data-kwmo]:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .cal.v6 .day { position: relative; border-radius: 12px; cursor: pointer; }
 .cal.v6 .day:hover { background: var(--surface-2); }
 .cal.v6 .day .dn { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font: 600 14px/1 var(--f-body); color: var(--fg); }
@@ -620,3 +624,46 @@ section.view:has(> nav.unter) * { scroll-margin-top: 66px; }
 .mo-wahl button { border: 1px solid var(--line-2); background: transparent; color: var(--muted); border-radius: 999px; padding: 4px 9px; font: 600 12px var(--f-body); min-height: 32px; cursor: pointer; }
 .mo-wahl button[aria-pressed="true"] { background: var(--fg); border-color: var(--fg); color: var(--bg); }
 .mo-wahl button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- V6.6 Etappe 6: Mein Plan, Training hinzufügen, Kalender-Wochenansicht (kalender-2.0) ---------- */
+.mp-kopf { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mp-wo { margin: -2px 0 4px; }
+.mp-tag { display: inline-flex; align-items: center; gap: 4px; font: 600 11px var(--f-body); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); background: var(--surface-2); border-radius: 999px; padding: 3px 8px; }
+.mp-liste { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 8px; }
+.mp-e.eigen { box-shadow: inset 3px 0 0 var(--accent); }
+.mp-leer { color: var(--muted); margin: 4px 0; display: flex; align-items: center; gap: 6px; }
+.mp-akt { gap: 8px; margin: 6px 0; }
+.mp-wahl { list-style: none; margin: 4px 0 10px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.mp-zeile { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 14px; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.mp-zeile > b { flex: 1; font-weight: 600; }
+.mp-zeile[disabled] { color: var(--muted); cursor: default; }
+.mp-zeile:focus-visible, .kw-tk:focus-visible { outline: 2px solid var(--accent-text, var(--accent)); outline-offset: 2px; }
+.mp-vt { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mp-vt small { color: var(--muted); font-size: 12.5px; }
+.mp-vp { width: 96px; flex: none; }
+.mp-dauer { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.mp-dauer input[type="range"] { flex: 1; min-height: 44px; accent-color: var(--accent); }
+.mp-dauer > span, .mp-nach > span { color: var(--muted); font-size: 13px; }
+.mp-nach { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
+.mp-nach select { min-height: 44px; }
+.mp-schaetz, .mp-sp { color: var(--muted); font-size: 13px; margin: 2px 0 8px; }
+.mp-suche { width: 100%; min-height: 44px; margin: 6px 0; }
+.mp-frage { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+.mp-prof { margin: 6px 0; }
+.mp-kv { margin: 6px 0 2px; }
+.kw-kopf { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin: 2px 0 10px; }
+.kw-kopf small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+.kw-tage { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.kw-tag { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; align-items: start; padding: 8px 0; border-top: 1px solid var(--line); }
+.kw-tk { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 52px; width: 100%; background: none; border: 0; color: var(--fg); font: inherit; cursor: pointer; border-radius: 12px; padding: 4px 0; }
+.kw-tk b { font: 700 15px var(--f-display); }
+.kw-tk small { color: var(--muted); font-size: 12px; }
+.kw-tag.heute .kw-tk b { color: var(--race); }
+.kw-tag.gesperrt .kw-inh { box-shadow: inset 3px 0 0 var(--muted); padding-left: 8px; }
+.kw-inh { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.kw-neben { margin: 0; font-size: 12.5px; color: var(--muted); }
+.kw-neben .mo-q { margin-right: 6px; }
+.kal-ans { display: flex; margin: 2px 0 10px; } .kal-ans button { flex: 1; min-height: 40px; }
+.kw-kopf > div { flex: 1; min-width: 0; } .kw-kopf .btn { flex: none; }
+
+.pl-w-klick { cursor: pointer; } .pl-w-klick:focus-visible { outline: 2px solid var(--accent-text, var(--accent)); outline-offset: 2px; }
