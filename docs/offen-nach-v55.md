@@ -93,9 +93,10 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 
 
 ## V6.1 Etappe 1 «Daten» (13.11.2026)
-40. **Rückwirkend nachholen dauert:** Readiness, Body Battery und Stress kommen mit 10 Tagen je Nacht (bis Spätsommer 2024 rund 80 Nächte,
-    bis 2020 etwa ein halbes Jahr), Notizen mit 20 Aktivitäten je Nacht. Schneller ginge es einmalig über den vollständigen Garmin-Export
-    (Ordner `DI-Connect-Aggregator` und `DI-Connect-Metrics`); ein Leser dafür wird erst gebaut, wenn eine echte Datei vorliegt (Format nicht geraten).
+40. **Rückwirkend nachholen (V6.2.1):** Readiness und Stress kommen mit 20 Tagen je Nacht über die kleinen Abfragen (Readiness bis
+    Spätsommer 2024 rund 6 Wochen, Stress bis 2020 einige Monate), Notizen mit 20 Aktivitäten je Nacht. Body Battery und Minuten mit hohem
+    Stress gibt es nur ab jetzt (die grosse Tagesabfrage wäre für Hunderte Tage zu schwer). Der vollständige Garmin-Export liess sich am
+    13.11. nicht aus iCloud laden; ein Leser dafür wird erst gebaut, wenn eine echte Datei vorliegt (Format nicht geraten).
 41. **Garmin-Werte und Ampel:** Readiness, Body Battery und Stress werden gezeigt, aber nicht eingerechnet. Ob und wie sie in die Ampel
     kommen, entscheidet Etappe 3 (Kalibrierung an den eigenen Daten).
 42. **Notizen in anderem Format:** Gelesen werden die Abschnitte «Laktat …:» und «Verpflegung …:» im bisherigen Format. Zeilen, die nicht

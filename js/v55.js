@@ -216,7 +216,7 @@
     return `<details class="td-lage"><summary>Datenlage je Wert – seit wann, wie lückenlos</summary>
       <div class="tablewrap"><table class="t td-lage-t" data-keine-liste><tr><th class="l">Wert</th><th>seit</th><th>30 T.</th><th>365 T.</th></tr>${L.map((r) => `<tr><td class="l">${C.esc(r.label)}</td>
         <td>${r.seit ? C.dateCH(r.seit) : "–"}</td><td>${r.n30}</td><td>${r.n365}</td></tr>`).join("")}</table></div>
-      <p class="hint">Tage mit Wert in den letzten 30 bzw. 365 abgeschlossenen Tagen (bis gestern); fehlende Tage bleiben fehlend. Readiness, Body Battery und Stress holt das Nacht-Update rückwirkend nach (10 Tage je Nacht; Readiness liefert Garmin erst ab Spätsommer 2024).</p></details>`;
+      <p class="hint">Tage mit Wert in den letzten 30 bzw. 365 abgeschlossenen Tagen (bis gestern); fehlende Tage bleiben fehlend. Readiness und Stress holt das Nacht-Update rückwirkend nach (20 Tage je Nacht; Readiness liefert Garmin erst ab Spätsommer 2024); Body Battery gibt es ab jetzt.</p></details>`;
   };
   V.heute = function (C, r) {
     const box = $("today-main"); if (!box) return;

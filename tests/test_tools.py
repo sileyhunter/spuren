@@ -763,9 +763,11 @@ check("Tageswerte aus get_user_summary: Aufwachen und Schlaf immer, Stress und H
 check("Tageswerte: negative oder fehlende Garmin-Werte bleiben leer, Readiness nur mit Score",
       WL.aus_summary({"averageStressLevel": -1, "bodyBatteryAtWakeTime": None}) == {} and WL.aus_readiness({"score": 58, "level": "MODERATE"}) == {"readiness": 58, "readinessLevel": "MODERATE"}
       and WL.aus_readiness("No morning training readiness data found") == {})
+check("Nachholen mit der kleinen Abfrage: nur das Tagesmittel, «zu wenig Daten» (negativ) bleibt leer",
+      WL.aus_stress_summary({"avg_stress_level": 23, "max_stress_level": 90}) == {"stress": 23} and WL.aus_stress_summary({"avg_stress_level": -1}) == {})
 _o = WL.offen({"config": {}}, "2026-11-13")
-check("Tageswerte rückwirkend: ohne Zeiger die 10 Tage vor gestern; Readiness erst ab 1.8.2024; Ende bei 2020",
-      _o["tage"][0] == "2026-11-11" and _o["tage"][-1] == "2026-11-02" and _o["neuer_zeiger"] == "2026-11-02"
+check("Tageswerte rückwirkend: ohne Zeiger die 20 Tage vor gestern; Readiness erst ab 1.8.2024; Ende bei 2020",
+      _o["tage"][0] == "2026-11-11" and _o["tage"][-1] == "2026-10-23" and _o["neuer_zeiger"] == "2026-10-23"
       and WL.offen({"config": {"wellness_backfill": "2024-08-05"}}, "2026-11-13")["readiness"] == ["2024-08-04", "2024-08-03", "2024-08-02", "2024-08-01"]
       and WL.offen({"config": {"wellness_backfill": "2020-01-04"}}, "2026-11-13")["tage"] == ["2020-01-03", "2020-01-02", "2020-01-01"]
       and WL.offen({"config": {"wellness_backfill": "2020-01-01"}}, "2026-11-13")["fertig"] is True, str(_o))

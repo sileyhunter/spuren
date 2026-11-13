@@ -9,7 +9,9 @@ Felder (Zuordnung wie im Nacht- und Morgen-Update, CLAUDE.md):
 Werte werden nie geschätzt; fehlt einer, bleibt er leer. Es sind Garmins eigene Werte: angezeigt und gespeichert, aber (noch) nicht Teil der Ampel.
 
 Rückwirkend (wie days_backfill): python3 -I tools/wellness.py offen data.json [--heute JJJJ-MM-TT]
-→ die nächsten Tage für diese Nacht (höchstens 10, nie vor 2020-01-01; Readiness erst ab 2024-08-01, vorher liefert Garmin bei Silas keine).
+→ die nächsten Tage für diese Nacht (höchstens 20, nie vor 2020-01-01; Readiness erst ab 2024-08-01, vorher liefert Garmin bei Silas keine).
+Nachgeholt wird mit den kleinen Abfragen (V6.2.1): get_stress_summary → stress = avg_stress_level (Tagesmittel), dazu die Readiness.
+Body Battery und Minuten mit hohem Stress gibt es nur ab jetzt (get_user_summary ist für Hunderte Tage zu gross), früher bleiben sie leer.
 Danach in work/new.json "config": {"wellness_backfill": "<frühester abgefragter Tag>"}. Ist «fertig» true, nichts mehr nachholen.
 """
 import argparse
@@ -20,7 +22,7 @@ import sys
 V = "wellness-1.0"
 AB = "2020-01-01"
 READINESS_AB = "2024-08-01"          # geprüft am 13.11.2026: 15.8.2024 ohne, 15.9.2024 mit Readiness
-JE_NACHT = 10
+JE_NACHT = 20
 FELDER = ("readiness", "readinessLevel", "bodyBattery", "bbSleep", "bbHigh", "bbLow", "stress", "stressHighMin", "sleepStress")
 
 
@@ -48,6 +50,12 @@ def aus_summary(s, abgeschlossen=True):
         out.update({"stress": _wert(s.get("averageStressLevel")), "stressHighMin": round(hs / 60) if hs is not None else None,
                     "bbHigh": _wert(s.get("bodyBatteryHighestValue")), "bbLow": _wert(s.get("bodyBatteryLowestValue"))})
     return {k: int(v) if isinstance(v, float) and v.is_integer() else v for k, v in out.items() if v is not None}
+
+
+def aus_stress_summary(s):
+    """Antwort von get_stress_summary (klein, für das Nachholen) → nur das Tagesmittel; nichts daraus abgeleitet."""
+    v = _wert((s or {}).get("avg_stress_level")) if isinstance(s, dict) else None
+    return {"stress": int(v) if isinstance(v, float) and v.is_integer() else v} if v is not None else {}
 
 
 def offen(D, heute, n=JE_NACHT):

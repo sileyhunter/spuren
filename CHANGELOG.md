@@ -1,5 +1,10 @@
 # Änderungen
 
+## V6.2.1 · 13.11.2026 · Garmin-Verlauf schneller nachholen
+- Das Nacht-Update holt Readiness und Stress jetzt mit 20 Tagen je Nacht nach und nimmt dafür die kleinen Abfragen
+  (`get_stress_summary`, Readiness); Body Battery gibt es nur ab jetzt. So füllt sich der Verlauf ohne Garmin-Export.
+- Geprüft: `tests/test_tools.py` (+ Nachholen mit der kleinen Abfrage, 20 Tage je Nacht), alle bisherigen Tests.
+
 ## V6.2.0 · 13.11.2026 · Etappe 2, Teil 1: Tests planen sich selbst ein (testplan-1.0)
 - **Testplan:** CSS-Test, Rad- und Lauf-Stufentest und Laktat-Kurzcheck werden nach den am 13.11. bestätigten Abständen vorgeschlagen
   (`js/v62.js`): CSS alle 6–8 Wochen am gleichen Wochentag, Rad-Stufentest alle 8 Wochen am Samstag einer Erholungswoche (zuerst ein

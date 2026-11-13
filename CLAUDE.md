@@ -110,9 +110,10 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
      übernimmt Einträge mit Uhrzeit während einer Aktivität, die erst danach erfasst wurden, als Fueling «fg-<Aktivität>»
      (`tools/garmin_ernaehrung.py`). Schlägt ein Abruf fehl: weglassen, kein Abbruch, keine Nachricht.
    - **Zuletzt, rückwirkend (V6.1):** erst wenn alles oben abgerufen ist; aus den Antworten nur die genannten Felder übernehmen.
-     a) Tageswerte: `python3 -I tools/wellness.py offen data.json` nennt die Tage dieser Nacht (`tage`, höchstens 10) und davon die mit
-        Readiness (`readiness`); je Tag `get_user_summary` (abgeschlossener Tag) und für die Readiness-Tage `get_morning_training_readiness`
-        → zusätzliche Einträge in `days`, dann `"config": {"wellness_backfill": "<neuer_zeiger>"}`. Bei `"fertig": true` nichts nachholen.
+     a) Tageswerte: `python3 -I tools/wellness.py offen data.json` nennt die Tage dieser Nacht (`tage`, höchstens 20) und davon die mit
+        Readiness (`readiness`); je Tag `get_stress_summary` (nur `stress` = `avg_stress_level`) und für die Readiness-Tage
+        `get_morning_training_readiness` → zusätzliche Einträge in `days`, dann `"config": {"wellness_backfill": "<neuer_zeiger>"}`.
+        Kein `get_user_summary` beim Nachholen (zu gross); Body Battery gibt es nur ab jetzt. Bei `"fertig": true` nichts nachholen.
      b) Notizen: `python3 -I tools/notizen.py offen data.json` nennt höchstens 20 Garmin-IDs ohne abgerufene Notiz; je ID `get_activity`
         → `"notizen_garmin": {"<ID>": <description oder null>}`.
      Schlägt ein Abruf fehl: bei a) den Zeiger nicht verschieben, bei b) die ID weglassen (nächste Nacht erneut); kein Abbruch, keine Nachricht.
