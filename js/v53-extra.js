@@ -207,51 +207,30 @@
     $("v53-pk-note").innerHTML = `${days.length} Tage mit Protokoll (Garmin, nur vollständige Tage). Protein im Richtbereich 1,4–2,0 g/kg an ${inP} von ${days.length} Tagen. Farbe der KH-Balken: grün im Richtbereich für den Trainingsumfang des Tages, orange darunter, blau darüber. Richtwerte: Thomas et al. 2016 (IOC/ACSM-Position) für Kohlenhydrate, Jäger et al. 2017 (ISSN) für Protein – Orientierung, keine Diätvorgabe.`;
   };
 
-  /* ---------------- Schwimmen: Technikübungen (eigene Zeichnungen) ---------------- */
-  // Zeichnung 340 × 110 (alles innerhalb), Beschriftung als HTML darunter: bricht auf schmalen Bildschirmen um statt abgeschnitten zu werden
-  const swimmer = (o) => `<svg viewBox="0 0 340 110" role="img" aria-label="${o.alt}"><rect width="340" height="110" rx="10" fill="#eaf4f8"/>
-    <path d="M0 52 Q20 46 40 52 T80 52 T120 52 T160 52 T200 52 T240 52 T280 52 T320 52 T360 52" fill="none" stroke="#7fb2d6" stroke-width="2"/>
-    <g transform="translate(${o.x || 70},56) rotate(${o.roll || 0})">
-      <ellipse cx="85" cy="0" rx="78" ry="12" fill="#2f5d7c"/>
-      <circle cx="172" cy="-2" r="13" fill="#f0c9a8"/><path d="M160 -10 Q172 -22 184 -8" fill="#d9694a"/>
-      ${o.arms}
-      <path d="M8 -4 L-26 ${o.kick || -10} M8 4 L-26 ${-(o.kick || -10)}" stroke="#2f5d7c" stroke-width="9" stroke-linecap="round"/>
-    </g>${o.extra || ""}</svg>`;
-  const ARROW = (x1, y1, x2, y2) => `<path d="M${x1} ${y1} L${x2} ${y2}" stroke="#d9694a" stroke-width="3" marker-end="url(#ah)"/>`;
-  const DEFS = `<svg width="0" height="0" style="position:absolute"><defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#d9694a"/></marker></defs></svg>`;
+  /* ---------------- Schwimmen: Technikübungen (Text; Zeichnungen auf Silas' Wunsch vom 13.11.2026 entfernt) ---------------- */
   const DRILLS = [
     { id: "abschlag", t: "Abschlagschwimmen (Catch-up)", ziel: "Gleiten, langer Zug, ruhiger Rhythmus",
-      svg: swimmer({ alt: "Schwimmer in Seitenansicht, beide Arme vorne, ein Arm wartet, bis der andere anschlägt", arms: `<path d="M160 -6 L250 -10" stroke="#2f5d7c" stroke-width="8" stroke-linecap="round"/><path d="M150 2 Q120 30 60 14" stroke="#2f5d7c" stroke-width="8" fill="none" stroke-linecap="round"/>`,
-        extra: ARROW(150, 96, 235, 96) }), cap: "Hand wartet vorne, bis die andere ankommt",
       schritte: ["Ein Arm bleibt gestreckt vorne.", "Der andere zieht durch und kommt über Wasser nach vorne.", "Erst wenn die Hände sich «abklatschen», startet der nächste Zug."],
       fehler: ["Vorderer Arm sinkt ab oder kreuzt die Mittellinie", "Kopf hoch: Beine sinken"] },
     { id: "seitlage", t: "Seitlage 6-1-6", ziel: "Wasserlage und Rotation über die Längsachse",
-      svg: swimmer({ alt: "Schwimmer in Seitenlage, unterer Arm vorne gestreckt, oberer Arm am Körper", roll: 0, arms: `<path d="M160 4 L252 6" stroke="#2f5d7c" stroke-width="8" stroke-linecap="round"/><path d="M150 -8 L70 -10" stroke="#3d7fb3" stroke-width="8" stroke-linecap="round"/>`,
-        extra: `<path d="M110 20 a14 14 0 1 0 28 0" fill="none" stroke="#d9694a" stroke-width="3" marker-end="url(#ah)"/>` }), cap: "6 Beinschläge auf der Seite, 1 Zug, Seite wechseln",
       schritte: ["Auf der Seite liegen, unterer Arm vorne, Gesicht nach unten.", "6 ruhige Beinschläge, Schulter zeigt zur Decke.", "Ein Zug, über die Hüfte auf die andere Seite rollen."],
       fehler: ["Nur der Kopf dreht, die Hüfte nicht", "Unterer Arm drückt nach unten statt zu gleiten"] },
     { id: "finger", t: "Fingerspitzen ziehen", ziel: "Hoher Ellbogen in der Überwasserphase",
-      svg: swimmer({ alt: "Schwimmer, Ellbogen hoch, Fingerspitzen streifen die Wasseroberfläche nach vorne", arms: `<path d="M150 -4 L120 -36 L180 -24" stroke="#2f5d7c" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M160 4 L245 8" stroke="#2f5d7c" stroke-width="8" stroke-linecap="round"/>`,
-        extra: ARROW(195, 30, 240, 30) }), cap: "Ellbogen führt, Finger streifen das Wasser",
       schritte: ["Nach dem Zug den Ellbogen zuerst anheben.", "Fingerspitzen locker über die Oberfläche nach vorne ziehen.", "Hand vor der Schulter eintauchen, nicht über den Kopf greifen."],
       fehler: ["Gestreckter Arm schwingt seitlich", "Hand taucht zu nah am Kopf ein"] },
     { id: "faust", t: "Faustschwimmen", ziel: "Unterarm als Paddel spüren (frühe Wasserfassung)",
-      svg: swimmer({ alt: "Schwimmer mit geschlossener Faust, Unterarm senkrecht unter Wasser", arms: `<path d="M150 4 L170 40 L200 44" stroke="#2f5d7c" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="203" cy="44" r="7" fill="#f0c9a8"/><path d="M160 -6 L245 -10" stroke="#2f5d7c" stroke-width="8" stroke-linecap="round"/>`,
-        extra: ARROW(215, 70, 175, 70) }), cap: "Unterarm früh senkrecht, mit dem ganzen Arm ziehen",
       schritte: ["Hände zur Faust schliessen, normal kraulen.", "Ellbogen bleibt hoch, Unterarm zeigt früh zum Beckenboden.", "Nach 25 m mit offener Hand: Unterschied spüren."],
       fehler: ["Ellbogen fällt zuerst (Ziehen mit gestrecktem Arm)", "Tempo erzwingen statt Wasser zu fassen"] },
     { id: "atmung", t: "Atmung 3er-Zug", ziel: "Beidseitig atmen, gerade Lage",
-      svg: swimmer({ alt: "Schwimmer dreht den Kopf zur Seite, ein Auge bleibt im Wasser", arms: `<path d="M160 4 L248 6" stroke="#2f5d7c" stroke-width="8" stroke-linecap="round"/><path d="M150 -6 Q110 -40 70 -10" stroke="#2f5d7c" stroke-width="8" fill="none" stroke-linecap="round"/>`,
-        extra: `<circle cx="242" cy="44" r="18" fill="none" stroke="#d9694a" stroke-width="2" stroke-dasharray="4 3"/>` }), cap: "Ein Auge bleibt im Wasser, unter Wasser ausatmen",
       schritte: ["Unter Wasser durch Mund und Nase gleichmässig ausatmen.", "Mit der Rotation den Kopf drehen, ein Auge bleibt im Wasser.", "Alle drei Züge abwechselnd links und rechts einatmen."],
       fehler: ["Kopf heben statt drehen", "Luft anhalten, dann hektisch atmen"] },
   ];
   V.schwimmen = function () {
     const box = $("v53-drills"); if (!box || box.dataset.init) return;
     box.dataset.init = 1;
-    box.innerHTML = DEFS + `<div class="v53-drills">${DRILLS.map((d) => `<article class="v53-drill"><h3>${d.t}</h3><p class="hint">Ziel: ${d.ziel}</p><figure>${d.svg}${d.cap ? `<figcaption>${d.cap}</figcaption>` : ""}</figure>
+    box.innerHTML = `<div class="v53-drills">${DRILLS.map((d) => `<article class="v53-drill"><h3>${d.t}</h3><p class="hint">Ziel: ${d.ziel}</p>
       <ol>${d.schritte.map((s) => `<li>${s}</li>`).join("")}</ol><p class="v53-err"><b>Typische Fehler:</b> ${d.fehler.join(" · ")}</p></article>`).join("")}</div>
-      <p class="hint">Eigene, vereinfachte Zeichnungen (Seitenansicht). Eigene Videos: im Schwimmtechnik-Coach oben öffnen – sie bleiben auf dem Gerät.</p>`;
+      <p class="hint">Eine ausführliche Übungsseite mit allen Übungen aus deinen Einheiten und Videolinks folgt.</p>`;
   };
 
   /* ---------------- Wetter-Text einer Aktivität (zum Kopieren) ---------------- */

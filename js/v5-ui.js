@@ -12,7 +12,7 @@
   const isoToday = () => C.iso(C.today);
   const dch = (s) => (s ? C.dateCH(s) : "–");
   V.esc = esc; V.num = num; V.$ = $;
-  const PROV = { messung: "Messung", fit: "FIT-abgeleitet", wetter: "Wettermodell", berechnet: "berechnet", plan: "Nutzerplan", abgeleitet: "abgeleitet", ungeprueft: "ungeprüft", manuell: "manuell", zonen: "aus deinen Zonen", garmin: "Garmin" };
+  const PROV = { messung: "Messung", fit: "FIT-abgeleitet", wetter: "Wettermodell", berechnet: "berechnet", plan: "Nutzerplan", abgeleitet: "abgeleitet", ungeprueft: "ungeprüft", manuell: "manuell", zonen: "aus deinen Zonen", garmin: "Garmin", notiz: "Garmin-Notiz" };
   V.prov = (k, title) => `<span class="prov prov-${k}" title="${esc(title || "Herkunft")}">${PROV[k] || k}</span>`;
   // Einheitliche Status-Pillen (V5.5): nie alarmistisch, «unbekannt» und «nicht beurteilbar» neutral
   const BADGE = { "vorläufig": "warn", "nicht bestimmbar": "muted", "bestätigt": "ok", "vorschau": "next", "bestimmbar": "ok", "entwurf": "next", "aktiv": "ok", "bereit": "ok", "normal": "info", "vorsichtig": "warn",

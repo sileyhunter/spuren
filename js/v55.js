@@ -195,13 +195,28 @@
   }
   /* ======================= Heute: Tagesurteil, Datenqualität, drei Kennzahlen (A12) ======================= */
   /** Datenqualität als Liste: was vorhanden ist und was fehlt – fehlende Werte werden nie als «normal» gezeigt. */
-  V.datenqualitaet = function (r) {
+  V.datenqualitaet = function (r, g) {
     const I = r.indikatoren, L = [];
     L.push(I.hrv.status === "unbekannt" ? { ok: false, t: I.hrv.grund } : { ok: true, t: `HRV vorhanden (${I.hrv.n7} von 7 Nächten)` });
     L.push(I.rhr.status === "unbekannt" ? { ok: false, t: I.rhr.grund } : { ok: true, t: "Ruhepuls vorhanden" });
     L.push(I.schlaf.status === "unbekannt" ? { ok: false, t: "letzte Schlafnacht fehlt" } : { ok: true, t: "Schlaf der letzten Nacht vorhanden" });
     L.push(I.befinden.status === "nicht angegeben" ? { ok: false, t: "subjektives Befinden fehlt" } : { ok: true, t: "Befinden eingetragen" });
+    if (g) {          // V6.1 wellness-1.0: Garmins eigene Werte – gezeigt, nicht in die Ampel eingerechnet
+      L.push(g.readiness != null ? { ok: true, t: `Garmin-Readiness ${g.readiness}${g.wort ? ` (${g.wort})` : ""}` } : { ok: false, t: "Garmin-Readiness von heute fehlt" });
+      L.push(g.bodyBattery != null ? { ok: true, t: `Body Battery beim Aufwachen ${g.bodyBattery}` } : { ok: false, t: "Body Battery beim Aufwachen fehlt" });
+      L.push(g.stressGestern != null ? { ok: true, t: `Stress gestern Ø ${g.stressGestern}` } : { ok: false, t: "Stress von gestern fehlt" });
+    }
     return L;
+  };
+  /** V6.1 datenlage-1.0: je Wert seit wann vorhanden und wie lückenlos (abgeschlossene Tage bis gestern). */
+  V.datenlage = function (C) {
+    if (!window.V61) return "";
+    const day = C.iso(C.today), bef = window.V5UI && window.V5UI.befinden ? window.V5UI.befinden().map((b) => b.date) : null;
+    const L = window.V61.datenlage(C.D.days, day, bef);
+    return `<details class="td-lage"><summary>Datenlage je Wert – seit wann, wie lückenlos</summary>
+      <div class="tablewrap"><table class="t td-lage-t" data-keine-liste><tr><th class="l">Wert</th><th>seit</th><th>30 T.</th><th>365 T.</th></tr>${L.map((r) => `<tr><td class="l">${C.esc(r.label)}</td>
+        <td>${r.seit ? C.dateCH(r.seit) : "–"}</td><td>${r.n30}</td><td>${r.n365}</td></tr>`).join("")}</table></div>
+      <p class="hint">Tage mit Wert in den letzten 30 bzw. 365 abgeschlossenen Tagen (bis gestern); fehlende Tage bleiben fehlend. Readiness, Body Battery und Stress holt das Nacht-Update rückwirkend nach (10 Tage je Nacht; Readiness liefert Garmin erst ab Spätsommer 2024).</p></details>`;
   };
   V.heute = function (C, r) {
     const box = $("today-main"); if (!box) return;
@@ -209,7 +224,7 @@
     const lastSleep = D.days.filter((d) => d.date <= day && d.sleepH > 0).at(-1);
     const nacht = (iso) => { const p = F.addDays(iso, -1); return `Nacht ${C.dateCH(p).replace(/\.\d{4}$/, ".")}–${C.dateCH(iso).replace(/\.\d{4}$/, ".")}`; };
     const head = { bereit: "Bereit", normal: "Normal", vorsichtig: "Vorsicht bei Intensität", "nicht beurteilbar": "Nicht beurteilbar" }[r.status];
-    const dq = V.datenqualitaet(r);
+    const dq = V.datenqualitaet(r, window.V61 ? window.V61.garminTag(D.days, day) : null);
     const tile = (lab, val, sub, miss) => `<div class="${miss ? "miss" : ""}"><span>${lab}</span><b>${val}</b><small>${sub}</small></div>`;
     const hrvT = I.hrv.status === "unbekannt" ? tile("HRV, Ø 7 Nächte", "fehlt", C.esc(I.hrv.grund), true)
       : tile("HRV, Ø 7 Nächte", `${I.hrv.wert7} ms`, `Referenz ${I.hrv.refLo}–${I.hrv.refHi} ms (${I.hrv.referenz}) · ${C.esc(I.hrv.status)}`);
@@ -219,8 +234,8 @@
       ? tile(`Schlaf, ${nacht(day)}`, "fehlt", lastSleep ? `zuletzt erfasst: ${nacht(lastSleep.date)}, ${C.fmt(lastSleep.sleepH, 1)} h – zählt heute nicht` : "keine Schlafdaten", true)
       : tile(`Schlaf, ${nacht(day)}`, `${C.fmt(I.schlaf.wert, 1)} h`, `${I.schlaf.score != null ? `Garmin-Schlafwert ${I.schlaf.score} von 100 · ` : ""}${C.esc(I.schlaf.status)}${I.schlaf.ref != null ? ` (Ø 28 Tage ${C.fmt(I.schlaf.ref, 1)} h)` : ""}`);
     box.innerHTML = `<div class="td-verdict rd-${r.status.replace(/ /g, "-")}"><b>${head}</b><span>${C.esc(r.empfehlung)}</span></div>
-      <p class="td-dq"><span>Datenqualität:</span> ${dq.map((x) => `<i class="${x.ok ? "ok" : "no"}">${x.ok ? "✓" : "–"} ${C.esc(x.t)}</i>`).join("")}</p>
-      <div class="td-tiles">${hrvT}${rhrT}${sT}</div>`;
+      <p class="td-dq${dq.some((x) => !x.ok) ? " keep" : ""}"><span>Datenqualität:</span> ${dq.map((x) => `<i class="${x.ok ? "ok" : "no"}">${x.ok ? "✓" : "–"} ${C.esc(x.t)}</i>`).join("")}</p>
+      <div class="td-tiles">${hrvT}${rhrT}${sT}</div>${V.datenlage(C)}`;
   };
   /* V5.8 Ringe (ringe-1.0): Erholung, Schlaf, Belastung je 0–100 % mit Wochenverlauf. Angezeigt wird der letzte Tag mit
    * Morgenwerten (die Werte von heute kommen mit dem Garmin-Update in der Nacht) – immer mit Datum, nie eine andere Nacht. */

@@ -91,3 +91,14 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 39. **CSS-Test am 19.11. (Silas):** 400 m und 200 m maximal, Zeiten auf der Seite eintragen (Schwimmen → zwei Zeiten). Der Termin wird
     bis 4 Tage daneben abgehakt. Ein Vergleich in «Meine Entwicklung» braucht einen Test im Zeitraum und einen davor (gleiches Becken).
 
+
+## V6.1 Etappe 1 «Daten» (13.11.2026)
+40. **Rückwirkend nachholen dauert:** Readiness, Body Battery und Stress kommen mit 10 Tagen je Nacht (bis Spätsommer 2024 rund 80 Nächte,
+    bis 2020 etwa ein halbes Jahr), Notizen mit 20 Aktivitäten je Nacht. Schneller ginge es einmalig über den vollständigen Garmin-Export
+    (Ordner `DI-Connect-Aggregator` und `DI-Connect-Metrics`); ein Leser dafür wird erst gebaut, wenn eine echte Datei vorliegt (Format nicht geraten).
+41. **Garmin-Werte und Ampel:** Readiness, Body Battery und Stress werden gezeigt, aber nicht eingerechnet. Ob und wie sie in die Ampel
+    kommen, entscheidet Etappe 3 (Kalibrierung an den eigenen Daten).
+42. **Notizen in anderem Format:** Gelesen werden die Abschnitte «Laktat …:» und «Verpflegung …:» im bisherigen Format. Zeilen, die nicht
+    passen, stehen als Hinweis da (`notizen_hinweise`); nichts wird erraten. Neue Formate nur mit neuer Version (notizen-1.1) und Test.
+43. **Monatsexport und Wetter:** `import_export.py` baut die Aktivitäten aus FIT neu und übernimmt nur gid und Name; `wx` holt das
+    Nacht-Update danach wieder (10 je Nacht). Die Notizen liegen deshalb getrennt je Garmin-ID (`garmin_notizen`) und gehen nicht verloren.

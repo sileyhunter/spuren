@@ -12,6 +12,8 @@ import zoneinfo
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import garmin_ernaehrung  # noqa: E402   V5.7.2: Garmin-Ernährungsprotokoll → Fueling
 import last  # noqa: E402                V5.9.1: Trainingslast mit LT2 (tl2, last-2.0)
+import notizen  # noqa: E402             V6.1: Garmin-Notizen, Laktat und Verpflegung daraus als Vorschau (notizen-1.0)
+import wellness  # noqa: E402            V6.1: Readiness, Body Battery, Stress je Tag (wellness-1.0)
 
 ZRH = zoneinfo.ZoneInfo("Europe/Zurich")
 TYPES = {  # Garmin-Typ -> (Kategorie, Bezeichnung, indoor)
@@ -117,6 +119,8 @@ def laktat_uebernehmen(D, pid):
         for f in ("t_s", "el_s", "pause_s", "pause_timer_s", "uhr", "kj_vor", "win_s", "hr30"):
             if k.get(f) is not None:
                 e[f] = k[f]
+        if z.get("pace_s") is not None:            # V6.1: Lauf-Messung aus der Garmin-Notiz mit Pace
+            e["pace_s"] = z["pace_s"]
         if p.get("fenster"):
             e["fenster"] = p["fenster"]
     _upsert(D, "lactate", [e], idf=lambda x: x.get("id"), what="Laktat")
@@ -204,7 +208,7 @@ def v5_merge(D, N):
         print("V5:", "; ".join(msg))
 
 
-GARMIN_KEYS = ("activities", "days", "weights", "planned", "planned_range", "workouts_neu", "food_logs", "wx")
+GARMIN_KEYS = ("activities", "days", "weights", "planned", "planned_range", "workouts_neu", "food_logs", "wx", "notizen_garmin")
 
 
 def main(data_path, new_path, fit_path=None):
@@ -216,7 +220,10 @@ def main(data_path, new_path, fit_path=None):
     cfg.update(N.get("config") or {})
     acts = D.setdefault("activities", [])
     added = updated = 0
+    notes_in = {}                              # V6.1: Notiz je Aktivität (description aus get_activity), auch für schon vorhandene
     for n in N.get("activities", []):
+        if "notiz" in n:
+            notes_in["g" + str(n["garmin_id"])] = n["notiz"]
         t = n.get("type") or ""
         sport, label, indoor = TYPES.get(t, ("andere", t.replace("_", " ").title() or "Aktivität", False))
         start = dt.datetime.fromisoformat(n["start_local"].replace(" ", "T")[:19])
@@ -282,9 +289,14 @@ def main(data_path, new_path, fit_path=None):
 
     days = {d["date"]: d for d in D.setdefault("days", [])}
     for d in N.get("days", []):
+        if not any(v is not None for k, v in d.items() if k != "date"):
+            continue                           # Tag ohne einen einzigen Wert: kein leerer Eintrag
         cur = days.setdefault(d["date"], {"date": d["date"]})
         cur.update({k: v for k, v in d.items() if v is not None})
     D["days"] = [days[k] for k in sorted(days)]
+    if any(k in d for d in N.get("days", []) for k in wellness.FELDER):   # V6.1: Garmins eigene Werte, nicht Teil der Ampel
+        D.setdefault("versions", {})["wellness"] = {"v": wellness.V, "text": "Readiness, Body Battery und Stress wie von Garmin geliefert (je Tag); "
+                                                    "fehlende Werte bleiben leer; angezeigt, nicht in die Ampel eingerechnet"}
 
     if N.get("weights"):
         per = {}
@@ -324,6 +336,13 @@ def main(data_path, new_path, fit_path=None):
     nf, hw = garmin_ernaehrung.fueling_ableiten(D)
     if nf or hw:
         print(f"Fueling aus Garmin: {nf} neu" + "".join(f"\n  {h['date']}: {h['text']}" for h in hw))
+    # V6.1 notizen-1.0: Notizen aus Garmin speichern (neu abgerufene und rückwirkende), dann Laktat und Verpflegung daraus als Vorschau
+    notes_in.update(N.get("notizen_garmin") or {})
+    if notes_in:
+        print(f"Garmin-Notizen: {len(notes_in)} abgerufen, {notizen.einlesen(D, notes_in)} neu oder geändert")
+    n_la, n_fu, hw_n = notizen.ableiten(D)
+    if n_la or n_fu:
+        print(f"Aus Notizen: {n_la} Laktat-Vorschau(en), {n_fu} Verpflegungs-Vorschau(en) neu")
 
     if fit_path:                               # Protokoll für die Abnahme A2 (14 Nächte ohne fehlende Datei)
         log = D.setdefault("fit_log", [])

@@ -227,12 +227,24 @@
       <p class="verdict${r.status === "vorsichtig" ? " warn" : ""}">${esc(r.empfehlung)}</p>
       ${r.gruende && r.gruende.length ? `<ul class="bk-gruende">${r.gruende.map((g) => `<li>${esc(g)}</li>`).join("")}</ul>` : ""}
       ${ring ? `<div class="kv ek-kv"><div><b>${pz(ring.erholung)}</b><span>Erholung</span></div><div><b>${pz(ring.schlaf)}</b><span>Schlaf</span></div><div><b>${pz(ring.belastung)}</b><span>Belastung</span></div></div>` : ""}
+      ${garminZeile()}
       <p class="ek-quelle">${tag ? (tag === heuteISO() ? "Morgenwerte von heute" : "Morgenwerte vom " + esc(C.dateCH(tag))) : "Keine Morgenwerte"} · Vertrauen ${esc(r.vertrauen)} · ${esc(r.v)}. Kein medizinisches Mass; fehlende Werte werden nicht durch «normal» ersetzt.</p>
       <div class="blatt-fuss"><button type="button" class="btn-zurueck" data-x aria-label="Zurück">${W.icon("zurueck", 22)}</button>
         <button type="button" class="btn primary gross" data-akt="mehr">Einzelheiten</button></div>`;
     const ov = V59().blatt("bereit", html);
     ov.querySelector('[data-akt="mehr"]').onclick = () => gehe("heute", "rd-wrap");
   };
+
+  /** V6.1 wellness-1.0: Garmins eigene Werte (Readiness, Body Battery beim Aufwachen, Stress gestern) – nur von heute bzw. gestern. */
+  function garminZeile() {
+    const g = window.V61 ? window.V61.garminTag(C.D.days, heuteISO()) : null;
+    if (!g || (g.readiness == null && g.bodyBattery == null && g.stressGestern == null)) return "";
+    const w = (v) => (v == null ? "–" : v);
+    return `<p class="abschnitt">Garmin</p>
+      <div class="kv ek-kv"><div><b>${w(g.readiness)}</b><span>Readiness${g.wort ? " · " + esc(g.wort) : ""}</span></div><div><b>${w(g.bodyBattery)}</b><span>Body Battery beim Aufwachen</span></div>
+        <div><b>${w(g.stressGestern)}</b><span>Stress gestern Ø</span></div></div>
+      <p class="ek-quelle">Garmins eigene Werte (${esc(window.V61.VERSIONS.wellness)}): gezeigt, nicht in die Ampel eingerechnet.</p>`;
+  }
 
   /* ---------- Wochenleiste Mo–So ---------- */
   function woche() {

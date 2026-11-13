@@ -52,6 +52,9 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   Zonen und Farben, Balkenprofil profil-1.0, Fokus, Trainingsstatus status-1.0, Wochenleiste, Rennen/Phasen, eigene Symbole), `js/v6-heute.js`
   (Heute: Kacheln, Heutiges Training, Einheit, Optionen, Bereitschaft als Blätter, Wochenleiste), `js/v6-plan.js` (Plan: Rennen, Phasen,
   Wochenübersicht), `tests/test_v6.cjs`
+- **V6.1 (Etappe 1 Daten):** `tools/wellness.py` (Readiness, Body Battery, Stress je Tag, wellness-1.0; `offen` = Tage zum Nachholen),
+  `tools/notizen.py` (Garmin-Notizen speichern, Laktat und Verpflegung daraus als Vorschau, notizen-1.0; `offen` = Aktivitäten ohne Notiz),
+  `js/v61.js` (ohne DOM: Garmin-Werte eines Tages, Datenlage je Wert, Notiz-Vorschauen), `tests/test_v61.cjs`
 - **V5.8:** keine neuen Dateien; Rechenlogik in `js/route.js` (Abschnitte von Hand, Skitourennetz, Hangneigung, MTB-Abfahrt, Wegende, drei
   Rennradvarianten, Windpfeile), Oberfläche in `js/routen-ui.js`, Ringe «Heute» in `js/formkurve.js` (`FK.ringeVerlauf`) und `js/v55.js` (`V55.ringe`)
 - `tests/test_formkurve.cjs`, `tests/test_route.cjs`, `tests/test_analyse.cjs`, `tests/test_training.cjs`, `tests/test_tools.py` – Abnahmetests (erfundene Werte; `tests/fixtures/` = echte
@@ -64,6 +67,10 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
    - `get_activities_by_date` von (letztes Datum − 2 Tage) bis heute, alle Seiten.
    - pro Einheit `get_activity` (Leistung, NP, Höhenmeter, Dauer) und `get_activity_hr_in_timezones` (Zeit in Zone 1–5).
    - `get_sleep_summary_range` letzte 7 Nächte; `get_stats_range` letzte 7 Tage; `get_nutrition_summary_between_dates` letzte 7 Tage; `get_weigh_ins` letzte 14 Tage; `get_scheduled_workouts` heute bis +14 Tage.
+   - **Tageswerte (V6.1, wellness-1.0):** `get_morning_training_readiness(heute)`, `get_user_summary(gestern)` (abgeschlossener Tag) und
+     `get_user_summary(heute)` (nur `bodyBattery`, `bbSleep`) → `days` (Zuordnung unten). «No … data found» oder Fehler: weglassen.
+   - **Notizen (V6.1, notizen-1.0):** für jede Aktivität, die du mit `get_activity` abrufst, `description` unverändert als `notiz` (fehlt sie:
+     `null`). Die Notiz nie ändern, kürzen oder zusammenfassen; `merge_daily.py` macht daraus Vorschauen für Laktat und Verpflegung.
    - **Workout-Schritte (V5.7, für «Passende Route finden»):** für jede Einheit aus `get_scheduled_workouts` mit `workout_id`:
      `get_workout_by_id(workout_id)` (vereinfachte Form, nicht `raw`) und im `planned`-Eintrag ergänzen: `wid` = workout_id,
      `quelle` = `<provider> über Garmin` (z. B. «Enduco über Garmin»), `desc` = erster Satz der Beschreibung (höchstens 200 Zeichen),
@@ -74,7 +81,7 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
    - **Tageswerte rückwirkend nachholen** (bis sie ab 2020 vorhanden sind): Startpunkt ist `config.days_backfill` in `data.json`,
      fehlt der Wert, das früheste Datum in `days`. Liegt er nach 2020-01-01, mit `get_sleep_summary_range` die 180 Nächte davor holen
      (zwei Abfragen à 90 Nächte, nie vor 2020-01-01) und als zusätzliche Einträge in `days` aufnehmen, nur `hrv`, `rhr`, `sleepH`,
-     `sleepScore` (Nächte ohne Werte weglassen). Dann in `work/new.json` `"config": {"days_backfill": "<frühestes abgefragtes Datum>"}` setzen.
+     `sleepScore`, `sleepStress` (Nächte ohne Werte weglassen). Dann in `work/new.json` `"config": {"days_backfill": "<frühestes abgefragtes Datum>"}` setzen.
      Liefern beide Abfragen keine einzige Nacht, `"days_backfill": "2020-01-01"` setzen (fertig). Schlägt das Nachholen fehl,
      einfach weglassen: kein Abbruch, keine Nachricht, nächste Nacht erneut.
    - **FIT-Sekundenwerte je neue Aktivität (A2)**, also für jede Aktivität aus `get_activities_by_date`, die noch nicht in `data.json`
@@ -101,6 +108,13 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
      `logTimestamp`. Nichts umrechnen oder ergänzen. `merge_daily.py` prüft jeden Tag gegen die Tageswerte (sonst nicht verwendet) und
      übernimmt Einträge mit Uhrzeit während einer Aktivität, die erst danach erfasst wurden, als Fueling «fg-<Aktivität>»
      (`tools/garmin_ernaehrung.py`). Schlägt ein Abruf fehl: weglassen, kein Abbruch, keine Nachricht.
+   - **Zuletzt, rückwirkend (V6.1):** erst wenn alles oben abgerufen ist; aus den Antworten nur die genannten Felder übernehmen.
+     a) Tageswerte: `python3 -I tools/wellness.py offen data.json` nennt die Tage dieser Nacht (`tage`, höchstens 10) und davon die mit
+        Readiness (`readiness`); je Tag `get_user_summary` (abgeschlossener Tag) und für die Readiness-Tage `get_morning_training_readiness`
+        → zusätzliche Einträge in `days`, dann `"config": {"wellness_backfill": "<neuer_zeiger>"}`. Bei `"fertig": true` nichts nachholen.
+     b) Notizen: `python3 -I tools/notizen.py offen data.json` nennt höchstens 20 Garmin-IDs ohne abgerufene Notiz; je ID `get_activity`
+        → `"notizen_garmin": {"<ID>": <description oder null>}`.
+     Schlägt ein Abruf fehl: bei a) den Zeiger nicht verschieben, bei b) die ID weglassen (nächste Nacht erneut); kein Abbruch, keine Nachricht.
 3. `work/new.json` schreiben (Format unten, mit `"lauf": "nacht"`), dann `python3 -I tools/merge_daily.py data.json work/new.json work/fit.jsonl`.
    **Eingaben vom Handy (V5.9.3, eingang-1.0, Abschnitt «Eingang»):** `SPUREN_PW=… node tools/eingang.mjs einlesen` (liest `eingang/*.bin`,
    schreibt `work/eingang_a.json`, `work/eingang_b.json`, `work/eingang_dateien.json`).
@@ -128,9 +142,11 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
 {
   "activities": [{"garmin_id": 0, "name": "", "type": "road_biking", "start_local": "2026-10-30T18:30:00",
                   "duration_s": 0, "distance_m": 0, "elev_gain_m": 0, "avg_hr": 0, "max_hr": 0,
-                  "avg_power": null, "np": null, "hr_zones_s": [z1, z2, z3, z4, z5]}],
-  "days": [{"date": "2026-10-30", "hrv": 0, "rhr": 0, "sleepH": 0, "sleepScore": 0, "kcalOut": 0,
-            "kcalIn": 0, "protein": 0, "carbs": 0, "fat": 0}],
+                  "avg_power": null, "np": null, "hr_zones_s": [z1, z2, z3, z4, z5], "notiz": null}],
+  "notizen_garmin": {"25000000000": "Text der Notiz wie in Garmin", "25000000001": null},
+  "days": [{"date": "2026-10-30", "hrv": 0, "rhr": 0, "sleepH": 0, "sleepScore": 0, "sleepStress": 0, "kcalOut": 0,
+            "kcalIn": 0, "protein": 0, "carbs": 0, "fat": 0, "readiness": 0, "readinessLevel": "MODERATE", "bodyBattery": 0,
+            "bbSleep": 0, "bbHigh": 0, "bbLow": 0, "stress": 0, "stressHighMin": 0}],
   "weights": [{"date": "2026-10-30", "kg": 0, "ts_gmt": 0}],
   "planned": [{"date": "2026-11-02", "title": "", "sport": "rad", "dur_s": 3600, "wid": 0, "quelle": "Enduco über Garmin", "desc": "",
                "steps": [{"type": "warmup", "end_condition": "time", "end_condition_value": 600, "target_type": "power.zone",
@@ -140,7 +156,7 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   "food_logs": [{"date": "2026-11-08", "dailyCalories": 0, "dailyCarbs": 0, "hydration": {"valueInML": 0, "activityIntakeInML": 0, "sweatLossInML": 0, "lastEntryTimestampLocal": ""},
                  "items": [{"logId": "", "foodName": "", "brandName": null, "servingQty": 1.0, "numberOfUnits": 1.0, "servingUnit": "SERVING",
                             "calories": 0, "carbs": 0, "sodium": null, "mealName": "SNACKS", "mealTime": "10:45:00", "logTimestamp": "2026-11-08T12:52:14.000Z"}]}],
-  "config": {"days_backfill": "2026-04-04"}
+  "config": {"days_backfill": "2026-04-04", "wellness_backfill": "2026-10-20"}
 }
 ```
 `config` ist optional und wird in `data.json` übernommen (nur die angegebenen Schlüssel). `"lauf": "nacht"` bzw. `"morgen"` (V5.9.2) setzt
@@ -148,7 +164,11 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
 Zuordnung: `type` = Garmin-Typ aus `get_activity`; `start_local` = `start_time_local`; `duration_s` = `duration_seconds`;
 `elev_gain_m` = `elevation_gain_meters`; `avg_hr` = `avg_hr_bpm`; `avg_power` = `avg_power_watts`; `np` = `normalized_power_watts`;
 Tage: `hrv` = `avg_overnight_hrv`, `rhr` = `resting_heart_rate_bpm`, `sleepH` = `sleep_hours`, `sleepScore` = `sleep_score`,
-`kcalOut` = `total_calories` (nur abgeschlossene Tage), Ernährung nur für abgeschlossene Tage mit `item_count` ≥ 4.
+`sleepStress` = `avg_sleep_stress`, `kcalOut` = `total_calories` (nur abgeschlossene Tage), Ernährung nur für abgeschlossene Tage mit
+`item_count` ≥ 4. V6.1 (wellness-1.0, `tools/wellness.py`): `readiness` = `score`, `readinessLevel` = `level` aus `get_morning_training_readiness`;
+aus `get_user_summary`: `bodyBattery` = `bodyBatteryAtWakeTime`, `bbSleep` = `bodyBatteryDuringSleep`, und nur für abgeschlossene Tage
+`stress` = `averageStressLevel`, `stressHighMin` = `highStressDuration` ÷ 60 (gerundet), `bbHigh` = `bodyBatteryHighestValue`,
+`bbLow` = `bodyBatteryLowestValue`; negative Garmin-Werte = fehlend (`null`). Notiz: `notiz` bzw. `notizen_garmin` = `description` aus `get_activity`.
 Gewicht: `weight_kg`, `ts_gmt` = `timestamp_gmt` (alle Messungen; das Skript nimmt pro Tag die Morgenmessung).
 Leere Werte als `null`. Unbekannte Felder weglassen. Werte nie schätzen.
 
@@ -158,8 +178,10 @@ Morgen nach Garmin). Keine Aktivitäten, keine FIT-Dateien, keine Sekundenreihen
 geschrieben, Enduco-Workouts werden nie geändert. Jeder Abruf, der fehlschlägt, wird weggelassen: kein Abbruch, keine Nachricht.
 1. `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json data.json`
 2. Über die Garmin-Verbindung, Zuordnung der Felder wie im Nacht-Update:
-   - `get_sleep_summary_range` von gestern bis heute → `days` mit nur `hrv`, `rhr`, `sleepH`, `sleepScore` (Nächte ohne Werte weglassen).
+   - `get_sleep_summary_range` von gestern bis heute → `days` mit nur `hrv`, `rhr`, `sleepH`, `sleepScore`, `sleepStress` (Nächte ohne Werte weglassen).
    - `get_stats_range` für heute → `rhr` von heute, falls es im Schlaf fehlt. Kein `kcalOut` und keine Ernährung: der Tag läuft noch.
+   - V6.1: `get_morning_training_readiness(heute)` → `readiness`, `readinessLevel`; `get_user_summary(heute)` → nur `bodyBattery`, `bbSleep`;
+     `get_user_summary(gestern)` → `stress`, `stressHighMin`, `bbHigh`, `bbLow` (und `bodyBattery`, `bbSleep`) für gestern. Kein Nachholen.
    - `get_scheduled_workouts` heute bis +14 Tage, je Einheit mit `workout_id` `get_workout_by_id` → `planned` und `planned_range`,
      genau wie im Nacht-Update (Workout-Schritte V5.7).
    - `get_workouts` → `workouts_neu` wie im Nacht-Update (Enduco, letzte 2 Tage, nicht im Kalender, höchstens 5).
@@ -211,6 +233,9 @@ ersetzt mit Audit) und `fehler` (Fehlerboard → `fehlerboard`). `fueling_quelle
 Prüfung ersetzen; nie Einnahmen aus Garmin schätzen oder ergänzen. V5.7.2: Einnahmen aus Garmin nur aus dem Ernährungsprotokoll mit Uhrzeit
 (`fueling-garmin-1.0`: nur Rad/Laufen ab 40 min, Tag stimmt mit den Tageswerten, Uhrzeit zwischen Start und Ende, erst danach erfasst); eigene Fueling-Einträge haben
 Vorrang, auf der Seite bearbeitete Garmin-Einträge (`geaendert`) werden nie überschrieben.
+V6.1 (notizen-1.0): Verpflegung aus der Garmin-Notiz einer Aktivität nur als Vorschau `fueling_vorschau` («fn-<gid>», Werte laut Notiz,
+Summe gegen «Total»); zu `fueling` wird sie erst, wenn Silas den Eintrag auf der Seite speichert (kommt als `fueling_add` «fn-…» zurück).
+Gibt es zur Einheit schon einen Fueling-Eintrag, entsteht keine Vorschau; nie aus der Notiz etwas ergänzen oder schätzen.
 V5.6: zusätzlich `rpe` (→ `rpe`), `intervalle` (Korrekturen von Hand → `intervall_korr`), `laktat_punkte` (Laktat einem Abschnitt
 zugeordnet → `laktat_punkte`, Status «vorschau») und `saison` (Stunden «jetzt»/«Spitze» → `saison_plan`); gleiche ID ersetzt mit Audit.
 V5.7: `startorte` (ganze Liste → `startorte`, alte Fassung ins Audit) und `trainingsrouten` (gewählte Vorschläge → `trainingsrouten`, gleiche
@@ -363,7 +388,7 @@ V5.9.3: `routen` (im Planer gespeicherte Routen → `routes`, gleiche ID ersetzt
   Die exakten Grössen der SPS1-Dateien stehen in der Git-Historie.
 
 ## Prüfen vor jedem Push von Seite oder Werkzeugen
-`node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
+`node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
 Kein Live-Push, wenn ein Test fehlschlägt. Screenshots mit echten Daten nie ins Repo.
 
 ## FTP und Trainingslast
@@ -394,10 +419,11 @@ Kein Live-Push, wenn ein Test fehlschlägt. Screenshots mit echten Daten nie ins
 - **Stufentest** (Laktat in der letzten Minute jeder Stufe): Puls je Stufe aus der letzten Minute.
   Eintrag: `{"kind":"stufentest","date":"…","sport":"rad","stages":[{"w":180,"hr":132,"la":1.1}],"note":"…"}`; Lauf mit `"pace_s"` (s/km) statt `"w"`.
 - Einträge über `"lactate_add": [ … ]` in `work/new.json` einspielen (merge_daily.py), dann verschlüsseln und pushen.
-- **Kurzchecks aus Garmin-Notizen** (z. B. «Min 40: x,x mmol/l | 10 min davor (30–40) …»): wie Werte aus dem Chat zuerst Vorschau über
-  `laktat_vorschau.py --extra` mit `aktivitaet_garmin` (gespeicherte `get_activity_fit_data`-Antwort), `aktivitaet_id` und `fenster`
-  (Ortszeit des Blocks; hat Silas vor dem Abstechen schon angehalten, das Fenster bis zum Anhalten nehmen und das im Hinweis sagen).
-  Bestätigung (B1) auf der Seite oder im Chat («bestätigt» → `"laktat_bestaetigt": [ids]`).
+- **Kurzchecks aus Garmin-Notizen** (z. B. «Min 40: x,x mmol/l | 10 min davor (30–40) …»): seit V6.1 legt `merge_daily.py` daraus selbst eine
+  Vorschau an (notizen-1.0, «ln-<gid>-<Minute>», Werte laut Notiz, nicht aus FIT nachgerechnet; nichts doppelt zu `lactate`, anderen Vorschauen
+  oder `laktat_punkte`). Nachrechnen aus FIT wie bisher über `laktat_vorschau.py --extra` mit derselben ID, `aktivitaet_garmin` (gespeicherte
+  `get_activity_fit_data`-Antwort), `aktivitaet_id` und `fenster` (Ortszeit des Blocks; hat Silas vor dem Abstechen schon angehalten, das
+  Fenster bis zum Anhalten nehmen und das im Hinweis sagen). Bestätigung (B1) auf der Seite oder im Chat («bestätigt» → `"laktat_bestaetigt": [ids]`).
 - **V5.9.6 Einzelmessungen über die Zeit (`laktat-drift-1.0`):** `laktat_vorschau.py` rechnet je Check-Block `t_s` (Fahrzeit bis zum Blockende),
   `el_s`, `pause_s`, `pause_timer_s`; B1 übernimmt sie nach `lactate`. Die Seite («Einzelmessungen») zeigt Laktat über die Zeit in der Einheit,
   verbindet nur gleiche Einheit und gleiche Leistung (±5 %) und urteilt «steigt/gleich/sinkt» erst über 2·√(σ₁² + σ₂²), σ = max(0,15; 7,5 %).

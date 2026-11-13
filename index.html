@@ -752,12 +752,11 @@ body.ex-offen { overflow: hidden; }
 .fb-list p { margin: 0; font-size: 14px; } .fb-dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 10px; margin: 0; font-size: 13px; }
 .fb-dl dt { color: var(--muted); } .fb-dl dd { margin: 0; } .fb-st { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); } .fb-st select { min-height: 44px; }
 .sw-status { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; margin: 0 0 10px; font-size: 13px; color: var(--muted); }
-.v53-drill figure { margin: 0; } .v53-drill figcaption { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
 .css-mehr .css-std { display: block; font-weight: 400; font-size: 12px; color: var(--muted); }
 .css-plan small { color: var(--muted); }
 .v53-drills { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
 .v53-drill { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-.v53-drill h3 { margin: 0; font: 600 15px var(--f-body); } .v53-drill svg { width: 100%; height: auto; }
+.v53-drill h3 { margin: 0; font: 600 15px var(--f-body); }
 .v53-drill ol { margin: 0; padding-left: 18px; font-size: 13px; } .v53-err { margin: 0; font-size: 12.5px; color: #7c2537; }
 .item .wxcopy { color: var(--accent); }
 @media (max-width: 560px) { .v53-wk { grid-template-columns: 38px repeat(7, minmax(0, 1fr)) 40px; } .v53-big b { font-size: 32px; } }
@@ -1378,6 +1377,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
         <div id="fu-empty" class="fu-empty" hidden></div>
         <div class="hp-grid" id="fu-charts"><div class="hp-col"><h3 class="mini-h">KH/h und GI-Beschwerden je Einheit</h3><div class="chart"><canvas id="c-fu-gut" aria-label="Kohlenhydrate pro Stunde und Beschwerden"></canvas></div></div>
           <div class="hp-col"><h3 class="mini-h">Verlauf einer Einheit (30-min-Blöcke)</h3><div class="chart"><canvas id="c-fu-time" aria-label="Kohlenhydrate je 30 Minuten und Beschwerden"></canvas></div><div id="fu-sel" class="hint"></div></div></div>
+        <div id="fu-vorschau"></div>
         <div class="tablewrap"><table class="t" id="t-fu"></table></div><div id="fu-verdeckt"></div>
         <h3 class="mini-h">Eintrag erfassen</h3>
         <div id="fu-edit"></div>
@@ -1410,7 +1410,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
         <div id="sw-coach"></div>
       </div>
       <div class="card w12">
-        <h2>Technikübungen</h2><div class="sub">So werden die Übungen ausgeführt – Zeichnung, Ablauf, typische Fehler</div>
+        <h2>Technikübungen</h2><div class="sub">So werden die Übungen ausgeführt – Ziel, Ablauf, typische Fehler</div>
         <div id="v53-drills"></div>
       </div>
       <div class="card w12">
@@ -1473,6 +1473,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="js/formkurve.js"></script>
+<script src="js/v61.js"></script>
 <script src="js/eingang.js"></script>
 <script src="js/v59-logik.js"></script>
 <script src="js/route.js"></script>
@@ -1752,6 +1753,11 @@ function makeDemo() {
       sleepScore: Math.round(Math.min(98, 52 + (sleepH - 6.2) * 15 + rnd() * 14)), bodyBattery: Math.round(45 + rnd() * 50), readiness: Math.round(35 + rnd() * 60),
       kcalOut: Math.round(2550 + rnd() * 900) };
     if (back <= 45) Object.assign(d, { kcalIn: Math.round(2450 + rnd() * 700), protein: Math.round(120 + rnd() * 50), carbs: Math.round(290 + rnd() * 120), fat: Math.round(60 + rnd() * 30) });
+    // V6.1 Demo: Garmin-Tageswerte aus den Werten oben abgeleitet (keine zusätzlichen Zufallszahlen, die übrigen Beispieldaten bleiben gleich)
+    d.readinessLevel = d.readiness >= 95 ? "PRIME" : d.readiness >= 75 ? "HIGH" : d.readiness >= 50 ? "MODERATE" : d.readiness >= 25 ? "LOW" : "POOR";
+    d.bbSleep = Math.max(5, Math.min(80, d.bodyBattery - 22));
+    d.sleepStress = Math.max(8, Math.min(45, Math.round(30 - (d.hrv - 60) * 0.5)));
+    if (back > 0) { d.stress = Math.max(12, Math.min(55, Math.round(d.sleepStress + 9 + (7.5 - sleepH) * 3))); d.stressHighMin = Math.round(d.stress * 1.8); d.bbHigh = Math.min(100, d.bodyBattery + 4); d.bbLow = Math.max(5, d.bodyBattery - 60); }
     days.push(d);
   }
   const weights = []; let w = 82.4;
@@ -1824,7 +1830,22 @@ function makeDemo() {
     { id: "demo-p4", name: "Badestelle See (Beispiel)", cat: "bad", lat: 46.884, lon: 8.228 },
   ];
   const routes = [{ id: "demo-r1", name: "Passfahrt (Beispielroute)", coords: path([8.252, 46.905], 1.2, 22, 0.4).map(([x, y]) => [+x.toFixed(5), +y.toFixed(5)]) }];
-  return { demo: true, activities: acts, days, weights, ftp, ftp_est, pdc, lactate, points, routes, tests, planned, workouts_neu, stufen, laktat_vorschau, protokolle, versions, referenz };
+  // V6.1 Demo: Notiz einer Radeinheit (über 1 h) mit Laktat und Verpflegung – daraus je eine Vorschau (so, wie tools/notizen.py sie anlegt)
+  const nAkt = acts.filter((a) => a.sport === "rad" && a.dur >= 3700 && a.dur < 5400).at(-1), garmin_notizen = {}, fueling_vorschau = [];   // nicht unter den Beispiel-Fueling-Einträgen (ab 90 min)
+  if (nAkt) {
+    nAkt.gid = nAkt.gid || "g" + nAkt.id.replace(/\D/g, "");
+    garmin_notizen[nAkt.gid] = { text: "Verpflegung (Beispiel):\n- Min 40: Gel (25 g KH)\n- Min 80: Gel (25 g KH)\nTotal: 50 g KH\n\nLaktat (Beispiel):\n- Min 60: 1,6 mmol/l | 10 min davor (50–60): Ø 200 W, Ø HF 136 | Pause 1:20 min", abgerufen: iso(today) };
+    laktat_vorschau.push({ id: `ln-${nAkt.gid}-60`, art: "check", status: "vorschau", sport: "rad", datum: nAkt.date, aktivitaet: nAkt.gid, datei: "Garmin-Notiz der Aktivität", quelle_art: "notiz",
+      regel: "notizen-1.0: Messung und Block aus der Notiz", zuordnung: "laut Notiz", block: "Min 50–60",
+      zeilen: [{ x: 200, la: 1.6, hf: 136, quelle: { stelle: "Garmin-Notiz der Aktivität: «Min 60: 1,6 mmol/l | 10 min davor (50–60): Ø 200 W, Ø HF 136 | Pause 1:20 min»" } }],
+      kandidaten: [{ x: 200, hr: 136, np: null, t_s: 3600, win_s: 600, pause_s: 80 }], hinweise: ["Werte laut Garmin-Notiz (Block, Ø Leistung bzw. Tempo, Ø Puls), nicht aus FIT nachgerechnet", "Notiz: Pause 1:20 min"] });
+    const ev = (i, t) => ({ id: "n" + i, t_min: t, produkt: "Gel", kh_g: 25, wasser_ml: null, natrium_mg: null, koffein_mg: null, anteil: 1, quelle: "Garmin-Notiz", zeile: `- Min ${t}: Gel (25 g KH)` });
+    fueling_vorschau.push({ id: `fn-${nAkt.gid}`, v: "fueling-1.0", regel: "notizen-1.0", activity_id: nAkt.gid, date: nAkt.date, sport: "rad", status: "vorschau", quelle: "Garmin-Notiz der Aktivität",
+      events: [ev(1, 40), ev(2, 80)], vorher: [], nachher: [], total_notiz: { kh_g: 50, dauer_s: null, zeile: "Total: 50 g KH" }, summe_kh_g: 50, pruefung: "ok",
+      pruefung_text: "Summe der Zeilen 50 g KH = Total laut Notiz 50 g", hinweise: [], gi: [], notiz: "" });
+  }
+  return { demo: true, activities: acts, days, weights, ftp, ftp_est, pdc, lactate, points, routes, tests, planned, workouts_neu, stufen, laktat_vorschau, protokolle, versions, referenz,
+    garmin_notizen, fueling_vorschau };
 }
 
 /* =====================================================================
@@ -1872,7 +1893,8 @@ if (LOAD_MODE === "last-2.0") for (const a of D.activities) {
 }
 for (const r of D.routes) if (!r.coords && r.poly) r.coords = decodePoly(r.poly);
 D.days.sort((a, b) => a.date.localeCompare(b.date));
-const ACT_BY_ID = new Map(D.activities.map((a) => [a.id, a]));
+// V6.1: auch über die Garmin-ID (gid) auffindbar – Verweise «g<ID>» bleiben gültig, wenn der Monatsexport die Aktivität neu aufbaut
+const ACT_BY_ID = new Map(D.activities.flatMap((a) => (a.gid && a.gid !== a.id ? [[a.id, a], [a.gid, a]] : [[a.id, a]])));
 let V5_READY = Promise.resolve();          // V5-Module (js/v5-*.js) starten nach dem Laden der Eingaben auf dem Gerät
 
 const userWeights = store.get("sf.weights", []);
@@ -3025,6 +3047,8 @@ const MODEL_ROWS = () => {
     ["Schwellen", dv("schwellen"), "LT1/LT2 je Methode mit Unsicherheit; nie ausserhalb der gemessenen Stufen", "tools/schwellen.py"],
     ["Lange Ausfahrt", FK.VERSIONS.langfahrt, "Band nur aus vergleichbaren Fahrten; «vorsichtige Orientierung» getrennt und nicht validiert", "js/formkurve.js FK.longRide, FK.longRideOrientierung"],
     ["Bereitschaft", FK.VERSIONS.readiness, "HRV gegen eigene Referenz, Ruhepuls, Schlaf, Befinden; fehlende Werte bleiben unbekannt", "js/formkurve.js FK.readiness"],
+    ["Garmin-Tageswerte", dv("wellness") || "wellness-1.0", "Readiness, Body Battery und Stress wie von Garmin geliefert; angezeigt, nicht in die Ampel eingerechnet; Stress nur für abgeschlossene Tage", "tools/wellness.py, js/v61.js"],
+    ["Notizen der Aktivitäten", dv("notizen") || "notizen-1.0", "Garmin-Notiz wörtlich gespeichert; Laktat und Verpflegung daraus nur als Vorschau mit den Werten laut Notiz, übernommen erst nach Bestätigung", "tools/notizen.py"],
     ["Bestleistungen Laufen", dv("bestleistungen"), "schnellster Abschnitt aus FIT-Sekunden, GPS-Sprünge ausgeschlossen; offizielle Zeit getrennt", "tools/bestleistungen.py"],
     ["Routen-Zeitmodell", window.RT ? RT.VERSIONS.zeit : null, "Leistungsbilanz bzw. Minetti/Tobler mit persönlicher Kalibrierung", "js/route.js RT.simulate"],
     ["Kalibrierung", dv("kalibrierung"), "persönliche Faktoren mit Hold-out (neueste 25 %)", "tools/kalibrierung.py"],
@@ -3184,8 +3208,9 @@ const TABS = {
       } else {
         const pa = FK.pmcAnzeige(pmc().at(-1)) || {};
         const s7 = D.days.slice(-7).filter((x) => x.sleepH != null);
-        document.getElementById("today-kv").innerHTML = [["Form", pa.form != null ? (pa.form > 0 ? "+" + pa.form : pa.form < 0 ? "−" + Math.abs(pa.form) : "0") : null], ["Fitness", pa.fitness ?? null], ["Ermüdung", pa.ermuedung ?? null], ["Body Battery", d.bodyBattery != null ? fmt(d.bodyBattery) : null],
-          ["Garmin-Bereitschaft", d.readiness != null ? fmt(d.readiness) : null], ["HRV Ø 30 Tage", fmt(baseline(i).hrv)],
+        const gw = window.V61 ? V61.garminTag(D.days, iso(today)) : {};      // V6.1: nur Werte von heute (Readiness, Body Battery) bzw. gestern (Stress)
+        document.getElementById("today-kv").innerHTML = [["Form", pa.form != null ? (pa.form > 0 ? "+" + pa.form : pa.form < 0 ? "−" + Math.abs(pa.form) : "0") : null], ["Fitness", pa.fitness ?? null], ["Ermüdung", pa.ermuedung ?? null], ["Body Battery beim Aufwachen", gw.bodyBattery != null ? fmt(gw.bodyBattery) : null],
+          ["Garmin-Readiness", gw.readiness != null ? fmt(gw.readiness) + (gw.wort ? ` <small>${gw.wort}</small>` : "") : null], ["Stress gestern Ø", gw.stressGestern != null ? fmt(gw.stressGestern) : null], ["HRV Ø 30 Tage", fmt(baseline(i).hrv)],
           ["Schlaf Ø 7 Tage", s7.length ? fmt(s7.reduce((s, x) => s + x.sleepH, 0) / s7.length, 1) + " h" : null]]
           .filter(([, v]) => v != null).map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
         if (window.V5UI) V5_READY.then(() => { V5UI.heute(); if (window.V59) { V59.checkin(); V59.heuteOben(); V59.gefuehlKarte(); } });
@@ -3669,6 +3694,10 @@ function renderChecks() {
   const t = document.getElementById("t-checks");
   const pvc = (D.laktat_vorschau || []).filter((p) => p.art === "check" && p.status === "vorschau");
   const pvRows = pvc.map((p) => { const z = p.zeilen[0] || {}, k = p.kandidaten || [];
+    if (p.quelle_art === "notiz") {          // V6.1 notizen-1.0: Messung aus der Garmin-Notiz – Werte laut Notiz, nicht aus FIT nachgerechnet
+      const lauf = p.sport === "lauf", b = k[0] || {}, x = z.x == null ? "–" : lauf ? (z.pace_s ? mmss(z.pace_s) + "/km" : fmt(z.x, 1) + " km/h") : fmt(z.x) + " W";
+      return `<tr><td>${dateCH(p.datum)}</td><td>${esc(p.block || "")} · ${x}</td><td>${b.np ? b.np + " W" : "–"}</td><td>${z.hf ?? "–"} <small class="hint">laut Notiz</small></td><td>–</td><td>–</td><td><b>${fmt(z.la, 1)}</b> mmol/l</td><td><span class="badge next">Vorschau</span> aus der Garmin-Notiz, nicht aus FIT nachgerechnet${b.pause_s ? ` · Pause ${mmss(b.pause_s)} min` : ""}</td></tr>`;
+    }
     return `<tr><td>${dateCH(p.datum)}</td><td>${fmt(z.x)} W <small class="hint" style="display:block">${k.length} mögliche Blöcke: ${k.map((b) => `${b.uhr} Uhr, Puls ${fmt(b.hr60)}`).join(" · ")}</small></td><td>–</td><td>${z.hf ?? "–"} <small class="hint">laut Chat</small></td><td>–</td><td>–</td><td><b>${fmt(z.la, 1)}</b> mmol/l</td><td><span class="badge next">Vorschau</span> ${p.block ? `Block bis ${esc(p.block)} Uhr (laut Erinnerung)` : "Block offen"}</td></tr>`; }).join("");
   t.innerHTML = `<tr><th>Datum</th><th>Block</th><th>NP</th><th>Puls Ø</th><th>Puls max</th><th>Pulsanstieg</th><th>Laktat</th><th>Notiz</th></tr>` + pvRows +
     (list.length ? list.slice().reverse().map((l) => `<tr><td>${dateCH(l.date)}</td><td>${esc(l.block || "")}</td><td>${l.np ? l.np + " W" : "–"}</td><td>${l.hr_avg ?? "–"}</td><td>${l.hr_max ?? "–"}</td><td>${l.drift != null ? (l.drift > 0 ? "+" : "") + fmt(l.drift, 1) + " %" : "–"}</td><td><b>${fmt(l.lactate, 1)}</b> mmol/l</td><td>${esc(l.note || "")}</td></tr>`).join("")

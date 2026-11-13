@@ -1,5 +1,30 @@
 # Änderungen
 
+## V6.1.0 · 13.11.2026 · Etappe 1 «Daten»: Readiness, Body Battery, Stress, Garmin-Notizen (wellness-1.0, notizen-1.0, datenlage-1.0)
+Erste Etappe aus «Plan in Etappen: Ironman Notebook statt enduco» (Entscheide vom 13.11.).
+
+- **Tageswerte aus Garmin (wellness-1.0, `tools/wellness.py`):** je Tag `readiness` und `readinessLevel` (Morning Training Readiness),
+  `bodyBattery` (beim Aufwachen), `bbSleep` (Aufladung im Schlaf), für abgeschlossene Tage `stress` (Tagesmittel), `stressHighMin`, `bbHigh`,
+  `bbLow`, dazu `sleepStress` aus dem Schlaf. Morgen- und Nacht-Update holen sie; rückwirkend 10 Tage je Nacht bis 2020 (`config.wellness_backfill`,
+  Readiness liefert Garmin bei Silas erst ab Spätsommer 2024). Garmins eigene Werte: gezeigt, **nicht** in die Ampel eingerechnet.
+- **Notizen der Aktivitäten (notizen-1.0, `tools/notizen.py`):** die Garmin-Notiz (`description`) wörtlich je Garmin-ID in `garmin_notizen`
+  (übersteht den Monatsexport); rückwirkend 20 Aktivitäten je Nacht. Daraus nur Vorschauen:
+  Laktat («Min m: x mmol/l | Block (von–bis): Ø W, Ø HF | …») → `laktat_vorschau` «ln-…», Werte laut Notiz, nicht aus FIT nachgerechnet,
+  nichts doppelt zu `lactate`, anderen Vorschauen oder Explorer-Punkten, Bestätigung wie bisher (B1);
+  Verpflegung («Min m: … (x g KH)», Zeilen ohne Zeit, «Total: … g KH») → `fueling_vorschau` «fn-…» mit Gegenprobe gegen das Total,
+  «vor Start» zählt nie; zählt erst, wenn du den Eintrag auf der Seite prüfst und speicherst. Geänderte Notiz in Garmin: Vorschau folgt
+  (alte Fassung im Audit), übernommene Werte bleiben.
+- **Seite:** Bereitschaft (Blatt) mit Zeile «Garmin» (Readiness, Body Battery beim Aufwachen, Stress gestern); «Heute» mit Datenqualität
+  inkl. Garmin-Werte (bleibt sichtbar, sobald etwas fehlt) und «Datenlage je Wert» (seit wann, Tage mit Wert in 30/365 Tagen); Kennzahlen
+  rechts nur mit Werten von heute bzw. gestern (vorher wurde der letzte vorhandene Tag gezeigt). Train your Gut: «Aus deinen Garmin-Notizen –
+  Vorschau» mit «Prüfen und übernehmen» (Editor vorausgefüllt). Laktat-Kurzchecks und «Messung bestätigen» kennzeichnen Werte laut Notiz.
+  Explorer zeigt die Notiz aus Garmin. Aktivitäten sind auch über ihre Garmin-ID auffindbar (Verweise «g…» bleiben nach dem Monatsexport gültig).
+- **Schwimmübungen:** die Zeichnungen sind weg (Wunsch vom 13.11.); Ziel, Ablauf und typische Fehler bleiben, bis die neue Übungsseite steht.
+- `merge_daily.py`: Tage ohne einen einzigen Wert werden nicht angelegt; B1 übernimmt bei Lauf-Messungen aus der Notiz auch die Pace.
+
+Geprüft: `tests/test_tools.py` (+ Notiz lesen, Vorschauen, Doppel, B1, Notiz geändert/gelöscht, Tageswerte, Zeiger), `tests/test_v61.cjs`
+(neu), alle bisherigen Tests, Screenshots 390 px mit der Demo (Bereitschaft, Heute, Train your Gut, Laktat, Schwimmen, Explorer), Demo ohne Programmfehler.
+
 ## V6.0.3 · 13.11.2026 · Trainingszonen als Liste (Vorlage Bild 7)
 - Unter jeder Skala von «Trainingszonen: alle vier Skalen» (Laktat) stehen die Zonen als Liste: Farbbalken links in der Zonenfarbe, Name
   (Erholung, Grundlage, Tempo, Schwelle, Intensiv) und Grenzen rechts, darunter die Unterzonen aus dem Text der Zone (FatMax, Sweet Spot,

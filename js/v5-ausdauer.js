@@ -207,11 +207,12 @@
     // Liste
     $("t-fu").innerHTML = `<tr><th>Datum</th><th class="l">Einheit</th><th class="l">Status</th><th>KH</th><th>KH/h</th><th>ml/h</th><th>Na mg/h</th><th>GI max</th><th></th></tr>` + (logs.map((e) => {
       const t = F.fuelingTotals(e, dur(e)), a = A.get(e.activity_id), gi = Math.max(-1, ...(e.gi || []).map((g) => g.schwere ?? -1));
-      return `<tr class="${FU.sel === e.id ? "on" : ""}"><td>${dch(e.date)}</td><td class="wrap">${esc(a ? a.name : e.titel || "ohne Aktivität")}${e._lokal ? " " + V.badge("nur hier") : ""}${istG(e) ? " " + V.prov("garmin", "aus deinem Garmin-Ernährungsprotokoll, Zuordnung über die Uhrzeit der Einträge") : ""}</td><td>${esc(t.status)}</td>
+      return `<tr class="${FU.sel === e.id ? "on" : ""}"><td>${dch(e.date)}</td><td class="wrap">${esc(a ? a.name : e.titel || "ohne Aktivität")}${e._lokal ? " " + V.badge("nur hier") : ""}${istG(e) ? " " + V.prov("garmin", "aus deinem Garmin-Ernährungsprotokoll, Zuordnung über die Uhrzeit der Einträge") : ""}${String(e.id || "").startsWith("fn-") ? " " + V.prov("notiz", "aus deiner Garmin-Notiz, von dir geprüft und gespeichert") : ""}</td><td>${esc(t.status)}</td>
         <td>${t.kh_g != null ? num(t.kh_g) + " g" : t.status === "nicht protokolliert" ? "–" : `≥ ${num(t.kh_min_g)} g`}</td><td>${t.kh_g_h != null ? num(t.kh_g_h) : "–"}</td><td>${t.ml_h != null ? num(t.ml_h) : "–"}</td><td>${t.na_mg_h != null ? num(t.na_mg_h) : "–"}</td><td>${gi >= 0 ? gi + "/5" : "–"}</td>
         <td class="acts"><button class="btn" data-v="${esc(e.id)}">Ansehen</button><button class="btn" data-e="${esc(e.id)}">Bearbeiten</button></td></tr>`;
     }).join("") || `<tr><td colspan="9">Noch keine Einträge. Fehlende Einträge zählen als «nicht protokolliert», nie als 0 g.</td></tr>`);
     $("t-fu").closest(".tablewrap").hidden = !logs.length;          // leer: der Hinweis oben genügt
+    vorschauen(alle);
     const vh = $("fu-verdeckt"); if (vh) vh.innerHTML = verdeckt.length ? `<p class="hint">${verdeckt.length} Eintrag/Einträge aus Garmin ausgeblendet: Für dieselbe Einheit gibt es deinen eigenen Eintrag (nichts überschrieben).</p>` : "";
     $("t-fu").querySelectorAll("[data-v]").forEach((b) => (b.onclick = () => { FU.sel = b.dataset.v; V.fueling(); }));
     $("t-fu").querySelectorAll("[data-e]").forEach((b) => (b.onclick = () => { FU.cur = JSON.parse(JSON.stringify(logs.find((x) => x.id === b.dataset.e))); delete FU.cur._lokal; editor(); $("fu-edit").scrollIntoView({ behavior: "smooth" }); }));
@@ -282,7 +283,8 @@
     const acts = C().D.activities.filter((a) => (a.sport === "rad" || a.sport === "lauf") && (a.mv || a.dur || 0) >= 2400).slice(-40).reverse();
     if (!FU.cur) FU.cur = newEntry(acts[0] && acts[0].id);
     const e = FU.cur, a = A.get(e.activity_id), t = F.fuelingTotals(e, e.dauer_s || (a ? a.mv || a.dur : null));
-    box.innerHTML = `<form id="fu-form" class="fu-form">
+    if (a && !acts.includes(a)) acts.unshift(a);                    // V6.1: ältere Einheit (z. B. aus einer Notiz) bleibt wählbar
+    box.innerHTML = `${e.aus_vorschau ? ausNotizHinweis(e) : ""}<form id="fu-form" class="fu-form">
       <div class="row"><label>Einheit<select name="act"><option value="">ohne Aktivität</option>${acts.map((x) => `<option value="${esc(x.id)}" ${x.id === e.activity_id ? "selected" : ""}>${dch(x.date)} · ${esc(x.name)} · ${C().hmm(x.mv || x.dur)} h</option>`).join("")}</select></label>
         <fieldset class="seg2"><legend>Status</legend><label><input type="radio" name="st" value="protokolliert" ${e.status === "protokolliert" ? "checked" : ""}> protokolliert</label><label><input type="radio" name="st" value="nicht protokolliert" ${e.status === "nicht protokolliert" ? "checked" : ""}> nicht protokolliert</label></fieldset>
         <label>Dauer (min, leer = aus der Einheit)<input type="number" name="dur" value="${e.dauer_s ? Math.round(e.dauer_s / 60) : ""}"></label></div>
@@ -311,6 +313,30 @@
     f.querySelector("[data-add-gi]").onclick = () => { e.gi = e.gi || []; e.gi.push({ t_min: null, schwere: null, notiz: "" }); sync(); };
     f.querySelector("[data-new]").onclick = () => { FU.cur = null; editor(); };
     f.onsubmit = async (ev) => { ev.preventDefault(); e.notiz = f.notiz.value.trim(); e.geaendert = new Date().toISOString(); e.events.forEach((x, i) => { if (!x.id) x.id = "e" + i; }); await V.Inbox.upsert("fueling", JSON.parse(JSON.stringify(e))); FU.sel = e.id; V.fueling(); };
+  }
+  /** V6.1 notizen-1.0: Verpflegung aus deinen Garmin-Notizen – nur Vorschau, bis du sie im Editor prüfst und speicherst. */
+  function vorschauen(alle) {
+    const box = $("fu-vorschau"); if (!box) return;
+    const D = C().D, A = C().ACT_BY_ID, F = FK();
+    const offen = window.V61 ? window.V61.offeneFueling(D.fueling_vorschau || [], alle, (id) => A.get(id) || null) : [];
+    if (!offen.length) { box.innerHTML = ""; return; }
+    box.innerHTML = `<h3 class="mini-h">Aus deinen Garmin-Notizen – Vorschau</h3><ul class="fu-pv">${offen.map((p) => {
+      const a = A.get(p.activity_id), t = F.fuelingTotals(p, a ? a.mv || a.dur : null);
+      return `<li><div><span class="fu-pv-kopf"><b>${dch(p.date)} · ${esc(a ? a.name : "Einheit")}</b> ${V.badge("vorschau")} ${V.prov("notiz", "Werte so, wie sie in der Notiz stehen")}</span>
+        <small>${t.kh_g != null ? `${num(t.kh_g)} g KH${t.kh_g_h != null ? ` · ${num(t.kh_g_h)} g/h` : ""}` : `KH unvollständig (≥ ${num(t.kh_min_g)} g)`} · ${esc(p.pruefung_text || "")}</small>
+        ${p.pruefung !== "ok" ? `<small class="warn-t">${esc(p.pruefung === "abweichend" ? "Summe passt nicht zum Total der Notiz" : p.pruefung === "unvollständig" ? "nicht jede Zeile lesbar" : "ohne Gegenprobe")} – bitte prüfen</small>` : ""}</div>
+        <button class="btn" type="button" data-pv="${esc(p.id)}">Prüfen und übernehmen</button></li>`;
+    }).join("")}</ul><p class="hint">Gelesen aus der Notiz der Aktivität in Garmin (notizen-1.0). Gezählt wird erst, was du im Editor speicherst; «vor dem Start» zählt nie mit.</p>`;
+    box.querySelectorAll("[data-pv]").forEach((b) => (b.onclick = () => {
+      const p = offen.find((x) => x.id === b.dataset.pv), a = A.get(p.activity_id);
+      FU.cur = window.V61.fuelingAusVorschau(p, a ? a.id : p.activity_id);
+      editor(); $("fu-edit").scrollIntoView({ behavior: "smooth", block: "start" });
+    }));
+  }
+  function ausNotizHinweis(e) {
+    const v = e.vorher || [];
+    return `<p class="verdict">Aus deiner Garmin-Notiz: Werte so, wie sie dort stehen. Prüfen, bei Bedarf korrigieren, dann «Speichern» – erst dann zählt der Eintrag.${v.length
+      ? ` Vor dem Start (zählt nicht): ${v.map((x) => `${esc(x.produkt || "?")}${x.kh_g != null ? ` ${x.ungefaehr ? "≈ " : ""}${num(x.kh_g)} g KH` : ""}`).join(", ")}.` : ""}</p>`;
   }
   function produkte() {
     const P = prods();

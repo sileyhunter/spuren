@@ -377,3 +377,15 @@ nav.unter { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14
 .zliste .zl-n { display: inline-flex; align-items: center; gap: 6px; } .zliste .zl-n b { color: var(--zc); }
 .zliste .zl-w { font-variant-numeric: tabular-nums; white-space: nowrap; }
 :root[data-theme="light"] .zliste li { background: var(--bg); } :root[data-theme="light"] .zliste .zl-n b { color: color-mix(in srgb, var(--zc) 55%, #000); }
+/* V6.1 Daten: Verpflegung aus Garmin-Notizen (Vorschau), Datenlage je Wert */
+.fu-pv { list-style: none; padding: 0; margin: 8px 0 12px; display: flex; flex-direction: column; gap: 8px; }
+.fu-pv li { display: flex; gap: 12px; align-items: center; justify-content: space-between; background: var(--surface-2); border-radius: 14px; padding: 10px 12px; }
+.fu-pv li > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.fu-pv b { overflow-wrap: anywhere; } .fu-pv small { color: var(--muted); font-size: 12.5px; } .fu-pv .btn { flex: none; }
+@media (max-width: 420px) { .fu-pv li { flex-direction: column; align-items: stretch; } }
+.td-lage { margin-top: 10px; } .td-lage summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+.td-lage table td, .td-lage table th { font-variant-numeric: tabular-nums; }
+.ex-notiz { margin: 4px 0 10px; } .ex-notiz summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+.ex-notiz p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0 0; font-size: 13px; line-height: 1.45; color: var(--fg); background: var(--surface-2); border-radius: 12px; padding: 10px 12px; }
+.td-lage-t td.l { white-space: normal; } .td-lage-t td:not(.l), .td-lage-t th:not(.l) { text-align: right; white-space: nowrap; }
+.fu-pv-kopf { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }

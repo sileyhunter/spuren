@@ -196,7 +196,15 @@
     if (s.status === "vorschau") f.push("Vorschau: noch nicht bestätigt");
     if (/Erinnerung/i.test(s.zuordnung || "")) f.push("Block nach Erinnerung zugeordnet");
     if (s.kandidaten > 1 && !s.block) f.push(`${s.kandidaten} mögliche Blöcke`);
-    for (const h of s.hinweise || []) { if (/ca\./.test(h)) f.push("Wert ungefähr (ca.)"); if (/nach Blockende/.test(h)) f.push("Blut nach Blockende"); }
+    // V6.1 notizen-1.0: Messung aus der Garmin-Notiz kennzeichnen; wörtliche Notiz-Texte («Notiz: …») nicht als «Wert ungefähr» lesen
+    const notiz = /^notizen-/.test(s.regel || "") || (s.hinweise || []).some((h) => /nicht aus FIT nachgerechnet/.test(h));
+    if (notiz) f.push("Werte laut Garmin-Notiz, nicht aus FIT");
+    for (const h of s.hinweise || []) {
+      for (const t of notiz ? String(h).split(/;\s*/).filter((x) => !/^Notiz: /.test(x)) : [h]) {
+        if (/ca\./.test(t)) f.push("Wert ungefähr (ca.)");
+        if (/nach Blockende/.test(t)) f.push("Blut nach Blockende");
+      }
+    }
     if (s.hf_chat != null && s.hf != null && Math.abs(s.hf_chat - s.hf) > 3) f.push(`Puls im Chat ${s.hf_chat}, FIT ${Math.round(s.hf)}`);
     return f;
   };

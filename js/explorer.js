@@ -62,7 +62,7 @@
     ov.hidden = false; document.body.classList.add("ex-offen");
     Object.assign(ST, { a, S: null, sel: null, cur: null, ints: null });
     ov.innerHTML = `<div class="te-box ex"><div class="te-head ex-head"><div><h2>${esc(a.name)}</h2><div class="sub">${c.dateCH(a.date)} · ${esc((c.SPORTS[a.sport] || {}).label || a.sport)} · ${c.hmm(a.mv || a.dur)} h${a.km ? ` · ${c.fmt(a.km, 1)} km` : ""}</div></div>
-      <button class="btn icon" id="ex-close" aria-label="Schliessen">×</button></div><div id="ex-rpe"></div><div id="ex-body"><p class="hint"><span class="spin" aria-hidden="true"></span> Sekundenwerte werden geladen …</p></div></div>`;
+      <button class="btn icon" id="ex-close" aria-label="Schliessen">×</button></div><div id="ex-rpe"></div>${notizHtml(c, a)}<div id="ex-body"><p class="hint"><span class="spin" aria-hidden="true"></span> Sekundenwerte werden geladen …</p></div></div>`;
     $("ex-close").onclick = EX.close;
     ov.onclick = (e) => { if (e.target === ov) EX.close(); };
     if (window.RPE) RPE.karte($("ex-rpe"), a, !!(opt && opt.rpe));
@@ -73,6 +73,11 @@
     aufbauen();
   };
   EX.close = function () { const ov = $("ex"); if (ov) { ov.hidden = true; ov.innerHTML = ""; } document.body.classList.remove("ex-offen"); };
+  /** V6.1 notizen-1.0: die Notiz der Aktivität aus Garmin, wörtlich (gespeichert je Garmin-ID). */
+  function notizHtml(c, a) {
+    const n = a.gid && (c.D.garmin_notizen || {})[a.gid];
+    return n && n.text ? `<details class="ex-notiz"><summary>Notiz aus Garmin</summary><p>${esc(n.text)}</p></details>` : "";
+  }
   document.addEventListener("click", (e) => { const b = e.target.closest && e.target.closest("[data-ex]"); if (b) { e.preventDefault(); EX.open(b.dataset.ex, { rpe: b.dataset.exRpe === "1" }); } });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("ex") && !$("ex").hidden) EX.close(); });
 

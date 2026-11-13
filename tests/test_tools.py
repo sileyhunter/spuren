@@ -653,5 +653,122 @@ _e12 = json.load(open(os.path.join(_t12, "d.json")))
 check("Nur config eingespielt: tl2 neu gerechnet, «Daten vom …» bleibt beim letzten Garmin-Abruf",
       _e12["activities"][0]["tl2"] == round((230 / 270) ** 2 * 100) and _e12["updated"] == "08.11.2026 23:26", str(_e12.get("updated")))
 
+
+# ---------- V6.1 Garmin-Notizen (notizen-1.0) und Tageswerte (wellness-1.0) – erfundene Notiz und Werte ----------
+import notizen as NZ  # noqa: E402
+import wellness as WL  # noqa: E402
+_NOTIZ = """Verpflegung / Train your Gut:
+- Ca. 15 min vor Start: Riegel X (50 g, 25 g KH)
+- Min 35: Gel A (25 g KH)
+- Min 70: Gel B (25 g KH)
+- Während der Fahrt: 1 Bidon 500 ml mit Pulver Y (20 g KH, 300 mg Natrium), Trinkzeitpunkte nicht erfasst
+- 2 Gels C à 22 g KH
+Total während der Fahrt: 114 g KH in 1:55 h ≈ 59 g KH/h
+Vorher: 4 Reiswaffeln (~30 g KH) ca. 2 h vor Start
+
+Laktat (Messgerät Z, Rolle Q):
+- Min 40: 1,7 mmol/l | 10 min davor (30–40): Ø 205 W, Ø HF 138 | Pause 3:10 min, 2× gestochen
+- Min 95: 2,1 mmol/l | 10 min Fahren davor (84:20–94:20): Ø 204 W, Ø HF 143 | Stopp ab 94:20, Pause 0:55 min
+Wert jeweils ca. 1 min nach Abstechen.
+
+Gefühl: gut"""
+_r = NZ.lesen(_NOTIZ)
+_la = _r["laktat"]
+check("Notiz lesen: zwei Laktatmessungen mit Block, Ø W, Ø HF und Pause laut Notiz",
+      [(e["t_min"], e["la"], e["w"], e["hr"], e["von_s"], e["bis_s"], e["pause_s"]) for e in _la] == [(40, 1.7, 205, 138, 1800, 2400, 190), (95, 2.1, 204, 143, 5060, 5660, 55)], str(_la))
+check("Notiz lesen: Bemerkung im Laktat-Abschnitt gilt für jede Messung, Stiche und Stopp wörtlich als Hinweis",
+      all("Notiz: Wert jeweils ca. 1 min nach Abstechen." in e["hinweise"] for e in _la) and "Notiz: Pause 3:10 min, 2× gestochen" in _la[0]["hinweise"]
+      and "Notiz: Stopp ab 94:20, Pause 0:55 min" in _la[1]["hinweise"], str([e["hinweise"] for e in _la]))
+_fu = _r["fueling"]
+check("Notiz lesen: Verpflegung während der Fahrt mit und ohne Zeitpunkt, «2 × 22 g», Wasser und Natrium nur wo genannt",
+      [(e["t_min"], e["kh_g"]) for e in _fu["waehrend"]] == [(35, 25), (70, 25), (None, 20), (None, 44)] and _fu["waehrend"][2]["wasser_ml"] == 500
+      and _fu["waehrend"][2]["natrium_mg"] == 300 and _fu["waehrend"][0]["wasser_ml"] is None and _fu["waehrend"][3].get("rechnung") == "2 × 22 g KH", str(_fu["waehrend"]))
+check("Notiz lesen: «vor Start» und «Vorher» nie mitgezählt (Zeitpunkt negativ, ungefähr gekennzeichnet), Total mit Dauer",
+      [(e["t_min"], e["kh_g"], e.get("ungefaehr", False)) for e in _fu["vorher"]] == [(-15, 25, False), (-120, 30, True)]
+      and _fu["total"]["kh_g"] == 114 and _fu["total"]["dauer_s"] == 6900, str(_fu["vorher"]))
+check("Notiz lesen: Text ausserhalb der Abschnitte wird nicht gelesen", not any("Gefühl" in str(x) for x in (_fu["bemerkungen"], _la)))
+
+_t20 = tempfile.mkdtemp()
+_D20 = {"activities": [{"id": "g501", "gid": "g501", "sport": "rad", "typ": "Zwift", "name": "Rolle", "date": "2026-11-03", "start": "18:00", "km": 60, "hm": 0, "dur": 7000, "mv": 6950},
+                       {"id": "f777", "gid": "g777", "sport": "rad", "typ": "Rennrad", "name": "Ausfahrt", "date": "2026-10-20", "start": "09:00", "km": 80, "hm": 900, "dur": 10800},
+                       {"id": "g888", "gid": "g888", "sport": "schwimm", "typ": "Schwimmbad", "name": "Technik", "date": "2026-11-02", "start": "07:00", "km": 2, "hm": 0, "dur": 3000},
+                       {"id": "g999", "gid": "g999", "sport": "rad", "typ": "Rennrad", "name": "Kurz", "date": "2026-11-01", "start": "12:00", "km": 20, "hm": 100, "dur": 1800}],
+        "days": [], "config": {}, "lactate": [{"id": "alt1", "kind": "check", "date": "2026-10-20", "activity": "g777", "t_s": 3610, "lactate": 1.4, "w": 200}],
+        "fueling": [], "audit": []}
+json.dump(_D20, open(os.path.join(_t20, "d.json"), "w"))
+_N20 = {"lauf": "nacht",
+        "activities": [{"garmin_id": 501, "name": "Rolle", "type": "virtual_ride", "start_local": "2026-11-03T18:00:00", "duration_s": 7000, "notiz": _NOTIZ}],
+        "notizen_garmin": {"777": "Laktat:\n- Min 60: 1,4 mmol/l | 10 min davor (50–60): Ø 200 W, Ø HF 135\n- Min 120: 1,9 mmol/l | 10 min davor (110–120): Ø 201 W, Ø HF 140",
+                           "g888": "Verpflegung:\n- Min 20: Gel (25 g KH)", "999": "Verpflegung:\n- Min 10: Gel (25 g KH)\nTotal: 25 g KH", "12345": None},
+        "days": [{"date": "2026-11-03", "readiness": 64, "readinessLevel": "MODERATE", "bodyBattery": 71, "bbSleep": 48, "stress": 31, "stressHighMin": 40,
+                  "bbHigh": 90, "bbLow": 18, "sleepStress": 19}, {"date": "2026-11-02", "hrv": None, "stress": None}]}
+json.dump(_N20, open(os.path.join(_t20, "n.json"), "w"))
+merge_daily.main(os.path.join(_t20, "d.json"), os.path.join(_t20, "n.json"))
+_d20 = json.load(open(os.path.join(_t20, "d.json")))
+_G20 = _d20["garmin_notizen"]
+check("Notizen: wörtlich je Garmin-ID gespeichert (nicht in der Aktivität), leere Notiz als «ohne Text» abgerufen",
+      _G20["g501"]["text"] == _NOTIZ and _G20["g12345"]["text"] is None and "notiz" not in _d20["activities"][-1] and set(_G20) == {"g501", "g777", "g888", "g999", "g12345"}, str(list(_G20)))
+_lv20 = {p["id"]: p for p in _d20["laktat_vorschau"]}
+check("Notizen → Laktat: Vorschau je Messung mit Werten laut Notiz, Zeitpunkt = Blockende, Fenster, Pause und Quelle",
+      set(_lv20) == {"ln-g501-40", "ln-g501-95", "ln-g777-120"} and _lv20["ln-g501-40"]["kandidaten"] == [{"x": 205, "hr": 138, "np": None, "t_s": 2400, "win_s": 600, "pause_s": 190}]
+      and _lv20["ln-g501-95"]["block"] == "Min 84:20–94:20" and _lv20["ln-g501-40"]["status"] == "vorschau"
+      and "nicht aus FIT nachgerechnet" in _lv20["ln-g501-40"]["hinweise"][0] and _lv20["ln-g501-40"]["zeilen"][0]["quelle"]["stelle"].startswith("Garmin-Notiz der Aktivität: «Min 40: 1,7"), str(_lv20.get("ln-g501-40")))
+check("Notizen → Laktat: dieselbe Messung schon in lactate (gleiche Aktivität über die gid, ±2 min) → keine Vorschau, Hinweis",
+      "ln-g777-60" not in _lv20 and any("Min 60: schon als Laktatmessung erfasst" in h["text"] for h in _d20["notizen_hinweise"]), str(_d20["notizen_hinweise"]))
+_fv20 = {p["id"]: p for p in _d20.get("fueling_vorschau", [])}
+check("Notizen → Verpflegung: Vorschau nur für Rad/Laufen ab 40 min; Summe 114 g = Total, vorher nicht gezählt",
+      set(_fv20) == {"fn-g501"} and _fv20["fn-g501"]["pruefung"] == "ok" and _fv20["fn-g501"]["summe_kh_g"] == 114 and len(_fv20["fn-g501"]["vorher"]) == 2
+      and _fv20["fn-g501"]["status"] == "vorschau" and _d20["fueling"] == [], str(_fv20))
+check("Tageswerte: Readiness, Body Battery, Stress und Schlaf-Stress übernommen, leere Tage ohne Eintrag, Version wellness-1.0",
+      _d20["days"] == [{"date": "2026-11-03", "readiness": 64, "readinessLevel": "MODERATE", "bodyBattery": 71, "bbSleep": 48, "stress": 31, "stressHighMin": 40,
+                        "bbHigh": 90, "bbLow": 18, "sleepStress": 19}] and _d20["versions"]["wellness"]["v"] == "wellness-1.0" and _d20["versions"]["notizen"]["v"] == "notizen-1.0", str(_d20["days"]))
+# B1: Laktat aus der Notiz bestätigen; Verpflegung auf der Seite gespeichert (fueling «fn-…»)
+_ev = copy.deepcopy(_fv20["fn-g501"]["events"])
+json.dump({"laktat_bestaetigt": ["ln-g501-40"], "fueling_add": [{"id": "fn-g501", "v": "fueling-1.0", "activity_id": "g501", "date": "2026-11-03", "sport": "rad",
+           "status": "protokolliert", "quelle": "Garmin-Notiz der Aktivität", "events": _ev, "gi": [], "notiz": ""}]}, open(os.path.join(_t20, "b.json"), "w"))
+merge_daily.main(os.path.join(_t20, "d.json"), os.path.join(_t20, "b.json"))
+_d21 = json.load(open(os.path.join(_t20, "d.json")))
+_l21 = next(l for l in _d21["lactate"] if l["id"] == "ln-g501-40")
+check("Notizen → B1: Messung übernommen mit Zeitpunkt, Block, Pause und Quelle laut Notiz; Vorschau «übernommen» und nicht neu angelegt",
+      _l21["lactate"] == 1.7 and _l21["w"] == 205 and _l21["hr_avg"] == 138 and _l21["t_s"] == 2400 and _l21["win_s"] == 600 and _l21["pause_s"] == 190
+      and _l21["activity"] == "g501" and "nicht aus FIT" in _l21["note"]
+      and [p["status"] for p in _d21["laktat_vorschau"] if p["id"] == "ln-g501-40"] == ["übernommen"], str(_l21))
+check("Notizen → Verpflegung auf der Seite gespeichert: Vorschau «übernommen», Eintrag zählt als eigener (Garmin-Protokoll tritt zurück)",
+      [p["status"] for p in _d21["fueling_vorschau"]] == ["übernommen"] and [e["id"] for e in _d21["fueling"]] == ["fn-g501"], str(_d21.get("fueling_vorschau")))
+# Notiz in Garmin geändert bzw. gelöscht: eigene Vorschauen folgen (alte Fassung im Audit), übernommene bleiben
+json.dump({"notizen_garmin": {"501": _NOTIZ.replace("2,1 mmol/l", "2,3 mmol/l"), "777": ""}}, open(os.path.join(_t20, "c.json"), "w"))
+merge_daily.main(os.path.join(_t20, "d.json"), os.path.join(_t20, "c.json"))
+_d22 = json.load(open(os.path.join(_t20, "d.json")))
+_lv22 = {p["id"]: p for p in _d22["laktat_vorschau"]}
+check("Notiz geändert: Vorschau neu (2,3 statt 2,1 mmol/l), übernommene Messung unverändert; gelöschte Notiz entfernt ihre Vorschau – alles im Audit",
+      _lv22["ln-g501-95"]["zeilen"][0]["la"] == 2.3 and _lv22["ln-g501-40"]["status"] == "übernommen" and "ln-g777-120" not in _lv22
+      and _d22["garmin_notizen"]["g777"]["text"] is None
+      and {a["was"] for a in _d22["audit"]} >= {"Garmin-Notiz geändert", "Garmin-Notiz gelöscht", "Laktat-Vorschau ersetzt (Notiz geändert)", "Laktat-Vorschau entfernt (nicht mehr in der Notiz)"},
+      str({a["was"] for a in _d22["audit"]}))
+check("Notizen offen: Aktivitäten mit Garmin-ID ohne abgerufene Notiz, neueste zuerst",
+      NZ.offen({"activities": [{"gid": "g1", "date": "2026-01-01"}, {"gid": "g2", "date": "2026-02-01"}, {"id": "x", "date": "2026-03-01"}, {"gid": "g3", "date": "2025-12-01"}],
+                "garmin_notizen": {"g3": {"text": None}}}, 5) == (["2", "1"], 2))
+check("Notiz nur mit Total: ein Eintrag ohne Zeitpunkt, so wie er dasteht",
+      NZ._fueling_vorschau({"date": "2026-11-01", "sport": "rad"}, NZ.lesen("Verpflegung:\nTotal: 50 g KH in 1:40 h")["fueling"], "g1")["events"][0]["kh_g"] == 50)
+check("Notiz mit zwei KH-Angaben in einer Zeile: nicht gezählt, Hinweis statt Rate",
+      NZ.lesen("Verpflegung:\n- Min 30: 2 Gels (je 25 g KH, zusammen 50 g KH)")["fueling"]["waehrend"][0]["kh_g"] is None)
+check("Lauf-Messung aus der Notiz: Pace als km/h und Pace mitgeführt",
+      NZ._laktat_vorschau({"sport": "lauf", "date": "2026-11-01"}, NZ.lesen("Laktat:\n- Min 30: 2,0 mmol/l | 10 min davor (20–30): Ø 5:00 /km, Ø HF 150")["laktat"][0], "g5")["zeilen"][0]
+      == {"x": 12.0, "la": 2.0, "hf": 150, "quelle": {"stelle": "Garmin-Notiz der Aktivität: «Min 30: 2,0 mmol/l | 10 min davor (20–30): Ø 5:00 /km, Ø HF 150»"}, "pace_s": 300})
+
+_us = {"bodyBatteryAtWakeTime": 77, "bodyBatteryDuringSleep": 52, "averageStressLevel": 28, "highStressDuration": 3660, "bodyBatteryHighestValue": 95, "bodyBatteryLowestValue": 21}
+check("Tageswerte aus get_user_summary: Aufwachen und Schlaf immer, Stress und Höchst-/Tiefstwert nur für abgeschlossene Tage",
+      WL.aus_summary(_us) == {"bodyBattery": 77, "bbSleep": 52, "stress": 28, "stressHighMin": 61, "bbHigh": 95, "bbLow": 21}
+      and WL.aus_summary(_us, abgeschlossen=False) == {"bodyBattery": 77, "bbSleep": 52}, str(WL.aus_summary(_us)))
+check("Tageswerte: negative oder fehlende Garmin-Werte bleiben leer, Readiness nur mit Score",
+      WL.aus_summary({"averageStressLevel": -1, "bodyBatteryAtWakeTime": None}) == {} and WL.aus_readiness({"score": 58, "level": "MODERATE"}) == {"readiness": 58, "readinessLevel": "MODERATE"}
+      and WL.aus_readiness("No morning training readiness data found") == {})
+_o = WL.offen({"config": {}}, "2026-11-13")
+check("Tageswerte rückwirkend: ohne Zeiger die 10 Tage vor gestern; Readiness erst ab 1.8.2024; Ende bei 2020",
+      _o["tage"][0] == "2026-11-11" and _o["tage"][-1] == "2026-11-02" and _o["neuer_zeiger"] == "2026-11-02"
+      and WL.offen({"config": {"wellness_backfill": "2024-08-05"}}, "2026-11-13")["readiness"] == ["2024-08-04", "2024-08-03", "2024-08-02", "2024-08-01"]
+      and WL.offen({"config": {"wellness_backfill": "2020-01-04"}}, "2026-11-13")["tage"] == ["2020-01-03", "2020-01-02", "2020-01-01"]
+      and WL.offen({"config": {"wellness_backfill": "2020-01-01"}}, "2026-11-13")["fertig"] is True, str(_o))
+
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)
