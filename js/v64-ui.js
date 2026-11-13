@@ -128,7 +128,8 @@
   function vergleichHTML(VG, K) {
     const titel = `<h3 class="abschnitt">Vergleich mit Enduco</h3>`;
     if (VG.leer) return `${titel}<p class="vg-leer">${K.vorbei ? "Für diese Woche gibt es keine Enduco-Daten (weder im Garmin-Kalender noch als Workout auf der Uhr)." : "Von Enduco steht für diese Woche noch nichts im Garmin-Kalender – du exportierst meist am Vortag."}</p>`;
-    const S = VG.summen, zeile = (n, a, b) => `<tr><th scope="row">${n}</th><td>${a}</td><td>${b}</td></tr>`;
+    // V6.4.4 (Audit D11): Enduco nur teilweise bekannt → Summen und Stufen als «mind.», nicht als Vergleich
+    const S = VG.summen, teil = !!(VG.abdeckung && !VG.sicher), mind = (x) => (teil ? `mind. ${x}` : x), zeile = (n, a, b) => `<tr><th scope="row">${n}</th><td>${a}</td><td>${b}</td></tr>`;
     const zelle = (x) => `${hm(x.min)}${x.n ? ` <small>(${x.n})</small>` : ""}${x.offen ? ` <small>+${x.offen} ohne Dauer</small>` : ""}`;
     const fenster = VG.vorbei ? "ganze Woche" : `bis ${wtag(VG.planBis)} ${dkurz(VG.planBis)} (so weit Enduco im Kalender steht)`;
     const uhr = VG.E.filter((x) => x.herkunft === "uhr").length;
@@ -137,8 +138,9 @@
     return `${titel}<p class="vg-fenster">Geplant, ${esc(fenster)}${uhr ? ` · ${uhr} Enduco-Einheit${uhr > 1 ? "en" : ""} nur von der Uhr (ausgeführt)` : ""}:</p>
       <table class="vg-t" data-keine-liste><thead><tr><th></th><th scope="col">Enduco</th><th scope="col">Vorschlag</th></tr></thead><tbody>
         ${zeile("Schwimmen", zelle(S.E.schwimm), zelle(S.V.schwimm))}${zeile("Rad", zelle(S.E.rad), zelle(S.V.rad))}${zeile("Laufen", zelle(S.E.lauf), zelle(S.V.lauf))}
-        ${zeile("<b>Total</b>", `<b>${zelle(S.E.total)}</b>`, `<b>${zelle(S.V.total)}</b>`)}
-        ${zeile("hart", VG.stufen.E.alles.length, VG.stufen.V.alles.length)}${zeile("Tempo, Schwelle", VG.stufen.E.schwelle.length, VG.stufen.V.schwelle.length)}</tbody></table>
+        ${zeile("<b>Total</b>", `<b>${mind(zelle(S.E.total))}</b>`, `<b>${zelle(S.V.total)}</b>`)}
+        ${zeile("hart", mind(VG.stufen.E.alles.length), VG.stufen.V.alles.length)}${zeile("Tempo, Schwelle", mind(VG.stufen.E.schwelle.length), VG.stufen.V.schwelle.length)}</tbody></table>
+      ${teil ? `<p class="vg-fenster">Enduco nur teilweise bekannt: «mind.» = was im Kalender oder auf der Uhr stand.</p>` : ""}
       ${ist}
       ${VG.unterschiede.length ? `<ul class="mo-hinweise vg-u">${VG.unterschiede.map((u) => `<li${u.art === "abdeckung" ? ' class="warn-t"' : ""}>${esc(u.text)}</li>`).join("")}</ul>` : `<p class="vg-leer">Keine grossen Unterschiede in Stunden, Intensität und langen Einheiten.</p>`}`;
   }
@@ -212,7 +214,7 @@
       ${konflikt ? `<h3 class="abschnitt">Enduco und deine Intensität je Sportart</h3><ul class="mo-hinweise mo-konflikt">${konflikt}</ul>
         <p class="hint">Enduco lässt sich hier nicht ändern; die Seite zeigt nur, wo sein Plan über deiner Wahl liegt (${esc(V.VERSIONS.intensitaet)}: aus den Zielen der Schritte, ohne Ziele aus dem Titel).</p>` : ""}
       <div class="row mo-knoepfe"><button type="button" class="btn" data-wissen="modelle">Vorschlag erklärt</button><button type="button" class="btn" data-wissen="tid">Verteilung erklärt</button></div>
-      <p class="hint">${K.vorbei ? "Vergangene Woche: so hätte die Seite am Montag geplant – Saison ab jener Woche, Stunden aus den 8 Wochen davor (von Hand gesetzte nur, wenn sie damals schon galten), CSS, Läufe und Aufbau-Grenze bis zum Sonntag davor, Tests der Woche auch wenn inzwischen erledigt; Modell, Intensität je Sportart und Zonenprofil wie heute eingestellt (Testvorschläge nach Regel gibt es nur ab heute). " : ""}Vorschlag neben Enduco (${esc(V.VERSIONS.woche)}, ${esc(V.VERSIONS.tid)}, ${esc(V.VERSIONS.vergleich)}): Phase und Stunden aus dem Wochenstunden-Vorschlag${K.ausSaison ? "" : " (Woche ausserhalb der Saisonplanung: Stunden «jetzt»)"}, Tests aus dem Testkalender, Ziele aus dem aktiven Zonenprofil${K.css ? `, CSS vom ${esc(dch(K.css.datum))}` : ", noch kein CSS-Test"}. Vorschlag und Enduco werden nach den Zielen der Abschnitte gezählt (nur die Arbeitsintervalle hart), Absolviertes nach Puls. Nichts wird nach Garmin oder Enduco geschrieben.</p>`;
+      <p class="hint">${K.vorbei ? "Vergangene Woche: so hätte die Seite am Montag geplant – Saison ab jener Woche, Stunden aus den 8 Wochen davor (von Hand gesetzte nur, wenn sie damals schon galten), CSS, Läufe und Aufbau-Grenze bis zum Sonntag davor, Tests der Woche auch wenn inzwischen erledigt; Modell, Intensität je Sportart und Zonenprofil wie heute eingestellt (Testvorschläge nach Regel gibt es nur ab heute). " : ""}Vorschlag neben Enduco (${esc(V.VERSIONS.woche)}, ${esc(V.VERSIONS.tid)}, ${esc(V.VERSIONS.vergleich)}): Phase und Stunden aus dem Wochenstunden-Vorschlag${K.ausSaison ? "" : " (Woche ausserhalb der Saisonplanung: Stunden «jetzt»)"}, Tests aus dem Testkalender, Ziele aus dem aktiven Zonenprofil${K.css ? `, CSS vom ${esc(dch(K.css.datum))}` : ", noch kein CSS-Test"}. Vorschlag und Enduco werden nach den Zielen der Abschnitte gezählt (nur die Arbeitsintervalle hart), Absolviertes nach Puls. Stunden nur Schwimmen, Rad und Laufen (Heute und Kalender zählen alle Sportarten); «Enduco bekannt» = Garmin-Kalender (Dauer aus den Workout-Schritten) und Workouts, die nur auf der Uhr liefen – darum kann es etwas mehr sein als «geplant» unter Phasen. Nichts wird nach Garmin oder Enduco geschrieben.</p>`;
     box.querySelectorAll("[data-mow]").forEach((b) => (b.onclick = () => { WOCHE = +b.dataset.mow; wocheZeichnen(); }));
     box.querySelectorAll("[data-moe]").forEach((b) => (b.onclick = () => { const [ti, ei] = b.dataset.moe.split(":").map(Number); M.einheit(ti, ei); }));
   }

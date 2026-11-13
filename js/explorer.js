@@ -59,11 +59,11 @@
     const c = C(); if (!c) return;
     const a = c.ACT_BY_ID.get(id); if (!a) return;
     let ov = $("ex"); if (!ov) { ov = document.createElement("div"); ov.id = "ex"; ov.className = "v5-overlay ex-ov"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-modal", "true"); document.body.appendChild(ov); }
-    ov.hidden = false; document.body.classList.add("ex-offen");
+    ov.hidden = false; document.body.classList.add("ex-offen"); if (window.V59 && window.V59.modalAuf) window.V59.modalAuf(ov);   // V6.4.4 (Audit D22)
     Object.assign(ST, { a, S: null, sel: null, cur: null, ints: null });
-    ov.innerHTML = `<div class="te-box ex"><div class="te-head ex-head"><div><h2>${esc(a.name)}</h2><div class="sub">${c.dateCH(a.date)} · ${esc((c.SPORTS[a.sport] || {}).label || a.sport)} · ${c.hmm(a.mv || a.dur)} h${a.km ? ` · ${c.fmt(a.km, 1)} km` : ""}</div></div>
+    ov.innerHTML = `<div class="te-box ex"><div class="te-head ex-head"><div><h2 id="ex-h" tabindex="-1">${esc(a.name)}</h2><div class="sub">${c.dateCH(a.date)} · ${esc((c.SPORTS[a.sport] || {}).label || a.sport)} · ${c.hmm(a.mv || a.dur)} h${a.km ? ` · ${c.fmt(a.km, 1)} km` : ""}</div></div>
       <button class="btn icon" id="ex-close" aria-label="Schliessen">×</button></div><div id="ex-rpe"></div>${notizHtml(c, a)}<div id="ex-body"><p class="hint"><span class="spin" aria-hidden="true"></span> Sekundenwerte werden geladen …</p></div></div>`;
-    $("ex-close").onclick = EX.close;
+    $("ex-close").onclick = EX.close; ov.setAttribute("aria-labelledby", "ex-h"); $("ex-h").focus({ preventScroll: true });
     ov.onclick = (e) => { if (e.target === ov) EX.close(); };
     if (window.RPE) RPE.karte($("ex-rpe"), a, !!(opt && opt.rpe));
     try { ST.S = await laden(a); }
@@ -72,7 +72,7 @@
     ST.sel = [0, ST.S.n - 1];
     aufbauen();
   };
-  EX.close = function () { const ov = $("ex"); if (ov) { ov.hidden = true; ov.innerHTML = ""; } document.body.classList.remove("ex-offen"); };
+  EX.close = function () { const ov = $("ex"); if (ov) { ov.hidden = true; ov.innerHTML = ""; if (window.V59 && window.V59.modalZu) window.V59.modalZu(ov); } document.body.classList.remove("ex-offen"); };
   /** V6.1 notizen-1.0: die Notiz der Aktivität aus Garmin, wörtlich (gespeichert je Garmin-ID). */
   function notizHtml(c, a) {
     const n = a.gid && (c.D.garmin_notizen || {})[a.gid];
@@ -189,8 +189,10 @@
 
   /* ---------------- Auswahl und Kennzahlen ---------------- */
   function zeilen(s, sport) {
-    const r = [["Dauer", hms(s.dauer)], ["Strecke", isNum(s.strecke) ? `${f1(s.strecke / 1000)} km` : null]];
-    if (isNum(s.w)) r.push(["Ø Leistung", `${f0(s.w)} W`], ["NP", `${f0(s.np)} W`], ["Max", `${f0(s.wmax)} W`]);
+    // V6.4.4 (Audit D15): sagen, was gezählt wird – Zeitspanne mit Pausen gegen Bewegungszeit (wie im Kopf); Leistung aus den 2-s-Werten
+    const pausen = isNum(s.bewegt) && s.dauer - s.bewegt >= 60;
+    const r = [["Dauer <small>(von–bis)</small>", hms(s.dauer)], ["Bewegungszeit", pausen ? hms(s.bewegt) : null], ["Strecke", isNum(s.strecke) ? `${f1(s.strecke / 1000)} km` : null]];
+    if (isNum(s.w)) r.push(["Ø Leistung <small>(2-s-Werte)</small>", `${f0(s.w)} W`], ["NP", `${f0(s.np)} W`], ["Max", `${f0(s.wmax)} W`]);
     if (isNum(s.hr)) r.push(["Ø Puls", `${f0(s.hr)} bpm`], ["Puls Anfang → Ende", `${f0(s.hrA)} → ${f0(s.hrE)} bpm`], ["Max Puls", `${f0(s.hrmax)} bpm`]);
     if (isNum(s.drift)) r.push(["Drift", `${f1(s.drift)} %`]); else if (s.driftGrund) r.push(["Drift", `<small>${s.driftGrund}</small>`]);
     if (isNum(s.wproschlag)) r.push(["W pro Schlag", (Math.round(s.wproschlag * 100) / 100).toFixed(2)]);
@@ -210,7 +212,7 @@
     const A = ST.A, B = ST.selStats; if (!A || !B) return;
     const sp = ST.a.sport, ra = new Map(zeilen(A.s, A.act.sport)), rb = new Map(zeilen(B, sp)), d = AN.vergleich(A.s, B);
     const keys = [...new Set([...ra.keys(), ...rb.keys()])];
-    const dtxt = { "Ø Leistung": d.w, "NP": d.np, "Ø Puls": d.hr, "Drift": d.drift, "W pro Schlag": d.wproschlag };
+    const dtxt = { "Ø Leistung <small>(2-s-Werte)</small>": d.w, "NP": d.np, "Ø Puls": d.hr, "Drift": d.drift, "W pro Schlag": d.wproschlag };
     $("ex-cmp").innerHTML = `<div class="tablewrap"><table class="t ex-cmpt"><tr><th>Kennzahl</th><th>A</th><th>B (Auswahl)</th><th>B − A</th></tr>${keys.map((k) => `<tr><td>${k}</td><td>${ra.get(k) || "–"}</td><td>${rb.get(k) || "–"}</td><td>${isNum(dtxt[k]) ? (dtxt[k] > 0 ? "+" : "") + (k === "W pro Schlag" ? dtxt[k].toFixed(2) : f1(dtxt[k])) : ""}</td></tr>`).join("")}</table></div>
       <p class="hint">A: ${esc(A.act.name)} (${C().dateCH(A.act.date)}), ${hms(A.von)}–${hms(A.bis)}. Vergleichbar nur bei ähnlicher Belastung, Gelände, Temperatur und gleichem Leistungsmesser.</p>`;
   }

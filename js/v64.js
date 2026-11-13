@@ -340,7 +340,8 @@
     radLang = r15(Math.min(radLang, LANG.rad));
     let rest = min.rad - radK.dauer - radL - radLang;
     if (rest >= 15 && radL) { const plus = Math.min(rest, 120 - radL); radL = r5(radL + plus); rest -= plus; }
-    if (rest >= 15) wenig(`Rad: ${r5(rest)} min nicht verteilt (längste Ausfahrt in dieser Phase höchstens ${LANG.rad} min)`);
+    let gemeldet = 0;
+    if (rest >= 15) { gemeldet += r5(rest); wenig(`Rad: ${r5(rest)} min nicht verteilt (längste Ausfahrt in dieser Phase höchstens ${LANG.rad} min)`); }
     // Laufen: Schlüssel (Di; Erholungswoche: locker), lang (So), locker (Fr), Koppel (Sa, rennspezifisch, nicht in Erholungswochen)
     const laufK = erh ? V64.einheit("lauf_locker", o(Math.min(45, Math.max(30, r5(0.3 * min.lauf))))) : gewaehlt("lauf", M.schluessel.lauf, null);
     const koppel = M.koppel && !erh ? (taper ? 15 : phase === "Wettkampfspezifisch" ? 30 : 20) : 0;
@@ -354,7 +355,7 @@
     if (restL >= 10 && laufL) { const plus = Math.min(restL, 75 - laufL); laufL = r5(laufL + plus); }
     if (laufL) laufL = laufMax(add(woche, 4), "lauf_locker", laufL);
     restL = min.lauf - laufK.dauer - laufL - koppel - laufLang;
-    if (restL >= 10) wenig(`Laufen: ${r5(restL)} min nicht verteilt (längster Lauf in dieser Phase höchstens ${LANG.lauf} min${aufbauGekappt ? "; Aufbau-Grenze" : ""})`);
+    if (restL >= 10) { gemeldet += r5(restL); wenig(`Laufen: ${r5(restL)} min nicht verteilt (längster Lauf in dieser Phase höchstens ${LANG.lauf} min${aufbauGekappt ? "; Aufbau-Grenze" : ""})`); }
     // Schwimmen: Kurs (Di), CSS (Do), locker (So)
     const sw = clamp(r5(min.schwimm / N.schwimm), 30, 75);
 
@@ -428,6 +429,8 @@
     }
     minuten.total = minuten.schwimm + minuten.rad + minuten.lauf;
     if (minuten.total > H * 60 + 15) wenig(`Vorschlag ${hmin(minuten.total)} h statt ${hmin(H * 60)} h: die kürzesten sinnvollen Einheiten (Schlüssel, Rad 45 min, Laufen und Schwimmen 30 min) passen nicht in so wenig Zeit – eine lockere Einheit weglassen`);
+    // V6.4.4 (Audit D5): Rest wird gemeldet, nie still verteilt – auch was durch die Rundung je Einheit übrig bleibt
+    else if (H * 60 - minuten.total - gemeldet > 5) wenig(`Vorschlag ${hmin(minuten.total)} h statt ${hmin(H * 60)} h: ${Math.round(H * 60 - minuten.total - gemeldet)} min${gemeldet ? " mehr" : ""} nicht verteilt (jede Einheit auf 5 bzw. 15 min gerundet)`);
     const tid = V64.tid(z), pruefung = V64.pruefen(modell, tid, { erholung: erh, taper, rennwoche: !!R.length, gekappt: gekappt.length > 0 });
     return { v: V64.VERSIONS.woche, woche, modell, modellName: M.name, phase, erholung: erh, taper, stunden: H, tage, minuten, zonen: z, tid, pruefung, hinweise,
       intensitaet: I, gekappt,
@@ -618,20 +621,21 @@
     const laengste = {}; for (const sp of ["rad", "lauf"]) laengste[sp] = { E: lang(bis(E, planBis), sp), V: lang(bis(V, planBis), sp), I: mitIst ? lang(bis(I, istBis), sp) : null };
     const wt = (iso) => TAG[(new Date(T(iso)).getUTCDay() + 6) % 7];
     const nennen = (L) => L.map((x) => `${wt(x.date)} ${SPN[x.sport]} «${x.titel}»`).join(", ");
+    // V6.4.4 (Audit D12): jeder Unterschied nennt sein Fenster, solange die Woche läuft (Enduco steht oft nur bis Samstag im Kalender)
     const U = [], bisText = vorbei ? "" : ` (bis ${wt(planBis)} ${+planBis.slice(8)}.${+planBis.slice(5, 7)}.)`;
     if (!sicher) U.push({ art: "abdeckung", text: `Enduco-Plan nur teilweise bekannt: ${abdeckung.mitPlan} von ${abdeckung.n} absolvierten Einheiten hatten einen Eintrag (Kalender oder Workout auf der Uhr). Summen, harte Einheiten und freie Tage werden darum nicht verglichen.` });
     const dT = sE.total.min - sV.total.min;
     if (sicher && Math.abs(dT) >= 30) U.push({ art: "stunden", text: `Stunden${bisText}: Enduco ${hmin(sE.total.min)} h, Vorschlag ${hmin(sV.total.min)} h – ${dT > 0 ? "Enduco" : "der Vorschlag"} ${hmin(Math.abs(dT))} h mehr. Der Vorschlag nimmt die Stunden aus dem Wochenstunden-Vorschlag (deine 8 Wochen davor und die Phase), Enduco die in Enduco eingestellten Stunden.` });
-    for (const sp of V64.SPORTARTEN) { const d = sE[sp].min - sV[sp].min; if (sicher && Math.abs(d) >= 30) U.push({ art: "sportart", text: `${SPN[sp]}: Enduco ${hmin(sE[sp].min)} h (${sE[sp].n}×), Vorschlag ${hmin(sV[sp].min)} h (${sV[sp].n}×).` }); }
-    if (sicher && stE.alles.length !== stV.alles.length) U.push({ art: "hart", text: `Harte Einheiten (über LT2, VO2max): Enduco ${stE.alles.length}${stE.alles.length ? ` – ${nennen(stE.alles)}` : ""}; Vorschlag ${stV.alles.length}${stV.alles.length ? ` – ${nennen(stV.alles)}` : ""}.` });
-    if (sicher && stE.schwelle.length !== stV.schwelle.length) U.push({ art: "schwelle", text: `Tempo und Schwelle: Enduco ${stE.schwelle.length}${stE.schwelle.length ? ` – ${nennen(stE.schwelle)}` : ""}; Vorschlag ${stV.schwelle.length}${stV.schwelle.length ? ` – ${nennen(stV.schwelle)}` : ""}.` });
+    for (const sp of V64.SPORTARTEN) { const d = sE[sp].min - sV[sp].min; if (sicher && Math.abs(d) >= 30) U.push({ art: "sportart", text: `${SPN[sp]}${bisText}: Enduco ${hmin(sE[sp].min)} h (${sE[sp].n}×), Vorschlag ${hmin(sV[sp].min)} h (${sV[sp].n}×).` }); }
+    if (sicher && stE.alles.length !== stV.alles.length) U.push({ art: "hart", text: `Harte Einheiten (über LT2, VO2max)${bisText}: Enduco ${stE.alles.length}${stE.alles.length ? ` – ${nennen(stE.alles)}` : ""}; Vorschlag ${stV.alles.length}${stV.alles.length ? ` – ${nennen(stV.alles)}` : ""}.` });
+    if (sicher && stE.schwelle.length !== stV.schwelle.length) U.push({ art: "schwelle", text: `Tempo und Schwelle${bisText}: Enduco ${stE.schwelle.length}${stE.schwelle.length ? ` – ${nennen(stE.schwelle)}` : ""}; Vorschlag ${stV.schwelle.length}${stV.schwelle.length ? ` – ${nennen(stV.schwelle)}` : ""}.` });
     const swE = stE.alles.filter((x) => x.sport === "schwimm");
     if (swE.length && !stV.alles.some((x) => x.sport === "schwimm")) U.push({ art: "schwimmen", text: `Schwimmen: Enduco plant harte Serien (${nennen(swE)}), der Vorschlag höchstens CSS-Tempo.` });
     for (const sp of ["rad", "lauf"]) { const L = laengste[sp], g = sp === "rad" ? 30 : 10;
-      if (sicher && L.E && L.V && Math.abs(L.E.min - L.V.min) >= g) U.push({ art: "lang", text: `Längste ${sp === "rad" ? "Ausfahrt" : "Laufeinheit"}: Enduco ${hmin(L.E.min)} h${sp === "lauf" && isNum(L.E.km) ? ` (${L.E.kmVollst ? "≈" : "mind. ≈"} ${L.E.km.toFixed(1).replace(".", ",")} km)` : ""}, Vorschlag ${hmin(L.V.min)} h.` }); }
+      if (sicher && L.E && L.V && Math.abs(L.E.min - L.V.min) >= g) U.push({ art: "lang", text: `Längste ${sp === "rad" ? "Ausfahrt" : "Laufeinheit"}${bisText}: Enduco ${hmin(L.E.min)} h${sp === "lauf" && isNum(L.E.km) ? ` (${L.E.kmVollst ? "≈" : "mind. ≈"} ${L.E.km.toFixed(1).replace(".", ",")} km)` : ""}, Vorschlag ${hmin(L.V.min)} h.` }); }
     const frei = (L) => { const n = []; for (let i = 0; i < 7; i++) { const d = add(mo, i); if (d <= planBis && !L.some((x) => x.date === d)) n.push(TAG[i]); } return n; };
     const fE = frei(E), fV = frei(V);
-    if (sicher && fE.join() !== fV.join()) U.push({ art: "frei", text: `Freie Tage: Enduco ${fE.length ? fE.join(", ") : "keiner"}; Vorschlag ${fV.length ? fV.join(", ") : "keiner"}.` });
+    if (sicher && fE.join() !== fV.join()) U.push({ art: "frei", text: `Freie Tage${bisText}: Enduco ${fE.length ? fE.join(", ") : "keiner"}; Vorschlag ${fV.length ? fV.join(", ") : "keiner"}.` });
     if (sicher && zuViel) U.push({ art: "dauer", text: `Kein Urteil «näher an»: Bei ${ohne.map((sp) => SPN[sp]).join(" und ")} ist die Enduco-Dauer nicht bekannt (Workout auf der Uhr mit Schritten nach Strecke oder bis Taste), und das ist mehr als die Hälfte deines Trainings.` });
     if (stE.offen.length) U.push({ art: "offen", text: `${stE.offen.length} Enduco-Einheit${stE.offen.length > 1 ? "en" : ""} ohne Ziele und ohne Hinweis im Titel – Intensität offen: ${nennen(stE.offen)}.` });
     const tage = TAG.map((t, i) => { const d = add(mo, i); return { date: d, wt: t, E: E.filter((x) => x.date === d), V: V.filter((x) => x.date === d), I: I.filter((x) => x.date === d) }; });

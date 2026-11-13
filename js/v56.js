@@ -96,7 +96,7 @@
     const F = window.FK, von = F.addDays(C.iso(C.today), -27);
     const plan = (C.D.planned || []).filter((p) => p.date >= von && p.date <= C.iso(C.today));      // V6.0.2: nur bis heute (Zukunft steht im Kalender)
     const ist = (p) => C.D.activities.find((a) => a.date === p.date && (a.sport === p.sport || (p.sport === "rad" && a.sport === "rad")));
-    el.innerHTML = `<p class="hint">Quelle der Pläne: das Workout, das auf der Uhr lief (aus der FIT-Datei), und der Garmin-Kalender. Enduco-Einheiten kommen über Garmin auf die Uhr; eine direkte Enduco-Schnittstelle gibt es hier nicht, und welcher Dienst ein Workout erstellt hat, steht nicht in der FIT-Datei. Zwift-Dateien enthalten keine Workout-Schritte. ${A.length} Einheiten mit Workout-Struktur seit ${A.length ? C.dateCH(A[A.length - 1].date) : "–"}.</p>
+    el.innerHTML = `<p class="hint">Quelle der Pläne: das Workout, das auf der Uhr lief (aus der FIT-Datei), und der Garmin-Kalender. Enduco-Einheiten kommen über Garmin auf die Uhr; eine direkte Enduco-Schnittstelle gibt es hier nicht, und welcher Dienst ein Workout erstellt hat, steht nicht in der FIT-Datei. Zwift-Dateien enthalten keine Workout-Schritte. ${A.length ? `${A.length} ${A.length === 1 ? "Einheit" : "Einheiten"} mit Workout-Struktur seit ${C.dateCH(A[A.length - 1].date)}.` : "Noch keine Einheit mit Workout-Struktur."}</p>
       <div class="tablewrap"><table class="t v56-pt"><tr><th>Datum</th><th>Workout</th><th>Plan</th><th>Ist</th><th>im Ziel</th><th>Hauptteil</th><th>RPE</th><th></th></tr>${A.slice(0, 12).map((a) => {
         const h = AN.hauptteil(a.wk), r = V.rpeVon(C, a.id), g = AN.gleicheEinheiten(C.D.activities, a)[0];
         const ht = h ? (a.sport === "rad" ? `${h.w ?? "–"} W` : h.v ? `${Math.floor(1000 / h.v / 60)}:${String(Math.round((1000 / h.v) % 60)).padStart(2, "0")}` : "–") + ` · ${h.hr ?? "–"} bpm` : "–";
@@ -120,24 +120,33 @@
     const races = window.V6 && C.races ? window.V6.rennenPrio(C.races()) : ((C.D.config || {}).races || []).map((r) => ({ ...r, prio: /hamburg/i.test(r.name) ? "A" : "B" }));
     const S = AN.saison(heute, races); if (!S) { el.innerHTML = `<p class="hint">Kein Hauptwettkampf in den Daten.</p>`; return; }
     const dunkel = document.documentElement.dataset.theme !== "light";
-    PH_COL = dunkel ? Object.fromEntries(Object.entries(PH_VAR).map(([k, v]) => [k, C.css(v) || PH_COL_HELL[k]])) : PH_COL_HELL;
+    PH_COL = Object.fromEntries(Object.entries(PH_VAR).map(([k, v]) => [k, C.css(v) || PH_COL_HELL[k]]));   // V6.4.4 (Audit D18): auch hell die Phasenfarben des Plans
     const F_VOR = dunkel ? C.css("--surface-2") : "#d7e6f2", F_ERH = dunkel ? C.css("--sheet") : "#e9eef2", F_IST = dunkel ? C.css("--good") : "#148a7e", F_LIN = dunkel ? "rgba(255,255,255,.08)" : "rgba(31,51,71,.1)";
     const lokal = V.saisonLokal(C);
     const { jetzt, spitze, h8, h52, top4, ist8 } = AN.saisonVorgaben(C.D.activities, heute, lokal);   // V6.4: Regel in js/analyse.js (auch für die Woche nach Modell)
     const W = S.wochen, plan = AN.saisonStunden(W, jetzt, spitze);
     const IST = AN.wochenIst(C.D.activities, W[0].woche, F.addDays(W[W.length - 1].woche, 6));
-    const enduco = new Map(); for (const p of C.D.planned || []) { const mo = F.addDays(p.date, -((new Date(p.date + "T12:00:00Z").getUTCDay() + 6) % 7)); enduco.set(mo, (enduco.get(mo) || 0) + (p.dur_s || 0) / 3600); }
-    const w = 760, h = 240, bw = (w - 34) / W.length, maxH = Math.max(spitze, ...W.map((x) => { const r = IST.get(x.woche); return r ? r.rad + r.lauf + r.schwimm : 0; })) * 1.1;
-    const Y = (v) => h - 22 - (v / maxH) * (h - 40);
+    // V6.4.4 (D4): wie Phasen und Woche nach Modell nur Schwimmen, Rad, Laufen, Dauer aus den Workout-Schritten (V6H.planDauer), sonst laut Kalender
+    const enduco = new Map(); for (const p of C.D.planned || []) { if (!p.date || !["schwimm", "rad", "lauf"].includes(p.sport)) continue; const mo = F.addDays(p.date, -((new Date(p.date + "T12:00:00Z").getUTCDay() + 6) % 7)); enduco.set(mo, (enduco.get(mo) || 0) + ((window.V6H ? window.V6H.planDauer(p) : p.dur_s) || 0) / 3600); }
+    // V6.4.4 (Audit D19): Breite der Grafik = Breite der Karte, damit die Schrift nicht auf 6 px schrumpft
+    const w = Math.round(Math.max(340, Math.min(760, el.clientWidth || 760))), bw = (w - 34) / W.length;
+    // V6.4.4 (D19): Rennnamen nicht übereinander – zu nahe Namen in eine zweite Zeile darunter, nie über den Rand
+    const RL = []; W.forEach((x, i) => { if (!x.rennen.length) return; const t = x.rennen.join(", "), b = t.length * 7.4, m = 34 + i * bw + bw / 2;
+      const cx = Math.max(34 + b / 2, Math.min(w - b / 2 - 2, m)); const z = RL.some((q) => q.z === 0 && Math.abs(q.cx - cx) < (q.b + b) / 2 + 6) ? 1 : 0; RL.push({ t, cx, b, z }); });
+    RL.zwei = RL.some((q) => q.z === 1);
+    const h = RL.zwei ? 255 : 240, unten = RL.zwei ? 37 : 22, maxH = Math.max(spitze, ...W.map((x) => { const r = IST.get(x.woche); return r ? r.rad + r.lauf + r.schwimm : 0; })) * 1.1;
+    const Y = (v) => h - unten - (v / maxH) * (240 - 40);
     const svg = `<svg viewBox="0 0 ${w} ${h}" class="v56-saison" role="img" aria-label="Saison bis ${S.haupt.name}: Phasen, geplante und absolvierte Stunden je Woche">
       ${W.map((x, i) => `<rect x="${(34 + i * bw).toFixed(1)}" y="0" width="${(bw - 1).toFixed(1)}" height="14" fill="${PH_COL[x.phase] || "#ddd"}"><title>${x.woche}: ${x.phase}${x.erholung ? " · Erholungswoche" : ""}</title></rect>`).join("")}
-      ${W.map((x, i) => `<rect x="${(34 + i * bw + 1).toFixed(1)}" y="${Y(plan[i]).toFixed(1)}" width="${Math.max(1, bw - 3).toFixed(1)}" height="${(h - 22 - Y(plan[i])).toFixed(1)}" fill="${x.erholung ? F_ERH : F_VOR}" stroke="${x.erholung ? "#9aa8b4" : "none"}" stroke-dasharray="2 2"><title>${x.woche}: Vorschlag ${plan[i]} h${x.erholung ? " (Erholung)" : ""}</title></rect>`).join("")}
+      ${W.map((x, i) => `<rect x="${(34 + i * bw + 1).toFixed(1)}" y="${Y(plan[i]).toFixed(1)}" width="${Math.max(1, bw - 3).toFixed(1)}" height="${(h - unten - Y(plan[i])).toFixed(1)}" fill="${x.erholung ? F_ERH : F_VOR}" stroke="${x.erholung ? "#9aa8b4" : "none"}" stroke-dasharray="2 2"><title>${x.woche}: Vorschlag ${plan[i]} h${x.erholung ? " (Erholung)" : ""}</title></rect>`).join("")}
       ${W.map((x, i) => { const r = IST.get(x.woche); if (!r || x.woche > heute) return ""; const v = r.rad + r.lauf + r.schwimm; return `<circle cx="${(34 + i * bw + bw / 2).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="4.5" fill="${F_IST}"><title>${x.woche}: absolviert ${v.toFixed(1)} h</title></circle>`; }).join("")}
-      ${W.map((x, i) => (x.rennen.length ? `<text x="${Math.min(w - 30, 34 + i * bw + bw / 2).toFixed(1)}" y="${h - 4}" text-anchor="middle" class="v56-rl">${x.rennen.join(", ")}</text>` : "")).join("")}
+      ${RL.map((q) => `<text x="${q.cx.toFixed(1)}" y="${h - 4 - (1 - q.z) * (RL.zwei ? 15 : 0)}" text-anchor="middle" class="v56-rl">${C.esc(q.t)}</text>`).join("")}
       ${[0, Math.round(maxH / 2), Math.round(maxH)].map((v) => `<text x="28" y="${(Y(v) + 4).toFixed(1)}" text-anchor="end" class="v56-ax">${v} h</text><line x1="34" x2="${w}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="${F_LIN}"/>`).join("")}
     </svg>`;
     const naechste = W.filter((x) => x.woche >= F.addDays(heute, -6)).slice(0, 4);
-    const ant = (() => { const r = { rad: 0, lauf: 0, schwimm: 0 }; for (const v of ist8.values()) { r.rad += v.rad; r.lauf += v.lauf; r.schwimm += v.schwimm; } const s = r.rad + r.lauf + r.schwimm || 1; return { rad: r.rad / s, lauf: r.lauf / s, schwimm: r.schwimm / s }; })();
+    const eigen = (() => { const r = { rad: 0, lauf: 0, schwimm: 0 }; for (const v of ist8.values()) { r.rad += v.rad; r.lauf += v.lauf; r.schwimm += v.schwimm; } const s = r.rad + r.lauf + r.schwimm || 1; return { rad: r.rad / s, lauf: r.lauf / s, schwimm: r.schwimm / s }; })();
+    // V6.4.4 (D5): Aufteilung wie die Woche nach Modell (aufteilung-1.0), dein Verhältnis der letzten 8 Wochen nur zum Vergleich
+    const AUF = window.V64 && window.V64.AUFTEILUNG, ant = AUF ? { rad: AUF.rad, lauf: AUF.lauf, schwimm: AUF.schwimm } : eigen;
     el.innerHTML = `<div class="v56-legend">${Object.entries(PH_COL).map(([k, c]) => `<span><i style="background:${c}"></i>${k}</span>`).join("")}<span><i class="dot" style="background:${F_IST}"></i>absolviert</span><span><i style="background:${F_VOR}"></i>Vorschlag</span></div>
       <div class="v56-svgwrap">${svg}</div>
       <p class="hint">Deine Referenzen (Schwimmen, Rad, Laufen): letzte 8 Wochen Median ${h8.length ? C.fmt(median(h8), 1) : "–"} h; grösste Woche der letzten 52 Wochen ${h52.length ? C.fmt(h52[0], 1) : "–"} h; Ø der 4 grössten ${top4 ? C.fmt(top4, 1) : "–"} h.</p>
@@ -146,7 +155,7 @@
         <div class="row"><button class="btn" type="submit">Vorschlag neu rechnen</button><span class="hint">nur auf diesem Gerät, überschreibt Enduco nicht</span></div></form>
       <div class="tablewrap"><table class="t"><tr><th>Woche ab</th><th>Phase</th><th>Vorschlag</th><th>Rad · Lauf · Schwimmen</th><th>Enduco (Garmin)</th><th>Ist</th><th>lange · Koppel</th></tr>${naechste.map((x) => { const i = W.indexOf(x), r = IST.get(x.woche), e = enduco.get(x.woche);
         return `<tr><td>${C.dateCH(x.woche)}</td><td>${x.phase}${x.erholung ? " · Erholung" : ""}</td><td>${plan[i]} h</td><td>${C.fmt(plan[i] * ant.rad, 1)} · ${C.fmt(plan[i] * ant.lauf, 1)} · ${C.fmt(plan[i] * ant.schwimm, 1)} h</td><td>${e ? C.fmt(e, 1) + " h" : "–"}</td><td>${r ? C.fmt(r.rad + r.lauf + r.schwimm, 1) + " h" : "–"}</td><td>${r ? r.lang : "–"} · ${(C.D.koppel || []).filter((k) => k.status !== "getrennt" && k.date >= x.woche && k.date <= F.addDays(x.woche, 6)).length}</td></tr>`; }).join("")}</table></div>
-      <p class="hint">Entscheidungshilfe (${S.regel}), keine Vorgabe: ${S.annahmen}; Spitzenwoche vorbelegt mit dem grösseren Wert aus 1.35 × «jetzt» und dem Ø deiner 4 grössten Wochen; Stunden linear von «jetzt» bis zur Spitzenwoche vor dem Taper, Erholungswochen 65 %, Taper 60 % und 40 %. Aufteilung nach deinem Verhältnis der letzten 8 Wochen (Rad ${Math.round(ant.rad * 100)} %, Lauf ${Math.round(ant.lauf * 100)} %, Schwimmen ${Math.round(ant.schwimm * 100)} %). «Lange» = Rad ≥ 3 h oder Lauf ≥ 1.5 h. Enduco-Stunden nur, soweit Workouts im Garmin-Kalender stehen.</p>`;
+      <p class="hint">Entscheidungshilfe (${S.regel}), keine Vorgabe: ${S.annahmen}; Spitzenwoche vorbelegt mit dem grösseren Wert aus 1.35 × «jetzt» und dem Ø deiner 4 grössten Wochen; Stunden linear von «jetzt» bis zur Spitzenwoche vor dem Taper, Erholungswochen 65 %, Taper 60 % und 40 %. ${AUF ? `Aufteilung wie in der Woche nach Modell (${C.esc(window.V64.VERSIONS.aufteilung)}: Rad ${Math.round(ant.rad * 100)} %, Lauf ${Math.round(ant.lauf * 100)} %, Schwimmen ${Math.round(ant.schwimm * 100)} %, eigene Festlegung); dein Verhältnis der letzten 8 Wochen` : "Aufteilung nach deinem Verhältnis der letzten 8 Wochen"} (Rad ${Math.round(eigen.rad * 100)} %, Lauf ${Math.round(eigen.lauf * 100)} %, Schwimmen ${Math.round(eigen.schwimm * 100)} %). Die Woche nach Modell rundet jede Einheit auf 5 min und meldet, was übrig bleibt. «Lange» = Rad ≥ 3 h oder Lauf ≥ 1.5 h. Stunden nur Schwimmen, Rad und Laufen; Enduco = Garmin-Kalender (Dauer aus den Workout-Schritten, sonst laut Kalender), ohne Workouts, die nur auf der Uhr liefen.</p>`;
     $("v56-sf").onsubmit = async (e) => { e.preventDefault(); await UI().Inbox.upsert("saison", { id: "saison-2027", jetzt: +e.target.j.value, spitze: +e.target.s.value, v: AN.VERSIONS.saison, geaendert: new Date().toISOString() }); V.saison(C); };
   };
 

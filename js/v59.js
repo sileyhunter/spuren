@@ -18,7 +18,7 @@
     C = ctx;
     beobachten();
     if (EG()) EG().beiStatus(() => { if ($("checkin")) V.checkin(); if (!$("v59-ov").hidden && V._ovArt === "einst") V.einstellungen(); });
-    window.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("v59-ov").hidden) V.schliessen(); });
+    window.addEventListener("keydown", (e) => { const ex = document.getElementById("ex"); if (e.key === "Escape" && !$("v59-ov").hidden && !(ex && !ex.hidden)) V.schliessen(); });
   };
 
   /* ======================= Morgen-Check-in (befinden-2.0) =======================
@@ -165,13 +165,15 @@
   /* ======================= Bedienung (bedienung-1.0): Info-Knopf und Tabellen als Liste ======================= */
   const ERKL = '.card-head .sub:not([id]), .card > .sub:not([id]), .card > h2 + .sub:not([id]), .card p.hint, .card div.hint, .card .td-dq';
   const BLEIBT = '[role="status"], [aria-live], .warn-t, .down, .verdict, .keep, .ci, .ci *, .ci-done, .ci-done *, .hp-leer, .syncbar, .syncbar *, .info-knopf';
+  const WARN_IN = '[role="status"], [aria-live], .warn-t, .down, .verdict, .keep';
   const ERGEBNIS = 'canvas, table, ul, ol, dl, .kv, .verdict, .rg, .dev-num, .ci, .ci-done, .race, .cal, .rd-status, .td-tiles, .td-verdict, input, textarea, .bk-satz, .hp-wo, .hp-leer, img, .dev-tile';
   const LISTEN_IN = ["#v56-plan", "#v56-saison", "#v56-ermuedung"];
   V.erklImmer = () => lsGet("sf.erkl.immer") === "1";
   function infoKarte(card) {
     if (card.closest("#view-karte") || card.hidden) return;
     if (V.erklImmer()) { card.querySelectorAll(".erkl").forEach((e) => e.classList.remove("erkl")); card.classList.remove("hat-info"); card.querySelector(":scope > .info-knopf")?.remove(); return; }
-    const kand = [...card.querySelectorAll(ERKL)].filter((e) => !e.matches(BLEIBT) && !e.closest(BLEIBT.replace(/, \.[a-z-]+ \*/g, "")) && e.textContent.trim());
+    // V6.4.4 (Audit D7): ein Erklärtext, der eine Warnung oder einen Status enthält, bleibt sichtbar
+    const kand = [...card.querySelectorAll(ERKL)].filter((e) => !e.matches(BLEIBT) && !e.closest(BLEIBT.replace(/, \.[a-z-]+ \*/g, "")) && !e.querySelector(WARN_IN) && e.textContent.trim());
     const ergebnis = [...card.querySelectorAll(ERGEBNIS)].some((e) => !kand.some((k) => k.contains(e)) && !(e.tagName === "TABLE" && ![...e.rows].some((r) => [...r.cells].some((c) => c.tagName === "TD"))));   // leere Tabelle ist kein Ergebnis
     card.querySelectorAll(".erkl").forEach((e) => { if (!kand.includes(e) || !ergebnis) e.classList.remove("erkl"); });
     if (!ergebnis || !kand.length) { card.classList.remove("hat-info"); card.querySelector(":scope > .info-knopf")?.remove(); return; }
@@ -211,17 +213,35 @@
   }
 
   /* ======================= Overlay (Einstellungen, Bestätigen) ======================= */
+  // V6.4.4 (Audit D22): offene Blätter sind modal – alles daneben ist «inert» (kein Fokus, kein Antippen), nach dem Schliessen
+  // kehrt der Fokus zum auslösenden Knopf zurück. Mehrere Blätter übereinander: nur das oberste ist bedienbar.
+  const MODAL = [];
+  function modalSetzen() {
+    const top = MODAL.length ? MODAL[MODAL.length - 1].ov : null;
+    for (const el of document.body.children) {
+      if (el.tagName === "SCRIPT" || el.tagName === "STYLE") continue;
+      const soll = !!top && el !== top && !el.contains(top);
+      if (soll && !el.hasAttribute("data-m-inert")) { el.setAttribute("data-m-inert", el.inert ? "war" : ""); el.inert = true; }
+      else if (!soll && el.hasAttribute("data-m-inert")) { el.inert = el.getAttribute("data-m-inert") === "war"; el.removeAttribute("data-m-inert"); }
+    }
+  }
+  V.modalAuf = function (ov) { if (!ov || MODAL.some((m) => m.ov === ov)) return; MODAL.push({ ov, vorher: document.activeElement }); modalSetzen(); };
+  V.modalZu = function (ov) {
+    const i = MODAL.findIndex((m) => m.ov === ov); if (i < 0) return;
+    const m = MODAL.splice(i, 1)[0]; modalSetzen();
+    if (m.vorher && m.vorher !== document.body && document.contains(m.vorher) && typeof m.vorher.focus === "function") { try { m.vorher.focus({ preventScroll: true }); } catch (e) {} }
+  };
   function oeffne(art, html) {
     const ov = $("v59-ov"); V._ovArt = art;
     ov.innerHTML = `<div class="te-box" role="dialog" aria-modal="true" aria-labelledby="v59-ov-h">${html}</div>`;
-    ov.hidden = false; document.body.classList.add("noscroll");
+    ov.hidden = false; document.body.classList.add("noscroll"); V.modalAuf(ov);
     ov.querySelectorAll("[data-x]").forEach((b) => (b.onclick = V.schliessen));
     ov.onclick = (e) => { if (e.target === ov) V.schliessen(); };
     const h = $("v59-ov-h"); if (h) h.focus();
     return ov;
   }
   V.blatt = oeffne;                  // V6.0.1: Blätter für Check-in, Einheit, Optionen, Bereitschaft (js/v6-heute.js)
-  V.schliessen = function () { const ov = $("v59-ov"); ov.hidden = true; ov.innerHTML = ""; V._ovArt = null; document.body.classList.remove("noscroll"); };
+  V.schliessen = function () { const ov = $("v59-ov"); ov.hidden = true; ov.innerHTML = ""; V._ovArt = null; document.body.classList.remove("noscroll"); V.modalZu(ov); };
 
   /* ----- Einstellungen: Direkt speichern, ausgeblendete Karten ----- */
   const AUS_KEY = "sf.eingeblendet";

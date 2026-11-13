@@ -1,8 +1,8 @@
 # Änderungen
 
 ## V6.4.4 · 13.11.2026 · Prüfung V6.4: Befunde behoben (`docs/AUDIT_V64.md`)
-Vier unabhängige Prüfungen (Rechenlogik, Wissen und Quellen, Datenschutz, Oberfläche); die Befunde aus Rechenlogik, Wissen und Datenschutz sind
-nachgeprüft und behoben oder als offen geführt, die Oberfläche folgt in einem eigenen Schritt.
+Vier unabhängige Prüfungen (Rechenlogik, Wissen und Quellen, Datenschutz, Oberfläche); alle Befunde sind nachgeprüft und behoben oder als
+offen geführt (Oberfläche im zweiten Teil unten).
 - **saison-1.2:** Der 3:1-Rhythmus ist fest am Hauptrennen verankert (rückwärts ab der Woche vor dem Taper jede 4. Woche Erholung; B-Rennen mit
   Mini-Taper und Erholungswoche danach, eine Rhythmus-Erholung direkt davor oder kurz danach entfällt). Bis 1.1 begann er bei «heute»: Die
   Erholungswoche rückte jede Woche weiter, «diese Woche» war nie eine, und der Rad-Stufentest kam nie an. «Woche x von y» zählt ab dem Beginn
@@ -29,6 +29,29 @@ nachgeprüft und behoben oder als offen geführt, die Oberfläche folgt in einem
 - **Datenschutz:** echte Werte aus Doku und Tests entfernt (Unterzonen-Beispiele, Testtermine mit Reisebezug, eine Aktivitäts-ID, ein FTP-Wert);
   neue Leck-Prüfung `tools/leck_pruefen.py` vor jedem Push; `.gitignore` erweitert; entschlüsselte Datei nur für den eigenen Benutzer lesbar; Seite mit `noindex`.
 - Geprüft: alle Tests (+ 30 neue Prüfungen zu den Befunden), Leck-Prüfung, Demo und eigene Daten im Browser (390 px) ohne Programmfehler.
+
+**Zweiter Teil: Oberfläche (Prüfung D, 26 Befunde, davon 2 schon im ersten Teil erledigt)**
+- **Ampel (readiness-2.1, Regel unverändert):** Die Begründung nennt die HRV nicht mehr zugleich «unter» und «im Bereich» der Referenz (positive
+  Gründe nur, wenn der Wert wirklich im Bereich liegt). Dabei gefunden: Lagen mehrere der 7 Tage mehr als 3 Standardabweichungen von der Referenz
+  weg, fielen alle als «Ausreisser» weg – jetzt zählt wie beschrieben nur ein einzelner Ausreisser nicht, eine echte Veränderung über mehrere
+  Tage bleibt im Schnitt.
+- **Ring «Belastung» (ringe-1.0, Regel unverändert):** Ein Tag, dessen Einheiten noch nicht eingespielt sind (vor dem Nacht-Update), zeigt «noch
+  offen» statt «0 % · Ruhetag» (`FK.aktivitaetenBis`); «Fitness (Vortag)» beschriftet.
+- **Gleiche Grösse, gleiche Zahl:** Phasen, Wochenstunden-Vorschlag und Woche nach Modell zählen Stunden nur für Schwimmen, Rad und Laufen und
+  die Enduco-Dauer aus den Workout-Schritten; der Wochenstunden-Vorschlag teilt wie die Woche nach Modell nach aufteilung-1.0 (dein Verhältnis
+  daneben). Was die Woche nach Modell durch die Rundung je Einheit nicht verteilt, wird gemeldet (wochenplan-1.2, Rest nie still). Explorer:
+  «Dauer (von–bis)» und «Bewegungszeit» getrennt, Ø Leistung «aus den 2-s-Werten».
+- **Vergleich mit Enduco (vergleich-1.1):** Ist der Enduco-Plan nur teilweise bekannt, stehen Summen und Stufen als «mind.»; in der laufenden
+  Woche nennt jeder Unterschied sein Fenster («bis Sa …»).
+- **Bedienung:** Leiste oben zeigt den gewählten Unterbereich auch bei «Körper» und «Schwimmen»; Sprungziele liegen nicht mehr unter der Leiste;
+  lange Dateinamen in Laktat brechen um (Ansicht nicht mehr breiter als der Bildschirm); Erklärtexte mit einer Warnung bleiben sichtbar (nicht
+  hinter «i»); Kalendertage mit Enter und Leertaste; Blätter modal (Hintergrund nicht bedienbar, Fokus zurück zum Knopf), Seitentitel als h1.
+- **Farben (design-1.0):** Zonenbalken auch hell in den Zonenfarben; Text überall mindestens 4,5 : 1 (u. a. vergangene Tage in der Woche nach
+  Modell ohne Abdunkeln, Statuswort, Zonen-Chips, Links im Wissen, helle Darstellung); Test im Kalender als Ring (nicht wie ein Z5-Punkt);
+  Phasenfarben im Wochenstunden-Vorschlag auch hell wie im Plan; Grafik dort in Kartenbreite, Rennnamen ohne Überlappung; LT1/LT2 und
+  Zonengrenzen in Laktat ohne Überlappung.
+- Kleineres: «Lernbausteine im Verlauf» ausgeblendet (die Bewertung kam aus dem ausgeblendeten Technik-Coach, Daten bleiben); Demo-Text ohne «seit –».
+- Geprüft: alle Tests (+ 5 neue zu D1, D5, D6, D12), Leck-Prüfung, Kontrast und Breite in Demo und mit eigenen Daten (390 px, dunkel und hell).
 
 ## V6.4.3 · 13.11.2026 · Vorschlag und Enduco im Vergleich
 - **Vergleich mit Enduco (vergleich-1.0):** «Woche nach Modell» zeigt neu auch die letzte Woche (ältere über die neue Karte «Vorschlag und Enduco

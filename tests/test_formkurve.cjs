@@ -652,3 +652,28 @@ test("Ampel-Prüfung (ampel-pruefung-1.1): Puls bei gleicher Leistung je Ampel-S
   const P2 = FK.ampelPruefung(dd, acts, [], dd[69].date, { minGruppe: 1 });
   assert.ok(P2.ampel.find((g) => g.k === "vorsichtig").mittel > 5, "an Vorsicht-Tagen höherer Puls bei gleicher Leistung");
 });
+test("Readiness (Audit V6.4 D1): HRV leicht unter Referenz → kein zweiter Grund «im Bereich»; mehrere tiefe Tage zählen", () => {
+  const r = FK.readiness(base((i) => (i >= 63 ? { hrv: 79 } : {})), ACTS, [], D70);
+  assert.equal(r.indikatoren.hrv.status, "unter Referenz");
+  assert.equal(r.status, "normal");
+  const hrv = r.alle_gruende.filter((g) => /^HRV/.test(g.txt));
+  assert.equal(hrv.length, 1, "genau eine Aussage zur HRV");
+  assert.match(hrv[0].txt, /unter deiner Referenz/);
+  assert.ok(!r.gruende.some((t) => /im Bereich/.test(t) && /^HRV/.test(t)));
+  // fünf von sieben Tagen weit unter der Referenz: keine «Ausreisser», sondern eine echte Veränderung
+  const t = FK.readiness(base((i) => (i >= 64 ? { hrv: 60 } : {})), ACTS, [], D70);
+  assert.deepEqual(t.indikatoren.hrv.ausreisser, []);
+  assert.equal(t.indikatoren.hrv.status, "deutlich unter Referenz");
+  assert.ok(t.indikatoren.hrv.wert7 < 70, "Schnitt aus allen sieben Tagen");
+  assert.equal(t.status, "vorsichtig");
+});
+test("Ringe (Audit V6.4 D6): Tag ohne eingespielte Einheiten → Belastung offen, nicht 0 % «Ruhetag»", () => {
+  assert.equal(FK.aktivitaetenBis({ updated: "13.11.2026 08:39", updated_lauf: "Morgen-Update" }), "2026-11-12");
+  assert.equal(FK.aktivitaetenBis({ updated: "12.11.2026 23:00", updated_lauf: "Nacht-Update" }), "2026-11-12");
+  assert.equal(FK.aktivitaetenBis({ updated: "12.11.2026 23:00" }), null, "ohne Angabe keine Einschränkung");
+  const days = base(), acts = ACTS.slice(0, 69);   // letzter Tag ohne Einheit
+  const ohne = FK.ringeVerlauf(days, acts, D70, 2), mit = FK.ringeVerlauf(days, acts, D70, 2, { aktBis: FK.addDays(D70, -1) });
+  assert.equal(ohne[1].belastung, 0, "ohne Angabe wie bisher");
+  assert.equal(mit[1].belastung, null); assert.equal(mit[1].belastungOffen, true); assert.equal(mit[1].tss, null);
+  assert.equal(mit[0].belastung, ohne[0].belastung, "Vortag unverändert");
+});

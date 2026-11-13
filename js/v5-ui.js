@@ -212,13 +212,17 @@
       const marks = (o && o.marks) || [];
       const { ctx, chartArea: a, scales } = chart;
       ctx.save();
+      const belegt = [];   // V6.4.4 (Audit D20): Beschriftungen nicht übereinander und nicht über den Rand
       for (const m of marks) {
         const x0 = scales.x.getPixelForValue(m.lo), x1 = scales.x.getPixelForValue(m.hi);
         ctx.fillStyle = m.color + "22"; ctx.fillRect(Math.min(x0, x1), a.top, Math.max(2, Math.abs(x1 - x0)), a.bottom - a.top);
         ctx.strokeStyle = m.color; ctx.setLineDash([4, 3]); ctx.lineWidth = 1;
         for (const x of [x0, x1]) { ctx.beginPath(); ctx.moveTo(x, a.top); ctx.lineTo(x, a.bottom); ctx.stroke(); }
         ctx.setLineDash([]); ctx.fillStyle = m.color; ctx.font = "600 11px " + C.css("--f-body");
-        ctx.fillText(m.label, Math.min(x0, x1) + 4, a.top + 12);
+        const tw = ctx.measureText(m.label).width, lx = Math.max(a.left + 2, Math.min(Math.min(x0, x1) + 4, a.right - tw - 2));
+        let zeile = 0; while (belegt.some((b) => b.z === zeile && lx < b.r + 4 && b.l < lx + tw + 4)) zeile++;
+        belegt.push({ z: zeile, l: lx, r: lx + tw });
+        ctx.fillText(m.label, lx, a.top + 12 + zeile * 14);
       }
       ctx.restore();
     },
@@ -401,7 +405,10 @@
       const a = fr(z.von == null ? s.umfang[0] : z.von), b = fr(z.bis == null ? s.umfang[1] : z.bis);
       return `<div class="zseg z${i + 1}" style="left:${(a * 100).toFixed(2)}%;width:${((b - a) * 100).toFixed(2)}%" title="${esc(z.z)}: ${z.von == null ? "bis" : fv(s, z.von)}${z.von != null && z.bis != null ? " – " : " "}${z.bis == null ? "und mehr" : fv(s, z.bis)}${z.text ? " · " + esc(z.text) : ""}"><span>${esc(z.z)}</span></div>`;
     }).join("");
-    const ticks = [s.umfang[0], ...s.zonen.slice(1).map((z) => z.von), s.umfang[1]].map((v, i, arr) => `<span class="tick${i === 0 ? " first" : i === arr.length - 1 ? " last" : ""}" style="left:${(fr(v) * 100).toFixed(2)}%">${s.metrik === "pace" ? F.pace(v) : num(v)}${i === 0 && s.zonen[0].von == null ? "" : ""}</span>`).join("");
+    // V6.4.4 (Audit D20): liegen zwei Grenzen sehr nahe beieinander, kommt die zweite Zahl eine Zeile tiefer statt darüber
+    const tv = [s.umfang[0], ...s.zonen.slice(1).map((z) => z.von), s.umfang[1]], tz = []; let zwei = false;
+    tv.forEach((v, i) => { const p = fr(v), vor = i ? fr(tv[i - 1]) : null; tz.push(i && tz[i - 1] === 0 && Math.abs(p - vor) < 0.11 ? 1 : 0); if (tz[i]) zwei = true; });
+    const ticks = tv.map((v, i, arr) => `<span class="tick${i === 0 ? " first" : i === arr.length - 1 ? " last" : ""}${tz[i] ? " tief" : ""}" style="left:${(fr(v) * 100).toFixed(2)}%">${s.metrik === "pace" ? F.pace(v) : num(v)}</span>`).join("");
     const sets = [];
     if (LZ.mode !== "vorher" && k.aktuell) sets.push(["aktuell", k.aktuell]);
     if (LZ.mode !== "aktuell" && k.vorher) sets.push(["vorher", k.vorher]);
@@ -417,7 +424,7 @@
     const none = !k.aktuell ? `<span class="hint">Kein Test dieser Disziplin mit diesem Protokoll: keine Schwellen.</span>` : LZ.mode !== "aktuell" && !k.vorher ? `<span class="hint">Kein vorheriger vergleichbarer Test (gleiche Sportart, gleiches Protokoll).</span>` : "";
     const name = `${s.disziplin === "rad" ? "Rad" : "Laufen"} / ${{ leistung: "Leistung", puls: "Herzfrequenz", pace: "Pace" }[s.metrik]} (${s.metrik === "pace" ? "min/km" : s.unit})`;
     return `<section class="zscale" aria-label="${esc(name)}"><div class="zhead"><h3>${esc(name)}</h3>${s.metrik === "pace" ? `<span class="hint">langsam → schnell</span>` : ""}${na}</div>
-      <div class="zbar" role="group" aria-label="Zonen ${esc(name)}">${segs}${marks}</div><div class="zticks" aria-hidden="true">${ticks}</div>${none}${zonenListe(s)}
+      <div class="zbar" role="group" aria-label="Zonen ${esc(name)}">${segs}${marks}</div><div class="zticks${zwei ? " zwei" : ""}" aria-hidden="true">${ticks}</div>${none}${zonenListe(s)}
       ${s.hinweis ? `<p class="hint">${esc(s.hinweis)}</p>` : ""}</section>`;
   }
   /** V6.0.2 (design-1.0): Zonen als Liste – Farbbalken links, Grenzen rechts, Unterzonen mit Punkt und Bereich. */
@@ -648,14 +655,14 @@
     cur: null,
     open(id, opt) {
       const ov = $("v5-test");
-      ov.hidden = false; document.body.classList.add("noscroll");
+      ov.hidden = false; document.body.classList.add("noscroll"); if (window.V59 && window.V59.modalAuf) window.V59.modalAuf(ov);   // V6.4.4 (Audit D22)
       if (id) this.cur = JSON.parse(JSON.stringify((Inbox.data.test_entwuerfe || []).find((d) => d.id === id)));
       else this.cur = null;
       this.opt = opt || {};
       this.render();
       ov.querySelector("h2")?.focus();
     },
-    close() { $("v5-test").hidden = true; document.body.classList.remove("noscroll"); V.laktat && LZ.L && V.laktat(); },
+    close() { $("v5-test").hidden = true; document.body.classList.remove("noscroll"); if (window.V59 && window.V59.modalZu) window.V59.modalZu($("v5-test")); V.laktat && LZ.L && V.laktat(); },
     newDraft(tid, cfg) {
       const T = Object.assign({}, TEMPLATES[tid] || {}, cfg || {});
       const now = new Date();

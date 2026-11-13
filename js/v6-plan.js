@@ -52,7 +52,8 @@
     const L = S.alle && S.ab ? S.alle.filter((w) => w.woche >= S.ab) : S.wochen;
     const seg = W.phasenSegmente(L, h), R = rennen(), ist = AN().wochenIst(C.D.activities, L[0].woche, FK().addDays(L[L.length - 1].woche, 6));
     const plan = new Map();
-    for (const p of C.D.planned || []) { if (!p.date) continue; const mo = W.montag(p.date); plan.set(mo, (plan.get(mo) || 0) + ((window.V6H ? window.V6H.planDauer(p) : p.dur_s) || 0) / 3600); }
+    // V6.4.4 (D4/D14): wie der Vorschlag nur Schwimmen, Rad und Laufen; Dauer aus den Workout-Schritten wie überall (V6H.planDauer)
+    for (const p of C.D.planned || []) { if (!p.date || !["schwimm", "rad", "lauf"].includes(p.sport)) continue; const mo = W.montag(p.date); plan.set(mo, (plan.get(mo) || 0) + ((window.V6H ? window.V6H.planDauer(p) : p.dur_s) || 0) / 3600); }
     const hh = (x) => (isNum(x) && x > 0 ? (Math.round(x * 2) / 2).toString().replace(".", ",") + " h" : "–");
     const items = [];
     seg.forEach((s) => {
@@ -60,7 +61,7 @@
       const wa = s.aktiv ? s.wochen.find((w) => h >= w.woche && h <= FK().addDays(w.woche, 6)) : null;
       const wiText = wa && isNum(wa.phaseNr) && (wa.basis || wa.phase) === s.phase ? ` · Woche ${wa.phaseNr} von ${wa.phaseN}` : "";
       const wochen = s.wochen.map((w) => {
-        const r = ist.get(w.woche), istH = r ? r.rad + r.lauf + r.schwimm + r.andere : null, jetzt = h >= w.woche && h <= FK().addDays(w.woche, 6);
+        const r = ist.get(w.woche), istH = r ? r.rad + r.lauf + r.schwimm : null, jetzt = h >= w.woche && h <= FK().addDays(w.woche, 6);
         return `<li class="${jetzt ? "jetzt" : ""}"><span>KW ${W.isoWoche(w.woche)} · ${esc(dkurz(w.woche))}–${esc(dkurz(FK().addDays(w.woche, 6)))}</span>
           <span class="pl-w-tags">${w.erholung ? `<em class="pl-tag erh">Erholung</em>` : ""}${(w.rennen || []).map((x) => `<em class="pl-tag rennen">${esc(x)}</em>`).join("")}</span>
           <span class="pl-w-h">${w.woche <= h ? `${hh(istH)} absolviert` : ""}${plan.get(w.woche) ? `${w.woche <= h ? " · " : ""}${hh(plan.get(w.woche))} geplant` : ""}</span></li>`;
@@ -74,7 +75,7 @@
         items.push(`<li class="pl-ziel${r.prio === "A" ? " a" : ""}"><span class="pl-flagge">${W.icon("flagge", 18)}</span><b>${esc(r.short || r.name)}</b><span class="pl-prio">${esc(r.prio)}</span><small>${esc(dch(r.date))}</small></li>`);
     });
     box.innerHTML = `<ol class="pl-zeit">${items.join("")}</ol>
-      <p class="hint">Phasen rückwärts ab ${esc(S.haupt.name)} (${esc(S.regel)}): ${esc(S.annahmen)}. Vorschlag zur Orientierung – massgebend bleibt der Plan in Enduco; Stunden «geplant» aus dem Garmin-Kalender.</p>`;
+      <p class="hint">Phasen rückwärts ab ${esc(S.haupt.name)} (${esc(S.regel)}): ${esc(S.annahmen)}. Vorschlag zur Orientierung – massgebend bleibt der Plan in Enduco. Stunden wie der Vorschlag nur Schwimmen, Rad und Laufen: «absolviert» = Bewegungszeit, «geplant» = Garmin-Kalender (Dauer aus den Workout-Schritten, sonst laut Kalender).</p>`;
     box.querySelectorAll(".pl-ph-k").forEach((b) => (b.onclick = () => {
       const ul = b.parentElement.querySelector(".pl-wochen"), auf = ul.hidden;
       ul.hidden = !auf; b.setAttribute("aria-expanded", String(auf)); b.parentElement.classList.toggle("offen", auf);

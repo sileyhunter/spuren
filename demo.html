@@ -43,6 +43,7 @@ button, input, select { font: inherit; color: inherit; }
 
 header.top { display: flex; align-items: center; gap: 8px 22px; flex-wrap: wrap; background: var(--surface); border-bottom: 1px solid var(--line);
   padding-top: env(safe-area-inset-top, 0px); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1.brand { margin: 0; }   /* V6.4.4 (Audit D22): Seitentitel als h1 */
 .brand { display: flex; align-items: center; gap: 10px; font: 700 21px/1 var(--f-display); letter-spacing: .04em; text-transform: uppercase; padding-block: 12px; white-space: nowrap; }
 .brand .mark { width: 26px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #5e0b18, #d8401c, #f78a1d, #fcd34d, #fffdf0); box-shadow: 0 0 10px rgba(247,138,29,.55); }
 nav.tabs { display: flex; gap: 2px; overflow-x: auto; flex: 1; min-width: 0; align-self: stretch; }
@@ -141,7 +142,7 @@ table.t tr.subrow td { color: var(--muted); font-size: 12.5px; }
 table.t tr.subrow td:first-child { padding-left: 26px; }
 table.t tr.total td { font-weight: 600; border-top: 1px solid var(--muted); }
 table.t td.wrap { white-space: normal; text-align: left; min-width: 220px; max-width: 520px; }
-table.t td.wrap small, table.t td .hint { white-space: normal; }
+table.t td.wrap small, table.t td .hint { white-space: normal; overflow-wrap: anywhere; }
 .tablewrap table.t th:first-child, .tablewrap table.t td:first-child { position: sticky; left: 0; background: var(--surface); z-index: 1; }
 @media (max-width: 520px) { table.t th, table.t td { padding: 6px 5px; font-size: 12px; } table.t tr.subrow td:first-child { padding-left: 16px; } }
 .hp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 22px; }
@@ -399,6 +400,7 @@ ul.flags { margin: 6px 0; padding-left: 18px; font-size: 12.5px; color: var(--mu
 .zseg.z1 { background: var(--z1); border-radius: 6px 0 0 6px; } .zseg.z2 { background: var(--z2); } .zseg.z3 { background: var(--z3); } .zseg.z4 { background: var(--z4); } .zseg.z5 { background: var(--z5); border-radius: 0 6px 6px 0; border-right: 0; }
 .zticks { position: relative; height: 18px; margin-top: 4px; font: 11.5px var(--f-mono); color: var(--muted); }
 .tick { position: absolute; transform: translateX(-50%); white-space: nowrap; } .tick.first { transform: none; } .tick.last { transform: translateX(-100%); }
+.zticks.zwei { height: 32px; } .tick.tief { top: 14px; }
 .ltm { position: absolute; top: -16px; bottom: -4px; border: 0; padding: 0; background: transparent; cursor: pointer; --c: var(--lt1); }
 .ltm::before { content: ""; position: absolute; left: 0; right: 0; top: 16px; bottom: 4px; background: rgba(20,138,126,.10); border-left: 2px dashed var(--c); border-right: 2px dashed var(--c); }
 .ltm::after { content: ""; position: absolute; left: -18px; right: -18px; top: 0; bottom: 0; }
@@ -737,7 +739,7 @@ body.ex-offen { overflow: hidden; }
 .v56-acts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .v56-acts li { display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; }
 .v56-an { flex: 1; min-width: 0; display: flex; flex-direction: column; } .v56-an small { color: var(--muted); }
-.v56-svgwrap { width: 100%; } .v56-saison { width: 100%; height: auto; display: block; } .v56-rl { font-size: 15px; fill: #1f3347; font-weight: 700; } .v56-ax { font-size: 13px; fill: #6b7785; }
+.v56-svgwrap { width: 100%; } .v56-saison { width: 100%; height: auto; display: block; } .v56-rl { font-size: 13px; fill: var(--fg); font-weight: 700; } .v56-ax { font-size: 12px; fill: var(--muted); }
 .v56-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); } .v56-legend i { display: inline-block; width: 12px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
 .v56-legend i.dot { width: 8px; height: 8px; border-radius: 50%; }
 /* V5.5 Schwimmen: CSS-Test, Fehlerboard */
@@ -826,6 +828,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
   table.t.als-liste td[data-l]::before { content: attr(data-l) ": "; color: var(--muted); font-size: 12px; }
   table.t.als-liste td:first-child, table.t.als-liste th:first-child { font-weight: 650; font-size: 14.5px; }
   .tablewrap:has(> table.t.als-liste) { overflow: visible; }
+  table.t.als-liste td, table.t.als-liste td small { overflow-wrap: anywhere; }   /* V6.4.4 (D3): lange Dateinamen ohne Leerzeichen umbrechen */
 }
 </style>
 <link rel="stylesheet" href="css/v6.css">
@@ -843,7 +846,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
   </form>
 </div>
 <header class="top">
-  <div class="brand"><img class="mark-img" src="logo-kopf.jpg" alt="" width="104" height="38" decoding="async">Ironman Notebook</div>
+  <h1 class="brand"><img class="mark-img" src="logo-kopf.jpg" alt="" width="104" height="38" decoding="async">Ironman Notebook</h1>
   <div class="countdowns" id="countdowns"></div>
   <div class="stand" id="stand"></div>
   <button class="kopf-knopf" id="btn-einst" type="button" aria-label="Einstellungen" title="Einstellungen"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
@@ -1445,7 +1448,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
         <h2>Technikübungen</h2><div class="sub">So werden die Übungen ausgeführt – Ziel, Ablauf, typische Fehler</div>
         <div id="v53-drills"></div>
       </div>
-      <div class="card w12">
+      <div class="card w12" id="sw-tech-card" hidden data-ausgeblendet="Lernbausteine: die Bewertung kam aus dem Schwimmtechnik-Coach, der seit V5.9 ausgeblendet ist (V6.4.4, Audit D16). Daten bleiben">
         <h2>Lernbausteine im Verlauf</h2><div class="sub">Deine eigene Bewertung je Sitzung, keine automatische Analyse</div>
         <div class="chart"><canvas id="c-sw-tech" aria-label="Bewertung der Lernbausteine über die Zeit"></canvas></div>
       </div>
@@ -1987,9 +1990,12 @@ function showTab(name) {
   const g = gruppeVon(name);
   document.querySelectorAll("#leiste [data-gruppe]").forEach((b) => { if (b.dataset.gruppe === g) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
   document.querySelectorAll("nav.unter [data-tab]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tab === name)));
-  const aktivU = document.querySelector(`#view-${name} nav.unter [data-tab="${name}"]`);       // V6.0.2: gewählten Unterbereich in der Leiste oben sichtbar machen
-  if (aktivU && aktivU.parentElement.scrollWidth > aktivU.parentElement.clientWidth) { const n = aktivU.parentElement; n.scrollLeft = aktivU.offsetLeft - (n.clientWidth - aktivU.offsetWidth) / 2; }
   document.querySelectorAll("section.view").forEach((s) => (s.hidden = s.id !== "view-" + name));
+  // V6.0.2: gewählten Unterbereich in der Leiste oben sichtbar machen – V6.4.4 (D2): erst wenn die Ansicht sichtbar ist (vorher Breite 0), ohne Animation
+  const aktivU = document.querySelector(`#view-${name} nav.unter [data-tab="${name}"]`);
+  if (aktivU) { const n = aktivU.parentElement; if (n.scrollWidth > n.clientWidth) { const sb = n.style.scrollBehavior; n.style.scrollBehavior = "auto";
+    const rb = aktivU.getBoundingClientRect(), rn = n.getBoundingClientRect();
+    n.scrollLeft = Math.max(0, n.scrollLeft + (rb.left - rn.left) - (n.clientWidth - rb.width) / 2); n.style.scrollBehavior = sb; } }
   document.body.classList.toggle("plan-aktiv", name === "karte" && !!(window.RTUI && window.RTUI.active && window.RTUI.active()));
   if (name === "karte") { map?.resize(); }
   const t = TABS[name];
@@ -3276,6 +3282,9 @@ const TABS = {
       document.getElementById("cal-next").addEventListener("click", () => go(1));
       document.getElementById("cal-today").addEventListener("click", () => { go(null); this.day(iso(today), true); });
       document.getElementById("cal").addEventListener("click", (e) => { const c = e.target.closest(".day"); if (c) this.day(c.dataset.d); });
+      // V6.4.4 (Audit D21): Tage mit role=button auch mit Enter und Leertaste; Fokus bleibt nach dem Neuzeichnen auf dem Tag
+      document.getElementById("cal").addEventListener("keydown", (e) => { const c = e.target.closest(".day[data-d]"); if (!c || (e.key !== "Enter" && e.key !== " ")) return; e.preventDefault();
+        const d = c.dataset.d; this.day(d); const n = document.querySelector(`#cal .day[data-d="${d}"]`); if (n) n.focus(); });
       document.getElementById("cal-day").addEventListener("click", (e) => { const b = e.target.closest("[data-ek]"); if (b && window.V6H) window.V6H.einheit(b.dataset.ek); });
       const ic = (k) => (window.V6 ? V6.icon(k, 14) : "");
       document.getElementById("cal-legend").innerHTML = `<span><i class="c-i ist" style="--sp:var(--sp-rad)">${window.V6 ? V6.sportIcon("rad", 12) : ""}</i>erledigt</span><span><i class="c-i plan" style="--sp:var(--sp-rad)">${window.V6 ? V6.sportIcon("rad", 12) : ""}</i>geplant (Garmin-Kalender)</span>` +

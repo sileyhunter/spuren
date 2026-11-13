@@ -165,3 +165,8 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
     Sollband lange Ausfahrt und «Meine Entwicklung» sind in den Kapiteln nur erwähnt, nicht erklärt.
 63. **Gemeinsamer Stufentest im Testkalender:** Ein Eintrag «Rad und Lauf» gilt jetzt als zwei Tests am selben Tag. Besser wären zwei Einträge
     mit Feld `sport`, wenn die Termine das nächste Mal ersetzt werden.
+64. **Aktivitätsnamen mit fehlendem Umlaut (Audit D24):** eine Zwift-Aktivität heisst wie geliefert ohne «Ü» am Anfang, das gleichnamige Workout
+    im Garmin-Kalender mit. Vermutlich schon so aus Zwift/Garmin; beim nächsten Import prüfen, Namen nie still ändern.
+65. **Oberfläche (Audit D, Rest):** Heute und Kalender zählen die Wochenstunden aller Sportarten, der Plan nur Schwimmen, Rad und Laufen –
+    beschriftet, aber zwei Zahlen. Vergangene Phasen im Plan sind noch abgedunkelt (Kontrast nur aufgeklappt prüfbar). Safari/iOS und VoiceOver
+    selbst sind nicht geprüft.

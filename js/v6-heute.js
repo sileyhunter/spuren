@@ -71,10 +71,10 @@
     const ciSub = b ? (b._lokal ? (C.IS_DEMO ? "nur hier (Demo)" : "auf dem Gerät") : "in den Daten") : aus ? "übersprungen" : "4 kurze Fragen";
     box.innerHTML = `
       <button type="button" class="kachel" data-v6="bereit" aria-label="Ampel, Bereitschaft heute: ${esc(bw)} – Einzelheiten">
-        <span class="k-kopf">${V6().icon("ampel", 15)}Ampel</span><b class="k-wert" style="color:var(${bf})">${esc(bw)}</b>
+        <span class="k-kopf">${V6().icon("ampel", 15)}Ampel</span><b class="k-wert k-farbe" style="--kc:var(${bf})">${esc(bw)}</b>
         <small>${!r ? "wird berechnet" : tag === heuteISO() ? "Morgenwerte heute" : tag ? "Werte vom " + esc(C.dateCH(tag).slice(0, 6)) : "keine Morgenwerte"}</small></button>
       <button type="button" class="kachel" data-v6="optionen" aria-label="Trainingsstatus: ${esc(st ? st.name : "offen")} – Optionen für heute">
-        <span class="k-kopf">${V6().icon("status", 15)}Status</span><b class="k-wert" style="color:${st ? st.farbe : "var(--muted)"}">${esc(st ? st.name : "offen")}</b>
+        <span class="k-kopf">${V6().icon("status", 15)}Status</span><b class="k-wert${st ? " st-farbe" : ""}" style="${st ? `--stc:${st.farbe}` : "color:var(--muted)"}">${esc(st ? st.name : "offen")}</b>
         <small>${pa ? "Form " + sg(pa.form) : "ohne Einheiten"}</small></button>
       <button type="button" class="kachel" data-v6="checkin" aria-label="Check-in: ${b ? "erledigt" : aus ? "übersprungen" : "offen"}">
         <span class="k-kopf">${V6().icon("check", 15)}Check-in</span><b class="k-wert" style="color:var(${b ? "--good" : aus ? "--muted" : "--fg"})">${b ? "erledigt" : aus ? "später" : "offen"}</b>
@@ -206,7 +206,7 @@
     if (rE && window.TRUI && !C.IS_DEMO) akt.splice(1, 0, ["route", "Passende Route finden", `für «${rE.p.title || SPORT_WORT[rE.sport]}»`, "route"]);
     const html = `<div class="blatt-titel">${W.icon("plus", 34)}<h2 id="v59-ov-h" tabindex="-1">Optionen für heute</h2></div>
       ${pa ? `<div class="kv ek-kv"><div><b>${pa.fitness}</b><span>Fitness</span></div><div><b>${pa.ermuedung}</b><span>Ermüdung</span></div><div><b>${sg(pa.form)}</b><span>Form</span></div></div>
-      <div class="st-block"><div class="st-kopf"><span class="abschnitt">${W.icon("status", 15)}Trainingsstatus</span><b style="color:${st.farbe}">${esc(st.name)}</b></div>
+      <div class="st-block"><div class="st-kopf"><span class="abschnitt">${W.icon("status", 15)}Trainingsstatus</span><b class="st-farbe" style="--stc:${st.farbe}">${esc(st.name)}</b></div>
         <div class="st-skala" role="img" aria-label="Form ${sg(pa.form)} auf der Skala von hoher Belastung bis Formverlust">${W.statusBaender().map((b) => `<i style="left:${(b.von * 100).toFixed(1)}%;width:${((b.bis - b.von) * 100).toFixed(1)}%;background:${b.farbe}"></i>`).join("")}<span class="st-marke" style="left:${(lage * 100).toFixed(1)}%"></span></div>
         <div class="st-enden"><span>hohe Belastung</span><span>Formverlust</span></div>
         <p class="st-text">${esc(st.text)}. Form = Fitness − Ermüdung (${esc(pa.v)}); Bänder nach Coggan, eigene Wörter (${esc(W.VERSIONS.status)}). Kein medizinisches Mass.</p></div>`
@@ -232,12 +232,12 @@
     const W = V6(), r = UI().lastReadiness, F = window.FK, D = C.D;
     if (!r) return;
     const [bw, bf] = BEREIT[r.status] || [r.status, "--fg"], tag = morgenTag();
-    const ring = tag && F && F.ringeVerlauf ? F.ringeVerlauf(D.days, D.activities, tag, 1)[0] : null;
-    const pz = (v) => (isNum(v) ? v + " %" : "–");
-    const html = `<div class="blatt-titel">${W.icon("ampel", 34)}<h2 id="v59-ov-h" tabindex="-1">Bereitschaft</h2><b class="bk-wort" style="color:var(${bf})">${esc(bw)}</b></div>
+    const ring = tag && F && F.ringeVerlauf ? F.ringeVerlauf(D.days, D.activities, tag, 1, { aktBis: F.aktivitaetenBis ? F.aktivitaetenBis(D) : null })[0] : null;
+    const pz = (v, offen) => (isNum(v) ? v + " %" : offen ? "offen" : "–");
+    const html = `<div class="blatt-titel">${W.icon("ampel", 34)}<h2 id="v59-ov-h" tabindex="-1">Bereitschaft</h2><b class="bk-wort k-farbe" style="--kc:var(${bf})">${esc(bw)}</b></div>
       <p class="verdict${r.status === "vorsichtig" ? " warn" : ""}">${esc(r.empfehlung)}</p>
       ${r.gruende && r.gruende.length ? `<ul class="bk-gruende">${r.gruende.map((g) => `<li>${esc(g)}</li>`).join("")}</ul>` : ""}
-      ${ring ? `<div class="kv ek-kv"><div><b>${pz(ring.erholung)}</b><span>Erholung</span></div><div><b>${pz(ring.schlaf)}</b><span>Schlaf</span></div><div><b>${pz(ring.belastung)}</b><span>Belastung</span></div></div>` : ""}
+      ${ring ? `<div class="kv ek-kv"><div><b>${pz(ring.erholung)}</b><span>Erholung</span></div><div><b>${pz(ring.schlaf)}</b><span>Schlaf</span></div><div><b>${pz(ring.belastung, ring.belastungOffen)}</b><span>Belastung</span></div></div>` : ""}
       ${garminZeile()}
       <p class="ek-quelle">${tag ? (tag === heuteISO() ? "Morgenwerte von heute" : "Morgenwerte vom " + esc(C.dateCH(tag))) : "Keine Morgenwerte"} · Vertrauen ${esc(r.vertrauen)} · ${esc(r.v)}. Kein medizinisches Mass; fehlende Werte werden nicht durch «normal» ersetzt.</p>
       <div class="blatt-fuss"><button type="button" class="btn-zurueck" data-x aria-label="Zurück">${W.icon("zurueck", 22)}</button>

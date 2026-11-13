@@ -510,3 +510,20 @@ test("Woche (Audit V6.4 B6): gemeinsamer Rad- und Lauf-Stufentest ohne Feld spor
   const nurLauf = woche({ stunden: 9, tests: [{ date: "2026-11-21", kind: "stufentest", note: "Lauf-Stufentest Bahn" }] });
   assert.ok(nurLauf.tage[5].einheiten.some((e) => e.id === "test_lauf") && !nurLauf.tage[5].einheiten.some((e) => e.id === "test_rad"), "Lauf-Test ersetzt keine Rad-Einheit");
 });
+test("Woche nach Modell (Audit V6.4 D5): Rest aus der Rundung wird gemeldet, nichts doppelt", () => {
+  const w = V64.woche({ woche: "2027-03-01", phase: "Aufbau", stunden: 11.5, modell: "polarisiert" });
+  assert.equal(w.minuten.total, 680);
+  assert.ok(w.hinweise.some((t) => /11:20 h statt 11:30 h: 10 min nicht verteilt/.test(t)), w.hinweise.join(" | "));
+  const v = V64.woche({ woche: "2027-03-01", phase: "Aufbau", stunden: 15, modell: "polarisiert" });
+  assert.equal(v.hinweise.filter((t) => /nicht verteilt/.test(t)).length, 1, "Rest Laufen schon gemeldet: kein zweiter Hinweis");
+});
+test("Vergleich (Audit V6.4 D12): laufende Woche – jeder Unterschied nennt sein Fenster", () => {
+  const w = woche({ stunden: 9 });
+  const enduco = [{ date: "2026-11-17", sport: "rad", titel: "Sweet Spot", dauer_s: 5400, stufe: "schwelle" },
+    { date: "2026-11-18", sport: "lauf", titel: "VO2max Intervalle", dauer_s: 3600, stufe: "alles" },
+    { date: "2026-11-19", sport: "rad", titel: "Über-Unter", dauer_s: 6000, stufe: "schwelle" }];
+  const r = V64.vergleich({ w, enduco, ist: [{ date: "2026-11-17", sport: "rad", dauer_s: 5300 }], heute: "2026-11-19" });
+  const mitFenster = r.unterschiede.filter((u) => ["stunden", "sportart", "hart", "schwelle", "lang", "frei"].includes(u.art));
+  assert.ok(mitFenster.length >= 2);
+  for (const u of mitFenster) assert.match(u.text, /\(bis Do 19\.11\.\)/, u.text);
+});

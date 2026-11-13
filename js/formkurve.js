@@ -243,8 +243,16 @@
    *   Fitness unter 5 (zu wenig Daten): unbekannt. Kein medizinisches Mass und keine Trainingsvorgabe. */
   const phi = (z) => { const t = 1 / (1 + 0.3275911 * Math.abs(z) / Math.SQRT2), y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-(z * z) / 2); return 0.5 * (1 + (z >= 0 ? y : -y)); };
   FK.RINGE = { ref_tage: 60, min_ref: 14, sd_ln_hrv: 0.03, sd_rhr: 1 };
-  FK.ringeVerlauf = function (days, acts, bisISO, n) {
-    n = n || 7;
+  /** V6.4.4 (Audit D6): bis zu welchem Tag die Aktivitäten vollständig eingespielt sind. Das Nacht-Update spielt den Tag ein, an dem es läuft;
+   *  nach einem Morgen-Update gilt der Vortag. Ohne Angabe null (keine Einschränkung). */
+  FK.aktivitaetenBis = function (D) {
+    const m = D && typeof D.updated === "string" ? /^(\d{2})\.(\d{2})\.(\d{4})/.exec(D.updated) : null;
+    if (!m || !D.updated_lauf) return null;
+    const tag = `${m[3]}-${m[2]}-${m[1]}`;
+    return D.updated_lauf === "Nacht-Update" ? tag : FK.addDays(tag, -1);
+  };
+  FK.ringeVerlauf = function (days, acts, bisISO, n, opt) {
+    n = n || 7; const aktBis = opt && opt.aktBis ? opt.aktBis : null;
     const byDate = new Map((days || []).map((d) => [d.date, d]));
     const loads = new Map(); for (const a of acts || []) if (a && a.date) loads.set(a.date, (loads.get(a.date) || 0) + (isNum(a.tss) ? a.tss : 0));
     const dates = [...loads.keys(), ...(days || []).map((d) => d.date)].sort();
@@ -264,9 +272,11 @@
       const quelleE = zH != null && zR != null ? "HRV und Ruhepuls" : zH != null ? "nur HRV (Ruhepuls fehlt)" : zR != null ? "nur Ruhepuls (HRV fehlt)" : null;
       const schlaf = isNum(d.sleepScore) ? Math.round(d.sleepScore) : null;
       const tss = loads.get(date) || 0, ctl = ctlAm.get(FK.addDays(date, -1));
-      const belastung = isNum(ctl) && ctl >= 5 ? Math.round(100 * (1 - Math.pow(2, -tss / ctl))) : null;
+      // Tag noch nicht eingespielt (aktBis): Belastung offen statt 0 % «Ruhetag» – fehlend bleibt fehlend
+      const offen = !!(aktBis && date > aktBis);
+      const belastung = !offen && isNum(ctl) && ctl >= 5 ? Math.round(100 * (1 - Math.pow(2, -tss / ctl))) : null;
       out.push({ date, erholung, quelleE, zH, zR, hrv: isNum(d.hrv) ? d.hrv : null, rhr: isNum(d.rhr) ? d.rhr : null, n_ref: Math.min(lh.length, rh.length),
-        schlaf, sleepH: isNum(d.sleepH) ? d.sleepH : null, belastung, tss, ctl: isNum(ctl) ? ctl : null, v: FK.VERSIONS.ringe });
+        schlaf, sleepH: isNum(d.sleepH) ? d.sleepH : null, belastung, belastungOffen: offen, tss: offen ? null : tss, ctl: isNum(ctl) ? ctl : null, v: FK.VERSIONS.ringe });
     }
     return out;
   };
@@ -387,8 +397,10 @@
     else if (refL.length < (refKind === "60 Tage" ? opt.minRefLong : opt.minRefShort)) ind.hrv = { status: "unbekannt", grund: `Referenz ungenügend (${refL.length} Werte, mindestens ${opt.minRefShort})`, wert: hrvToday };
     else {
       const rm = mean(ln(refL)), rs = sd(ln(refL)) || 0.05;
-      // einzelner Ausreisser (|z| > 3) zählt nicht in den 7-Tage-Schnitt
-      const outl = h7raw.filter((x) => Math.abs((Math.log(x.v) - rm) / rs) > 3);
+      // einzelner Ausreisser (|z| > 3) zählt nicht in den 7-Tage-Schnitt. V6.4.4: nur ein einzelner – liegen mehrere Tage so weit weg,
+      // ist das eine echte Veränderung und zählt (vorher fielen sie alle weg: Schnitt aus wenigen oder gar keinen Werten)
+      const weit = h7raw.filter((x) => Math.abs((Math.log(x.v) - rm) / rs) > 3);
+      const outl = weit.length === 1 ? weit : [];
       const use = h7raw.filter((x) => !outl.includes(x));
       const m7 = mean(use.map((x) => Math.log(x.v)));
       const z = (m7 - rm) / rs;
@@ -471,8 +483,9 @@
       for (const k of ["hrv", "rhr", "schlaf"]) if (ind[k] && ["unbekannt", "nicht vergleichbar"].includes(ind[k].status)) add(3, labelOf(k) + ": " + (ind[k].grund || ind[k].status), "fehlt");
     }
     if (status === "bereit" || (status === "normal" && reasons.length < 2)) {
-      if (ind.hrv.wert7) add(1, `HRV 7 Tage Ø ${ind.hrv.wert7} ms ${ind.hrv.status === "über Referenz" ? "über" : "im Bereich"} deiner Referenz (${ind.hrv.refLo}–${ind.hrv.refHi} ms)`, "hrv+");
-      if (ind.rhr.wert3) add(1, `Ruhepuls Ø ${fmt1(ind.rhr.wert3)} bpm, Referenz ${fmt1(ind.rhr.ref)}`, "rhr+");
+      // V6.4.4 (D1): positive Gründe nur, wenn der Wert wirklich im Bereich liegt – nie «im Bereich» neben «unter Referenz»
+      if (ind.hrv.wert7 && (ind.hrv.status === "im Bereich" || ind.hrv.status === "über Referenz")) add(1, `HRV 7 Tage Ø ${ind.hrv.wert7} ms ${ind.hrv.status === "über Referenz" ? "über" : "im Bereich"} deiner Referenz (${ind.hrv.refLo}–${ind.hrv.refHi} ms)`, "hrv+");
+      if (ind.rhr.wert3 && ind.rhr.status === "im Bereich") add(1, `Ruhepuls Ø ${fmt1(ind.rhr.wert3)} bpm, Referenz ${fmt1(ind.rhr.ref)}`, "rhr+");
       if (ind.schlaf.wert && ind.schlaf.status === "ausreichend") add(1, `Schlaf ${fmt1(ind.schlaf.wert)} h`, "schlaf+");
     }
     reasons.sort((a, b) => b.w - a.w);

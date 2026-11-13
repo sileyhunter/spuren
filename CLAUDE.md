@@ -353,7 +353,8 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Daten geprüft, daraus die beiden Änderungen (Schlaf 5–6 h nur Hinweis; Garmins Readiness nur gezeigt, nicht in die Ampel eingerechnet). Die Seite zeigt die Prüfung live unter «Passt die Ampel zu dir?» (Gruppen unter 5 Blöcken ohne Wert).
   Keine Zahlen daraus in Doku oder Tests schreiben; Regeländerung = neue Version und neue Prüfung.
 - Heute `ringe-1.0` (`FK.ringeVerlauf`): Erholung Φ((z_lnHRV − z_Ruhepuls)/2) gegen 60 Tage (mind. 14 Werte), Schlaf = Garmin-Schlafwert genau dieser
-  Nacht, Belastung = (1 − 2^(−TSS/CTL_Vortag)) · 100; alle 0–100 %, Lücken bleiben leer, Tag mit Datum. Kein medizinisches Mass.
+  Nacht, Belastung = (1 − 2^(−TSS/CTL_Vortag)) · 100; alle 0–100 %, Lücken bleiben leer, Tag mit Datum. Kein medizinisches Mass. Ein Tag, dessen
+  Einheiten noch nicht eingespielt sind (`FK.aktivitaetenBis`: Nacht-Update = Tag des Laufs, Morgen-Update = Vortag), hat Belastung «offen», nie 0 %.
 
 ## Bedienung V5.9.5 (bedienung-1.0)
 - Start auf «Heute» (Hash-Links wie `#laktat`, `#plan`, `#wissen` oder `#checkin` gehen direkt; `#checkin` öffnet das Check-in-Blatt). Fünf Bereiche in
@@ -361,7 +362,11 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   koerper, schwimmen) · Karte; die Ansichten (`section.view`, `showTab(name)`) bleiben einzeln, oben wechselt `nav.unter` (wischbar).
   Im Planer (`body.plan-aktiv`) keine Leiste.
 - Info-Knopf (`V59.ansicht`): Erklärtexte (`.sub` ohne id, `.hint`) einer Karte mit Ergebnis liegen hinter «i»; Warnungen (`.warn-t`, `.down`),
-  `.verdict`, Status (`role=status`, `aria-live`) und `.keep` nie verstecken. Neue Erklärtexte deshalb als `.hint`, Warnungen mit `.warn-t`.
+  `.verdict`, Status (`role=status`, `aria-live`) und `.keep` nie verstecken – auch nicht, wenn sie in einem Erklärtext stehen (dann bleibt der ganze
+  Text sichtbar). Neue Erklärtexte deshalb als `.hint`, Warnungen mit `.warn-t`.
+- Blätter und Overlays sind modal (V6.4.4): `V59.modalAuf(ov)` beim Öffnen, `V59.modalZu(ov)` beim Schliessen (Hintergrund `inert`, Fokus zurück).
+  Text in Farben (Status, Zonen, Links) über die Klassen `.st-farbe`, `.k-farbe`, `--accent-text` (mindestens 4,5 : 1 in dunkel und hell); Inhalte nie über
+  `opacity` abdunkeln. Stunden im Plan nur Schwimmen, Rad, Laufen; Enduco-Dauer über `V6H.planDauer`.
 - Breite Tabellen: `data-liste` an der Tabelle (oder zu breit auf ≤ 640 px) → Liste (`.als-liste`, Spaltenname je Zelle). Tabellen, die
   nie Liste werden sollen: `data-keine-liste`.
 - Ausblenden statt löschen: `hidden data-ausgeblendet="Grund"` an der Karte (mit id); Einstellungen → «Ausgeblendete Karten» blendet je Gerät ein.
