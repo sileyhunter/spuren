@@ -1,6 +1,21 @@
 # Änderungen
 
+## V6.4.3 · 13.11.2026 · Vorschlag und Enduco im Vergleich
+- **Vergleich mit Enduco (vergleich-1.0):** «Woche nach Modell» zeigt neu auch die letzte Woche (ältere über die neue Karte «Vorschlag und Enduco
+  über die Wochen»), bei jeder Enduco-Einheit die Stufe (hart, Schwelle, locker, offen) und einen Abschnitt «Vergleich mit Enduco»: Stunden und
+  Einheiten je Sportart, harte und Tempo-/Schwellen-Einheiten, längste Einheiten, freie Tage, Unterschiede in Worten und welchem Plan dein Training
+  näher war. Vergangene Wochen werden so nachgerechnet, wie die Seite am Montag geplant hätte (gekennzeichnet).
+- Enduco-Einheiten aus dem Garmin-Kalender und, wo dort nichts stand, aus den Workouts auf der Uhr; Wochen mit weniger als 60 % Abdeckung bekommen
+  kein Urteil. Titel-Regel für Einheiten ohne Ziele erweitert (Neuro = hart; Fatmax, Grundlage = locker).
+- **saison-1.1:** «jetzt» im Wochenstunden-Vorschlag nur noch aus den 8 abgeschlossenen Wochen vor der laufenden – der Vorschlag ändert sich
+  nicht mehr im Lauf der Woche.
+- **Wissen (wissen-1.3):** Kapitel «Vorschlag und Enduco vergleichen» (Hecksteden et al. 2015: Aussagen für eine einzelne Person brauchen
+  wiederholte Messungen und Trainingsphasen). Demo mit erfundenem Enduco-Verlauf.
+- Geprüft: `tests/test_v64.cjs` (+ Uhr-Workouts, Fenster, Summen, Stufen, Abdeckung, Urteil, Titel-Regel), `tests/test_analyse.cjs`
+  (+ laufende Woche zählt nicht), alle bisherigen Tests; Plan in Demo und mit eigenen Daten im Browser (390 px) ohne Programmfehler.
+
 ## V6.4.2 · 13.11.2026 · Aufbau-Check und Intensität je Sportart
+- Testwerte bereinigt (nur erfundene Werte), die Commits dieser Version auf `main` zu einem zusammengefasst.
 - **Aufbau-Check (aufbau-1.0)**, neue Karte unter Plan: Grenze für den nächsten Lauf (10 % über dem längsten Lauf der letzten 30 Tage, nach
   Frandsen et al. 2025), bis wann der Referenzlauf zählt und was danach gilt, geplante Enduco-Läufe der nächsten 14 Tage gegen die Grenze
   (Distanz aus den Pace-Zielen geschätzt), Sprünge der letzten 12 Wochen mit Klasse, Verlauf von Lauf-km, Schwimm-Metern und Rad-Stunden.

@@ -2,7 +2,7 @@
    Bis der eigene Plan läuft, sind es Vorschläge in Kalender und Testkalender; nach Garmin wird nichts geschrieben.
    Regeln (Abstände von Silas bestätigt am 13.11.2026):
    - CSS-Test alle 6–8 Wochen (zuerst 7, sonst 6 oder 8), am selben Wochentag wie der letzte (Kursabende bleiben frei), nicht in der Woche vor einem Rennen.
-   - Rad-Stufentest alle 8 Wochen am Samstag einer Erholungswoche (saison-1.0); war der letzte nicht ausbelastet, als Nächstes ein ausbelasteter.
+   - Rad-Stufentest alle 8 Wochen am Samstag einer Erholungswoche (saison-1.1); war der letzte nicht ausbelastet, als Nächstes ein ausbelasteter.
    - Lauf-Stufentest alle 8–12 Wochen, ebenfalls am Ende einer Erholungswoche, aber nie in derselben Woche wie der Rad-Test.
    - Kurzcheck alle 2 Wochen in einer Grundlagenfahrt (mind. 60 min); entfällt, wenn ein Stufentest (Rad oder Lauf) innerhalb von 4 Tagen liegt.
    - Kein Stufentest in den 14 Tagen vor einem Rennen, in der Woche danach und im Taper; kein Test in eingetragenen Abwesenheiten.
@@ -54,7 +54,7 @@
     return /grundlage|ausdauer|fat ?max|basis|endurance|base|\bz2\b|locker|ga1/i.test(t) && !/intervall|vo2|schwelle|sweet|tempo|sprint|test|threshold/i.test(t);
   };
 
-  /** Testplan. ctx: heute, bis (Hauptrennen), wochen (saison-1.0: woche = Montag, phase, erholung), rennen [{date, short}],
+  /** Testplan. ctx: heute, bis (Hauptrennen), wochen (saison-1.1: woche = Montag, phase, erholung), rennen [{date, short}],
    *  erledigt {css: [Datum], rad: [{date, ausbelastet}], lauf: [{date, ausbelastet}], check: [Datum]},
    *  fest (Testkalender: {date, kind, sport?}), planned (Garmin-Kalender), sperren [{von, bis, grund}].
    *  Ergebnis: {vorschlaege: [{date, kind, sport, note, status: "vorschlag", regel}], konflikte: [{date, kind, text, vorschlag}], regel}. */

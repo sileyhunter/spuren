@@ -262,7 +262,7 @@
     const j = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
     return 1 + Math.round(((t - j) / 86400000 - 3 + ((j.getUTCDay() + 6) % 7)) / 7);
   };
-  /** Rennen mit Priorität: ausdrücklich gesetzt, sonst Hamburg = A (saison-1.0), sonst das letzte Rennen = A, die übrigen B. */
+  /** Rennen mit Priorität: ausdrücklich gesetzt, sonst Hamburg = A (saison-1.1), sonst das letzte Rennen = A, die übrigen B. */
   V6.rennenPrio = function (races) {
     const R = (races || []).filter((r) => r && r.date).map((r) => Object.assign({}, r)).sort((a, b) => a.date.localeCompare(b.date));
     for (const r of R) if (!r.prio && /hamburg/i.test(r.name || "")) r.prio = "A";

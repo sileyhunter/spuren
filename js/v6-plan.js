@@ -1,6 +1,6 @@
 /* V6.0.2 Plan (design-1.0): Rennen als Kacheln (Fahne, A/B, Countdown, Streckenlängen), Saisonphasen als senkrechter Zeitstrahl
    (aktive Phase hervorgehoben, Antippen öffnet die Wochen) und Wochenstunden je Sportart (absolviert und geplant, Phasen auf der Zeitachse).
-   Phasen aus AN.saison (saison-1.0, nur Vorschlag); geplant = Garmin-Kalender. Die Seite schreibt nichts nach Garmin oder Enduco. */
+   Phasen aus AN.saison (saison-1.1, nur Vorschlag); geplant = Garmin-Kalender. Die Seite schreibt nichts nach Garmin oder Enduco. */
 (function () {
   "use strict";
   const P = (window.V6P = window.V6P || {});

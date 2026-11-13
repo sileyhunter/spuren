@@ -165,7 +165,7 @@ test("Plan: Kalenderwoche, Rennen mit Priorität, Streckenlängen, Phasen als Ze
   assert.equal(V6.isoWoche("2027-01-04"), 1);
   const R = V6.rennenPrio([{ name: "Testrennen Langdistanz", date: "2027-07-01" }, { name: "Testrennen Halbdistanz", date: "2027-05-01" }]);
   assert.deepEqual(R.map((r) => r.prio), ["B", "A"], "ohne Angabe ist das letzte Rennen das Hauptrennen");
-  assert.equal(V6.rennenPrio([{ name: "Ironman Hamburg", date: "2027-06-06" }, { name: "Spätes Rennen", date: "2027-09-01" }])[0].prio, "A", "Hamburg = A (saison-1.0)");
+  assert.equal(V6.rennenPrio([{ name: "Ironman Hamburg", date: "2027-06-06" }, { name: "Spätes Rennen", date: "2027-09-01" }])[0].prio, "A", "Hamburg = A (saison-1.1)");
   assert.deepEqual(V6.distanzen("Ironman 70.3 Testort").map((d) => d.km), [1.9, 90, 21.1]);
   assert.deepEqual(V6.distanzen("Ironman Testort").map((d) => d.km), [3.8, 180, 42.2]);
   assert.equal(V6.distanzen("Stadtlauf"), null, "unbekanntes Format: keine Strecken geraten");

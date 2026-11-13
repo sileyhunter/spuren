@@ -487,6 +487,31 @@ nav.unter { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14
 .mo-int-h { font-size: 12.5px; color: var(--muted); line-height: 1.4; }
 .mo-int-jetzt { font-size: 13px; color: var(--muted); }
 .mo-konflikt li::marker { color: var(--warn); }
+/* V6.4.3 Vergleich mit Enduco (vergleich-1.0) */
+.mo-seg button { padding: 6px 12px; }
+.mo-nach { color: var(--warn); }
+.vg-st { display: inline-block; font: 700 10.5px/1 var(--f-body); letter-spacing: .03em; padding: 3px 6px; border-radius: 6px; vertical-align: 1px; }
+.vg-st.alles { color: #111; background: var(--zc-z5); } .vg-st.schwelle { color: #111; background: var(--zc-z3); }
+.vg-st.locker { color: #fff; background: var(--zc-z2); } .vg-st.test { color: #111; background: var(--warn); } .vg-st.offen { color: var(--muted); background: var(--surface); }
+.vg-fenster, .vg-leer { margin: 0; font-size: 13px; color: var(--muted); }
+.vg-t { width: 100%; border-collapse: collapse; font-size: 14px; }
+.vg-t th, .vg-t td { padding: 6px 4px; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.vg-t th[scope="row"] { text-align: left; font-weight: 500; color: var(--muted); } .vg-t thead th { border-top: 0; font-size: 12px; color: var(--muted); font-weight: 600; }
+.vg-t small { color: var(--faint); font-size: 11.5px; }
+.vg-ist { margin: 0; font-size: 14px; line-height: 1.45; }
+.vg-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.vg-w { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 10px; text-align: left; border: 0; cursor: pointer; font: inherit;
+  color: var(--fg); background: var(--surface-2); border-radius: 12px; padding: 9px 11px; min-height: 48px; }
+.vg-w:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.vg-wk { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 13.5px; } .vg-wk small { font-size: 12px; color: var(--muted); }
+.vg-urteil { flex: 0 0 auto; font: 700 11.5px/1.2 var(--f-body); padding: 6px 8px; border-radius: 8px; white-space: nowrap; }
+.vg-urteil.e { color: var(--info); background: color-mix(in srgb, var(--info) 16%, transparent); }
+.vg-urteil.v { color: var(--good); background: color-mix(in srgb, var(--good) 16%, transparent); }
+.vg-urteil.g { color: var(--muted); background: var(--surface); }
+.vg-sum { margin: 0; font-size: 14px; line-height: 1.45; }
+:root[data-theme="light"] .vg-w { background: #eef2f5; }
+#vg-verlauf { display: flex; flex-direction: column; gap: 12px; }
+
 /* V6.4.2 Aufbau-Check (aufbau-1.0) */
 #ab-inhalt { display: flex; flex-direction: column; gap: 12px; } #ab-inhalt .abschnitt { margin: 6px 0 -4px; }
 .ab-kern { margin: 0; font-size: 14px; line-height: 1.5; } .ab-fuer { color: var(--muted); font-size: 12.5px; }

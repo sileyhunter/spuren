@@ -1,4 +1,4 @@
-/* Ironman Notebook – V5.6 Oberflächen: RPE und Readiness (rpe-1.0), Geplant/Ist (plan-1.0), Konstanz, Saison 2027 (saison-1.0),
+/* Ironman Notebook – V5.6 Oberflächen: RPE und Readiness (rpe-1.0), Geplant/Ist (plan-1.0), Konstanz, Saison 2027 (saison-1.1),
  * Verpflegung erweitert (energie-1.0). Keine neuen Haupttabs: Karten in Heute, Kalender, Fortschritt und Ausdauer.
  * Regeln: unbekannt bleibt unbekannt; Modelle heissen Modell; keine Trainingsanweisung, Enduco wird nie überschrieben. */
 (function () {
@@ -105,7 +105,7 @@
       ${plan.length ? `<p class="hint">Garmin-Kalender, letzte 4 Wochen: ${plan.map((p) => `${C.dateCH(p.date)} «${C.esc(p.title)}» ${(() => { const d = window.V6H ? window.V6H.planDauer(p) : p.dur_s; return d ? C.hmm(d) + " h" : "Dauer offen"; })()} → ${ist(p) ? "absolviert" : p.date === C.iso(C.today) ? "heute geplant" : "keine Einheit gefunden"}`).join(" · ")}</p>` : ""}`;
   };
 
-  /* ======================= Kalender: Saison 2027 (saison-1.0) ======================= */
+  /* ======================= Kalender: Saison 2027 (saison-1.1) ======================= */
   const PH_COL_HELL = { "Grundlage": "#cfe3f1", "Aufbau": "#9cc7e6", "Wettkampfspezifisch": "#5f9fd1", "Taper": "#f2c14e", "B-Rennen (Mini-Taper)": "#f6d98a" };
   const PH_VAR = { "Grundlage": "--zc-z2", "Aufbau": "--zc-z3", "Wettkampfspezifisch": "--zc-z4", "Taper": "--zc-z5", "B-Rennen (Mini-Taper)": "--race" };   // V6: Farben wie im Plan
   let PH_COL = PH_COL_HELL;

@@ -1,7 +1,7 @@
 /* V6.4 Etappe 4 · Trainingsmodell und Woche nach Modell (ohne DOM, auch unter Node testbar).
    - modell-1.0: wählbare Modelle der Intensitätsverteilung (polarisiert, pyramidal, Schwelle mit Laktat, rennspezifisch) und «kombiniert»
      (Standard, von Silas gewählt am 13.11.2026: Winter polarisiert, ab Februar rennspezifisch). Erklärung und Quellen: js/wissen.js.
-   - wochenplan-1.0: Wochenvorschlag aus Phase und Stunden (saison-1.0), Modell, Tests (testplan-1.0) und Rennen – neben dem Enduco-Plan,
+   - wochenplan-1.1: Wochenvorschlag aus Phase und Stunden (saison-1.1), Modell, Tests (testplan-1.0) und Rennen – neben dem Enduco-Plan,
      nie nach Garmin oder Enduco geschrieben. Feste Wochenstruktur (Mo frei, Schlüsseleinheiten Di Laufen und Do Rad, lang Sa Rad und So Laufen).
    - aufteilung-1.0: Stunden Schwimmen 20 %, Rad 50 %, Laufen 30 % (eigene Festlegung, keine Studie).
    - tid-1.0: Zeit in drei Bereichen (locker < LT1 ≤ mittel < LT2 ≤ hart), Muster nach Treff et al. 2019 (Polarisierungsindex), Abgleich mit dem Modell.
@@ -10,6 +10,8 @@
    - aufbau-1.0 (V6.4.2): jeder Lauf gegen den längsten Lauf der 30 Tage davor (Frandsen et al. 2025: Sprung ab mehr als 10 %), Grenze für den
      nächsten Lauf, Wochen-km Laufen, Schwimm-Meter und Rad-Stunden. wochenplan-1.1: kein Lauf im Vorschlag über dieser Grenze (Distanz aus dem
      Zonenprofil geschätzt; ohne Zonenprofil keine Begrenzung, nie geraten).
+   - vergleich-1.0 (V6.4.3): Vorschlag gegen Enduco (Garmin-Kalender) und Absolviertes je Woche: Stunden und Einheiten je Sportart, Stufen,
+     längste Einheiten, Unterschiede in Worten, welchem Plan das Absolvierte näher war. Enduco ist nur bekannt, soweit exportiert.
    Unbekannt bleibt unbekannt: ohne Zonenprofil keine Watt- oder Pace-Ziele, ohne CSS-Test kein Schwimmtempo. */
 (function (root, factory) {
   const V64 = factory();
@@ -17,7 +19,7 @@
   if (root) root.V64 = V64;
 })(typeof window !== "undefined" ? window : null, function () {
   "use strict";
-  const V64 = { VERSIONS: { modell: "modell-1.0", woche: "wochenplan-1.1", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.0", aufbau: "aufbau-1.0" } };
+  const V64 = { VERSIONS: { modell: "modell-1.0", woche: "wochenplan-1.1", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.0", aufbau: "aufbau-1.0", vergleich: "vergleich-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const T = (iso) => Date.parse(iso + "T12:00:00Z");
   const add = (iso, n) => new Date(T(iso) + n * 864e5).toISOString().slice(0, 10);
@@ -195,7 +197,8 @@
     return E[stufe] || E.locker || id;
   };
   /** Höchste Intensität einer geplanten Einheit (Enduco): aus den Zielen der Schritte (Balkenprofil); ohne Ziele aus dem Titel
-   *  (VO2max, anaerob, Sprint → «alles»; Schwelle, Tempo, Sweet Spot, CSS, Über-Unter → «schwelle»). → { stufe, quelle } oder null. */
+   *  (VO2max, anaerob, Sprint, Neuro → «alles»; Schwelle, Tempo, Sweet Spot, CSS, Über-Unter → «schwelle»; Fatmax, Grundlage, locker,
+   *  Regeneration → «locker»; das stärkste Wort zählt). → { stufe, quelle } oder null (nicht beurteilbar). */
   V64.planStufe = function (balken, text) {
     let best = null;
     for (const b of balken || []) {
@@ -204,8 +207,9 @@
     }
     if (best) return { stufe: best, quelle: "ziele" };
     const t = String(text || "");
-    if (/vo\s*2|vo₂|anaerob|sprint/i.test(t)) return { stufe: "alles", quelle: "titel" };
+    if (/vo\s*2|vo₂|anaerob|sprint|neuro/i.test(t)) return { stufe: "alles", quelle: "titel" };
     if (/schwelle|threshold|sweet\s*spot|tempo|\bcss\b|über[- ]?unter/i.test(t)) return { stufe: "schwelle", quelle: "titel" };
+    if (/fat\s*max|grundlage|locker|regeneration|erholung|recovery|\beasy\b/i.test(t)) return { stufe: "locker", quelle: "titel" };
     return null;
   };
 
@@ -515,6 +519,76 @@
       .map((r) => ({ date: r.date, km: r.km, ref: r.ref, anteil: r.anteil, klasse: r.klasse, name: r.name }));
     return { v: V64.VERSIONS.aufbau, heute, naechster, grenze: g ? { km: g.km, ref: g.ref, bis: add(g.ref.date, 30) } : null, danach,
       laeufe30: L.filter((r) => r.date >= add(naechster, -30) && r.date <= heute).length, spruenge, wochen, laeufe: L };
+  };
+
+  /* ---------------- Vergleich mit Enduco (vergleich-1.0) ---------------- */
+  V64.SPORTARTEN = ["schwimm", "rad", "lauf"];
+  const SPN = { schwimm: "Schwimmen", rad: "Rad", lauf: "Laufen" };
+  const hmin = (m) => { const x = Math.round(m); return `${Math.floor(x / 60)}:${String(x % 60).padStart(2, "0")}`; };
+  /** Stufe einer vorgeschlagenen Einheit (intensitaet-1.0): VO2max = «alles», Tempo/Schwelle/CSS = «schwelle», Test = «test», sonst «locker». */
+  V64.stufeVon = (e) => (e && e.art === "test" ? "test" : (e && V64.STUFE_BAUSTEIN[e.id]) || "locker");
+  /** Enduco-Einheiten aus den Workouts, die auf der Uhr liefen (FIT «workout», Feld wk der Aktivität) – nur dort, wo am selben Tag für dieselbe
+   *  Sportart nichts im Garmin-Kalender stand. Dauer = geplante Zeit des Workouts (Strecken-Schritte mit der gelaufenen Zeit), Stufe aus dem
+   *  Titel. Tests (Stufentest, Kurzcheck, Laktat) zählen nicht als Enduco. Nur ausgeführte Einheiten: ausgelassene fehlen. */
+  V64.enducoAusUhr = function (acts, kalender) {
+    const K = new Set((kalender || []).map((p) => `${p.date}|${p.sport}`)), out = [];
+    for (const a of acts || []) {
+      const wk = a && a.wk; if (!wk || !SPN[a.sport] || !wk.name || K.has(`${a.date}|${a.sport}`) || /stufentest|kurzcheck|laktat|\btest\b/i.test(wk.name)) continue;
+      const st = V64.planStufe(null, wk.name), d = isNum(wk.plan_s) && wk.plan_s > 0 ? wk.plan_s : isNum(wk.ist_s) ? wk.ist_s : null;
+      out.push({ date: a.date, sport: a.sport, titel: String(wk.name).trim(), dauer_s: d, stufe: st ? st.stufe : null, quelle: st ? st.quelle : null, km: null, kmVollst: false, herkunft: "uhr" });
+    }
+    return out;
+  };
+  /** ctx: { w (Ergebnis von V64.woche), enduco [{date, sport, titel, dauer_s, stufe, quelle, km, kmVollst, herkunft}], ist [{date, sport, dauer_s, km}], heute }.
+   *  Fenster: Pläne vergangener Wochen ganz; in der laufenden und nächsten Woche nur bis zum letzten Tag, für den Enduco schon im Kalender steht
+   *  (Export meist am Vortag). Absolviertes bis gestern (heutige Einheiten kommen erst mit dem Nacht-Update). Ohne Enduco-Einträge: leer. */
+  V64.vergleich = function (ctx) {
+    const c = ctx || {}, w = c.w, mo = w.woche, so = add(mo, 6), heute = c.heute || add(so, 1);
+    const inW = (x) => x && x.date >= mo && x.date <= so && SPN[x.sport];
+    const E = (c.enduco || []).filter(inW).map((x) => ({ date: x.date, sport: x.sport, titel: String(x.titel || SPN[x.sport]).trim(), min: isNum(x.dauer_s) ? x.dauer_s / 60 : null,
+      stufe: x.stufe || "offen", quelle: x.quelle || null, km: isNum(x.km) ? x.km : null, kmVollst: !!x.kmVollst, herkunft: x.herkunft || "kalender" }));
+    const V = [];
+    for (const t of w.tage) for (const e of t.einheiten) if (SPN[e.sport]) V.push({ date: t.date, sport: e.sport, titel: e.titel, min: e.dauer, stufe: V64.stufeVon(e), id: e.id });
+    const I = (c.ist || []).filter(inW).map((x) => ({ date: x.date, sport: x.sport, min: (x.dauer_s || 0) / 60, km: isNum(x.km) ? x.km : null }));
+    const vorbei = so < heute, eBis = E.length ? E.reduce((m, x) => (x.date > m ? x.date : m), mo) : null;
+    const leer = { v: V64.VERSIONS.vergleich, woche: mo, leer: true, vorbei, E, V, I, unterschiede: [] };
+    if (!E.length) return leer;
+    const planBis = vorbei ? so : eBis, gestern = add(heute, -1), istBis = vorbei ? so : planBis < gestern ? planBis : gestern;
+    const bis = (L, b) => L.filter((x) => x.date <= b);
+    const summe = (L) => { const o = { total: { min: 0, n: 0, offen: 0 } }; for (const sp of V64.SPORTARTEN) o[sp] = { min: 0, n: 0, offen: 0 };
+      for (const x of L) { o[x.sport].n++; o.total.n++; if (isNum(x.min)) { o[x.sport].min += x.min; o.total.min += x.min; } else { o[x.sport].offen++; o.total.offen++; } } return o; };
+    const sE = summe(bis(E, planBis)), sV = summe(bis(V, planBis));
+    const mitIst = istBis >= mo, sI = mitIst ? summe(bis(I, istBis)) : null, sEi = mitIst ? summe(bis(E, istBis)) : null, sVi = mitIst ? summe(bis(V, istBis)) : null;
+    // Abdeckung: Anteil der absolvierten Einheiten mit einem Enduco-Eintrag derselben Sportart am selben Tag; unter 60 % keine Summen-Urteile
+    const istF = mitIst ? bis(I, istBis) : [], mitPlan = istF.filter((x) => E.some((e) => e.date === x.date && e.sport === x.sport)).length;
+    const abdeckung = istF.length ? { n: istF.length, mitPlan, anteil: mitPlan / istF.length } : null, sicher = !abdeckung || abdeckung.anteil >= 0.6;
+    const abw = (A) => V64.SPORTARTEN.reduce((s0, sp) => s0 + Math.abs(sI[sp].min - A[sp].min), 0);
+    let naeher = null;
+    if (mitIst && sicher) { const aE = abw(sEi), aV = abw(sVi); naeher = { bis: istBis, E: aE, V: aV, urteil: aE + 15 < aV ? "Enduco" : aV + 15 < aE ? "Vorschlag" : "ähnlich" }; }
+    const stufen = (L) => { const o = { alles: [], schwelle: [], locker: [], test: [], offen: [] }; for (const x of L) (o[x.stufe] || o.offen).push(x); return o; };
+    const stE = stufen(bis(E, planBis)), stV = stufen(bis(V, planBis));
+    const lang = (L, sp) => L.filter((x) => x.sport === sp && isNum(x.min)).sort((a, b) => b.min - a.min)[0] || null;
+    const laengste = {}; for (const sp of ["rad", "lauf"]) laengste[sp] = { E: lang(bis(E, planBis), sp), V: lang(bis(V, planBis), sp), I: mitIst ? lang(bis(I, istBis), sp) : null };
+    const wt = (iso) => TAG[(new Date(T(iso)).getUTCDay() + 6) % 7];
+    const nennen = (L) => L.map((x) => `${wt(x.date)} ${SPN[x.sport]} «${x.titel}»`).join(", ");
+    const U = [], bisText = vorbei ? "" : ` (bis ${wt(planBis)} ${+planBis.slice(8)}.${+planBis.slice(5, 7)}.)`;
+    if (!sicher) U.push({ art: "abdeckung", text: `Enduco-Plan nur teilweise bekannt: ${abdeckung.mitPlan} von ${abdeckung.n} absolvierten Einheiten hatten einen Eintrag (Kalender oder Workout auf der Uhr). Summen, harte Einheiten und freie Tage werden darum nicht verglichen.` });
+    const dT = sE.total.min - sV.total.min;
+    if (sicher && Math.abs(dT) >= 30) U.push({ art: "stunden", text: `Stunden${bisText}: Enduco ${hmin(sE.total.min)} h, Vorschlag ${hmin(sV.total.min)} h – ${dT > 0 ? "Enduco" : "der Vorschlag"} ${hmin(Math.abs(dT))} h mehr. Der Vorschlag nimmt die Stunden aus dem Wochenstunden-Vorschlag (deine 8 Wochen davor und die Phase), Enduco die in Enduco eingestellten Stunden.` });
+    for (const sp of V64.SPORTARTEN) { const d = sE[sp].min - sV[sp].min; if (sicher && Math.abs(d) >= 30) U.push({ art: "sportart", text: `${SPN[sp]}: Enduco ${hmin(sE[sp].min)} h (${sE[sp].n}×), Vorschlag ${hmin(sV[sp].min)} h (${sV[sp].n}×).` }); }
+    if (sicher && stE.alles.length !== stV.alles.length) U.push({ art: "hart", text: `Harte Einheiten (über LT2, VO2max): Enduco ${stE.alles.length}${stE.alles.length ? ` – ${nennen(stE.alles)}` : ""}; Vorschlag ${stV.alles.length}${stV.alles.length ? ` – ${nennen(stV.alles)}` : ""}.` });
+    if (sicher && stE.schwelle.length !== stV.schwelle.length) U.push({ art: "schwelle", text: `Tempo und Schwelle: Enduco ${stE.schwelle.length}${stE.schwelle.length ? ` – ${nennen(stE.schwelle)}` : ""}; Vorschlag ${stV.schwelle.length}${stV.schwelle.length ? ` – ${nennen(stV.schwelle)}` : ""}.` });
+    const swE = stE.alles.filter((x) => x.sport === "schwimm");
+    if (swE.length && !stV.alles.some((x) => x.sport === "schwimm")) U.push({ art: "schwimmen", text: `Schwimmen: Enduco plant harte Serien (${nennen(swE)}), der Vorschlag höchstens CSS-Tempo.` });
+    for (const sp of ["rad", "lauf"]) { const L = laengste[sp], g = sp === "rad" ? 30 : 10;
+      if (sicher && L.E && L.V && Math.abs(L.E.min - L.V.min) >= g) U.push({ art: "lang", text: `Längste ${sp === "rad" ? "Ausfahrt" : "Laufeinheit"}: Enduco ${hmin(L.E.min)} h${sp === "lauf" && isNum(L.E.km) ? ` (${L.E.kmVollst ? "≈" : "mind. ≈"} ${L.E.km.toFixed(1).replace(".", ",")} km)` : ""}, Vorschlag ${hmin(L.V.min)} h.` }); }
+    const frei = (L) => { const n = []; for (let i = 0; i < 7; i++) { const d = add(mo, i); if (d <= planBis && !L.some((x) => x.date === d)) n.push(TAG[i]); } return n; };
+    const fE = frei(E), fV = frei(V);
+    if (sicher && fE.join() !== fV.join()) U.push({ art: "frei", text: `Freie Tage: Enduco ${fE.length ? fE.join(", ") : "keiner"}; Vorschlag ${fV.length ? fV.join(", ") : "keiner"}.` });
+    if (stE.offen.length) U.push({ art: "offen", text: `${stE.offen.length} Enduco-Einheit${stE.offen.length > 1 ? "en" : ""} ohne Ziele und ohne Hinweis im Titel – Intensität offen: ${nennen(stE.offen)}.` });
+    const tage = TAG.map((t, i) => { const d = add(mo, i); return { date: d, wt: t, E: E.filter((x) => x.date === d), V: V.filter((x) => x.date === d), I: I.filter((x) => x.date === d) }; });
+    return { v: V64.VERSIONS.vergleich, woche: mo, leer: false, vorbei, eBis, planBis, istBis: mitIst ? istBis : null, abdeckung, sicher, E, V, I, summen: { E: sE, V: sV, I: sI, Ei: sEi, Vi: sVi },
+      stufen: { E: stE, V: stV }, laengste, naeher, unterschiede: U, tage };
   };
   return V64;
 });

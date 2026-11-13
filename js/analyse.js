@@ -1,7 +1,7 @@
 /* Ironman Notebook – V5.6 Analyse-Rechenkern (ohne DOM, in Node testbar).
  * Aktivitäts-Explorer (explorer-1.0): Reihe entpacken, Kennzahlen eines Abschnitts, NP, Drift, Intervalle, Blockvergleich.
  * Geplant/Ist (plan-1.0, aus tools/serien.py), Ermüdungsresistenz (ermuedung-1.0), RPE/Belastung (rpe-1.0),
- * Energie (energie-1.0), Saison (saison-1.0). Unbekannt bleibt unbekannt (null), nie 0. */
+ * Energie (energie-1.0), Saison (saison-1.1). Unbekannt bleibt unbekannt (null), nie 0. */
 (function (root, factory) {
   const AN = factory(root.FK || (typeof require === "function" ? require("./formkurve.js") : null));
   if (typeof module === "object" && module.exports) module.exports = AN;
@@ -9,7 +9,7 @@
 })(typeof window !== "undefined" ? window : globalThis, function (FK) {
   "use strict";
   const AN = {};
-  AN.VERSIONS = { explorer: "explorer-1.0", intervalle: "intervalle-1.0", plan: "plan-1.0", ermuedung: "ermuedung-1.0", rpe: "rpe-1.0", energie: "energie-1.0", saison: "saison-1.0" };
+  AN.VERSIONS = { explorer: "explorer-1.0", intervalle: "intervalle-1.0", plan: "plan-1.0", ermuedung: "ermuedung-1.0", rpe: "rpe-1.0", energie: "energie-1.0", saison: "saison-1.1" };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const mean = (a) => { let s = 0, n = 0; for (const x of a) if (isNum(x)) { s += x; n++; } return n ? s / n : null; };
   const maxOf = (a) => { let m = null; for (const x of a) if (isNum(x) && (m == null || x > m)) m = x; return m; };
@@ -211,7 +211,7 @@
     return { kcal: null, quelle: "unbekannt" };
   };
 
-  /* ---------------- Saison (saison-1.0) ---------------- */
+  /* ---------------- Saison (saison-1.1) ---------------- */
   /** Phasen rückwärts vom Hauptwettkampf: Taper 2 Wochen, Wettkampfspezifisch 8, Aufbau 2 × 8, Grundlage bis heute; B-Rennen mit
    *  Mini-Taper 1 Woche und 1 Woche Erholung. Erholungswoche alle 4 Wochen (3:1). Nur Vorschlag, frei änderbar. */
   AN.saison = function (heute, rennen, opt) {
@@ -236,7 +236,7 @@
     }
     return { haupt, wochen: out, regel: AN.VERSIONS.saison, annahmen: `Taper ${opt.taper} Wochen, wettkampfspezifisch ${opt.spezifisch}, Aufbau ${opt.aufbau}, Erholung jede ${opt.rhythmus}. Woche, B-Rennen mit Mini-Taper und Erholungswoche danach` };
   };
-  /** Stunden je Woche (saison-1.0, V6.4 ausgelagert aus js/v56.js, gleiche Regel): linear von «jetzt» bis zur Spitzenwoche vor dem Taper;
+  /** Stunden je Woche (saison-1.1, V6.4 ausgelagert aus js/v56.js): linear von «jetzt» bis zur Spitzenwoche vor dem Taper;
    *  Erholungswochen 65 %, Woche mit B-Rennen 50 %, Taper 60 % und 40 % der Spitze; auf halbe Stunden gerundet. W = AN.saison(…).wochen. */
   AN.saisonStunden = function (W, jetzt, spitze) {
     const iT = W.findIndex((w) => w.phase === "Taper"), N = iT > 0 ? iT : W.length;
@@ -246,12 +246,15 @@
       return Math.round(ziel * (w.erholung ? 0.65 : w.phase.startsWith("B-Rennen") ? 0.5 : 1) * 2) / 2;
     });
   };
-  /** Vorbelegung (saison-1.0): «jetzt» = Median der letzten 8 Wochen (Schwimmen, Rad, Laufen; ohne Daten 8 h), «Spitze» = grösserer Wert
-   *  aus 1.35 × jetzt und dem Ø der 4 grössten Wochen der letzten 52 – nie über die eigene Erfahrung hinaus geraten. Werte von der Seite gehen vor. */
+  /** Vorbelegung (saison-1.1): «jetzt» = Median der 8 abgeschlossenen Wochen vor der Woche von «heute» (Schwimmen, Rad, Laufen; Wochen ganz ohne
+   *  Aktivität zählen nicht; ohne Daten 8 h), «Spitze» = grösserer Wert aus 1.35 × jetzt und dem Ø der 4 grössten Wochen der 52 davor – nie über
+   *  die eigene Erfahrung hinaus geraten. Werte von der Seite gehen vor. 1.1: die laufende Woche zählt nicht mehr mit (vorher halbe Woche im
+   *  Median) – so bleibt der Vorschlag die ganze Woche gleich und lässt sich für vergangene Wochen genau so nachrechnen (vergleich-1.0). */
   AN.saisonVorgaben = function (acts, heute, lokal) {
     lokal = lokal || {};
-    const ist8 = AN.wochenIst(acts, FK.addDays(heute, -56), heute), h8 = [...ist8.values()].map((r) => r.rad + r.lauf + r.schwimm);
-    const j52 = AN.wochenIst(acts, FK.addDays(heute, -364), heute), h52 = [...j52.values()].map((r) => r.rad + r.lauf + r.schwimm).sort((a, b) => b - a);
+    const mo = FK.addDays(heute, -((new Date(heute + "T12:00:00Z").getUTCDay() + 6) % 7)), bis = FK.addDays(mo, -1);
+    const ist8 = AN.wochenIst(acts, FK.addDays(mo, -56), bis), h8 = [...ist8.values()].map((r) => r.rad + r.lauf + r.schwimm);
+    const j52 = AN.wochenIst(acts, FK.addDays(mo, -364), bis), h52 = [...j52.values()].map((r) => r.rad + r.lauf + r.schwimm).sort((a, b) => b - a);
     const top4 = h52.length >= 4 ? (h52[0] + h52[1] + h52[2] + h52[3]) / 4 : null;
     const jetzt = isNum(lokal.jetzt) ? lokal.jetzt : h8.length ? Math.round(median(h8) * 2) / 2 : 8;
     const spitze = isNum(lokal.spitze) ? lokal.spitze : Math.round(Math.max(jetzt * 1.35, top4 || 0) * 2) / 2;

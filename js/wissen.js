@@ -8,7 +8,7 @@
   if (root) root.WS = WS;
 })(typeof window !== "undefined" ? window : null, function () {
   "use strict";
-  const WS = { VERSION: "wissen-1.2" };
+  const WS = { VERSION: "wissen-1.3" };
 
   /* ---------------- Quellen: Autoren, Jahr, Titel, Zeitschrift, DOI (oder URL) und der Kern in einem Satz (eigene Worte) ---------------- */
   WS.QUELLEN = {
@@ -144,6 +144,8 @@
       kern: "184 männliche Freizeit-Ironman-Finisher trainierten im Mittel 13,9 h pro Woche: 2,5 h Schwimmen, 7,1 h Rad, 4,3 h Laufen." },
     millet2002: { zit: "Millet et al. 2002", a: "Millet GP, Candau RB, Barbier B, Busso T, Rouillon JD, Chatard JC", j: 2002, t: "Modelling the transfers of training effects on performance in elite triathletes", q: "Int J Sports Med 23(1):55–63", doi: "10.1055/s-2002-19276",
       kern: "Radtraining wirkte auch auf die Laufleistung; Schwimmen war sehr spezifisch – kein Übertrag von oder zu Rad und Laufen." },
+    hecksteden2015: { zit: "Hecksteden et al. 2015", a: "Hecksteden A, Kraushaar J, Scharhag-Rosenberger F, Theisen D, Senn S, Meyer T", j: 2015, t: "Individual response to exercise training – a statistical perspective", q: "J Appl Physiol 118(12):1450–1459", doi: "10.1152/japplphysiol.00714.2014",
+      kern: "Ob ein Training bei einer einzelnen Person wirkt, ist wegen Messfehlern und schwankender Wirkung schwer zu sagen; dafür braucht es wiederholte Messungen und wiederholte Trainingsphasen." },
     millet2009: { zit: "Millet et al. 2009", a: "Millet GP, Vleck VE, Bentley DJ", j: 2009, t: "Physiological differences between cycling and running: lessons from triathletes", q: "Sports Med 39(3):179–206", doi: "10.2165/00007256-200939030-00002",
       kern: "Übersicht: die maximale Sauerstoffaufnahme ist an die Bewegungsform gebunden; eher mehr Übertrag vom Laufen aufs Rad als umgekehrt; nach langen Läufen mehr zentrale Ermüdung und Kraftverlust als nach dem Rad." },
     etxebarria2019: { zit: "Etxebarria et al. 2019", a: "Etxebarria N, Mujika I, Pyne DB", j: 2019, t: "Training and competition readiness in triathlon", q: "Sports 7(5):101", doi: "10.3390/sports7050101",
@@ -306,7 +308,7 @@
       text: [
         "<b>Klassisch.</b> Zuerst Umfang und Grundlage, dann mehr Intensität und zuletzt rennähnliches Training. Erholungswochen nach zwei bis drei Belastungswochen sind verbreitete Praxis. Wie Olympiasieger ihr Jahr vor dem Titel aufgebaut haben, zeigt eine norwegische Fallsammlung [[toennessen2014]].",
         "<b>Blöcke.</b> Blockperiodisierung bündelt wenige Ziele je Block statt vieler gleichzeitig [[issurin2010]]. Bei trainierten Radfahrern brachte ein Block mit vielen harten Intervallen in einer Woche, gefolgt von Wochen mit wenigen, bessere Effekte als die gleichmässige Verteilung [[roennestad2014a]] [[roennestad2014b]]. Kritiker warnen: Die Belege für starre Schemata sind dünn, gute Planung richtet sich nach der Reaktion des Athleten [[kiely2010]].",
-        "<b>So rechnet die Seite (saison-1.0).</b> Vom Hauptrennen rückwärts: Taper 2 Wochen, wettkampfspezifisch 8, Aufbau 16, davor Grundlage. Jede vierte Woche Erholung (3:1). Ein B-Rennen bekommt eine Woche Mini-Taper und danach eine Erholungswoche. Die Stunden steigen gleichmässig von deinem heutigen Stand (Median der letzten 8 Wochen) bis zur Spitzenwoche (vorbelegt mit dem grösseren Wert aus 1,35 × heute und dem Mittel deiner 4 grössten Wochen im letzten Jahr). Erholungswochen 65 %, Woche mit B-Rennen 50 %, Taper 60 % und 40 % der Spitze.",
+        "<b>So rechnet die Seite (saison-1.1).</b> Vom Hauptrennen rückwärts: Taper 2 Wochen, wettkampfspezifisch 8, Aufbau 16, davor Grundlage. Jede vierte Woche Erholung (3:1). Ein B-Rennen bekommt eine Woche Mini-Taper und danach eine Erholungswoche. Die Stunden steigen gleichmässig von deinem heutigen Stand (Median der 8 abgeschlossenen Wochen vor der laufenden; Wochen ganz ohne Training zählen nicht) bis zur Spitzenwoche (vorbelegt mit dem grösseren Wert aus 1,35 × heute und dem Mittel deiner 4 grössten Wochen im letzten Jahr). Erholungswochen 65 %, Woche mit B-Rennen 50 %, Taper 60 % und 40 % der Spitze.",
         "<b>Phase und Modell sind zwei Dinge.</b> Die Phase bestimmt den Umfang, das Modell die Verteilung der Intensität. «Aufbau» im Februar und «rennspezifisch» als Modell schliessen sich nicht aus.",
       ],
       seite: [["AN", "saison"]], quellen: ["toennessen2014", "issurin2010", "roennestad2014a", "roennestad2014b", "kiely2010"] },
@@ -328,6 +330,16 @@
         "<b>Auf der Seite.</b> Der Wochenvorschlag steigert die Stunden vom heutigen Stand linear bis zur Spitze vor dem Taper, mit leichteren Erholungswochen dazwischen ([[#periodisierung]]), und begrenzt die längste Einheit je Phase. Der Aufbau-Check (aufbau-1.0) vergleicht jeden Lauf mit dem längsten der 30 Tage davor, nennt die Grenze für den nächsten Lauf und prüft die geplanten Enduco-Läufe; der Vorschlag selbst bleibt unter dieser Grenze (Distanz aus dem Zonenprofil geschätzt). Unter «Trainingsmodell» legst du je Sportart die höchste Intensität fest (intensitaet-1.0): «nur locker», «bis Schwelle» (keine VO2max-Intervalle) oder «alles». Der Vorschlag nimmt dann die nächst leichtere Einheit derselben Sportart und verschiebt nichts auf eine andere; beim Enduco-Plan zeigt die Seite nur, wo er darüber liegt.",
       ],
       seite: [["V64", "aufteilung"], ["V64", "woche"], ["V64", "aufbau"], ["V64", "intensitaet"], ["AN", "saison"]], quellen: ["knechtle2011", "millet2002", "millet2009", "etxebarria2019", "andersen2013", "clarsen2010", "sein2010", "bertelsen2017", "buist2008", "nielsen2014", "frandsen2025", "garmin2025rt", "lauersen2014", "garmin2025last", "gabbett2016", "impellizzeri2020", "impellizzeri2021"] },
+
+    { id: "vergleich", titel: "Vorschlag und Enduco vergleichen", kurz: "Die Seite stellt ihren Vorschlag neben die Enduco-Einheiten und dein Training: Stunden, harte Einheiten, lange Einheiten, freie Tage. Ob ein Plan besser ist, zeigen Unterschiede allein nicht – das zeigt erst die Entwicklung, und nur, wenn du einem Plan auch folgst.",
+      text: [
+        "<b>Was verglichen wird.</b> Je Woche: Stunden und Anzahl Einheiten je Sportart, wie viele Einheiten hart sind (über LT2, VO2max) und wie viele im Tempo- und Schwellenbereich liegen, die längste Ausfahrt und der längste Lauf und die freien Tage. Dazu, welchem Plan dein Training näher war: Die Seite zählt die Abweichung der Stunden je Sportart zum Enduco-Plan und zum Vorschlag zusammen; liegen beide weniger als eine Viertelstunde auseinander, heisst es «ähnlich» (vergleich-1.0).",
+        "<b>Woher die Enduco-Einheiten kommen.</b> Die Seite hat keine direkte Verbindung zu Enduco. Sie sieht, was im Garmin-Kalender steht – du exportierst meist am Vortag, darum ist die laufende Woche erst nach und nach bekannt –, und die Workouts, die auf der Uhr liefen. Ausgelassene Einheiten und Zwift-Einheiten ohne Workout auf der Uhr fehlen. Wochen, in denen weniger als 60 % deiner Einheiten einen Enduco-Eintrag haben, bekommen darum kein Urteil. Die Intensität einer Enduco-Einheit kommt aus den Zielen ihrer Schritte, ohne Ziele aus dem Titel («laut Titel»).",
+        "<b>Der Vorschlag für vergangene Wochen.</b> Er wird so nachgerechnet, wie die Seite am Montag jener Woche geplant hätte: Saison ab jener Woche, Stunden aus den 8 abgeschlossenen Wochen davor, CSS-Test bis dahin. Modell, Intensität je Sportart und Zonenprofil sind die heutigen ([[#modelle]], [[#aufbau]]).",
+        "<b>Ist der Vorschlag besser?</b> Aus den Unterschieden allein lässt sich das nicht sagen. Bei einer einzelnen Person ist es ohnehin schwierig: Messfehler und schwankende Tagesform überdecken kleine Effekte, und wie gut ein Training wirkt, kann selbst bei derselben Person von Mal zu Mal verschieden sein. Belastbare Aussagen brauchen darum wiederholte Messungen und wiederholte Trainingsphasen [[hecksteden2015]]. Praktisch heisst das: einem Plan über einen ganzen Block folgen, vorher und nachher dieselben Kennzahlen messen – Laktat und Puls bei gleicher Leistung ([[#laktat-messen]]), den CSS-Test ([[#schwimmen]]) und den Puls in gleichmässigen Abschnitten unter «Meine Entwicklung» – und das wiederholen. Auch dann bleibt offen, ob ein Unterschied am Plan liegt oder an der Saison (Begründung, keine Studie).",
+        "<b>Was die Unterschiede trotzdem zeigen.</b> Sie machen sichtbar, wo die Pläne grundsätzlich anders denken: etwa mehr Tempo- und Schwellenarbeit (pyramidal) gegenüber zwei klar harten Einheiten und sonst locker (polarisiert, [[#tid]]), wie schnell der lange Lauf wächst ([[#aufbau]]) oder wie viele Stunden geplant sind.",
+      ],
+      seite: [["V64", "vergleich"], ["AN", "saison"]], quellen: ["hecksteden2015"] },
 
     { id: "taper", titel: "Taper: die letzten Wochen vor dem Rennen", kurz: "Umfang deutlich runter, Intensität und Häufigkeit halten. So baut sich Ermüdung ab, ohne dass die Anpassungen verloren gehen.",
       text: [
@@ -411,6 +423,7 @@
     ["V64", "aufteilung", "Stunden je Sportart", "aufbau"],
     ["V64", "aufbau", "Aufbau-Check: Lauf gegen den längsten der 30 Tage davor", "aufbau"],
     ["V64", "intensitaet", "Intensität je Sportart", "aufbau"],
+    ["V64", "vergleich", "Vergleich mit Enduco", "vergleich"],
     ["V64", "tid", "Intensitätsverteilung und Abgleich", "tid"],
     ["V62", "testplan", "Tests im Plan", "laktat-messen"],
     ["V62", "zonenvorschlag", "Zonen aus LT1 und LT2", "zonen"],

@@ -198,7 +198,7 @@ test("Speichern: Liste «modell» auf Seite, Eingang und Werkzeugen gleich; Mode
   assert.deepEqual(py[1].split(",").map((x) => x.trim().replace(/"/g, "")).filter(Boolean).sort(), V64.REIHE.slice().sort());
 });
 
-/* ---------------- Wissen (wissen-1.2) ---------------- */
+/* ---------------- Wissen (wissen-1.3) ---------------- */
 test("Wissen: Kapitel eindeutig, vollständig, Verweise auflösbar", () => {
   const ids = WS.KAPITEL.map((k) => k.id);
   assert.equal(new Set(ids).size, ids.length, "Kapitel-IDs eindeutig");
@@ -242,9 +242,9 @@ test("Wissen: Regel-Liste verweist auf vorhandene Versionen und Kapitel", () => 
   for (const k of WS.KAPITEL) for (const [mod, key] of k.seite || []) assert.ok(M[mod] && M[mod].VERSIONS[key], `${k.id}: ${mod}.${key}`);
 });
 
-test("Wissen 1.2: Kapitel «aufbau» mit Laufaufbau, Scores, Aufteilung und Intensität je Sportart", () => {
+test("Wissen 1.2/1.3: Kapitel «aufbau» und «vergleich» mit Quellen und Regeln", () => {
   const WS = require("../js/wissen.js");
-  assert.equal(WS.VERSION, "wissen-1.2");
+  assert.equal(WS.VERSION, "wissen-1.3");
   const k = WS.kapitel("aufbau");
   assert.ok(k, "Kapitel aufbau fehlt");
   const v = WS.verweise(k.text.join(" ") + " " + k.kurz);
@@ -253,6 +253,9 @@ test("Wissen 1.2: Kapitel «aufbau» mit Laufaufbau, Scores, Aufteilung und Inte
   for (const key of ["aufteilung", "aufbau", "intensitaet"]) assert.ok(WS.REGELN.some((r) => r[0] === "V64" && r[1] === key && r[3] === "aufbau"), key);
   for (const [m, key] of k.seite) assert.ok(m !== "V64" || V64.VERSIONS[key], "Version fehlt: " + key);
   assert.ok(WS.kapitel("modelle").text.join(" ").includes("[[#aufbau]]"));
+  const vg = WS.kapitel("vergleich");
+  assert.ok(vg && WS.verweise(vg.text.join(" ")).quellen.includes("hecksteden2015"));
+  assert.ok(WS.REGELN.some((r) => r[0] === "V64" && r[1] === "vergleich" && r[3] === "vergleich"));
 });
 
 /* ---------------- V6.4.2: Intensität je Sportart (intensitaet-1.0) ---------------- */
@@ -293,7 +296,10 @@ test("Enduco gegen die Intensität: aus den Zielen der Schritte, sonst aus dem T
   assert.deepEqual(V64.planStufe([{ key: "z2", d: 3600 }], ""), { stufe: "locker", quelle: "ziele" });
   assert.deepEqual(V64.planStufe([{ key: "offen", d: 600 }], "VO₂max & Tempo"), { stufe: "alles", quelle: "titel" });
   assert.deepEqual(V64.planStufe(null, "Tempo Über-Unter"), { stufe: "schwelle", quelle: "titel" });
-  assert.equal(V64.planStufe(null, "Grundlagenausdauer"), null);
+  assert.deepEqual(V64.planStufe(null, "Grundlagenausdauer"), { stufe: "locker", quelle: "titel" });
+  assert.deepEqual(V64.planStufe(null, "Fatmax Pyramide"), { stufe: "locker", quelle: "titel" });
+  assert.deepEqual(V64.planStufe(null, "Neuro Intervalle & Ausdauer"), { stufe: "alles", quelle: "titel" }, "das stärkste Wort zählt");
+  assert.equal(V64.planStufe(null, "Kraft & Power"), null, "nicht beurteilbar bleibt offen");
 });
 
 /* ---------------- V6.4.2: Aufbau-Check (aufbau-1.0) ---------------- */
@@ -356,4 +362,46 @@ test("Geplanter Lauf: Distanz aus Distanzschritten und Pace-Zielen, offene Schri
   const offen = V64.planKm({ schritte: [{ dauer_s: 600, ziel: { art: "pace", lo: 360, hi: 330 } }, { dauer_s: null, ziel: { art: "pace", lo: 400, hi: 360 } }, { dauer_s: 600, ziel: { art: "hf", lo: 130, hi: 140 } }] });
   assert.equal(offen.vollst, false);
   assert.equal(V64.planKm(null), null);
+});
+
+/* ---------------- V6.4.3: Vergleich mit Enduco (vergleich-1.0) ---------------- */
+test("Enduco von der Uhr: nur wo nichts im Kalender stand, ohne Tests, Dauer aus dem Workout", () => {
+  const acts = [
+    { date: "2026-11-17", sport: "rad", wk: { name: "Kurze VO2max Intervalle ", plan_s: 3600, ist_s: 3500 } },
+    { date: "2026-11-18", sport: "lauf", wk: { name: "Fatmax", plan_s: null, ist_s: 2700 } },
+    { date: "2026-11-19", sport: "rad", wk: { name: "Stufentest Rad", plan_s: 4500 } },
+    { date: "2026-11-20", sport: "lauf", wk: { name: "Tempo Intervalle", plan_s: 3000 } },
+    { date: "2026-11-20", sport: "lauf" }];
+  const U = V64.enducoAusUhr(acts, [{ date: "2026-11-20", sport: "lauf" }]);
+  assert.deepEqual(U.map((x) => [x.date, x.titel, x.dauer_s, x.stufe, x.herkunft]), [
+    ["2026-11-17", "Kurze VO2max Intervalle", 3600, "alles", "uhr"], ["2026-11-18", "Fatmax", 2700, "locker", "uhr"]]);
+});
+
+test("Vergleich: Fenster, Summen, Stufen, Unterschiede und welchem Plan das Training näher war", () => {
+  const w = woche({ stunden: 9 });                                     // Woche ab 16.11.2026, polarisiert
+  assert.equal(V64.stufeVon(w.tage[3].einheiten.find((e) => e.sport === "rad")), "alles");
+  assert.equal(V64.stufeVon({ id: "lauf_lang", art: "lang" }), "locker"); assert.equal(V64.stufeVon({ id: "test_rad", art: "test" }), "test");
+  assert.equal(V64.vergleich({ w, enduco: [], ist: [], heute: "2026-11-18" }).leer, true);
+  const enduco = [
+    { date: "2026-11-17", sport: "rad", titel: "Sweet Spot", dauer_s: 5400, stufe: "schwelle" },
+    { date: "2026-11-18", sport: "lauf", titel: "VO2max Intervalle", dauer_s: 3600, stufe: "alles" },
+    { date: "2026-11-19", sport: "rad", titel: "Über-Unter", dauer_s: 6000, stufe: "schwelle" },
+    { date: "2026-11-19", sport: "schwimm", titel: "VO₂max & Tempo", dauer_s: 3000, stufe: "alles" }];
+  const ist = [{ date: "2026-11-17", sport: "rad", dauer_s: 5300 }, { date: "2026-11-18", sport: "lauf", dauer_s: 3500 }];
+  const r = V64.vergleich({ w, enduco, ist, heute: "2026-11-19" });
+  assert.equal(r.leer, false); assert.equal(r.vorbei, false);
+  assert.equal(r.planBis, "2026-11-19", "Pläne bis zum letzten exportierten Tag"); assert.equal(r.istBis, "2026-11-18", "Absolviertes bis gestern");
+  assert.equal(Math.round(r.summen.E.rad.min), 190); assert.equal(r.summen.E.total.n, 4);
+  assert.equal(r.summen.V.total.min, w.tage.filter((t) => t.date <= "2026-11-19").flatMap((t) => t.einheiten).reduce((a, e) => a + e.dauer, 0));
+  assert.deepEqual([r.stufen.E.alles.length, r.stufen.E.schwelle.length], [2, 2]);
+  assert.equal(r.abdeckung.anteil, 1); assert.equal(r.sicher, true);
+  assert.equal(r.naeher.urteil, "Enduco", "das Training lag am Enduco-Plan");
+  assert.ok(r.unterschiede.some((u) => u.art === "schwelle" && /Enduco 2 – Di Rad «Sweet Spot», Do Rad «Über-Unter»/.test(u.text)));
+  assert.ok(r.unterschiede.some((u) => u.art === "schwimmen"));
+  // vergangene Woche: ganze Woche; Training ohne Enduco-Einträge → nur teilweise bekannt, kein Urteil
+  const ist2 = ist.concat([{ date: "2026-11-20", sport: "schwimm", dauer_s: 2400 }, { date: "2026-11-21", sport: "rad", dauer_s: 9000 }, { date: "2026-11-22", sport: "lauf", dauer_s: 4000 }]);
+  const r2 = V64.vergleich({ w, enduco, ist: ist2, heute: "2026-11-30" });
+  assert.equal(r2.vorbei, true); assert.equal(r2.planBis, "2026-11-22"); assert.equal(r2.abdeckung.mitPlan, 2); assert.equal(r2.sicher, false);
+  assert.equal(r2.naeher, null);
+  assert.ok(r2.unterschiede.some((u) => u.art === "abdeckung") && !r2.unterschiede.some((u) => ["stunden", "hart", "frei"].includes(u.art)));
 });

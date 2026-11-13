@@ -1049,6 +1049,10 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
         <div class="card-head"><div><h2>Woche nach Modell</h2><div class="sub" id="mo-woche-sub">Vorschlag aus Phase, Stunden und Trainingsmodell – neben dem Enduco-Plan</div></div></div>
         <div id="mo-woche"></div>
       </div>
+      <div class="card w12" id="vg-card">
+        <div class="card-head"><div><h2>Vorschlag und Enduco über die Wochen</h2><div class="sub" id="vg-sub">Was Enduco geplant hat, was die Seite vorgeschlagen hätte und was du gemacht hast</div></div></div>
+        <div id="vg-verlauf"></div>
+      </div>
       <div class="card w12" id="ab-card">
         <div class="card-head"><div><h2>Aufbau-Check</h2><div class="sub" id="ab-sub">Laufumfang ohne Sprünge aufbauen; Schwimmen und Rad im Verlauf</div></div></div>
         <div id="ab-inhalt"></div>
@@ -1852,6 +1856,13 @@ function makeDemo() {
     0: ["Langer Lauf", "lauf", 5400, [vz(5400, 2.75, 2.95)]] };
   const planned = []; for (let i = 0; i <= 14; i++) { const d = addDays(today, i), q = PLAN[d.getDay()]; if (q) planned.push(Object.assign({ date: iso(d), title: q[0], sport: q[1], dur_s: q[2] }, q[3] ? { steps: q[3], quelle: "Beispiel-Workout" } : {})); }
   if (!planned.some((x) => x.date === iso(today) && x.sport === "schwimm")) planned.unshift({ date: iso(today), title: "Schwimmen Technik", sport: "schwimm", dur_s: null, steps: SCHWIMM, quelle: "Beispiel-Workout" });
+  // V6.4.3 Demo: erfundener Enduco-Verlauf der letzten 4 Wochen (je absolvierte Einheit ein Kalender-Eintrag derselben Sportart) für den Vergleich
+  for (const a of acts) {
+    if (!["rad", "lauf", "schwimm"].includes(a.sport) || a.date < iso(addDays(today, -28)) || a.date >= iso(today)) continue;
+    const L = Object.values(PLAN).filter((q) => q[1] === a.sport), q = L[a.dur % L.length];
+    planned.push(Object.assign({ date: a.date, title: q[0], sport: q[1], dur_s: q[2] }, q[3] ? { steps: q[3], quelle: "Beispiel-Workout" } : {}));
+  }
+  planned.sort((x, y) => x.date.localeCompare(y.date));
   const workouts_neu = [{ wid: 900001, title: "Lauf Schwelle (Beispiel)", sport: "running", dur_s: 3600, erstellt: ago(1) + "T07:30:00", desc: "", quelle: "Beispiel-Workout",
     steps: [vz(900, 2.6, 2.8, "warmup"), rep(3, [vz(480, 3.45, 3.6), vz(180, 2.6, 2.8, "rest")]), vz(720, 2.6, 2.8, "cooldown")] }];
   const points = [

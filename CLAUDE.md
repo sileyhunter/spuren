@@ -62,10 +62,10 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
 - **V6.2.3:** `tools/garmin_export.py` – Garmin-Datenexport (DSGVO-Export) → Verlauf `spuren-garmin-verlauf-1` (garmin-export-1.0, Abschnitt
   «Garmin-Datenexport»); Prüfung auf der Seite `V61.verlaufPruefen`, Einstellungen «Garmin-Verlauf einlesen» (`js/v59.js`)
 - **V6.4 (Etappe 4 Modell und Wissen):** `js/v64.js` (ohne DOM: Trainingsmodelle modell-1.0, Woche nach Modell wochenplan-1.1, Aufteilung
-  aufteilung-1.0, Intensitätsverteilung tid-1.0, V6.4.2 Intensität je Sportart intensitaet-1.0 und Aufbau-Check aufbau-1.0), `js/wissen.js`
-  (wissen-1.2: Kapitel in eigenen Worten, Quellen mit DOI), `js/v64-ui.js` (Plan: «Woche nach Modell», «Aufbau-Check», «Trainingsmodell» mit
-  Intensität je Sportart; Ansicht «Wissen» unter Plan), `tests/test_v64.cjs`; Stundenregel saison-1.0 neu in `js/analyse.js`
-  (`AN.saisonStunden`, `AN.saisonVorgaben`, gleiche Regel wie zuvor in `js/v56.js`)
+  aufteilung-1.0, Intensitätsverteilung tid-1.0, V6.4.2 Intensität je Sportart intensitaet-1.0 und Aufbau-Check aufbau-1.0, V6.4.3 Vergleich mit
+  Enduco vergleich-1.0), `js/wissen.js` (wissen-1.3: Kapitel in eigenen Worten, Quellen mit DOI), `js/v64-ui.js` (Plan: «Woche nach Modell» mit
+  «Vergleich mit Enduco», «Vorschlag und Enduco über die Wochen», «Aufbau-Check», «Trainingsmodell» mit Intensität je Sportart; Ansicht «Wissen»
+  unter Plan), `tests/test_v64.cjs`; Stundenregel saison-1.1 in `js/analyse.js` (`AN.saisonStunden`, `AN.saisonVorgaben`)
 - **V5.8:** keine neuen Dateien; Rechenlogik in `js/route.js` (Abschnitte von Hand, Skitourennetz, Hangneigung, MTB-Abfahrt, Wegende, drei
   Rennradvarianten, Windpfeile), Oberfläche in `js/routen-ui.js`, Ringe «Heute» in `js/formkurve.js` (`FK.ringeVerlauf`) und `js/v55.js` (`V55.ringe`)
 - `tests/test_formkurve.cjs`, `tests/test_route.cjs`, `tests/test_analyse.cjs`, `tests/test_training.cjs`, `tests/test_v64.cjs`, `tests/test_tools.py` – Abnahmetests (erfundene Werte; `tests/fixtures/` = echte
@@ -382,7 +382,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   **kombiniert = Standard** (von Silas gewählt am 13.11.2026): polarisiert bis zum Wechsel (vorgegeben 1. Februar im Jahr des Hauptrennens,
   auf der Seite änderbar), ab der Woche des Wechsels rennspezifisch. Die Wahl kommt nur über «Direkt speichern» (`modell` → `plan_modell`).
 - **Woche `wochenplan-1.1` (`V64.woche`, 1.1 = mit Aufbau-Grenze und Intensität je Sportart):** Mo frei · Di Laufen (Schlüssel) und Schwimmkurs · Mi Rad locker · Do Rad (Schlüssel) und CSS-Schwimmen ·
-  Fr Laufen locker · Sa lange Ausfahrt (+ Koppel) · So langer Lauf (+ Schwimmen). Stunden aus saison-1.0 (`AN.saisonStunden`/`AN.saisonVorgaben`),
+  Fr Laufen locker · Sa lange Ausfahrt (+ Koppel) · So langer Lauf (+ Schwimmen). Stunden aus saison-1.1 (`AN.saisonStunden`/`AN.saisonVorgaben`),
   `aufteilung-1.0` Schwimmen 20 %, Rad 50 %, Laufen 30 % (eigene Festlegung); Anzahl je Sportart nach Stunden (unter 7 h je 2 Rad/Lauf, 1 Schwimmen);
   längste Einheit je Phase begrenzt (`V64.LANG`), Rest wird gemeldet, nie still verteilt. Erholungswoche: nur Rad-Schlüssel gekürzt, Laufen locker.
   Taper: Schlüssel halbiert, Intensität bleibt. Rennwoche: 2 Tage vorher frei, Vortag Aktivierung, danach frei. Tests der Woche (Testkalender und
@@ -400,10 +400,22 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Referenzlauf wegfällt, geplante Enduco-Läufe (Distanz aus Pace-Zielen geschätzt, offene Schritte = «mind.»), Wochen-km Laufen, Schwimm-Meter,
   Rad-Stunden (12 Wochen). Schwimmen und Rad ohne Grenze (keine geprüfte). Der Wochenvorschlag kürzt den langen und den lockeren Lauf unter die
   Grenze (Distanz aus dem Zonenprofil, Z1 mit dem langsamen Rand von Z2), übrige Läufe nur als Hinweis; ohne Lauf-Pace-Zonen keine Begrenzung.
+- **Vergleich mit Enduco `vergleich-1.0` (V6.4.3, `V64.vergleich`, `V64.enducoAusUhr`):** Woche nach Modell wählbar «Letzte · Diese Woche · Nächste»,
+  ältere über die Karte `#vg-card` (letzte 8 Wochen). Vergangene Wochen nachgerechnet, wie die Seite am Montag geplant hätte (Saison ab jener Woche,
+  Stunden aus den 8 abgeschlossenen Wochen davor, CSS bis dahin; Modell, Intensität je Sportart und Zonenprofil von heute, gekennzeichnet). Enduco =
+  Garmin-Kalender, dazu Workouts auf der Uhr (`wk`), wo am selben Tag für dieselbe Sportart nichts im Kalender stand (ohne Tests); Zwift ohne
+  Uhr-Workout und ausgelassene Einheiten fehlen. Fenster: vergangene Wochen ganz, sonst Pläne bis zum letzten Enduco-Tag, Absolviertes bis gestern.
+  Vergleich je Sportart (Stunden, Anzahl), Stufen (hart, Tempo/Schwelle), längste Einheiten, freie Tage, Unterschiede in Worten; «näher an» =
+  kleinere Summe der Stunden-Abweichungen je Sportart (±15 min = «ähnlich»), nur bei Abdeckung ≥ 60 % (absolvierte Einheiten mit Enduco-Eintrag
+  derselben Sportart am selben Tag), sonst kein Urteil. Titel-Regel: VO2max/anaerob/Sprint/Neuro = hart, Schwelle/Tempo/Sweet Spot/CSS/Über-Unter =
+  Schwelle, Fatmax/Grundlage/locker = locker, sonst offen. Welcher Plan besser ist, sagt der Vergleich nicht (Kapitel «vergleich»).
+- **Saison `saison-1.1` (V6.4.3):** «jetzt» = Median der 8 abgeschlossenen Wochen vor der laufenden (die laufende zählt nicht mehr mit), «Spitze» aus
+  den 52 Wochen davor – der Vorschlag bleibt die ganze Woche gleich und lässt sich für vergangene Wochen genau so nachrechnen.
 - **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
   Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
   Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
-- **Wissen `wissen-1.2` (`js/wissen.js`, 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check):** alle Modelle und Regeln der Seite in eigenen Worten (nie Text aus Studien oder Webseiten übernehmen),
+- **Wissen `wissen-1.3` (`js/wissen.js`, 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
+  1.3: Kapitel «Vorschlag und Enduco vergleichen»):** alle Modelle und Regeln der Seite in eigenen Worten (nie Text aus Studien oder Webseiten übernehmen),
   jede Aussage mit Quelle `[[id]]` aus `WS.QUELLEN` (Autoren, Jahr, Titel, Zeitschrift, DOI; ohne DOI begründet), Kapitel-Verweise `[[#id]]`.
   Neue oder geänderte Regel: Kapitel und `WS.REGELN` nachführen; `tests/test_v64.cjs` prüft Verweise, DOI-Form, jede Quelle verwendet,
   Schweizer Schreibweise (kein ß) und keine Wattwerte in den Texten. Nie persönliche Zahlen in die Wissenstexte.
@@ -424,7 +436,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - Geplant vs. Ist `plan-1.0`: nur das Workout, das auf der Uhr lief (FIT `workout`/`workout_step`, Runden mit `wkt_step_index`) und der
   Garmin-Kalender. **Keine direkte Enduco-Schnittstelle behaupten**; Enduco-Workouts nie ändern. Leistungsziele ≤ 1000 je Workout als
   Watt oder % FTP nach der gefahrenen Leistung gelesen und offen ausgewiesen. Plandauer nur, wenn jeder Schritt eine Zeit hat (sonst «offen»).
-- Saison `saison-1.0`: Phasen rückwärts ab Hamburg (A), Jesolo als B-Rennen; Stunden nur als Vorschlag aus den eigenen Wochen, nie als
+- Saison `saison-1.1` (Phasen wie 1.0): Phasen rückwärts ab Hamburg (A), Jesolo als B-Rennen; Stunden nur als Vorschlag aus den eigenen Wochen, nie als
   Vorgabe und nie nach Garmin/Enduco geschrieben.
 - Ermüdung `ermuedung-1.0`: Puls früh gegen spät bei gleicher Leistung bzw. Pace in derselben Einheit; beste 20 min ab Stunde 2–5.
   «Meine Entwicklung» urteilt darüber nur mit `entwicklung-1.0` (mind. 3 je Zeitraum, Intervall).
@@ -530,7 +542,7 @@ Technik wertet Claude im Chat aus (Videos Bild für Bild), nie auf der Seite.
 Protokoll-Vorlagen: `protokolle` (Liste mit `id name sport ablauf blut ende rahmen status`), ändern über `"protokolle": [ … ]` in `work/new.json`.
 **Testplan (V6.2, testplan-1.0, `js/v62.js`):** Die Seite schlägt Tests nach festen Regeln selbst vor (Status «vorschlag», Regel sichtbar), in
 Testkalender, Kalender und auf Heute (heute/morgen): CSS alle 6–8 Wochen am gleichen Wochentag wie zuletzt; Rad-Stufentest alle 8 Wochen am Samstag
-einer Erholungswoche (saison-1.0), zuerst ein ausbelasteter, wenn der letzte es nicht war; Lauf-Stufentest alle 8–12 Wochen in einer anderen
+einer Erholungswoche (saison-1.1), zuerst ein ausbelasteter, wenn der letzte es nicht war; Lauf-Stufentest alle 8–12 Wochen in einer anderen
 Erholungswoche; Kurzcheck alle 2 Wochen in einer Grundlagenfahrt (rollend 8 Wochen, nicht 4 Tage neben einem Stufentest); kein Stufentest 14 Tage
 vor einem Rennen, in der Woche danach und im Taper. Eingetragene Termine (`tests`) gehen vor; Regelverstösse werden mit einem Vorschlag gezeigt,
 nie still geändert. Abwesenheiten («keine Tests») trägt Silas auf der Seite ein (Notiz `tp-sperren`, verschlüsselt über «Direkt speichern»);

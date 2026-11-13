@@ -141,3 +141,8 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 55. **Intensität je Sportart und Enduco:** Die Stufe einer Enduco-Einheit ohne Ziele in den Schritten (z. B. Schwimmen) kommt aus dem Titel.
     Enduco selbst lässt sich nicht einstellen; ob eine Einheit trotzdem gemacht wird, entscheidet Silas. Nach einigen Wochen prüfen, ob die
     Titel-Regel Fehlalarme gibt.
+56. **Vergleich mit Enduco – Datenlücken:** Enduco ist nur über den Garmin-Kalender (Export meist am Vortag) und die Workouts auf der Uhr bekannt;
+    Zwift-Einheiten ohne Uhr-Workout und ausgelassene Einheiten fehlen. Vergangene Vorschläge werden mit den heutigen Einstellungen nachgerechnet.
+    Wenn die Einstellungen oft wechseln: Vorschlag jede Woche am Montag einfrieren (Nacht-Update), statt nachzurechnen.
+57. **«jetzt» nach einer Pause:** Der Median der 8 Wochen davor reagiert langsam (nach der Pause im September liegt der Vorschlag deutlich unter
+    dem, was trainiert wird). Silas kann «jetzt» und «Spitze» im Wochenstunden-Vorschlag selbst setzen; eine andere Regel nur mit neuer Version.
