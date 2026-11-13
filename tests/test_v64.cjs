@@ -496,7 +496,7 @@ test("Wissen 1.4 (Audit V6.4): Versionsangaben in den Texten entsprechen dem Cod
   const text = WS.KAPITEL.map((k) => k.text.join(" ") + " " + k.kurz).join(" ");
   const alt = [...text.matchAll(/\b([a-z]+(?:-[a-z]+)*)-(\d+\.\d+)\b/g)].map((m) => m[0]).filter((v) => { const p = v.replace(/-\d+\.\d+$/, ""); return aktuell.has(p) && aktuell.get(p) !== v; });
   assert.deepEqual(alt, [], "veraltete Versionen im Wissenstext");
-  assert.ok(/readiness-2\.1/.test(text) && /saison-1\.2/.test(text) && /aufbau-1\.1/.test(text) && /vergleich-1\.3/.test(text) && /intensitaet-1\.1/.test(text));
+  assert.ok(/readiness-2\.1/.test(text) && /saison-1\.2/.test(text) && /aufbau-1\.1/.test(text) && /vergleich-1\.4/.test(text) && /intensitaet-1\.1/.test(text));
   // Audit B: Titel Rosenblat 2019, sechsstufige Skala, keine «trainierbare» Ermüdungsresistenz, Muñoz 2014b nicht als Überlegenheit
   assert.match(WS.QUELLEN.rosenblat2019.t, /intensity distribution on endurance sport performance/);
   assert.ok(!/Fünf-Zonen-Skala|trainierbare Eigenschaft|Hälfte der Wiederholungen|Stark für die VO2max/.test(text + JSON.stringify(WS.QUELLEN)));
@@ -535,7 +535,7 @@ test("Vergleich 1.2 (V6.5 planwahl-1.0): Wahl je Tag – Abweichung je Sportart 
   const ist = [{ date: "2026-11-17", sport: "lauf", dauer_s: vMin * 60 }, { date: "2026-11-18", sport: "lauf", dauer_s: 1800 }, { date: "2026-11-19", sport: "rad", dauer_s: 3600 }];
   const wahl = { "2026-11-16": "frei", "2026-11-17": "vorschlag", "2026-11-18": "enduco", "2026-11-20": "enduco", "2026-11-21": "quatsch" };
   const r = V64.vergleich({ w, enduco, ist, heute: "2026-11-20", wahl });
-  assert.equal(r.v, "vergleich-1.3");
+  assert.equal(r.v, "vergleich-1.4");
   const g = r.gewaehlt;
   assert.deepEqual(g.n, { enduco: 2, vorschlag: 1, frei: 1 }, "unbekannte Wahl zählt nicht");
   const t = Object.fromEntries(g.tage.map((x) => [x.date, x]));

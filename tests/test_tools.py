@@ -528,6 +528,7 @@ _spec9 = [
      "garmin_verlauf": {"format": "spuren-garmin-verlauf-1", "id": "0123456789abcdef", "tage": [{"date": "2026-11-01", "sleepH": 7.5, "readiness": 66, "readinessLevel": "HIGH"}]},
      "modell": [{"id": "modell", "modell": "schwelle", "wechsel": "2027-02-01", "v": "modell-1.0", "geaendert": "2026-11-10T06:00:00Z"}],
      "planwahl": [{"id": "pw-2026-11-11", "date": "2026-11-11", "wahl": "vorschlag", "v": "planwahl-1.0"}],
+     "garmin_senden": [{"id": "gs-2026-11-12", "date": "2026-11-12", "modus": "aus", "erstellt": "2026-11-10T06:00:00Z", "v": "garmin-senden-1.0", "einheiten": [], "ohne": []}],
      "planwoche": [{"id": "wo-2026-11-09", "montag": "2026-11-09", "v": "eigenplan-1.0", "geaendert": "2026-11-10T06:00:00Z",
                     "tage": {"2026-11-12": {"einheiten": [{"uid": "e-1", "quelle": "eigen", "vorlage": "rad_locker", "sport": "rad", "dauer": 75}], "gesperrt": False},
                              "2026-11-14": {"einheiten": [], "gesperrt": True}}}],
@@ -560,8 +561,9 @@ check("Eingang: auf der Seite bestätigte Zonen gehen als zonen_add ins Update",
 check("Eingang: Garmin-Verläufe von der Seite gehen unverändert ins Update – zwei vor einem Update beide (Audit V6.4 B9)",
       [g["id"] for g in _A9.get("garmin_verlauf") or []] == ["0123456789abcdef", "fedcba9876543210"], json.dumps(_A9.get("garmin_verlauf"))[:200])
 check("Eingang: gewähltes Trainingsmodell geht als modell_add ins Update (V6.4)", [m["modell"] for m in _A9.get("modell_add", [])] == ["schwelle"], json.dumps(_A9.get("modell_add")))
-check("Eingang: Wahl je Tag und Mein Plan gehen als planwahl_add und planwoche_add ins Update (V6.5, V6.6)",
-      [w["id"] for w in _A9.get("planwahl_add", [])] == ["pw-2026-11-11"] and [w["id"] for w in _A9.get("planwoche_add", [])] == ["wo-2026-11-09"],
+check("Eingang: Wahl je Tag, Mein Plan und Garmin-Auftrag gehen als planwahl_add, planwoche_add und garmin_senden_add ins Update (V6.5, V6.6)",
+      [w["id"] for w in _A9.get("planwahl_add", [])] == ["pw-2026-11-11"] and [w["id"] for w in _A9.get("planwoche_add", [])] == ["wo-2026-11-09"]
+      and [g["id"] for g in _A9.get("garmin_senden_add", [])] == ["gs-2026-11-12"],
       json.dumps({k: _A9.get(k) for k in ("planwahl_add", "planwoche_add")})[:300])
 merge_daily.main(os.path.join(_t9, "data.json"), os.path.join(_t9, "work", "eingang_a.json"))
 _R9 = json.load(open(os.path.join(_t9, "data.json")))
@@ -569,8 +571,9 @@ check("Eingang A eingespielt: Befinden, Route auf alle Geräte, alte Route entfe
       _R9["befinden"][0]["stress"] == 3 and [r["id"] for r in _R9["routes"]] == ["u-r1"] and any(a.get("was") == "Route entfernt" for a in _R9["audit"])
       and _R9["laktat_punkte"][0]["status"] == "vorschau" and not _R9.get("lactate") and [c["css_s"] for c in _R9.get("css_tests", [])] == [105]
       and [m["modell"] for m in _R9.get("plan_modell", [])] == ["schwelle"])
-check("Eingang A eingespielt: Wahl je Tag in plan_wahl, Mein Plan in plan_woche (mit gesperrtem Tag)",
+check("Eingang A eingespielt: Wahl je Tag in plan_wahl, Mein Plan in plan_woche (mit gesperrtem Tag), Garmin-Auftrag offen",
       [w["wahl"] for w in _R9.get("plan_wahl", [])] == ["vorschlag"] and [w["id"] for w in _R9.get("plan_woche", [])] == ["wo-2026-11-09"]
+      and [(g["id"], g["status"]) for g in _R9.get("garmin_auftraege", [])] == [("gs-2026-11-12", "offen")]
       and _R9["plan_woche"][0]["tage"]["2026-11-14"]["gesperrt"] is True and _R9["plan_woche"][0]["tage"]["2026-11-12"]["einheiten"][0]["dauer"] == 75,
       json.dumps({k: _R9.get(k) for k in ("plan_wahl", "plan_woche")})[:300])
 check("Eingang A eingespielt: beide Garmin-Verläufe eingespielt (Audit V6.4 B9)", sorted(g["id"] for g in _R9.get("garmin_export", [])) == ["0123456789abcdef", "fedcba9876543210"],
@@ -987,7 +990,7 @@ _zl = bibliothek.einspielen_liste(_DB, _LISTE, "2026-01-20")
 _B = _DB["enduco_bib"]
 check("Bibliothek: Liste nur Enduco, Volltext je Text einmal, Sportart übersetzt",
       _zl == {"neu": 3} and sorted(_B["workouts"]) == ["1000000001", "1000000002", "1000000003"] and len(_B["texte"]) == 2
-      and _B["workouts"]["1000000003"]["sport"] == "schwimm" and _DB["versions"]["enduco_bib"]["v"] == "bib-1.0", str(_zl))
+      and _B["workouts"]["1000000003"]["sport"] == "schwimm" and _DB["versions"]["enduco_bib"]["v"] == "bib-1.1", str(_zl))
 check("Bibliothek: Liste ein zweites Mal – nichts Neues, nichts doppelt", bibliothek.einspielen_liste(_DB, _LISTE, "2026-01-21") == {}
       and all(len(w["versionen"]) == 1 for w in _B["workouts"].values()))
 _p = {"date": "2026-01-22", "title": "Beispiel Intervalle", "sport": "rad", "dur_s": 3600, "wid": 1000000001, "quelle": "Enduco über Garmin",
@@ -1044,6 +1047,139 @@ _DM = json.load(open(os.path.join(_td, "d.json")))
 check("Bibliothek im Nacht-Update: Kalender und neue Workouts bleiben, auch wenn sie aus Kalender und Liste verschwinden",
       sorted(_DM["enduco_bib"]["workouts"]) == ["1000000001", "1000000005"] and _DM["planned"] == [] and _DM["enduco_bib"]["workouts"]["1000000001"]["termine"] == ["2026-01-22"]
       and "Kurz. Und mehr." in _DM["enduco_bib"]["texte"].values(), str(_DM.get("enduco_bib", {}).get("workouts", {}).keys()))
+
+# ---------- V6.6 An Garmin senden (tools/garmin_senden.py, garmin-senden-1.0) – erfundene Zonen und IDs ----------
+import garmin_senden as GS  # noqa: E402
+_js_gs = r"""const V66 = require("./js/v66.js");
+const SK = { rad_w: [{ z: "Z1", von: null, bis: 160 }, { z: "Z2", von: 160, bis: 200 }, { z: "Z3", von: 200, bis: 240 }, { z: "Z4", von: 240, bis: 257 }, { z: "Z5", von: 257, bis: null }],
+  lauf_pace: [{ z: "Z1", von: null, bis: 380 }, { z: "Z2", von: 380, bis: 330 }, { z: "Z3", von: 330, bis: 290 }, { z: "Z4", von: 290, bis: 270 }, { z: "Z5", von: 270, bis: null }] };
+const E = (o) => V66.einheit(o, {});
+const out = {};
+for (const id of ["rad_vo2", "rad_laktat", "rad_tempo", "rad_lang_rt", "lauf_vo2", "lauf_laktat", "lauf_koppel", "aktivierung", "rad_locker", "lauf_lang"])
+  out[id] = V66.garminAuftrag("2026-03-05", [E({ uid: "u-" + id, vorlage: id, dauer: V66.bereich(id).std, quelle: "eigen" })], SK, "senden", "2026-03-02T19:00:00Z");
+out.mix = V66.garminAuftrag("2026-03-05", [E({ uid: "e-a", vorlage: "rad_locker", dauer: 60, quelle: "eigen" }), E({ uid: "e-b", quelle: "bibliothek", wid: 1000000009, sport: "lauf", titel: "Beispiel Lauf", dauer: 40 }),
+  E({ uid: "e-c", vorlage: "schwimm_css", dauer: 60, quelle: "eigen" })], SK, "auto", "2026-03-02T19:00:00Z");
+out.mix2 = V66.garminAuftrag("2026-03-05", [E({ uid: "e-a", vorlage: "rad_locker", dauer: 75, quelle: "eigen" }), E({ uid: "e-d", vorlage: "lauf_locker", dauer: 30, quelle: "eigen" })], SK, "senden", "2026-03-04T21:00:00Z");
+out.weiter = V66.garminAuftrag("2026-03-06", [E({ uid: "e-d", vorlage: "lauf_locker", dauer: 30, quelle: "eigen" })], SK, "senden", "2026-03-04T21:30:00Z");
+console.log(JSON.stringify(out));"""
+_rg = subprocess.run(["node", "-e", _js_gs], cwd=ROOT, capture_output=True, text=True)
+_GA = json.loads(_rg.stdout)
+_einzel = {k: v for k, v in _GA.items() if k not in ("mix", "mix2", "weiter")}
+check("Garmin senden: jedes Workout der Seite (alle Rad- und Lauf-Vorlagen) besteht die Prüfung des Werkzeugs",
+      all(GS.pruefen(a) is None and len(a["einheiten"]) == 1 for a in _einzel.values()), str({k: GS.pruefen(a) for k, a in _einzel.items()}))
+check("Garmin senden: gemischter Tag – Rad als Workout, Bibliothek nur mit ID, Schwimmen mit Grund nicht gesendet",
+      GS.pruefen(_GA["mix"]) is None and [u["quelle"] for u in _GA["mix"]["einheiten"]] == ["eigen", "bibliothek"] and [x["uid"] for x in _GA["mix"]["ohne"]] == ["e-c"])
+_w0 = _GA["rad_vo2"]["einheiten"][0]["workout"]
+
+
+def _mit(f):
+    a = copy.deepcopy(_GA["rad_vo2"])
+    f(a)
+    return GS.pruefen(a)
+
+
+_falsch = {
+    "falsche ID": _mit(lambda a: a.update(id="gs-2026-03-06")),
+    "unbekannter Modus": _mit(lambda a: a.update(modus="sofort")),
+    "Tag vor dem Erstellen": _mit(lambda a: a.update(date="2026-03-01", id="gs-2026-03-01")),
+    "mehr als eine Woche voraus": _mit(lambda a: a.update(date="2026-03-12", id="gs-2026-03-12")),
+    "unbekanntes Feld": _mit(lambda a: a["einheiten"][0]["workout"].update(owner="x")),
+    "Name ohne IN": _mit(lambda a: a["einheiten"][0]["workout"].update(workoutName="Fremd")),
+    "Schwimmen": _mit(lambda a: a["einheiten"][0]["workout"].update(sportType={"sportTypeId": 4, "sportTypeKey": "swimming"})),
+    "Watt zu hoch": _mit(lambda a: a["einheiten"][0]["workout"]["workoutSegments"][0]["workoutSteps"][1].update(targetValueTwo=2500)),
+    "Tempo-Ziel am Rad": _mit(lambda a: a["einheiten"][0]["workout"]["workoutSegments"][0]["workoutSteps"][1].update(targetType={"workoutTargetTypeId": 6, "workoutTargetTypeKey": "pace.zone"})),
+    "Strecke statt Zeit": _mit(lambda a: a["einheiten"][0]["workout"]["workoutSegments"][0]["workoutSteps"][1].update(endCondition={"conditionTypeId": 3, "conditionTypeKey": "distance"})),
+    "Reihenfolge": _mit(lambda a: a["einheiten"][0]["workout"]["workoutSegments"][0]["workoutSteps"][1].update(stepOrder=9)),
+    "Bibliothek ohne ID": GS.pruefen(dict(_GA["mix"], einheiten=[dict(_GA["mix"]["einheiten"][1], wid=None)])),
+    "doppelte Kennung": GS.pruefen(dict(_GA["mix"], einheiten=[_GA["mix"]["einheiten"][0], _GA["mix"]["einheiten"][0]])),
+}
+check("Garmin senden: Prüfung lehnt ab – ID, Modus, Tag zurück oder zu weit voraus, fremde Felder, Name, Sportart, Werte, Ziel, Ende, Reihenfolge, Bibliothek, Kennung",
+      all(_falsch.values()), str({k: v for k, v in _falsch.items() if not v}))
+_tg = tempfile.mkdtemp()
+json.dump({"activities": [], "days": []}, open(os.path.join(_tg, "d.json"), "w"))
+json.dump({"garmin_senden_add": [_GA["mix"], dict(_GA["rad_vo2"], date="2026-03-01", id="gs-2026-03-01")]}, open(os.path.join(_tg, "n.json"), "w"))
+merge_daily.main(os.path.join(_tg, "d.json"), os.path.join(_tg, "n.json"))
+merge_daily.main(os.path.join(_tg, "d.json"), os.path.join(_tg, "n.json"))
+_DG = json.load(open(os.path.join(_tg, "d.json")))
+check("Garmin senden: Auftrag eingespielt (offen), ungültiger abgelehnt (mit Grund für die Seite), dieselbe Datei nochmals → nichts doppelt",
+      [(a["id"], a["status"]) for a in _DG.get("garmin_auftraege", [])] == [("gs-2026-03-05", "offen")]
+      and [a["id"] for a in _DG.get("garmin_abgelehnt", [])] == ["gs-2026-03-01"] and _DG["garmin_abgelehnt"][0]["grund"], str(_DG.get("garmin_auftraege"))[:200])
+_jz = lambda s: dt_mod.datetime.fromisoformat(s).replace(tzinfo=GS.TZ)  # noqa: E731
+_P1 = GS.plan(_DG, _jz("2026-03-04T22:58"))
+check("Garmin senden: automatisch erst ab 23:00 am Vortag (vorher warten, nichts tun)", not _P1["aktionen"] and _P1["warten_bis"], str(_P1)[:200])
+check("Garmin senden: zwei Tage vorher noch nichts (automatisch erst am Vortag)", not GS.plan(_DG, _jz("2026-03-03T23:30"))["aktionen"])
+_P2 = GS.plan(_DG, _jz("2026-03-04T23:05"))
+check("Garmin senden: am Vortag nach 23 Uhr – Rad hochladen, Bibliothek nur einplanen, Schwimmen nicht",
+      [(x["art"], x["uid"]) for x in _P2["aktionen"]] == [("hochladen", "e-a"), ("einplanen", "e-b")] and _P2["aktionen"][1]["wid"] == 1000000009
+      and "workout" not in _P2["aktionen"][1], str(_P2["aktionen"])[:300])
+_ip = json.load(open(os.path.join(_tg, "d.json")))
+_m, _f = GS.eintragen(_ip, _P2, [{"nr": 1, "ok": True, "workout_id": 5001, "scheduled_id": 7001}, {"nr": 2, "ok": True, "scheduled_id": 7002, "vorhanden": False}],
+                      _jz("2026-03-04T23:07"))
+check("Garmin senden: Ergebnis eingetragen – Vermerk je Einheit, Auftrag erledigt, Audit",
+      [(g["uid"], g["workout_id"], g["scheduled_id"]) for g in _ip["plan_garmin"]] == [("e-a", 5001, 7001), ("e-b", 1000000009, 7002)]
+      and _ip["garmin_auftraege"][0]["status"] == "erledigt" and sum(1 for a in _ip["audit"] if str(a.get("was", "")).startswith("Garmin:")) == 2 and not _f, str(_ip.get("plan_garmin")))
+check("Garmin senden: erledigter Auftrag wird nicht nochmals gesendet", not GS.plan(_ip, _jz("2026-03-04T23:30"))["aktionen"])
+_ip["garmin_auftraege"].append(dict(_GA["mix2"], status="offen"))
+_ip["garmin_auftraege"] = [a for a in _ip["garmin_auftraege"] if a["erstellt"] == _GA["mix2"]["erstellt"]]
+_ip["garmin_auftraege"].append(dict(_GA["weiter"], status="offen"))
+_P3 = GS.plan(_ip, _jz("2026-03-04T23:40"))
+_a3 = [(x["art"], x["uid"], x["date"], x.get("loeschen")) for x in _P3["aktionen"]]
+check("Garmin senden: geänderte Einheit zuerst neu senden, dann die alte austragen; entfernte austragen (Bibliothek nie löschen)",
+      _a3[:3] == [("hochladen", "e-a", "2026-03-05", None), ("austragen", "e-a", "2026-03-05", True), ("austragen", "e-b", "2026-03-05", False)]
+      and _P3["aktionen"][1].get("nach") == 1, str(_a3))
+check("Garmin senden: verschoben (neuerer Auftrag an einem anderen Tag) – nur am neuen Tag senden",
+      [(x["art"], x["date"]) for x in _P3["aktionen"] if x["uid"] == "e-d"] == [("hochladen", "2026-03-06")], str(_a3))
+_m4, _f4 = GS.eintragen(_ip, _P3, [{"nr": 1, "ok": False, "fehler": "Rücklese abweichend"}, {"nr": 2, "ok": False, "fehler": "übersprungen"}, {"nr": 3, "ok": True}],
+                        _jz("2026-03-04T23:42"))
+check("Garmin senden: neue Fassung scheitert → Auftrag «fehler» mit Grund, die alte Fassung bleibt in Garmin und im Vermerk",
+      _ip["garmin_auftraege"][0]["status"] == "fehler" and any("Rücklese" in x for x in _ip["garmin_auftraege"][0]["fehler"])
+      and not next(g for g in _ip["plan_garmin"] if g["uid"] == "e-a").get("entfernt") and next(g for g in _ip["plan_garmin"] if g["uid"] == "e-b").get("entfernt"),
+      str(_ip["garmin_auftraege"][0])[:300])
+_mv = {"garmin_auftraege": [dict(_GA["weiter"], status="offen")],
+       "plan_garmin": [{"uid": "e-d", "date": "2026-03-05", "quelle": "eigen", "fassung": "alt", "workout_id": 5100, "scheduled_id": 7100}]}
+_Pm = GS.plan(_mv, _jz("2026-03-04T23:10"))
+check("Garmin senden: verschoben, schon gesendet – zuerst am neuen Tag senden, dann am alten austragen (nur wenn das geklappt hat)",
+      [(x["art"], x["date"], x.get("nach")) for x in _Pm["aktionen"]] == [("hochladen", "2026-03-06", None), ("austragen", "2026-03-05", 1)]
+      and _Pm["aktionen"][1]["loeschen"] is True, str(_Pm["aktionen"]))
+_mv2 = copy.deepcopy(_mv)
+_mv2["garmin_auftraege"].insert(0, {"id": "gs-2026-03-05", "date": "2026-03-05", "modus": "senden", "erstellt": "2026-03-04T21:20:00Z", "einheiten": [], "ohne": [],
+                                     "status": "offen"})
+_Pm2 = GS.plan(_mv2, _jz("2026-03-04T23:10"))
+check("Garmin senden: verschoben, alter Tag auch im Auftrag – trotzdem erst nach dem Senden am neuen Tag austragen",
+      [(x["art"], x["date"], x.get("nach")) for x in _Pm2["aktionen"]] == [("hochladen", "2026-03-06", None), ("austragen", "2026-03-05", 1)], str(_Pm2["aktionen"]))
+_ip2 = {"garmin_auftraege": [dict(_GA["rad_vo2"], status="offen")], "plan_garmin": []}
+check("Garmin senden: Tag schon da → verpasst (nicht mehr senden)", GS.plan(_ip2, _jz("2026-03-05T22:58"))["abschluesse"][0]["status"] == "verpasst")
+_soll = _w0
+_ist = copy.deepcopy(_w0)
+check("Garmin senden: Rücklese gleich", GS.rueck(_soll, _ist) == [])
+_ist2 = copy.deepcopy(_w0)
+_ist2["workoutSegments"][0]["workoutSteps"][1]["targetValueOne"] = 150
+_ist3 = copy.deepcopy(_GA["lauf_vo2"]["einheiten"][0]["workout"])
+for _s in _ist3["workoutSegments"][0]["workoutSteps"]:
+    if _s.get("targetValueOne") is not None:
+        _s["targetValueOne"], _s["targetValueTwo"] = _s["targetValueTwo"], _s["targetValueOne"]
+check("Garmin senden: Rücklese erkennt andere Zielwerte und vertauschte Tempo-Grenzen",
+      GS.rueck(_soll, _ist2) and GS.rueck(_GA["lauf_vo2"]["einheiten"][0]["workout"], _ist3), str(GS.rueck(_soll, _ist2)))
+_tc = tempfile.mkdtemp()
+json.dump({"garmin_auftraege": [dict(_GA["rad_vo2"], status="offen")], "plan_garmin": []}, open(os.path.join(_tc, "d.json"), "w"))
+_r1 = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "tools", "garmin_senden.py"), "plan", os.path.join(_tc, "d.json"), "--jetzt", "2026-03-04T23:10"],
+                     capture_output=True, text=True)
+open(os.path.join(_tc, "p.json"), "w").write(_r1.stdout)
+json.dump(_w0, open(os.path.join(_tc, "r.json"), "w"))
+_r2 = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "tools", "garmin_senden.py"), "rueck", os.path.join(_tc, "p.json"), "1", os.path.join(_tc, "r.json")],
+                     capture_output=True, text=True)
+json.dump({"garmin_ergebnis": [{"nr": 1, "ok": True, "workout_id": 6001, "scheduled_id": 8001}]}, open(os.path.join(_tc, "e.json"), "w"))
+_r3 = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "tools", "garmin_senden.py"), "eintragen", os.path.join(_tc, "d.json"), os.path.join(_tc, "p.json"),
+                      os.path.join(_tc, "e.json")], capture_output=True, text=True)
+_dc = json.load(open(os.path.join(_tc, "d.json")))
+check("Garmin senden (Aufrufe): plan → rueck «gleich» → eintragen; data.json mit Vermerk, Auftrag erledigt, keine Restdatei",
+      _r1.returncode == 0 and json.loads(_r1.stdout)["aktionen"][0]["art"] == "hochladen" and _r2.returncode == 0 and "RÜCKLESEN: gleich" in _r2.stdout
+      and _r3.returncode == 0 and _dc["plan_garmin"][0]["workout_id"] == 6001 and _dc["garmin_auftraege"][0]["status"] == "erledigt"
+      and sorted(os.listdir(_tc)) == ["d.json", "e.json", "p.json", "r.json"], _r1.stderr + _r2.stdout + _r2.stderr + _r3.stdout + _r3.stderr)
+_DB2 = {"plan_garmin": [{"quelle": "bibliothek", "wid": 1000000009, "date": "2026-03-05", "vorhanden": False}]}
+bibliothek.einspielen(_DB2, {"planned": [{"date": "2026-03-05", "title": "Beispiel Lauf", "sport": "lauf", "dur_s": 2400, "wid": 1000000009, "quelle": "Enduco über Garmin"}]}, "2026-03-04")
+check("Bibliothek (bib-1.1): selbst eingeplante Einheit ist kein Enduco-Termin", not (_DB2.get("enduco_bib", {}).get("workouts", {}).get("1000000009") or {}).get("termine"),
+      str(_DB2.get("enduco_bib")))
 
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)

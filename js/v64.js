@@ -10,10 +10,11 @@
    - aufbau-1.1 (V6.4.2, 1.1 Audit V6.4): jeder Lauf gegen den längsten Lauf der 30 Tage davor (Frandsen et al. 2025: Sprung ab mehr als 10 %), Grenze für den
      nächsten Lauf, Wochen-km Laufen, Schwimm-Meter und Rad-Stunden. Im Wochenvorschlag kein Lauf über dieser Grenze (Distanz aus dem
      Zonenprofil geschätzt; ohne Zonenprofil keine Begrenzung, nie geraten); ohne Lauf in den 30 Tagen davor höchstens 30 min locker.
-   - vergleich-1.3 (V6.4.3, 1.1 Audit V6.4, 1.2 V6.5, 1.3 V6.6): Vorschlag gegen Enduco (Garmin-Kalender) und Absolviertes je Woche: Stunden und Einheiten je Sportart, Stufen,
+   - vergleich-1.4 (V6.4.3, 1.1 Audit V6.4, 1.2 V6.5, 1.3 und 1.4 V6.6): Vorschlag gegen Enduco (Garmin-Kalender) und Absolviertes je Woche: Stunden und Einheiten je Sportart, Stufen,
      längste Einheiten, Unterschiede in Worten, welchem Plan das Absolvierte näher war; 1.2: deine Wahl je Tag (planwahl-1.0) und wie nah das
      Absolvierte am gewählten Plan lag; 1.3: hast du die Woche in Mein Plan bearbeitet (eigenplan-1.0, js/v66.js), ist «Vorschlag» diese
-     bearbeitete Woche (gekennzeichnet). Enduco ist nur bekannt, soweit exportiert.
+     bearbeitete Woche (gekennzeichnet); 1.4: eigene Workouts aus Mein Plan in Garmin (Name «IN · », garmin-senden-1.0) zählen nie als Enduco.
+     Enduco ist nur bekannt, soweit exportiert.
    Unbekannt bleibt unbekannt: ohne Zonenprofil keine Watt- oder Pace-Ziele, ohne CSS-Test kein Schwimmtempo. */
 (function (root, factory) {
   const node = typeof module === "object" && module.exports;
@@ -22,7 +23,7 @@
   if (root) root.V64 = V64;
 })(typeof window !== "undefined" ? window : null, function (V62) {
   "use strict";
-  const V64 = { VERSIONS: { modell: "modell-1.0", woche: "wochenplan-1.2", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.1", aufbau: "aufbau-1.1", vergleich: "vergleich-1.3" } };
+  const V64 = { VERSIONS: { modell: "modell-1.0", woche: "wochenplan-1.2", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.1", aufbau: "aufbau-1.1", vergleich: "vergleich-1.4" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const T = (iso) => Date.parse(iso + "T12:00:00Z");
   const add = (iso, n) => new Date(T(iso) + n * 864e5).toISOString().slice(0, 10);
@@ -574,12 +575,15 @@
   /** vergleich-1.1 (Audit V6.4 B10/B11): ein Workout, das im Kalender an einem anderen Tag (±2) unter gleichem Titel stand und dort nicht lief,
    *  wurde nur verschoben – es zählt nicht doppelt. Dauer = geplante Zeit des Workouts; geht ein Schritt nach Strecke oder «bis Taste», ist sie
    *  unbekannt (null, «ohne Dauer») – nie die gelaufene Zeit als Plan. */
+  /** vergleich-1.4: eigene Workouts aus Mein Plan (garmin-senden-1.0, Name beginnt mit «IN · ») sind nie Enduco. */
+  V64.EIGEN_PREFIX = "IN · ";
+  V64.istEigen = (name) => String(name || "").startsWith(V64.EIGEN_PREFIX);
   V64.enducoAusUhr = function (acts, kalender) {
     const norm = (x) => String(x || "").toLowerCase().replace(/\s+/g, " ").trim();
     const K = new Set((kalender || []).map((p) => `${p.date}|${p.sport}`)), out = [];
     const gelaufen = (d, sp, n) => (acts || []).some((b) => b && b.date === d && b.sport === sp && b.wk && norm(b.wk.name) === n);
     for (const a of acts || []) {
-      const wk = a && a.wk; if (!wk || !SPN[a.sport] || !wk.name || K.has(`${a.date}|${a.sport}`) || /stufentest|kurzcheck|laktat|\btest\b/i.test(wk.name)) continue;
+      const wk = a && a.wk; if (!wk || !SPN[a.sport] || !wk.name || V64.istEigen(wk.name) || K.has(`${a.date}|${a.sport}`) || /stufentest|kurzcheck|laktat|\btest\b/i.test(wk.name)) continue;
       const n = norm(wk.name);
       if ((kalender || []).some((p) => p && p.sport === a.sport && norm(p.title || p.titel) === n && p.date !== a.date
         && Math.abs(T(p.date) - T(a.date)) <= 2 * 864e5 && !gelaufen(p.date, p.sport, n))) continue;   // verschoben, steht schon im Kalender

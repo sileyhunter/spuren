@@ -152,7 +152,7 @@ test("eigenplan-1.0 / vergleich-1.3: bearbeitete Woche – Stunden und Verteilun
   const wb = V66.meinPlan(w0, E, { bibStufe: (wid) => (wid === 8 ? "schwelle" : null) });
   assert.equal(wb.tage.find((t) => t.date === "2026-11-20").einheiten.find((e) => e.wid === 8).stufe, "schwelle", "Stufe aus den Schritten geht vor");
   const r = V64.vergleich({ w, enduco: [{ date: "2026-11-21", sport: "rad", titel: "Beispiel", dauer_s: 3600, stufe: "locker" }], ist: [], heute: "2026-11-17", wahl: {} });
-  assert.equal(r.v, "vergleich-1.3");
+  assert.equal(r.v, "vergleich-1.4");
   const r0 = V64.vergleich({ w: unv, enduco: [{ date: "2026-11-21", sport: "rad", titel: "Beispiel", dauer_s: 3600, stufe: "locker" }], ist: [], heute: "2026-11-17", wahl: {} });
   assert.equal(r.summen.V.rad.min, r0.summen.V.rad.min + vo2 + 60, "der Vergleich zählt die bearbeitete Woche");
   assert.equal(r.stufen.V.alles.length, r0.stufen.V.alles.length + 2, "VO2max-Vorlage und Bibliothek «VO2max» laut Titel");
@@ -171,4 +171,73 @@ test("aufbau-1.1 in Mein Plan: Lauf über der Grenze oder nach einer Pause gemel
     "Pause: harter Lauf gemeldet");
   assert.equal(V66.aufbauHinweis(lauf, "2026-11-20", 20, [], MO), null, "ohne Läufe in den Daten nichts");
   assert.equal(V66.aufbauHinweis(V66.einheit({ uid: "r", vorlage: "rad_lang", dauer: 180, quelle: "eigen" }), "2026-11-20", 90, laeufe, MO), null, "nur Laufen");
+});
+
+/* ---------------- garmin-senden-1.0 ---------------- */
+const flach = (steps) => steps.flatMap((s) => (s.type === "RepeatGroupDTO" ? [s].concat(s.workoutSteps) : [s]));
+test("garmin-senden-1.0: Rad-Workout – Wiederholungen als Gruppe, Reihenfolge, Watt aus dem Zonenprofil, Z1 ohne Ziel", () => {
+  const e = V66.einheit({ uid: "e-1", vorlage: "rad_vo2", dauer: V66.bereich("rad_vo2").std, quelle: "eigen" });
+  const g = V66.garminWorkout(e, SK, { date: "2026-11-20" });
+  assert.ok(!g.fehler, g.fehler);
+  const W = g.workout, S = W.workoutSegments[0].workoutSteps;
+  assert.match(W.workoutName, /^IN · /); assert.deepEqual(W.sportType, { sportTypeId: 2, sportTypeKey: "cycling" });
+  assert.ok(S.some((s) => s.type === "RepeatGroupDTO" && s.numberOfIterations === 13 && s.endConditionValue === 13 && s.endCondition.conditionTypeId === 7));
+  const F = flach(S);
+  assert.deepEqual(F.map((s) => s.stepOrder), F.map((_, i) => i + 1), "Reihenfolge über alle Schritte, Gruppe vor ihren Schritten");
+  const sek = (L, k = 1) => L.reduce((a, s) => a + (s.type === "RepeatGroupDTO" ? sek(s.workoutSteps, s.numberOfIterations) : s.endConditionValue) * k, 0);
+  assert.equal(sek(S), e.dauer * 60, "Dauer bleibt gleich");
+  assert.equal(S[0].stepType.stepTypeKey, "warmup"); assert.equal(S[0].targetType.workoutTargetTypeKey, "no.target");
+  assert.equal(S[S.length - 1].stepType.stepTypeKey, "cooldown");
+  const z2 = S[1]; assert.equal(z2.targetType.workoutTargetTypeKey, "power.between"); assert.deepEqual([z2.targetValueOne, z2.targetValueTwo], [160, 200]);
+  const vo2 = F.find((s) => s.description && /VO2max/.test(s.description));
+  assert.deepEqual([vo2.targetValueOne, vo2.targetValueTwo], [257, Math.round(257 * 1.15)], "Z5 nach oben offen: +15 % (eigene Festlegung)");
+  assert.equal(g.offen, true); assert.ok(g.schritte <= V66.GARMIN_MAX_SCHRITTE);
+  assert.match(W.description, /\[IN e-1 [0-9a-f]{16}\]$/);
+});
+
+test("garmin-senden-1.0: Laufen mit Tempo in m/s (langsam → schnell); Fassung ändert sich nur mit dem Inhalt", () => {
+  const e = V66.einheit({ uid: "e-2", vorlage: "lauf_vo2", dauer: V66.bereich("lauf_vo2").std, quelle: "eigen" });
+  const g = V66.garminWorkout(e, SK, { date: "2026-11-21" }), S = flach(g.workout.workoutSegments[0].workoutSteps);
+  assert.deepEqual(g.workout.sportType, { sportTypeId: 1, sportTypeKey: "running" });
+  const z2 = S.find((s) => /Z2/.test(s.description));
+  assert.equal(z2.targetType.workoutTargetTypeKey, "pace.zone"); assert.equal(z2.targetType.workoutTargetTypeId, 6);
+  assert.deepEqual([z2.targetValueOne, z2.targetValueTwo], [Math.round((1000 / 380) * 1000) / 1000, Math.round((1000 / 330) * 1000) / 1000]);
+  assert.ok(S.every((s) => s.targetValueOne == null || s.targetValueOne <= s.targetValueTwo));
+  assert.equal(V66.garminWorkout(e, SK, { date: "2026-11-22" }).fassung, g.fassung, "anderer Tag, gleicher Inhalt: gleiche Fassung");
+  const SK2 = JSON.parse(JSON.stringify(SK)); SK2.lauf_pace[1].von = 385;
+  assert.notEqual(V66.garminWorkout(e, SK2, {}).fassung, g.fassung, "andere Zonen: neue Fassung");
+  const ohne = V66.garminWorkout(e, null, {});
+  assert.ok(!ohne.fehler && ohne.ohneZiel > 0, "ohne Zonenprofil: Zeiten ohne Ziel, nichts geraten");
+  assert.ok(flach(ohne.workout.workoutSegments[0].workoutSteps).every((s) => s.type === "RepeatGroupDTO" || s.targetType.workoutTargetTypeKey === "no.target"));
+});
+
+test("garmin-senden-1.0: was nicht gesendet wird, mit Grund; Auftrag mit Momentaufnahme; Stand gesendet/geändert/wartet", () => {
+  const sw = V66.einheit({ uid: "s", vorlage: "schwimm_css", dauer: 60, quelle: "eigen" });
+  assert.match(V66.garminGrund(sw), /Schwimmen/);
+  assert.match(V66.garminGrund(V66.einheit({ uid: "t", vorlage: "test_rad", dauer: 60, quelle: "eigen" })), /Test/);
+  assert.match(V66.garminGrund(V66.einheit({ uid: "k", vorlage: "kraft", dauer: 30, quelle: "eigen" })), /nur Rad und Laufen/);
+  const rad = V66.einheit({ uid: "r", vorlage: "rad_locker", dauer: 60, quelle: "eigen" });
+  const bib = V66.einheit({ uid: "b", quelle: "bibliothek", wid: 42, sport: "rad", titel: "Beispiel", dauer: 45 });
+  const A = V66.garminAuftrag("2026-11-20", [rad, sw, bib], SK, "auto", "2026-11-17T20:00:00Z");
+  assert.equal(A.id, "gs-2026-11-20"); assert.equal(A.modus, "auto");
+  assert.deepEqual(A.einheiten.map((x) => [x.uid, x.quelle]), [["r", "eigen"], ["b", "bibliothek"]]);
+  assert.ok(A.einheiten[0].workout && !A.einheiten[1].workout && A.einheiten[1].wid === 42 && A.einheiten[1].fassung === "bib-42");
+  assert.deepEqual(A.ohne.map((x) => x.uid), ["s"]);
+  assert.deepEqual(V66.garminAuftrag("2026-11-20", [rad], SK, "aus", "2026-11-17T20:00:00Z").einheiten, []);
+  const f = A.einheiten[0].fassung;
+  assert.equal(V66.garminStand(rad, "2026-11-20", SK, [{ uid: "r", date: "2026-11-20", fassung: f }], null), "gesendet");
+  const lang = V66.einheit({ uid: "r", vorlage: "rad_locker", dauer: 75, quelle: "eigen" });
+  assert.equal(V66.garminStand(lang, "2026-11-20", SK, [{ uid: "r", date: "2026-11-20", fassung: f }], null), "geaendert");
+  assert.equal(V66.garminStand(rad, "2026-11-20", SK, [{ uid: "r", date: "2026-11-20", fassung: f, entfernt: "x" }], null), null, "ausgetragen zählt nicht");
+  assert.equal(V66.garminStand(rad, "2026-11-20", SK, [], Object.assign({ status: "offen" }, A)), "wartet");
+});
+
+test("vergleich-1.4 / bib-1.1: selbst gesendete Einträge im Garmin-Kalender sind nie Enduco", () => {
+  assert.equal(V66.eigenGarmin({ title: "IN · Grundlage", date: "2026-11-20" }, []), true);
+  assert.equal(V66.eigenGarmin({ title: "Beispiel", date: "2026-11-20", wid: 42 }, [{ quelle: "bibliothek", wid: 42, date: "2026-11-20" }]), true);
+  assert.equal(V66.eigenGarmin({ title: "Beispiel", date: "2026-11-20", wid: 42 }, [{ quelle: "bibliothek", wid: 42, date: "2026-11-20", vorhanden: true }]), false,
+    "stand schon von Enduco im Kalender: bleibt Enduco");
+  assert.equal(V66.eigenGarmin({ title: "Beispiel", date: "2026-11-21", wid: 42 }, [{ quelle: "bibliothek", wid: 42, date: "2026-11-20" }]), false);
+  const acts = [{ date: "2026-11-18", sport: "rad", wk: { name: "IN · Grundlage", plan_s: 3600 } }, { date: "2026-11-19", sport: "rad", wk: { name: "Beispiel", plan_s: 3600 } }];
+  assert.deepEqual(V64.enducoAusUhr(acts, []).map((x) => x.titel), ["Beispiel"]);
 });

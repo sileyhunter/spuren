@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bibliothek  # noqa: E402          V6.5: Enduco-Bibliothek (bib-1.0), nichts wird gelöscht
 import garmin_ernaehrung  # noqa: E402   V5.7.2: Garmin-Ernährungsprotokoll → Fueling
 import garmin_export  # noqa: E402       V6.2.3: Garmin-Datenexport (Verlauf), füllt nur fehlende Tageswerte
+import garmin_senden  # noqa: E402       V6.6: Aufträge «An Garmin senden» (garmin-senden-1.0) prüfen
 import last  # noqa: E402                V5.9.1: Trainingslast mit LT2 (tl2, last-2.0)
 import notizen  # noqa: E402             V6.1: Garmin-Notizen, Laktat und Verpflegung daraus als Vorschau (notizen-1.0)
 import wellness  # noqa: E402            V6.1: Readiness, Body Battery, Stress je Tag (wellness-1.0)
@@ -306,6 +307,28 @@ def v5_merge(D, N):
         a, b = _upsert(D, "plan_woche", [w], what="Mein Plan")
         if a or b:
             msg.append(f"Mein Plan Woche {w['montag']}")
+    for g in N.get("garmin_senden_add") or []:          # V6.6 garmin-senden-1.0: Auftrag je Tag; gesendet wird im Nacht-Update (tools/garmin_senden.py)
+        fehler = garmin_senden.pruefen(g)
+        if fehler:
+            msg.append(f"Garmin-Auftrag nicht übernommen: {fehler}")
+            if isinstance(g, dict) and g.get("id"):       # die Seite zeigt den Grund (und räumt den Auftrag auf dem Gerät weg)
+                ab = [x for x in D.get("garmin_abgelehnt") or [] if not (x.get("id") == g.get("id") and x.get("erstellt") == g.get("erstellt"))]
+                D["garmin_abgelehnt"] = (ab + [{"id": str(g.get("id")), "erstellt": g.get("erstellt"), "grund": fehler,
+                                                "zeit": dt.datetime.now(ZRH).isoformat(timespec="seconds")}])[-20:]
+            continue
+        L = D.setdefault("garmin_auftraege", [])
+        i = next((k for k, x in enumerate(L) if isinstance(x, dict) and x.get("id") == g["id"]), None)
+        if i is not None and str(L[i].get("erstellt") or "") >= str(g.get("erstellt") or ""):
+            continue                                     # schon bekannt (gleiche oder neuere Fassung) – nie zweimal senden
+        if i is not None:                                # Audit ohne die Workouts (die stehen in plan_garmin bzw. im neuen Auftrag)
+            x = L[i]
+            D.setdefault("audit", []).append({"zeit": dt.datetime.now(ZRH).isoformat(timespec="seconds"), "was": "Garmin-Auftrag ersetzt", "id": g["id"],
+                                              "alt": {"modus": x.get("modus"), "erstellt": x.get("erstellt"), "status": x.get("status"),
+                                                      "fassungen": {u.get("uid"): u.get("fassung") for u in x.get("einheiten") or [] if isinstance(u, dict)}}})
+            L[i] = dict(g, status="offen")
+        else:
+            L.append(dict(g, status="offen"))
+        msg.append(f"Garmin-Auftrag {g['date']} ({g['modus']})")
     if msg:
         print("V5:", "; ".join(msg))
 

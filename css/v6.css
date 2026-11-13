@@ -651,6 +651,11 @@ section.view:has(> nav.unter) * { scroll-margin-top: 66px; }
 .mp-frage { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
 .mp-prof { margin: 6px 0; }
 .mp-kv { margin: 6px 0 2px; }
+/* V6.6 garmin-senden-1.0: Abschnitt «Garmin» im Tagesblatt */
+.mp-g { margin: 4px 0; }
+.mp-auto { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: 2px 0 6px; }
+.mp-auto input { width: 22px; height: 22px; accent-color: var(--accent); flex: none; }
+.mp-auto:has(input[disabled]) { color: var(--muted); }
 .kw-kopf { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin: 2px 0 10px; }
 .kw-kopf small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 3px; }
 .kw-tage { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }

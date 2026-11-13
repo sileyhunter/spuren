@@ -1,7 +1,10 @@
 /* Ironman Notebook V6.6 – Etappe 6, Oberfläche «Mein Plan» (Auftrag docs/auftrag-etappen-6-8.md; eigenplan-1.0, vorlagen-1.0, tl-plan-1.0,
    wochenblatt-1.0, kalender-2.0): Abschnitt «Mein Plan» im Tagesblatt mit «Training hinzufügen» und «Tag sperren», Einheit ändern, verschieben
    oder entfernen, Wochenaktionen, Kalender-Wochenansicht und Wochenblatt im Plan. Gespeichert wird verschlüsselt über «Direkt speichern»
-   (Eingabe planwoche → plan_woche). Nach Garmin oder Enduco wird nichts geschrieben. Aufbau und Bedienung nach dem Vorbild enduco, Texte eigen. */
+   (Eingabe planwoche → plan_woche). Aufbau und Bedienung nach dem Vorbild enduco, Texte eigen.
+   garmin-senden-1.0 (6.7, Entscheid E3): «An Garmin senden» je Tag oder Woche (bis eine Woche voraus) und «am Vortag um 23 Uhr automatisch» legen
+   einen Auftrag mit Momentaufnahme an (Eingabe garmin_senden → garmin_auftraege); gesendet wird im Nacht-Update (tools/garmin_senden.py).
+   Die Seite selbst schreibt nie nach Garmin; Enduco wird nie geändert. */
 (function () {
   "use strict";
   const M = (window.V66UI = window.V66UI || {});
@@ -29,6 +32,35 @@
   const aufbauText = (e, ds, km) => { try { return ds >= heute() ? V66().aufbauHinweis(e, ds, km, V64().laeufe(C.D.activities), heute()) : null; } catch (err) { console.error(err); return null; } };
   const aufbauZeigen = (p, text) => { if (p) { p.textContent = text ? "Aufbau: " + text : ""; p.hidden = !text; } };
 
+  /* ---------- An Garmin senden (garmin-senden-1.0) ---------- */
+  const skalen = () => (TR() && C ? TR().zonen(C.D.zonen).skalen : null);
+  const gesendet = () => (C && Array.isArray(C.D.plan_garmin) ? C.D.plan_garmin : []);
+  /** Auftrag eines Tages: noch nicht eingespielt (auf dem Gerät) vor dem Stand in den Daten. → { a, lokal } oder null */
+  function auftrag(ds) {
+    const id = "gs-" + ds, lok = ((UI() && UI().Inbox && UI().Inbox.data && UI().Inbox.data.garmin_senden) || []).find((x) => x && x.id === id);
+    if (lok) return { a: lok, lokal: true };
+    const d = (C.D.garmin_auftraege || []).find((x) => x && x.id === id);
+    return d ? { a: d, lokal: false } : null;
+  }
+  const garminFenster = (ds) => ds > heute() && ds <= add(heute(), 7);          // von Hand und automatisch: morgen bis eine Woche voraus
+  /** Lief das Nacht-Update heute schon? Dann geht ein neuer Auftrag für morgen erst in der nächsten Nacht – zu spät (nur noch im Chat). */
+  const nachtGelaufen = () => { const m = /^(\d{2})\.(\d{2})\.(\d{4})/.exec(String(C.D.updated || "")); return !!m && C.D.updated_lauf === "Nacht-Update" && `${m[3]}-${m[2]}-${m[1]}` === heute(); };
+  const istAktiv = (A) => A && (A.lokal || A.a.status === "offen") && A.a.modus !== "aus";
+  /** Auftrag für einen Tag neu anlegen (Momentaufnahme der Einheiten von Mein Plan). */
+  async function garminAuftragSpeichern(ds, modus) {
+    const x = tagVon(ds); if (!x) return "Tag nicht berechenbar";
+    const I = UI().Inbox; if (!I || !I.data) return "Speicher auf diesem Gerät nicht verfügbar";
+    if (!Array.isArray(I.data.garmin_senden)) I.data.garmin_senden = [];
+    await I.upsert("garmin_senden", V66().garminAuftrag(ds, x.t.rennen ? [] : x.t.einheiten, skalen(), modus, new Date().toISOString()));
+    neuZeichnen();
+    return null;
+  }
+  /** Nach einer Änderung: offene Aufträge der betroffenen Tage mit der neuen Fassung erneuern (gleicher Modus). */
+  async function auftraegeNachfuehren(tage) {
+    for (const d of tage) { const A = auftrag(d); if (istAktiv(A) && garminFenster(d)) await garminAuftragSpeichern(d, A.a.modus); }
+  }
+  M.auftrag = auftrag;
+
   /** Eine Änderung anwenden (V66.aendern) und über «Direkt speichern» sichern; → Fehlertext oder null. */
   async function aendern(mo, a) {
     if (!bereit()) return "Seite noch nicht bereit";
@@ -39,15 +71,19 @@
     const I = UI().Inbox; if (!I || !I.data) return "Speicher auf diesem Gerät nicht verfügbar";
     if (!Array.isArray(I.data.planwoche)) I.data.planwoche = [];
     await I.upsert("planwoche", r.eintrag);
+    const tage = a.date ? [a.date].concat(a.nach ? [a.nach] : []) : Array.from({ length: 7 }, (_, i) => add(mo, i));
+    try { await auftraegeNachfuehren(tage.filter((d) => d >= heute())); } catch (e) { console.error(e); }
     neuZeichnen();
     return null;
   }
   M.aendern = aendern;
 
   /* ---------- Karten ---------- */
-  function karte(e, K) {
+  const STAND_WORT = { gesendet: "in Garmin", geaendert: "in Garmin, geändert", wartet: "wird gesendet" };
+  function karte(e, K, ds) {
     const W = V6(), S = V66().schaetzung(e, bezug(K)), hk = e.teile && e.teile.length && P().hauptKey ? P().hauptKey(e) : null;
-    const teile = [W.dauerText(e.dauer * 60), isNum(S.tl) ? `TL ≈ ${S.vollstaendig ? "" : "mind. "}${S.tl}` : "", isNum(S.km) && S.km > 0 ? `≈ ${komma(S.km)} km` : ""].filter(Boolean);
+    let st = null; try { const A = ds ? auftrag(ds) : null; st = ds ? V66().garminStand(e, ds, skalen(), gesendet(), A && (A.lokal ? Object.assign({ status: "offen" }, A.a) : A.a)) : null; } catch (err) { console.error(err); }
+    const teile = [W.dauerText(e.dauer * 60), isNum(S.tl) ? `TL ≈ ${S.vollstaendig ? "" : "mind. "}${S.tl}` : "", isNum(S.km) && S.km > 0 ? `≈ ${komma(S.km)} km` : "", st ? STAND_WORT[st] : ""].filter(Boolean);
     const q = e.quelle === "eigen" ? "eigen" : e.quelle === "bibliothek" ? "Bibliothek" : "Vorschlag";
     return `<button type="button" class="mo-e mp-e${e.quelle === "eigen" ? " eigen" : ""}" data-mpe="${esc(e.uid)}">
       <span class="mo-sp" style="--sp:${spFarbe(e.sport)}">${W.sportIcon(e.sport, 16)}</span>
@@ -59,7 +95,7 @@
     const x = tagVon(ds); if (!x) return "";
     const { K, t } = x, W = V6();
     const karten = t.rennen ? `<p class="mp-leer">${W.icon("flagge", 16)} ${esc(t.rennen.name)}</p>`
-      : t.einheiten.length ? t.einheiten.map((e) => karte(e, K)).join("") : `<p class="mp-leer">${esc(t.notiz || "frei")}</p>`;
+      : t.einheiten.length ? t.einheiten.map((e) => karte(e, K, ds)).join("") : `<p class="mp-leer">${esc(t.notiz || "frei")}</p>`;
     const status = t.gesperrt ? `<span class="mp-tag">${W.icon("schloss", 13)}gesperrt</span>` : t.bearbeitet ? `<span class="mp-tag">bearbeitet</span>` : "";
     const mo = montag(ds), art = M.wochenart(mo);
     const woche = `<p class="sub mp-wo">KW ${W.isoWoche(mo)}${K.w.phase ? " · " + esc(K.w.phase) : ""}${art ? " · " + esc(art.text) : ""}</p>`;
@@ -69,8 +105,36 @@
       : `<div class="row mp-akt">${t.gesperrt ? "" : `<button type="button" class="btn primary" data-mpadd>${W.icon("plus", 16)} Training hinzufügen</button>`}
          <button type="button" class="btn" data-mplock aria-pressed="${t.gesperrt}">${W.icon("schloss", 15)} ${t.gesperrt ? "Entsperren" : "Tag sperren"}</button></div>
          ${t.gesperrt ? `<p class="hint">Gesperrt: nicht bearbeitbar, «Woche leeren» und «Änderungen verwerfen» lassen ihn stehen.</p>` : ""}`;
-    return `${woche}<h3 class="abschnitt mp-kopf">Mein Plan ${status}</h3><div class="mp-liste">${karten}</div>${aufbau}${akt}<p class="warn-t" data-mpfehler hidden></p>`;
+    return `${woche}<h3 class="abschnitt mp-kopf">Mein Plan ${status}</h3><div class="mp-liste">${karten}</div>${aufbau}${akt}${garminHTML(ds, t)}<p class="warn-t" data-mpfehler hidden></p>`;
   };
+  /** Abschnitt «Garmin» im Tagesblatt: Stand des Auftrags, «An Garmin senden», «am Vortag um 23 Uhr automatisch». */
+  function garminHTML(ds, t) {
+    if (ds < heute()) return "";
+    const W = V6(), A = auftrag(ds), a = A && A.a, G = gesendet().filter((g) => g && g.date === ds && !g.entfernt);
+    const U = t.rennen ? [] : t.einheiten, sendbar = U.filter((e) => !V66().garminGrund(e));
+    const ohne = U.filter((e) => V66().garminGrund(e)).map((e) => `${esc(e.titel)} (${esc(V66().garminGrund(e))})`);
+    const zeit = (iso) => { try { return new Date(iso).toLocaleString("de-CH", { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }); } catch (e) { return iso; } };
+    let stand = "";
+    if (a && A.lokal) stand = a.modus === "aus" ? "Automatisch senden abgestellt (wird mit dem nächsten Update übernommen)."
+      : a.modus === "auto" ? "Wird am Vortag ab 23 Uhr automatisch gesendet (die Fassung von jetzt; Änderungen hier werden mitgenommen)." : "Wird mit dem nächsten Nacht-Update gesendet (gegen 23 Uhr).";
+    else if (a && a.status === "offen") stand = a.modus === "auto" ? "Wird am Vortag ab 23 Uhr automatisch gesendet." : "Wird mit dem nächsten Nacht-Update gesendet (gegen 23 Uhr).";
+    else if (a && a.status === "erledigt") stand = `Gesendet ${esc(zeit(a.erledigt))}.`;
+    else if (a && a.status === "verpasst") stand = "Nicht gesendet: der Tag war schon da.";
+    const fehl = a && !A.lokal && a.status === "fehler" ? `<p class="warn-t">Nicht gesendet: ${esc((a.fehler || []).join("; "))}</p>` : "";
+    const abgelehnt = (C.D.garmin_abgelehnt || []).filter((x) => x && x.id === "gs-" + ds && (!a || String(x.erstellt || "") >= String(a.erstellt || ""))).pop();
+    const zuSpaet = ds === heute() || (ds === add(heute(), 1) && nachtGelaufen() && !(a && !A.lokal && a.status === "erledigt"));
+    if (!garminFenster(ds) || zuSpaet) return `<h3 class="abschnitt">Garmin</h3>${stand && !A.lokal ? `<p class="mp-g keep" role="status">${stand}</p>` : G.length ? `<p class="mp-g">${G.length} ${G.length === 1 ? "Einheit" : "Einheiten"} in Garmin.</p>` : ""}${fehl}
+      <p class="hint">${ds === heute() ? "Für heute geht es nur noch im Chat («schick die Einheiten von heute an Garmin»)."
+        : zuSpaet ? "Das Nacht-Update ist heute schon gelaufen – für morgen geht es nur noch im Chat." : "Senden geht ab einer Woche vorher."}</p>`;
+    const auto = !!(a && a.modus === "auto" && (A.lokal || a.status === "offen"));
+    return `<h3 class="abschnitt">Garmin</h3>
+      ${stand ? `<p class="mp-g keep" role="status">${stand}</p>` : G.length ? `<p class="mp-g">${G.length} ${G.length === 1 ? "Einheit" : "Einheiten"} in Garmin.</p>` : ""}${fehl}
+      ${abgelehnt ? `<p class="warn-t">Abgelehnt: ${esc(abgelehnt.grund)}</p>` : ""}
+      ${ohne.length ? `<p class="hint">Nicht gesendet: ${ohne.join(", ")}.</p>` : ""}
+      <div class="row mp-akt"><button type="button" class="btn" data-mpgs ${sendbar.length || G.length ? "" : "disabled"}>${W.icon("weiter", 15)} ${sendbar.length || !G.length ? "An Garmin senden" : "Aus Garmin austragen"}</button></div>
+      <label class="mp-auto"><input type="checkbox" data-mpgsauto ${auto ? "checked" : ""} ${sendbar.length || auto ? "" : "disabled"}> Am Vortag um 23 Uhr automatisch senden</label>
+      <p class="hint">${esc(V66().VERSIONS.garmin)}: Rad und Laufen als Workout mit Zielen aus deinem Zonenprofil (Name «IN · »), Bibliotheks-Workouts nur eingeplant; aufs Gerät kommen sie beim Synchronisieren (Fenix, Edge nur Rad). Gesendet wird im Nacht-Update; geänderte Einheiten werden ersetzt, Enduco bleibt unberührt.</p>`;
+  }
   /** Knöpfe des Abschnitts binden; zurueck() öffnet das Tagesblatt wieder (nach einer Änderung oder aus einem Unterblatt). */
   M.binden = function (ov, ds, zurueck) {
     const fehler = (f) => { const p = ov.querySelector("[data-mpfehler]"); if (p) { p.textContent = f; p.hidden = !f; } };
@@ -79,6 +143,14 @@
     ov.querySelectorAll("[data-mplock]").forEach((b) => (b.onclick = async () => {
       const x = tagVon(ds); if (!x) return;
       const f = await aendern(montag(ds), { art: x.t.gesperrt ? "entsperren" : "sperren", date: ds });
+      if (f) fehler(f); else if (zurueck) zurueck();
+    }));
+    ov.querySelectorAll("[data-mpgs]").forEach((b) => (b.onclick = async () => {        // garmin-senden-1.0: von Hand (nächstes Nacht-Update)
+      const f = await garminAuftragSpeichern(ds, "senden");
+      if (f) fehler(f); else if (zurueck) zurueck();
+    }));
+    ov.querySelectorAll("[data-mpgsauto]").forEach((c) => (c.onchange = async () => {   // garmin-senden-1.0: automatisch am Vortag ab 23 Uhr
+      const f = await garminAuftragSpeichern(ds, c.checked ? "auto" : "aus");
       if (f) fehler(f); else if (zurueck) zurueck();
     }));
   };
@@ -188,7 +260,7 @@
     const html = `<h2 id="v59-ov-h" tabindex="-1">${esc((V66().SPORTARTEN.find((s) => s[0] === sp) || [, sp])[1])}</h2><p class="sub">${esc(tagText(ds))} · Vorlage wählen</p>
       ${gruppen.join("")}
       ${bib ? `<h3 class="abschnitt">Aus deiner Enduco-Bibliothek</h3><ul class="mp-wahl"><li><button type="button" class="mp-zeile" data-mpbibl><b>Workout aus der Bibliothek wählen</b>${W.icon("weiter", 18)}</button></li></ul>` : ""}
-      <p class="hint">Vorlagen aus den Trainingsmodellen der Seite (${esc(V66().VERSIONS.vorlagen)}); Ziele aus deinem aktiven Zonenprofil. Nichts geht nach Garmin oder Enduco.</p>
+      <p class="hint">Vorlagen aus den Trainingsmodellen der Seite (${esc(V66().VERSIONS.vorlagen)}); Ziele aus deinem aktiven Zonenprofil. Nach Garmin geht nur, was du mit «An Garmin senden» auslöst; Enduco bleibt unverändert.</p>
       ${fuss("data-mpz")}`;
     const ov = V59().blatt("mp-neu", html);
     ov.querySelector("[data-mpz]").onclick = () => M.hinzufuegen(ds, zurueck);
@@ -261,13 +333,22 @@
     const html = `<h2 id="v59-ov-h" tabindex="-1">Woche bearbeiten</h2><p class="sub">KW ${V6().isoWoche(mo)} · ${esc(dkurz(mo))}–${esc(dkurz(add(mo, 6)))}</p>
       ${ganzVorbei ? `<p class="hint">Vergangene Wochen nur lesen.</p>` : `<ul class="mp-wahl">
         <li><button type="button" class="mp-zeile" data-mpwa="verwerfen" ${K.w.bearbeitet ? "" : "disabled"}><span class="mp-vt"><b>Änderungen verwerfen</b><small>Ab heute wieder der Vorschlag; gesperrte Tage bleiben.</small></span></button></li>
-        <li><button type="button" class="mp-zeile" data-mpwa="leeren"><span class="mp-vt"><b>Woche leeren</b><small>Ab heute alle Tage frei, zum selbst Planen; gesperrte Tage bleiben.</small></span></button></li></ul>
+        <li><button type="button" class="mp-zeile" data-mpwa="leeren"><span class="mp-vt"><b>Woche leeren</b><small>Ab heute alle Tage frei, zum selbst Planen; gesperrte Tage bleiben.</small></span></button></li>
+        <li><button type="button" class="mp-zeile" data-mpwgs ${wocheGarminTage(mo, K).length ? "" : "disabled"}><span class="mp-vt"><b>Woche an Garmin senden</b><small>Rad und Laufen ab morgen bis eine Woche voraus, mit dem nächsten Nacht-Update (${esc(V66().VERSIONS.garmin)}).</small></span></button></li></ul>
         <p class="mp-frage" data-mpfrage hidden></p>`}
-      <p class="hint">Rest der Woche neu planen (verpasste Einheiten neu verteilen) folgt mit wochenplan-1.3. Nichts geht nach Garmin oder Enduco.</p>
+      <p class="hint">Rest der Woche neu planen (verpasste Einheiten neu verteilen) folgt mit wochenplan-1.3. Enduco bleibt unverändert.</p>
       <p class="warn-t" data-mpfehler hidden></p>
       ${fuss("data-x")}`;
     const ov = V59().blatt("mp-woche", html);
     if (zurueck) ov.querySelectorAll("[data-x]").forEach((b) => (b.onclick = zurueck));
+    const wg = ov.querySelector("[data-mpwgs]");
+    if (wg) wg.onclick = async () => {
+      const T = wocheGarminTage(mo, K); let f = null;
+      for (const d of T) { f = await garminAuftragSpeichern(d, "senden"); if (f) break; }
+      const p = ov.querySelector("[data-mpfrage]");
+      if (f) { const q = ov.querySelector("[data-mpfehler]"); q.textContent = f; q.hidden = false; }
+      else if (p) { p.textContent = `${T.length} ${T.length === 1 ? "Tag wird" : "Tage werden"} mit dem nächsten Nacht-Update an Garmin gesendet.`; p.hidden = false; }
+    };
     let offen = null;
     ov.querySelectorAll("[data-mpwa]").forEach((b) => (b.onclick = async () => {
       const art = b.dataset.mpwa, frage = ov.querySelector("[data-mpfrage]");
@@ -275,6 +356,12 @@
         frage.querySelector("[data-mpja]").onclick = async () => { const f = await aendern(mo, { art }); if (f) { const p = ov.querySelector("[data-mpfehler]"); p.textContent = f; p.hidden = false; } else if (zurueck) zurueck(); else V59().schliessen(); }; return; }
     }));
   };
+
+  /** Tage einer Woche, die sich senden lassen (morgen bis eine Woche voraus, mit sendbaren Einheiten oder schon gesendeten). */
+  function wocheGarminTage(mo, K) {
+    return K.w.tage.filter((t) => garminFenster(t.date) && !(t.date === add(heute(), 1) && nachtGelaufen()) && (!t.rennen && t.einheiten.some((e) => !V66().garminGrund(e))
+      || gesendet().some((g) => g && g.date === t.date && !g.entfernt))).map((t) => t.date);
+  }
 
   /* ---------- Kalender: Wochenansicht (kalender-2.0) ---------- */
   function istWoche(mo) { const bis = add(mo, 6); return (C.D.activities || []).filter((a) => a && a.date >= mo && a.date <= bis); }
@@ -293,10 +380,10 @@
     if (!bereit()) return "";
     const K = kontext(mo); if (!K) return `<p class="warn-t">Plan dieser Woche nicht berechenbar.</p>`;
     const W = V6(), h = heute(), k = wochenKopf(mo, K);
-    const ist = istWoche(mo), plan = (C.D.planned || []).filter((p) => p && p.date >= mo && p.date <= add(mo, 6));
+    const ist = istWoche(mo), plan = (C.D.planned || []).filter((p) => p && p.date >= mo && p.date <= add(mo, 6) && !V66().eigenGarmin(p, gesendet()));   // vergleich-1.4
     const tage = K.w.tage.map((t) => {
       const ia = ist.filter((a) => a.date === t.date), pa = plan.filter((p) => p.date === t.date);
-      const meins = t.rennen ? `<p class="mp-leer">${W.icon("flagge", 15)} ${esc(t.rennen.name)}</p>` : t.einheiten.map((e) => karte(e, K)).join("") || `<p class="mp-leer">frei</p>`;
+      const meins = t.rennen ? `<p class="mp-leer">${W.icon("flagge", 15)} ${esc(t.rennen.name)}</p>` : t.einheiten.map((e) => karte(e, K, t.date)).join("") || `<p class="mp-leer">frei</p>`;
       const end = pa.length ? `<p class="kw-neben"><span class="mo-q">Enduco</span>${pa.map((p) => esc(p.title || "Einheit")).join(" · ")}</p>` : "";
       const done = ia.length ? `<p class="kw-neben ist"><span class="mo-q">absolviert</span>${ia.map((a) => `${esc(a.name)} ${esc(W.dauerText(a.dur || 0))}`).join(" · ")}</p>` : "";
       return `<li class="kw-tag${t.date === h ? " heute" : ""}${t.gesperrt ? " gesperrt" : ""}${t.date < h ? " vorbei" : ""}">

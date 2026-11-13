@@ -1,5 +1,24 @@
 # Änderungen
 
+## V6.6 · 13.11.2026 · Etappe 6.7: An Garmin senden (Entscheid E3)
+- **garmin-senden-1.0:** Im Tagesblatt (Kalender) gibt es den Abschnitt «Garmin»: «An Garmin senden» (ab morgen bis eine Woche voraus, mit dem
+  nächsten Nacht-Update) und «Am Vortag um 23 Uhr automatisch senden» je Tag; im Wochenmenü «Woche an Garmin senden». Die Seite legt nur einen
+  Auftrag mit einer Momentaufnahme an (Eingabe `garmin_senden` → `garmin_auftraege`); Änderungen an einem Tag mit offenem Auftrag werden
+  mitgenommen. Gesendet wird im Nacht-Update (`tools/garmin_senden.py`): Rad und Laufen als Garmin-Workout «IN · …» mit Zielen aus dem aktiven
+  Zonenprofil (Watt bzw. Tempo; Z1 und Pausen ohne Ziel; Z5 nach oben 15 % über der Untergrenze, eigene Festlegung), Bibliotheks-Workouts nur
+  eingeplant; aufs Gerät beim Synchronisieren (Fenix, Edge nur Rad). Nach jedem Hochladen liest das Update das Workout zurück und vergleicht es;
+  weicht es ab, wird das eigene Workout gleich wieder gelöscht. Geänderte Einheiten: zuerst die neue Fassung, dann die alte austragen.
+  Schwimmen, Tests, Kraft und Mobility werden nicht gesendet (Grund steht da). Für heute geht es nur im Chat.
+- Je Einheit «in Garmin», «in Garmin, geändert» oder «wird gesendet»; je Tag der Stand des Auftrags (gesendet, verpasst, Fehler mit Grund, abgelehnt).
+- **vergleich-1.4 / bib-1.1:** Selbst gesendete Einträge im Garmin-Kalender (Name «IN · », eingeplante Bibliothek) zählen nie als Enduco –
+  weder im Vergleich noch als Termin in der Enduco-Bibliothek.
+- **wissen-1.6:** Absatz «An Garmin senden» im Kapitel «modelle».
+- Nie: Enduco-Workouts ändern oder löschen, Zonen nach Garmin schreiben, etwas austragen oder löschen ohne eigenen Vermerk. Das Morgen-Update sendet nichts.
+- Geprüft: `tests/test_v66.cjs` (+ Workout Rad und Laufen, Wiederholungen, Reihenfolge, Ziele, Fassung, Gründe, Auftrag, Stand, eigene Einträge),
+  `tests/test_tools.py` (+ jedes Workout der Seite besteht die Prüfung des Werkzeugs, 13 Ablehnungsgründe, Einspielen ohne Doppel, automatisch erst ab
+  23 Uhr am Vortag, Senden/Einplanen/Austragen, verschoben, Fehler lässt die alte Fassung stehen, verpasst, Rücklese, bib-1.1), Browser Demo.
+  Das Format an Silas' Geräten ist erst mit dem ersten echten Senden geprüft (Rücklese).
+
 ## V6.6 · 13.11.2026 · Etappe 6: Kalender und Woche bearbeiten (Auftrag `docs/auftrag-etappen-6-8.md`, 6.1–6.6)
 - **Wochenansicht im Kalender (kalender-2.0):** Umschalter «Woche · Monat» (Standard Woche, je Gerät gemerkt). Die Woche zeigt oben Wochenart,
   Stunden (Mein Plan / absolviert) und TL ≈, darunter die Tage untereinander mit den Einheiten als Karten, daneben Enduco aus dem Garmin-Kalender
@@ -26,7 +45,7 @@
   sonst «offen» (nie geraten).
 - **Heute «Je Sportart»:** Schwimmen, Rad und Laufen immer, mit «geplant (Garmin)».
 - **wissen-1.6:** Mein Plan (Kapitel «modelle»), TL ≈ geplanter Einheiten (Kapitel «last»), bearbeitete Woche im Vergleich (Kapitel «vergleich»).
-- Noch offen aus Etappe 6: «Rest der Woche neu planen» (wochenplan-1.3) und «An Garmin senden» (garmin-senden-1.0, 6.7).
+- Noch offen aus Etappe 6: «Rest der Woche neu planen» (wochenplan-1.3); «An Garmin senden» (6.7) folgt im nächsten Eintrag.
 - Geprüft: `tests/test_v66.cjs` (neu: Vorlagen, Einheiten, Änderungsregeln, Verwerfen/Leeren, TL/km, Wochenart, bearbeitete Woche im Vergleich,
   Aufbau-Hinweis), `tests/test_tools.py` (+ Mein Plan: Prüfung, Sperren, vergangene Tage, Audit; Eingang bis `plan_woche`), `tests/test_v64.cjs`
   (vergleich-1.3, Versionen im Wissen inkl. V66), alle bisherigen Tests, Browser Demo und echte Daten (390 px, ohne Änderungen an echten Daten), Leck-Prüfung.

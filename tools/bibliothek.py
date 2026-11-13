@@ -1,4 +1,4 @@
-"""Enduco-Bibliothek (bib-1.0, V6.5 Etappe 5): jedes Enduco-Workout, das über Garmin kommt, bleibt erhalten.
+"""Enduco-Bibliothek (bib-1.1, V6.5 Etappe 5; 1.1 V6.6): jedes Enduco-Workout, das über Garmin kommt, bleibt erhalten.
 
 Quellen (alle nur lesend aus Garmin, nichts wird nach Garmin oder Enduco geschrieben):
   - Garmin-Workout-Liste (`get_workouts`): alle Workouts mit Volltext und Erstelldatum, auch die von 2024 an
@@ -12,6 +12,8 @@ Regeln:
     anderer Volltext bzw. andere Schritte (Kern: Art, Dauer, Ziele, Wiederholungen; gerundet, damit eine Abschrift nicht als Änderung zählt).
   - Volltexte stehen je Text einmal unter `texte` (Schlüssel = Prüfsumme). Die erste Zeile allein (`desc` im Kalender) gilt nicht als Volltext.
   - Termine nur aus dem Kalender; Garmin hebt vergangene Kalendereinträge nicht auf, darum zählen sie ab jetzt.
+  - bib-1.1 (V6.6): Kalendereinträge, die Silas selbst über «An Garmin senden» eingeplant hat (Vermerk in `plan_garmin`, Bibliothek, nicht schon
+    vorher im Kalender), sind kein Enduco-Termin und zählen nicht.
 
 Aufrufe:
   python3 -I tools/bibliothek.py liste data.json <get_workouts-Antwort.json>   # Liste einspielen (Datei so, wie Garmin sie liefert)
@@ -25,7 +27,7 @@ import os
 import sys
 import zoneinfo
 
-V = "bib-1.0"
+V = "bib-1.1"
 ZRH = zoneinfo.ZoneInfo("Europe/Zurich")
 SPORT = {"cycling": "rad", "road_biking": "rad", "indoor_cycling": "rad", "virtual_ride": "rad", "mountain_biking": "rad", "gravel_cycling": "rad",
          "running": "lauf", "trail_running": "lauf", "treadmill_running": "lauf", "swimming": "schwimm", "lap_swimming": "schwimm",
@@ -174,8 +176,10 @@ def _zaehlen(z, s):
 def einspielen(D, N, tag=None):
     """Aus new.json: Kalender (planned), neue Workouts (workouts_neu) und rückwirkende Schritte (enduco_schritte)."""
     z = {}
+    eigen = {(g.get("date"), str(g.get("wid"))) for g in D.get("plan_garmin") or []      # bib-1.1: selbst eingeplant (garmin-senden-1.0)
+             if isinstance(g, dict) and g.get("quelle") == "bibliothek" and not g.get("vorhanden") and not g.get("entfernt")}
     for p in N.get("planned") or []:
-        if not p.get("wid") or "enduco" not in str(p.get("quelle") or "").lower():
+        if not p.get("wid") or "enduco" not in str(p.get("quelle") or "").lower() or (p.get("date"), str(p.get("wid"))) in eigen:
             continue
         _zaehlen(z, beobachten(D, {"wid": p["wid"], "titel": p.get("title"), "sport": p.get("sport"), "erstellt": p.get("erstellt"),
                                    "geaendert": p.get("geaendert"), "text": p.get("desc_voll"), "kurz": p.get("desc"), "steps": p.get("steps"),

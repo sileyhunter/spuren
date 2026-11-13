@@ -63,18 +63,19 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   «Garmin-Datenexport»); Prüfung auf der Seite `V61.verlaufPruefen`, Einstellungen «Garmin-Verlauf einlesen» (`js/v59.js`)
 - **V6.4 (Etappe 4 Modell und Wissen):** `js/v64.js` (ohne DOM: Trainingsmodelle modell-1.0, Woche nach Modell wochenplan-1.2, Aufteilung
   aufteilung-1.0, Intensitätsverteilung tid-1.0, V6.4.2 Intensität je Sportart intensitaet-1.1 und Aufbau-Check aufbau-1.1, V6.4.3 Vergleich mit
-  Enduco vergleich-1.2 (1.2 = V6.5 Wahl je Tag), Stand vergangener Wochen `V64.stand`), `js/wissen.js` (wissen-1.5: Kapitel in eigenen Worten, Quellen mit DOI),
+  Enduco vergleich-1.4 (1.2 = V6.5 Wahl je Tag, 1.3/1.4 = V6.6), Stand vergangener Wochen `V64.stand`), `js/wissen.js` (wissen-1.6: Kapitel in eigenen Worten, Quellen mit DOI),
   `js/v64-ui.js` (Plan: «Woche nach Modell» mit «Vergleich mit Enduco», «Vorschlag und Enduco über die Wochen», «Aufbau-Check», «Trainingsmodell»
   mit Intensität je Sportart; Ansicht «Wissen» unter Plan), `tests/test_v64.cjs`; Saison saison-1.2 in `js/analyse.js` (`AN.saison`,
   `AN.saisonStunden`, `AN.saisonVorgaben`)
-- **V6.5 (Etappe 5 Enduco-Bibliothek und Archiv):** `tools/bibliothek.py` (bib-1.0: jedes Enduco-Workout aus Garmin bleibt in `enduco_bib`,
+- **V6.5 (Etappe 5 Enduco-Bibliothek und Archiv):** `tools/bibliothek.py` (bib-1.1: jedes Enduco-Workout aus Garmin bleibt in `enduco_bib`,
   mit Volltext, Schritten, Schwimmübungen, Terminen und Versionen; Startbestand aus der Garmin-Workout-Liste am 13.11.2026), `tools/archiv.mjs`
   (archiv-1.0: privates Archiv `sileyhunter/spuren-archiv`, Abschnitt «Archiv»), `tests/test_archiv.cjs`; `js/v65.js` (ohne DOM: Liste bibliothek-1.0,
   Enduco über die Monate monate-1.0, Schwimmübungen uebungen-1.0), `js/v65-ui.js` (Ansicht «Bibliothek» unter Plan; eine Einheit öffnet das
   Einheit-Blatt über `V6H.einheitP`), `tests/test_v65.cjs`
 - **V6.6 (Etappe 6 Kalender und Woche bearbeiten):** `js/v66.js` (ohne DOM: Mein Plan eigenplan-1.0, Vorlagen vorlagen-1.0, TL ≈ und Distanz ≈
   geplanter Einheiten tl-plan-1.0, Wochenart wochenblatt-1.0, Aufbau-Hinweis), `js/v66-ui.js` (Abschnitt «Mein Plan» im Tagesblatt, Training
-  hinzufügen, Einheit ändern, Wochenaktionen, Kalender-Wochenansicht kalender-2.0, Wochenblatt im Plan), `tests/test_v66.cjs`
+  hinzufügen, Einheit ändern, Wochenaktionen, Kalender-Wochenansicht kalender-2.0, Wochenblatt im Plan, Abschnitt «Garmin»), `tests/test_v66.cjs`;
+  `tools/garmin_senden.py` (garmin-senden-1.0: Aufträge prüfen, was zu senden ist, Rücklese, Ergebnisse eintragen; Abschnitt «An Garmin senden»)
 - **V6.4.4 (Prüfung V6.4, `docs/AUDIT_V64.md`):** `tools/leck_pruefen.py` – Leck-Prüfung vor jedem Push: sucht echte Werte (IDs, Zonentexte und
   -grenzen, Schwellen, Distanzen mit Datum, Testtermine und Abwesenheiten, E-Mail) in allen getrackten Dateien, gibt nur Fundorte aus
 - **V5.8:** keine neuen Dateien; Rechenlogik in `js/route.js` (Abschnitte von Hand, Skitourennetz, Hangneigung, MTB-Abfahrt, Wegende, drei
@@ -102,7 +103,7 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
      `description` unverändert und vollständig, `geaendert` = `updated_date`, `erstellt` = `created_date`. Danach `get_workouts`: Workouts mit `provider` «Enduco», `created_date` in den letzten
      2 Tagen und nicht im Kalender → höchstens 5 als `"workouts_neu"` (je `get_workout_by_id`; Format unten, mit denselben Feldern; ersetzt die alte Liste).
      Schlägt ein Abruf fehl: ohne Schritte weitermachen, kein Abbruch, keine Nachricht. Enduco-Workouts nie ändern.
-   - **Enduco-Bibliothek (V6.5, bib-1.0, `tools/bibliothek.py`):** Die Antwort von `get_workouts` ist gross und wird als Datei gespeichert;
+   - **Enduco-Bibliothek (V6.5, bib-1.1, `tools/bibliothek.py`):** Die Antwort von `get_workouts` ist gross und wird als Datei gespeichert;
      den Pfad merken (die Datei nicht abschreiben). Nach dem Einspielen in Schritt 3: `python3 -I tools/bibliothek.py liste data.json <pfad>`
      (alle Enduco-Workouts mit Volltext; nichts wird gelöscht, Änderungen werden neue Versionen). Kommt die Antwort ausnahmsweise direkt
      statt als Datei: diesen Schritt weglassen. Fehlschlag: kein Abbruch, keine Nachricht.
@@ -160,6 +161,12 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
      `python3 -I tools/check_referenz.py data.json --ohne-fit`. Steht «GESAMT: bestanden» da, ist B übernommen. Sonst
      `cp work/vor_b.json data.json` (die Bestätigung bleibt in `eingang/` liegen) und Silas kurz informieren (Grund aus der Ausgabe, ohne Werte).
    - Meldet `einlesen` «abgelehnt …» (Demo, fremd, nicht entschlüsselbar): nie löschen, Silas kurz informieren.
+   **An Garmin senden (V6.6, garmin-senden-1.0, von Silas am 13.11.2026 freigegeben, Entscheid E3; Abschnitt «An Garmin senden»):** als Letztes
+   in Schritt 3. Ist es vor 23:00 Europe/Zurich: bis 23:00 warten. `git fetch origin main`; zeigt `git diff --name-only HEAD origin/main -- eingang/`
+   neue Dateien: `git pull --ff-only` und den Block «Eingaben vom Handy» oben nochmals (spielt nur Neues ein). Dann
+   `python3 -I tools/garmin_senden.py plan data.json > work/garmin_plan.json` und die `aktionen` der Reihe nach ausführen, wie im Abschnitt
+   «An Garmin senden» beschrieben; danach `python3 -I tools/garmin_senden.py eintragen data.json work/garmin_plan.json work/garmin_ergebnis.json`
+   (auch ohne Aktionen). Meldet es «GARMIN FEHLER …»: Silas kurz informieren (Titel und Grund). Fehler beim Senden brechen das Update nie ab.
 4. `SPUREN_PW=… node tools/crypt.mjs encrypt data.json data.enc.json`.
    **Sekundenreihen (V5.7.1, von Silas am 8.11.2026 freigegeben):** `SPUREN_PW=… node tools/serien_crypt.mjs --nacht` (nur neue oder
    tatsächlich geänderte Reihen aus `work/serien/`, atomar geschrieben, nichts gelöscht oder umbenannt), dann
@@ -309,7 +316,9 @@ V5.6: zusätzlich `rpe` (→ `rpe`), `intervalle` (Korrekturen von Hand → `int
 zugeordnet → `laktat_punkte`, Status «vorschau») und `saison` (Stunden «jetzt»/«Spitze» → `saison_plan`); gleiche ID ersetzt mit Audit.
 V5.7: `startorte` (ganze Liste → `startorte`, alte Fassung ins Audit) und `trainingsrouten` (gewählte Vorschläge → `trainingsrouten`, gleiche
 ID ersetzt mit Audit). Startorte und Routen nur verschlüsselt (data.enc.json), nie offen ins Repository.
-V6.6: `planwoche` (Mein Plan einer Woche → `planwoche_add` → `plan_woche`, eigenplan-1.0; `merge_daily.planwoche_pruefen`: Montag, ID «wo-<Montag>»,
+V6.6: `garmin_senden` (Auftrag «An Garmin senden» je Tag → `garmin_senden_add` → `garmin_auftraege` mit `status` «offen»; `garmin_senden.pruefen`:
+ID «gs-<Datum>», modus senden/auto/aus, Tag vom Erstellen bis eine Woche voraus, Workouts nur Rad/Laufen mit bekannten Feldern; abgelehnte mit
+Grund in `garmin_abgelehnt`; dieselbe oder ältere Fassung wird nie nochmals offen). `planwoche` (Mein Plan einer Woche → `planwoche_add` → `plan_woche`, eigenplan-1.0; `merge_daily.planwoche_pruefen`: Montag, ID «wo-<Montag>»,
 Tage in der Woche, eindeutige Einheiten, Quelle vorschlag/eigen/bibliothek, Dauer 5–600 min, Tage vor der Änderung und gesperrte Tage unverändert
 gegenüber dem Stand davor; gleiche Woche ersetzt mit Audit). V6.2.2: `zonen` (auf der Seite bestätigte Zonenprofile → `zonen_add`, geprüft wie oben). V6.4: `modell` (gewähltes Trainingsmodell
 → `modell_add` → `plan_modell`; `merge_daily.modell_pruefen`: bekanntes Modell, Wechsel als Datum; gleiche ID ersetzt mit Audit). V6.5: `planwahl`
@@ -431,9 +440,10 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   mit Mein Plan, Enduco (Garmin-Kalender) und Absolviertem; im Monat öffnet «KW» die Woche (`TABS.kalender.zurWoche`, auch `APP.kalenderWoche`).
   Mein Plan = Wochenvorschlag (`V64UI.kontextFuer`) mit `plan_woche` (`V66.meinPlan`); Änderungen nur über `V66.aendern` (vergangene und gesperrte
   Tage nie), gespeichert mit «Direkt speichern». Bearbeitete Wochen: Stunden und Verteilung aus den eigenen Einheiten, «bearbeitet» sichtbar
-  (vergleich-1.3). TL ≈ und Distanz ≈ (tl-plan-1.0) sind Modelle, immer mit «≈»; ohne Bezugswert keine Zahl. Ein Lauf über der Aufbau-Grenze
-  wird gemeldet, nie verhindert. Die Seite schreibt auch hier nichts nach Garmin oder Enduco (6.7 «An Garmin senden» folgt nach Silas' Entscheid E3).
-- Die Seite schreibt nichts nach Garmin oder Enduco: keine Knöpfe zum Anlegen, Verschieben, Starten oder Exportieren von Workouts.
+  (vergleich-1.3, seit 1.4 ohne eigene Garmin-Einträge als Enduco). TL ≈ und Distanz ≈ (tl-plan-1.0) sind Modelle, immer mit «≈»; ohne Bezugswert keine Zahl. Ein Lauf über der Aufbau-Grenze
+  wird gemeldet, nie verhindert. Nach Garmin nur über «An Garmin senden» (Abschnitt «An Garmin senden»); Enduco wird nie geändert.
+- Die Seite schreibt selbst nie nach Garmin oder Enduco: keine Knöpfe zum Verschieben, Starten oder Löschen von Workouts. Einzige Ausnahme
+  (V6.6, Entscheid E3): «An Garmin senden» legt einen Auftrag an, den das Nacht-Update ausführt (Abschnitt «An Garmin senden»).
 
 ## Trainingsmodell, Woche nach Modell und Wissen (V6.4, Etappe 4)
 - **Modelle `modell-1.0` (`V64.MODELLE`):** polarisiert (Schlüssel Rad 30/15, Laufen 4 × 4 min), pyramidal (Rad 3 × 15 min unter LT2, Laufen 4 × 4),
@@ -464,7 +474,8 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Grenze (Distanz aus dem Zonenprofil, Z1 mit dem langsamen Rand von Z2; nach dem Kürzen nachgeprüft, liegt auch die Untergrenze von 20 min darüber,
   ausdrücklich gemeldet), übrige Läufe nur als Hinweis; ohne Lauf-Pace-Zonen keine Begrenzung. aufbau-1.1: kein Lauf in den 30 Tagen davor (Pause) →
   langer und lockerer Lauf höchstens 30 min locker (`V64.PAUSE_MIN`, eigene Festlegung), harte Läufe gemeldet; ohne Läufe in den Daten nichts begrenzt.
-- **Vergleich mit Enduco `vergleich-1.3` (V6.4.3; 1.1 V6.4.4; 1.2 V6.5 Wahl je Tag, siehe Ende; 1.3 V6.6: bearbeitete Woche aus Mein Plan; `V64.vergleich`, `V64.enducoAusUhr`, `V64.stand`, `V64.wahlAuswerten`):** Woche nach Modell wählbar «Letzte · Diese Woche · Nächste»,
+- **Vergleich mit Enduco `vergleich-1.4` (V6.4.3; 1.1 V6.4.4; 1.2 V6.5 Wahl je Tag, siehe Ende; 1.3 V6.6: bearbeitete Woche aus Mein Plan; 1.4 V6.6:
+  selbst gesendete Workouts «IN · …» und eingeplante Bibliothek sind nie Enduco; `V64.vergleich`, `V64.enducoAusUhr`, `V64.stand`, `V64.wahlAuswerten`):** Woche nach Modell wählbar «Letzte · Diese Woche · Nächste»,
   ältere über die Karte `#vg-card` (letzte 8 Wochen). Vergangene Wochen nachgerechnet, wie die Seite am Montag geplant hätte (`V64.stand`: Saison ab
   jener Woche, Stunden aus den 8 abgeschlossenen Wochen davor – von Hand gesetzte nur, wenn sie vor dem Montag gespeichert wurden –, CSS, Läufe und
   Aufbau-Grenze bis zum Sonntag davor, Tests der Woche auch wenn inzwischen erledigt; Modell, Intensität je Sportart und Zonenprofil von heute,
@@ -496,7 +507,40 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   jede Aussage mit Quelle `[[id]]` aus `WS.QUELLEN` (Autoren, Jahr, Titel, Zeitschrift, DOI; ohne DOI begründet), Kapitel-Verweise `[[#id]]`.
   Neue oder geänderte Regel: Kapitel und `WS.REGELN` nachführen; `tests/test_v64.cjs` prüft Verweise, DOI-Form, jede Quelle verwendet,
   Schweizer Schreibweise (kein ß) und keine Wattwerte in den Texten. Nie persönliche Zahlen in die Wissenstexte.
-- Die Seite schreibt nichts nach Garmin oder Enduco: der Vorschlag steht neben dem Enduco-Plan, solange Enduco läuft.
+- Der Vorschlag steht neben dem Enduco-Plan, solange Enduco läuft; Enduco wird nie geändert. Nach Garmin geht nur, was Silas mit «An Garmin senden»
+  auslöst (Abschnitt «An Garmin senden»).
+
+## An Garmin senden (V6.6, garmin-senden-1.0, Entscheid E3 vom 13.11.2026)
+- Silas' Wunsch: eigene Einheiten von Hand bis eine Woche voraus an Garmin (Fenix und Edge), automatisch nur am Vortag um 23 Uhr (er passt den
+  nächsten Tag bis etwa 23 Uhr an). Die Seite legt dafür nur einen Auftrag an; ausgeführt wird er im Nacht-Update (Schritt 3, als Letztes).
+- Auftrag je Tag (`garmin_auftraege`, ID «gs-<Datum>»): modus «senden» (nächstes Nacht-Update), «auto» (Nacht-Update am Vortag ab 23:00), «aus».
+  Er trägt eine Momentaufnahme je Einheit (`V66.garminAuftrag`): Rad und Laufen als fertiges Workout (`V66.garminWorkout`: Name «IN · …»,
+  power.between in Watt bzw. pace.zone in m/s langsam → schnell aus dem aktiven Zonenprofil, Z1 und Pausen ohne Ziel, Z5 nach oben +15 %
+  (eigene Festlegung), Wiederholungen als eine Ebene, höchstens 50 Schritte, Fassung = Prüfsumme), Bibliothek nur als `wid` (Enduco-Workout,
+  wird nur eingeplant). Schwimmen, Tests, Kraft, Mobility: nicht gesendet, mit Grund.
+- `tools/garmin_senden.py plan` vergleicht offene Aufträge mit den Vermerken in `plan_garmin` (uid, Tag, Fassung, workout_id, scheduled_id):
+  gleiche Fassung = nichts; andere Fassung = neue Fassung senden, danach die alte austragen (`nach`); nicht mehr im Plan = austragen; verschoben
+  (neuerer Auftrag an einem anderen Tag) = nur am neuen Tag. Tag schon da = «verpasst» (für heute nur im Chat).
+- Aktionen im Nacht-Update (genau diese, nichts anderes; Ergebnis je `nr` in `work/garmin_ergebnis.json` als `{"garmin_ergebnis": [...]}`):
+  - `hochladen`: `upload_workout(workout)` unverändert → `workout_id`. `get_workout_by_id(workout_id, raw=true)` unverändert als
+    `work/garmin_rueck_<nr>.json` speichern (speichert das Werkzeug die Antwort selbst als Datei: deren Pfad nehmen), dann
+    `python3 -I tools/garmin_senden.py rueck work/garmin_plan.json <nr> <datei>`. «RÜCKLESEN: gleich» →
+    `get_scheduled_workouts(date, date)`, `schedule_workout(workout_id, date)`, nochmals `get_scheduled_workouts(date, date)`: neu ist der Eintrag mit
+    dieser `workout_id`, der vorher nicht da war (fehlt er noch: 10 s warten, höchstens dreimal) → `{"nr", "ok": true, "workout_id", "scheduled_id"}`
+    (ohne gefundene ID `scheduled_id: null`). Sonst das eigene Workout löschen (`delete_workout(workout_id)`, dann mit `confirm=true`) →
+    `{"nr", "ok": false, "fehler": "<Zeile RÜCKLESEN …>"}`.
+  - `einplanen` (Bibliothek): `get_scheduled_workouts(date, date)`; steht `wid` dort schon → `{"nr", "ok": true, "scheduled_id": <dessen ID>,
+    "vorhanden": true}` ohne einzuplanen; sonst `schedule_workout(wid, date)` und die neue `scheduled_workout_id` wie oben → `"vorhanden": false`.
+  - `austragen`: mit `nach`, dessen Aktion nicht «ok» war → `{"nr", "ok": false, "fehler": "übersprungen"}`. Sonst, wenn nicht `vorhanden`:
+    `unschedule_workout(scheduled_id)` (fehlt sie: in `get_scheduled_workouts(date, date)` den Eintrag mit `workout_id` suchen); mit `loeschen`
+    danach `delete_workout(workout_id)` und mit `confirm=true` → `{"nr", "ok": true}`.
+  - Fehlschlag eines Aufrufs: `{"nr", "ok": false, "fehler": "<kurz>"}`, weiter mit der nächsten Aktion.
+- Nie: Enduco-Workouts ändern oder löschen, Kalendereinträge ohne eigenen Vermerk austragen, Bibliotheks-Workouts löschen, Zonen nach Garmin
+  schreiben, etwas senden, das nicht in `work/garmin_plan.json` steht. Das Morgen-Update sendet nichts.
+- Eigene Einträge im Garmin-Kalender («IN · …», eingeplante Bibliothek ohne `vorhanden`) sind nie Enduco: `V66.eigenGarmin` (vergleich-1.4),
+  `V64.enducoAusUhr`, `tools/bibliothek.py` (bib-1.1, kein Enduco-Termin).
+- Die Seite zeigt je Einheit «in Garmin», «in Garmin, geändert» oder «wird gesendet» (`V66.garminStand`), je Tag den Auftrag (offen, gesendet,
+  verpasst, Fehler mit Grund, abgelehnt). Rücklese geprüft am ersten echten Senden; bis dahin nie behaupten, das Format sei an Silas' Geräten geprüft.
 
 ## Meine Entwicklung und Regeln V5.5
 - Vergleiche nur aus `eb`-Blöcken (Rad 190–210 W je System Rolle/Rennrad/MTB, Laufen 5:20–5:40/km flach), Urteil `entwicklung-1.0`

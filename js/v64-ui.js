@@ -2,8 +2,9 @@
    Rechenlogik in js/v64.js (modell-1.0, wochenplan-1.2, tid-1.0, intensitaet-1.1, aufbau-1.1), Inhalte in js/wissen.js.
    V6.4.2: Karte «Aufbau-Check» (Plan) und «Intensität je Sportart» im Trainingsmodell (gespeichert im selben Eintrag «modell»).
    V6.4.3: «Woche nach Modell» auch für vergangene Wochen (nachgerechnet mit dem Stand vor dem Montag) mit «Vergleich mit Enduco» (vergleich-1.1;
-   V6.5 vergleich-1.2: «Ich folge» je Tag, gespeichert als Eingabe «planwahl» → plan_wahl; V6.6 vergleich-1.3: «Vorschlag» ist die in Mein Plan
-   bearbeitete Woche, falls es eine gibt – Stunden und Verteilung aus deinen Einheiten, gekennzeichnet «bearbeitet»)
+   V6.5 vergleich-1.2: «Ich folge» je Tag, gespeichert als Eingabe «planwahl» → plan_wahl; V6.6 vergleich-1.3/1.4: «Vorschlag» ist die in Mein Plan
+   bearbeitete Woche, falls es eine gibt – Stunden und Verteilung aus deinen Einheiten, gekennzeichnet «bearbeitet»; 1.4: selbst gesendete
+   Workouts «IN · » sind nie Enduco)
    und Karte «Vorschlag und Enduco über die Wochen».
    Das Modell wird verschlüsselt über «Direkt speichern» gespeichert (Liste «modell» → plan_modell). Die Seite schreibt nichts nach
    Garmin oder Enduco; der Wochenvorschlag steht neben dem Enduco-Plan. Links mit data-wissen="<Kapitel>" öffnen das Wissen überall. */
@@ -81,7 +82,9 @@
   /** Enduco-Plan der Woche (Garmin-Kalender): Stunden und Verteilung aus den Workout-Schritten (Rad und Laufen); liste = Einheiten für
    *  vergleich-1.1 (Kalender und, wo dort nichts stand, Workouts, die auf der Uhr liefen). */
   function enducoWoche(mo) {
-    const bis = V64().addDays(mo, 6), P = (C.D.planned || []).filter((p) => p && p.date >= mo && p.date <= bis);
+    // vergleich-1.4: selbst gesendete Einheiten (Mein Plan, garmin-senden-1.0) sind nie Enduco
+    const eigen = (p) => (window.V66 && window.V66.eigenGarmin ? window.V66.eigenGarmin(p, C.D.plan_garmin) : false);
+    const bis = V64().addDays(mo, 6), P = (C.D.planned || []).filter((p) => p && p.date >= mo && p.date <= bis && !eigen(p));
     const z = { locker: 0, mittel: 0, hart: 0, offen: 0 }, stufen = [], liste = []; let s = 0, mit = 0, ohne = 0;
     for (const p of P) {
       const e = H() && H().profilVon ? H().profilVon(p) : null, d = e ? e.dauer : p.dur_s;
@@ -256,7 +259,7 @@
       ${konflikt ? `<h3 class="abschnitt">Enduco und deine Intensität je Sportart</h3><ul class="mo-hinweise mo-konflikt">${konflikt}</ul>
         <p class="hint">Enduco lässt sich hier nicht ändern; die Seite zeigt nur, wo sein Plan über deiner Wahl liegt (${esc(V.VERSIONS.intensitaet)}: aus den Zielen der Schritte, ohne Ziele aus dem Titel).</p>` : ""}
       <div class="row mo-knoepfe"><button type="button" class="btn" data-wissen="modelle">Vorschlag erklärt</button><button type="button" class="btn" data-wissen="tid">Verteilung erklärt</button></div>
-      <p class="hint">${K.vorbei ? "Vergangene Woche: so hätte die Seite am Montag geplant – Saison ab jener Woche, Stunden aus den 8 Wochen davor (von Hand gesetzte nur, wenn sie damals schon galten), CSS, Läufe und Aufbau-Grenze bis zum Sonntag davor, Tests der Woche auch wenn inzwischen erledigt; Modell, Intensität je Sportart und Zonenprofil wie heute eingestellt (Testvorschläge nach Regel gibt es nur ab heute). " : ""}Vorschlag neben Enduco (${esc(V.VERSIONS.woche)}, ${esc(V.VERSIONS.tid)}, ${esc(V.VERSIONS.vergleich)}): Phase und Stunden aus dem Wochenstunden-Vorschlag${K.ausSaison ? "" : " (Woche ausserhalb der Saisonplanung: Stunden «jetzt»)"}, Tests aus dem Testkalender, Ziele aus dem aktiven Zonenprofil${K.css ? `, CSS vom ${esc(dch(K.css.datum))}` : ", noch kein CSS-Test"}. Vorschlag und Enduco werden nach den Zielen der Abschnitte gezählt (nur die Arbeitsintervalle hart), Absolviertes nach Puls. «Ich folge» hält je Tag fest, welchem Plan du folgst (verschlüsselt mit «Direkt speichern», ${esc(V.VERSIONS.vergleich)}); es ändert nichts in Enduco oder Garmin. Stunden nur Schwimmen, Rad und Laufen (Heute und Kalender zählen alle Sportarten); «Enduco bekannt» = Garmin-Kalender (Dauer aus den Workout-Schritten) und Workouts, die nur auf der Uhr liefen – darum kann es etwas mehr sein als «geplant» unter Phasen. Nichts wird nach Garmin oder Enduco geschrieben.</p>`;
+      <p class="hint">${K.vorbei ? "Vergangene Woche: so hätte die Seite am Montag geplant – Saison ab jener Woche, Stunden aus den 8 Wochen davor (von Hand gesetzte nur, wenn sie damals schon galten), CSS, Läufe und Aufbau-Grenze bis zum Sonntag davor, Tests der Woche auch wenn inzwischen erledigt; Modell, Intensität je Sportart und Zonenprofil wie heute eingestellt (Testvorschläge nach Regel gibt es nur ab heute). " : ""}Vorschlag neben Enduco (${esc(V.VERSIONS.woche)}, ${esc(V.VERSIONS.tid)}, ${esc(V.VERSIONS.vergleich)}): Phase und Stunden aus dem Wochenstunden-Vorschlag${K.ausSaison ? "" : " (Woche ausserhalb der Saisonplanung: Stunden «jetzt»)"}, Tests aus dem Testkalender, Ziele aus dem aktiven Zonenprofil${K.css ? `, CSS vom ${esc(dch(K.css.datum))}` : ", noch kein CSS-Test"}. Vorschlag und Enduco werden nach den Zielen der Abschnitte gezählt (nur die Arbeitsintervalle hart), Absolviertes nach Puls. «Ich folge» hält je Tag fest, welchem Plan du folgst (verschlüsselt mit «Direkt speichern», ${esc(V.VERSIONS.vergleich)}); es ändert nichts in Enduco oder Garmin. Stunden nur Schwimmen, Rad und Laufen (Heute und Kalender zählen alle Sportarten); «Enduco bekannt» = Garmin-Kalender (Dauer aus den Workout-Schritten) und Workouts, die nur auf der Uhr liefen – darum kann es etwas mehr sein als «geplant» unter Phasen. Von hier geht nichts nach Garmin oder Enduco (Senden: im Kalender, Tagesblatt «Garmin»).</p>`;
     box.querySelectorAll("[data-mow]").forEach((b) => (b.onclick = () => { WOCHE = +b.dataset.mow; wocheZeichnen(); }));
     box.querySelectorAll("[data-moe]").forEach((b) => (b.onclick = () => { const [ti, ei] = b.dataset.moe.split(":").map(Number); M.einheit(ti, ei); }));
     box.querySelectorAll("[data-mowahl]").forEach((b) => (b.onclick = () => { const [d, k] = b.dataset.mowahl.split("|"); wahlSetzen(d, k); }));   // V6.5 planwahl-1.0

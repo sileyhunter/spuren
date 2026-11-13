@@ -178,7 +178,8 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 67. **Etappe 6, Kalender und Woche:** jeden Tag antippen (Tagesblatt, auch künftige Tage), Wochenansicht mit Umschalter Monat, Training hinzufügen
     (Sportart, Art, Vorlage, Dauer), Tag sperren, Verschieben und Entfernen, Änderungen verwerfen / Rest der Woche neu planen / Woche leeren,
     TL ≈ und Distanz ≈ geplanter Einheiten, jede KW im Plan antippen (Belastung 1–3 oder Erholung, Stunden, TL), «Je Sportart» mit allen drei Sportarten.
-    **Erledigt mit V6.6 Etappe 6 (6.1–6.6),** offen: «Rest der Woche neu planen» (wochenplan-1.3) und «An Garmin senden» (6.7, garmin-senden-1.0);
+    **Erledigt mit V6.6 Etappe 6 (6.1–6.7),** offen: «Rest der Woche neu planen» (wochenplan-1.3); «An Garmin senden» ohne Schwimmen (Garmin braucht
+    Strecken je Abschnitt) und ohne Strecken (`upload_course`, kommt mit Etappe 7); das Format ist erst mit dem ersten echten Senden geprüft (Rücklese);
     Vorlagen über der Intensitätswahl ausgrauen kommt mit 8.1. Die Wochenansicht hat kein eigenes Band Mo–So über den Tagen (die Tagesliste
     zeigt Datum, Schloss und heute selbst); Wischen zwischen Wochen fehlt (Pfeile).
 68. **Etappe 7, Routen:** Rennrad nie mit Gravel, GPX-Export und Weg zu Garmin, Planer übersichtlicher (Zurück, Alle Punkte löschen, Reiter,
