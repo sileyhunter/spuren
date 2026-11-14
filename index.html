@@ -926,6 +926,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
         <h3 id="hits-title">Aktivitäten an dieser Stelle</h3>
         <p class="hint" id="hits-hint">Tippe auf eine Spur in der Karte. Hier erscheinen alle Aktivitäten, die dort durchführen.</p>
         <div class="list" id="hits"></div>
+        <button class="btn" id="hits-weg" type="button" hidden style="margin-top:8px">Auswahl aufheben</button>
       </div>
 
       <div>
@@ -2379,18 +2380,23 @@ function initMap() {
   map.on("click", async (e) => {
     if (plan.active) { window.RTUI.mapClick(e); return; }
     if (addMode) { addPointAt(e.lngLat); return; }
-    if (hlOwner === "list") hlClear("list");
     const box = (r) => [[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]];
     const pf = map.queryRenderedFeatures(box(8), { layers: ["points"] });
+    const ids = [...new Set(map.queryRenderedFeatures(box(7), { layers: [trackLayer()] }).map((f) => f.properties.id))];
+    const rf = map.queryRenderedFeatures(box(6), { layers: ["routes"] });
+    // auswahl-1.0 (V6.6.4): ist etwas gewählt, hebt ein Tipp ohne Spur, Punkt oder Route alles auf und fragt nichts Neues ab;
+    // ein Tipp auf eine Spur, einen Punkt oder eine Route ersetzt die Auswahl direkt
+    if (auswahlAktiv() && !pf.length && !ids.length && !rf.length) { auswahlWeg(); return; }
+    auswahlWeg();
     if (pf.length) {
       const p = allPoints().find((x) => x.id === pf[0].properties.id);
-      if (p) new maplibregl.Popup({ offset: 8 }).setLngLat([p.lon, p.lat])
+      if (p) popupMerken(new maplibregl.Popup({ offset: 8 })).setLngLat([p.lon, p.lat])
         .setHTML(`<b>${esc(p.name)}</b><br><small>${esc((POINT_CATS[p.cat] || POINT_CATS.sonst).label)}${p.ele ? " · " + fmt(p.ele) + " m ü. M." : ""} · ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}${p.date ? "<br>gespeichert am " + dateCH(p.date) : ""}</small>`).addTo(map);
       return;
     }
     const idn = identVisible(), wv = wmsVisible();
     if (idn.length || wv.length) {
-      const pop = new maplibregl.Popup({ offset: 8, maxWidth: "310px" }).setLngLat(e.lngLat).setHTML('<div class="idp"><span class="hint">Lade Infos …</span></div>').addTo(map);
+      const pop = popupMerken(new maplibregl.Popup({ offset: 8, maxWidth: "310px" })).setLngLat(e.lngLat).setHTML('<div class="idp"><span class="hint">Lade Infos …</span></div>').addTo(map);
       pop.on("close", () => hlClear(pop));
       const [r1, r2] = await Promise.all([
         idn.length ? identifyAt(e, idn).catch(() => []) : [],
@@ -2401,12 +2407,10 @@ function initMap() {
       if (res.length) { pop.setDOMContent(identContent(res, pop)); return; }
       pop.remove();
     }
-    const ids = [...new Set(map.queryRenderedFeatures(box(7), { layers: [trackLayer()] }).map((f) => f.properties.id))];
     if (ids.length) { showHits(ids.map((id) => ACT_BY_ID.get(id)).filter(Boolean)); return; }
-    const rf = map.queryRenderedFeatures(box(6), { layers: ["routes"] });
     if (rf.length) {
       const r = allRoutes().find((x) => x.id === rf[0].properties.id);
-      const pop = new maplibregl.Popup({ offset: 8 }).setLngLat(e.lngLat).setHTML(`<b>${esc(rf[0].properties.name)}</b><br><small>Route${r ? " · " + fmt(routeKm(r.coords), 1) + " km" : ""}</small>`).addTo(map);
+      const pop = popupMerken(new maplibregl.Popup({ offset: 8 })).setLngLat(e.lngLat).setHTML(`<b>${esc(rf[0].properties.name)}</b><br><small>Route${r ? " · " + fmt(routeKm(r.coords), 1) + " km" : ""}</small>`).addTo(map);
       if (r) { hlSet([{ type: "LineString", coordinates: r.coords }], pop); pop.on("close", () => hlClear(pop)); }
     }
   });
@@ -2462,13 +2466,34 @@ function setMode(m) {
 /* Teil 0b (K8): Treffer zuerst 30, darunter «Weitere 30 anzeigen»; das Blatt öffnet bei «N Aktivitäten an dieser Stelle» */
 const HITS_SCHRITT = 30;
 let hitsListe = [], hitsN = 0;
+/* Auswahl auf der Karte (auswahl-1.0, V6.6.4): markierte Spur, Treffer-Liste, Markierung und Infofenster von Punkten, Routen und
+   Kartenebenen (Skitouren, Wildschutzgebiete …). Ein Tipp ins Leere oder «Auswahl aufheben» nimmt alles weg; Eingaben (Punkt setzen) bleiben. */
+const offenePopups = new Set();
+let selId = null, panelDurchAuswahl = false;
+function popupMerken(pop) { offenePopups.add(pop); pop.on("close", () => offenePopups.delete(pop)); return pop; }
+function auswahlAktiv() { return selId != null || hlAktiv || offenePopups.size > 0 || hitsListe.length > 0; }
+function auswahlWeg() {
+  for (const pop of [...offenePopups]) pop.remove();
+  hlClear();
+  if (selId != null) { selId = null; const src = map && map.getSource("sel"); if (src) src.setData(EMPTY); }
+  if (hitsListe.length) {
+    hitsListe = []; hitsN = 0;
+    document.getElementById("hits").innerHTML = "";
+    document.getElementById("hits-title").textContent = "Aktivitäten an dieser Stelle";
+    document.getElementById("hits-hint").hidden = false;
+  }
+  document.getElementById("hits-weg").hidden = true;
+  if (panelDurchAuswahl) { panelDurchAuswahl = false; document.getElementById("panel").classList.add("closed"); }
+}
 function showHits(list) {
   list.sort((a, b) => b._t - a._t);
   hitsListe = list; hitsN = Math.min(HITS_SCHRITT, list.length);
   document.getElementById("hits-title").textContent = `${list.length} ${list.length === 1 ? "Aktivität" : "Aktivitäten"} an dieser Stelle`;
   document.getElementById("hits-hint").hidden = true;
+  document.getElementById("hits-weg").hidden = false;
   renderHits();
   const panel = document.getElementById("panel");
+  if (panel.classList.contains("closed")) panelDurchAuswahl = true;      // auswahl-1.0: schliesst sich beim Aufheben wieder
   panel.classList.remove("closed");
   if (list.length === 1) selectActivity(list[0].id, false);
   // Blatt so scrollen, dass der Titel oben steht (unter dem festen Kopf des Blatts auf dem Handy)
@@ -2495,7 +2520,7 @@ function renderHits() {
 }
 function selectActivity(id, fit) {
   const a = ACT_BY_ID.get(id); if (!a || !map || !a.coords) return;
-  map.getSource("sel").setData(lineGeo([a]));
+  map.getSource("sel").setData(lineGeo([a])); selId = id;
   if (fit) { const b = boundsOfCoords([a.coords]); if (b) map.fitBounds(b, { padding: 60, maxZoom: 15 }); }
 }
 
@@ -2655,16 +2680,17 @@ function linesOf(g) {           // Linien bzw. Umrisse für GPX und Zoom
 }
 
 /* Markierung des angeklickten Objekts */
-let hlOwner = null;
+let hlOwner = null, hlAktiv = false;
 function hlSet(geoms, owner) {
   hlOwner = geoms.length ? (owner === undefined ? null : owner) : null;
-  const src = map && map.getSource("hl"); if (!src) return;
+  const src = map && map.getSource("hl"); if (!src) { hlAktiv = false; return; }
   const feats = [];
   for (const g of geoms) {
     if (!g) continue;
     if (g.type === "MultiPolygon") g.coordinates.forEach((c) => feats.push({ type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: c } }));
     else if (/LineString|Polygon/.test(g.type)) feats.push({ type: "Feature", properties: {}, geometry: g });
   }
+  hlAktiv = feats.length > 0;
   src.setData({ type: "FeatureCollection", features: feats });
 }
 function hlClear(owner) { if (owner === undefined || owner === hlOwner) hlSet([]); }
@@ -2998,7 +3024,7 @@ function initPlanLayers() {
 }
 function setPlanActive(on) {
   if (!window.RTUI || !window.RT) return;
-  if (on) { setAddMode(false); hlClear(); }
+  if (on) { setAddMode(false); auswahlWeg(); }
   document.getElementById("btn-plan").setAttribute("aria-pressed", String(on));
   document.querySelector(".map-wrap").classList.toggle("planning", on);
   document.getElementById("view-karte").classList.toggle("planning", on);
@@ -3179,8 +3205,9 @@ function initKarte() {
     savePoints(); saveRoutes(); renderPoints(); renderRoutes(); e.target.value = "";
     document.getElementById("imp-msg").textContent = bad ? `${bad} Datei(en) konnten nicht gelesen werden. ${np} Punkte, ${nr} Routen geladen.` : `${np} Punkte und ${nr} Routen geladen.`;
   });
-  document.getElementById("mobile-filter").addEventListener("click", () => document.getElementById("panel").classList.toggle("closed"));
-  document.getElementById("panel-close").addEventListener("click", () => document.getElementById("panel").classList.add("closed"));
+  document.getElementById("mobile-filter").addEventListener("click", () => { panelDurchAuswahl = false; document.getElementById("panel").classList.toggle("closed"); });
+  document.getElementById("panel-close").addEventListener("click", () => { panelDurchAuswahl = false; document.getElementById("panel").classList.add("closed"); });
+  document.getElementById("hits-weg").addEventListener("click", () => auswahlWeg());
   if (innerWidth <= 760) document.getElementById("panel").classList.add("closed");
 }
 

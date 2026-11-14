@@ -273,3 +273,20 @@ test("design-1.1: Schrift auf Markern und Statusflächen mindestens 4,5 : 1 (ber
   }
   assert.ok(k(wert(D, "--violet-text"), "#2b2b2f") >= 4.5 && k(wert(H, "--violet-text"), "#ffffff") >= 4.5, "violett");
 });
+test("auswahl-1.0: Karte – ein Tipp ins Leere hebt Spur, Punkt, Route und Infos der Ebenen auf", () => {
+  const html = lies("index.html"), a = html.indexOf('map.on("click", async (e) => {'), h = html.slice(a, html.indexOf("\n  });", a));
+  assert.ok(a > 0, "Klick in der Karte gefunden");
+  // ist etwas gewählt und die Stelle leer: nur aufheben, keine neue Abfrage der Ebenen
+  const leer = h.indexOf("if (auswahlAktiv() && !pf.length && !ids.length && !rf.length) { auswahlWeg(); return; }");
+  assert.ok(leer > 0 && leer < h.indexOf("identVisible()"), "Tipp ins Leere vor der Abfrage der Ebenen");
+  assert.ok(h.indexOf("auswahlWeg();", leer + 60) > 0 && h.indexOf("auswahlWeg();", leer + 60) < h.indexOf("if (pf.length)"), "neue Auswahl ersetzt die alte");
+  // jedes Infofenster der Karte ist gemerkt, damit es mit aufgehoben wird
+  const fenster = h.match(/new maplibregl\.Popup\(/g) || [], gemerkt = h.match(/popupMerken\(new maplibregl\.Popup\(/g) || [];
+  assert.ok(fenster.length >= 3 && fenster.length === gemerkt.length, `${gemerkt.length} von ${fenster.length} Infofenstern gemerkt`);
+  // aufheben nimmt alles weg: Infofenster, Markierung, gewählte Spur, Treffer-Liste, Blatt (nur wenn es durch die Auswahl aufging)
+  const w = html.slice(html.indexOf("function auswahlWeg()"), html.indexOf("\n}", html.indexOf("function auswahlWeg()")));
+  for (const s of ["offenePopups", "hlClear()", 'getSource("sel")', "hitsListe = []", '"hits-weg"', "panelDurchAuswahl"]) assert.ok(w.includes(s), "auswahlWeg: " + s);
+  assert.ok(/getSource\("sel"\)\.setData\(lineGeo\(\[a\]\)\); selId = id;/.test(html), "gewählte Spur gemerkt");
+  assert.ok(/id="hits-weg"[^>]*>Auswahl aufheben</.test(html) && html.includes('getElementById("hits-weg").addEventListener("click", () => auswahlWeg())'), "Knopf «Auswahl aufheben»");
+  assert.ok(html.includes("if (on) { setAddMode(false); auswahlWeg(); }"), "Planer öffnen hebt die Auswahl auf");
+});

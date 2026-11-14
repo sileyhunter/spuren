@@ -1,5 +1,15 @@
 # Änderungen
 
+## V6.6.4 · 14.11.2026 · Karte: Auswahl aufheben (auswahl-1.0)
+Wunsch von Silas vom 14.11.2026: eine gewählte Spur liess sich nicht mehr abwählen, ebenso Punkte, Skitouren, Wildschutzgebiete und andere Infos.
+- Ist auf der Karte etwas gewählt (Spur mit Treffer-Liste, Punkt, Route, Infos einer Ebene samt Markierung), hebt ein Tipp an eine Stelle ohne Spur,
+  Punkt oder Route alles auf und fragt nichts Neues ab; erst der nächste Tipp zeigt dort wieder Infos. So lässt sich auch eine Fläche wie ein
+  Wildschutzgebiet abwählen, obwohl man in sie hineintippt. Ein Tipp auf eine Spur, einen Punkt oder eine Route ersetzt die Auswahl direkt.
+- In der Treffer-Liste neu der Knopf «Auswahl aufheben»; das Blatt «Filter & Punkte» schliesst sich dabei wieder, wenn es durch die Auswahl
+  aufgegangen ist. Der Planer hebt beim Öffnen jede Auswahl auf. Eingaben (Punkt setzen) bleiben offen.
+- Test in `tests/test_v6.cjs` (Klick-Ablauf, jedes Infofenster gemerkt, Aufheben vollständig); im Browser mit Demo und echten Daten geprüft
+  (Infos der Ebenen mit erfundener Antwort, geo.admin war gesperrt).
+
 ## V6.6.3 · 14.11.2026 · Last-Modell eingeschaltet, Jagdposten auf der Karte
 - **Last-Modell:** auf Silas' Okay vom 14.11.2026 rechnet die Seite mit last-2.1 (`config.load_model`; Rad auf der Rolle mit der LT2, draussen nach
   Puls mit dem Schwellenpuls Rad). Fitness, Ermüdung, Form, Trainingsstatus und der Last-Teil der Ampel folgen; `tss` bleibt gespeichert. Prüfbericht

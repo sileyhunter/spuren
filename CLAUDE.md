@@ -421,6 +421,9 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - Breite Tabellen: `data-liste` an der Tabelle (oder zu breit auf ≤ 640 px) → Liste (`.als-liste`, Spaltenname je Zelle). Tabellen, die
   nie Liste werden sollen: `data-keine-liste`.
 - Ausblenden statt löschen: `hidden data-ausgeblendet="Grund"` an der Karte (mit id); Einstellungen → «Ausgeblendete Karten» blendet je Gerät ein.
+- **Auswahl auf der Karte `auswahl-1.0` (V6.6.4):** gewählte Spur (`sel`, `selId`), Treffer-Liste, Markierung (`hl`, `hlAktiv`) und Infofenster
+  (`popupMerken`) gehören zur Auswahl; `auswahlWeg()` hebt alles auf (Tipp ohne Spur, Punkt oder Route, «Auswahl aufheben», Planer öffnen) und fragt
+  dabei nichts Neues ab. Neue Infofenster in der Karte immer über `popupMerken(new maplibregl.Popup(…))`; Eingabe-Fenster (Punkt setzen) nicht.
 - Planer und Trainingsrouten: Farben nur über Variablen, auch in SVG (design-1.1, Teil 0b). Designfarben (Flächen, Schrift, Status, Diagramm)
   je im Block dunkel und hell von `css/v6.css`, helle Werte nur im Block für `[data-theme="light"]`; Daten- und Markerfarben (gleich in beiden
   Designs) im gemeinsamen `:root`. Im SVG als `style="fill:var(--…)"` (nicht als `fill="…"`), auf der Karte (MapLibre) über `RTUI.farbe()`.
