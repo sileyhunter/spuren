@@ -34,6 +34,7 @@ Im Auftrag als «V6.5.1» bezeichnet; weil V6.6 schon live war, heisst die Fassu
   4,5 : 1). Im Browser Demo und echte Daten bei 390 × 844 und 1280 × 800, dunkel und hell: Konsole ohne Fehler, kein seitlicher Überlauf in
   allen Ansichten. Routing mit nachgebildeten Antworten im BRouter-Format und mit aufgezeichneten Antworten einer lokalen BRouter-Instanz
   (`tests/fixtures`, OSM-Testdaten Dreieich), Wetter mit nachgebildeten Open-Meteo-Antworten; brouter.de und Open-Meteo nicht live getestet.
+  Messwerte vorher/nachher und die Liste der geprüften Stellen: `docs/abnahme-teil0b.md`.
 
 ## V6.6 · 13.11.2026 · Etappe 6.7: An Garmin senden (Entscheid E3)
 - **garmin-senden-1.0:** Im Tagesblatt (Kalender) gibt es den Abschnitt «Garmin»: «An Garmin senden» (ab morgen bis eine Woche voraus, mit dem
