@@ -109,7 +109,12 @@
   function wochenZeichnen(S) {
     const box = $("pl-wochen"); if (!box) return;
     const W = V6(), h = heuteISO();
-    const D = P.wochenDaten(C.D.activities, C.D.planned, h, 7, 4, window.V6H ? window.V6H.planDauer : null, S ? S.wochen : []);
+    // V7 (Saisonübersicht wie enduco): 8 Wochen zurück bis zum Hauptrennen (höchstens 40 Wochen voraus); geplant = Mein Plan, nicht Enduco
+    const U = window.V7UI, mo0 = window.V64 ? window.V64.montag(h) : h, letzte = S && S.wochen && S.wochen.length ? S.wochen[S.wochen.length - 1].woche : null;
+    const vor = letzte ? Math.max(4, Math.min(40, Math.round((Date.parse(letzte + "T12:00:00Z") - Date.parse(mo0 + "T12:00:00Z")) / 6048e5))) : 4;
+    const MP = []; if (U && window.V64) for (let k = 0; k <= vor; k++) MP.push(...U.meinPlanWoche(window.V64.addDays(mo0, 7 * k)));
+    const D = P.wochenDaten(C.D.activities, MP, h, 8, vor, (p) => p.dur_s, S ? S.wochen : []);
+    const jede = D.length > 16 ? 4 : 2;
     const max = Math.max(5, Math.ceil(Math.max(...D.map((r) => r.summe)) / 5) * 5);
     const w = 360, hgt = 196, x0 = 30, y0 = 8, yb = 160, bw = (w - x0) / D.length, Y = (v) => yb - (v / max) * (yb - y0);
     const farbe = (s) => `var(--sp-${s === "andere" ? "andere" : s})`;
@@ -118,16 +123,16 @@
       for (const s of SP) { const v = r.ist[s]; if (v > 0.01) { const hh = (v / max) * (yb - y0); y -= hh; out.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bwi.toFixed(1)}" height="${Math.max(1, hh - 1).toFixed(1)}" rx="2" style="fill:${farbe(s)}"><title>KW ${r.kw}: ${SP_WORT[s]} ${v.toFixed(1)} h absolviert</title></rect>`); } }
       for (const s of SP) { const v = r.plan[s]; if (v > 0.01) { const hh = (v / max) * (yb - y0); y -= hh; out.push(`<rect x="${(x + 0.8).toFixed(1)}" y="${(y + 0.8).toFixed(1)}" width="${(bwi - 1.6).toFixed(1)}" height="${Math.max(1, hh - 2.6).toFixed(1)}" rx="2" style="fill:none;stroke:${farbe(s)};stroke-width:1.6"><title>KW ${r.kw}: ${SP_WORT[s]} ${v.toFixed(1)} h geplant</title></rect>`); } }
       const ph = r.phase ? `<rect x="${(x0 + i * bw + 1).toFixed(1)}" y="${yb + 6}" width="${(bw - 2).toFixed(1)}" height="5" rx="2" style="fill:var(${(P.PHASE[r.phase] || [0, "--muted"])[1]})"><title>${esc(r.phase)}</title></rect>` : "";
-      const lab = i % 2 === (D.length % 2 ? 0 : 1) || r.jetzt ? `<text x="${(x0 + i * bw + bw / 2).toFixed(1)}" y="${yb + 26}" text-anchor="middle" class="pl-ax${r.jetzt ? " jetzt" : ""}">${r.jetzt ? "jetzt" : "KW " + r.kw}</text>` : "";
+      const lab = (D.length - 1 - i) % jede === 0 || r.jetzt ? `<text x="${(x0 + i * bw + bw / 2).toFixed(1)}" y="${yb + 26}" text-anchor="middle" class="pl-ax${r.jetzt ? " jetzt" : ""}">${r.jetzt ? "jetzt" : "KW " + r.kw}</text>` : "";
       return out.join("") + ph + lab;
     }).join("");
     const grid = [0, max / 2, max].map((v) => `<line x1="${x0}" x2="${w}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" class="pl-grid"/><text x="${x0 - 5}" y="${(Y(v) + 3.5).toFixed(1)}" text-anchor="end" class="pl-ax">${v} h</text>`).join("");
     const jetzt = D.findIndex((r) => r.jetzt);
     const mark = jetzt >= 0 ? `<rect x="${(x0 + jetzt * bw).toFixed(1)}" y="${y0 - 4}" width="${bw.toFixed(1)}" height="${yb - y0 + 4}" rx="6" class="pl-jetzt-bg"/>` : "";
     const phasen = [...new Set(D.map((r) => r.phase).filter(Boolean))];
-    box.innerHTML = `<svg class="pl-chart" viewBox="0 0 ${w} ${hgt}" role="img" aria-label="Wochenstunden je Sportart, 7 Wochen zurück bis 4 Wochen voraus">${mark}${grid}${bars}</svg>
+    box.innerHTML = `<svg class="pl-chart" viewBox="0 0 ${w} ${hgt}" role="img" aria-label="Wochenstunden je Sportart, 8 Wochen zurück bis ${vor} Wochen voraus">${mark}${grid}${bars}</svg>
       <div class="pl-legende">${SP.filter((s) => D.some((r) => r.ist[s] + r.plan[s] > 0.01)).map((s) => `<span><i style="background:${farbe(s)}"></i>${SP_WORT[s]}</span>`).join("")}<span><i class="rand"></i>geplant</span>
         ${phasen.map((p) => `<span><i class="ph" style="background:var(${(P.PHASE[p] || [0, "--muted"])[1]})"></i>${esc((P.PHASE[p] || [p])[0])}</span>`).join("")}</div>
-      <p class="hint">Gefüllt = absolviert (Bewegungszeit aus den Aktivitäten), Rand = noch geplant im Garmin-Kalender (Dauer aus den Workout-Schritten, sonst laut Kalender). Farbstreifen = Phase des Vorschlags.</p>`;
+      <p class="hint">Gefüllt = absolviert (Bewegungszeit aus den Aktivitäten), Rand = noch geplant in Mein Plan (Vorschlag mit deinen Änderungen). Farbstreifen = Phase.</p>`;
   }
 })();

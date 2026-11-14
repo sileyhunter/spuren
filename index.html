@@ -878,7 +878,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
   <h1 class="brand"><img class="mark-img" src="logo-kopf.jpg" alt="" width="104" height="38" decoding="async">Ironman Notebook</h1>
   <div class="countdowns" id="countdowns"></div>
   <div class="stand" id="stand"></div>
-  <button class="kopf-knopf" id="btn-einst" type="button" aria-label="Einstellungen" title="Einstellungen"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+  <button class="kopf-knopf profil" id="btn-einst" type="button" aria-label="Profil und Einstellungen" title="Profil und Einstellungen"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.4" r="3.7"/><path d="M4.8 20.2c1.3-3.7 4.1-5.6 7.2-5.6s5.9 1.9 7.2 5.6"/></svg></button>
 </header>
 <div class="demo-banner" id="banner" hidden><b>Beispieldaten.</b> Alle Spuren und Zahlen sind erfunden, damit du Aufbau und Funktionen beurteilen kannst. Mit dem ersten Garmin-Import werden sie ersetzt.</div>
 
@@ -1010,42 +1010,6 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
         <div id="wochen-leiste"></div>
         <details class="wl-je"><summary>Je Sportart</summary><div class="tablewrap"><table class="t" id="t-week" data-liste></table></div></details>
       </div>
-      <div class="card w12" id="ringe-card">
-        <div class="card-head"><div><h2>Erholung, Schlaf, Belastung</h2><div class="sub" id="ringe-sub"></div></div>
-          <div class="seg" id="ringe-range" role="group" aria-label="Zeitraum des Verlaufs"><button data-n="7" aria-pressed="true">7 Tage</button><button data-n="28" aria-pressed="false">28 Tage</button></div></div>
-        <div class="ringe" id="ringe"><p class="hint">Wird berechnet …</p></div>
-        <div class="chart mid"><canvas id="c-ringe" aria-label="Erholung, Schlaf und Belastung im Verlauf, je 0 bis 100 Prozent"></canvas></div>
-        <p class="hint" id="ringe-note"></p>
-      </div>
-      <div class="card w8">
-        <div class="card-head"><div><h2>Heute</h2><div class="sub" id="today-date"></div></div></div>
-        <div id="today-main"><p class="hint">Bereitschaft wird berechnet …</p></div>
-      </div>
-      <div class="card w4" id="rd-wrap">
-        <div id="rd-card"></div>
-        <div class="verdict" id="today-verdict"></div>
-        <div class="kv" id="today-kv"></div>
-      </div>
-      <div class="card w12" id="gefuehl-card">
-        <div class="card-head"><div><h2>Gefühl und Morgenwerte</h2><div class="sub">Welcher Wert passt bei dir am besten zu deinem Gefühl am Morgen?</div></div></div>
-        <div id="gefuehl"></div>
-      </div>
-      <div class="card w12" id="v56-rpe-card" hidden data-ausgeblendet="RPE der einzelnen Einheiten: ersetzt durch den Morgen-Check-in (V5.9), Daten bleiben">
-        <div class="card-head"><div><h2>Letzte Einheiten bewerten</h2><div class="sub">RPE, Gefühl und Beschwerden – verbindet dein Empfinden mit Last, HRV, Ruhepuls und Schlaf</div></div></div>
-        <div id="v56-rpe"></div><div id="v56-kal"></div>
-      </div>
-      <div class="card w8">
-        <div class="card-head"><div><h2>Bereitschaft im Verlauf</h2><div class="sub">HRV gegen deine eigene Referenz, Ruhepuls und Schlaf</div></div>
-          <div class="seg" id="rd-range" role="group" aria-label="Zeitraum"><button data-n="21" aria-pressed="true">21 Tage</button><button data-n="42" aria-pressed="false">42 Tage</button></div></div>
-        <div class="chart mini"><canvas id="c-rd-hrv" aria-label="HRV mit Referenzband"></canvas></div>
-        <div class="chart mini"><canvas id="c-rd-rhr" aria-label="Ruhepuls"></canvas></div>
-        <div class="chart mini"><canvas id="c-rd-sleep" aria-label="Schlafdauer"></canvas></div>
-        <p class="hint" id="rd-trend-note"></p>
-      </div>
-      <div class="card w4">
-        <h2>Rennen</h2>
-        <div class="races" id="races"></div>
-      </div>
     </div>
     <p class="tm-note">IRONMAN® ist eine eingetragene Marke der World Triathlon Corporation. Diese private Trainingsseite steht in keiner Verbindung dazu; der Name ist nur ein persönlicher Titel.</p>
   </section>
@@ -1053,19 +1017,16 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
   <!-- ================= KALENDER ================= -->
   <section class="view" id="view-kalender" role="region" aria-label="Kalender" hidden>
     <div class="dash">
-      <div class="card w12">
+      <div class="v6-voll kal-v7">
         <div class="card-head">
-          <div><h2 id="cal-title">Kalender</h2><div class="sub">Mein Plan, Enduco aus dem Garmin-Kalender, Absolviertes, Tests und Rennen. Tippe auf einen Tag zum Ansehen und Bearbeiten.</div></div>
-          <div class="row"><button class="btn" id="cal-prev" aria-label="Zurück">‹</button><button class="btn" id="cal-today">Heute</button><button class="btn" id="cal-next" aria-label="Weiter">›</button></div>
+          <div><h2 id="cal-title">Kalender</h2><div class="sub" id="cal-sub">Mein Plan, Absolviertes aus Garmin, Tests und Rennen.</div></div>
+          <button class="btn kal-heute" id="cal-today">Heute</button>
         </div>
-        <div class="seg kal-ans" role="group" aria-label="Ansicht"><button type="button" data-kalans="woche">Woche</button><button type="button" data-kalans="monat">Monat</button></div>
+        <div class="kal-leiste"><div class="seg kal-ans" role="group" aria-label="Ansicht"><button type="button" data-kalans="woche">Woche</button><button type="button" data-kalans="monat">Monat</button></div>
+          <div class="row"><button class="btn rp-ib" id="cal-prev" aria-label="Zurück">‹</button><button class="btn rp-ib" id="cal-next" aria-label="Weiter">›</button></div></div>
         <div class="tablewrap" id="cal-wrap"><div class="cal" id="cal"></div></div>
         <div class="kal-woche" id="kal-woche" hidden></div>
         <div class="cal-legend" id="cal-legend"></div>
-      </div>
-      <div class="card w12">
-        <div class="card-head"><div><h2>Geplant gegenüber absolviert</h2><div class="sub">Enduco-Workouts, wie sie auf der Uhr ausgeführt wurden: Dauer, Zielbereich, Hauptteil, Gefühl, gleiche Einheit früher</div></div></div>
-        <div id="v56-plan"></div>
       </div>
     </div>
   </section>
@@ -1073,38 +1034,58 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
   <!-- ================= PLAN (V6.0.2) ================= -->
   <section class="view" id="view-plan" role="region" aria-label="Plan" hidden>
     <div class="dash">
-      <div class="card w12" id="pl-rennen-card">
-        <div class="card-head"><div><h2>Rennen</h2></div></div>
-        <div class="pl-rennen" id="pl-rennen"></div>
-      </div>
+      <div class="v6-voll" id="v7-plan-kopf"></div>
       <div class="card w12" id="pl-phasen-card">
         <div class="card-head"><div><h2>Phasen</h2><div class="sub">Vom heutigen Stand bis zum Hauptrennen – antippen zeigt die Wochen</div></div></div>
         <div id="pl-phasen"></div>
       </div>
-      <div class="card w12" id="mo-woche-card">
-        <div class="card-head"><div><h2>Woche nach Modell</h2><div class="sub" id="mo-woche-sub">Vorschlag aus Phase, Stunden und Trainingsmodell – neben dem Enduco-Plan</div></div></div>
-        <div id="mo-woche"></div>
+      <div class="card w12" id="pl-wochen-card">
+        <div class="card-head"><div><h2>Saisonübersicht</h2><div class="sub">Stunden je Woche und Sportart: absolviert und Mein Plan bis zum Hauptrennen</div></div></div>
+        <div id="pl-wochen"></div>
       </div>
-      <div class="card w12" id="vg-card">
-        <div class="card-head"><div><h2>Vorschlag und Enduco über die Wochen</h2><div class="sub" id="vg-sub">Was Enduco geplant hat, was die Seite vorgeschlagen hätte und was du gemacht hast</div></div></div>
-        <div id="vg-verlauf"></div>
+      <div class="v6-voll" id="v7-plan-werkzeuge"></div>
+    </div>
+  </section>
+
+  <!-- ================= PLAN: Unteransichten (V7) ================= -->
+  <section class="view" id="view-plan-rennen" role="region" aria-label="Rennen" hidden>
+    <div class="dash">
+      <div class="card w12" id="pl-rennen-card">
+        <div class="card-head"><div><h2>Rennen</h2></div></div>
+        <div class="pl-rennen" id="pl-rennen"></div>
       </div>
-      <div class="card w12" id="ab-card">
-        <div class="card-head"><div><h2>Aufbau-Check</h2><div class="sub" id="ab-sub">Laufumfang ohne Sprünge aufbauen; Schwimmen und Rad im Verlauf</div></div></div>
-        <div id="ab-inhalt"></div>
-      </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-plan-modell" role="region" aria-label="Trainingsmodell" hidden>
+    <div class="dash">
       <div class="card w12" id="mo-card">
         <div class="card-head"><div><h2>Trainingsmodell</h2><div class="sub" id="mo-card-sub">Wie sich die Stunden auf locker, mittel und hart verteilen</div></div></div>
         <div id="mo-wahl"></div>
       </div>
-      <div class="card w12" id="pl-wochen-card">
-        <div class="card-head"><div><h2>Wochenübersicht</h2><div class="sub">Stunden je Sportart: absolviert und geplant</div></div></div>
-        <div id="pl-wochen"></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-plan-aufbau" role="region" aria-label="Aufbau-Check" hidden>
+    <div class="dash">
+      <div class="card w12" id="ab-card">
+        <div class="card-head"><div><h2>Aufbau-Check</h2><div class="sub" id="ab-sub">Laufumfang ohne Sprünge aufbauen; Schwimmen und Rad im Verlauf</div></div></div>
+        <div id="ab-inhalt"></div>
       </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-plan-stunden" role="region" aria-label="Wochenstunden" hidden>
+    <div class="dash">
       <div class="card w12">
         <div class="card-head"><div><h2>Wochenstunden-Vorschlag</h2><div class="sub">Phasen, Erholung, Taper und Wochenstunden: Vorschlag gegenüber absolviert – Entscheidungshilfe, Enduco bleibt massgebend</div></div></div>
         <div id="v56-saison"></div>
       </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-plan-tests" role="region" aria-label="Testkalender" hidden>
+    <div class="dash">
       <div class="card w12" id="pl-tests-card">
         <h2>Testkalender</h2>
         <div class="sub">Wann ein Stufentest, ein kurzer Laktat-Check oder ein CSS-Test (Schwimmen, 400 m und 200 m) Sinn macht. Kurz-Checks am besten am Ende einer lockeren Woche, damit die Werte vergleichbar sind. Die Vorschläge passe ich auf Wunsch an.</div>
@@ -1113,6 +1094,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
       </div>
     </div>
   </section>
+
 
   <!-- ================= WISSEN (V6.4) ================= -->
   <section class="view" id="view-wissen" role="region" aria-label="Wissen" hidden>
@@ -1142,38 +1124,23 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
     </div>
   </section>
 
-  <!-- ================= TRAINING ================= -->
-  <section class="view" id="view-training" role="region" aria-label="Fortschritt" hidden>
+  <!-- ================= ANALYSE (V7: Start mit Karten, jede öffnet eine eigene Ansicht) ================= -->
+  <section class="view" id="view-analyse" role="region" aria-label="Analyse" hidden>
     <div class="dash">
-      <div class="card w12" id="dev-card">
-        
-      <div class="card-head"><div><h2>Meine Entwicklung</h2><div class="sub">Nur geprüfte Vergleiche aus vergleichbaren Messungen – kein Urteil aus Rohdaten</div></div></div>
-        <div class="dev-ctl">
-          <div class="seg" role="group" aria-label="Zeitraum"><button type="button" data-w="4">4 Wochen</button><button type="button" data-w="12">12 Wochen</button><button type="button" data-w="52">52 Wochen</button></div>
-          <label class="dev-l">Vergleich mit <select id="dev-ref" aria-label="Referenzzeitraum"><option value="vorjahr">gleicher Zeitraum im Vorjahr</option><option value="vorher">Zeitraum direkt davor</option><option value="frei">frei wählen</option></select></label>
-          <span id="dev-frei" class="dev-l" hidden><input type="date" id="dev-von" aria-label="Referenz von"> bis <input type="date" id="dev-bis" aria-label="Referenz bis"></span>
-          <select id="dev-sport" aria-label="Sportart"><option value="">Alle Sportarten</option><option value="rad">Rad</option><option value="lauf">Laufen</option><option value="schwimm">Schwimmen</option></select>
-        </div>
-        <p class="hint" id="dev-per"></p>
-        <div class="dev-answers">
-          <div class="dev-a good"><h3>Was hat sich verbessert?</h3><ul id="dev-a1"></ul></div>
-          <div class="dev-a"><h3>Was ist stabil oder unklar?</h3><ul id="dev-a2"></ul></div>
-          <div class="dev-a next"><h3>Was sollte ich als Nächstes prüfen?</h3><ul id="dev-a3"></ul></div>
-        </div>
-        <div class="dev-metrics" id="dev-metrics"></div>
-        <details class="more"><summary>So wurde gerechnet</summary><div id="dev-how"></div></details>
-      </div>
-      <div class="card w12" id="v56-konstanz-card">
-        <div class="card-head"><div><h2>Konstanz und Belastungsverträglichkeit</h2><div class="sub">Letzte 52 Wochen: wie regelmässig du trainierst und wie steil die Belastung stieg</div></div></div>
-        <div id="v56-konstanz"></div>
-      </div>
-      <div class="card w12">
+      <div class="v6-voll" id="v7-analyse"></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-umfang" role="region" aria-label="Trainingsumfang" hidden>
+    <div class="dash">
+      <div class="card w12" id="vol-card">
         <div class="card-head">
-          <div><h2>Fitness, Ermüdung, Form</h2><div class="sub" id="pmc-sub">Fitness = Belastung der letzten 42 Tage, Ermüdung = letzte 7 Tage, Form = Differenz</div></div>
-          <div class="kv" id="pmc-kv" style="min-width:min(320px,100%)"></div>
+          <div><h2>Wochenumfang</h2><div class="sub" id="vol-sub">Letzte 16 Wochen nach Sportart</div></div>
+          <div class="row"><select id="v-sport" aria-label="Sportart"><option value="">Alle Sportarten</option></select>
+          <select id="v-metric" aria-label="Messgrösse"><option value="h">Stunden</option><option value="km">Kilometer</option><option value="hm">Höhenmeter</option></select></div>
         </div>
-        <p class="hint" id="pmc-note"></p>
-        <div class="chart tall"><canvas id="c-pmc" aria-label="Fitness, Ermüdung und Form"></canvas></div>
+        <div class="chart"><canvas id="c-volume" aria-label="Wochenumfang"></canvas></div>
+        <p class="hint" id="vol-detail" aria-live="polite">Tippe auf einen Balken: Stunden und Einheiten der Woche.</p>
       </div>
       <div class="card w12" id="last-card">
         <div class="card-head">
@@ -1184,25 +1151,6 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
         <p class="keep" id="last-detail" aria-live="polite"></p>
         <div id="last-vgl"></div>
       </div>
-      <div class="card w12" id="zones-card">
-        <div class="card-head">
-          <div><h2>Mache ich das Richtige?</h2><div class="sub">Intensitätsverteilung je Sportart · Einordnung, keine Diagnose</div></div>
-          <div class="row">
-            <select id="z-sport" aria-label="Sportart"></select>
-            <select id="z-range" aria-label="Zeitraum"><option value="4">4 Wochen</option><option value="12" selected>12 Wochen</option><option value="26">26 Wochen</option><option value="52">52 Wochen</option></select>
-          </div>
-        </div>
-        <div class="verdict" id="z-verdict"></div>
-        <div class="z-split" id="z-kv"></div>
-        <p class="hint" id="z-hyp"></p>
-        <div class="chart"><canvas id="c-zones" aria-label="Pulszeit je Woche, locker, mittel und hart"></canvas></div>
-        <p class="hint" id="z-note"></p>
-        <details class="more"><summary>Grundlage und Garmin-Zonen Z1–Z5</summary>
-          <p class="hint" id="z-basis"></p>
-          <h3 class="mini-h" id="v53-zones-h">Garmin-Pulszonen, letzte 4 Wochen</h3>
-          <div id="v53-zones"></div>
-        </details>
-      </div>
       <div class="card w12" id="year-card">
         <div class="card-head"><div><h2>Jahr <span id="v53-year-y"></span>: Ziele und Verlauf</h2><div class="sub">Stand heute gegen das Soll bis heute · gleicher Kalenderzeitraum wie in den Vorjahren</div></div>
           <div class="row"><select id="v53-goal-sport" aria-label="Sportart"></select><select id="v53-cum-metric" aria-label="Messgrösse"><option value="h">Stunden</option><option value="km">Kilometer</option><option value="hm">Höhenmeter</option></select></div></div>
@@ -1211,17 +1159,6 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
         <div class="chart"><canvas id="c-v53-cum" aria-label="Kumulierter Umfang je Jahr im gleichen Kalenderzeitraum"></canvas></div>
         <p class="hint" id="v53-cum-note"></p>
       </div>
-      <div class="card w12" id="vol-card">
-        <div class="card-head">
-          <div><h2>Wochenumfang</h2><div class="sub" id="vol-sub">Letzte 16 Wochen nach Sportart</div></div>
-          <div class="row"><select id="v-sport" aria-label="Sportart"><option value="">Alle Sportarten</option></select>
-          <select id="v-metric" aria-label="Messgrösse"><option value="h">Stunden</option><option value="km">Kilometer</option><option value="hm">Höhenmeter</option></select></div>
-        </div>
-        <div class="chart"><canvas id="c-volume" aria-label="Wochenumfang"></canvas></div>
-        <p class="hint" id="vol-detail" aria-live="polite">Tippe auf einen Balken: Stunden und Einheiten der Woche.</p>
-      </div>
-      <details class="layer" id="tr-more"><summary><span>Weitere Auswertungen</span><small>Jahresstatistik, Bestleistungen, Serie und Tagebuch</small></summary>
-      <div class="dash">
         <div class="card w8">
         <div class="card-head">
           <div><h2>Jahresstatistik</h2><div class="sub" id="y-sub"></div></div>
@@ -1241,29 +1178,102 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
         </div>
         <div class="chart tall"><canvas id="c-years" aria-label="Umfang pro Jahr nach Sportart"></canvas></div>
       </div>
-        <div class="card w12" id="bests-card">
-          <h2>Bestleistungen</h2><div class="sub">Laufen: schnellste Abschnitte aus FIT. Rad: beste Watt je Dauer, je System getrennt.</div>
-          <div id="v53-bests"></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-intensitaet" role="region" aria-label="Intensitätsverteilung" hidden>
+    <div class="dash">
+      <div class="card w12" id="zones-card">
+        <div class="card-head">
+          <div><h2>Mache ich das Richtige?</h2><div class="sub">Intensitätsverteilung je Sportart · Einordnung, keine Diagnose</div></div>
+          <div class="row">
+            <select id="z-sport" aria-label="Sportart"></select>
+            <select id="z-range" aria-label="Zeitraum"><option value="4">4 Wochen</option><option value="12" selected>12 Wochen</option><option value="26">26 Wochen</option><option value="52">52 Wochen</option></select>
+          </div>
         </div>
+        <div class="verdict" id="z-verdict"></div>
+        <div class="z-split" id="z-kv"></div>
+        <p class="hint" id="z-hyp"></p>
+        <div class="chart"><canvas id="c-zones" aria-label="Pulszeit je Woche, locker, mittel und hart"></canvas></div>
+        <p class="hint" id="z-note"></p>
+        <details class="more"><summary>Grundlage und Garmin-Zonen Z1–Z5</summary>
+          <p class="hint" id="z-basis"></p>
+          <h3 class="mini-h" id="v53-zones-h">Garmin-Pulszonen, letzte 4 Wochen</h3>
+          <div id="v53-zones"></div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-erholung" role="region" aria-label="Belastung und Erholung" hidden>
+    <div class="dash">
+      <div class="card w8">
+        <div class="card-head"><div><h2>Heute</h2><div class="sub" id="today-date"></div></div></div>
+        <div id="today-main"><p class="hint">Bereitschaft wird berechnet …</p></div>
+      </div>
+      <div class="card w4" id="rd-wrap">
+        <div id="rd-card"></div>
+        <div class="verdict" id="today-verdict"></div>
+        <div class="kv" id="today-kv"></div>
+      </div>
+      <div class="card w12" id="ringe-card">
+        <div class="card-head"><div><h2>Erholung, Schlaf, Belastung</h2><div class="sub" id="ringe-sub"></div></div>
+          <div class="seg" id="ringe-range" role="group" aria-label="Zeitraum des Verlaufs"><button data-n="7" aria-pressed="true">7 Tage</button><button data-n="28" aria-pressed="false">28 Tage</button></div></div>
+        <div class="ringe" id="ringe"><p class="hint">Wird berechnet …</p></div>
+        <div class="chart mid"><canvas id="c-ringe" aria-label="Erholung, Schlaf und Belastung im Verlauf, je 0 bis 100 Prozent"></canvas></div>
+        <p class="hint" id="ringe-note"></p>
+      </div>
+      <div class="card w12">
+        <div class="card-head">
+          <div><h2>Fitness, Ermüdung, Form</h2><div class="sub" id="pmc-sub">Fitness = Belastung der letzten 42 Tage, Ermüdung = letzte 7 Tage, Form = Differenz</div></div>
+          <div class="kv" id="pmc-kv" style="min-width:min(320px,100%)"></div>
+        </div>
+        <p class="hint" id="pmc-note"></p>
+        <div class="chart tall"><canvas id="c-pmc" aria-label="Fitness, Ermüdung und Form"></canvas></div>
+      </div>
+      <div class="card w8">
+        <div class="card-head"><div><h2>Bereitschaft im Verlauf</h2><div class="sub">HRV gegen deine eigene Referenz, Ruhepuls und Schlaf</div></div>
+          <div class="seg" id="rd-range" role="group" aria-label="Zeitraum"><button data-n="21" aria-pressed="true">21 Tage</button><button data-n="42" aria-pressed="false">42 Tage</button></div></div>
+        <div class="chart mini"><canvas id="c-rd-hrv" aria-label="HRV mit Referenzband"></canvas></div>
+        <div class="chart mini"><canvas id="c-rd-rhr" aria-label="Ruhepuls"></canvas></div>
+        <div class="chart mini"><canvas id="c-rd-sleep" aria-label="Schlafdauer"></canvas></div>
+        <p class="hint" id="rd-trend-note"></p>
+      </div>
+      <div class="card w12" id="gefuehl-card">
+        <div class="card-head"><div><h2>Gefühl und Morgenwerte</h2><div class="sub">Welcher Wert passt bei dir am besten zu deinem Gefühl am Morgen?</div></div></div>
+        <div id="gefuehl"></div>
+      </div>
+      <div class="card w12" id="v56-konstanz-card">
+        <div class="card-head"><div><h2>Konstanz und Belastungsverträglichkeit</h2><div class="sub">Letzte 52 Wochen: wie regelmässig du trainierst und wie steil die Belastung stieg</div></div></div>
+        <div id="v56-konstanz"></div>
+      </div>
+      <div class="card w12" id="v56-rpe-card" hidden data-ausgeblendet="RPE der einzelnen Einheiten: ersetzt durch den Morgen-Check-in (V5.9), Daten bleiben">
+        <div class="card-head"><div><h2>Letzte Einheiten bewerten</h2><div class="sub">RPE, Gefühl und Beschwerden – verbindet dein Empfinden mit Last, HRV, Ruhepuls und Schlaf</div></div></div>
+        <div id="v56-rpe"></div><div id="v56-kal"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-planvergleich" role="region" aria-label="Planvergleich" hidden>
+    <div class="dash">
+      <div class="v6-voll" id="v7-pv"></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-tagebuch" role="region" aria-label="Aktivitäten" hidden>
+    <div class="dash">
         <div class="card w12">
         <h2>Serie und Trainingstagebuch</h2><div class="sub">Wochen in Folge mit mindestens einem Training, letzte 8 Wochen</div>
         <div class="v53-streak" id="v53-streak"></div>
         <div class="v53-diary" id="v53-diary"></div>
       </div>
-        <div class="card w12" id="load-card" hidden data-ausgeblendet="FTP: auf Wunsch ausgeblendet, Daten bleiben">
-        <div class="card-head">
-          <div><h2>Trainingslast: Garmin-FTP oder geschätzte FTP</h2><div class="sub" id="load-sub"></div></div>
-          <select id="load-range" aria-label="Zeitraum"><option value="365">12 Monate</option><option value="730" selected>24 Monate</option><option value="all">Alles</option></select>
-        </div>
-        <div class="kv" id="load-kv"></div>
-        <div class="chart"><canvas id="c-load" aria-label="Fitness mit Garmin-FTP und mit geschätzter FTP"></canvas></div>
-        <div class="tablewrap"><table class="t" id="t-load"></table></div>
-        <p class="hint" id="load-note"></p>
-      </div>
-      </div>
-      </details>
-      <details class="layer" id="tr-method"><summary><span>Daten &amp; Methode</span><small>Datenbasis, Referenzprüfung, Regelversionen, Rechennachweis</small></summary>
-      <div class="dash">
+    </div>
+  </section>
+
+  <!-- ================= LABOR (V7: Expertenbereich, über das Profil) ================= -->
+  <section class="view" id="view-labor" role="region" aria-label="Labor" hidden>
+    <div class="dash">
+      <div class="v6-voll" id="v7-labor"></div>
         <div class="card w12" id="db-card">
         <div class="card-head"><div><h2>Datenbasis und Prüfung</h2><div class="sub" id="db-sub"></div></div></div>
         <div class="kv" id="db-kv"></div>
@@ -1278,14 +1288,52 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
           <div class="row" style="margin-top:10px"><button class="btn" type="button" id="btn-proof">Rechennachweis exportieren</button></div>
           <p class="hint" id="proof-note">Der Export enthält die Rechenschritte mit deinen Zahlen (Form der letzten 10 Tage, Zonen, Belegkennzahlen), aber keine Passwörter, Schlüssel oder Zugangsdaten. Er bleibt auf diesem Gerät, bis du ihn teilst.</p>
         </div>
+      <div class="card w12">
+        <div class="card-head"><div><h2>Geplant gegenüber absolviert</h2><div class="sub">Enduco-Workouts, wie sie auf der Uhr ausgeführt wurden: Dauer, Zielbereich, Hauptteil, Gefühl, gleiche Einheit früher</div></div></div>
+        <div id="v56-plan"></div>
       </div>
-      </details>
+      <div class="card w12" id="mo-woche-card">
+        <div class="card-head"><div><h2>Woche nach Modell</h2><div class="sub" id="mo-woche-sub">Vorschlag aus Phase, Stunden und Trainingsmodell – neben dem Enduco-Plan</div></div></div>
+        <div id="mo-woche"></div>
+      </div>
+      <div class="card w12" id="vg-card">
+        <div class="card-head"><div><h2>Vorschlag und Enduco über die Wochen</h2><div class="sub" id="vg-sub">Was Enduco geplant hat, was die Seite vorgeschlagen hätte und was du gemacht hast</div></div></div>
+        <div id="vg-verlauf"></div>
+      </div>
+        <div class="card w12" id="load-card" hidden data-ausgeblendet="FTP: auf Wunsch ausgeblendet, Daten bleiben">
+        <div class="card-head">
+          <div><h2>Trainingslast: Garmin-FTP oder geschätzte FTP</h2><div class="sub" id="load-sub"></div></div>
+          <select id="load-range" aria-label="Zeitraum"><option value="365">12 Monate</option><option value="730" selected>24 Monate</option><option value="all">Alles</option></select>
+        </div>
+        <div class="kv" id="load-kv"></div>
+        <div class="chart"><canvas id="c-load" aria-label="Fitness mit Garmin-FTP und mit geschätzter FTP"></canvas></div>
+        <div class="tablewrap"><table class="t" id="t-load"></table></div>
+        <p class="hint" id="load-note"></p>
+      </div>
     </div>
   </section>
 
   <!-- ================= LEISTUNG ================= -->
   <section class="view" id="view-leistung" role="region" aria-label="Leistung" hidden>
     <div class="dash">
+      <div class="card w12" id="dev-card">
+        
+      <div class="card-head"><div><h2>Meine Entwicklung</h2><div class="sub">Nur geprüfte Vergleiche aus vergleichbaren Messungen – kein Urteil aus Rohdaten</div></div></div>
+        <div class="dev-ctl">
+          <div class="seg" role="group" aria-label="Zeitraum"><button type="button" data-w="4">4 Wochen</button><button type="button" data-w="12">12 Wochen</button><button type="button" data-w="52">52 Wochen</button></div>
+          <label class="dev-l">Vergleich mit <select id="dev-ref" aria-label="Referenzzeitraum"><option value="vorjahr">gleicher Zeitraum im Vorjahr</option><option value="vorher">Zeitraum direkt davor</option><option value="frei">frei wählen</option></select></label>
+          <span id="dev-frei" class="dev-l" hidden><input type="date" id="dev-von" aria-label="Referenz von"> bis <input type="date" id="dev-bis" aria-label="Referenz bis"></span>
+          <select id="dev-sport" aria-label="Sportart"><option value="">Alle Sportarten</option><option value="rad">Rad</option><option value="lauf">Laufen</option><option value="schwimm">Schwimmen</option></select>
+        </div>
+        <p class="hint" id="dev-per"></p>
+        <div class="dev-answers">
+          <div class="dev-a good"><h3>Was hat sich verbessert?</h3><ul id="dev-a1"></ul></div>
+          <div class="dev-a"><h3>Was ist stabil oder unklar?</h3><ul id="dev-a2"></ul></div>
+          <div class="dev-a next"><h3>Was sollte ich als Nächstes prüfen?</h3><ul id="dev-a3"></ul></div>
+        </div>
+        <div class="dev-metrics" id="dev-metrics"></div>
+        <details class="more"><summary>So wurde gerechnet</summary><div id="dev-how"></div></details>
+      </div>
       <div class="card w12" id="trend-card">
         <div class="card-head"><div><h2>Ausdauertrend aus gleichmässigen Blöcken</h2><div class="sub">Primär: Puls bei gleicher Leistung bzw. gleichem Tempo, je Gerätesystem getrennt</div></div></div>
         <div class="tr-list" id="trend-tab"></div>
@@ -1350,6 +1398,10 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
       </div>
       </div>
       </details>
+        <div class="card w12" id="bests-card">
+          <h2>Bestleistungen</h2><div class="sub">Laufen: schnellste Abschnitte aus FIT. Rad: beste Watt je Dauer, je System getrennt.</div>
+          <div id="v53-bests"></div>
+        </div>
     </div>
   </section>
 
@@ -1550,7 +1602,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
   <button type="button" data-gruppe="kalender"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span>Kalender</span></button>
   <button type="button" data-gruppe="plan"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 21V3.5"/><path d="M5.5 4.5h12l-2.5 4 2.5 4h-12"/></svg><span>Plan</span></button>
   <button type="button" data-gruppe="analyse"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 20.5h17"/><path d="M5 16l4.5-5 3.5 3 6-7.5"/><circle cx="19" cy="6.5" r="1.3"/></svg><span>Analyse</span></button>
-  <button type="button" data-gruppe="karte"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4.5 3.5 6.5v13l5.5-2 6 2 5.5-2v-13l-5.5 2-6-2z"/><path d="M9 4.5v13M15 6.5v13"/></svg><span>Karte</span></button>
+  <button type="button" data-gruppe="karte"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 19.5 9 8.5l4.2 6.6 2.6-3.8 5.7 8.2z"/><circle cx="16.8" cy="5.6" r="2"/></svg><span>Outdoor</span></button>
 </nav>
 <div class="v5-overlay" id="v5-test" hidden></div>
 <div class="v5-overlay" id="v59-ov" hidden></div>
@@ -1586,6 +1638,8 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <script src="js/v65-ui.js"></script>
 <script src="js/v66.js"></script>
 <script src="js/v66-ui.js"></script>
+<script src="js/v7.js"></script>
+<script src="js/v7-ui.js"></script>
 <script>
 (() => {
   const b64d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
@@ -2039,52 +2093,73 @@ document.getElementById("banner").hidden = !D.demo;
 document.getElementById("countdowns").innerHTML = RACES.map((r) => `<div>${esc(r.short)} <b>${daysTo(r.date)}</b> Tage</div>`).join("");
 document.getElementById("stand").textContent = !D.demo && D.updated ? "Stand " + D.updated : "";
 
-const TAB_NAMES = ["karte", "heute", "kalender", "plan", "wissen", "bibliothek", "training", "laktat", "ausdauer", "leistung", "schwimmen", "koerper"];
-/* V5.9.5 (bedienung-1.0): fünf Bereiche in einer Leiste unten. «Analyse» bündelt Fortschritt, Laktat & Zonen, Ausdauer und Leistung,
-   «Körper & Schwimmen» die beiden Ansichten; innerhalb eines Bereichs wechselt eine Leiste oben (immer sichtbar beim Scrollen). */
-const GRUPPEN = { heute: ["heute"], kalender: ["kalender"], plan: ["plan", "wissen", "bibliothek"], analyse: ["training", "laktat", "ausdauer", "leistung", "koerper", "schwimmen"], karte: ["karte"] };   // V6.0.2: Plan neu, Körper und Schwimmen unter Analyse; V6.4: Wissen unter Plan; V6.5: Bibliothek unter Plan
-const UNTER_NAME = { plan: "Plan", wissen: "Wissen", bibliothek: "Bibliothek", training: "Fortschritt", laktat: "Laktat", ausdauer: "Ausdauer", leistung: "Leistung", koerper: "Körper", schwimmen: "Schwimmen" };
+const TAB_NAMES = ["karte", "heute", "kalender", "plan", "plan-rennen", "plan-modell", "plan-aufbau", "plan-stunden", "plan-tests",
+  "analyse", "umfang", "intensitaet", "erholung", "leistung", "laktat", "planvergleich", "ausdauer", "tagebuch", "schwimmen", "koerper",
+  "labor", "wissen", "bibliothek"];
+/* V7 navigation-7.0 (Vorlage enduco, Auftrag V7 vom 14.11.2026): fünf Bereiche in der Leiste (unten, ab 1024 px als Seitenleiste links).
+   Erste Ebene einfach (Heute, Kalender, Plan, Analyse-Start mit Karten, Outdoor); Einzelheiten öffnen als eigene Ansicht mit «Zurück» oben
+   links statt Unterleisten. Das Labor (Expertenbereich mit Wissen und Enduco-Datenbestand) öffnet über das Profil oben rechts.
+   Karten wurden zwischen Ansichten verschoben, ihre IDs blieben: QUELLEN nennt die Ansicht, deren Zeichnen sie füllt. */
+const GRUPPEN = { heute: ["heute"], kalender: ["kalender"], plan: ["plan", "plan-rennen", "plan-modell", "plan-aufbau", "plan-stunden", "plan-tests"],
+  analyse: ["analyse", "umfang", "intensitaet", "erholung", "leistung", "laktat", "planvergleich", "ausdauer", "tagebuch", "schwimmen", "koerper"],
+  karte: ["karte"], profil: ["labor", "wissen", "bibliothek"] };
+const ELTERN = { "plan-rennen": ["plan", "Rennen"], "plan-modell": ["plan", "Trainingsmodell"], "plan-aufbau": ["plan", "Aufbau-Check"],
+  "plan-stunden": ["plan", "Wochenstunden"], "plan-tests": ["plan", "Testkalender"],
+  umfang: ["analyse", "Trainingsumfang"], intensitaet: ["analyse", "Intensitätsverteilung"], erholung: ["analyse", "Belastung und Erholung"],
+  leistung: ["analyse", "Leistungsentwicklung"], laktat: ["analyse", "Laktat und Schwellen"], planvergleich: ["analyse", "Planvergleich"],
+  ausdauer: ["analyse", "Ausdauer und Verpflegung"], tagebuch: ["analyse", "Aktivitäten"], schwimmen: ["analyse", "Schwimmen"],
+  koerper: ["analyse", "Körper und Energie"], labor: [null, "Labor"], wissen: ["labor", "Wissen"], bibliothek: ["labor", "Enduco-Datenbestand"] };
+const QUELLEN = { umfang: ["training"], intensitaet: ["training"], erholung: ["heute", "training"], leistung: ["training"], tagebuch: ["training"],
+  labor: ["training", "kalender", "plan"], "plan-rennen": ["plan"], "plan-modell": ["plan"], "plan-aufbau": ["plan"], "plan-stunden": ["plan"], "plan-tests": ["plan"] };
+const ALIAS = { training: "umfang", fortschritt: "umfang", zonen: "laktat", outdoor: "karte" };   // alte Links (z. B. aus dem Morgen-Briefing) bleiben gültig
+const TOP_TITEL = { plan: "Plan", analyse: "Analyse" };
 const gruppeVon = (name) => Object.keys(GRUPPEN).find((g) => GRUPPEN[g].includes(name)) || "heute";
-for (const [g, views] of Object.entries(GRUPPEN)) {
-  if (views.length < 2) continue;
-  for (const v of views) {
-    const sec = document.getElementById("view-" + v); if (!sec) continue;
-    const nav = document.createElement("nav"); nav.className = "unter"; nav.setAttribute("aria-label", g === "analyse" ? "Analyse" : g);
-    nav.innerHTML = views.map((x) => `<button type="button" data-tab="${x}" aria-pressed="${x === v}">${UNTER_NAME[x]}</button>`).join("");
-    sec.insertBefore(nav, sec.firstChild);
-  }
+const PFEIL_ZURUECK = `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>`;
+let vorherTop = "heute";            // Labor: «Zurück» führt dorthin, woher man kam
+for (const [v, [eltern, titel]] of Object.entries(ELTERN)) {
+  const sec = document.getElementById("view-" + v); if (!sec) continue;
+  const k = document.createElement("div"); k.className = "v7-kopf";
+  const ziel = eltern ? (ELTERN[eltern] ? ELTERN[eltern][1] : TOP_TITEL[eltern] || "") : "";
+  k.innerHTML = `<button type="button" class="v7-zurueck" data-zurueck="${eltern || ""}" aria-label="Zurück${ziel ? " zu " + ziel : ""}">${PFEIL_ZURUECK}</button><h1 class="v7-h1">${titel}</h1>`;
+  sec.insertBefore(k, sec.firstChild);
 }
+for (const [v, titel] of Object.entries(TOP_TITEL)) {
+  const sec = document.getElementById("view-" + v); if (!sec) continue;
+  const k = document.createElement("div"); k.className = "v7-kopf top"; k.innerHTML = `<h1 class="v7-h1 gross">${titel}</h1>`;
+  sec.insertBefore(k, sec.firstChild);
+}
+document.querySelectorAll(".v7-zurueck").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.zurueck || vorherTop)));
 // V6.6 eigenplan-1.0: nach einer Änderung an «Mein Plan» die sichtbaren Ansichten neu zeichnen
-document.addEventListener("meinplan", () => { for (const n of ["kalender", "plan", "heute"]) { const t = TABS[n], v = document.getElementById("view-" + n); if (t && t.done && v && !v.hidden) { try { t.draw(); } catch (e) { console.error(e); } } } });
+document.addEventListener("meinplan", () => { for (const n of ["kalender", "plan", "heute"]) { const t = TABS[n], v = document.getElementById("view-" + n); if (t && t.done && v && !v.hidden) { try { t.draw(); } catch (e) { console.error(e); } } }
+  if (window.V7UI) { try { V7UI.neu(); } catch (e) { console.error(e); } } });
+function zeichneTab(n) { const t = TABS[n]; if (t && !t.done) { t.done = true; try { t.init?.(); t.draw(); } catch (e) { console.error(e); } } }
 function showTab(name) {
   if (name === "checkin") { name = "heute"; window.V59_CI_AUF = true; if (window.V59 && window.V5UI && V5UI.C) setTimeout(() => V59.checkin(), 60); }   // V5.9.3/V6.0.1: Link aus dem Morgen-Briefing öffnet das Check-in-Blatt
+  name = ALIAS[name] || name;
   if (!TAB_NAMES.includes(name)) name = "heute";
   const g = gruppeVon(name);
+  if (!(name in ELTERN)) vorherTop = name;
   document.querySelectorAll("#leiste [data-gruppe]").forEach((b) => { if (b.dataset.gruppe === g) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
-  document.querySelectorAll("nav.unter [data-tab]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tab === name)));
+  const war = document.querySelector("section.view:not([hidden])");
   document.querySelectorAll("section.view").forEach((s) => (s.hidden = s.id !== "view-" + name));
-  // V6.0.2: gewählten Unterbereich in der Leiste oben sichtbar machen – V6.4.4 (D2): erst wenn die Ansicht sichtbar ist (vorher Breite 0), ohne Animation
-  const aktivU = document.querySelector(`#view-${name} nav.unter [data-tab="${name}"]`);
-  if (aktivU) { const n = aktivU.parentElement; if (n.scrollWidth > n.clientWidth) { const sb = n.style.scrollBehavior; n.style.scrollBehavior = "auto";
-    const rb = aktivU.getBoundingClientRect(), rn = n.getBoundingClientRect();
-    n.scrollLeft = Math.max(0, n.scrollLeft + (rb.left - rn.left) - (n.clientWidth - rb.width) / 2); n.style.scrollBehavior = sb; } }
+  const sec = document.getElementById("view-" + name);
+  if (sec && war !== sec && name in ELTERN && sec.dataset.v7offen !== "1") { sec.scrollTop = 0; sec.dataset.v7offen = "1"; }   // Detailansicht beim ersten Öffnen oben
   document.body.classList.toggle("plan-aktiv", name === "karte" && !!(window.RTUI && window.RTUI.active && window.RTUI.active()));
+  document.body.dataset.ansicht = name;
   if (name === "karte") { map?.resize(); }
-  const t = TABS[name];
-  if (t && !t.done) { t.done = true; try { t.init?.(); t.draw(); } catch (e) { console.error(e); } }
-  if (window.V56 && window.V5UI && typeof V5_READY !== "undefined") V5_READY.then(() => { try { V56.zeichnen(name, V5UI.C); } catch (e) { console.error(e); } });
+  const Q = (QUELLEN[name] || []).concat([name]);
+  for (const q of Q) zeichneTab(q);
+  if (window.V56 && window.V5UI && typeof V5_READY !== "undefined") V5_READY.then(() => { for (const q of Q) { try { V56.zeichnen(q, V5UI.C); } catch (e) { console.error(e); } } });
   if (location.hash.slice(1) !== name) history.replaceState(null, "", "#" + name);
   store.set("sf.tab", name);
-  if (GRUPPEN[g].length > 1) store.set("sf.unter." + g, name);
   if (window.V59 && window.V59.ansicht) requestAnimationFrame(() => window.V59.ansicht(name));   // Info-Knopf, Tabellen als Liste
+  if (window.V7UI && V7UI.gezeigt) requestAnimationFrame(() => { try { V7UI.gezeigt(name); } catch (e) { console.error(e); } });
 }
 document.querySelectorAll("#leiste [data-gruppe]").forEach((b) => b.addEventListener("click", () => {
-  const g = b.dataset.gruppe, akt = location.hash.slice(1);
-  if (GRUPPEN[g].includes(akt) && GRUPPEN[g].length === 1) { const sec = document.getElementById("view-" + akt); if (sec) sec.scrollTo({ top: 0, behavior: "smooth" }); return; }   // nochmals tippen = nach oben
-  const letzt = store.get("sf.unter." + g, GRUPPEN[g][0]);
-  showTab(GRUPPEN[g].includes(letzt) ? letzt : GRUPPEN[g][0]);
+  const g = b.dataset.gruppe, akt = location.hash.slice(1), wurzel = GRUPPEN[g][0];
+  if (akt === wurzel) { const sec = document.getElementById("view-" + wurzel); if (sec) sec.scrollTo({ top: 0, behavior: "smooth" }); return; }   // nochmals tippen = nach oben
+  showTab(wurzel);                                                                                                                        // V7: immer die erste Ebene des Bereichs
 }));
-document.querySelectorAll("nav.unter [data-tab]").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
 document.getElementById("btn-einst")?.addEventListener("click", () => window.V59 && window.V59.einstellungen && window.V59.einstellungen());
 window.addEventListener("hashchange", () => showTab(location.hash.slice(1)));
 
@@ -3405,7 +3480,7 @@ const TABS = {
   heute: {
     draw() {
       document.getElementById("today-date").textContent = today.toLocaleDateString("de-CH", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) + (D.updated ? " · Daten vom " + D.updated : "");
-      document.getElementById("races").innerHTML = RACES.map((r) => { const d = daysTo(r.date); return `<div class="race"><span class="n">${esc(r.short)}</span><b class="d">${Math.floor(d / 7)} Wochen</b><small>${d} Tage · ${dateCH(r.date)}</small></div>`; }).join("");
+      const racesEl = document.getElementById("races"); if (racesEl) racesEl.innerHTML = RACES.map((r) => { const d = daysTo(r.date); return `<div class="race"><span class="n">${esc(r.short)}</span><b class="d">${Math.floor(d / 7)} Wochen</b><small>${d} Tage · ${dateCH(r.date)}</small></div>`; }).join("");
       const i = D.days.length - 1, d = D.days[i];
       if (!d) {
         document.getElementById("today-main").innerHTML = `<p class="hint">Noch keine Tageswerte. Sie kommen mit dem ersten Garmin-Update.</p>`;
@@ -3422,16 +3497,18 @@ const TABS = {
         if (window.V5UI) V5_READY.then(() => { V5UI.heute(); if (window.V59) { V59.checkin(); V59.heuteOben(); V59.gefuehlKarte(); } });
       }
       const w0 = mondayOf(today), wk = D.activities.filter((a) => inWeek(a, w0));
-      // V6.6 (6.6): Schwimmen, Rad und Laufen immer, mit geplant laut Garmin-Kalender (Dauer wie V6H.planDauer); andere Sportarten nur absolviert
-      const w0i = iso(w0), w6i = iso(addDays(w0, 6)), PL = (D.planned || []).filter((p) => p && p.date >= w0i && p.date <= w6i);
-      const pDauer = (p) => (window.V6H && window.V6H.planDauer ? window.V6H.planDauer(p) : p.dur_s) || 0;
-      const rows = Object.entries(SPORTS).map(([k, s]) => {
-        const l = wk.filter((a) => a.sport === k), pl = PL.filter((p) => p.sport === k), immer = ["schwimm", "rad", "lauf"].includes(k);
-        if (!l.length && !(immer)) return "";
-        const geplant = pl.length ? `${pl.length} · ${hmm(pl.reduce((x, p) => x + pDauer(p), 0))}` : "–";
-        return `<tr><td><span class="dot" style="background:${s.color};margin-right:8px"></span>${s.label}</td><td>${l.length}</td><td>${l.length ? fmt(l.reduce((x, a) => x + a.km, 0), 1) : "–"}</td><td>${l.length ? fmt(l.reduce((x, a) => x + a.hm, 0)) : "–"}</td><td>${l.length ? hmm(l.reduce((x, a) => x + a.dur, 0)) : "–"}</td><td>${l.length ? fmt(l.reduce((x, a) => x + (a.tss || 0), 0)) : "–"}</td><td>${geplant}</td></tr>`;
-      }).join("");
-      document.getElementById("t-week").innerHTML = `<tr><th>Sport</th><th>Einheiten</th><th>km</th><th>hm</th><th>Dauer</th><th>Trainingslast</th><th>geplant (Garmin)</th></tr>` + rows;
+      // V7 heute-7.0: geplant = Mein Plan (eigenplan-1.0) statt Garmin-Kalender; Schwimmen, Rad und Laufen immer, andere Sportarten nur absolviert
+      const tabelle = () => {
+        const PL = window.V7UI ? V7UI.meinPlanWoche(iso(w0)) : [];
+        const rows = Object.entries(SPORTS).map(([k, s]) => {
+          const l = wk.filter((a) => a.sport === k), pl = PL.filter((p) => p.sport === k), immer = ["schwimm", "rad", "lauf"].includes(k);
+          if (!l.length && !(immer)) return "";
+          const geplant = pl.length ? `${pl.length} · ${hmm(pl.reduce((x, p) => x + (p.dur_s || 0), 0))}` : "–";
+          return `<tr><td><span class="dot" style="background:${s.color};margin-right:8px"></span>${s.label}</td><td>${l.length}</td><td>${l.length ? fmt(l.reduce((x, a) => x + a.km, 0), 1) : "–"}</td><td>${l.length ? fmt(l.reduce((x, a) => x + a.hm, 0)) : "–"}</td><td>${l.length ? hmm(l.reduce((x, a) => x + a.dur, 0)) : "–"}</td><td>${l.length ? fmt(l.reduce((x, a) => x + (a.tss || 0), 0)) : "–"}</td><td>${geplant}</td></tr>`;
+        }).join("");
+        document.getElementById("t-week").innerHTML = `<tr><th>Sport</th><th>Einheiten</th><th>km</th><th>hm</th><th>Dauer</th><th>Trainingslast</th><th>geplant (Mein Plan)</th></tr>` + rows;
+      };
+      tabelle(); if (window.V5UI) V5_READY.then(tabelle);
     },
   },
 
@@ -3452,6 +3529,13 @@ const TABS = {
       document.getElementById("cal-prev").addEventListener("click", () => go(-1));
       document.getElementById("cal-next").addEventListener("click", () => go(1));
       document.getElementById("cal-today").addEventListener("click", () => { this.sel = iso(today); go(null); });
+      { const tit = document.getElementById("cal-title"), mp = document.createElement("input");   // V7 kalender-3.0: Monat und Jahr direkt wählen
+        mp.type = "month"; mp.className = "kal-monat"; mp.setAttribute("aria-label", "Monat und Jahr wählen"); mp.tabIndex = -1; tit.after(mp);
+        tit.setAttribute("role", "button"); tit.tabIndex = 0; tit.title = "Monat und Jahr wählen";
+        const auf = () => { mp.value = `${this.month.getFullYear()}-${String(this.month.getMonth() + 1).padStart(2, "0")}`; try { mp.showPicker(); } catch (e) { mp.focus(); } };
+        tit.addEventListener("click", auf); tit.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); auf(); } });
+        mp.addEventListener("change", () => { const [y, m] = mp.value.split("-").map(Number); if (!y || !m) return; this.month = new Date(y, m - 1, 1);
+          if (this.ansicht === "woche") { const d1 = this.month; this.woche = iso(today.getFullYear() === y && today.getMonth() === m - 1 ? mondayOf(today) : mondayOf(d1)); } this.draw(); }); }
       document.getElementById("cal").addEventListener("click", (e) => { const k = e.target.closest("[data-kwmo]"); if (k) { this.zurWoche(k.dataset.kwmo); return; }   // V6.6: KW → Wochenansicht
         const c = e.target.closest(".day"); if (c) this.day(c.dataset.d); });
       // V6.4.4 (Audit D21): Tage mit role=button auch mit Enter und Leertaste; Fokus bleibt nach dem Neuzeichnen auf dem Tag
@@ -3460,7 +3544,7 @@ const TABS = {
         const c = e.target.closest(".day[data-d]"); if (!c) return; e.preventDefault();
         this.day(c.dataset.d); });   // V6.6: Fokus geht ins Tagesblatt und beim Schliessen zurück auf den Tag (V59.modalZu)
       const ic = (k) => (window.V6 ? V6.icon(k, 14) : "");
-      document.getElementById("cal-legend").innerHTML = `<span><i class="c-i ist" style="--sp:var(--sp-rad)">${window.V6 ? V6.sportIcon("rad", 12) : ""}</i>erledigt</span><span><i class="c-i plan" style="--sp:var(--sp-rad)">${window.V6 ? V6.sportIcon("rad", 12) : ""}</i>geplant (Garmin-Kalender)</span>` +
+      document.getElementById("cal-legend").innerHTML = `<span><i class="c-i ist" style="--sp:var(--sp-rad)">${window.V6 ? V6.sportIcon("rad", 12) : ""}</i>erledigt</span><span><i class="c-i plan" style="--sp:var(--sp-rad)">${window.V6 ? V6.sportIcon("rad", 12) : ""}</i>geplant (Mein Plan)</span>` +
         `<span><i class="zpunkt" style="--zc:var(--zc-z3)"></i>Fokus-Intensität</span><span><i class="c-test"></i>Test</span><span class="c-flagge">${ic("flagge")}Rennen</span>`;
     },
     /** V6.0.2 (design-1.0): Wochenband «KW · Phase · Stunden · Last», je Tag Datum (heute orange), Sport-Symbole erledigt/geplant,
@@ -3469,7 +3553,8 @@ const TABS = {
       document.querySelectorAll("[data-kalans]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.kalans === (window.V66UI ? this.ansicht : "monat"))));
       if (this.ansicht === "woche" && window.V66UI && window.V5UI && V5UI.C) {          // V6.6 kalender-2.0: Wochenansicht mit Mein Plan
         const mo = this.woche, so = addDays(pd(mo), 6), box = document.getElementById("kal-woche");
-        document.getElementById("cal-title").textContent = `KW ${isoWeek(pd(mo))} · ${pd(mo).getDate()}.${pd(mo).getMonth() + 1}.–${so.getDate()}.${so.getMonth() + 1}.${so.getFullYear()}`;
+        document.getElementById("cal-title").textContent = pd(mo).toLocaleDateString("de-CH", { month: "long", year: "numeric" });   // V7 kalender-3.0
+        document.getElementById("cal-sub").textContent = `KW ${isoWeek(pd(mo))} · ${pd(mo).getDate()}.${pd(mo).getMonth() + 1}.–${so.getDate()}.${so.getMonth() + 1}.${so.getFullYear()}`;
         document.getElementById("cal-wrap").hidden = true; document.getElementById("cal-legend").hidden = true; box.hidden = false;
         try { box.innerHTML = V66UI.wocheHTML(mo); V66UI.wocheBinden(box, mo, () => this.draw()); } catch (e) { console.error(e); box.innerHTML = `<p class="warn-t">Woche nicht darstellbar.</p>`; }
         drawTests();
@@ -3478,22 +3563,25 @@ const TABS = {
       document.getElementById("cal-wrap").hidden = false; document.getElementById("cal-legend").hidden = false; document.getElementById("kal-woche").hidden = true;
       const m = this.month, last = new Date(m.getFullYear(), m.getMonth() + 1, 0), W6 = window.V6, H6 = window.V6H, t0 = iso(today);
       document.getElementById("cal-title").textContent = m.toLocaleDateString("de-CH", { month: "long", year: "numeric" });
+      document.getElementById("cal-sub").textContent = "Tag antippen: Einheiten ansehen und planen · KW antippen: Woche";
       let phasen = new Map();
       try { if (W6 && window.AN && window.V5UI && V5UI.C) { const S = AN.saison(t0, W6.rennenPrio(V5UI.C.races())); if (S) phasen = new Map((S.alle || S.wochen).map((w) => [w.woche, w.phase])); } } catch (e) { console.error(e); }
       const PH = window.V6P ? V6P.PHASE : {};
       let html = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((d) => `<div class="hd">${d}</div>`).join("");
       for (let w = mondayOf(m); w <= last; w = addDays(w, 7)) {
-        let h = 0, tss = 0, tage = "";
+        let h = 0, tss = 0, tage = "", hp = 0;
+        const MP = window.V7UI ? V7UI.meinPlanWoche(iso(w)) : [];          // V7 kalender-3.0: Mein Plan statt Garmin-Kalender
         for (let i = 0; i < 7; i++) {
           const d = addDays(w, i), ds = iso(d), ev = calEvents(ds);
           ev.forEach((e) => { if (e.a) { h += e.a.dur / 3600; tss += e.a.tss || 0; } });
           const cls = ["day", d.getMonth() !== m.getMonth() ? "out" : "", ds === t0 ? "today" : "", ds === this.sel ? "sel" : ""].join(" ");
           if (!W6) { tage += `<div class="${cls}" data-d="${ds}"><span class="dn">${d.getDate()}</span>` + ev.slice(0, 4).map((e) => `<div class="ev ${e.cls}" style="${e.c ? "--c:" + e.c : ""}">${esc(e.text)}</div>`).join("") + `</div>`; continue; }
           const frei = ev.filter((e) => e.a).map((e) => e.a.sport), zeichen = [], fokus = [];
-          for (const e of ev.filter((x) => x.p)) {
-            const k = frei.indexOf(e.p.sport);
-            if (k >= 0) { frei.splice(k, 1); zeichen.push([e.p.sport, "ist"]); } else zeichen.push([e.p.sport, ds < t0 ? "verpasst" : "plan"]);
-            if (H6 && ds >= t0) for (const f of H6.fokus(e.p)) if (!fokus.includes(f)) fokus.push(f);
+          for (const x of MP.filter((y) => y.date === ds)) {
+            hp += x.dur_s / 3600;
+            const k = frei.indexOf(x.sport);
+            if (k >= 0) { frei.splice(k, 1); zeichen.push([x.sport, "ist"]); } else zeichen.push([x.sport, ds < t0 ? "verpasst" : "plan"]);
+            if (ds >= t0 && window.V7UI) for (const f of V7UI.profil(x.e).fokus) if (!fokus.includes(f.key)) fokus.push(f.key);
           }
           for (const sp of frei) zeichen.unshift([sp, "ist"]);
           const test = ev.some((e) => e.cls === "test"), race = ev.some((e) => e.cls === "race");
@@ -3505,7 +3593,7 @@ const TABS = {
         }
         const ph = phasen.get(iso(w)), phv = ph && PH[ph] ? PH[ph] : null;
         const kwKnopf = window.V66UI ? ` data-kwmo="${iso(w)}" role="button" tabindex="0" aria-label="KW ${isoWeek(w)}: Wochenansicht öffnen"` : "";   // V6.6 kalender-2.0
-        html += `<div class="wk-band"${kwKnopf}><b>KW ${isoWeek(w)}</b>${phv ? `<span class="wk-ph"><i style="background:var(${phv[1]})"></i>${esc(phv[0])}</span>` : ""}<span class="wk-sum">${h ? hmm(h * 3600) + " h" : "–"}${tss ? ` · ${fmt(tss)} TL` : ""}</span>${kwKnopf ? W6.icon("weiter", 14) : ""}</div>` + tage;
+        html += `<div class="wk-band"${kwKnopf}><b>KW ${isoWeek(w)}</b>${phv ? `<span class="wk-ph"><i style="background:var(${phv[1]})"></i>${esc(phv[0])}</span>` : ""}<span class="wk-sum">${h ? hmm(h * 3600) + " h" : "–"}${hp ? ` / ${hmm(hp * 3600)} h` : ""}${tss ? ` · ${fmt(tss)} TL` : ""}</span>${kwKnopf ? W6.icon("weiter", 14) : ""}</div>` + tage;
       }
       document.getElementById("cal").innerHTML = html;
       document.getElementById("cal").classList.toggle("v6", !!W6);
@@ -3542,7 +3630,7 @@ const TABS = {
       const titel = pd(ds).toLocaleDateString("de-CH", { weekday: "long", day: "numeric", month: "long" });
       let mein = ""; try { mein = window.V66UI ? V66UI.tagSektion(ds) : ""; } catch (e) { console.error(e); }   // V6.6 eigenplan-1.0
       const html = `<h2 id="v59-ov-h" tabindex="-1">${esc(titel)}</h2>${mein}
-        ${mein ? `<h3 class="abschnitt">Garmin-Kalender, Absolviertes, Tests</h3>` : ""}
+        ${mein ? `<h3 class="abschnitt">Absolviert, Tests und Rennen</h3>` : ""}
         <div class="cal-day tb-liste">${ev.length ? ev.map(zeile).join("") : `<div class="hint">Kein Eintrag.</div>`}${window.TRUI ? window.TRUI.kalender(ds) : ""}</div>
         <div class="blatt-fuss"><button type="button" class="btn-zurueck" data-x aria-label="Zurück">${W6 ? W6.icon("zurueck", 22) : "←"}</button></div>`;
       const ov = V59.blatt("tag", html);
@@ -4118,7 +4206,7 @@ function calEvents(ds) {
   (D.lactate || []).forEach((l) => { if (l.date === ds && !(D.tests || []).some((t) => t.kind === l.kind && Math.abs(pd(l.date) - pd(t.date)) <= 4 * DAY)) ev.push({ cls: "test", text: "✓ " + KIND[l.kind], title: l.block || "" }); });
   cssTests().forEach((c) => { if (c.datum === ds && !(D.tests || []).some((t) => t.kind === "css" && Math.abs(pd(c.datum) - pd(t.date)) <= 4 * DAY)) ev.push({ cls: "test", text: "✓ CSS-Test", title: Number.isFinite(FK.css(c.t400, c.t200)) ? `CSS ${mmss(FK.css(c.t400, c.t200))} /100 m` : "" }); });
   D.activities.forEach((a) => { if (a.date === ds) ev.push({ cls: "", c: (SPORTS[a.sport] || SPORTS.andere).color, text: `${a.typ || SPORTS[a.sport].label} ${hmm(a.dur)}`, title: a.name, a }); });
-  (D.planned || []).forEach((p, i) => { if (p.date === ds) ev.push({ cls: "plan", c: (SPORTS[p.sport] || SPORTS.andere).color, text: "Plan: " + (p.title || ""), title: p.title + (p.dur_s ? " · " + hmm(p.dur_s) : ""), p, pi: i }); });
+  // V7 kalender-3.0: Einträge aus dem Garmin-Kalender (Enduco) erscheinen nicht mehr im Kalender; geplant = Mein Plan (V66UI/V7UI)
   return ev;
 }
 
@@ -4127,7 +4215,7 @@ function calEvents(ds) {
    ===================================================================== */
 v5Start();
 initKarte();
-V5_READY.finally(() => { const h0 = location.hash.slice(1); showTab(TAB_NAMES.includes(h0) || h0 === "checkin" ? h0 : "heute"); });   // V5.9.5: Start auf «Heute»
+V5_READY.finally(() => { const h0 = location.hash.slice(1); showTab(TAB_NAMES.includes(h0) || ALIAS[h0] || h0 === "checkin" ? h0 : "heute"); });   // V5.9.5: Start auf «Heute»
 }
 </script>
 </body>

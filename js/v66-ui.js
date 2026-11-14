@@ -92,6 +92,7 @@
   /** Abschnitt «Mein Plan» im Tagesblatt (Einheiten, Sperre, Aktionen). */
   M.tagSektion = function (ds) {
     if (!bereit()) return "";
+    if (window.V7UI && !window.V7UI.planGilt(montag(ds))) return "";      // V7: frühere Wochen ohne gespeicherten Plan zeigen keinen nachgerechneten Vorschlag
     const x = tagVon(ds); if (!x) return "";
     const { K, t } = x, W = V6();
     const karten = t.rennen ? `<p class="mp-leer">${W.icon("flagge", 16)} ${esc(t.rennen.name)}</p>`
@@ -376,26 +377,64 @@
     try { const S = AN().saison(heute(), V6().rennenPrio(C.races ? C.races() : [])); if (!S) return null; return V66().wochenart(S.alle || S.wochen).get(mo) || null; }
     catch (e) { return null; }
   };
+  /** V7 kalender-3.0 (Vorlage enduco): Woche = Tagesleiste, Wochenauswertung (Mein Plan gegenüber absolviert, je Sportart, Zeit in Zonen,
+      Trainingslast) und die Tage als Liste mit erledigten Garmin-Aktivitäten und den Einheiten von Mein Plan. Enduco erscheint hier nicht
+      (es bleibt gespeichert und zählt unter Analyse → Planvergleich). */
   M.wocheHTML = function (mo) {
     if (!bereit()) return "";
     const K = kontext(mo); if (!K) return `<p class="warn-t">Plan dieser Woche nicht berechenbar.</p>`;
-    const W = V6(), h = heute(), k = wochenKopf(mo, K);
-    const ist = istWoche(mo), plan = (C.D.planned || []).filter((p) => p && p.date >= mo && p.date <= add(mo, 6) && !V66().eigenGarmin(p, gesendet()));   // vergleich-1.4
+    const W = V6(), X = window.V7, h = heute(), ist = istWoche(mo);
+    const gilt = !window.V7UI || window.V7UI.planGilt(mo);          // frühere Wochen ohne gespeicherten Plan: nur Absolviertes
+    if (!gilt) K.w = Object.assign({}, K.w, { tage: K.w.tage.map((t) => Object.assign({}, t, { einheiten: [], gesperrt: false })) });
+    const k = wochenKopf(mo, K);
+    const MP = []; for (const t of K.w.tage) if (!t.rennen) for (const e of t.einheiten) MP.push({ date: t.date, sport: e.sport, dur_s: e.dauer * 60 });
+    const tageZ = X ? X.wocheTage(ist, MP, mo, h) : [];
+    const leiste = tageZ.map((t) => `<button type="button" class="wl-tag${t.heute ? " heute" : ""}" data-kwtag="${t.iso}" aria-label="${esc(tagText(t.iso))}: Tagesblatt öffnen">
+        <span class="wl-wt">${t.wt}</span><span class="wl-d">${+t.iso.slice(8)}</span>
+        <span class="wl-sp">${t.zeichen.slice(0, 3).map((z) => `<i class="${z.art}" style="--sp:${spFarbe(z.sport)}">${W.sportIcon(z.sport, 14)}</i>`).join("")}${t.zeichen.length > 3 ? `<small>+${t.zeichen.length - 3}</small>` : ""}</span></button>`).join("");
+    // Wochenauswertung
+    const SP3 = ["schwimm", "rad", "lauf"], sek = (x) => (isNum(x.mv) ? x.mv : x.dur || 0);
+    const planSp = { schwimm: 0, rad: 0, lauf: 0 }, istSp = { schwimm: 0, rad: 0, lauf: 0 };
+    for (const p of MP) if (planSp[p.sport] != null) planSp[p.sport] += p.dur_s;
+    for (const a of ist) if (istSp[a.sport] != null) istSp[a.sport] += sek(a);
+    const planS = SP3.reduce((s2, x) => s2 + planSp[x], 0), istS = SP3.reduce((s2, x) => s2 + istSp[x], 0), maxS = Math.max(planS, istS, 1);
+    const z5 = [0, 0, 0, 0, 0]; let zOhne = 0;
+    for (const a of ist) {
+      if (a.sport !== "rad" && a.sport !== "lauf") continue;
+      const g = X && window.FK ? X.pulsGrenzen(window.FK.activeProfile(C.D.zonen, a.date), a.sport) : null, z = g && Array.isArray(a.hh) ? X.histZonen(a.hh, g) : null;
+      if (z) z.forEach((v, i) => (z5[i] += v)); else zOhne += sek(a);
+    }
+    const z3 = X ? X.drei(z5) : [0, 0, 0], p3 = X ? X.prozent(z3) : null;
+    const stapel = (obj, max, rand) => `<span class="kw-stapel${rand ? " rand" : ""}" style="width:${Math.max(2, (100 * SP3.reduce((s2, x) => s2 + obj[x], 0)) / max).toFixed(1)}%">${SP3.map((x) => (obj[x] > 0 ? `<i style="flex:${obj[x]};--sp:${spFarbe(x)}"></i>` : "")).join("")}</span>`;
+    const tl = `${k.planTl || "–"} / ${Math.round(k.istTl) || "–"}`;
+    const ausw = `<div class="card kw-ausw">
+        <div class="kw-ausw-k"><div>${k.art ? `<span class="pl-tag${k.art.art === "erholung" ? " erh" : ""}">${esc(k.art.text)}</span>` : ""}<b>${esc(K.w.phase || "Woche")}</b>${K.w.bearbeitet ? `<small> · bearbeitet</small>` : ""}</div>
+          <button type="button" class="btn rp-ib" data-kwakt aria-label="Woche bearbeiten">${W.icon("mehr", 20)}</button></div>
+        ${gilt ? "" : `<p class="hint">Für diese Woche war kein eigener Plan gespeichert – gezeigt wird, was du absolviert hast.</p>`}
+        <div class="v7-k-zahlen"><div><b>${gilt ? hm(planS / 60) + " h" : "–"}</b><span>Mein Plan</span></div><div><b>${hm(istS / 60)} h</b><span>absolviert</span></div><div><b>${esc(tl)}</b><span>TL ${k.tlOffen ? "mind. " : "≈ "}Plan / Ist</span></div></div>
+        <div class="kw-st"><span>geplant</span>${stapel(planSp, maxS, true)}</div>
+        <div class="kw-st"><span>absolviert</span>${stapel(istSp, maxS, false)}</div>
+        <p class="kw-leg">${SP3.map((x) => `<i style="background:${spFarbe(x)}"></i>${x === "schwimm" ? "Schwimmen" : x === "rad" ? "Rad" : "Laufen"} ${hm(istSp[x] / 60)}<small>/${hm(planSp[x] / 60)}</small>`).join(" ")}</p>
+        ${p3 ? `<div class="kw-st"><span>Zonen</span><span class="v7-stapel">${z5.map((v, i) => (v > 0 ? `<i style="flex:${v};background:var(--zc-z${i + 1})"></i>` : "")).join("")}</span></div>
+          <p class="kw-leg">Rad und Laufen nach Puls: ${p3[0]} % unter LT1 · ${p3[1]} % LT1–LT2 · ${p3[2]} % über LT2${zOhne > 0 ? ` · ${esc(W.dauerText(zOhne))} ohne Puls` : ""}</p>` : ""}
+      </div>`;
+    const tests = (C.tests ? C.tests() : []).filter((t) => t && t.date >= mo && t.date <= add(mo, 6));
+    const NAME = { stufentest: "Stufentest", check: "Laktat-Kurzcheck", css: "CSS-Test" };
     const tage = K.w.tage.map((t) => {
-      const ia = ist.filter((a) => a.date === t.date), pa = plan.filter((p) => p.date === t.date);
-      const meins = t.rennen ? `<p class="mp-leer">${W.icon("flagge", 15)} ${esc(t.rennen.name)}</p>` : t.einheiten.map((e) => karte(e, K, t.date)).join("") || `<p class="mp-leer">frei</p>`;
-      const end = pa.length ? `<p class="kw-neben"><span class="mo-q">Enduco</span>${pa.map((p) => esc(p.title || "Einheit")).join(" · ")}</p>` : "";
-      const done = ia.length ? `<p class="kw-neben ist"><span class="mo-q">absolviert</span>${ia.map((a) => `${esc(a.name)} ${esc(W.dauerText(a.dur || 0))}`).join(" · ")}</p>` : "";
+      const ia = ist.filter((a) => a.date === t.date), tt = tests.filter((x) => x.date === t.date);
+      const done = ia.map((a) => `<button type="button" class="kw-akt" data-ex="${esc(a.id)}" aria-label="${esc(a.name || "Aktivität")} analysieren"><span class="mo-sp voll" style="--sp:${spFarbe(a.sport)}">${W.sportIcon(a.sport, 15)}</span>
+          <span class="mo-et"><b>${esc(a.name || "Aktivität")}</b><small>${esc(W.dauerText(sek(a)))}${isNum(a.km) && a.km > 0 ? ` · ${komma(Math.round(a.km * 10) / 10)} km` : ""}${isNum(a.tss) && a.tss > 0 ? ` · TL ${Math.round(a.tss)}` : ""}</small></span><span class="kw-ok">${W.icon("check", 14)}</span></button>`).join("");
+      const frei = ia.map((a) => a.sport);          // erledigt: eine Aktivität derselben Sportart am selben Tag (wie die Tagesleiste)
+      const meins = t.rennen ? `<p class="mp-leer">${W.icon("flagge", 15)} ${esc(t.rennen.name)}</p>` : t.einheiten.map((e) => { const j = frei.indexOf(e.sport); if (j >= 0) frei.splice(j, 1);
+        const kk = karte(e, K, t.date); return j >= 0 ? kk.replace('class="mo-e mp-e', 'class="mo-e mp-e erl') : kk; }).join("");
+      const tx = tt.map((x) => `<p class="kw-test"><i class="c-test"></i>${esc(NAME[x.kind] || x.kind)}${x.done ? " ✓" : x.status === "vorschlag" ? " (Vorschlag)" : ""}</p>`).join("");
       return `<li class="kw-tag${t.date === h ? " heute" : ""}${t.gesperrt ? " gesperrt" : ""}${t.date < h ? " vorbei" : ""}">
         <button type="button" class="kw-tk" data-kwtag="${t.date}" aria-label="${esc(tagText(t.date))}${t.gesperrt ? ", gesperrt" : ""}: Tagesblatt öffnen"><b>${wt(t.date)}</b><small>${esc(dkurz(t.date))}</small>${t.gesperrt ? W.icon("schloss", 13) : ""}</button>
-        <div class="kw-inh">${meins}${end}${done}</div></li>`;
+        <div class="kw-inh">${done}${meins}${tx}${!done && !meins && !tx ? `<p class="mp-leer">${t.gesperrt ? "gesperrt" : "frei"}</p>` : ""}</div></li>`;
     }).join("");
-    const tl = `${k.planTl ? (k.tlOffen ? "mind. " : "") + k.planTl : "–"} / ${Math.round(k.istTl) || "–"}`;
-    return `<div class="kw-kopf"><div>${k.art ? `<span class="pl-tag${k.art.art === "erholung" ? " erh" : ""}">${esc(k.art.text)}</span>` : ""}
-        <small>Mein Plan ${hm(k.planMin)} h · absolviert ${hm(k.istMin)} h · TL ≈ ${esc(tl)}${K.w.bearbeitet ? " · bearbeitet" : ""}</small></div>
-        <button type="button" class="btn rp-ib" data-kwakt aria-label="Woche bearbeiten">${W.icon("mehr", 20)}</button></div>
+    return `<div class="wl kw-leiste" role="group" aria-label="Tage der Woche">${leiste}</div>${ausw}
       <ol class="kw-tage">${tage}</ol>
-      <p class="hint">Mein Plan = Wochenvorschlag mit deinen Änderungen (${esc(V66().VERSIONS.eigenplan)}); Tag antippen für Training hinzufügen, sperren oder ändern. TL ≈ aus deinem Zonenprofil, absolviert nach Garmin.</p>`;
+      <p class="hint">Mein Plan = Wochenvorschlag mit deinen Änderungen (${esc(V66().VERSIONS.eigenplan)}); Tag antippen für Training hinzufügen, sperren oder ändern. Absolviert = Bewegungszeit laut Garmin, TL ≈ aus deinem Zonenprofil (${esc(window.V7 ? window.V7.VERSIONS.kalender : "")}).</p>`;
   };
   M.wocheBinden = function (box, mo, neu) {
     box.querySelectorAll("[data-kwtag]").forEach((b) => (b.onclick = () => window.APP && window.APP.tagBlatt && window.APP.tagBlatt(b.dataset.kwtag)));

@@ -44,7 +44,10 @@
   const ico = (k, w) => (window.V6 ? window.V6.icon(k, w) : "");
   /** Ein Satz zur Lage: geplante Einheit(en) und Bereitschaft (nur aus vorhandenen Werten). */
   function lageSatz() {
-    const r = UI() && UI().lastReadiness, E = L().geplantAm(C.D.planned, heuteISO());
+    // V7 heute-7.0: geplant = Mein Plan (eigene Einheiten), nicht mehr der Garmin-Kalender (Enduco)
+    const r = UI() && UI().lastReadiness, X = window.V7UI ? window.V7UI.meinTag(heuteISO()) : null;
+    if (X && X.t.rennen) return esc(`Heute ist Renntag: «${X.t.rennen.name}».`);
+    const E = X ? X.t.einheiten.map((e) => ({ p: { title: e.titel, sport: e.sport } })) : [];
     const titel = (p) => `«${p.title || SPORT_WORT[p.sport] || "Training"}»`;
     const teil1 = E.length === 1 ? `Heute steht ${titel(E[0].p)} an (${SPORT_WORT[E[0].p.sport] || E[0].p.sport || "Training"}).`
       : E.length > 1 ? `Heute stehen ${E.length} Einheiten an: ${E.map((e) => titel(e.p)).join(" und ")}.` : "Heute ist nichts geplant.";
@@ -261,7 +264,19 @@
     const ein = new Set(V.eingeblendet());
     const karten = [...document.querySelectorAll("[data-ausblendbar]")].filter((el) => el.id);
     const titel = (el) => (el.querySelector("h2") || {}).textContent || el.id;
-    const ov = oeffne("einst", `<div class="te-head"><h2 id="v59-ov-h" tabindex="-1">Einstellungen</h2><button class="btn" data-x>Schliessen</button></div>
+    // V7 navigation-7.0: Profil oben rechts – Bereiche nach Gruppen (Training, Daten, Darstellung, Labor), Labor = Expertenbereich
+    const zeile = (z, ic, t, u) => `<li><button type="button" data-esz="${z}">${ico(ic, 22)}<span><b>${esc(t)}</b><small>${esc(u)}</small></span>${ico("weiter", 18)}</button></li>`;
+    const ov = oeffne("einst", `<div class="te-head"><h2 id="v59-ov-h" tabindex="-1">Profil und Einstellungen</h2><button class="btn" data-x>Schliessen</button></div>
+      <section class="es" id="es-training"><h3>Training</h3><ul class="v6-aktionen">
+        ${zeile("laktat#zc-card", "fokus", "Trainingszonen", "Zonen je Sportart aus deinen Schwellen, Freigabe und Verlauf")}
+        ${zeile("laktat", "ampel", "Laktat und Schwellen", "Stufentests, Einzelmessungen, LT1 und LT2")}
+        ${zeile("plan-tests", "kalender", "Testkalender", "Wann welcher Test sinnvoll ist")}
+        ${zeile("plan-modell", "intervall", "Trainingsmodell", "Intensität je Sportart")}</ul></section>
+      <section class="es" id="es-labor"><h3>Labor (Expertenbereich)</h3><ul class="v6-aktionen">
+        ${zeile("labor", "trend", "Labor öffnen", "Rechennachweise, Modellversionen, Datenqualität, Enduco im Einzelnen")}
+        ${zeile("wissen", "ablauf", "Methodische Grundlagen", "Alle Regeln der Seite mit Quellen")}
+        ${zeile("bibliothek", "plan", "Enduco-Datenbestand", "Workouts aus Garmin, nur zur Auswertung")}</ul></section>
+      <h3 class="es-gruppe">Daten</h3>
       <section class="es" id="es-direkt"><h3>Direkt speichern (GitHub)</h3>
         ${C.IS_DEMO ? `<p class="hint">In der Demo wird nichts gesendet.</p>` : !aktiv ? `<p class="hint">Erst mit deinem Seitenpasswort entsperren.</p>` : `
         <p class="es-st${st && st.zustand === "fehler" ? " down" : ""}" role="status">${hat ? "Schlüssel gespeichert (verschlüsselt auf diesem Gerät)." : "Noch kein Schlüssel: Eingaben bleiben auf diesem Gerät, Rückweg «Exportieren»."} ${st ? esc(st.text) : ""}${st && st.offen ? ` <b>${st.offen}</b> Eingabe${st.offen === 1 ? "" : "n"} noch nicht gesendet.` : ""}</p>
@@ -278,13 +293,19 @@
         ${(eg.dateien || []).length ? `<details><summary>Zuletzt gesendet</summary><ul class="es-l">${eg.dateien.slice(-8).reverse().map((d) => `<li>${new Date(d.zeit).toLocaleString("de-CH", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} · ${d.n} ${d.art === "bestaetigung" ? "Bestätigung" : "Eingabe"}${d.n === 1 ? "" : "n"}</li>`).join("")}</ul></details>` : ""}`}
       </section>
       <section class="es" id="es-verlauf"><h3>Garmin-Verlauf einlesen</h3>${verlaufHtml()}</section>
-      <section class="es" id="es-bed"><h3>Bedienung</h3>
+      <h3 class="es-gruppe">Darstellung</h3>
+      <section class="es" id="es-bed"><h3>Design und Erklärtexte</h3>
         <div class="es-thema" role="radiogroup" aria-label="Darstellung"><span>Darstellung</span>
           <label class="row"><input type="radio" name="es-thema" value="dunkel" ${lsGet("sf.theme") === "hell" ? "" : "checked"}> Dunkel (Standard)</label>
           <label class="row"><input type="radio" name="es-thema" value="hell" ${lsGet("sf.theme") === "hell" ? "checked" : ""}> Hell</label></div>
         <label class="row"><input type="checkbox" data-erkl ${V.erklImmer() ? "checked" : ""}> <span>Erklärtexte, Regeln und Quellen immer zeigen (sonst hinter dem Knopf <b>i</b> je Karte)</span></label></section>
       <section class="es" id="es-aus"><h3>Ausgeblendete Karten</h3><p class="hint">Ausgeblendet heisst nicht gelöscht: Die Daten bleiben. Einblenden gilt für dieses Gerät.</p>
         <ul class="es-l">${karten.map((el) => `<li><label class="row"><input type="checkbox" data-ein="${esc(el.id)}" ${ein.has(el.id) ? "checked" : ""}> <span><b>${esc(titel(el))}</b><br><small>${esc(el.dataset.ausblendbar)}</small></span></label></li>`).join("") || "<li>Keine.</li>"}</ul></section>`);
+    ov.querySelectorAll("[data-esz]").forEach((b) => (b.onclick = () => {
+      const [v, id] = b.dataset.esz.split("#"); V.schliessen();
+      if (window.APP && window.APP.showTab) window.APP.showTab(v); else location.hash = "#" + v;
+      if (id) setTimeout(() => { const el = $(id); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); }, 160);
+    }));
     const f = ov.querySelector("#es-gh"), msg = ov.querySelector("#es-msg");
     if (f) f.onsubmit = async (e) => { e.preventDefault(); try { await E.schluesselSetzen(f.t.value); f.t.value = ""; msg.textContent = "Gespeichert. Ich sende jetzt, was offen ist."; await E.senden(); V.einstellungen(); } catch (err) { msg.textContent = err.message; } };
     ov.querySelectorAll("[data-es]").forEach((b) => (b.onclick = async () => {

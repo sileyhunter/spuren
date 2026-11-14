@@ -103,16 +103,28 @@
       ${e.pr && e.pr.balken.length ? V6().profilSVG(e.pr, { h: klein ? 28 : 44 }) : `<p class="ek-ohne">Keine Schritte im Kalender – Ziele siehe Garmin.</p>`}
       <button type="button" class="ek-auf" data-ek="${esc(e.key)}" aria-label="Einheit öffnen: ${esc(titel)}"></button></div>`;
   }
+  /** V7 heute-7.0: Heutiges Training = erledigte Garmin-Aktivitäten von heute und die Einheiten aus Mein Plan (eigenplan-1.0).
+      Enduco-Workouts (Garmin-Kalender, «neu von Enduco») erscheinen hier nicht mehr – sie bleiben gespeichert und zählen im Planvergleich. */
   function plan() {
     const box = $("heute-plan"); if (!box) return;
-    const D = C.D, day = heuteISO(), st = L().standText(D.updated, day, D.updated_lauf);
-    const E = H.heute(), N = H.neu();
+    const D = C.D, day = heuteISO(), st = L().standText(D.updated, day, D.updated_lauf), U = window.V7UI;
+    const X = U ? U.meinTag(day) : null, rennen = X && X.t.rennen, E = X && !rennen ? X.t.einheiten : [];
+    const A = (D.activities || []).filter((a) => a && a.date === day);
+    const frei = A.map((a) => a.sport);                                           // eine erfasste Aktivität derselben Sportart erledigt eine geplante Einheit
+    const karten = E.map((e) => { const k = frei.indexOf(e.sport); if (k >= 0) frei.splice(k, 1); return { e, erledigt: k >= 0 }; });
+    const leer = !A.length && !E.length && !rennen;
     box.innerHTML = `<div class="ek-kopfzeile"><div><h2>Heutiges Training</h2>${st ? `<span class="ek-stand">${esc(st.text)}</span>` : ""}</div>
         <button type="button" class="btn" data-v6="optionen">Optionen ${V6().icon("plus", 18)}</button></div>
-      ${E.length ? E.map((e) => karte(e)).join("") : `<div class="card ek-leer"><p>Für heute ist in Garmin nichts geplant.</p></div>`}
-      ${N.length ? `<h3 class="abschnitt ek-neu-h">${V6().icon("plus", 15)}Neu von Enduco, noch ohne Datum</h3>${N.map((e) => karte(e, true)).join("")}` : ""}
+      ${rennen ? `<div class="card ek-test v7-rennen">${V6().icon("flagge", 18)}<b>${esc(rennen.name)}</b><small>Renntag</small></div>` : ""}
+      ${U ? A.map((a) => U.aktKarte(a)).join("") : ""}
+      ${U ? karten.map((k) => k.erledigt ? U.einheitKarte(k.e, day, true).replace('class="card ek-karte v7-ek klein"', 'class="card ek-karte v7-ek klein v7-erl"') : U.einheitKarte(k.e, day)).join("") : ""}
+      ${leer ? `<div class="card ek-leer"><p>${X && X.t.gesperrt ? "Heute ist gesperrt – kein Training geplant." : "Für heute ist nichts geplant."}</p>
+        ${X && !X.t.gesperrt ? `<button type="button" class="btn" data-v7add>${V6().icon("plus", 16)} Training hinzufügen</button>` : ""}</div>` : ""}
       ${testHinweis(day)}`;
     binden(box);
+    if (U) U.binden(box);
+    const add = box.querySelector("[data-v7add]");
+    if (add) add.onclick = () => { if (window.V66UI && window.V66UI.hinzufuegen) window.V66UI.hinzufuegen(day, () => V59().schliessen()); };
   }
   /** V6.2 testplan-1.0: Test heute oder morgen (eingetragen oder Vorschlag nach Regel) – nur Hinweis, nichts wird nach Garmin geschrieben. */
   function testHinweis(day) {
@@ -207,7 +219,6 @@
     const W = V6(), pa = C.pmcHeute ? C.pmcHeute() : null, st = pa ? W.status(pa.form) : null;
     const sg = (v) => (v > 0 ? "+" + v : v < 0 ? "−" + Math.abs(v) : "0");
     const lage = pa ? W.statusLage(pa.form) : null;
-    const E = H.heute(), rE = E.find((e) => ROUTBAR.includes(e.sport));
     const akt = [
       ["check", "Check-in", befundHeute() ? "Befinden von heute ansehen oder ändern" : "Vier kurze Fragen zum Befinden", "checkin"],
       ["energie", "Verpflegung erfassen", "Fueling einer Einheit (Ausdauer)", "fueling"],
@@ -215,7 +226,7 @@
       ["schwimm", "CSS-Test eintragen", "400 m und 200 m (Schwimmen)", "css"],
       ["kalender", "Kalender öffnen", "Woche und Monat mit geplanten Einheiten", "kalender"],
     ];
-    if (rE && window.TRUI && !C.IS_DEMO) akt.splice(1, 0, ["route", "Passende Route finden", `für «${rE.p.title || SPORT_WORT[rE.sport]}»`, "route"]);
+    akt.splice(1, 0, ["plus", "Training hinzufügen", "Eigene Einheit für heute (Mein Plan)", "hinzu"]);
     const html = `<div class="blatt-titel">${W.icon("plus", 34)}<h2 id="v59-ov-h" tabindex="-1">Optionen für heute</h2></div>
       ${pa ? `<div class="kv ek-kv"><div><b>${pa.fitness}</b><span>Fitness</span></div><div><b>${pa.ermuedung}</b><span>Ermüdung</span></div><div><b>${sg(pa.form)}</b><span>Form</span></div></div>
       <div class="st-block"><div class="st-kopf"><span class="abschnitt">${W.icon("status", 15)}Trainingsstatus</span><b class="st-farbe" style="--stc:${st.farbe}">${esc(st.name)}</b></div>
@@ -225,7 +236,7 @@
           Form = Fitness − Ermüdung (${esc(pa.v)}); Bänder nach Coggan, eigene Wörter (${esc(W.VERSIONS.status)}). Kein medizinisches Mass.</p></div>`
         : `<p class="ek-ohne">Für den Trainingsstatus fehlen noch Einheiten.</p>`}
       <ul class="v6-aktionen">${akt.map(([ic, t, s, a]) => `<li><button type="button" data-akt="${a}">${W.icon(ic, 22)}<span><b>${esc(t)}</b><small>${esc(s)}</small></span>${W.icon("weiter", 18)}</button></li>`).join("")}</ul>
-      <p class="ek-quelle">Einheiten anlegen, verschieben oder ändern geht in Enduco bzw. Garmin – diese Seite liest nur.</p>
+      <p class="ek-quelle">Eigene Einheiten planst du in Mein Plan (Kalender, Tag antippen). Nach Garmin geht nur, was du mit «An Garmin senden» auslöst.</p>
       <div class="blatt-fuss"><button type="button" class="btn-zurueck" data-x aria-label="Zurück">${W.icon("zurueck", 22)}</button></div>`;
     const ov = V59().blatt("optionen", html);
     ov.querySelectorAll("[data-akt]").forEach((b) => (b.onclick = () => {
@@ -235,7 +246,7 @@
       if (a === "laktat") gehe("laktat");
       if (a === "css") gehe("schwimmen", "sw-css-card");
       if (a === "kalender") gehe("kalender");
-      if (a === "route" && rE) { V59().schliessen(); window.TRUI.openPlan(`${rE.p.date}|${rE.key.slice(2)}`); }
+      if (a === "hinzu" && window.V66UI && window.V66UI.hinzufuegen) window.V66UI.hinzufuegen(heuteISO(), () => V59().schliessen());
     }));
   };
 
@@ -256,7 +267,7 @@
       <div class="blatt-fuss"><button type="button" class="btn-zurueck" data-x aria-label="Zurück">${W.icon("zurueck", 22)}</button>
         <button type="button" class="btn primary gross" data-akt="mehr">Einzelheiten</button></div>`;
     const ov = V59().blatt("bereit", html);
-    ov.querySelector('[data-akt="mehr"]').onclick = () => gehe("heute", "rd-wrap");
+    ov.querySelector('[data-akt="mehr"]').onclick = () => gehe("erholung", "rd-wrap");
   };
 
   /** V6.1 wellness-1.0: Garmins eigene Werte (Readiness, Body Battery beim Aufwachen, Stress gestern) – nur von heute bzw. gestern. */
@@ -274,7 +285,9 @@
   function woche() {
     const box = $("wochen-leiste"); if (!box) return;
     const W = V6(), D = C.D, day = heuteISO();
-    const w = W.woche(D.activities, D.planned, day, H.planDauer);
+    const mo = window.V64 ? window.V64.montag(day) : day;
+    const MP = window.V7UI ? window.V7UI.meinPlanWoche(mo).map((x) => ({ date: x.date, sport: x.sport, dur_s: x.dur_s })) : [];   // V7: Mein Plan statt Garmin-Kalender
+    const w = W.woche(D.activities, MP, day, (p) => p.dur_s);
     const WORT = { ist: "erledigt", plan: "geplant", verpasst: "geplant, keine Aktivität dieser Sportart erfasst" };
     const tage = w.tage.map((t) => {
       const lab = `${tagText(t.iso)}: ${t.zeichen.length ? t.zeichen.map((z) => `${SPORT_WORT[z.sport] || z.sport} ${WORT[z.art]}`).join(", ") : "nichts"}`;
@@ -286,7 +299,7 @@
       <div class="wl-fort">
         <div><span>Trainings</span><b>${w.n_ist} <small>/ ${w.n_woche}</small></b><i style="--p:${bar(w.n_ist, w.n_woche)}%"></i></div>
         <div><span>Dauer</span><b>${esc(W.dauerText(w.s_ist))} <small>/ ${esc(W.dauerText(w.s_woche))}</small></b><i style="--p:${bar(w.s_ist, w.s_woche)}%"></i></div></div>
-      <p class="hint">Erledigt = erfasste Aktivitäten (kommen mit dem Nacht-Update); geplant = Garmin-Kalender. Ausgefüllt = erledigt, Rand = geplant, grau = geplant, aber an diesem Tag keine Aktivität dieser Sportart erfasst.
+      <p class="hint">Erledigt = erfasste Aktivitäten (kommen mit dem Nacht-Update); geplant = Mein Plan. Ausgefüllt = erledigt, Rand = geplant, grau = geplant, aber an diesem Tag keine Aktivität dieser Sportart erfasst.
         Woche = erledigt + noch geplant + verpasst${w.n_verpasst ? ` (${w.n_verpasst} verpasst)` : ""}.</p>`;
     box.querySelectorAll("[data-wltag]").forEach((b) => (b.onclick = () => { if (window.APP && window.APP.tagBlatt) window.APP.tagBlatt(b.dataset.wltag); }));   // V6.6
   }

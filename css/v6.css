@@ -709,3 +709,161 @@ section.view:has(> nav.unter) * { scroll-margin-top: 66px; }
 .kw-kopf > div { flex: 1; min-width: 0; } .kw-kopf .btn { flex: none; }
 
 .pl-w-klick { cursor: pointer; } .pl-w-klick:focus-visible { outline: 2px solid var(--accent-text, var(--accent)); outline-offset: 2px; }
+
+/* ======================================================================================================================
+   V7 navigation-7.0, analyse-start-1.0, planvergleich-1.0, kalender-3.0 (Auftrag V7 vom 14.11.2026, Vorlage enduco):
+   erste Ebene einfach, Einzelheiten als eigene Ansicht mit «Zurück» oben links; ab 1024 px Seitenleiste statt Leiste unten.
+   Nur Variablen, keine festen Farben.
+   ====================================================================================================================== */
+.v7-kopf { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: 10px; padding: 10px max(14px, env(safe-area-inset-left, 0px)) 8px;
+  background: var(--bg); }
+.v7-kopf.top { position: static; padding: 14px 18px 2px; }
+.v7-zurueck { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border: 0; border-radius: 999px; background: var(--surface-2); color: var(--fg); cursor: pointer; }
+.v7-zurueck:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.v7-h1 { margin: 0; font: 650 19px/1.2 var(--f-body); min-width: 0; overflow-wrap: anywhere; }
+.v7-h1.gross { font: 700 30px/1.15 var(--f-body); letter-spacing: -.01em; }
+section.view > .v7-kopf + .dash { padding-top: 6px; }
+.v7-abschnitt { grid-column: 1 / -1; margin: 14px 2px 2px; font: 600 12px/1.25 var(--f-body); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.v7-liste { grid-column: 1 / -1; }
+
+/* Analyse-Start: Karten mit Zahlen und kleiner Grafik, ganze Karte antippbar */
+.v7-gitter { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (min-width: 700px) { .v7-gitter { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1180px) { .v7-gitter { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.v7-karte { display: flex; flex-direction: column; align-items: stretch; gap: 9px; text-align: left; color: var(--fg); font: inherit; cursor: pointer; min-width: 0; }
+.v7-karte:active { transform: scale(.99); }
+.v7-karte:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.v7-k-kopf { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 7px; font: 600 11.5px/1.2 var(--f-body); letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muted); }
+.v7-k-kopf svg:last-child { color: var(--faint); }
+.v7-k-unter { font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+.v7-k-zahlen { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 12px; }
+.v7-k-zahlen div { display: flex; flex-direction: column; min-width: 0; }
+.v7-k-zahlen b { font: 700 21px/1.15 var(--f-display); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.v7-k-zahlen b small { font: 500 12px var(--f-body); color: var(--muted); }
+.v7-k-zahlen span { font-size: 11.5px; color: var(--muted); }
+.v7-k-fuss { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.v7-k-fuss i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 4px; }
+.v7-k-text, .v7-k-leer { margin: 0; font-size: 13.5px; color: var(--muted); }
+.v7-mini { width: 100%; height: 44px; display: block; }
+.v7-seg, .v7-stapel { display: flex; gap: 2px; height: 10px; border-radius: 6px; overflow: hidden; }
+.v7-seg i, .v7-stapel i { display: block; min-width: 3px; }
+.v7-stapel { height: 14px; flex: 1; }
+.v7-stapel.leer { background: var(--surface-2); align-items: center; padding: 0 8px; height: 18px; }
+.v7-stapel.leer span { font-size: 11px; color: var(--muted); }
+
+/* Planvergleich */
+.v7-pv-nav { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; text-align: center; }
+.v7-pv-nav h2 { margin: 0 0 4px; }
+.v7-pill { display: inline-block; font-size: 11.5px; padding: 3px 9px; border-radius: 999px; background: var(--ok-bg); color: var(--ok-text); }
+.v7-pill.warn { background: var(--warn-bg); color: var(--warn-text); }
+.v7-h2 { margin: 0; }
+.v7-paar { display: flex; flex-direction: column; gap: 6px; }
+.v7-paar > div { display: grid; grid-template-columns: 74px minmax(0, 1fr) 64px; align-items: center; gap: 8px; }
+.v7-paar span { font-size: 12px; color: var(--muted); }
+.v7-paar b { font: 600 13px var(--f-body); text-align: right; font-variant-numeric: tabular-nums; }
+.v7-b { display: block; height: 10px; border-radius: 5px; background: var(--f); min-width: 2px; }
+.v7-b.soll { background: transparent; box-shadow: inset 0 0 0 2px var(--f); }
+.v7-sp { display: flex; flex-direction: column; gap: 6px; padding: 6px 0; border-top: 1px solid var(--line); }
+.v7-sp:first-of-type { border-top: 0; }
+.v7-sp-k { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.v7-sp-k small { margin-left: auto; font-weight: 500; color: var(--muted); font-size: 12px; }
+.v7-sp-k .ek-sport { width: 28px; height: 28px; border-radius: 8px; }
+.v7-st-zeile { display: grid; grid-template-columns: 74px minmax(0, 1fr); align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+table.t.v7-zt { font-size: 12.5px; }
+table.t.v7-zt td small { display: block; color: var(--muted); font-size: 11px; }
+.v7-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: 1px; }
+.v7-nz { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
+.v7-vl { display: flex; align-items: flex-end; gap: 4px; height: 118px; }
+.v7-vl-w { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; align-items: stretch; gap: 4px; background: none; border: 0; border-radius: 8px;
+  padding: 4px 1px 0; color: var(--muted); font: inherit; cursor: pointer; }
+.v7-vl-w.akt { background: var(--surface-2); color: var(--fg); }
+.v7-vl-w.blass .v7-vl-s { opacity: .55; }
+.v7-vl-s { flex: 1; display: flex; align-items: flex-end; justify-content: center; gap: 2px; }
+.v7-vl-s i { display: block; width: 40%; max-width: 12px; border-radius: 3px 3px 0 0; background: var(--accent); min-height: 1px; }
+.v7-vl-s i.soll { background: transparent; box-shadow: inset 0 0 0 2px var(--accent); }
+.v7-vl-w small { font-size: 10.5px; text-align: center; }
+.v7-vl-leg { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin: 0; }
+.v7-vl-leg i { display: inline-block; width: 12px; height: 10px; border-radius: 2px; background: var(--accent); margin-left: 6px; }
+.v7-vl-leg i.soll { background: transparent; box-shadow: inset 0 0 0 2px var(--accent); margin-left: 0; }
+.v7-methode { grid-column: 1 / -1; background: var(--surface); border-radius: var(--r-card); padding: 14px 18px; font-size: 13px; color: var(--muted); }
+.v7-methode summary { cursor: pointer; color: var(--fg); font-weight: 600; min-height: 32px; display: flex; align-items: center; }
+.v7-pv-leer p { color: var(--muted); margin: 0; }
+#v7-pv { display: flex; flex-direction: column; gap: 12px; }
+
+/* Plan: Übersicht oben */
+.v7-plan-held { background: linear-gradient(140deg, var(--accent-soft), var(--surface) 62%); gap: 10px; }
+.card .v7-held-t { margin: 0; font: 700 24px/1.15 var(--f-body); }
+.v7-held-s, .v7-held-ph { margin: 0; color: var(--muted); font-size: 13.5px; }
+.v7-held-ph b { color: var(--fg); }
+.v7-fort { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.v7-fort i { display: block; height: 100%; background: var(--good); border-radius: 4px; }
+.v7-held-k { align-self: flex-start; }
+.v7-labor-intro p { margin: 0; color: var(--muted); }
+
+/* Heute: Mein Plan und erledigte Aktivitäten */
+.ek-sport.voll { background: var(--sp); color: var(--bg); }
+.v7-erledigt { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--good); white-space: nowrap; }
+.v7-erl { opacity: 1; }
+.v7-erl .ek-titel b::after { content: " ✓"; color: var(--good); }
+.v7-rennen { display: flex; align-items: center; gap: 10px; }
+
+/* Ab 1024 px: Seitenleiste links statt Leiste unten (nicht einfach die Handy-Ansicht vergrössert) */
+@media (min-width: 1024px) {
+  main { margin-left: 220px; }
+  nav.leiste { position: fixed; left: 0; top: var(--v7-oben, 56px); bottom: 0; width: 220px; display: flex; flex-direction: column; gap: 4px; padding: 14px 12px;
+    border-right: 1px solid var(--line); border-top: 0; }
+  nav.leiste button { flex-direction: row; justify-content: flex-start; gap: 12px; min-height: 46px; padding: 0 14px; border-radius: 12px; font-size: 15px; }
+  nav.leiste button span { font-size: 15px; }
+  nav.leiste button[aria-current="page"] { background: var(--surface-2); color: var(--fg); }
+  body.plan-aktiv main { margin-left: 0; }
+  .v7-kopf { padding-left: 24px; }
+  .v7-kopf.top { padding: 22px 24px 4px; }
+}
+.v7-lt { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); align-items: baseline; gap: 4px 14px; }
+.v7-lt > span { font-size: 13px; color: var(--muted); }
+.v7-lt > small { font-size: 11px; letter-spacing: .06em; color: var(--muted); }
+.v7-lt b { font: 700 20px/1.15 var(--f-display); font-variant-numeric: tabular-nums; }
+.v7-lt b small { font: 500 12px var(--f-body); color: var(--muted); }
+
+/* Kalender kalender-3.0: Kopf auf der Seite, Woche als Leiste, Auswertung und Tage als eigene Karten */
+.kal-v7 { display: flex; flex-direction: column; gap: 12px; position: relative; }
+.kal-v7 > .card-head { padding: 4px 2px 0; align-items: center; }
+.kal-v7 #cal-title { font: 700 28px/1.15 var(--f-body); letter-spacing: -.01em; margin: 0; cursor: pointer; text-transform: none; }
+.kal-v7 #cal-title:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+.kal-v7 #cal-sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.kal-monat { position: absolute; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
+.kal-v7 .kal-ans { align-self: flex-start; }
+.kal-v7 #cal-wrap, .kal-v7 .kw-tage, .kal-v7 .kw-leiste { background: var(--surface); border-radius: var(--r-card); }
+.kal-v7 #cal-wrap { padding: 8px; }
+.kal-v7 .kw-leiste { padding: 8px 6px 6px; }
+.kal-v7 .kw-tage { padding: 2px 14px; }
+.kal-v7 .kw-tag:first-child { border-top: 0; }
+.kal-v7 .cal-legend { padding: 0 4px; }
+.kal-v7 .kal-woche { display: flex; flex-direction: column; gap: 12px; }
+.kal-v7 .kal-woche > .hint { margin: 0 4px; }
+.kw-ausw { gap: 10px; }
+.kw-ausw-k { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.kw-ausw-k > div { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.kw-ausw-k b { font-size: 16px; }
+.kw-st { display: grid; grid-template-columns: 74px minmax(0, 1fr); align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.kw-stapel { display: flex; gap: 2px; height: 12px; border-radius: 6px; overflow: hidden; }
+.kw-stapel i { display: block; background: var(--sp); min-width: 2px; }
+.kw-stapel.rand i { background: transparent; box-shadow: inset 0 0 0 2px var(--sp); border-radius: 3px; }
+.kw-leg { margin: 0; font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.kw-leg i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 2px; }
+.kw-leg small { color: var(--faint); }
+.kw-akt { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: center; width: 100%; text-align: left; border: 0; cursor: pointer;
+  background: var(--surface-2); border-radius: 12px; padding: 8px 10px; color: var(--fg); font: inherit; }
+.kw-akt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mo-sp.voll { background: var(--sp); color: var(--bg); }
+.kw-ok { color: var(--good); display: grid; place-items: center; }
+.kw-test { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.kal-v7 > .card-head { flex-wrap: nowrap; }
+.kal-heute { flex: none; border-radius: 999px; }
+.kal-leiste { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.kal-leiste .row { flex-wrap: nowrap; gap: 8px; }
+.mo-e.erl .mo-et b::after { content: " ✓"; color: var(--good); }
+.mo-e.erl { opacity: .78; }
+.es-gruppe { margin: 18px 2px 6px; font: 600 12px/1.25 var(--f-body); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+#es-training .v6-aktionen button, #es-labor .v6-aktionen button { background: var(--surface); }
