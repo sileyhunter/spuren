@@ -47,9 +47,9 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
 - **V5.9:** `js/eingang.js` (Direkt speichern: Delta, EGS1, GitHub-Schlüssel, Warteschlange), `js/v59-logik.js` (Rechenlogik ohne DOM:
   Check-in, Gefühl gegen Morgenwerte, Heute geplant, Trainingslast, CSS), `js/v59.js` (Check-in, Einstellungen, Laktat bestätigen …),
   `tools/eingang.mjs` (eingang/ einlesen, aufräumen, prüfen), `tools/eingaben_lib.mjs` (Zuordnung Eingaben → merge_daily.py), `tests/test_v59.cjs`,
-  `tools/last.py` (V5.9.1 Trainingslast `tl2` mit der LT2, Vergleich; Abschnitt «FTP und Trainingslast»)
+  `tools/last.py` (V5.9.1 Trainingslast `tl2` mit der LT2, seit V6.6.2 last-2.1 je System; Vergleich; Abschnitt «FTP und Trainingslast»)
 - **V6.0:** `css/v6.css` (Design design-1.0, seit V6.6.1 design-1.1 mit den Planer- und Datenfarben: dunkel als Standard, Zonen-, Sport- und Statusfarben, Pillen, Blätter), `js/v6.js` (ohne DOM:
-  Zonen und Farben, Balkenprofil profil-1.0, Fokus, Trainingsstatus status-1.0, Wochenleiste, Rennen/Phasen, eigene Symbole), `js/v6-heute.js`
+  Zonen und Farben, Balkenprofil profil-1.0, Fokus, Trainingsstatus status-1.1, Wochenleiste, Rennen/Phasen, eigene Symbole), `js/v6-heute.js`
   (Heute: Kacheln, Heutiges Training, Einheit, Optionen, Bereitschaft als Blätter, Wochenleiste), `js/v6-plan.js` (Plan: Rennen, Phasen,
   Wochenübersicht), `tests/test_v6.cjs`
 - **V6.1 (Etappe 1 Daten):** `tools/wellness.py` (Readiness, Body Battery, Stress je Tag, wellness-1.0; `offen` = Tage zum Nachholen),
@@ -434,7 +434,8 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - Heute (V6.0.1): Kacheln Ampel/Status/Check-in, Begrüssung mit Check-in-Blatt, Heutiges Training (Karten mit Zonen-Chips und Balkenprofil,
   Einheit als Blatt), Wochenleiste. Balkenprofil `profil-1.0`: Breite = Dauer, Höhe = Lage im aktiven Zonenprofil, Farbe = Zone (Unterzonen
   aus dem Text der Zone, z. B. «FatMax a–b»); ohne Zielbereich grau, ohne Dauer blass. Fokus = Zeitanteile der aktiven Schritte ohne
-  Ein-/Ausfahren und Erholung, nur Schritte mit Dauer (aktive Schritte ohne Dauer separat als «Dauer offen»), ab 10 %, höchstens drei. Trainingsstatus `status-1.0` aus der Form (Bänder nach Coggan); «Übertraining» nie.
+  Ein-/Ausfahren und Erholung, nur Schritte mit Dauer (aktive Schritte ohne Dauer separat als «Dauer offen»), ab 10 %, höchstens drei. Trainingsstatus `status-1.1` aus der Form zu Tagesbeginn
+  (`FK.pmcMorgen`: Fitness und Ermüdung bis gestern, wie die Ampel – sonst zählt der laufende Tag bis zum Nacht-Update als Ruhetag; Bänder nach Coggan); «Übertraining» nie.
 - Plan (V6.0.2, `js/v6-plan.js`): Rennen (A/B nach `V6.rennenPrio`, Streckenlängen nur bei bekanntem Format, keine Zielzeit erfunden),
   Phasen aus `AN.saison` als Zeitstrahl, Wochenübersicht (absolviert gefüllt, geplant als Rand, Phase als Streifen), Wochenstunden-Vorschlag
   (`V56.saison`) und Testkalender. Kalender: Wochenband «KW · Phase · Stunden · TL», heute orange, Sport-Symbole, Fokus-Punkte; ein Tag
@@ -504,10 +505,10 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
   Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
   Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
-- **Wissen `wissen-1.6` (`js/wissen.js`, 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
+- **Wissen `wissen-1.7` (`js/wissen.js`, 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
   1.3: Kapitel «Vorschlag und Enduco vergleichen», 1.4: Prüfung der Quellen – Formulierungen nicht stärker als die Studien, eigene Festlegungen
   gekennzeichnet, Versionen wie im Code, 1.5: Wahl je Tag und Bibliothek im Kapitel «vergleich», 1.6: Mein Plan, TL ≈ geplanter Einheiten,
-  bearbeitete Woche im Vergleich):** alle Modelle und Regeln der Seite in eigenen Worten (nie Text aus Studien oder Webseiten übernehmen),
+  bearbeitete Woche im Vergleich, 1.7: Form zu Tagesbeginn und Rad-Last je System im Kapitel «last»):** alle Modelle und Regeln der Seite in eigenen Worten (nie Text aus Studien oder Webseiten übernehmen),
   jede Aussage mit Quelle `[[id]]` aus `WS.QUELLEN` (Autoren, Jahr, Titel, Zeitschrift, DOI; ohne DOI begründet), Kapitel-Verweise `[[#id]]`.
   Neue oder geänderte Regel: Kapitel und `WS.REGELN` nachführen; `tests/test_v64.cjs` prüft Verweise, DOI-Form, jede Quelle verwendet,
   Schweizer Schreibweise (kein ß) und keine Wattwerte in den Texten. Nie persönliche Zahlen in die Wissenstexte.
@@ -549,7 +550,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 ## Meine Entwicklung und Regeln V5.5
 - Vergleiche nur aus `eb`-Blöcken (Rad 190–210 W je System Rolle/Rennrad/MTB, Laufen 5:20–5:40/km flach), Urteil `entwicklung-1.0`
   (mind. 3 je Zeitraum, Bootstrap-Intervall, Guards Hitze/Höhe/Drift/Ausreisser). Laktat zählt erst bestätigt (B1), CSS nur aus Tests.
-- Form `pmc-2.0` (Fitness − Ermüdung desselben Tages), Zonen `zonenverteilung-2.0` (je Sportart, Zonen je Datum, Garmin-Zonen nicht beurteilt).
+- Form `pmc-2.0` (Fitness − Ermüdung desselben Tages; «Heute» zeigt seit status-1.1 die Form zu Tagesbeginn), Zonen `zonenverteilung-2.0` (je Sportart, Zonen je Datum, Garmin-Zonen nicht beurteilt).
 - Routenplaner: Varianten (seit V5.6 `varianten-2.0`) nur über das erlaubte Rennradprofil, nie ein unzulässiger Weg;
   `zeit-rt-1.2`/`wetter-rt-1.2` (Pausen je Zwischenziel; fehlende Wetterwerte bleiben unbekannt, nie 0 – Fahrzeit dann mit
   «Wind nicht berücksichtigt» und ±2 m/s im Band); Fehlerband aus `kalibrierung-1.1` (Population, Steigungsklasse).
@@ -621,12 +622,16 @@ hängende Commits bleiben per SHA öffentlich abrufbar – echte Werte darum gar
   Hinterlegt seit 9.11.2026: die LT2-Vorschau aus dem Rad-Stufentest 29.4.2026, «vorläufig» (Test nicht ausbelastet; Wert nur verschlüsselt
   in den Daten, nie in Doku oder Tests). Vergleich: `python3 -I tools/last.py data.json
   --vergleich [--wochen 12] [--bis JJJJ-MM-TT]`.
+- **V6.6.2 last-2.1 (Prüfbericht vom 13.11.2026, Befunde 5–7):** eine LT2 gilt nur für das System, auf dem sie gemessen wurde – `system` je Eintrag
+  in `config.last_ref.rad`: «rolle» (Zwift/Indoor; ohne Angabe, alle Tests bis V6.6.1) oder «draussen». Rad auf der Rolle mit NP gegen die LT2 der Rolle;
+  Rad draussen mit NP gegen eine LT2 für draussen, sonst nach Puls: Timer-Dauer × min(1,15; Ø-Puls / `config.lthr.rad`)² × 100 (wie Einheiten ohne
+  Leistung); ohne Puls bleibt die gelieferte Last (gekennzeichnet). `tl2q` je Radeinheit: «lt2-rolle», «lt2-draussen», «puls», «wie geliefert».
 - **Neuer Rad-Stufentest:** erst nach B1 (bestätigt) und `check_referenz.py` «GESAMT: bestanden» einen Eintrag ergänzen
-  (`ab` = Testdatum, `lt2_w`, `lt2_genau_w`, `methode`, `test` = ID in `schwellen.tests`, `quelle`, `status`, `festgelegt`) – mit Silas' Okay
+  (`ab` = Testdatum, `lt2_w`, `lt2_genau_w`, `methode`, `test` = ID in `schwellen.tests`, `system` «rolle»/«draussen», `quelle`, `status`, `festgelegt`) – mit Silas' Okay
   zur Methode, nie eine Schwelle ausserhalb der Stufen. Über `work/new.json` `"config": {"last_ref": {…}}` mit der **ganzen** Liste (config
   ersetzt den Schlüssel), dann `merge_daily.py`. Ältere Einträge bleiben (Fahrten davor rechnen weiter mit ihnen).
-- `config.load_model` steuert, was die Seite verwendet: `"garmin"` (Standard, `tss` wie geliefert), `"last-2.0"` (`tl2`; erst nach Silas'
-  Okay zum Vergleich) oder `"ftp_est"` (alte Probe aus NP und `ftp_e`, nicht mehr verfolgt). Die Seite zeigt den Vergleich in Fortschritt
+- `config.load_model` steuert, was die Seite verwendet: `"garmin"` (Standard, `tss` wie geliefert), `"last-2.1"` bzw. `"last-2.0"` (beide `tl2` in der
+  Fassung von `tools/last.py`; erst nach Silas' Okay zum Vergleich) oder `"ftp_est"` (alte Probe aus NP und `ftp_e`, nicht mehr verfolgt). Die Seite zeigt den Vergleich in Fortschritt
   «Wochenlast je Sportart».
 - `config.ftp` bleibt der Garmin-Wert (für `tss` im Nacht-Update); die Seite braucht ihn mit last-2.0 nicht mehr.
 - Einspielen ohne Garmin-Daten (nur `config`, Laktat, Eingaben) lässt `updated` («Daten vom …») stehen.

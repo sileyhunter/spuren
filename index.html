@@ -1991,15 +1991,21 @@ const LOAD_MODE = (D.config && D.config.load_model) || "garmin";
 if (LOAD_MODE === "ftp_est") for (const a of D.activities) a.tss = a.tssP;
 /* V5.9.1 last-2.0: Rad-Last mit der LT2 aus dem Rad-Stufentest (Feld tl2, gerechnet in tools/last.py; tss0 = tss wie geliefert).
    Die Seite rechnet erst damit, wenn config.load_model = "last-2.0" gesetzt ist (nach Silas' Okay zum Vergleich). */
-const LAST_REF = (((D.config || {}).last_ref || {}).rad || []).slice().sort((x, y) => x.ab.localeCompare(y.ab));
+const LAST_AKTIV = LOAD_MODE === "last-2.0" || LOAD_MODE === "last-2.1";      // V6.6.2: tl2 je nach Fassung aus tools/last.py (seit last-2.1 je System)
+const LAST_REF = (((D.config || {}).last_ref || {}).rad || []).filter((r) => (r.system || "rolle") === "rolle").sort((x, y) => x.ab.localeCompare(y.ab));
+const LAST_DRAUSSEN = (((D.config || {}).last_ref || {}).rad || []).filter((r) => r.system === "draussen").sort((x, y) => x.ab.localeCompare(y.ab));
 for (const a of D.activities) a.tssL = Number.isFinite(a.tl2) ? a.tl2 : a.tss0;             // Vergleich: Last mit LT2
 function lastRefText() {              // «<LT2> W vom <Testdatum>, vorläufig» – Referenz für heute
   const r = window.V59L ? V59L.lastRef(D.config, iso(today)).r : null;
   return r ? `${r.lt2_w} W vom ${dateCH(r.ab)}${r.status ? ", " + r.status : ""}` : "keine Referenz";
 }
-if (LOAD_MODE === "last-2.0") for (const a of D.activities) {
+if (LAST_AKTIV) for (const a of D.activities) {
   if (Number.isFinite(a.tl2)) a.tss = a.tl2;
-  if (LAST_REF.length && a.sport === "rad" && a.np && a.date < LAST_REF[0].ab) a._lt2vor = true;      // vor dem ersten Test: gekennzeichnet
+  if (LAST_REF.length && a.sport === "rad" && a.np && a.indoor && a.date < LAST_REF[0].ab) a._lt2vor = true;      // vor dem ersten Test: gekennzeichnet
+}
+function lastDraussenText() {         // last-2.1: Rad draussen gegen eigene LT2, sonst nach Puls
+  const r = window.V59L ? V59L.lastRef(D.config, iso(today), "draussen").r : null, lt = ((D.config || {}).lthr || {});
+  return r ? `draussen ${r.lt2_w} W vom ${dateCH(r.ab)}` : `draussen nach Puls (Schwellenpuls Rad ${lt.rad || lt.default || "–"})`;
 }
 for (const r of D.routes) if (!r.coords && r.poly) r.coords = decodePoly(r.poly);
 D.days.sort((a, b) => a.date.localeCompare(b.date));
@@ -3209,7 +3215,7 @@ function pmcStand() {                 // letzte erfasste Einheit: macht sichtbar
 const MODEL_ROWS = () => {
   const dv = (k) => { const v = (D.versions || {})[k]; return v ? (typeof v === "string" ? v : v.v) : null; };
   return [
-    ["Trainingslast", LOAD_MODE === "last-2.0" ? dv("last") : "Garmin (wie geliefert)", LOAD_MODE === "last-2.0" ? "Rad: NP gegen die LT2 aus dem Rad-Stufentest (je Datum der letzte Test davor, vorher der erste, gekennzeichnet; nie FTP); übrige Sportarten wie geliefert" : "Rad mit der in Garmin eingestellten FTP; Vorschlag last-2.0 (LT2) in «Wochenlast je Sportart»", "tools/last.py, index.html lastWoche()"],
+    ["Trainingslast", LAST_AKTIV ? dv("last") : "Garmin (wie geliefert)", LAST_AKTIV ? "Rad: NP gegen die LT2 aus einem Rad-Stufentest auf demselben System (Rolle bzw. draussen; je Datum der letzte Test davor, vorher der erste, gekennzeichnet; nie FTP, keine Umrechnung zwischen Leistungsmessern); draussen ohne eigene LT2 nach Puls; übrige Sportarten wie geliefert" : "Rad mit der in Garmin eingestellten FTP; Vorschlag mit LT2 in «Wochenlast je Sportart»", "tools/last.py, index.html lastWoche()"],
     ["Fitness, Ermüdung, Form", FK.VERSIONS.pmc, "Tageslast exponentiell geglättet (42 bzw. 7 Tage); Form = Fitness − Ermüdung desselben Tages; Vortageswert als «Form zu Tagesbeginn»", "js/formkurve.js FK.pmc"],
     ["Intensitätsverteilung", FK.VERSIONS.zonen, "je Sportart; Pulsgrenzen aus dem Zonenprofil, das am Tag der Einheit galt; ohne Profil nur Garmin-Zonen, nicht beurteilt; Mindestdaten sonst «Beurteilung unsicher»", "js/formkurve.js FK.zoneVerdict"],
     ["Koppellauf", FK.VERSIONS.koppel, "Kandidat bei 0–45 min Wechsel; über 35 min «lange Pause», zählt erst nach Bestätigung", "js/formkurve.js FK.findBricks"],
@@ -3253,7 +3259,7 @@ function isoWeek(dt) { const d = new Date(dt); d.setHours(0, 0, 0, 0); d.setDate
 function v5Start() {
   if (!window.V5UI) return;
   V5_READY = V5UI.init({ D, chart, css, fmt, esc, dateCH, dLabel, pd, iso, today, SPORTS, IS_DEMO, hrsOf, shareOrDownload, ACT_BY_ID, charts, mmss, hmm, ringSVG, weights,
-    planRoute: () => (window.RTUI ? window.RTUI.planRoute() : null), pmcHeute: () => FK.pmcAnzeige(pmc().at(-1)), races: () => (D.config?.races || RACES), tests: () => testsWithStatus() }).then(() => { if (window.V59) V59.init(V5UI.C); }).catch((e) => console.error(e));
+    planRoute: () => (window.RTUI ? window.RTUI.planRoute() : null), pmcHeute: () => FK.pmcMorgen(pmc(), iso(today)), races: () => (D.config?.races || RACES), tests: () => testsWithStatus() }).then(() => { if (window.V59) V59.init(V5UI.C); }).catch((e) => console.error(e));
 }
 const charts = {};
 if (window.Chart) {
@@ -3379,10 +3385,10 @@ const TABS = {
         document.getElementById("today-verdict").textContent = "Noch keine Daten.";
         if (window.V5UI) V5_READY.then(() => { V5UI.heute(); if (window.V59) { V59.checkin(); V59.heuteOben(); V59.gefuehlKarte(); } });
       } else {
-        const pa = FK.pmcAnzeige(pmc().at(-1)) || {};
+        const pa = FK.pmcMorgen(pmc(), iso(today)) || {};     // status-1.1: Stand zu Tagesbeginn (bis gestern), wie die Ampel
         const s7 = D.days.slice(-7).filter((x) => x.sleepH != null);
         const gw = window.V61 ? V61.garminTag(D.days, iso(today)) : {};      // V6.1: nur Werte von heute (Readiness, Body Battery) bzw. gestern (Stress)
-        document.getElementById("today-kv").innerHTML = [["Form", pa.form != null ? (pa.form > 0 ? "+" + pa.form : pa.form < 0 ? "−" + Math.abs(pa.form) : "0") : null], ["Fitness", pa.fitness ?? null], ["Ermüdung", pa.ermuedung ?? null], ["Body Battery beim Aufwachen", gw.bodyBattery != null ? fmt(gw.bodyBattery) : null],
+        document.getElementById("today-kv").innerHTML = [["Form zu Tagesbeginn", pa.form != null ? (pa.form > 0 ? "+" + pa.form : pa.form < 0 ? "−" + Math.abs(pa.form) : "0") : null], ["Fitness", pa.fitness ?? null], ["Ermüdung", pa.ermuedung ?? null], ["Body Battery beim Aufwachen", gw.bodyBattery != null ? fmt(gw.bodyBattery) : null],
           ["Garmin-Readiness", gw.readiness != null ? fmt(gw.readiness) + (gw.wort ? ` <small>${gw.wort}</small>` : "") : null], ["Stress gestern Ø", gw.stressGestern != null ? fmt(gw.stressGestern) : null], ["HRV Ø 30 Tage", fmt(baseline(i).hrv)],
           ["Schlaf Ø 7 Tage", s7.length ? fmt(s7.reduce((s, x) => s + x.sleepH, 0) / s7.length, 1) + " h" : null]]
           .filter(([, v]) => v != null).map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
@@ -3646,7 +3652,7 @@ const TABS = {
     },
     pmc() {
       const p = pmc().slice(-180), pa = FK.pmcAnzeige(p.at(-1)) || {}, sg = (v) => (v > 0 ? "+" + v : v < 0 ? "−" + Math.abs(v) : "0");
-      document.getElementById("pmc-sub").textContent = "Fitness = Trainingslast geglättet über 42 Tage, Ermüdung = über 7 Tage, Form = Fitness − Ermüdung (beide inklusive heute). Rad-Trainingslast " + (LOAD_MODE === "ftp_est" ? "mit der geschätzten FTP." : LOAD_MODE === "last-2.0" ? `mit deiner LT2 (${lastRefText()}).` : "mit der in Garmin eingestellten FTP.")
+      document.getElementById("pmc-sub").textContent = "Fitness = Trainingslast geglättet über 42 Tage, Ermüdung = über 7 Tage, Form = Fitness − Ermüdung (beide inklusive heute). Rad-Trainingslast " + (LOAD_MODE === "ftp_est" ? "mit der geschätzten FTP." : LAST_AKTIV ? `auf der Rolle mit deiner LT2 (${lastRefText()}), ${lastDraussenText()}.` : "mit der in Garmin eingestellten FTP.")
         + " Alle Sportarten zählen mit, auch Wandern.";
       document.getElementById("pmc-kv").innerHTML = pa.fitness == null ? "" : `<div><span>Fitness</span><b>${pa.fitness}</b></div><div><span>Ermüdung</span><b>${pa.ermuedung}</b></div><div><span>Form</span><b>${sg(pa.form)}</b></div>`;
       document.getElementById("pmc-note").textContent = pa.fitness == null ? "" : `${pa.fitness} − ${pa.ermuedung} = ${sg(pa.form)} (gerundete Werte; genau ${fmt(pa.form_exakt, 1)}). ` +
@@ -3659,11 +3665,11 @@ const TABS = {
     },
     lastWoche() {                     // V5.9.1 last-2.0: Wochenlast je Sportart in Farbe; Vergleich Garmin-FTP → LT2 (bis zum Okay nur Vorschlag)
       const n = +document.getElementById("last-range").value || 12, weeks = lastWeeks(n), ks = ["schwimm", "rad", "lauf", "wandern", "ski", "andere"];
-      const adopted = LOAD_MODE === "last-2.0", hatRef = LAST_REF.length > 0, tl = (a) => a.tss || 0;
+      const adopted = LAST_AKTIV, hatRef = LAST_REF.length > 0, tl = (a) => a.tss || 0;
       const W = weeks.map((w) => D.activities.filter((a) => inWeek(a, w))), tot = W.map((l) => Math.round(l.reduce((s, a) => s + tl(a), 0)));
       const vg = V59L.lastVergleich(D.activities, weeks.map(iso)), neuT = vg.map((r) => Math.round(Object.values(r).reduce((s, x) => s + x[1], 0)));
       const altT = vg.map((r) => Math.round(Object.values(r).reduce((s, x) => s + x[0], 0)));
-      document.getElementById("last-sub").textContent = `Letzte ${n} Wochen · Trainingslast, wie sie in Fitness und Ermüdung eingeht; alle Sportarten zählen · Rad ${adopted ? "mit deiner LT2" : "mit der Garmin-FTP"}`;
+      document.getElementById("last-sub").textContent = `Letzte ${n} Wochen · Trainingslast, wie sie in Fitness und Ermüdung eingeht; alle Sportarten zählen · Rad ${adopted ? "mit deiner LT2 (Rolle) bzw. " + (LAST_DRAUSSEN.length ? "eigener LT2" : "nach Puls") + " (draussen)" : "mit der Garmin-FTP"}`;
       const ds = ks.map((k) => ({ label: SPORTS[k].label, backgroundColor: SPORTS[k].color, borderRadius: 2, stack: "u", maxBarThickness: 34,
         data: W.map((l) => Math.round(l.filter((a) => a.sport === k).reduce((s, a) => s + tl(a), 0))) })).filter((d) => d.data.some((v) => v));
       if (hatRef) ds.push({ type: "line", label: adopted ? "Total mit Garmin-FTP (früher)" : "Total mit LT2 (Vorschlag)", data: adopted ? altT : neuT,
@@ -3686,7 +3692,7 @@ const TABS = {
       const R = RL.slice(0, 12), sp = ks.filter((k) => k === "rad" || RL.some((r) => r[k] && r[k][0]));
       const c = (r, k, j) => (r[k] ? r[k][j] : 0), T = (r, j) => ks.reduce((s, k) => s + c(r, k, j), 0), Z = (r, k) => R.reduce((s, x) => s + c(x, k, r), 0);
       const pfeil = (a, b) => (Math.round(a) === Math.round(b) ? fmt(a) : `${fmt(a)} → <b>${fmt(b)}</b>`);
-      const pA = FK.pmcAnzeige(pmc("tss0").at(-1)) || {}, pB = FK.pmcAnzeige(pmc("tssL").at(-1)) || {};
+      const pA = FK.pmcMorgen(pmc("tss0"), iso(today)) || {}, pB = FK.pmcMorgen(pmc("tssL"), iso(today)) || {};     // status-1.1: Stand zu Tagesbeginn wie auf «Heute»
       const vF = (k) => (pA[k] == null ? "–" : adopted ? `${pB[k]} (früher ${pA[k]})` : `${pA[k]} → ${pB[k]}`);
       const rad0 = Z(0, "rad"), rad1 = Z(1, "rad"), all0 = R.reduce((s, r) => s + T(r, 0), 0), all1 = R.reduce((s, r) => s + T(r, 1), 0);
       const pct = (a, b) => (a ? `${b >= a ? "+" : "−"}${fmt(Math.abs((b / a - 1) * 100))} %` : "–");
@@ -3697,16 +3703,17 @@ const TABS = {
       R.forEach((r, i) => { t += zeile(r, tw[i]); });
       t += `<tr class="total"><td>12 Wochen</td><td>${pfeil(Z(0, "rad"), Z(1, "rad"))}</td><td>${pfeil(all0, all1)}</td>${sp.filter((k) => k !== "rad").map((k) => `<td>${fmt(Z(0, k))}</td>`).join("")}</tr>`;
       if (lauf) t += zeile(RL[12], m0, "subrow", `${dateCH(iso(m0)).slice(0, -4)} (laufend)`);
-      const kv = [["Fitness heute", vF("fitness")], ["Ermüdung heute", vF("ermuedung")], ["Form heute", vF("form")], ["Rad-Last, 12 Wochen", pct(rad0, rad1)], ["Alle Sportarten", pct(all0, all1)]]
+      const kv = [["Fitness heute früh", vF("fitness")], ["Ermüdung heute früh", vF("ermuedung")], ["Form heute früh", vF("form")], ["Rad-Last, 12 Wochen", pct(rad0, rad1)], ["Alle Sportarten", pct(all0, all1)]]
         .map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
       const refT = `LT2 ${fmt(ref.lt2_w)} W aus dem Rad-Stufentest vom ${dateCH(ref.ab)}${ref.methode ? " (" + esc(ref.methode) + ")" : ""}${ref.status ? ", " + esc(ref.status) : ""}${ref.grund ? ": " + esc(ref.grund) : ""}.`
-        + ` Fahrten vor dem ${dateCH(first.ab)} rechnen mit der LT2 des ersten Tests und sind im Kalender gekennzeichnet. Rad = NP gegen LT2 über die Timer-Zeit, nie FTP; keine Umrechnung zwischen Leistungsmessern.`
+        + ` Gilt für Fahrten auf der Rolle; Fahrten vor dem ${dateCH(first.ab)} rechnen mit der LT2 des ersten Tests und sind im Kalender gekennzeichnet. Rad = NP gegen LT2 über die Timer-Zeit, nie FTP; keine Umrechnung zwischen Leistungsmessern.`
+        + ` Fahrten draussen: ${esc(lastDraussenText())}${LAST_DRAUSSEN.length ? "" : " – gleiche Formel wie bei Einheiten ohne Leistung, bis es eine eigene LT2 für draussen gibt"}.`
         + ` Lauf, Schwimmen, Wandern und Übrige bleiben gleich. Regel ${esc(((D.versions || {}).last || {}).v || "last-2.0")}.`;
       const tab = `<div class="tablewrap"><table class="t" id="t-last" data-keine-liste>${t}</table></div>`;
       box.innerHTML = adopted
-        ? `<p class="keep">Übernommen: Die Seite rechnet die Rad-Last mit deiner LT2 (${esc(lastRefText())}). Zum Vergleich die frühere Rechnung mit der Garmin-FTP.</p><div class="kv">${kv}</div>`
+        ? `<p class="keep">Übernommen: Die Seite rechnet die Rad-Last auf der Rolle mit deiner LT2 (${esc(lastRefText())}), ${esc(lastDraussenText())}. Zum Vergleich die frühere Rechnung mit der Garmin-FTP.</p><div class="kv">${kv}</div>`
           + `<details class="more"><summary>Vergleich je Woche: Garmin-FTP → LT2</summary>${tab}</details><p class="hint">${refT}</p>`
-        : `<h3 class="mini-h">Rad-Last mit deiner LT2 statt der Garmin-FTP</h3><p class="keep">Vorschlag, noch nicht übernommen: Bisher rechnet die Seite die Rad-Last mit der in Garmin eingestellten FTP${D.config && D.config.ftp ? " (" + fmt(D.config.ftp) + " W)" : ""}. Umgeschaltet wird erst nach deinem Okay.</p>`
+        : `<h3 class="mini-h">Rad-Last mit deiner LT2 (Rolle) und nach Puls (draussen) statt mit der Garmin-FTP</h3><p class="keep">Vorschlag, noch nicht übernommen: Bisher rechnet die Seite die Rad-Last mit der in Garmin eingestellten FTP${D.config && D.config.ftp ? " (" + fmt(D.config.ftp) + " W)" : ""}. Umgeschaltet wird erst nach deinem Okay.</p>`
           + `<div class="kv">${kv}</div>${tab}<p class="hint">${refT}</p>`;
     },
     volume() {                        // klickbare Segmente (Stunden und Einheiten), 4-Wochen-Mittel, Sportfilter

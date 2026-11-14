@@ -290,6 +290,17 @@
       form_tagesbeginn: isNum(p.tsbStart) ? Math.round(p.tsbStart) : null, last: p.last, v: FK.VERSIONS.pmc };
   };
 
+  /** status-1.1 (Prüfbericht vom 13.11.2026, Befund 3): Stand zu Tagesbeginn für «Heute» – Fitness und Ermüdung am Ende des Vortags; die
+   *  Einheiten des Tages zählen noch nicht (wie die Ampel, readiness-2.1). Vorher rechnete «Heute» den laufenden Tag mit Last 0, bis das
+   *  Nacht-Update die Einheit brachte: die Form lag morgens um etwa Ermüdung/7 − Fitness/42 zu hoch. Rechnung unverändert pmc-2.0. */
+  FK.pmcMorgen = function (P, heuteISO) {
+    if (!Array.isArray(P) || !P.length || !heuteISO) return null;
+    let p = null;
+    for (let i = P.length - 1; i >= 0; i--) if (P[i] && P[i].date < heuteISO) { p = P[i]; break; }
+    const A = FK.pmcAnzeige(p); if (!A) return null;
+    return Object.assign(A, { datum: heuteISO, bis: p.date, zu_tagesbeginn: true, form_tagesbeginn: A.form, last: 0 });
+  };
+
   /* ---------------- Intensitätsverteilung (zonen-2.0) ----------------
      Drei Bereiche nur mit ausdrücklich gültigen Schwellen: Pulsgrenzen aus dem Zonenprofil, das am Tag der Einheit galt
      (Obergrenze Z2 = LT1, Obergrenze Z3 = LT2), je Sportart. Ohne gültiges Profil: Garmin-Pulszonen der Uhr (Z1–2 / Z3 / Z4–5)

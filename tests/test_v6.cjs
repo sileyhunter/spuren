@@ -125,7 +125,8 @@ test("Schritte für die Liste: Wiederholungen als Block, Zieltexte, Bezeichnunge
   assert.equal(V6.distanzText(850), "850 m");
 });
 
-test("status-1.0: Bänder nach Coggan, Grenzen, Skala lückenlos", () => {
+test("status-1.1: Bänder nach Coggan, Grenzen, Skala lückenlos (1.1: auf «Heute» die Form zu Tagesbeginn, FK.pmcMorgen)", () => {
+  assert.equal(V6.VERSIONS.status, "status-1.1");
   assert.equal(V6.status(30).key, "verlust");
   assert.equal(V6.status(25).key, "erholt");
   assert.equal(V6.status(5).key, "erhaltung");

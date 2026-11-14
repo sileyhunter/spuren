@@ -211,10 +211,12 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 81. **Wochenstunden «jetzt» nach einer Pause zu tief** (saison-1.2: Median der 8 Wochen inkl. Pause). Sofort: Stunden auf der Seite von Hand setzen;
     Regel: kürzeres Fenster oder Abwesenheiten ausnehmen.
 82. **Jagd- und Wandertage zählen mit Sitzzeit** (Last aus Timer-Dauer × Puls): Bewegungszeit statt Timer-Dauer, besser mit Pulsreserve.
-83. **«Heute» zeigt morgens eine zu gute Form:** der laufende Tag zählt als Ruhetag, bis das Nacht-Update die Einheit bringt; Form zu Tagesbeginn zeigen.
+83. ~~**«Heute» zeigt morgens eine zu gute Form**~~ – erledigt in V6.6.2 (status-1.1, `FK.pmcMorgen`: Form zu Tagesbeginn, Last bis gestern).
 84. **Zwei verschiedene LT2** (Zonenprofil gegen Stufentest bzw. last-2.0): «knapp unter LT2» liegt dadurch über der gemessenen Schwelle.
-85. **Watt-Ziele aus Zwift gelten auch draussen** (Plan, Langfahrt-Band, last-2.0); Puls bei gleicher Leistung draussen höher.
-86. **Pauschallast bei Zwift-Fahrten im Monatsexport** (FTP/LTHR fehlen in der FIT-Datei); `config.load_model` noch «garmin» (Entscheid offen).
+85. **Watt-Ziele aus Zwift gelten auch draussen** (Plan, Langfahrt-Band); Puls bei gleicher Leistung draussen höher. Für die Last erledigt in V6.6.2
+    (last-2.1: LT2 nur für ihr System, draussen ohne eigene LT2 nach Puls); Plan-Ziele und Langfahrt-Band offen.
+86. **Pauschallast bei Zwift-Fahrten im Monatsexport** (FTP/LTHR fehlen in der FIT-Datei); last-2.1 rechnet sie richtig, wirkt aber erst mit
+    `config.load_model` «last-2.1» (Entscheid bei Silas, Vergleich in V6.6.2 vorbereitet).
 87. **Intensitätsverteilung:** Plan nach Zielen, Absolviertes nach Puls – ungleich; besser Rad nach Leistung aus den Sekundenreihen.
 88. **Lauf-VO2max-Pulsziel** an der Untergrenze Z5 statt 90–95 % HFmax laut Text.
 89. **Ampel:** sehr hohe HRV zählt als gut (besser «ungewöhnlich hoch – beobachten»); «Passt die Ampel zu dir?» teilweise zirkulär, ohne Streubereich.

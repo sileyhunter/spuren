@@ -428,6 +428,31 @@ test("Form: Beispiel wie im Screenshot (Fitness 91, Ermüdung 89) ergibt Form +2
   assert.equal(A.v, "pmc-2.0");
 });
 
+/* ---------- status-1.1 (Prüfbericht 13.11.2026, Befund 3): «Heute» mit der Form zu Tagesbeginn ---------- */
+test("status-1.1: «Heute» zeigt die Form zu Tagesbeginn (Last bis gestern), nicht den laufenden Tag mit Last 0", () => {
+  const heute = "2026-03-20", loads = new Map();
+  for (let i = 0; i < 69; i++) loads.set(FK.addDays("2026-01-10", i), i % 7 === 0 ? 0 : 60 + (i % 5) * 25);   // trainiert bis gestern, heute noch nichts
+  const P = FK.pmc(loads, "2026-01-01", heute), gestern = P.at(-2), lauf = P.at(-1);
+  assert.equal(gestern.date, "2026-03-19"); assert.equal(lauf.date, heute); assert.equal(lauf.last, 0);
+  const M = FK.pmcMorgen(P, heute), A = FK.pmcAnzeige(lauf), G = FK.pmcAnzeige(gestern);
+  assert.deepEqual([M.fitness, M.ermuedung, M.form], [G.fitness, G.ermuedung, G.form], "Werte vom Abend des Vortags");
+  assert.equal(M.datum, heute); assert.equal(M.bis, "2026-03-19"); assert.equal(M.zu_tagesbeginn, true); assert.equal(M.form, M.fitness - M.ermuedung);
+  // der laufende Tag mit Last 0 zeigt eine zu gute Form: Fehler ≈ Ermüdung/7 − Fitness/42
+  const fehler = (gestern.atl / 7) - (gestern.ctl / 42);
+  assert.ok(fehler > 5, "Beispiel mit spürbarem Fehler");
+  assert.ok(Math.abs((lauf.tsb - gestern.tsb) - fehler) < 1e-9);
+  assert.ok(A.form > M.form);
+  // Nacht-Update bringt die Einheit von heute: der Stand zu Tagesbeginn bleibt gleich; ab morgen früh zählt sie
+  loads.set(heute, 140);
+  const P2 = FK.pmc(loads, "2026-01-01", heute), M2 = FK.pmcMorgen(P2, heute);
+  assert.deepEqual([M2.fitness, M2.ermuedung, M2.form], [M.fitness, M.ermuedung, M.form]);
+  const morgen = FK.addDays(heute, 1), P3 = FK.pmc(loads, "2026-01-01", morgen), M3 = FK.pmcMorgen(P3, morgen), E = FK.pmcAnzeige(P2.at(-1));
+  assert.deepEqual([M3.fitness, M3.ermuedung, M3.form], [E.fitness, E.ermuedung, E.form]);
+  // ohne Vortag (erster Tag) bzw. ohne Reihe: kein Stand
+  assert.equal(FK.pmcMorgen(FK.pmc(loads, heute, heute), heute), null);
+  assert.equal(FK.pmcMorgen([], heute), null);
+});
+
 /* ---------- V5.5: Intensitätsverteilung (zonen-2.0) – A02 ---------- */
 const ZP = (id, ab, bis, lt1, lt2) => ({ id, name: "Zonen " + id, gueltig_ab: ab, gueltig_bis: bis, status: bis ? "ersetzt" : "aktiv",
   skalen: [{ disziplin: "rad", metrik: "puls", unit: "bpm", zonen: [{ z: "Z1", von: null, bis: lt1 - 10 }, { z: "Z2", von: lt1 - 10, bis: lt1 }, { z: "Z3", von: lt1, bis: lt2 }, { z: "Z4", von: lt2, bis: lt2 + 10 }, { z: "Z5", von: lt2 + 10, bis: null }] },

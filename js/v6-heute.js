@@ -73,7 +73,7 @@
       <button type="button" class="kachel" data-v6="bereit" aria-label="Ampel, Bereitschaft heute: ${esc(bw)} – Einzelheiten">
         <span class="k-kopf">${V6().icon("ampel", 15)}Ampel</span><b class="k-wert k-farbe" style="--kc:var(${bf})">${esc(bw)}</b>
         <small>${!r ? "wird berechnet" : tag === heuteISO() ? "Morgenwerte heute" : tag ? "Werte vom " + esc(C.dateCH(tag).slice(0, 6)) : "keine Morgenwerte"}</small></button>
-      <button type="button" class="kachel" data-v6="optionen" aria-label="Trainingsstatus: ${esc(st ? st.name : "offen")} – Optionen für heute">
+      <button type="button" class="kachel" data-v6="optionen" aria-label="Trainingsstatus zu Tagesbeginn: ${esc(st ? st.name : "offen")} – Optionen für heute">
         <span class="k-kopf">${V6().icon("status", 15)}Status</span><b class="k-wert${st ? " st-farbe" : ""}" style="${st ? `--stc:${st.farbe}` : "color:var(--muted)"}">${esc(st ? st.name : "offen")}</b>
         <small>${pa ? "Form " + sg(pa.form) : "ohne Einheiten"}</small></button>
       <button type="button" class="kachel" data-v6="checkin" aria-label="Check-in: ${b ? "erledigt" : aus ? "übersprungen" : "offen"}">
@@ -221,7 +221,8 @@
       <div class="st-block"><div class="st-kopf"><span class="abschnitt">${W.icon("status", 15)}Trainingsstatus</span><b class="st-farbe" style="--stc:${st.farbe}">${esc(st.name)}</b></div>
         <div class="st-skala" role="img" aria-label="Form ${sg(pa.form)} auf der Skala von hoher Belastung bis Formverlust">${W.statusBaender().map((b) => `<i style="left:${(b.von * 100).toFixed(1)}%;width:${((b.bis - b.von) * 100).toFixed(1)}%;background:${b.farbe}"></i>`).join("")}<span class="st-marke" style="left:${(lage * 100).toFixed(1)}%"></span></div>
         <div class="st-enden"><span>hohe Belastung</span><span>Formverlust</span></div>
-        <p class="st-text">${esc(st.text)}. Form = Fitness − Ermüdung (${esc(pa.v)}); Bänder nach Coggan, eigene Wörter (${esc(W.VERSIONS.status)}). Kein medizinisches Mass.</p></div>`
+        <p class="st-text">${esc(st.text)}. Stand zu Tagesbeginn: Fitness und Ermüdung bis ${esc(pa.bis ? C.dateCH(pa.bis).slice(0, 6) : "gestern")}, die Einheiten von heute zählen ab morgen früh – wie bei der Ampel.
+          Form = Fitness − Ermüdung (${esc(pa.v)}); Bänder nach Coggan, eigene Wörter (${esc(W.VERSIONS.status)}). Kein medizinisches Mass.</p></div>`
         : `<p class="ek-ohne">Für den Trainingsstatus fehlen noch Einheiten.</p>`}
       <ul class="v6-aktionen">${akt.map(([ic, t, s, a]) => `<li><button type="button" data-akt="${a}">${W.icon(ic, 22)}<span><b>${esc(t)}</b><small>${esc(s)}</small></span>${W.icon("weiter", 18)}</button></li>`).join("")}</ul>
       <p class="ek-quelle">Einheiten anlegen, verschieben oder ändern geht in Enduco bzw. Garmin – diese Seite liest nur.</p>

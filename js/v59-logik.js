@@ -1,5 +1,5 @@
 /* Ironman Notebook – V5.9 Rechenlogik ohne DOM (Browser: window.V59L, Node: require).
- * befinden-2.0 (Morgen-Check-in mit vier Fragen und sieben Stufen, Gefühl gegen Morgenwerte; V6.3), morgen-1.0 (Heute geplant), last-2.0 (Trainingslast mit LT2),
+ * befinden-2.0 (Morgen-Check-in mit vier Fragen und sieben Stufen, Gefühl gegen Morgenwerte; V6.3), morgen-1.0 (Heute geplant), last-2.1 (Trainingslast mit LT2 je System; 2.0 V5.9.1),
  * css-2.0 (Schwimmen nur mit CSS-Test). Grundsätze: fehlend bleibt fehlend (null), nie geschätzt; jede Zahl nennt ihre Quelle. */
 (function (root, factory) {
   if (typeof module === "object" && module.exports) module.exports = factory(require("./v62.js"));
@@ -7,7 +7,7 @@
 })(typeof self !== "undefined" ? self : this, function (V62) {
   "use strict";
   const L = {};
-  L.VERSIONS = { befinden: "befinden-2.0", eingang: "eingang-1.0", morgen: "morgen-1.0", last: "last-2.0", css: "css-2.0", bedienung: "bedienung-1.0" };
+  L.VERSIONS = { befinden: "befinden-2.0", eingang: "eingang-1.0", morgen: "morgen-1.0", last: "last-2.1", css: "css-2.0", bedienung: "bedienung-1.0" };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const addDays = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
   L.addDays = addDays;
@@ -98,8 +98,11 @@
 
   /* ======================= last-2.0: Trainingslast mit LT2 (Rechnung in tools/last.py, hier nur Anzeige) ======================= */
   /** LT2-Referenz für ein Datum wie tools/last.py → { r, vorErstem } (r = null ohne Referenz). */
-  L.lastRef = function (cfg, datum) {
-    const lst = ((((cfg || {}).last_ref) || {}).rad || []).slice().sort((a, b) => a.ab.localeCompare(b.ab));
+  /** last-2.1: eine LT2 gilt nur für ihr System («rolle» = Zwift/Indoor, «draussen»); Einträge ohne system gelten für die Rolle. */
+  L.lastSystem = (r) => ((r && r.system) || "rolle");
+  L.lastRef = function (cfg, datum, system) {
+    const sy = system || "rolle";
+    const lst = ((((cfg || {}).last_ref) || {}).rad || []).filter((x) => L.lastSystem(x) === sy).sort((a, b) => a.ab.localeCompare(b.ab));
     if (!lst.length) return { r: null, vorErstem: false };
     const davor = lst.filter((x) => x.ab <= datum);
     return davor.length ? { r: davor[davor.length - 1], vorErstem: false } : { r: lst[0], vorErstem: true };

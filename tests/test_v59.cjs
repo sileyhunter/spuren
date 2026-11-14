@@ -128,6 +128,13 @@ test("Trainingslast last-2.0: Referenz je Datum (letzter Test davor, vorher der 
   assert.equal(L.lastRef(cfg, "2026-12-05").r.lt2_w, 262, "ab dem Testtag gilt der neue Test");
   assert.deepEqual(L.lastRef(cfg, "2025-01-01"), { r: { ab: "2026-05-01", lt2_w: 250, status: "vorläufig" }, vorErstem: true });
   assert.deepEqual(L.lastRef({}, "2026-11-08"), { r: null, vorErstem: false }, "ohne Referenz nichts geraten");
+  // last-2.1: eine LT2 gilt nur für ihr System; ohne Angabe = Rolle
+  const cfg21 = { last_ref: { rad: [{ ab: "2026-05-01", lt2_w: 250 }, { ab: "2026-10-01", lt2_w: 262, system: "draussen" }] } };
+  assert.equal(L.VERSIONS.last, "last-2.1");
+  assert.equal(L.lastRef(cfg21, "2026-11-08").r.lt2_w, 250, "Standard: Rolle");
+  assert.equal(L.lastRef(cfg21, "2026-11-08", "rolle").r.lt2_w, 250);
+  assert.equal(L.lastRef(cfg21, "2026-11-08", "draussen").r.lt2_w, 262);
+  assert.deepEqual(L.lastRef({ last_ref: { rad: [{ ab: "2026-05-01", lt2_w: 250 }] } }, "2026-11-08", "draussen"), { r: null, vorErstem: false }, "draussen ohne eigene LT2: keine");
   const acts = [{ date: "2026-11-08", sport: "rad", tss: 176, tss0: 123, tl2: 176 }, { date: "2026-11-07", sport: "lauf", tss: 70, tss0: 70, tl2: 70 },
     { date: "2026-11-09", sport: "wandern", tss: 90 }, { date: "2026-10-01", sport: "rad", tss: 50 }, { date: "2026-11-10", sport: "rad", tss: null, tl2: null }];
   assert.deepEqual(L.lastVergleich(acts, ["2026-11-02", "2026-11-09"]), [{ rad: [123, 176], lauf: [70, 70] }, { wandern: [90, 90], rad: [0, 0] }],

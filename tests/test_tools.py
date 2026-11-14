@@ -669,8 +669,8 @@ check("Testkalender: CSS-Termine über «tests» (ganze Liste), Stand bleibt", [
 # ---------- V5.9.1 Trainingslast mit LT2 (last-2.0, erfundene Werte) ----------
 import last as LAST  # noqa: E402
 _cfg11 = {"ftp": 300, "last_ref": {"rad": [{"ab": "2026-05-01", "lt2_w": 250, "status": "vorläufig", "quelle": "Test"}]}}
-_A11 = [{"id": "r1", "date": "2026-11-08", "sport": "rad", "dur": 9000, "np": 210, "tss": 123},
-        {"id": "r0", "date": "2025-06-01", "sport": "rad", "dur": 3600, "np": 250, "tss": 80},
+_A11 = [{"id": "r1", "date": "2026-11-08", "sport": "rad", "dur": 9000, "np": 210, "tss": 123, "indoor": True},
+        {"id": "r0", "date": "2025-06-01", "sport": "rad", "dur": 3600, "np": 250, "tss": 80, "indoor": True},
         {"id": "l1", "date": "2026-11-07", "sport": "lauf", "dur": 3600, "tss": 70},
         {"id": "w1", "date": "2026-11-06", "sport": "wandern", "dur": 14400, "tss": 90},
         {"id": "r2", "date": "2026-11-05", "sport": "rad", "dur": 3600, "tss": 50}]
@@ -680,7 +680,30 @@ _t11 = {a["id"]: a.get("tl2") for a in _D11["activities"]}
 check("Trainingslast last-2.0: Fahrt NP 210 W, Timer 2:30:00 mit LT2 250 W → 176 ± 1 (Garmin-Last 123 bleibt)", abs(_t11["r1"] - 176) <= 1, str(_t11))
 check("Trainingslast: vor dem ersten Test gilt der erste (gekennzeichnet), Lauf/Wandern/Rad ohne NP wie bisher, tss nie überschrieben",
       _t11["r0"] == 100 and LAST.ref_fuer(_cfg11, "2025-06-01")[1] is True and _t11["l1"] == 70 and _t11["w1"] == 90 and _t11["r2"] == 50
-      and [a["tss"] for a in _D11["activities"]] == [a["tss"] for a in _A11] and _n11 == 2 and _D11["versions"]["last"]["v"] == "last-2.0", str(_t11))
+      and [a["tss"] for a in _D11["activities"]] == [a["tss"] for a in _A11] and _n11 == 2 and _D11["versions"]["last"]["v"] == "last-2.1", str(_t11))
+# last-2.1 (Prüfbericht 13.11.2026, Befunde 5–7): eine LT2 gilt nur für ihr System; draussen ohne eigene LT2 nach Puls (Schwellenpuls Rad)
+_cfg21 = {"ftp": 300, "lthr": {"rad": 170, "default": 175}, "last_ref": {"rad": [{"ab": "2026-05-01", "lt2_w": 250, "system": "rolle"}]}}
+_A21 = [{"id": "z", "date": "2026-11-08", "sport": "rad", "dur": 3600, "np": 225, "hr": 140, "tss": 56, "indoor": True},
+        {"id": "d", "date": "2026-11-08", "sport": "rad", "dur": 10800, "np": 229, "hr": 153, "tss": 150},
+        {"id": "d0", "date": "2026-11-07", "sport": "rad", "dur": 3600, "np": 200, "tss": 40},
+        {"id": "dk", "date": "2026-11-06", "sport": "rad", "dur": 3600, "hr": 130, "tss": 58},
+        {"id": "dh", "date": "2026-11-05", "sport": "rad", "dur": 3600, "np": 260, "hr": 200, "tss": 75}]
+_D21 = {"config": _cfg21, "activities": copy.deepcopy(_A21)}
+_n21 = LAST.alle(_D21)
+_t21 = {a["id"]: (a.get("tl2"), a.get("tl2q")) for a in _D21["activities"]}
+check("Trainingslast last-2.1: Rolle gegen die LT2 der Rolle, draussen nach Puls statt mit der Rolle-LT2",
+      _t21["z"] == (round((225 / 250) ** 2 * 100), "lt2-rolle") and _t21["d"] == (round(3 * (153 / 170) ** 2 * 100), "puls") and _n21 == 3, str(_t21))
+check("Trainingslast last-2.1: draussen ohne Puls bleibt wie geliefert (gekennzeichnet), ohne Leistung wie bisher, Puls über der Schwelle höchstens 1,15²",
+      _t21["d0"] == (40, "wie geliefert") and _t21["dk"] == (58, "wie geliefert") and _t21["dh"] == (round(1.15 ** 2 * 100), "puls")
+      and [a["tss"] for a in _D21["activities"]] == [a["tss"] for a in _A21], str(_t21))
+_cfg21b = dict(_cfg21, last_ref={"rad": [{"ab": "2026-05-01", "lt2_w": 250, "system": "rolle"}, {"ab": "2026-10-01", "lt2_w": 262, "system": "draussen"}]})
+_D21b = {"config": _cfg21b, "activities": copy.deepcopy(_A21)}
+LAST.alle(_D21b)
+_t21b = {a["id"]: (a.get("tl2"), a.get("tl2q")) for a in _D21b["activities"]}
+check("Trainingslast last-2.1: eigene LT2 für draussen gilt nur draussen; Einträge ohne System gelten für die Rolle",
+      _t21b["d"] == (round(3 * (229 / 262) ** 2 * 100), "lt2-draussen") and _t21b["z"][1] == "lt2-rolle"
+      and LAST.ref_fuer({"last_ref": {"rad": [{"ab": "2026-01-01", "lt2_w": 250}]}}, "2026-11-01", "rolle")[0]["lt2_w"] == 250
+      and LAST.ref_fuer({"last_ref": {"rad": [{"ab": "2026-01-01", "lt2_w": 250}]}}, "2026-11-01", "draussen")[0] is None, str(_t21b))
 _cfg11b = dict(_cfg11, last_ref={"rad": [{"ab": "2026-05-01", "lt2_w": 250}, {"ab": "2026-12-05", "lt2_w": 262}]})
 check("Trainingslast: je Datum gilt der letzte Test davor", LAST.ref_fuer(_cfg11b, "2026-12-04")[0]["lt2_w"] == 250 and LAST.ref_fuer(_cfg11b, "2026-12-05")[0]["lt2_w"] == 262)
 _V11 = LAST.vergleich(_D11, 2, "2026-11-08")

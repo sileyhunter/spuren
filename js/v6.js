@@ -7,7 +7,7 @@
   if (root) root.V6 = V6;
 })(typeof window !== "undefined" ? window : null, function (TRm) {
   "use strict";
-  const V6 = { VERSIONS: { design: "design-1.1", profil: "profil-1.0", status: "status-1.0" } };
+  const V6 = { VERSIONS: { design: "design-1.1", profil: "profil-1.0", status: "status-1.1" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
 
   /* ---------------- Zonen: eine Zone, eine Farbe (Werte wie --zc-… in css/v6.css) ---------------- */
@@ -196,7 +196,8 @@
   V6.SKALA_REIHE = ["z1", "z2", "fatmax", "z3", "sweet", "z4", "vo2", "anaerob", "neuro", "sprint"];
   V6.gruss = (stunde) => (stunde < 11 ? "Guten Morgen" : stunde < 17 ? "Guten Tag" : "Guten Abend");
 
-  /* ---------------- Trainingsstatus (status-1.0) aus der Form = Fitness − Ermüdung (pmc-2.0) ---------------- */
+  /* ---------------- Trainingsstatus (status-1.1) aus der Form = Fitness − Ermüdung (pmc-2.0) ----------------
+     1.1 (Prüfbericht vom 13.11.2026, Befund 3): auf «Heute» die Form zu Tagesbeginn (FK.pmcMorgen, Last bis gestern); Bänder unverändert. */
   // Bänder nach Coggan (Training Stress Balance); eigene Wörter. «Übertraining» ist eine Diagnose und wird nie aus Zahlen behauptet.
   V6.STATUS = [
     { key: "verlust", name: "Formverlust", ab: 25, farbe: "#f9a71a", text: "lange wenig Belastung – die Fitness sinkt" },

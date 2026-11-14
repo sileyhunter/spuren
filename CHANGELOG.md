@@ -1,5 +1,17 @@
 # Änderungen
 
+## V6.6.2 · 14.11.2026 · Prüfbericht: Form zu Tagesbeginn und Rad-Last je System
+Aus dem Prüfbericht vom 13.11.2026 (Befunde 3 und 5–7), nach Silas' Okay vom 14.11.2026.
+- **Befund 3, status-1.1:** «Heute» (Status-Kachel, «Optionen für heute» und die Werte unter der Ampel) zeigt die Form zu Tagesbeginn: Fitness und
+  Ermüdung bis gestern (`FK.pmcMorgen`). Vorher zählte der laufende Tag bis zum Nacht-Update als Ruhetag, die Form lag morgens um etwa
+  Ermüdung/7 − Fitness/42 zu hoch. Die Ampel rechnet schon so (readiness-2.1); die Grafik unter Analyse zeigt weiter den laufenden Tag, beschriftet.
+- **Befunde 5–7, last-2.1 (`tools/last.py`):** eine LT2 gilt nur für das System, auf dem sie gemessen wurde (`system` «rolle» oder «draussen» je
+  Referenz; ohne Angabe Rolle). Fahrten auf der Rolle rechnen gegen die LT2 der Rolle; Fahrten draussen gegen eine eigene LT2 für draussen, solange
+  es keine gibt nach Puls wie Einheiten ohne Leistung (Schwellenpuls Rad). Keine Umrechnung zwischen Leistungsmessern. Neues Feld `tl2q` sagt je
+  Radeinheit, wie gerechnet wurde. Die Seite rechnet damit erst, wenn `config.load_model` umgestellt ist (Entscheid bei Silas); bis dahin zeigt
+  «Fortschritt → Wochenlast je Sportart» den Vergleich.
+- Wissen wissen-1.7 (Kapitel «last»), Tests in `tests/test_formkurve.cjs`, `tests/test_v59.cjs`, `tests/test_v6.cjs` und `tests/test_tools.py`.
+
 ## V6.6.1 · 14.11.2026 · Karte: Fehler aus der Prüfung vom 13.11.2026 (Auftrag `docs/auftrag-karte-fehler.md`, Teil 0b)
 Im Auftrag als «V6.5.1» bezeichnet; weil V6.6 schon live war, heisst die Fassung V6.6.1.
 - **K1 design-1.1:** Planer, «Training → Route» und die Diagramme haben keine festen Farben mehr. Hintergründe, Schrift, Status
