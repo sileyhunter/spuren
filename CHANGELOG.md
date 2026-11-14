@@ -25,7 +25,7 @@ Bedienlogik und Hierarchie, keine Texte, Logos, Fotos oder Workouts. Zuordnung d
 - **Outdoor:** Werkzeuge oben schlanker (Heatmap · Nach Sport · 3D; Entdecken · Route planen · Meine Routen); «Meine Routen» öffnet das Blatt bei den
   gespeicherten Routen. Die Karte selbst ist unverändert.
 - Keine Daten gelöscht oder umgerechnet; Enduco-Daten bleiben vollständig gespeichert. Tests: `tests/test_v7.cjs` (neu); alle bisherigen Tests unverändert bestanden.
-- Rückweg: Tag `v6.6.4` (Stand vor V7) – `git revert` der V7-Commits oder die Seite aus diesem Tag wiederherstellen.
+- Rückweg: Branch `vor-v7` (Stand V6.6.4 vor V7) – `git revert` der V7-Commits oder die Seitendateien aus diesem Branch wiederherstellen.
 
 ## V6.6.4 · 14.11.2026 · Karte: Auswahl aufheben (auswahl-1.0)
 Wunsch von Silas vom 14.11.2026: eine gewählte Spur liess sich nicht mehr abwählen, ebenso Punkte, Skitouren, Wildschutzgebiete und andere Infos.
