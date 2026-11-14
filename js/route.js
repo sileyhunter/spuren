@@ -312,15 +312,15 @@
 
   /* ---------------- Kategorien: Belag, Wegart, Zugang ---------------- */
   RT.SURFACE = {
-    asphalt: { label: "Asphalt", color: "#3b5b7a" },
-    pflaster: { label: "Pflaster", color: "#8a6f9e" },
-    hart: { label: "Anderer Hartbelag (Beton, Holz, Metall)", color: "#7a93ab" },
-    kies: { label: "Kies/Schotter", color: "#c9913f" },
-    unbefestigt: { label: "Unbefestigt (ohne Angabe)", color: "#d9b36c" },
-    natur: { label: "Naturweg", color: "#7b8f3a" },
-    schnee: { label: "Schnee (Skitourenroute)", color: "#8fb3d9" },
-    hand: { label: "Von Hand (kein Wegnetz)", color: "#a7b0b8" },
-    unbekannt: { label: "Unbekannt", color: "#b9bec4" },
+    asphalt: { label: "Asphalt", color: "var(--rp-belag-asphalt)" },
+    pflaster: { label: "Pflaster", color: "var(--rp-belag-pflaster)" },
+    hart: { label: "Anderer Hartbelag (Beton, Holz, Metall)", color: "var(--rp-belag-hart)" },
+    kies: { label: "Kies/Schotter", color: "var(--rp-belag-kies)" },
+    unbefestigt: { label: "Unbefestigt (ohne Angabe)", color: "var(--rp-belag-unbefestigt)" },
+    natur: { label: "Naturweg", color: "var(--rp-belag-natur)" },
+    schnee: { label: "Schnee (Skitourenroute)", color: "var(--rp-belag-schnee)" },
+    hand: { label: "Von Hand (kein Wegnetz)", color: "var(--rp-belag-hand)" },
+    unbekannt: { label: "Unbekannt", color: "var(--rp-belag-unbekannt)" },
   };
   const SURF_MAP = {
     asphalt: "asphalt", "chipseal": "asphalt",
@@ -333,18 +333,18 @@
   };
   RT.surfaceCat = (tags) => (tags && tags.surface ? SURF_MAP[tags.surface] || "unbekannt" : "unbekannt");
   RT.WAY = {
-    hauptstrasse: { label: "Hauptstrasse", color: "#b4443a" },
-    strasse: { label: "Verbindungsstrasse", color: "#d9824a" },
-    nebenstrasse: { label: "Nebenstrasse", color: "#7a93ab" },
-    radweg: { label: "Radweg", color: "#2f8f83" },
-    fahrweg: { label: "Feld-/Forstweg", color: "#c9913f" },
-    pfad: { label: "Pfad/Wanderweg", color: "#7b8f3a" },
-    fussweg: { label: "Fussweg/Treppe", color: "#9b6fb0" },
-    faehre: { label: "Fähre", color: "#4a7fc1" },
-    autobahn: { label: "Autobahn", color: "#5c1f1a" },
-    skiroute: { label: "Skitourenroute (swisstopo/SAC)", color: "#3d7fb3" },
-    hand: { label: "Von Hand gezeichnet", color: "#a7b0b8" },
-    unbekannt: { label: "Unbekannt", color: "#b9bec4" },
+    hauptstrasse: { label: "Hauptstrasse", color: "var(--rp-weg-hauptstrasse)" },
+    strasse: { label: "Verbindungsstrasse", color: "var(--rp-weg-strasse)" },
+    nebenstrasse: { label: "Nebenstrasse", color: "var(--rp-weg-nebenstrasse)" },
+    radweg: { label: "Radweg", color: "var(--rp-weg-radweg)" },
+    fahrweg: { label: "Feld-/Forstweg", color: "var(--rp-weg-fahrweg)" },
+    pfad: { label: "Pfad/Wanderweg", color: "var(--rp-weg-pfad)" },
+    fussweg: { label: "Fussweg/Treppe", color: "var(--rp-weg-fussweg)" },
+    faehre: { label: "Fähre", color: "var(--rp-weg-faehre)" },
+    autobahn: { label: "Autobahn", color: "var(--rp-weg-autobahn)" },
+    skiroute: { label: "Skitourenroute (swisstopo/SAC)", color: "var(--rp-weg-skiroute)" },
+    hand: { label: "Von Hand gezeichnet", color: "var(--rp-weg-hand)" },
+    unbekannt: { label: "Unbekannt", color: "var(--rp-weg-unbekannt)" },
   };
   RT.wayCat = function (t) {
     const h = t && t.highway;
@@ -384,12 +384,12 @@
     return { s: "ok", g: "" };
   };
   RT.ACCESS = {
-    ok: { label: "Erlaubt laut OSM", color: "#2f8f83" },
-    unklar: { label: "Zugang unklar", color: "#d9b36c" },
-    eingeschraenkt: { label: "Eingeschränkt", color: "#d9824a" },
-    schieben: { label: "Schieben", color: "#9b6fb0" },
-    verboten: { label: "Nicht erlaubt", color: "#b4443a" },
-    ungeprueft: { label: "Nicht geprüft (ohne Wegnetz)", color: "#c3c8cd" },
+    ok: { label: "Erlaubt laut OSM", color: "var(--rp-zugang-ok)" },
+    unklar: { label: "Zugang unklar", color: "var(--rp-zugang-unklar)" },
+    eingeschraenkt: { label: "Eingeschränkt", color: "var(--rp-zugang-eingeschraenkt)" },
+    schieben: { label: "Schieben", color: "var(--rp-zugang-schieben)" },
+    verboten: { label: "Nicht erlaubt", color: "var(--rp-zugang-verboten)" },
+    ungeprueft: { label: "Nicht geprüft (ohne Wegnetz)", color: "var(--rp-zugang-ungeprueft)" },
   };
   /** Was «Zugang» bedeutet (Anzeige im Planer). */
   RT.ZUGANG_TEXT = "Zugang = ob du laut OpenStreetMap hier fahren bzw. gehen darfst: erlaubt; eingeschränkt (z. B. «Zubringerdienst gestattet», Land- und Forstwirtschaft); schieben (Velo verboten, zu Fuss erlaubt); nicht erlaubt (privat, Fahrverbot, Autostrasse); unklar (Weg ohne Velo-Angabe, kantonale Regel und Signalisation prüfen). Vor Ort gilt die Signalisation.";
@@ -644,12 +644,12 @@
 
   /* ---------------- Kategorienstücke je Analyseansicht ---------------- */
   RT.GRADE_BINS = [
-    { k: "g_m8", label: "Gefälle über 8 %", lo: -Infinity, hi: -0.08, color: "#2c6e9b" },
-    { k: "g_m4", label: "Gefälle 4–8 %", lo: -0.08, hi: -0.04, color: "#7fb2d6" },
-    { k: "g_0", label: "flach (±4 %)", lo: -0.04, hi: 0.04, color: "#4f5d6b" },
-    { k: "g_4", label: "Steigung 4–8 %", lo: 0.04, hi: 0.08, color: "#e0a458" },
-    { k: "g_8", label: "Steigung 8–12 %", lo: 0.08, hi: 0.12, color: "#d9694a" },
-    { k: "g_12", label: "Rampe über 12 %", lo: 0.12, hi: Infinity, color: "#9c2f2a" },
+    { k: "g_m8", label: "Gefälle über 8 %", lo: -Infinity, hi: -0.08, color: "var(--rp-steig-m8)" },
+    { k: "g_m4", label: "Gefälle 4–8 %", lo: -0.08, hi: -0.04, color: "var(--rp-steig-m4)" },
+    { k: "g_0", label: "flach (±4 %)", lo: -0.04, hi: 0.04, color: "var(--rp-steig-0)" },
+    { k: "g_4", label: "Steigung 4–8 %", lo: 0.04, hi: 0.08, color: "var(--rp-steig-4)" },
+    { k: "g_8", label: "Steigung 8–12 %", lo: 0.08, hi: 0.12, color: "var(--rp-steig-8)" },
+    { k: "g_12", label: "Rampe über 12 %", lo: 0.12, hi: Infinity, color: "var(--rp-steig-12)" },
   ];
   RT.gradeBin = (g) => (RT.GRADE_BINS.find((b) => g >= b.lo && g < b.hi) || RT.GRADE_BINS[2]).k;
   /** Stücke [{id, d0, d1, cat}] einer Kategorisierung. catOfStep(k) für 20-m-Schritte, oder je Abschnitt (Belag/Wegart). */
@@ -1469,11 +1469,11 @@
    * 25–30° als Übergang: die SLF-Grenzen sind Richtwerte, und ein Raster von ~25–30 m glättet kurze Steilstufen.
    * Keine Lawinenbeurteilung – das Bulletin und die Verhältnisse vor Ort entscheiden. */
   RT.HANG_KLASSEN = [
-    { k: "h0", label: "unter 25°", lo: -1, hi: 25, color: "#c9d3dc" },
-    { k: "h25", label: "25–30° Übergang – Hinweis", lo: 25, hi: 30, color: "#e3c25a" },
-    { k: "h30", label: "30–35° steil – Lawinengelände", lo: 30, hi: 35, color: "#e08a3c" },
-    { k: "h35", label: "35–40° sehr steil", lo: 35, hi: 40, color: "#c8502f" },
-    { k: "h40", label: "über 40° extrem steil", lo: 40, hi: 91, color: "#7d2a6b" },
+    { k: "h0", label: "unter 25°", lo: -1, hi: 25, color: "var(--rp-hang-0)" },
+    { k: "h25", label: "25–30° Übergang – Hinweis", lo: 25, hi: 30, color: "var(--rp-hang-25)" },
+    { k: "h30", label: "30–35° steil – Lawinengelände", lo: 30, hi: 35, color: "var(--rp-hang-30)" },
+    { k: "h35", label: "35–40° sehr steil", lo: 35, hi: 40, color: "var(--rp-hang-35)" },
+    { k: "h40", label: "über 40° extrem steil", lo: 40, hi: 91, color: "var(--rp-hang-40)" },
   ];
   RT.hangKlasse = (deg) => (isNum(deg) ? (RT.HANG_KLASSEN.find((c) => deg >= c.lo && deg < c.hi) || RT.HANG_KLASSEN[0]).k : "unbekannt");
   RT.terrarium = (r, g, b) => r * 256 + g + b / 256 - 32768;

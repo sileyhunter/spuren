@@ -48,7 +48,7 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   Check-in, Gefühl gegen Morgenwerte, Heute geplant, Trainingslast, CSS), `js/v59.js` (Check-in, Einstellungen, Laktat bestätigen …),
   `tools/eingang.mjs` (eingang/ einlesen, aufräumen, prüfen), `tools/eingaben_lib.mjs` (Zuordnung Eingaben → merge_daily.py), `tests/test_v59.cjs`,
   `tools/last.py` (V5.9.1 Trainingslast `tl2` mit der LT2, Vergleich; Abschnitt «FTP und Trainingslast»)
-- **V6.0:** `css/v6.css` (Design design-1.0: dunkel als Standard, Zonen-, Sport- und Statusfarben, Pillen, Blätter), `js/v6.js` (ohne DOM:
+- **V6.0:** `css/v6.css` (Design design-1.0, seit V6.6.1 design-1.1 mit den Planer- und Datenfarben: dunkel als Standard, Zonen-, Sport- und Statusfarben, Pillen, Blätter), `js/v6.js` (ohne DOM:
   Zonen und Farben, Balkenprofil profil-1.0, Fokus, Trainingsstatus status-1.0, Wochenleiste, Rennen/Phasen, eigene Symbole), `js/v6-heute.js`
   (Heute: Kacheln, Heutiges Training, Einheit, Optionen, Bereitschaft als Blätter, Wochenleiste), `js/v6-plan.js` (Plan: Rennen, Phasen,
   Wochenübersicht), `tests/test_v6.cjs`
@@ -83,7 +83,7 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
 - `tests/test_formkurve.cjs`, `tests/test_route.cjs`, `tests/test_analyse.cjs`, `tests/test_training.cjs`, `tests/test_v64.cjs`, `tests/test_tools.py` – Abnahmetests (erfundene Werte; `tests/fixtures/` = echte
   Antworten einer lokalen BRouter-Instanz mit OSM-Testdaten Dreieich, ODbL); `docs/` – Konzept, Abnahme (`abnahme-v53.md`), Audit V5.5 (`AUDIT_V55.md`),
   Audit V5.6 (`AUDIT_V56.md`), Audit V5.7 (`AUDIT_V57.md`), offene Punkte (`offen-nach-v55.md`),
-  Auftrag für die nächsten Etappen (`auftrag-etappen-6-8.md`, Wünsche vom 13.11.2026; jede Etappe erst nach Silas' Okay)
+  Auftrag für die nächsten Etappen (`auftrag-etappen-6-8.md`, Wünsche vom 13.11.2026; jede Etappe erst nach Silas' Okay), Teil 0b Karte (`auftrag-karte-fehler.md`, V6.6.1), Vorschläge zum Enduco-Vergleich (`ergaenzung-enduco-vergleich.md`, erst nach Okay)
 
 ## Nächtliches Update (nur Garmin-Verbindung)
 1. `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json data.json`
@@ -421,8 +421,12 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - Breite Tabellen: `data-liste` an der Tabelle (oder zu breit auf ≤ 640 px) → Liste (`.als-liste`, Spaltenname je Zelle). Tabellen, die
   nie Liste werden sollen: `data-keine-liste`.
 - Ausblenden statt löschen: `hidden data-ausgeblendet="Grund"` an der Karte (mit id); Einstellungen → «Ausgeblendete Karten» blendet je Gerät ein.
+- Planer und Trainingsrouten: Farben nur über Variablen, auch in SVG (design-1.1, Teil 0b). Designfarben (Flächen, Schrift, Status, Diagramm)
+  je im Block dunkel und hell von `css/v6.css`, helle Werte nur im Block für `[data-theme="light"]`; Daten- und Markerfarben (gleich in beiden
+  Designs) im gemeinsamen `:root`. Im SVG als `style="fill:var(--…)"` (nicht als `fill="…"`), auf der Karte (MapLibre) über `RTUI.farbe()`.
+  `tests/test_v6.cjs` prüft: keine festen Farben, jede Variable in beiden Designs, Schrift auf Markern ≥ 4,5 : 1.
 
-## Design V6 (design-1.0, Vorlage «enduco als Vorbild» vom 13.11.2026)
+## Design V6 (design-1.1; design-1.0 Vorlage «enduco als Vorbild» vom 13.11.2026, 1.1 Planer-Farben aus Variablen, Teil 0b)
 - Übernommen werden Aufbau, Bedienlogik und Farbsprache, nie Texte, Logos, Symbole, Fotos oder Grafiken von enduco; eigene Symbole in `V6.ICON`.
 - Eine Zone, eine Farbe: nur über `--zc-…` (css/v6.css) bzw. `V6.ZONEN`; Sportarten `--sp-…`, Monitoring `--mon-…`, Rennen und heute `--race`.
   Dunkel ist Standard, «Hell» je Gerät (`sf.theme`). Neue Blätter über `V59.blatt(art, html)` mit `.blatt-titel`, `.blatt-fuss` (Zurück links

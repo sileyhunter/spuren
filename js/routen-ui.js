@@ -58,15 +58,26 @@
   const winterFuss = () => { const m = new Date(ST.startUnix * 1000).getMonth(); return (m >= 10 || m <= 3) && (ST.sport === "wandern" || ST.sport === "trail"); };
 
   /* ---------------- Kategorien je Analyseansicht ---------------- */
-  const TEMP = [["t0", "unter 0 °C", -99, 0, "#4a6fa5"], ["t5", "0–5 °C", 0, 5, "#7aa6c2"], ["t10", "5–10 °C", 5, 10, "#9cc7b4"], ["t15", "10–15 °C", 10, 15, "#d9cf7f"],
-    ["t20", "15–20 °C", 15, 20, "#e9a65d"], ["t25", "20–25 °C", 20, 25, "#d9694a"], ["t30", "über 25 °C", 25, 99, "#a63d2f"]];
-  const RAIN = [["r0", "trocken (< 0,1 mm/h)", -1, 0.1, "#d7dde2"], ["r1", "leicht (0,1–1 mm/h)", 0.1, 1, "#8fb8de"], ["r4", "mässig (1–4 mm/h)", 1, 4, "#4a7fc1"], ["r9", "stark (> 4 mm/h)", 4, 999, "#23457a"]];
-  const WIND = [["wg2", "Gegenwind > 15 km/h", -99, -15, "#8c2d2d"], ["wg1", "Gegenwind 5–15 km/h", -15, -5, "#d9694a"], ["ws", "seitlich/schwach (±5 km/h)", -5, 5, "#c9d0d6"],
-    ["wr1", "Rückenwind 5–15 km/h", 5, 15, "#6fa6c9"], ["wr2", "Rückenwind > 15 km/h", 15, 99, "#2c6e9b"]];
-  const SPEED_RAD = [["v1", "unter 10 km/h", 0, 10, "#8c2d2d"], ["v2", "10–20 km/h", 10, 20, "#d9824a"], ["v3", "20–30 km/h", 20, 30, "#d9cf7f"], ["v4", "30–40 km/h", 30, 40, "#6fa6c9"], ["v5", "über 40 km/h", 40, 999, "#2c6e9b"]];
-  const SPEED_FUSS = [["p1", "langsamer als 8:00 /km", 0, 7.5, "#8c2d2d"], ["p2", "6:00–8:00 /km", 7.5, 10, "#d9824a"], ["p3", "5:00–6:00 /km", 10, 12, "#d9cf7f"], ["p4", "4:00–5:00 /km", 12, 15, "#6fa6c9"], ["p5", "schneller als 4:00 /km", 15, 999, "#2c6e9b"]];
-  const SPEED_GEH = [["h1", "unter 2 km/h", 0, 2, "#8c2d2d"], ["h2", "2–3 km/h", 2, 3, "#d9824a"], ["h3", "3–4 km/h", 3, 4, "#d9cf7f"], ["h4", "4–5 km/h", 4, 5, "#6fa6c9"], ["h5", "über 5 km/h", 5, 99, "#2c6e9b"]];
-  const UNK = { label: "Unbekannt", color: "#c3c8cd" };
+  // design-1.1: Farben nur über CSS-Variablen (css/v6.css). Im Profil (SVG) und in der Legende als var(--…); die Karte (MapLibre)
+  // kennt keine CSS-Variablen und bekommt den berechneten Wert über farbe(). Daten- und Kartenfarben sind in beiden Designs gleich.
+  const cv = (n) => `var(--${n})`;
+  const FARBEN = new Map();
+  function farbe(c) {
+    if (typeof c !== "string" || c.slice(0, 4) !== "var(") return c;
+    const name = c.slice(4, -1).trim();
+    if (!FARBEN.has(name)) { let v = ""; try { v = getComputedStyle(document.documentElement).getPropertyValue(name).trim(); } catch (e) { /* ohne DOM */ } FARBEN.set(name, v || "#888888"); }
+    return FARBEN.get(name);
+  }
+  const TEMP = [["t0", "unter 0 °C", -99, 0, cv("rp-temp-0")], ["t5", "0–5 °C", 0, 5, cv("rp-temp-5")], ["t10", "5–10 °C", 5, 10, cv("rp-temp-10")], ["t15", "10–15 °C", 10, 15, cv("rp-temp-15")],
+    ["t20", "15–20 °C", 15, 20, cv("rp-temp-20")], ["t25", "20–25 °C", 20, 25, cv("rp-temp-25")], ["t30", "über 25 °C", 25, 99, cv("rp-temp-30")]];
+  const RAIN = [["r0", "trocken (< 0,1 mm/h)", -1, 0.1, cv("rp-regen-0")], ["r1", "leicht (0,1–1 mm/h)", 0.1, 1, cv("rp-regen-1")], ["r4", "mässig (1–4 mm/h)", 1, 4, cv("rp-regen-4")], ["r9", "stark (> 4 mm/h)", 4, 999, cv("rp-regen-9")]];
+  const WIND = [["wg2", "Gegenwind > 15 km/h", -99, -15, cv("rp-wind-g2")], ["wg1", "Gegenwind 5–15 km/h", -15, -5, cv("rp-wind-g1")], ["ws", "seitlich/schwach (±5 km/h)", -5, 5, cv("rp-wind-s")],
+    ["wr1", "Rückenwind 5–15 km/h", 5, 15, cv("rp-wind-r1")], ["wr2", "Rückenwind > 15 km/h", 15, 99, cv("rp-wind-r2")]];
+  const T5 = [1, 2, 3, 4, 5].map((i) => cv("rp-tempo-" + i));
+  const SPEED_RAD = [["v1", "unter 10 km/h", 0, 10, T5[0]], ["v2", "10–20 km/h", 10, 20, T5[1]], ["v3", "20–30 km/h", 20, 30, T5[2]], ["v4", "30–40 km/h", 30, 40, T5[3]], ["v5", "über 40 km/h", 40, 999, T5[4]]];
+  const SPEED_FUSS = [["p1", "langsamer als 8:00 /km", 0, 7.5, T5[0]], ["p2", "6:00–8:00 /km", 7.5, 10, T5[1]], ["p3", "5:00–6:00 /km", 10, 12, T5[2]], ["p4", "4:00–5:00 /km", 12, 15, T5[3]], ["p5", "schneller als 4:00 /km", 15, 999, T5[4]]];
+  const SPEED_GEH = [["h1", "unter 2 km/h", 0, 2, T5[0]], ["h2", "2–3 km/h", 2, 3, T5[1]], ["h3", "3–4 km/h", 3, 4, T5[2]], ["h4", "4–5 km/h", 4, 5, T5[3]], ["h5", "über 5 km/h", 5, 99, T5[4]]];
+  const UNK = { label: "Unbekannt", color: cv("rp-unbekannt") };
   // wetter-rt-1.2: unbekannt bleibt sichtbar unbekannt; 0 km/h nur bei gemeldeter Windstille
   const windKurz = (w) => (!w || !isNum(w.speed) ? "Wind unbekannt" : w.speed < 1e-6 ? "windstill (0 km/h)" : `Wind ${fmt(w.speed * 3.6)} km/h ${isNum(w.dirFrom) ? "aus " + dirName(w.dirFrom) : "(Richtung unbekannt)"}`);
   const tempKurz = (w) => (w && isNum(w.temp) ? `${fmt(w.temp, 0)} °C` : "Temperatur unbekannt");
@@ -233,36 +244,36 @@
     map.addSource("rt-hand", { type: "geojson", data: E });        // hand-1.0: Abschnitte ohne Wegnetz gestrichelt darüber
     map.addSource("rt-gap", { type: "geojson", data: E });         // wegende-1.0: Wegende und Punkt ohne Weg (keine Linie)
     // Richtungspfeile als kleines Bild (keine Schrift nötig)
-    const cv = document.createElement("canvas"); cv.width = cv.height = 24;
-    const g = cv.getContext("2d"); g.fillStyle = "#ffffff"; g.strokeStyle = "rgba(31,51,71,.85)"; g.lineWidth = 2;
+    const lw = document.createElement("canvas"); lw.width = lw.height = 24;
+    const g = lw.getContext("2d"); g.fillStyle = farbe(cv("mk-ring")); g.strokeStyle = farbe(cv("rp-pfeil-rand")); g.lineWidth = 2;
     g.beginPath(); g.moveTo(5, 5); g.lineTo(19, 12); g.lineTo(5, 19); g.lineTo(9, 12); g.closePath(); g.stroke(); g.fill();
     map.addImage("rt-arrow", { width: 24, height: 24, data: g.getImageData(0, 0, 24, 24).data }, { pixelRatio: 2 });
     // Windpfeil: zeigt nach oben (Norden) und wird um die Richtung gedreht, WOHIN der Wind weht; SDF = Farbe je Gegen-/Rückenwind
     const wv = document.createElement("canvas"); wv.width = wv.height = 48;
-    const wg = wv.getContext("2d"); wg.fillStyle = "#ffffff"; wg.lineJoin = "round";
+    const wg = wv.getContext("2d"); wg.fillStyle = "#ffffff"; wg.lineJoin = "round";     // SDF-Maske (nur die Deckkraft zählt, Farbe kommt aus icon-color)
     wg.beginPath(); wg.moveTo(24, 5); wg.lineTo(38, 23); wg.lineTo(29, 23); wg.lineTo(29, 43); wg.lineTo(19, 43); wg.lineTo(19, 23); wg.lineTo(10, 23); wg.closePath(); wg.fill();
     map.addImage("rt-wind", { width: 48, height: 48, data: wg.getImageData(0, 0, 48, 48).data }, { pixelRatio: 2, sdf: true });
     const lay = { "line-join": "round", "line-cap": "round" };
-    map.addLayer({ id: "rt-draft", type: "line", source: "rt-draft", layout: lay, paint: { "line-color": "#d9694a", "line-width": 3, "line-dasharray": [1.5, 1.5] } });
+    map.addLayer({ id: "rt-draft", type: "line", source: "rt-draft", layout: lay, paint: { "line-color": farbe(cv("rp-entwurf")), "line-width": 3, "line-dasharray": [1.5, 1.5] } });
     // Andere Routen und Umfahrung: grau unter der gewählten Route, antippen = wählen
-    map.addLayer({ id: "rt-alt-case", type: "line", source: "rt-alt", layout: lay, paint: { "line-color": "#ffffff", "line-width": 7, "line-opacity": 0.9 } });
-    map.addLayer({ id: "rt-alt-line", type: "line", source: "rt-alt", layout: lay, paint: { "line-color": ["case", ["==", ["get", "art"], "umfahrung"], "#6f8a5a", "#7f8c99"], "line-width": 4, "line-opacity": 0.85 } });
-    map.addLayer({ id: "rt-alt-hit", type: "line", source: "rt-alt", layout: lay, paint: { "line-color": "#000", "line-width": 22, "line-opacity": 0.001 } });
-    map.addLayer({ id: "rt-case", type: "line", source: "rt", layout: lay, paint: { "line-color": "#ffffff", "line-width": 9, "line-opacity": 0.95 } });
-    map.addLayer({ id: "rt-selcase", type: "line", source: "rt", layout: lay, filter: ["==", ["get", "sel"], 1], paint: { "line-color": "#14222e", "line-width": 11 } });
+    map.addLayer({ id: "rt-alt-case", type: "line", source: "rt-alt", layout: lay, paint: { "line-color": farbe(cv("mk-ring")), "line-width": 7, "line-opacity": 0.9 } });
+    map.addLayer({ id: "rt-alt-line", type: "line", source: "rt-alt", layout: lay, paint: { "line-color": ["case", ["==", ["get", "art"], "umfahrung"], farbe(cv("rp-alt-umfahrung")), farbe(cv("rp-alt-linie"))], "line-width": 4, "line-opacity": 0.85 } });
+    map.addLayer({ id: "rt-alt-hit", type: "line", source: "rt-alt", layout: lay, paint: { "line-color": "#000", "line-width": 22, "line-opacity": 0.001 } });     // unsichtbare Trefferfläche
+    map.addLayer({ id: "rt-case", type: "line", source: "rt", layout: lay, paint: { "line-color": farbe(cv("mk-ring")), "line-width": 9, "line-opacity": 0.95 } });
+    map.addLayer({ id: "rt-selcase", type: "line", source: "rt", layout: lay, filter: ["==", ["get", "sel"], 1], paint: { "line-color": farbe(cv("rp-auswahl-karte")), "line-width": 11 } });
     map.addLayer({ id: "rt-line", type: "line", source: "rt", layout: lay,
       paint: { "line-color": ["get", "color"], "line-width": ["case", ["==", ["get", "sel"], 1], 6.5, 5], "line-opacity": ["case", ["==", ["get", "dim"], 1], 0.28, 1] } });
-    map.addLayer({ id: "rt-hand", type: "line", source: "rt-hand", layout: { "line-join": "round", "line-cap": "butt" }, paint: { "line-color": "#ffffff", "line-width": 2.6, "line-dasharray": [2, 2.2] } });
+    map.addLayer({ id: "rt-hand", type: "line", source: "rt-hand", layout: { "line-join": "round", "line-cap": "butt" }, paint: { "line-color": farbe(cv("mk-ring")), "line-width": 2.6, "line-dasharray": [2, 2.2] } });
     map.addLayer({ id: "rt-arrows", type: "symbol", source: "rt", layout: { "symbol-placement": "line", "symbol-spacing": 90, "icon-image": "rt-arrow", "icon-size": 0.9, "icon-allow-overlap": true, "icon-ignore-placement": true } });
-    map.addLayer({ id: "rt-gap", type: "circle", source: "rt-gap", paint: { "circle-radius": ["case", ["==", ["get", "art"], "ziel"], 17, 7], "circle-color": ["case", ["==", ["get", "art"], "ziel"], "rgba(180,68,58,0)", "#b4443a"],
-      "circle-stroke-color": "#b4443a", "circle-stroke-width": ["case", ["==", ["get", "art"], "ziel"], 3, 2.5], "circle-stroke-opacity": 0.9 } });
+    map.addLayer({ id: "rt-gap", type: "circle", source: "rt-gap", paint: { "circle-radius": ["case", ["==", ["get", "art"], "ziel"], 17, 7], "circle-color": ["case", ["==", ["get", "art"], "ziel"], "rgba(0,0,0,0)", farbe(cv("rp-luecke"))],
+      "circle-stroke-color": farbe(cv("rp-luecke")), "circle-stroke-width": ["case", ["==", ["get", "art"], "ziel"], 3, 2.5], "circle-stroke-opacity": 0.9 } });
     // Nur Bild, keine Schrift: der Kartenstil hat keine Glyphen (eine Textebene würde von MapLibre verworfen)
     map.addLayer({ id: "rt-wind", type: "symbol", source: "rt-wind", layout: { "icon-image": "rt-wind", "icon-rotate": ["get", "rot"], "icon-rotation-alignment": "map",
       "icon-size": ["interpolate", ["linear"], ["get", "kmh"], 0, 0.6, 30, 1.15], "icon-allow-overlap": true, "icon-ignore-placement": true },
-      paint: { "icon-color": ["match", ["get", "art"], "gegen", "#b4443a", "rueck", "#2c6e9b", "#5f6b76"], "icon-halo-color": "#ffffff", "icon-halo-width": 1.6 } });
-    map.addLayer({ id: "rt-hit", type: "line", source: "rt", layout: lay, paint: { "line-color": "#000", "line-width": 26, "line-opacity": 0.001 } });
-    map.addLayer({ id: "rt-cur-halo", type: "circle", source: "rt-cur", paint: { "circle-radius": 16, "circle-color": "#d9694a", "circle-opacity": 0.18 } });
-    map.addLayer({ id: "rt-cur", type: "circle", source: "rt-cur", paint: { "circle-radius": 8, "circle-color": "#ffffff", "circle-stroke-color": "#d9694a", "circle-stroke-width": 4 } });
+      paint: { "icon-color": ["match", ["get", "art"], "gegen", farbe(cv("rp-windpfeil-gegen")), "rueck", farbe(cv("rp-windpfeil-rueck")), farbe(cv("rp-windpfeil-seite"))], "icon-halo-color": farbe(cv("mk-ring")), "icon-halo-width": 1.6 } });
+    map.addLayer({ id: "rt-hit", type: "line", source: "rt", layout: lay, paint: { "line-color": "#000", "line-width": 26, "line-opacity": 0.001 } });     // unsichtbare Trefferfläche
+    map.addLayer({ id: "rt-cur-halo", type: "circle", source: "rt-cur", paint: { "circle-radius": 16, "circle-color": farbe(cv("rp-cursor")), "circle-opacity": 0.18 } });
+    map.addLayer({ id: "rt-cur", type: "circle", source: "rt-cur", paint: { "circle-radius": 8, "circle-color": farbe(cv("mk-ring")), "circle-stroke-color": farbe(cv("rp-cursor")), "circle-stroke-width": 4 } });
     map.addLayer({ id: "rt-cur-hit", type: "circle", source: "rt-cur", paint: { "circle-radius": 26, "circle-opacity": 0.001 } });
     // Cursor ziehen (Finger oder Maus): Karte schiebt nicht, Punkt gleitet entlang der echten Linie
     const startDrag = (e) => { if (!route) return; e.preventDefault(); dragCursor = true; map.getCanvas().style.cursor = "grabbing"; };
@@ -287,14 +298,14 @@
   }
   const windKarte = () => S.get("windkarte", true) !== false;
   function renderMap() {
-    if (!map || !map.getSource("rt")) return;
+    if (!map || !map.getSource("rt") || !isOpen) return;      // geschlossen: nichts auf die Karte (K4), auch nicht nach späten Antworten
     const feats = [];
     if (route && pieces.length) {
       const cats = (TABS[ST.activeAnalysisTab].cats || (() => ({})))();
       const anySel = ST.selectedSegmentIds.size > 0;
       for (const p of pieces) {
         const sel = ST.selectedSegmentIds.has(p.id) ? 1 : 0;
-        const color = p.color || (cats[p.cat] || UNK).color;
+        const color = farbe(p.color || (cats[p.cat] || UNK).color);
         feats.push({ type: "Feature", properties: { id: p.id, cat: p.cat, color, sel, dim: anySel && !sel ? 1 : 0 }, geometry: { type: "LineString", coordinates: RT.slice(route, p.d0, p.d1) } });
       }
     }
@@ -328,7 +339,7 @@
     return out;
   }
   function renderAltMap() {
-    if (!map || !map.getSource("rt-alt")) return;
+    if (!map || !map.getSource("rt-alt") || !isOpen) return;
     altMarkers.forEach((m) => m.remove()); altMarkers = [];
     const opts = altOptions();
     map.getSource("rt-alt").setData({ type: "FeatureCollection", features: opts.map((o) => ({ type: "Feature", properties: { id: o.id, art: o.art }, geometry: { type: "LineString", coordinates: o.route.lon.map((x, i) => [x, o.route.lat[i]]) } })) });
@@ -358,7 +369,7 @@
 
   function viaLabel(i, n) { return i === 0 ? "A" : i === n - 1 && n > 1 ? "B" : String(i); }
   function renderMarkers() {
-    if (!map || !window.maplibregl) return;
+    if (!map || !window.maplibregl || !isOpen) return;
     markers.forEach((m) => m.remove()); markers = [];
     ST.vias.forEach((p, i) => {
       const el = document.createElement("div");
@@ -373,7 +384,7 @@
     });
   }
   function renderCursorMap() {
-    if (!map || !map.getSource("rt-cur")) return;
+    if (!map || !map.getSource("rt-cur") || !isOpen) return;
     const d = ST.cursorDistance_m;
     if (!route || d == null) { map.getSource("rt-cur").setData({ type: "FeatureCollection", features: [] }); return; }
     const a = RT.at(route, d);
@@ -720,11 +731,11 @@
       let last = 0;
       const all = climbs.up.map((c) => ({ ...c, kind: "up" })).concat(climbs.down.map((c) => ({ ...c, kind: "down" }))).sort((a, b) => a.d0 - b.d0);
       for (const c of all) {
-        if (c.d0 > last) pieces.push({ id: "f" + pieces.length, d0: last, d1: c.d0, cat: "flach", color: "#b9c3cc" });
-        pieces.push({ id: c.id, d0: c.d0, d1: c.d1, cat: c.kind, color: c.kind === "up" ? "#d9694a" : "#3d7fb3" });
+        if (c.d0 > last) pieces.push({ id: "f" + pieces.length, d0: last, d1: c.d0, cat: "flach", color: cv("rp-anstieg-flach") });
+        pieces.push({ id: c.id, d0: c.d0, d1: c.d1, cat: c.kind, color: cv(c.kind === "up" ? "rp-anstieg-auf" : "rp-anstieg-ab") });
         last = c.d1;
       }
-      if (last < route.L) pieces.push({ id: "f" + pieces.length, d0: last, d1: route.L, cat: "flach", color: "#b9c3cc" });
+      if (last < route.L) pieces.push({ id: "f" + pieces.length, d0: last, d1: route.L, cat: "flach", color: cv("rp-anstieg-flach") });
       stats = [];
       return;
     }
@@ -851,14 +862,14 @@
     for (const p of pieces) {
       if (p.d1 - p.d0 < 0.5) continue;
       const color = p.color || (cats[p.cat] || UNK).color, sel = ST.selectedSegmentIds.has(p.id);
-      s += `<path d="${area(p.d0, p.d1)}" fill="${color}" fill-opacity="${anySel ? (sel ? 0.95 : 0.14) : 0.62}" stroke="none"/>`;
+      s += `<path d="${area(p.d0, p.d1)}" style="fill:${color}" fill-opacity="${anySel ? (sel ? 0.95 : 0.14) : 0.62}" stroke="none"/>`;
     }
     s += `<path d="${line(0, L)}" class="el"/>`;
     // V5.7: geplante Intervalle (intervall-rt-1.0) als Bänder über dem Profil – Farbe = Eignung des Abschnitts
     const bands = window.TRUI && window.TRUI.chartBands ? window.TRUI.chartBands(route, sim) : null;
     if (bands) for (const b of bands) {
-      const x0 = X(Math.max(0, b.d0)), x1 = X(Math.min(L, b.d1)), col = b.note === "gut" ? "#2f8f83" : b.note === "bedingt" ? "#c9913f" : "#b4443a";
-      s += `<rect x="${x0.toFixed(1)}" y="${pt}" width="${Math.max(1.5, x1 - x0).toFixed(1)}" height="${h}" fill="${col}" fill-opacity=".1"/><rect x="${x0.toFixed(1)}" y="${pt}" width="${Math.max(1.5, x1 - x0).toFixed(1)}" height="7" fill="${col}"><title>Intervall ${b.nr}: ${esc(b.note)}</title></rect>`;
+      const x0 = X(Math.max(0, b.d0)), x1 = X(Math.min(L, b.d1)), col = cv(b.note === "gut" ? "iv-gut" : b.note === "bedingt" ? "iv-bedingt" : "iv-ungeeignet");
+      s += `<rect x="${x0.toFixed(1)}" y="${pt}" width="${Math.max(1.5, x1 - x0).toFixed(1)}" height="${h}" style="fill:${col}" fill-opacity=".1"/><rect x="${x0.toFixed(1)}" y="${pt}" width="${Math.max(1.5, x1 - x0).toFixed(1)}" height="7" style="fill:${col}"><title>Intervall ${b.nr}: ${esc(b.note)}</title></rect>`;
       if (x1 - x0 > 9) s += `<text x="${((x0 + x1) / 2).toFixed(1)}" y="${pt + 17}" class="ivl">${b.nr}</text>`;
     }
     for (const p of pieces) if (ST.selectedSegmentIds.has(p.id)) s += `<path d="${line(p.d0, p.d1)}" class="sel"/><line x1="${X(p.d0).toFixed(1)}" x2="${X(p.d0).toFixed(1)}" y1="${pt}" y2="${pt + h}" class="selb"/><line x1="${X(p.d1).toFixed(1)}" x2="${X(p.d1).toFixed(1)}" y1="${pt}" y2="${pt + h}" class="selb"/>`;
@@ -869,7 +880,7 @@
       if (ov.trocken) s += `<text x="${pl + w / 2}" y="${o0 + ovH / 2 + 4}" class="ovt">trocken – 0 mm/h entlang der Route (Prognose)</text>`;
       else {
         for (const v of ov.ticks || niceTicks(v0, v1, 2)) s += `<line x1="${pl}" x2="${pl + w}" y1="${Yo(v).toFixed(1)}" y2="${Yo(v).toFixed(1)}" class="${v === 0 ? "g0" : "g"}"/><text x="${pl - 6}" y="${(Yo(v) + 3.5).toFixed(1)}" class="ya">${fmt(v)}</text>`;
-        if (ov.bars) for (const b of ov.pts) s += `<rect x="${X(b[0]).toFixed(1)}" y="${Yo(Math.max(0, b[1])).toFixed(1)}" width="${Math.max(1, (X(b[2]) - X(b[0]))).toFixed(1)}" height="${Math.abs(Yo(b[1]) - Yo(0)).toFixed(1)}" fill="${b[3] || "#4a7fc1"}" opacity=".85"/>`;
+        if (ov.bars) for (const b of ov.pts) s += `<rect x="${X(b[0]).toFixed(1)}" y="${Yo(Math.max(0, b[1])).toFixed(1)}" width="${Math.max(1, (X(b[2]) - X(b[0]))).toFixed(1)}" height="${Math.abs(Yo(b[1]) - Yo(0)).toFixed(1)}" style="fill:${b[3] || cv("rp-balken-regen")}" opacity=".85"/>`;
         else { let pen = false; s += `<path d="${ov.pts.map((q) => { if (!isNum(q[1])) { pen = false; return ""; } const c = `${pen ? "L" : "M"}${X(q[0]).toFixed(1)},${Yo(q[1]).toFixed(1)}`; pen = true; return c; }).join(" ")}" class="ov"/>`; }
       }
     }
@@ -895,8 +906,8 @@
     for (let i = 0; i < N; i++) {
       const k = Math.floor(i * step), w = wxAt(k); if (!w) { unbekannt++; continue; }
       if (tab === "temp") { if (!isNum(w.temp)) unbekannt++; out.push([P.d[k], isNum(w.temp) ? w.temp : null]); }
-      else if (tab === "regen") { if (isNum(w.regen)) out.push([P.d[k], w.regen, P.d[Math.min(P.n, Math.floor((i + 1) * step))], "#4a7fc1"]); else unbekannt++; }
-      else if (tab === "wind") { if (isNum(w.along)) { const a = w.along * 3.6; out.push([P.d[k], a, P.d[Math.min(P.n, Math.floor((i + 1) * step))], a < 0 ? "#d9694a" : "#3d7fb3"]); } else unbekannt++; }
+      else if (tab === "regen") { if (isNum(w.regen)) out.push([P.d[k], w.regen, P.d[Math.min(P.n, Math.floor((i + 1) * step))], cv("rp-balken-regen")]); else unbekannt++; }
+      else if (tab === "wind") { if (isNum(w.along)) { const a = w.along * 3.6; out.push([P.d[k], a, P.d[Math.min(P.n, Math.floor((i + 1) * step))], cv(a < 0 ? "rp-balken-gegen" : "rp-balken-rueck")]); } else unbekannt++; }
     }
     const lueckeTxt = unbekannt ? ` · Lücken = unbekannt (${fmt(100 * unbekannt / N)} %)` : "";
     const vs = out.map((q) => q[1]).filter(isNum);
@@ -1621,20 +1632,30 @@
     if (!map || !cs.length) return;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (const [x, y] of cs) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
-    // Platz für Kartenknöpfe (oben links/rechts); das Bottom Sheet ist über die Kartenpolsterung berücksichtigt
-    map.fitBounds([[x0, y0], [x1, y1]], { padding: { top: 120, bottom: 30, left: 30, right: 64 }, maxZoom: 16, duration: reduce() ? 0 : 600 });
+    // Platz für Kartenknöpfe (oben links/rechts) und – Teil 0b (K7) – unten für Massstab und Quellenangabe samt halbem Marker:
+    // Start und Ziel liegen ganz im freien Kartenbereich. Das Bottom Sheet ist über die Kartenpolsterung berücksichtigt.
+    const box = map.getContainer().parentElement, hoehe = (sel) => { const e = box && box.querySelector(sel); return e ? e.getBoundingClientRect().height : 0; };
+    const unten = Math.max(hoehe(".maplibregl-ctrl-bottom-left"), hoehe(".maplibregl-ctrl-bottom-right"));
+    map.fitBounds([[x0, y0], [x1, y1]], { padding: { top: 120, bottom: 30 + Math.round(unten), left: 30, right: 64 }, maxZoom: 16, duration: reduce() ? 0 : 600 });
   }
   const SHEETS = ["min", "half", "full"];
-  function setSheet(s) { ST.sheet = s; applySheet(); }
+  /** Teil 0b (K7): die Blatthöhe wechselt animiert (0,25 s); danach die Kartenpolsterung mit der endgültigen Höhe setzen,
+   *  sonst passt ein Einpassen kurz danach die Route mit der alten Höhe ein (Ziel unter dem Blatt). */
+  let sheetT = 0;
+  function nachSheet() { clearTimeout(sheetT); sheetT = setTimeout(applySheet, 300); }
+  function setSheet(s) { ST.sheet = s; applySheet(); nachSheet(); }
   function applySheet() {
     const el = $("planner"); if (!el) return;
     const mobile = innerWidth <= 760;
     el.dataset.sheet = ST.sheet;
     const wrap = el.parentElement;
     if (!map) return;
+    if (wrap) wrap.classList.toggle("blatt-voll", !!(active() && mobile && ST.sheet === "full"));     // K7: ganz offen = Karte verdeckt
     if (!active()) { map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 }); if (wrap) wrap.style.removeProperty("--rp-h"); return; }
     if (mobile) {
-      const hgt = el.getBoundingClientRect().height || 0;
+      // Zielhöhe statt der gerade animierten Höhe (gleiche Werte wie im CSS: min 172 px, halb 54 %, ganz 100 % − 6 px)
+      const H = wrap ? wrap.clientHeight : innerHeight, ziel = { min: 172, half: Math.round(H * 0.54), full: H - 6 }[ST.sheet];
+      const hgt = (!el.classList.contains("dragging") && ziel) || el.getBoundingClientRect().height || 0;
       if (wrap) wrap.style.setProperty("--rp-h", Math.round(hgt) + "px");
       map.setPadding({ top: 0, left: 0, right: 0, bottom: Math.min(hgt, innerHeight * 0.6) });
     } else { if (wrap) wrap.style.setProperty("--rp-h", "0px"); map.setPadding({ top: 0, bottom: 0, left: 0, right: el.getBoundingClientRect().width || 0 }); }
@@ -1833,12 +1854,24 @@
     setAddMode(ST.vias.length < 2);
     // iPhone: beim Punktesetzen möglichst viel Karte, mit Route halbhoch
     if (innerWidth <= 760) ST.sheet = ST.vias.length < 2 ? "min" : "half";
-    applySheet(); renderAll();
-    if (map) renderMap();
+    applySheet(); nachSheet(); renderAll();
+    if (map) renderMap();             // Teil 0b (K4): zeichnet den letzten Stand wieder (Route, Marker, Varianten, Windpfeile)
+    if (window.TRUI && window.TRUI.planerAuf) { try { window.TRUI.planerAuf(); } catch (e) { console.error(e); } }
   }
+  /** Teil 0b (K4): Schliessen nimmt alles von der Karte, was Planer und «Training → Route» gezeichnet haben; gespeicherte Routen
+   *  (Ebene routes) bleiben. Der Stand bleibt erhalten und erscheint beim nächsten Öffnen wieder. */
+  const PLANER_QUELLEN = ["rt", "rt-cur", "rt-draft", "rt-alt", "rt-wind", "rt-hand", "rt-gap"];
   function close() {
     isOpen = false; $("planner").hidden = true;
-    if (map) { map.getCanvas().style.cursor = ""; markers.forEach((m) => m.remove()); markers = []; if (map.getSource("rt")) { map.getSource("rt").setData({ type: "FeatureCollection", features: [] }); map.getSource("rt-cur").setData({ type: "FeatureCollection", features: [] }); map.getSource("rt-draft").setData({ type: "FeatureCollection", features: [] }); } map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 }); }
+    const wrap = $("planner").parentElement; if (wrap) wrap.classList.remove("blatt-voll");
+    if (map) {
+      map.getCanvas().style.cursor = "";
+      markers.forEach((m) => m.remove()); markers = [];
+      altMarkers.forEach((m) => m.remove()); altMarkers = [];
+      for (const id of PLANER_QUELLEN) if (map.getSource(id)) map.getSource(id).setData({ type: "FeatureCollection", features: [] });
+      map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
+    }
+    if (window.TRUI && window.TRUI.planerZu) { try { window.TRUI.planerZu(); } catch (e) { console.error(e); } }
   }
   function planRoute() {
     if (!route) return null;
@@ -1864,7 +1897,7 @@
   function primeLegs(ep, eng, vias, legs, opt) {
     legs.forEach((leg, i) => { const key = [ep, eng.engine, JSON.stringify(eng.params), vias[i].join(","), vias[i + 1].join(","), (opt && opt.alt) || 0, (opt && opt.nogos) || ""].join("|"); CACHE.set(key, Promise.resolve(leg)); });
   }
-  window.RTUI = { init, open, close, active, mapClick, loadSaved, planRoute, state: () => ST, route: () => route, sim: () => sim, climbs: () => climbs, pieces: () => pieces,
+  window.RTUI = { init, open, close, active, mapClick, loadSaved, planRoute, state: () => ST, route: () => route, sim: () => sim, climbs: () => climbs, pieces: () => pieces, farbe,
     setCursor: (d) => setCursor(d, "api"), selectCat, selectClimb, setSheet, map: () => map,
     loadTraining, primeLegs, inputFor, bfetch: () => BF, endpoint: () => S.get("endpoint", RT.ENDPOINT), profilId: (sport, neu) => profilId(sport, S.get("endpoint", RT.ENDPOINT), neu),
     profilFehler: () => PROF.fehler || null, consent, setConsent: (o) => S.set("consent", Object.assign(consent(), o)), fitCoords, redraw: () => { drawChart(); renderInfo(); }, recompute: () => effortChanged(), store: S };

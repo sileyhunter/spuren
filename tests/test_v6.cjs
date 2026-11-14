@@ -197,3 +197,78 @@ test("Zonenliste: Name und Grenzen je Zone, Unterzonen aus dem Text", () => {
   assert.deepEqual(Zl[4].unter.map((u) => [u.name, u.lo, u.hi]), [["VO2max", 280, 320]]);
   assert.deepEqual(V6.zonenZeilen(ZONEN[0].skalen[1].zonen)[1].unter, [{ key: "fatmax", name: "FatMax", lo: 345, hi: 360 }], "Pace-Unterzone in s/km");
 });
+
+// ---------------- design-1.1 (Teil 0b): Planer und Trainingsrouten – Farben nur über Variablen, auch in SVG ----------------
+const fs = require("node:fs");
+const path = require("node:path");
+const lies = (f) => fs.readFileSync(path.join(__dirname, "..", f), "utf8");
+const HEX = /#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)/g;
+/** CSS-Regeln aus einem Text: [{ sel, body }] (ohne @media-Klammern, die Regeln darin zählen einzeln). */
+function regeln(css) {
+  const out = []; css = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const re = /([^{}]+)\{([^{}]*)\}/g; let m;
+  while ((m = re.exec(css))) out.push({ sel: m[1].trim().replace(/^@media[^{]*$/, "").trim(), body: m[2] });
+  return out;
+}
+function variablen(css, block) {
+  const i = css.indexOf(block); assert.ok(i >= 0, "Block fehlt: " + block);
+  const j = css.indexOf("}", css.indexOf("{", i));
+  return new Set([...css.slice(i, j).matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]));
+}
+test("design-1.1: Planer-CSS ohne feste Farben (Hintergrund, Schrift, Füllung, Linie, Schatten)", () => {
+  const html = lies("index.html"), css = html.slice(html.indexOf("<style>"), html.indexOf("</style>"));
+  const planer = regeln(css).filter((r) => /(^|[\s,.#])(\.rp-|\.tr-|\.planner|#rp-|#tr-)/.test(r.sel) || /\.planner\.rp/.test(r.sel));
+  assert.ok(planer.length > 80, "Planer-Regeln gefunden: " + planer.length);
+  const fest = planer.filter((r) => (r.body.match(HEX) || []).length).map((r) => r.sel.slice(0, 60) + " → " + r.body.match(HEX).join(", "));
+  assert.deepEqual(fest, []);
+});
+test("design-1.1: Planer- und Trainings-JS ohne feste Farben (ausser unsichtbaren Trefferflächen und SDF-Maske)", () => {
+  const erlaubt = ['"#000", "line-width": 22', '"#000", "line-width": 26', 'wg.fillStyle = "#ffffff"', '"rgba(0,0,0,0)"', 'FARBEN.set(name, v || "#888888")'];
+  for (const f of ["js/routen-ui.js", "js/training-ui.js", "js/route.js"]) {
+    const zeilen = lies(f).split("\n");
+    const fund = [];
+    zeilen.forEach((z, i) => { const ohne = erlaubt.reduce((t, e) => t.split(e).join(""), z.replace(/\/\/.*$/, "")); const m = ohne.match(HEX); if (m) fund.push(`${f}:${i + 1} ${m.join(", ")}`); });
+    assert.deepEqual(fund, [], "feste Farben");
+  }
+});
+test("design-1.1: jede Variable des Planers ist definiert – Designfarben dunkel und hell, Daten- und Markerfarben gemeinsam", () => {
+  const v6 = lies("css/v6.css").replace(/\/\*[\s\S]*?\*\//g, ""), html = lies("index.html");
+  const gemeinsam = variablen(v6, ":root {"), hell = variablen(v6, ':root[data-theme="light"] {'), dunkel = variablen(v6, ':root:not([data-theme="light"]) {');
+  const basis = variablen(html, ":root {");
+  const css = html.slice(html.indexOf("<style>"), html.indexOf("</style>"));
+  const planer = regeln(css).filter((r) => /(\.rp-|\.tr-|\.planner|#rp-|#tr-)/.test(r.sel)).map((r) => r.body).join("\n");
+  const js = ["js/routen-ui.js", "js/training-ui.js", "js/route.js"].map(lies).join("\n");
+  const benutzt = new Set([...(planer + "\n" + js).matchAll(/var\(\s*(--[\w-]+)/g)].map((m) => m[1]).concat([...js.matchAll(/cv\("([\w-]+)"\)/g)].map((m) => "--" + m[1])));
+  const lokal = new Set([...planer.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]));      // z. B. --k je Vorschlagskarte
+  const fehlt = [];
+  for (const v of benutzt) {
+    if (lokal.has(v)) continue;
+    if (gemeinsam.has(v)) continue;                                   // Daten- und Markerfarben: in beiden Designs gleich
+    const d = dunkel.has(v) || basis.has(v), h = hell.has(v) || basis.has(v);
+    if (!d || !h) fehlt.push(`${v} (${d ? "" : "dunkel fehlt "}${h ? "" : "hell fehlt"})`);
+  }
+  assert.deepEqual(fehlt, []);
+  // neue Designvariablen: helle Werte nur im Block für [data-theme="light"], nie im gemeinsamen Block
+  for (const v of ["--tint", "--ok-text", "--warn-text", "--bad-text", "--chart-bg", "--chart-title", "--panel-tint", "--mk-a"]) {
+    assert.ok(hell.has(v) && dunkel.has(v) && !gemeinsam.has(v), v);
+  }
+  assert.equal(V6.VERSIONS.design, "design-1.1");
+});
+test("design-1.1: Schrift auf Markern und Statusflächen mindestens 4,5 : 1 (berechnet aus den Variablen)", () => {
+  const v6 = lies("css/v6.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  const wert = (block, name) => { const i = v6.indexOf(block), j = v6.indexOf("}", v6.indexOf("{", i)); const m = v6.slice(i, j).match(new RegExp(name.replace(/[-]/g, "\\-") + "\\s*:\\s*([^;]+);")); return m ? m[1].trim() : null; };
+  const rgb = (c) => { if (c[0] === "#") { const h = c.slice(1); return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)); } const p = c.match(/[\d.]+/g).map(Number); return p.slice(0, 3); };
+  const lum = (c) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; const [r, g, b] = rgb(c); return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+  const k = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+  const G = ":root {", D = ':root:not([data-theme="light"]) {', H = ':root[data-theme="light"] {';
+  const weiss = wert(G, "--mk-fg");
+  for (const m of ["--mk-b", "--mk-standard", "--mk-umfahrung", "--mk-variante", "--mk-abfahrt", "--mk-zusatz", "--tr-a", "--tr-b", "--tr-c", "--tr-ohne"]) assert.ok(k(weiss, wert(G, m)) >= 4.5, m + " " + k(weiss, wert(G, m)).toFixed(2));
+  for (const b of [D, H]) assert.ok(k(weiss, wert(b, "--mk-a")) >= 4.5, "--mk-a");
+  assert.ok(k(wert(G, "--mk-via-fg"), wert(G, "--mk-via")) >= 4.5, "Zwischenziel");
+  // helle Statusflächen: Schrift auf der Fläche; dunkel: Schrift auf der dunklen Kartenfläche (Fläche ist halbtransparent darüber)
+  for (const [t, f] of [["--ok-text", "--ok-bg"], ["--warn-text", "--warn-bg"], ["--bad-text", "--bad-bg"], ["--chart-title", "--chart-bg"], ["--chart-note", "--chart-bg"]]) {
+    assert.ok(k(wert(H, t), wert(H, f)) >= 4.5, "hell " + t);
+    assert.ok(k(wert(D, t), "#2b2b2f") >= 4.5, "dunkel " + t);
+  }
+  assert.ok(k(wert(D, "--violet-text"), "#2b2b2f") >= 4.5 && k(wert(H, "--violet-text"), "#ffffff") >= 4.5, "violett");
+});

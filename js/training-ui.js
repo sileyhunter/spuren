@@ -16,7 +16,9 @@
   const clock = (u) => (isNum(u) ? tz.format(new Date(u * 1000)) : "–");
   const dch = (iso) => (iso ? new Date(iso + "T12:00:00Z").toLocaleDateString("de-CH", { weekday: "short", day: "numeric", month: "numeric" }) : "–");
   const ROUTBAR = { rad: true, lauf: true, wandern: true };
-  const FARBE = { A: "#2f72c4", B: "#148a7e", C: "#8a6fb0" };
+  // design-1.1: Farben nur über CSS-Variablen (css/v6.css); die Karte bekommt den berechneten Wert über RTUI.farbe()
+  const FARBE = { A: "var(--tr-a)", B: "var(--tr-b)", C: "var(--tr-c)" };
+  const kf = (c) => (R() && R().farbe ? R().farbe(c) : c);
   const TITEL = { A: "Trainingsoptimiert", B: "Wetteroptimiert", C: "Ruhig und velofreundlich" };
   const titel = (k, sport) => (k === "C" && TR().FAMILIE[sport] !== "rad" ? "Ruhig und laufgeeignet" : k === "C" && sport !== "rennrad" ? "Ruhig (Forst- und Feldwege)" : TITEL[k]);
   const store = { get: (k, d) => { try { const v = localStorage.getItem("sf.tr." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
@@ -189,37 +191,47 @@
     m.addSource("tr-kand", { type: "geojson", data: E });
     m.addSource("tr-int", { type: "geojson", data: E });
     const before = m.getLayer("rt-alt-case") ? "rt-alt-case" : undefined;
-    m.addLayer({ id: "tr-kand-case", type: "line", source: "tr-kand", layout: lay, paint: { "line-color": "#ffffff", "line-width": 6, "line-opacity": 0.85 } }, before);
+    m.addLayer({ id: "tr-kand-case", type: "line", source: "tr-kand", layout: lay, paint: { "line-color": kf("var(--mk-ring)"), "line-width": 6, "line-opacity": 0.85 } }, before);
     m.addLayer({ id: "tr-kand-line", type: "line", source: "tr-kand", layout: lay, paint: { "line-color": ["get", "color"], "line-width": 3.5, "line-dasharray": [2, 1.5], "line-opacity": 0.9 } }, before);
     m.addLayer({ id: "tr-int-line", type: "line", source: "tr-int", layout: lay, paint: { "line-color": ["get", "color"], "line-width": 9, "line-opacity": 0.55 } }, m.getLayer("rt-arrows") ? "rt-arrows" : undefined);
   }
-  function clearKand() {
+  /** Nur die Vorschlagslinien A/B/C und ihre Marker von der Karte nehmen (der Stand bleibt, «Training → Route» zu). */
+  function kandWeg() {
     kandMarker.forEach((x) => x.remove()); kandMarker = [];
-    const m = karte(); if (m && m.getSource("tr-kand")) { m.getSource("tr-kand").setData({ type: "FeatureCollection", features: [] }); m.getSource("tr-int").setData({ type: "FeatureCollection", features: [] }); }
+    const m = karte(); if (m && m.getSource("tr-kand")) m.getSource("tr-kand").setData({ type: "FeatureCollection", features: [] });
   }
-  function zeigeKand() {
-    const m = karte(); if (!m || !TS.res || !TS.res.A) return;
+  function clearKand() {
+    kandWeg();
+    const m = karte(); if (m && m.getSource("tr-int")) m.getSource("tr-int").setData({ type: "FeatureCollection", features: [] });
+  }
+  /** Teil 0b (K4): Planer geschlossen → alles von «Training → Route» von der Karte; Planer wieder offen → Intervalle des gewählten
+   *  Vorschlags und, nur wenn «Training → Route» offen ist, die Vorschläge wieder zeichnen (ohne neu einzupassen). */
+  function planerZu() { clearKand(); }
+  function planerAuf() { if (TS.offen && TS.res && TS.res.A) zeigeKand(true); zeigeIntervalle(); }
+
+  function zeigeKand(ohneEinpassen) {
+    const m = karte(); if (!m || !TS.res || !TS.res.A || !TS.offen || !R().active()) return;
     layers(m); kandMarker.forEach((x) => x.remove()); kandMarker = [];
     const feats = [], seen = new Set();
     for (const k of ["C", "B", "A"]) {
       const c = TS.res[k]; if (!c || seen.has(c.id) || (TS.gewaehlt === k)) continue;
       seen.add(c.id);
-      feats.push({ type: "Feature", properties: { k, color: FARBE[k] }, geometry: { type: "LineString", coordinates: c.route.lon.map((x, i) => [x, c.route.lat[i]]) } });
+      feats.push({ type: "Feature", properties: { k, color: kf(FARBE[k]) }, geometry: { type: "LineString", coordinates: c.route.lon.map((x, i) => [x, c.route.lat[i]]) } });
       if (window.maplibregl) {
         const a = RT().at(c.route, c.route.L * (k === "A" ? 0.35 : k === "B" ? 0.5 : 0.65)), el = document.createElement("button");
-        el.type = "button"; el.className = "rp-altpin tr-pin"; el.style.background = FARBE[k]; el.textContent = k; el.title = `Vorschlag ${k}: ${titel(k, TS.sport)} – antippen zum Wählen`;
+        el.type = "button"; el.className = "rp-altpin tr-pin tr-" + k.toLowerCase(); el.textContent = k; el.title = `Vorschlag ${k}: ${titel(k, TS.sport)} – antippen zum Wählen`;
         el.addEventListener("click", (ev) => { ev.stopPropagation(); waehle(k); });
         kandMarker.push(new maplibregl.Marker({ element: el }).setLngLat([a.lon, a.lat]).addTo(m));
       }
     }
     m.getSource("tr-kand").setData({ type: "FeatureCollection", features: feats });
-    if (!TS.gewaehlt) { const all = []; for (const f of feats) all.push(...f.geometry.coordinates); if (all.length) R().fitCoords(all); }
+    if (!TS.gewaehlt && !ohneEinpassen) { const all = []; for (const f of feats) all.push(...f.geometry.coordinates); if (all.length) R().fitCoords(all); }
   }
   function zeigeIntervalle() {
-    const m = karte(); if (!m) return;
+    const m = karte(); if (!m || !R().active()) return;
     layers(m);
     const r = TS.planerRoute, I = TS.planerIv || [];
-    const col = (n) => (n === "gut" ? "#2f8f83" : n === "bedingt" ? "#c9913f" : "#b4443a");
+    const col = (n) => kf(n === "gut" ? "var(--iv-gut)" : n === "bedingt" ? "var(--iv-bedingt)" : "var(--iv-ungeeignet)");
     m.getSource("tr-int").setData({ type: "FeatureCollection", features: r ? I.filter((x) => isNum(x.d0) && isNum(x.d1)).map((x) => ({ type: "Feature", properties: { color: col(x.note) }, geometry: { type: "LineString", coordinates: RT().slice(r, x.d0, Math.max(x.d1, x.d0 + 20)) } })) : [] });
   }
 
@@ -272,10 +284,11 @@
     else if (!TS.wo) { const e = einheiten().find((x) => ROUTBAR[x.p.sport] && (x.datum || "") >= heute()); setWorkout(e ? e.key : "m"); }
     const box = $("rp-train"); if (box) box.hidden = false;
     render();
+    if (TS.res && TS.res.A) zeigeKand(true);          // Teil 0b (K4): Vorschläge nur, solange «Training → Route» offen ist
     if (innerWidth <= 760) R().setSheet("full");
     setTimeout(() => { const el = $("rp-train"); if (el && el.scrollIntoView) el.scrollIntoView({ block: "start" }); }, 80);
   }
-  function hide() { TS.offen = false; TS.pick = null; const box = $("rp-train"); if (box) box.hidden = true; }
+  function hide() { TS.offen = false; TS.pick = null; const box = $("rp-train"); if (box) box.hidden = true; kandWeg(); }
   function beenden() { TS.gewaehlt = null; TS.planerIv = null; TS.res = null; clearKand(); hide(); if (R().active()) R().recompute(); R().redraw(); }
   function openPlan(key) {
     if (window.APP) { window.APP.showTab("karte"); window.APP.setPlanActive(true); }
@@ -432,8 +445,8 @@
     const begr = TR().begruendung(k, c, x);
     const ivs = K.intervalle.length ? `<ol class="tr-ivs">${K.intervalle.map((v) => `<li class="${v.note}"><b>${v.nr}</b> km ${isNum(v.d0) ? km(v.d0) : "–"}–${isNum(v.d1) ? km(v.d1) : "–"} · ${TR().mmss(v.t1 - v.t0)} · <span class="badge ${NOTE[v.note]}">${v.note}</span>${v.gruende.length ? ` <small>${esc(v.gruende.join("; "))}</small>` : ""}</li>`).join("")}</ol>` : "";
     const sh = K.intervalle.length && K.int_wert < 1 ? TR().verschiebung(c.route, K.sim, x.plan, { fam: TR().FAMILIE[TS.sport], typ: TR().intervallTyp(x.wo, TR().FAMILIE[TS.sport]), rennrad: TS.sport === "rennrad", unterbr: K.unterbr }) : null;
-    return `<div class="tr-card ${TS.gewaehlt === k ? "on" : ""}" style="--k:${FARBE[k]}">
-      <div class="tr-card-h"><span class="tr-key" style="background:${FARBE[k]}">${k}</span><b>${esc(titel(k, TS.sport))}</b> <span class="badge ${NOTE[e.note]}">${esc(e.text)}</span>${gleich ? ` <span class="badge muted">wie ${gleich}</span>` : ""}${c.umgekehrt_von ? ` <span class="badge info">Gegenrichtung wegen Wind</span>` : ""}</div>
+    return `<div class="tr-card k-${k} ${TS.gewaehlt === k ? "on" : ""}">
+      <div class="tr-card-h"><span class="tr-key k-${k}">${k}</span><b>${esc(titel(k, TS.sport))}</b> <span class="badge ${NOTE[e.note]}">${esc(e.text)}</span>${gleich ? ` <span class="badge muted">wie ${gleich}</span>` : ""}${c.umgekehrt_von ? ` <span class="badge info">Gegenrichtung wegen Wind</span>` : ""}</div>
       <div class="tr-kpi"><div><span>Distanz</span><b>${km(K.L)} km</b></div><div><span>Zeit</span><b>${dur(K.T)} h</b><small>${dur(K.band[0])}–${dur(K.band[1])}</small></div>
         <div><span>Höhe</span><b>${num(K.up)} m</b><small>↓ ${num(K.down)} m</small></div><div class="${dauerOk ? "" : "warn"}"><span>vs. Plan</span><b>${K.abw >= 0 ? "+" : "−"}${num(Math.abs(K.abw * 100))} %</b><small>Plan ${dur(x.wo.dauer_s)}</small></div></div>
       ${dauerOk ? "" : `<p class="hint warn-t">Weicht mehr als ±${num(x.wo.tol * 100)} % von der Plandauer ab – die Plandauer bleibt massgebend.${TS.routenart === "ziel" ? "" : " «Neu berechnen» sucht erneut."}</p>`}
@@ -472,9 +485,11 @@
     const body = $("tr-body");
     if (!body || !TS.res || !TS.res.A) { renderRes(); return; }
     const r = TS.res, x = TS.ctx;
-    const zeile = (k) => { const c = r[k]; if (!c || c.K.unzureichend) return ""; const K = c.K, e = eignung(K); return `<tr class="${TS.gewaehlt === k ? "on" : ""}"><td><span class="tr-key sm" style="background:${FARBE[k]}">${k}</span></td><td>${km(K.L)}</td><td>${dur(K.T)}</td><td>${num(K.up)}</td><td class="${Math.abs(K.abw) <= x.wo.tol ? "" : "warn-t"}">${K.abw >= 0 ? "+" : "−"}${num(Math.abs(K.abw * 100))} %</td><td><span class="badge ${NOTE[e.note]}">${esc(e.note)}</span></td><td>${TS.gewaehlt === k ? '<span class="pill">gewählt</span>' : `<button class="btn rp-vbtn" data-wahl="${k}" aria-label="Vorschlag ${k} wählen">Wählen</button>`}</td></tr>`; };
+    const zeile = (k) => { const c = r[k]; if (!c || c.K.unzureichend) return ""; const K = c.K, e = eignung(K); const gew = TS.gewaehlt === k;
+      // Teil 0b (K3): ganze Zeile antippbar (Tippziel ≥ 44 px), keine eigene Knopfspalte – passt ohne seitliches Scrollen
+      return `<tr class="tr-zeile${gew ? " on" : ""}"${gew ? ' aria-current="true"' : ` data-wahlzeile="${k}"`}><td>${gew ? `<span class="tr-wbtn"><span class="tr-key sm k-${k}">${k}</span><span class="tr-gew">gewählt</span></span>` : `<button type="button" class="tr-wbtn" aria-label="Vorschlag ${k} wählen"><span class="tr-key sm k-${k}">${k}</span><span class="tr-gew" aria-hidden="true">wählen</span></button>`}</td><td>${km(K.L)}</td><td>${dur(K.T)}</td><td>${num(K.up)}</td><td class="${Math.abs(K.abw) <= x.wo.tol ? "" : "warn-t"}">${K.abw >= 0 ? "+" : "−"}${num(Math.abs(K.abw * 100))} %</td><td><span class="badge ${NOTE[e.note]}">${esc(e.note)}</span></td></tr>`; };
     body.innerHTML = `${TS.gewaehlt ? selInfo() : ""}
-      <div class="tbl-wrap"><table class="t tr-vt"><tr><th></th><th>km</th><th>Zeit</th><th>Hm</th><th>vs. Plan</th><th>Eignung</th><th></th></tr>${["A", "B", "C"].map(zeile).join("")}</table></div>
+      <div class="tbl-wrap"><table class="t tr-vt" data-keine-liste><tr><th><span class="sr-only">Vorschlag</span></th><th>km</th><th>Zeit</th><th>Hm</th><th>vs. Plan</th><th>Eignung</th></tr>${["A", "B", "C"].map(zeile).join("")}</table></div>
       ${TS.gewaehlt ? `<details class="tr-det" ${TS.detOffen ? "open" : ""}><summary>Vorschläge im Detail</summary>${["A", "B", "C"].map(karteHtml).join("")}</details>` : ["A", "B", "C"].map(karteHtml).join("")}
       <p class="hint">${TS.anfragen} Routing-Anfragen (${TS.cache} aus dem Zwischenspeicher)${r.d_schaetzung ? ` · Startschätzung ${km(r.d_schaetzung)} km aus deiner Zeitprognose` : ""} · Regeln ${esc(TR().VERSIONS.vorschlag)}, ${esc(TR().VERSIONS.intervalle)}, ${esc(TR().VERSIONS.wetter)}, ${esc(RT().VERSIONS.zeit)}.</p>`;
     bindBody(body);
@@ -547,6 +562,7 @@
   /** Vergleich und Karten: Auswahl, Karte, neu berechnen, beenden. */
   function bindBody(body) {
     body.querySelectorAll("[data-wahl]").forEach((b) => b.addEventListener("click", () => waehle(b.dataset.wahl)));
+    body.querySelectorAll("[data-wahlzeile]").forEach((tr) => tr.addEventListener("click", () => waehle(tr.dataset.wahlzeile)));
     body.querySelectorAll("[data-zeig]").forEach((b) => b.addEventListener("click", () => { const c = TS.res[b.dataset.zeig]; if (c) { if (innerWidth <= 760) R().setSheet("min"); R().fitCoords(c.route.lon.map((x, i) => [x, c.route.lat[i]])); } }));
     body.querySelectorAll("[data-tr]").forEach((b) => b.addEventListener("click", () => {
       const a = b.dataset.tr;
@@ -646,7 +662,7 @@
   function vorschlaege() { return UI() && UI().merged ? UI().merged("trainingsrouten", "trainingsrouten") : D().trainingsrouten || []; }
   function kalender(ds) {
     const L = vorschlaege().filter((r) => r.datum === ds); if (!L.length) return "";
-    return L.map((r) => `<div class="tr-kal"><span class="dot" style="background:${FARBE[r.vorschlag] || "#627488"}"></span> Trainingsroute ${esc(r.vorschlag)} (${esc(r.titel || "")}): ${km(r.pred.L)} km, Prognose ${dur(r.pred.moving_s)} h${r._lokal ? " · nur auf diesem Gerät" : ""}
+    return L.map((r) => `<div class="tr-kal"><span class="dot" style="background:${FARBE[r.vorschlag] || "var(--tr-ohne)"}"></span> Trainingsroute ${esc(r.vorschlag)} (${esc(r.titel || "")}): ${km(r.pred.L)} km, Prognose ${dur(r.pred.moving_s)} h${r._lokal ? " · nur auf diesem Gerät" : ""}
       <button class="btn ex-btn" data-trv="${esc(r.id)}">Vorschlag vs. Ist</button><div class="tr-vgl" id="trv-${esc(r.id)}" hidden></div></div>`).join("");
   }
   function zeigeVergleich(id) {
@@ -677,5 +693,5 @@
     const v = e.target.closest && e.target.closest("[data-trv]");
     if (v) { e.preventDefault(); zeigeVergleich(v.dataset.trv); }
   });
-  window.TRUI = { show, hide, openPlan, planFor, onPlanner, chartBands, gpxExtras, gpxName, wantsMapClick, mapClick, kalender, zeigeVergleich, state: () => TS, waehle, suche };
+  window.TRUI = { show, hide, openPlan, planFor, onPlanner, chartBands, gpxExtras, gpxName, wantsMapClick, mapClick, kalender, zeigeVergleich, state: () => TS, waehle, suche, planerZu, planerAuf };
 })();

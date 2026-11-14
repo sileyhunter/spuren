@@ -14,10 +14,47 @@
   --st-ueberl-hoch: #e8503a; --st-ueberl: #fdc22b; --st-prod: #6ce0a4; --st-erh: #7ab4fa; --st-erho: #6a59ea; --st-verlust: #f9a71a;
   --race: #f5520c; --c7-1: #27d7ce; --c7-2: #5fd6a0; --c7-3: #9bd36f; --c7-4: #d8c94f; --c7-5: #f2a23a; --c7-6: #ef6f4a; --c7-7: #e93b63; --ci1: #2bd6cc; --ci2: #7bd18a; --ci3: #d6c35f; --ci4: #f4922c; --ci5: #e8405f;
   --r-card: 20px; --r-sheet: 26px;
+  /* design-1.1 (Teil 0b, 13.11.2026): Planer und Trainingsrouten – Farben nur über Variablen, auch in SVG und auf der Karte.
+     Hier stehen die Farben, die in beiden Designs gleich sind: Daten (Belag, Wegart, Zugang, Steigung, Hangneigung, Wetter,
+     Tempo) und Marker. Die Karte hat eigene Grundkarten (hell, dunkel, Luftbild) – darum hängen diese nicht vom Design ab.
+     Schrift auf Markern mindestens 4,5 : 1 (Weiss auf --mk-…). Die Karte liest die Werte über RTUI.farbe(). */
+  --mk-fg: #ffffff; --mk-ring: #ffffff; --mk-shadow: rgba(0, 0, 0, .35); --mk-b: #b8461f; --mk-via: #ffffff; --mk-via-fg: #1f3347;
+  --mk-standard: #5f6b78; --mk-umfahrung: #557243; --mk-variante: #75599c; --mk-abfahrt: #6f5a8a; --mk-zusatz: #8a6326;
+  --tr-a: #2f72c4; --tr-b: #117a70; --tr-c: #75599c; --tr-ohne: #627488;
+  --iv-gut: #2f8f83; --iv-bedingt: #c9913f; --iv-ungeeignet: #b4443a;
+  --rp-belag-asphalt: #3b5b7a; --rp-belag-pflaster: #8a6f9e; --rp-belag-hart: #7a93ab; --rp-belag-kies: #c9913f; --rp-belag-unbefestigt: #d9b36c;
+  --rp-belag-natur: #7b8f3a; --rp-belag-schnee: #8fb3d9; --rp-belag-hand: #a7b0b8; --rp-belag-unbekannt: #b9bec4;
+  --rp-weg-hauptstrasse: #b4443a; --rp-weg-strasse: #d9824a; --rp-weg-nebenstrasse: #7a93ab; --rp-weg-radweg: #2f8f83; --rp-weg-fahrweg: #c9913f;
+  --rp-weg-pfad: #7b8f3a; --rp-weg-fussweg: #9b6fb0; --rp-weg-faehre: #4a7fc1; --rp-weg-autobahn: #5c1f1a; --rp-weg-skiroute: #3d7fb3;
+  --rp-weg-hand: #a7b0b8; --rp-weg-unbekannt: #b9bec4;
+  --rp-zugang-ok: #2f8f83; --rp-zugang-unklar: #d9b36c; --rp-zugang-eingeschraenkt: #d9824a; --rp-zugang-schieben: #9b6fb0;
+  --rp-zugang-verboten: #b4443a; --rp-zugang-ungeprueft: #c3c8cd;
+  --rp-steig-m8: #2c6e9b; --rp-steig-m4: #7fb2d6; --rp-steig-0: #4f5d6b; --rp-steig-4: #e0a458; --rp-steig-8: #d9694a; --rp-steig-12: #9c2f2a;
+  --rp-hang-0: #c9d3dc; --rp-hang-25: #e3c25a; --rp-hang-30: #e08a3c; --rp-hang-35: #c8502f; --rp-hang-40: #7d2a6b;
+  --rp-temp-0: #4a6fa5; --rp-temp-5: #7aa6c2; --rp-temp-10: #9cc7b4; --rp-temp-15: #d9cf7f; --rp-temp-20: #e9a65d; --rp-temp-25: #d9694a; --rp-temp-30: #a63d2f;
+  --rp-regen-0: #d7dde2; --rp-regen-1: #8fb8de; --rp-regen-4: #4a7fc1; --rp-regen-9: #23457a;
+  --rp-wind-g2: #8c2d2d; --rp-wind-g1: #d9694a; --rp-wind-s: #c9d0d6; --rp-wind-r1: #6fa6c9; --rp-wind-r2: #2c6e9b;
+  --rp-tempo-1: #8c2d2d; --rp-tempo-2: #d9824a; --rp-tempo-3: #d9cf7f; --rp-tempo-4: #6fa6c9; --rp-tempo-5: #2c6e9b;
+  --rp-unbekannt: #c3c8cd; --rp-anstieg-flach: #b9c3cc; --rp-anstieg-auf: #d9694a; --rp-anstieg-ab: #3d7fb3;
+  --rp-balken-regen: #4a7fc1; --rp-balken-gegen: #d9694a; --rp-balken-rueck: #3d7fb3;
+  /* Karte (MapLibre): Entwurf, andere Routen, Auswahl, Lücke, Windpfeile, Profil-Cursor, Rand der Richtungspfeile */
+  --rp-entwurf: #d9694a; --rp-alt-linie: #7f8c99; --rp-alt-umfahrung: #6f8a5a; --rp-auswahl-karte: #14222e; --rp-luecke: #b4443a;
+  --rp-windpfeil-gegen: #b4443a; --rp-windpfeil-rueck: #2c6e9b; --rp-windpfeil-seite: #5f6b76; --rp-cursor: #d9694a; --rp-pfeil-rand: rgba(31, 51, 71, .85);
 }
 :root[data-theme="light"] { --accent: #117a70; --accent-text: #117a70; --lt1: #117a70; --lt2: #a3485b; --btn-2: #e3e9ee; --btn-back: #d5dde3; --sheet: #ffffff; --nav: #ffffff; --faint: #5f7082; --muted: #56687b; --accent-soft: #e6f2ef;
   /* V6.4.4 (Audit D8/D9): eine Zone, eine Farbe auch hell; Text mindestens 4,5 : 1 */
-  --z1: rgba(90, 73, 226, .22); --z2: rgba(79, 105, 248, .22); --z3: rgba(39, 189, 216, .28); --z4: rgba(108, 224, 164, .34); --z5: rgba(253, 194, 43, .36); }
+  --z1: rgba(90, 73, 226, .22); --z2: rgba(79, 105, 248, .22); --z3: rgba(39, 189, 216, .28); --z4: rgba(108, 224, 164, .34); --z5: rgba(253, 194, 43, .36);
+  /* design-1.1: Planer, «Training → Route», Diagramme (helle Werte nur hier) */
+  --tint: #eef1f4; --tint-warm: #fdf0eb;
+  --ok-bg: #eef7f5; --ok-line: #bfe0d9; --ok-text: #155e55;
+  --warn-bg: #fffaf1; --warn-line: #f0d6ae; --warn-text: #8a5a12;
+  --bad-bg: #fdf3f5; --bad-line: #e2b3bc; --bad-text: #7c2537;
+  --violet-text: #7a4f99;
+  --panel-tint: #f7fbfa; --panel-tint-line: #cfe5e0; --card-inner: #ffffff; --kpi-bg: #f1f7f6;
+  --chart-bg: #f6f8fa; --chart-line: #2b3a46; --chart-sel: #14222e; --chart-ov: #5b4bb0; --chart-zero: #8a96a1;
+  --chart-title: #3e3394; --chart-note: #2f6f9f; --chart-dot: #ffffff;
+  --panel-shadow: rgba(31, 51, 71, .14); --swatch-line: rgba(0, 0, 0, .12);
+  --mk-a: #117a70; }
 :root:not([data-theme="light"]) {
   color-scheme: dark;
   --bg: #000; --surface: #1f1f22; --surface-2: #2b2b2f; --sheet: #141416; --nav: #18181b;
@@ -29,6 +66,17 @@
   --z1: rgba(90, 73, 226, .28); --z2: rgba(79, 105, 248, .28); --z3: rgba(39, 189, 216, .26); --z4: rgba(108, 224, 164, .24); --z5: rgba(253, 194, 43, .24);
   --panel-glass: rgba(24, 24, 27, .94); --shadow: 0 6px 24px rgba(0, 0, 0, .5);
   --btn-2: #48484d; --btn-back: #5a5a5e;
+  /* design-1.1: Planer, «Training → Route», Diagramme (dunkel) */
+  --tint: rgba(255, 255, 255, .08); --tint-warm: rgba(245, 82, 12, .16);
+  --ok-bg: rgba(102, 221, 138, .10); --ok-line: rgba(102, 221, 138, .40); --ok-text: #8be7b8;
+  --warn-bg: rgba(252, 193, 43, .10); --warn-line: rgba(252, 193, 43, .45); --warn-text: #fcc12b;
+  --bad-bg: rgba(236, 90, 68, .12); --bad-line: rgba(236, 90, 68, .45); --bad-text: #f2836f;
+  --violet-text: #c4b5ff;
+  --panel-tint: var(--surface-2); --panel-tint-line: rgba(61, 142, 246, .35); --card-inner: var(--surface); --kpi-bg: var(--surface-2);
+  --chart-bg: rgba(255, 255, 255, .05); --chart-line: #d4d4d8; --chart-sel: var(--fg); --chart-ov: #a99cf5; --chart-zero: rgba(255, 255, 255, .42);
+  --chart-title: #c4b5ff; --chart-note: #8fc0ff; --chart-dot: var(--surface-2);
+  --panel-shadow: rgba(0, 0, 0, .5); --swatch-line: rgba(255, 255, 255, .2);
+  --mk-a: #1f6fd1;
 }
 
 /* ---------- Grundfläche, Kopf ---------- */
@@ -89,7 +137,7 @@ input[type="range"] { accent-color: var(--good); }
 /* ---------- Tabellen ---------- */
 table.t th { color: var(--faint); }
 table.t th, table.t td { border-bottom-color: var(--line); }
-:root:not([data-theme="light"]) table.t tr.on td, :root:not([data-theme="light"]) .tr-vt tr.on td, :root:not([data-theme="light"]) .tr-sel { background: var(--accent-soft); }
+:root:not([data-theme="light"]) table.t tr.on td { background: var(--accent-soft); }
 
 /* ---------- Leiste unten, Unterbereiche, Info-Knopf ---------- */
 nav.leiste { background: var(--nav); border-top: 0; }
@@ -130,9 +178,7 @@ nav.unter button[aria-pressed="true"] { background: var(--fg); border: 0; color:
 :root:not([data-theme="light"]) .demo-banner b { color: #ffc56b; }
 :root:not([data-theme="light"]) .cal .ev.test { background: rgba(252, 193, 43, .14); color: var(--warn); }
 :root:not([data-theme="light"]) .warn-t, :root:not([data-theme="light"]) .goal small.warn-t, :root:not([data-theme="light"]) .td-dq i.no,
-:root:not([data-theme="light"]) .td-tiles > div.miss b, :root:not([data-theme="light"]) .v53-ring small.warn-t,
-:root:not([data-theme="light"]) .rp-acc.eingeschraenkt, :root:not([data-theme="light"]) .rp-acc.unklar { color: var(--warn); }
-:root:not([data-theme="light"]) .rp-acc.schieben { color: #b9a4ff; }
+:root:not([data-theme="light"]) .td-tiles > div.miss b, :root:not([data-theme="light"]) .v53-ring small.warn-t { color: var(--warn); }
 :root:not([data-theme="light"]) .v53-err { color: var(--bad); }
 :root:not([data-theme="light"]) .prov-fit { border-color: rgba(108, 224, 164, .45); color: #8be7b8; }
 :root:not([data-theme="light"]) .prov-messung { border-color: rgba(122, 180, 250, .45); color: #9cc6fb; }
@@ -141,16 +187,7 @@ nav.unter button[aria-pressed="true"] { background: var(--fg); border: 0; color:
 :root:not([data-theme="light"]) .syncbar.pending { background: rgba(252, 193, 43, .08); }
 :root:not([data-theme="light"]) .zseg { border-right-color: var(--bg); }
 :root:not([data-theme="light"]) table.v59-bt tr.flag td { background: rgba(252, 193, 43, .1); }
-:root:not([data-theme="light"]) .rp-status.warn { border-color: rgba(252, 193, 43, .45); background: rgba(252, 193, 43, .08); color: #fcd36b; }
-:root:not([data-theme="light"]) .rp-status.ok { background: rgba(102, 221, 138, .08); border-color: rgba(102, 221, 138, .4); color: #8be7b8; }
-:root:not([data-theme="light"]) .rp-tabs button[aria-selected="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--fg); }
-:root:not([data-theme="light"]) .rp-chart .sel { stroke: var(--fg); }
-:root:not([data-theme="light"]) .rp-chart .selb { stroke: var(--fg); }
-:root:not([data-theme="light"]) .rp-mo.on, :root:not([data-theme="light"]) .rp-res div { background: var(--surface-2); }
-:root:not([data-theme="light"]) .tr-card { background: var(--surface-2); }
-:root:not([data-theme="light"]) .rp-flag { background: var(--fg); color: var(--bg); }
-:root:not([data-theme="light"]) .rp-cats button[aria-pressed="true"] { border-color: var(--fg); box-shadow: inset 3px 0 0 var(--fg); }
-:root:not([data-theme="light"]) .rp-bar span.on { box-shadow: inset 0 0 0 2px var(--fg); }
+/* Planer und «Training → Route»: seit design-1.1 keine Einzelfarben mehr hier – alles über die Variablen oben (index.html, Planer-CSS) */
 :root:not([data-theme="light"]) .ex-lab { background: rgba(0, 0, 0, .6); }
 :root:not([data-theme="light"]) .ci-v[aria-checked="true"] { box-shadow: none; }
 :root:not([data-theme="light"]) .tablewrap.scrollx { background: linear-gradient(to right, var(--surface) 30%, rgba(31, 31, 34, 0)) left center / 32px 100% no-repeat local,

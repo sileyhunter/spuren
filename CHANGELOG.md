@@ -1,5 +1,40 @@
 # Änderungen
 
+## V6.6.1 · 14.11.2026 · Karte: Fehler aus der Prüfung vom 13.11.2026 (Auftrag `docs/auftrag-karte-fehler.md`, Teil 0b)
+Im Auftrag als «V6.5.1» bezeichnet; weil V6.6 schon live war, heisst die Fassung V6.6.1.
+- **K1 design-1.1:** Planer, «Training → Route» und die Diagramme haben keine festen Farben mehr. Hintergründe, Schrift, Status
+  (ok, Warnung, Fehler), Auswahl, Diagrammfläche, -linie und -titel kommen aus Variablen in `css/v6.css` (dunkel und hell je ein Block,
+  helle Werte nur im Block für `[data-theme="light"]`). Daten- und Markerfarben (Belag, Wegart, Zugang, Steigung, Hangneigung, Wetter, Tempo,
+  Vorschläge A/B/C, Intervall-Eignung, Marker auf der Karte) sind in beiden Designs gleich und stehen im gemeinsamen Block; die Karte liest sie
+  über `RTUI.farbe()`. Start, Ziel, Varianten und A/B/C etwas dunkler, damit die weisse Schrift darauf mindestens 4,5 : 1 hat.
+  Gemessen an den berechneten Farben (Demo und echte Daten, 390 und 1280 px, dunkel und hell): jeder Text mindestens 4,5 : 1 (vorher dunkel bis 1,02 : 1).
+- **K2:** Zusatzdiagramm unter dem Höhenprofil (Temperatur, Regen, Wind, Tempo) mit Fläche, Titel, Achsen und Gitter aus den Variablen;
+  Zwischenziele im Profil lesbar (vorher weiss auf weiss).
+- **K3:** Tabelle der Vorschläge A/B/C ohne eigene Knopfspalte: die ganze Zeile wählt, Tippziel mindestens 44 px; passt ohne seitliches
+  Scrollen (vorher 375 px Inhalt in 332 px, «Wählen» abgeschnitten).
+- **K4:** ✕ im Planer nimmt alles von der Karte, was Planer und «Training → Route» gezeichnet haben (Route, Windpfeile, Varianten und andere
+  Routen samt Nummern, Vorschläge A/B/C, Intervalle, Marker); gespeicherte Routen bleiben. Öffnen zeichnet den letzten Stand wieder, die
+  Vorschläge nur, solange «Training → Route» offen ist (✕ in «Training → Route» nimmt sie ebenfalls weg). Späte Antworten zeichnen nichts mehr
+  auf eine geschlossene Karte.
+- **K5:** Suchfelder (`input[type=search]`) in der Grundregel für Felder und in der 44-px-Regel: Ortssuche im Planer und Startort-Suche 44 px
+  (vorher 28 px ohne Innenabstand).
+- **K6:** «Punkt setzen» schlägt die zuletzt benutzte Kategorie vor (je Gerät), sonst «Sonstiges». Speichern in eine ausgeblendete Kategorie
+  meldet «Gespeichert. Jagdposten sind ausgeblendet» mit «Einblenden» (nichts wird von selbst eingeblendet). Im Punkt-Modus steht oben auf der
+  Karte das Band «Tippe auf die Karte · Abbrechen».
+- **K7:** Massstab unten links unter der Legende, Quellenangabe unten rechts unter «Filter & Punkte» – beide rücken mit der Höhe der
+  Kartenknöpfe mit. Die Quellenangabe startet zugeklappt (nur «i»), aufgeklappt reicht sie nicht unter die Legende; der «i»-Knopf wird nicht
+  mehr von der 44-px-Regel gestreckt (vorher doppeltes «i»). Planer ganz offen: Kartenknöpfe und Marker ausgeblendet. Beim Einpassen einer
+  Route zählen Massstab und Quellenangabe zum Rand, und die Kartenpolsterung nimmt die Zielhöhe des Blatts (nicht die gerade animierte):
+  Start und Ziel liegen ganz im freien Kartenbereich. Geprüft per Skript: keine Überschneidung in 2D und 3D, Heatmap und «Nach Sport», Planer
+  in allen drei Höhen.
+- **K8 (Sofortmassnahme):** Ein Tipp auf eine Spur öffnet das Blatt bei «N Aktivitäten an dieser Stelle»; die Liste zeigt zuerst 30 Treffer
+  und darunter «Weitere 30 anzeigen», auf dem Handy ohne eigene Höhengrenze (kein Scrollen im Scrollen).
+- Geprüft: alle Tests aus CLAUDE.md, neu in `tests/test_v6.cjs` (keine festen Farben im Planer-CSS und in `js/routen-ui.js`,
+  `js/training-ui.js`, `js/route.js`; jede benutzte Variable in beiden Designs definiert; Schrift auf Markern und Statusflächen mindestens
+  4,5 : 1). Im Browser Demo und echte Daten bei 390 × 844 und 1280 × 800, dunkel und hell: Konsole ohne Fehler, kein seitlicher Überlauf in
+  allen Ansichten. Routing mit nachgebildeten Antworten im BRouter-Format und mit aufgezeichneten Antworten einer lokalen BRouter-Instanz
+  (`tests/fixtures`, OSM-Testdaten Dreieich), Wetter mit nachgebildeten Open-Meteo-Antworten; brouter.de und Open-Meteo nicht live getestet.
+
 ## V6.6 · 13.11.2026 · Etappe 6.7: An Garmin senden (Entscheid E3)
 - **garmin-senden-1.0:** Im Tagesblatt (Kalender) gibt es den Abschnitt «Garmin»: «An Garmin senden» (ab morgen bis eine Woche voraus, mit dem
   nächsten Nacht-Update) und «Am Vortag um 23 Uhr automatisch senden» je Tag; im Wochenmenü «Woche an Garmin senden». Die Seite legt nur einen

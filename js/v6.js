@@ -7,7 +7,7 @@
   if (root) root.V6 = V6;
 })(typeof window !== "undefined" ? window : null, function (TRm) {
   "use strict";
-  const V6 = { VERSIONS: { design: "design-1.0", profil: "profil-1.0", status: "status-1.0" } };
+  const V6 = { VERSIONS: { design: "design-1.1", profil: "profil-1.0", status: "status-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
 
   /* ---------------- Zonen: eine Zone, eine Farbe (Werte wie --zc-… in css/v6.css) ---------------- */

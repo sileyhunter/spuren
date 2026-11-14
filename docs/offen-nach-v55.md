@@ -188,3 +188,38 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
     Ausdauertrend nach Jahr, Quartal oder Monat, Schwimmübung im Workout antippen mit Beschreibung, mehr Beinübungen.
 70. **Entscheide Silas (13.11.2026, E1–E4):** Reihenfolge Teil 0 → 6 → 7 → 8; VO2max schliesst alles ein; eigene Einheiten von Hand bis eine
     Woche voraus und automatisch nur am Vortag um 23 Uhr an Garmin (Fenix und Edge, 6.7); Übungsbilder frei lizenziert, möglichst aus einer Quelle.
+
+## Prüfung Karte vom 13.11.2026 – nicht Teil von Teil 0b (`docs/auftrag-karte-fehler.md`)
+71. **Treffer-Blatt:** eigenes Blatt mit Gruppen nach Sport und Jahr, «Nur diese auf der Karte», später Abschnitte vergleichen.
+72. **Filter-Blatt:** Reiter Filter · Punkte · Routen; aktive Filter als Chips auf der Karte; Anzahl am Knopf; aktiver Zeitraum markiert.
+73. **Planer:** Ergebniszeile mit Wetter, GPX und Speichern oben; Suche oben (zu 7.3).
+74. **Kartenknöpfe:** «Route planen» als Hauptknopf, +/− auf dem Handy weg, Ebenen als Blatt mit Vorschaubildern, Farblegende bei «Nach Sport»,
+    «Aus» als dritte Wahl.
+75. **Punkte:** langes Drücken setzt einen Punkt; Punkte über «Direkt speichern» auf alle Geräte bringen.
+76. **Namen:** Vorschläge 1/2/3 statt A/B/C (mit 7.4 entscheiden); «Rundtour» heisst neu «Hin und zurück».
+77. **Wetter:** Kurzzeile im Planer; MeteoSwiss-Modell über Open-Meteo (`models=meteoswiss_icon_seamless`, bis 5 Tage), vorher live prüfen.
+78. **«Training → Route»:** Fortschritt anzeigen und Abbrechen erlauben.
+79. **Kartenkacheln offline** entlang gespeicherter Routen.
+
+## Ergänzung enduco-Vergleich vom 13.11.2026 (`docs/ergaenzung-enduco-vergleich.md`; gebaut wird erst nach Silas' Okay)
+80. **Vorschläge C1–C12 und kleine Fehler D:** Analyse als Übersicht mit Detailseiten, Trainingsstatus im Verlauf, Heute entschlacken,
+    Trainingsverfügbarkeit je Tag, Plan über die ganze Saison, Renn-Blatt mit Zielzeit und Wettkampfpace, Einheit-Blatt vervollständigen,
+    Agenda im Kalender, Zonen kompakter, Check-in «Alles durchschnittlich», Bibliothek mit Mini-Profil, Technikfehler → Übungen; dazu die vier
+    kleinen Fehler unter D. Reihenfolge und Umfang entscheidet Silas.
+
+## Prüfbericht Rechenmodelle, Grafiken und Trainingsplan vom 13.11.2026 (nicht im Repository: enthält echte Werte)
+81. **Wochenstunden «jetzt» nach einer Pause zu tief** (saison-1.2: Median der 8 Wochen inkl. Pause). Sofort: Stunden auf der Seite von Hand setzen;
+    Regel: kürzeres Fenster oder Abwesenheiten ausnehmen.
+82. **Jagd- und Wandertage zählen mit Sitzzeit** (Last aus Timer-Dauer × Puls): Bewegungszeit statt Timer-Dauer, besser mit Pulsreserve.
+83. **«Heute» zeigt morgens eine zu gute Form:** der laufende Tag zählt als Ruhetag, bis das Nacht-Update die Einheit bringt; Form zu Tagesbeginn zeigen.
+84. **Zwei verschiedene LT2** (Zonenprofil gegen Stufentest bzw. last-2.0): «knapp unter LT2» liegt dadurch über der gemessenen Schwelle.
+85. **Watt-Ziele aus Zwift gelten auch draussen** (Plan, Langfahrt-Band, last-2.0); Puls bei gleicher Leistung draussen höher.
+86. **Pauschallast bei Zwift-Fahrten im Monatsexport** (FTP/LTHR fehlen in der FIT-Datei); `config.load_model` noch «garmin» (Entscheid offen).
+87. **Intensitätsverteilung:** Plan nach Zielen, Absolviertes nach Puls – ungleich; besser Rad nach Leistung aus den Sekundenreihen.
+88. **Lauf-VO2max-Pulsziel** an der Untergrenze Z5 statt 90–95 % HFmax laut Text.
+89. **Ampel:** sehr hohe HRV zählt als gut (besser «ungewöhnlich hoch – beobachten»); «Passt die Ampel zu dir?» teilweise zirkulär, ohne Streubereich.
+90. **Testkalender:** Stufentests verletzen die eigene Regel ohne Meldung (Konfliktprüfung nur für CSS).
+91. **Plan ignoriert Skitouren und andere Sportarten** (Stunden und Vorlage nur Schwimmen, Rad, Laufen).
+92. **Garmin-Tageswerte kommen kaum an** (Readiness, Body Battery, Stress; wellness-1.0) – Nacht- und Morgen-Update prüfen.
+93. **Gering:** Aufbau-Grenze für Wochen mehr als 30 Tage voraus; Titel gekürzter Einheiten; Schwimm-Last mit dem Rad-Schwellenpuls; Renntempo
+    Rad für die Langdistanz am oberen Rand und kein 70.3-Renntempo; Dickhuth am rohen Minimum (ein einzelner tiefer Wert bestimmt die Basis).
