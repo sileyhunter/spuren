@@ -867,3 +867,6 @@ table.t.v7-zt td small { display: block; color: var(--muted); font-size: 11px; }
 .mo-e.erl { opacity: .78; }
 .es-gruppe { margin: 18px 2px 6px; font: 600 12px/1.25 var(--f-body); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
 #es-training .v6-aktionen button, #es-labor .v6-aktionen button { background: var(--surface); }
+#db-card .kv b { overflow-wrap: anywhere; }
+.v7-outdoor button { font-weight: 600; }
+.v7-gitter > .card { grid-column: auto; }

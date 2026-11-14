@@ -1,5 +1,32 @@
 # Änderungen
 
+## V7.0 · 14.11.2026 · Bedienung nach dem Vorbild enduco (Etappe A: Phasen 1–4 des Auftrags «Masterprompt V7»)
+Auftrag von Silas vom 14.11.2026 mit 246 Bildschirmfotos der Enduco-App als Vorlage (Bilder und PDF nicht im Repository). Übernommen sind Aufbau,
+Bedienlogik und Hierarchie, keine Texte, Logos, Fotos oder Workouts. Zuordnung der Vorlage: `docs/v7-bestandsaufnahme.md`.
+- **Navigation navigation-7.0:** Leiste Heute · Kalender · Plan · Analyse · Outdoor; ab 1024 px als Seitenleiste links. Keine Unterleisten mehr:
+  erste Ebene einfach, Einzelheiten als eigene Ansicht mit «Zurück» oben links. Profil oben rechts (Einstellungen nach Gruppen: Training, Labor,
+  Daten, Darstellung). Alte Links bleiben gültig (`#training` → Trainingsumfang).
+- **Heute heute-7.0:** nur noch Kacheln, Begrüssung mit Check-in, Heutiges Training und Diese Woche. Heutiges Training = erledigte Garmin-Aktivitäten
+  von heute und die Einheiten aus Mein Plan (mit Balkenprofil, profil-teile-1.0). Keine Enduco-Workouts und kein «Neu von Enduco» mehr; die
+  Begrüssung nennt die Einheiten aus Mein Plan. Ringe, Bereitschaft, Gefühl und Verlauf stehen unter Analyse → Belastung und Erholung.
+- **Kalender kalender-3.0:** Monat und Jahr als Titel (antippen: Monat wählen), «Heute» rechts. Woche = Tagesleiste, grafische Wochenauswertung
+  (Mein Plan gegenüber absolviert, je Sportart, Zeit in Zonen nach Puls, Trainingslast) und die Tage mit erledigten Aktivitäten und Mein Plan. Monat
+  mit Mein Plan statt Garmin-Kalender, Woche als «absolviert / geplant». Enduco erscheint weder in Woche, Monat noch Tagesblatt. Frühere Wochen
+  zeigen Mein Plan nur, wenn er gespeichert war – kein nachgerechneter Vorschlag als «verpasst».
+- **Analyse analyse-start-1.0:** Start mit Karten (Trainingsumfang, Intensitätsverteilung, Belastung und Erholung, Leistungsentwicklung, Laktat und
+  Schwellen, Planvergleich) und «Weitere Analysen»; jede Karte öffnet ihre Ansicht. Alle bisherigen Karten bleiben, nur neu gegliedert.
+- **Planvergleich planvergleich-1.0 (neu):** Enduco geplant gegenüber Garmin absolviert, nur zusammengefasst je Woche: Stunden gesamt und je
+  Sportart, Abweichung in Stunden und Prozent, Intensität Rad und Laufen in 5 Zonen oder 3 Bereichen (LT1/LT2), Netto/Brutto/Pausen, nicht
+  zuordenbare Zeit getrennt, Verlauf über bis zu 12 Wochen. Urteil nur bei vollständigem Soll; frühere Wochen als «unvollständig» sichtbar.
+- **Plan:** oben die Übersicht (Hauptrennen, Phase, Mein Plan diese Woche), Phasen und die Saisonübersicht bis zum Hauptrennen (geplant = Mein Plan);
+  «Plan verwalten» öffnet Rennen, Trainingsmodell, Wochenstunden, Aufbau-Check und Testkalender.
+- **Labor (Expertenbereich, über das Profil):** Methodische Grundlagen (Wissen), Enduco-Datenbestand (Bibliothek), «Woche nach Modell» mit Enduco
+  und «Ich folge», «Vorschlag und Enduco über die Wochen», Enduco-Workouts auf der Uhr, Datenbasis und Prüfung, Modellversionen.
+- **Outdoor:** Werkzeuge oben schlanker (Heatmap · Nach Sport · 3D; Entdecken · Route planen · Meine Routen); «Meine Routen» öffnet das Blatt bei den
+  gespeicherten Routen. Die Karte selbst ist unverändert.
+- Keine Daten gelöscht oder umgerechnet; Enduco-Daten bleiben vollständig gespeichert. Tests: `tests/test_v7.cjs` (neu); alle bisherigen Tests unverändert bestanden.
+- Rückweg: Tag `v6.6.4` (Stand vor V7) – `git revert` der V7-Commits oder die Seite aus diesem Tag wiederherstellen.
+
 ## V6.6.4 · 14.11.2026 · Karte: Auswahl aufheben (auswahl-1.0)
 Wunsch von Silas vom 14.11.2026: eine gewählte Spur liess sich nicht mehr abwählen, ebenso Punkte, Skitouren, Wildschutzgebiete und andere Infos.
 - Ist auf der Karte etwas gewählt (Spur mit Treffer-Liste, Punkt, Route, Infos einer Ebene samt Markierung), hebt ein Tipp an eine Stelle ohne Spur,

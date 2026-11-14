@@ -942,7 +942,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
         <div class="list" id="p-list"></div>
       </div>
       <div>
-        <h3>Meine Routen</h3>
+        <h3 id="r-kopf" tabindex="-1">Meine Routen</h3>
         <div class="list" id="r-list"></div>
         <p class="hint" id="r-hint">Plane eine Route mit «Route planen» in der Karte oder lade eine GPX-Datei.</p>
       </div>
@@ -953,11 +953,12 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
         <div class="seg" role="group" aria-label="Spuren">
           <button id="mode-heat" aria-pressed="true">Heatmap</button>
           <button id="mode-sport" aria-pressed="false">Nach Sport</button>
-        </div>
-        <div class="seg" role="group" aria-label="Werkzeuge">
-          <button id="btn-layers" aria-pressed="false" aria-expanded="false" aria-controls="layers">Karten &amp; Ebenen</button>
           <button id="btn-3d" aria-pressed="false">3D</button>
+        </div>
+        <div class="seg v7-outdoor" role="group" aria-label="Outdoor">
+          <button id="btn-layers" aria-pressed="false" aria-expanded="false" aria-controls="layers" aria-label="Karte entdecken: Karten und Ebenen">Entdecken</button>
           <button id="btn-plan" aria-pressed="false">Route planen</button>
+          <button id="btn-routen" type="button">Meine Routen</button>
         </div>
         <div class="layers" id="layers" hidden>
           <div class="lay-h">Grundkarte</div>
@@ -3283,6 +3284,9 @@ function initKarte() {
   });
   document.getElementById("mobile-filter").addEventListener("click", () => { panelDurchAuswahl = false; document.getElementById("panel").classList.toggle("closed"); });
   document.getElementById("panel-close").addEventListener("click", () => { panelDurchAuswahl = false; document.getElementById("panel").classList.add("closed"); });
+  // V7 (Outdoor): «Meine Routen» öffnet das Blatt bei den gespeicherten Routen
+  document.getElementById("btn-routen")?.addEventListener("click", () => { panelDurchAuswahl = false; const pn = document.getElementById("panel"); pn.classList.remove("closed");
+    setTimeout(() => { const k = document.getElementById("r-kopf"); if (k) { k.scrollIntoView({ behavior: "smooth", block: "start" }); k.focus({ preventScroll: true }); } }, 120); });
   document.getElementById("hits-weg").addEventListener("click", () => auswahlWeg());
   if (innerWidth <= 760) document.getElementById("panel").classList.add("closed");
 }

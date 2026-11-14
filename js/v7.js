@@ -88,7 +88,7 @@
    * Eine Woche zusammenfassen.
    *  soll: [{date, sport, dauer_s|null, zonen: {z:[5], offen, ohneDauer}|null, herkunft: "kalender"|"uhr"}]
    *  ist:  [{date, sport, netto_s, brutto_s|null, zonen: [5]|null}]
-   *  opt:  { mo, heute }  – Wochen bis gestern gelten als abgeschlossen, wenn der Sonntag vor heute liegt.
+   *  opt:  { mo, heute, vollAb }  – abgeschlossen, wenn der Sonntag vor heute liegt; vor vollAb (Montag) gilt das Soll als unvollständig.
    */
   V7.woche = function (soll, ist, opt) {
     const mo = opt.mo, so = add(mo, 6), heute = opt.heute || add(so, 1);
@@ -130,8 +130,10 @@
       r.je[k] = { soll: a, ist: b, diff_s: b - a, diff_pct: a > 0 ? Math.round((100 * (b - a)) / a) : null };
     }
     r.zonen.soll3 = V7.drei(r.zonen.soll); r.zonen.ist3 = V7.drei(r.zonen.ist);
-    // Urteil nur, wenn beide Seiten Zeit haben und das Soll aus dem Kalender kommt (Uhr allein = unvollständig)
-    r.status = !S.length ? "ohne-plan" : r.soll.herkunft.kalender === 0 ? "nur-uhr" : r.laufend ? "laufend" : "ok";
+    // Urteil nur bei vollständigem Soll: aus dem Kalender, keine Enduco-Workouts auf der Uhr, die dort fehlten (dann war der Kalender lückenhaft),
+    // und nicht vor «vollAb» (erste Woche, ab der alle Enduco-Einheiten in den Garmin-Kalender kamen)
+    r.status = !S.length ? "ohne-plan" : r.soll.herkunft.kalender === 0 ? "nur-uhr" : r.laufend ? "laufend"
+      : r.soll.herkunft.uhr > 0 || (opt.vollAb && mo < opt.vollAb) ? "teil" : "ok";
     return r;
   };
 

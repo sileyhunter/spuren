@@ -4,10 +4,11 @@ Private Trainingsseite mit swisstopo-Heatmap und Trainingsauswertung. Die Daten 
 ohne Passwort zeigt die Seite nichts. `demo.html` zeigt dieselbe Seite mit frei erfundenen Beispieldaten.
 
 ## Aufbau
-- `index.html` – Seite: Karte, Heute, Kalender, Fortschritt, Laktat & Zonen, Ausdauer, Leistung, Schwimmen, Körper
+- `index.html` – Seite (V7): Heute · Kalender · Plan · Analyse (Start mit Karten, jede öffnet eine eigene Ansicht) · Outdoor; Labor über das Profil
 - `js/formkurve.js` – Rechenlogik (Zonen-Cockpit, Bereitschaft, 1–6-h-Ziele, Koppelläufe, Fueling, Fahrzeit, CdA, FIT-Leser)
 - `js/v5-ui.js`, `js/v5-ausdauer.js`, `js/v5-extra.js` – Oberflächen der V5-Module; `sw.js` – offline
 - `js/route.js` (Rechenlogik), `js/routen-ui.js` (Oberfläche) – Routenplaner V5.3; `js/v53-extra.js` – Ziele, Bestleistungen, Ernährung, Schwimmübungen
+- `js/v7.js` (Rechenlogik), `js/v7-ui.js` (Oberfläche) – V7: Analyse-Start, Planvergleich Enduco/Garmin, Plan-Übersicht, Labor
 - `tools/` – Import, Kennzahlen, Schwellen, Migration (Python/Node), siehe `CLAUDE.md`
 - `docs/konzept.md` – Gesamtkonzept V1–V5.3 · `docs/abnahme-v5.md`, `docs/abnahme-v53.md` – Prüfberichte · `CHANGELOG.md`
 
@@ -15,6 +16,7 @@ ohne Passwort zeigt die Seite nichts. `demo.html` zeigt dieselbe Seite mit frei 
 ```
 node --test tests/test_formkurve.cjs
 node --test tests/test_route.cjs
+node --test tests/test_v7.cjs
 python3 -I tests/test_tools.py
 ```
 Die Tests arbeiten mit erfundenen Werten; `tests/fixtures` enthält aufgezeichnete Antworten einer lokalen BRouter-Instanz mit dem

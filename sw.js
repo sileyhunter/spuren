@@ -1,8 +1,8 @@
-/* Ironman Notebook – Offline-Speicher (V5.3, Dateiliste V5.7). Netz zuerst, bei fehlendem Netz die zuletzt geladene Fassung.
+/* Ironman Notebook – Offline-Speicher (V5.3, Dateiliste V5.7, V7.0: js/v7.js, js/v7-ui.js). Netz zuerst, bei fehlendem Netz die zuletzt geladene Fassung.
    Gespeichert werden nur die Seite, die Skripte, die verschlüsselte data.enc.json und (V5.6) bereits geöffnete, ebenfalls
    verschlüsselte Sekundenreihen aus serien/; Kartenkacheln und Fremddienste nie. */
-const CACHE = "notebook-v664-auswahl-2026-11-14";
-const SHELL = ["./", "index.html", "demo.html", "js/formkurve.js", "js/v5-ui.js", "js/v5-ausdauer.js", "js/v5-extra.js", "js/route.js", "js/routen-ui.js", "js/training-route.js", "js/training-ui.js", "js/v53-extra.js", "js/v55.js", "js/v55-schwimmen.js", "js/analyse.js", "js/explorer.js", "js/v56.js", "js/eingang.js", "js/v59-logik.js", "js/v59.js", "js/v6.js", "js/v6-heute.js", "js/v6-plan.js", "js/v61.js", "js/v62.js", "js/v64.js", "js/wissen.js", "js/v64-ui.js", "js/v65.js", "js/v65-ui.js", "js/v66.js", "js/v66-ui.js", "css/v6.css", "brouter/rennrad-asphalt.brf",
+const CACHE = "notebook-v70-bedienung-2026-11-14";
+const SHELL = ["./", "index.html", "demo.html", "js/formkurve.js", "js/v5-ui.js", "js/v5-ausdauer.js", "js/v5-extra.js", "js/route.js", "js/routen-ui.js", "js/training-route.js", "js/training-ui.js", "js/v53-extra.js", "js/v55.js", "js/v55-schwimmen.js", "js/analyse.js", "js/explorer.js", "js/v56.js", "js/eingang.js", "js/v59-logik.js", "js/v59.js", "js/v6.js", "js/v6-heute.js", "js/v6-plan.js", "js/v61.js", "js/v62.js", "js/v64.js", "js/wissen.js", "js/v64-ui.js", "js/v65.js", "js/v65-ui.js", "js/v66.js", "js/v66-ui.js", "js/v7.js", "js/v7-ui.js", "css/v6.css", "brouter/rennrad-asphalt.brf",
   "manifest.webmanifest", "manifest-demo.webmanifest", "icon-180.png", "icon-192.png", "icon-512.png", "logo.jpg", "logo-kopf.jpg"];
 const CDN = ["https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/", "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/"];
 // V5.7.1: data.enc.json gehört zum Grundbestand, und beim Wechsel auf eine neue Fassung werden die bereits gespeicherten Daten und

@@ -76,6 +76,10 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   geplanter Einheiten tl-plan-1.0, Wochenart wochenblatt-1.0, Aufbau-Hinweis), `js/v66-ui.js` (Abschnitt «Mein Plan» im Tagesblatt, Training
   hinzufügen, Einheit ändern, Wochenaktionen, Kalender-Wochenansicht kalender-2.0, Wochenblatt im Plan, Abschnitt «Garmin»), `tests/test_v66.cjs`;
   `tools/garmin_senden.py` (garmin-senden-1.0: Aufträge prüfen, was zu senden ist, Rücklese, Ergebnisse eintragen; Abschnitt «An Garmin senden»)
+- **V7.0 (Bedienung nach Vorlage enduco, Auftrag «Masterprompt V7» vom 14.11.2026, Etappe A):** `js/v7.js` (ohne DOM: Planvergleich
+  planvergleich-1.0, Balkenprofil eigener Einheiten profil-teile-1.0, Tage einer beliebigen Woche kalender-3.0, Wochenumfang), `js/v7-ui.js`
+  (Analyse-Start analyse-start-1.0, Planvergleich, Plan-Übersicht und «Plan verwalten», Labor, Mein Plan für Heute und Kalender), `tests/test_v7.cjs`,
+  `docs/v7-bestandsaufnahme.md` (Zuordnung der Vorlage). Die Enduco-PDF und die Bildschirmfotos liegen **nie** im Repository.
 - **V6.4.4 (Prüfung V6.4, `docs/AUDIT_V64.md`):** `tools/leck_pruefen.py` – Leck-Prüfung vor jedem Push: sucht echte Werte (IDs, Zonentexte und
   -grenzen, Schwellen, Distanzen mit Datum, Testtermine und Abwesenheiten, E-Mail) in allen getrackten Dateien, gibt nur Fundorte aus
 - **V5.8:** keine neuen Dateien; Rechenlogik in `js/route.js` (Abschnitte von Hand, Skitourennetz, Hangneigung, MTB-Abfahrt, Wegende, drei
@@ -407,10 +411,16 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Nacht, Belastung = (1 − 2^(−TSS/CTL_Vortag)) · 100; alle 0–100 %, Lücken bleiben leer, Tag mit Datum. Kein medizinisches Mass. Ein Tag, dessen
   Einheiten noch nicht eingespielt sind (`FK.aktivitaetenBis`: Nacht-Update = Tag des Laufs, Morgen-Update = Vortag), hat Belastung «offen», nie 0 %.
 
-## Bedienung V5.9.5 (bedienung-1.0)
-- Start auf «Heute» (Hash-Links wie `#laktat`, `#plan`, `#wissen` oder `#checkin` gehen direkt; `#checkin` öffnet das Check-in-Blatt). Fünf Bereiche in
-  der Leiste unten (`#leiste`, `GRUPPEN` in index.html, seit V6.0.2): Heute · Kalender · Plan (plan, wissen; V6.4; bibliothek, V6.5) · Analyse (training, laktat, ausdauer, leistung,
-  koerper, schwimmen) · Karte; die Ansichten (`section.view`, `showTab(name)`) bleiben einzeln, oben wechselt `nav.unter` (wischbar).
+## Bedienung V7 (navigation-7.0; vorher bedienung-1.0)
+- Start auf «Heute» (Hash-Links wie `#laktat`, `#plan`, `#wissen`, `#planvergleich` oder `#checkin` gehen direkt; `#checkin` öffnet das Check-in-Blatt;
+  alte Namen über `ALIAS`: `#training` → `#umfang`). Fünf Bereiche in der Leiste (`#leiste`, `GRUPPEN` in index.html): Heute · Kalender · Plan · Analyse ·
+  Outdoor (Karte); ab 1024 px als Seitenleiste links (`--v7-oben` aus `V7UI`). Erste Ebene einfach, Einzelheiten als eigene Ansicht mit «Zurück» oben
+  links (`ELTERN`: Ansicht → [Elternansicht, Titel]; `.v7-kopf`), keine Unterleisten mehr. Plan: plan-rennen, plan-modell, plan-stunden, plan-aufbau,
+  plan-tests. Analyse: Start `analyse` (Karten, `V7UI`) → umfang, intensitaet, erholung, leistung, laktat, planvergleich, ausdauer, tagebuch,
+  schwimmen, koerper. Labor (labor, wissen, bibliothek) öffnet über das Profil oben rechts (Einstellungen), nicht über die Leiste.
+- Karten wurden in V7 zwischen Ansichten verschoben, ihre IDs blieben. `QUELLEN` in index.html nennt, welche alte Ansicht sie zeichnet (z. B.
+  erholung ← heute + training, labor ← training + kalender + plan); `showTab` zeichnet die Quellen zuerst (`zeichneTab`) und ruft `V56.zeichnen` für
+  jede. Neue Karten deshalb in die Ansicht legen, deren `TABS`-Eintrag sie füllt, oder `QUELLEN` ergänzen. Leiste antippen = erste Ebene des Bereichs.
   Im Planer (`body.plan-aktiv`) keine Leiste.
 - Info-Knopf (`V59.ansicht`): Erklärtexte (`.sub` ohne id, `.hint`) einer Karte mit Ergebnis liegen hinter «i»; Warnungen (`.warn-t`, `.down`),
   `.verdict`, Status (`role=status`, `aria-live`) und `.keep` nie verstecken – auch nicht, wenn sie in einem Erklärtext stehen (dann bleibt der ganze
@@ -434,18 +444,27 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - Eine Zone, eine Farbe: nur über `--zc-…` (css/v6.css) bzw. `V6.ZONEN`; Sportarten `--sp-…`, Monitoring `--mon-…`, Rennen und heute `--race`.
   Dunkel ist Standard, «Hell» je Gerät (`sf.theme`). Neue Blätter über `V59.blatt(art, html)` mit `.blatt-titel`, `.blatt-fuss` (Zurück links
   `.btn-zurueck`, Hauptaktion rechts `.btn.primary`), Kennzahlen als `.kv`, Abschnittstitel als `.abschnitt`.
+- **Heute (V7 heute-7.0):** nur Kacheln, Begrüssung mit Check-in, Heutiges Training und Diese Woche. Heutiges Training = erledigte Garmin-Aktivitäten von
+  heute und die Einheiten aus Mein Plan (Balkenprofil aus ihren Teilen, profil-teile-1.0); keine Enduco-Workouts, kein «Neu von Enduco». Die übrigen
+  Karten (Ringe, Bereitschaft, Gefühl, Verlauf) stehen unter Analyse → Belastung und Erholung (`#erholung`).
 - Heute (V6.0.1): Kacheln Ampel/Status/Check-in, Begrüssung mit Check-in-Blatt, Heutiges Training (Karten mit Zonen-Chips und Balkenprofil,
   Einheit als Blatt), Wochenleiste. Balkenprofil `profil-1.0`: Breite = Dauer, Höhe = Lage im aktiven Zonenprofil, Farbe = Zone (Unterzonen
   aus dem Text der Zone, z. B. «FatMax a–b»); ohne Zielbereich grau, ohne Dauer blass. Fokus = Zeitanteile der aktiven Schritte ohne
   Ein-/Ausfahren und Erholung, nur Schritte mit Dauer (aktive Schritte ohne Dauer separat als «Dauer offen»), ab 10 %, höchstens drei. Trainingsstatus `status-1.1` aus der Form zu Tagesbeginn
   (`FK.pmcMorgen`: Fitness und Ermüdung bis gestern, wie die Ampel – sonst zählt der laufende Tag bis zum Nacht-Update als Ruhetag; Bänder nach Coggan); «Übertraining» nie.
+- **Plan (V7):** oben die Übersicht (Hauptrennen, Phase, Mein Plan diese Woche gegenüber absolviert), darunter Phasen und die Saisonübersicht
+  (8 Wochen zurück bis zum Hauptrennen, geplant = Mein Plan), dann «Plan verwalten» mit den Unteransichten Rennen, Trainingsmodell, Wochenstunden,
+  Aufbau-Check, Testkalender. «Woche nach Modell» (mit Enduco je Tag und «Ich folge») und «Vorschlag und Enduco über die Wochen» liegen im Labor.
 - Plan (V6.0.2, `js/v6-plan.js`): Rennen (A/B nach `V6.rennenPrio`, Streckenlängen nur bei bekanntem Format, keine Zielzeit erfunden),
   Phasen aus `AN.saison` als Zeitstrahl, Wochenübersicht (absolviert gefüllt, geplant als Rand, Phase als Streifen), Wochenstunden-Vorschlag
   (`V56.saison`) und Testkalender. Kalender: Wochenband «KW · Phase · Stunden · TL», heute orange, Sport-Symbole, Fokus-Punkte; ein Tag
   öffnet das Tagesblatt (V6.6, `TABS.kalender.blatt`, auch aus Heute «Diese Woche» über `APP.tagBlatt`) mit Mini-Profilen (antippen öffnet die
   Einheit, «Zurück» führt ins Tagesblatt). Dauer immer als «1:15 h» bzw. «36 min» (`V6.dauerText`), nie «m» für Minuten.
-- **Kalender und Mein Plan (V6.6, kalender-2.0, eigenplan-1.0):** «Woche · Monat» (Standard Woche, `sf.kal.ansicht`); Woche = Tage untereinander
-  mit Mein Plan, Enduco (Garmin-Kalender) und Absolviertem; im Monat öffnet «KW» die Woche (`TABS.kalender.zurWoche`, auch `APP.kalenderWoche`).
+- **Kalender und Mein Plan (V7 kalender-3.0, eigenplan-1.0):** «Woche · Monat» (Standard Woche, `sf.kal.ansicht`); Titel = Monat und Jahr (antippen:
+  Monat wählen), «Heute» rechts. Woche = Tagesleiste, Wochenauswertung (Mein Plan gegenüber absolviert, je Sportart, Zeit in Zonen nach Puls, TL) und
+  die Tage mit erledigten Garmin-Aktivitäten und Mein Plan; im Monat öffnet «KW» die Woche (`TABS.kalender.zurWoche`, auch `APP.kalenderWoche`).
+  **Enduco erscheint im Kalender nicht** (weder Woche, Monat noch Tagesblatt; `calEvents` ohne `planned`). Mein Plan früherer Wochen nur, wenn sie
+  gespeichert waren (`V7UI.planGilt`), sonst nur Absolviertes – kein nachgerechneter Vorschlag als «verpasst».
   Mein Plan = Wochenvorschlag (`V64UI.kontextFuer`) mit `plan_woche` (`V66.meinPlan`); Änderungen nur über `V66.aendern` (vergangene und gesperrte
   Tage nie), gespeichert mit «Direkt speichern». Bearbeitete Wochen: Stunden und Verteilung aus den eigenen Einheiten, «bearbeitet» sichtbar
   (vergleich-1.3, seit 1.4 ohne eigene Garmin-Einträge als Enduco). TL ≈ und Distanz ≈ (tl-plan-1.0) sind Modelle, immer mit «≈»; ohne Bezugswert keine Zahl. Ein Lauf über der Aufbau-Grenze
@@ -517,6 +536,18 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Schweizer Schreibweise (kein ß) und keine Wattwerte in den Texten. Nie persönliche Zahlen in die Wissenstexte.
 - Der Vorschlag steht neben dem Enduco-Plan, solange Enduco läuft; Enduco wird nie geändert. Nach Garmin geht nur, was Silas mit «An Garmin senden»
   auslöst (Abschnitt «An Garmin senden»).
+
+## Enduco nur als Vergleichsdatenbank (V7, planvergleich-1.0)
+- Enduco-Workouts (`planned`, `workouts_neu`, `enduco_bib`, `wk`) bleiben vollständig gespeichert, erscheinen aber nicht in Heute, Kalender oder Plan.
+  Sichtbar nur zusammengefasst unter Analyse → Planvergleich; Einzelheiten (Bibliothek, «Woche nach Modell» mit «Ich folge», Vorschlag und Enduco
+  über die Wochen, Workouts auf der Uhr) im Labor.
+- Planvergleich je Woche Mo–So (Datum wie in den Daten): Soll = Garmin-Kalender ohne eigene «IN · …» (`V66.eigenGarmin`), wo dort nichts stand die
+  Plandauer der Uhr-Workouts (`V64.enducoAusUhr`); Ist = Netto (mv, sonst dur), Brutto (el), Pausen. Zonen nur Rad/Laufen: Soll aus den Zielen der
+  Schritte im aktiven Zonenprofil (profil-1.0), Ist aus dem Puls-Histogramm `hh` in den Pulszonen des Profils am Tag (`V7.histZonen`, nicht
+  hochgerechnet); 5 Zonen oder 3 Bereiche (LT1/LT2). Ohne Dauer, ohne Ziel, ohne Puls = «Nicht zuordenbar», nie verteilt.
+- Urteil (Abweichung, Verlauf) nur für Wochen mit vollständigem Soll (`status` «ok»): Kalender vorhanden, kein Uhr-Workout, das im Kalender fehlte,
+  und ab `config.planvergleich_ab` (falls gesetzt; sonst erste ganze Woche nach dem ersten Kalendereintrag). Sonst «teil» bzw. «nur-uhr», sichtbar.
+  Regel ändern = Version in `V7.VERSIONS` erhöhen und `tests/test_v7.cjs` nachführen.
 
 ## An Garmin senden (V6.6, garmin-senden-1.0, Entscheid E3 vom 13.11.2026)
 - Silas' Wunsch: eigene Einheiten von Hand bis eine Woche voraus an Garmin (Fenix und Edge), automatisch nur am Vortag um 23 Uhr (er passt den
@@ -609,7 +640,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Die exakten Grössen der SPS1-Dateien stehen in der Git-Historie.
 
 ## Prüfen vor jedem Push von Seite oder Werkzeugen
-`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `node --test tests/test_v66.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
+`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `node --test tests/test_v66.cjs`, `node --test tests/test_v7.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
 **Leck-Prüfung (V6.4.4):** `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json work/data.json`, `python3 -I tools/leck_pruefen.py work/data.json`
 («LECK-PRÜFUNG: bestanden»), danach `rm work/data.json`. Gilt für jeden Push von Seite, Werkzeugen, Tests oder Doku (nicht für die reinen Daten-Updates).
 Kein Live-Push, wenn ein Test oder die Leck-Prüfung fehlschlägt. Screenshots mit echten Daten nie ins Repo. **Ein Force-Push entfernt nichts von GitHub:**

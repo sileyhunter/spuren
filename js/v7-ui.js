@@ -161,7 +161,7 @@
         <span class="v7-k-fuss">Stufentests, Einzelmessungen, Kurven und Zonen</span>` : `<p class="v7-k-leer">Noch kein bestätigtes Zonenprofil – Tests und Kurven ansehen.</p>`),
       karte("planvergleich", "plan", "Planvergleich", lw ? `<span class="v7-k-unter">KW ${W.isoWoche(lw.mo)} · Enduco geplant gegenüber absolviert</span>
         <div class="v7-k-zahlen"><div><b>${std(lw.soll.s)}</b><span>geplant</span></div><div><b>${std(lw.ist.netto)}</b><span>absolviert</span></div><div><b>${lw.diff_pct != null ? vz(lw.diff_pct) + Math.abs(lw.diff_pct) + " %" : "–"}</b><span>Abweichung</span></div></div>`
-        : `<span class="v7-k-unter">Enduco geplant gegenüber absolviert</span><p class="v7-k-text">${pv && pv.wochen.some((w) => w.soll.n) ? "Die erste ganze Woche mit Enduco-Plan im Garmin-Kalender ist noch nicht abgeschlossen." : "Noch keine Woche mit Enduco-Plan im Garmin-Kalender."}</p>`),
+        : `<span class="v7-k-unter">Enduco geplant gegenüber absolviert</span><p class="v7-k-text">${pv && pv.wochen.some((w) => w.soll.n) ? "Noch keine abgeschlossene Woche mit vollständigem Enduco-Plan im Garmin-Kalender – die bisherigen Wochen sind als unvollständig sichtbar." : "Noch keine Woche mit Enduco-Plan im Garmin-Kalender."}</p>`),
     ].join("");
     const weitere = [["ausdauer", "energie", "Ausdauer und Verpflegung", "Ermüdungsresistenz, lange Ausfahrt, Koppelläufe, Train your Gut"],
       ["tagebuch", "ablauf", "Aktivitäten", "Serie und Trainingstagebuch – jede Einheit im Explorer"],
@@ -209,12 +209,17 @@
   M.planvergleichDaten = function (n) {
     if (!bereit() || !V64()) return null;
     const t = heute(), m0 = V7().montag(t), wochen = [];
+    // vollständig ab: config.planvergleich_ab (Datum, ab dem alle Enduco-Einheiten in den Garmin-Kalender kommen), sonst die erste ganze Woche
+    // nach dem ersten Enduco-Eintrag im Kalender
+    const ersterK = (C.D.planned || []).filter((p) => p && p.date && !eigenGarmin(p)).map((p) => p.date).sort()[0] || null;
+    const cfg = C.D.config && /^\d{4}-\d{2}-\d{2}$/.test(C.D.config.planvergleich_ab || "") ? C.D.config.planvergleich_ab : null;
+    const vollAb = cfg ? (V7().montag(cfg) === cfg ? cfg : V7().addDays(V7().montag(cfg), 7)) : ersterK ? (V7().montag(ersterK) === ersterK ? ersterK : V7().addDays(V7().montag(ersterK), 7)) : null;
     for (let i = (n || 12) - 1; i >= 0; i--) {
       const mo = V7().addDays(m0, -7 * i);
-      wochen.push(V7().woche(sollWoche(mo), istWoche(mo), { mo, heute: t }));
+      wochen.push(V7().woche(sollWoche(mo), istWoche(mo), { mo, heute: t, vollAb }));
     }
     const erste = wochen.findIndex((w) => w.soll.n > 0);
-    return { wochen: erste < 0 ? wochen.slice(-1) : wochen.slice(erste), verlauf: V7().verlauf(wochen) };
+    return { wochen: erste < 0 ? wochen.slice(-1) : wochen.slice(erste), verlauf: V7().verlauf(wochen), vollAb };
   };
   let pvWoche = null;
   function balkenPaar(a, b, max, farbe) {
@@ -239,7 +244,7 @@
     const abg = L.filter((w) => w.abgeschlossen && w.soll.n > 0);
     if (!pvWoche || !L.some((w) => w.mo === pvWoche)) pvWoche = (abg.length ? abg[abg.length - 1] : L[L.length - 1]).mo;
     const w = L.find((x) => x.mo === pvWoche), i = L.indexOf(w), modus = lsGet("sf.pv.zonen", "5");
-    const STAT = { ok: "abgeschlossen", laufend: "laufende Woche – noch nicht abgeschlossen", "nur-uhr": "Soll unvollständig: nur Workouts, die auf der Uhr liefen", "ohne-plan": "kein Enduco-Plan in dieser Woche" };
+    const STAT = { ok: "abgeschlossen", laufend: "laufende Woche", "nur-uhr": "unvollständig · nur Uhr-Workouts", teil: "unvollständig · Kalender lückenhaft", "ohne-plan": "kein Enduco-Plan" };
     const maxS = Math.max(w.soll.s, w.ist.netto, 1), maxSp = Math.max(1, ...["schwimm", "rad", "lauf"].map((k) => Math.max(w.je[k].soll, w.je[k].ist)));
     const zS = modus === "3" ? w.zonen.soll3 : w.zonen.soll, zI = modus === "3" ? w.zonen.ist3 : w.zonen.ist;
     const vars = modus === "3" ? DREI.map((x) => x[1]) : ZVAR, namen = modus === "3" ? DREI.map((x) => x[0]) : ZW;
@@ -287,6 +292,7 @@
       </div>
       <details class="v7-methode"><summary>So wird gerechnet</summary>
         <p>Woche = Montag bis Sonntag (Datum der Aktivität in Schweizer Zeit). Geplant = Enduco-Einheiten aus dem Garmin-Kalender, ohne die selbst gesendeten «IN · …»; stand an einem Tag nichts im Kalender, zählt die Plandauer eines Enduco-Workouts, das auf der Uhr lief. Vergangene Kalendertage ändern sich nach dem Tag nicht mehr – ein später geänderter Plan schreibt alte Wochen nicht um.</p>
+        <p>Ein Urteil (Abweichung, Verlauf) gibt es nur für Wochen mit vollständigem Soll: ab ${R.vollAb ? esc(C.dateCH(R.vollAb)) : "dem ersten Kalendereintrag"} und ohne Enduco-Workouts auf der Uhr, die im Kalender fehlten. Frühere Wochen bleiben sichtbar, aber «unvollständig».</p>
         <p>Absolviert = Netto-Zeit (Bewegungszeit, sonst Timer-Dauer) der erfassten Aktivitäten; Brutto = Gesamtzeit; Pausen = Brutto − Netto. Zonen nur Rad und Laufen; Schwimmen ohne Zonenvergleich (Puls im Wasser unsicher).</p>
         <p>Was fehlt, bleibt fehlend: Einheiten ohne Dauer, Schritte ohne Ziel und Zeit ohne Puls stehen unter «Nicht zuordenbar» und werden nie verteilt. ${esc(V7().VERSIONS.planvergleich)}.</p></details>`;
     box.querySelectorAll("[data-pvn]").forEach((b) => (b.onclick = () => { const j = i + +b.dataset.pvn; if (L[j]) { pvWoche = L[j].mo; planvergleichZeichnen(); } }));
