@@ -215,8 +215,8 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 84. **Zwei verschiedene LT2** (Zonenprofil gegen Stufentest bzw. last-2.0): «knapp unter LT2» liegt dadurch über der gemessenen Schwelle.
 85. **Watt-Ziele aus Zwift gelten auch draussen** (Plan, Langfahrt-Band); Puls bei gleicher Leistung draussen höher. Für die Last erledigt in V6.6.2
     (last-2.1: LT2 nur für ihr System, draussen ohne eigene LT2 nach Puls); Plan-Ziele und Langfahrt-Band offen.
-86. **Pauschallast bei Zwift-Fahrten im Monatsexport** (FTP/LTHR fehlen in der FIT-Datei); last-2.1 rechnet sie richtig, wirkt aber erst mit
-    `config.load_model` «last-2.1» (Entscheid bei Silas, Vergleich in V6.6.2 vorbereitet).
+86. ~~**Pauschallast bei Zwift-Fahrten im Monatsexport**~~ (FTP/LTHR fehlen in der FIT-Datei) – erledigt: last-2.1 rechnet sie mit der LT2 der Rolle,
+    seit 14.11.2026 eingeschaltet (`config.load_model` «last-2.1», Silas' Okay).
 87. **Intensitätsverteilung:** Plan nach Zielen, Absolviertes nach Puls – ungleich; besser Rad nach Leistung aus den Sekundenreihen.
 88. **Lauf-VO2max-Pulsziel** an der Untergrenze Z5 statt 90–95 % HFmax laut Text.
 89. **Ampel:** sehr hohe HRV zählt als gut (besser «ungewöhnlich hoch – beobachten»); «Passt die Ampel zu dir?» teilweise zirkulär, ohne Streubereich.

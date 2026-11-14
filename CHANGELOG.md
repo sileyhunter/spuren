@@ -1,5 +1,13 @@
 # Änderungen
 
+## V6.6.3 · 14.11.2026 · Last-Modell eingeschaltet, Jagdposten auf der Karte
+- **Last-Modell:** auf Silas' Okay vom 14.11.2026 rechnet die Seite mit last-2.1 (`config.load_model`; Rad auf der Rolle mit der LT2, draussen nach
+  Puls mit dem Schwellenpuls Rad). Fitness, Ermüdung, Form, Trainingsstatus und der Last-Teil der Ampel folgen; `tss` bleibt gespeichert. Prüfbericht
+  Befund 6 (Pauschallast bei Zwift-Fahrten) damit erledigt.
+- **Punkte, punkte-1.1:** Punkte im Jagdgebiet, die der Import mangels «Post», «Hochsitz» o. ä. im Namen unter «Sonstiges» abgelegt hatte, sind auf
+  Silas' Wunsch Jagdposten (von Hand, im Audit). Jagdposten bleiben auf der Karte ausgeblendet, bis er sie unter «Karten & Ebenen» einblendet.
+  `tools/import_points.py` behält Kategorien von Hand (`cat_hand`) bei einem neuen Import (gleicher Name, höchstens 50 m); Test in `tests/test_tools.py`.
+
 ## V6.6.2 · 14.11.2026 · Prüfbericht: Form zu Tagesbeginn und Rad-Last je System
 Aus dem Prüfbericht vom 13.11.2026 (Befunde 3 und 5–7), nach Silas' Okay vom 14.11.2026.
 - **Befund 3, status-1.1:** «Heute» (Status-Kachel, «Optionen für heute» und die Werte unter der Ampel) zeigt die Form zu Tagesbeginn: Fitness und

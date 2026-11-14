@@ -1204,5 +1204,23 @@ bibliothek.einspielen(_DB2, {"planned": [{"date": "2026-03-05", "title": "Beispi
 check("Bibliothek (bib-1.1): selbst eingeplante Einheit ist kein Enduco-Termin", not (_DB2.get("enduco_bib", {}).get("workouts", {}).get("1000000009") or {}).get("termine"),
       str(_DB2.get("enduco_bib")))
 
+# punkte-1.1: Kategorie von Hand bleibt beim neuen GPX-Import (erfundene Punkte und Orte)
+_tp = tempfile.mkdtemp()
+json.dump({"points": [{"id": "gpx-1", "name": "Felsblock", "cat": "jagd", "cat_hand": True, "lat": 46.0, "lon": 8.0},
+                      {"id": "gpx-2", "name": "Lichtung", "cat": "sonst", "lat": 46.01, "lon": 8.01},
+                      {"id": "eigen-1", "name": "Eigener Punkt", "cat": "cafe", "lat": 46.1, "lon": 8.1}]}, open(os.path.join(_tp, "d.json"), "w"))
+open(os.path.join(_tp, "g.gpx"), "w").write('<?xml version="1.0"?><gpx xmlns="http://www.topografix.com/GPX/1/1">'
+    '<wpt lat="46.0002" lon="8.0001"><name>Felsblock</name></wpt><wpt lat="46.4" lon="8.4"><name>Felsblock</name></wpt>'
+    '<wpt lat="46.01" lon="8.01"><name>Lichtung</name></wpt><wpt lat="46.02" lon="8.02"><name>Post Beispiel</name></wpt></gpx>')
+_rp = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "tools", "import_points.py"), os.path.join(_tp, "d.json"), os.path.join(_tp, "g.gpx")],
+                     capture_output=True, text=True)
+_dp = json.load(open(os.path.join(_tp, "d.json")))
+_pk = {(p["name"], round(p["lat"], 1)): p for p in _dp["points"]}
+check("Punkte (punkte-1.1): Kategorie von Hand bleibt (gleicher Name, ≤ 50 m), gleicher Name weit weg und andere Punkte nach Name, eigene Punkte bleiben",
+      _rp.returncode == 0 and _pk[("Felsblock", 46.0)]["cat"] == "jagd" and _pk[("Felsblock", 46.0)].get("cat_hand") is True
+      and _pk[("Felsblock", 46.4)]["cat"] == "sonst" and "cat_hand" not in _pk[("Felsblock", 46.4)] and _pk[("Lichtung", 46.0)]["cat"] == "sonst"
+      and _pk[("Post Beispiel", 46.0)]["cat"] == "jagd" and _pk[("Eigener Punkt", 46.1)]["cat"] == "cafe" and len(_dp["points"]) == 5
+      and "Kategorie von Hand behalten: 1" in _rp.stdout and _dp["versions"]["punkte"]["v"] == "punkte-1.1", _rp.stdout + _rp.stderr)
+
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)

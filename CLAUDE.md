@@ -632,7 +632,8 @@ hängende Commits bleiben per SHA öffentlich abrufbar – echte Werte darum gar
   ersetzt den Schlüssel), dann `merge_daily.py`. Ältere Einträge bleiben (Fahrten davor rechnen weiter mit ihnen).
 - `config.load_model` steuert, was die Seite verwendet: `"garmin"` (Standard, `tss` wie geliefert), `"last-2.1"` bzw. `"last-2.0"` (beide `tl2` in der
   Fassung von `tools/last.py`; erst nach Silas' Okay zum Vergleich) oder `"ftp_est"` (alte Probe aus NP und `ftp_e`, nicht mehr verfolgt). Die Seite zeigt den Vergleich in Fortschritt
-  «Wochenlast je Sportart».
+  «Wochenlast je Sportart». **Seit 14.11.2026 `"last-2.1"`** (Silas' Okay: Rolle mit der LT2, draussen nach Puls mit dem Schwellenpuls Rad; im Audit vermerkt).
+  Zurück auf die Garmin-Werte nur auf seinen Wunsch (`tss` bleibt immer gespeichert).
 - `config.ftp` bleibt der Garmin-Wert (für `tss` im Nacht-Update); die Seite braucht ihn mit last-2.0 nicht mehr.
 - Einspielen ohne Garmin-Daten (nur `config`, Laktat, Eingaben) lässt `updated` («Daten vom …») stehen.
 
@@ -665,6 +666,10 @@ hängende Commits bleiben per SHA öffentlich abrufbar – echte Werte darum gar
 ## Punkte (GPX kommt über den Chat)
 Wegpunkte, z. B. Jagdposten aus Garmin Explore: GPX in einen eigenen, leeren Ordner ausserhalb des Repos kopieren, entschlüsseln,
 `python3 -I tools/import_points.py data.json <datei.gpx>` (ersetzt früher importierte Punkte), verschlüsseln, nur `data.enc.json` committen.
+Kategorie nach Name (Post, Hochsitz, Ansitz … → Jagdposten, sonst «Sonstiges» usw.). **punkte-1.1:** Kategorien von Hand (`cat_hand`, seit 14.11.2026
+die Punkte im Jagdgebiet als Jagdposten, im Audit vermerkt) bleiben beim neuen Import (gleicher Name, höchstens 50 m entfernt). Jagdposten sind auf
+der Karte ausgeblendet, bis Silas sie unter «Karten & Ebenen» → «Jagdposten» (oder «Filter & Punkte») einblendet; die anderen Kategorien sind an.
+Neue Punkte ohne erkennbare Art im Jagdgebiet landen unter «Sonstiges»: Silas fragen, nie selbst raten.
 
 ## Testkalender
 `tests` in den Daten: `[{"date":"…","kind":"stufentest"|"check"|"css","note":"…","status":"vorschlag"|"geplant"}]`.
