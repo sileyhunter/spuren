@@ -1,4 +1,4 @@
-"""garmin-senden-1.0 (V6.6, Etappe 6.7, Entscheid E3 von Silas am 13.11.2026): Einheiten aus «Mein Plan» an Garmin senden.
+"""garmin-senden-1.1 (V6.6, Etappe 6.7, Entscheid E3 von Silas am 13.11.2026; 1.1 = V7.3 Etappe 2): Einheiten aus «Mein Plan» an Garmin senden.
 
 Die Seite legt je Tag einen Auftrag an (Eingabe garmin_senden → merge_daily.py → garmin_auftraege), mit einer Momentaufnahme je Einheit:
 fertiges Garmin-Workout (Format von upload_workout, Name «IN · …») bzw. bei der Bibliothek nur die Workout-ID (Enduco-Workout, wird nur
@@ -6,6 +6,10 @@ eingeplant), dazu die Fassung. modus «senden» = im nächsten Nacht-Update, «a
 «aus» = automatisches Senden für diesen Tag abgestellt. Dieses Werkzeug rechnet nur, was zu tun ist, prüft die Rücklese und trägt Ergebnisse
 ein; die Aufrufe an Garmin macht das Nacht-Update (CLAUDE.md, «An Garmin senden»). Gelöscht oder ausgetragen wird nur, was einen eigenen
 Vermerk in plan_garmin hat; Enduco-Workouts werden nie geändert oder gelöscht.
+
+1.1: Schwimmen (swimming, 4) im Format der Enduco-Workouts (Bahnlänge, Strecken in ganzen Bahnen, Pausen fixed.rest, Schritt «other» für
+Übungen, Stil Kraul, Hilfsmittel als equipmentType, Nebenziel swim.css.offset); Rad und Laufen zusätzlich mit Pulsbereich (heart.rate.zone, bpm).
+Die Rücklese vergleicht auch Texte, Bahnlänge, Stil, Hilfsmittel und Nebenziele.
 
   python3 -I tools/garmin_senden.py plan data.json [--jetzt 2026-11-14T23:05] > work/garmin_plan.json
   python3 -I tools/garmin_senden.py rueck work/garmin_plan.json <nr> <antwort.json>      # nach upload_workout: Rücklese mit get_workout_by_id(raw)
@@ -18,14 +22,22 @@ import re
 import sys
 import zoneinfo
 
-V = "garmin-senden-1.0"
+V = "garmin-senden-1.1"
 PREFIX = "IN · "
 TZ = zoneinfo.ZoneInfo("Europe/Zurich")
 AB_UHR = dt.time(23, 0)                   # automatisch frühestens um 23:00 am Vortag (Silas, E3)
 MAX_TAGE = 8                              # von Hand bis eine Woche voraus (+1 Tag Spielraum für Mitternacht)
 MAX_SCHRITTE = 50
-SPORTARTEN = {1: "running", 2: "cycling"}
+SPORTARTEN = {1: "running", 2: "cycling", 4: "swimming"}
 SCHRITT_TYP = {1: "warmup", 2: "cooldown", 3: "interval", 4: "recovery"}
+SCHRITT_TYP_SCHWIMM = {1: "warmup", 2: "cooldown", 3: "interval", 4: "recovery", 5: "rest", 7: "other"}
+BECKEN = (25, 50)
+METER = {"unitId": 1, "unitKey": "meter", "factor": 100.0}
+KEIN_ZIEL = {"workoutTargetTypeId": 1, "workoutTargetTypeKey": "no.target"}
+PULS = {"workoutTargetTypeId": 4, "workoutTargetTypeKey": "heart.rate.zone"}
+CSS_OFFSET = {"workoutTargetTypeId": 17, "workoutTargetTypeKey": "swim.css.offset"}
+KRAUL = {"strokeTypeId": 6, "strokeTypeKey": "free"}
+GERAET = {1: "fins", 2: "kickboard", 3: "paddles", 4: "pull_buoy"}
 QUELLEN = ("vorschlag", "eigen", "bibliothek")
 
 
@@ -51,8 +63,10 @@ def _zeit(s):
 
 
 def workout_pruefen(w):
-    """Garmin-Workout aus der Seite (V66.garminWorkout) → Fehlertext oder None. Nur bekannte Felder, Zeit als Ende, Ziele Watt bzw. m/s."""
-    if not isinstance(w, dict) or set(w) - {"workoutName", "description", "sportType", "workoutSegments"}:
+    """Garmin-Workout aus der Seite (V66.garminWorkout) → Fehlertext oder None. Nur bekannte Felder. Rad und Laufen: Zeit als Ende, Ziele Watt,
+    m/s oder Puls (bpm). Schwimmen (1.1): Bahnlänge 25/50 m, Strecken in ganzen Bahnen, Pausen fixed.rest, Kraul, Hilfsmittel, Nebenziel CSS."""
+    felder = {"workoutName", "description", "sportType", "workoutSegments"}
+    if not isinstance(w, dict) or set(w) - felder - {"poolLength", "poolLengthUnit"}:
         return "Workout mit unbekannten Feldern"
     name = w.get("workoutName")
     if not isinstance(name, str) or not name.startswith(PREFIX) or len(name) > 80:
@@ -61,14 +75,67 @@ def workout_pruefen(w):
         return "Beschreibung zu lang"
     st = w.get("sportType") or {}
     if not isinstance(st, dict) or SPORTARTEN.get(st.get("sportTypeId")) != st.get("sportTypeKey"):
-        return "nur Rad und Laufen"
+        return "nur Rad, Laufen und Schwimmen"
+    schwimm = st.get("sportTypeKey") == "swimming"
+    pool = w.get("poolLength")
+    if schwimm:
+        if pool not in BECKEN or isinstance(pool, bool) or w.get("poolLengthUnit") != METER:
+            return "Schwimmen ohne Bahnlänge 25 oder 50 m"
+    elif "poolLength" in w or "poolLengthUnit" in w:
+        return "Bahnlänge nur beim Schwimmen"
     segs = w.get("workoutSegments")
     if not isinstance(segs, list) or len(segs) != 1 or not isinstance(segs[0], dict) or set(segs[0]) - {"segmentOrder", "sportType", "workoutSteps"}:
         return "genau ein Abschnitt erwartet"
     if segs[0].get("segmentOrder") != 1 or segs[0].get("sportType") != st:
         return "Abschnitt passt nicht zur Sportart"
     rad = st.get("sportTypeKey") == "cycling"
-    zaehler = {"n": 0, "order": 0, "s": 0}
+    zaehler = {"n": 0, "order": 0, "s": 0, "m": 0}
+
+    def ziel_pruefen(x):
+        tt = x.get("targetType") or {}
+        lo, hi = x.get("targetValueOne"), x.get("targetValueTwo")
+        if tt == KEIN_ZIEL:
+            return None if lo is None and hi is None else "Ohne Ziel, aber mit Werten"
+        if schwimm:
+            return "beim Schwimmen nur ohne Hauptziel"
+        if tt == PULS:
+            return None if _num(lo) and _num(hi) and 40 <= lo <= hi <= 230 else "Puls ausserhalb 40–230"
+        if tt == {"workoutTargetTypeId": 6, "workoutTargetTypeKey": "power.between"} and rad:
+            return None if _num(lo) and _num(hi) and 30 <= lo <= hi <= 1500 else "Leistung ausserhalb 30–1500 W"
+        if tt == {"workoutTargetTypeId": 6, "workoutTargetTypeKey": "pace.zone"} and not rad:
+            return None if _num(lo) and _num(hi) and 0.5 <= lo <= hi <= 10 else "Tempo ausserhalb 0,5–10 m/s"
+        return "Ziel ungültig"
+
+    def schwimm_schritt(x, faktor):
+        t = x.get("stepType") or {}
+        if SCHRITT_TYP_SCHWIMM.get(t.get("stepTypeId")) != t.get("stepTypeKey"):
+            return "Schrittart ungültig"
+        v = x.get("endConditionValue")
+        if t.get("stepTypeKey") == "rest":
+            if set(x) - {"type", "stepOrder", "stepType", "description", "endCondition", "endConditionValue", "targetType"}:
+                return "Pause mit unbekannten Feldern"
+            if x.get("endCondition") != {"conditionTypeId": 8, "conditionTypeKey": "fixed.rest"} or not _num(v) or not 5 <= v <= 600:
+                return "Pause am Beckenrand 5 s bis 10 min"
+            zaehler["s"] += v * faktor
+            return ziel_pruefen(x)
+        if set(x) - {"type", "stepOrder", "stepType", "description", "endCondition", "endConditionValue", "preferredEndConditionUnit", "targetType",
+                     "secondaryTargetType", "secondaryTargetValueOne", "strokeType", "equipmentType"}:
+            return "Schritt mit unbekannten Feldern"
+        if x.get("endCondition") != {"conditionTypeId": 3, "conditionTypeKey": "distance"} or not _num(v) or not pool <= v <= 2000 \
+                or abs(v / pool - round(v / pool)) > 1e-9 or x.get("preferredEndConditionUnit") != METER:
+            return "Strecke nicht in ganzen Bahnen (höchstens 2000 m)"
+        zaehler["m"] += v * faktor
+        if x.get("strokeType") != KRAUL:
+            return "Stil ungültig"
+        if "equipmentType" in x:
+            g = x["equipmentType"] or {}
+            if GERAET.get(g.get("equipmentTypeId")) != g.get("equipmentTypeKey") or g.get("equipmentTypeKey") is None:
+                return "Hilfsmittel ungültig"
+        if "secondaryTargetType" in x or "secondaryTargetValueOne" in x:
+            o = x.get("secondaryTargetValueOne")
+            if x.get("secondaryTargetType") != CSS_OFFSET or not _num(o) or not -0.3 <= o <= 0.6:
+                return "Nebenziel CSS ungültig"
+        return ziel_pruefen(x)
 
     def schritt(x, in_gruppe, faktor):
         if not isinstance(x, dict):
@@ -80,11 +147,13 @@ def workout_pruefen(w):
         if x.get("type") == "RepeatGroupDTO":
             if in_gruppe:
                 return "Wiederholung in einer Wiederholung"
-            if set(x) - {"type", "stepOrder", "stepType", "numberOfIterations", "endCondition", "endConditionValue", "smartRepeat", "workoutSteps"}:
+            if set(x) - {"type", "stepOrder", "stepType", "numberOfIterations", "endCondition", "endConditionValue", "smartRepeat", "workoutSteps"} \
+                    - ({"skipLastRestStep"} if schwimm else set()):
                 return "Wiederholung mit unbekannten Feldern"
             k = x.get("numberOfIterations")
             if x.get("stepType") != {"stepTypeId": 6, "stepTypeKey": "repeat"} or not isinstance(k, int) or isinstance(k, bool) or not 2 <= k <= 50 \
-                    or x.get("endCondition") != {"conditionTypeId": 7, "conditionTypeKey": "iterations"} or x.get("endConditionValue") != k:
+                    or x.get("endCondition") != {"conditionTypeId": 7, "conditionTypeKey": "iterations"} or x.get("endConditionValue") != k \
+                    or x.get("smartRepeat") is not False or x.get("skipLastRestStep", False) is not False:
                 return "Wiederholung ungültig"
             kinder = x.get("workoutSteps")
             if not isinstance(kinder, list) or not 1 <= len(kinder) <= 8:
@@ -96,25 +165,19 @@ def workout_pruefen(w):
             return None
         if x.get("type") != "ExecutableStepDTO":
             return "unbekannter Schritt"
+        if not isinstance(x.get("description", ""), str) or len(x.get("description", "")) > 100:
+            return "Text eines Schritts zu lang"
+        if schwimm:
+            return schwimm_schritt(x, faktor)
         if set(x) - {"type", "stepOrder", "stepType", "description", "endCondition", "endConditionValue", "targetType", "targetValueOne", "targetValueTwo"}:
             return "Schritt mit unbekannten Feldern"
         t = x.get("stepType") or {}
         if SCHRITT_TYP.get(t.get("stepTypeId")) != t.get("stepTypeKey"):
             return "Schrittart ungültig"
-        if not isinstance(x.get("description", ""), str) or len(x.get("description", "")) > 100:
-            return "Text eines Schritts zu lang"
         if x.get("endCondition") != {"conditionTypeId": 2, "conditionTypeKey": "time"} or not _num(x.get("endConditionValue")) or not 5 <= x["endConditionValue"] <= 36000:
             return "Schritt ohne Zeit (5 s bis 10 h)"
         zaehler["s"] += x["endConditionValue"] * faktor
-        tt = x.get("targetType") or {}
-        lo, hi = x.get("targetValueOne"), x.get("targetValueTwo")
-        if tt == {"workoutTargetTypeId": 1, "workoutTargetTypeKey": "no.target"}:
-            return None if lo is None and hi is None else "Ohne Ziel, aber mit Werten"
-        if tt == {"workoutTargetTypeId": 6, "workoutTargetTypeKey": "power.between"} and rad:
-            return None if _num(lo) and _num(hi) and 30 <= lo <= hi <= 1500 else "Leistung ausserhalb 30–1500 W"
-        if tt == {"workoutTargetTypeId": 6, "workoutTargetTypeKey": "pace.zone"} and not rad:
-            return None if _num(lo) and _num(hi) and 0.5 <= lo <= hi <= 10 else "Tempo ausserhalb 0,5–10 m/s"
-        return "Ziel ungültig"
+        return ziel_pruefen(x)
 
     steps = segs[0].get("workoutSteps")
     if not isinstance(steps, list) or not steps:
@@ -127,6 +190,8 @@ def workout_pruefen(w):
         return f"zu viele Schritte ({zaehler['n']})"
     if zaehler["s"] > 12 * 3600:
         return "länger als 12 h"
+    if zaehler["m"] > 10000:
+        return "mehr als 10 km"
     return None
 
 
@@ -263,6 +328,15 @@ def plan(D, jetzt):
     return {"v": V, "jetzt": jetzt.isoformat(timespec="seconds"), "aktionen": aktionen, "abschluesse": abschluesse, "warten_bis": warten}
 
 
+def _text(x):
+    return " ".join(str(x or "").split())
+
+
+def _ziel_key(t):
+    k = (t or {}).get("workoutTargetTypeKey")
+    return None if k in (None, "no.target") else k                 # ohne Ziel: null oder «no.target» (Garmin speichert beides)
+
+
 def _flach(steps, k=1):
     out = []
     for s in steps or []:
@@ -273,12 +347,15 @@ def _flach(steps, k=1):
             out.append(("ende",))
         else:
             out.append(("schritt", (s.get("stepType") or {}).get("stepTypeKey"), (s.get("endCondition") or {}).get("conditionTypeKey"),
-                        s.get("endConditionValue"), (s.get("targetType") or {}).get("workoutTargetTypeKey"), s.get("targetValueOne"), s.get("targetValueTwo")))
+                        s.get("endConditionValue"), _ziel_key(s.get("targetType")), s.get("targetValueOne"), s.get("targetValueTwo"),
+                        _text(s.get("description")), (s.get("strokeType") or {}).get("strokeTypeKey"), (s.get("equipmentType") or {}).get("equipmentTypeKey"),
+                        _ziel_key(s.get("secondaryTargetType")), s.get("secondaryTargetValueOne")))
     return out
 
 
 def rueck(soll, ist):
-    """Rücklese: das gespeicherte Workout (get_workout_by_id raw) gegen das gesendete. → Liste der Abweichungen (leer = gleich)."""
+    """Rücklese: das gespeicherte Workout (get_workout_by_id raw) gegen das gesendete. → Liste der Abweichungen (leer = gleich).
+    1.1: auch Texte der Schritte (nicht gekürzt), Bahnlänge, Stil, Hilfsmittel und Nebenziel (CSS)."""
     if isinstance(ist, dict) and "workout" in ist and "workoutSegments" not in ist:
         ist = ist["workout"]
     A = _flach(soll["workoutSegments"][0]["workoutSteps"])
@@ -287,6 +364,10 @@ def rueck(soll, ist):
     ab = []
     if (ist or {}).get("workoutName") != soll.get("workoutName"):
         ab.append("Name")
+    if "poolLength" in soll:
+        p = (ist or {}).get("poolLength")
+        if not _num(p) or abs(p - soll["poolLength"]) > 0.01 or ((ist or {}).get("poolLengthUnit") or {}).get("unitKey") != "meter":
+            ab.append(f"Bahnlänge {p} statt {soll['poolLength']} m")
     if len(A) != len(B):
         return ab + [f"{len(B)} statt {len(A)} Schritte"]
     for i, (a, b) in enumerate(zip(A, B), 1):
@@ -298,7 +379,7 @@ def rueck(soll, ist):
         if a[0] != "schritt":
             continue
         if a[1:3] != b[1:3] or not _num(b[3]) or abs(b[3] - a[3]) > 1:
-            ab.append(f"Schritt {i}: Art oder Dauer")
+            ab.append(f"Schritt {i}: Art, Dauer oder Strecke")
         if a[4] != b[4]:
             ab.append(f"Schritt {i}: Ziel {b[4]} statt {a[4]}")
         for x, y in ((a[5], b[5]), (a[6], b[6])):
@@ -307,6 +388,16 @@ def rueck(soll, ist):
             if not _num(y) or abs(y - x) > max(0.01, abs(x) * 0.005):
                 ab.append(f"Schritt {i}: Zielwert {y} statt {x}")
                 break
+        if a[7] != b[7]:
+            ab.append(f"Schritt {i}: Text {'gekürzt' if a[7].startswith(b[7]) else 'anders'}")
+        if a[8] is not None and a[8] != b[8]:
+            ab.append(f"Schritt {i}: Stil {b[8]} statt {a[8]}")
+        if a[9] != b[9]:
+            ab.append(f"Schritt {i}: Hilfsmittel {b[9]} statt {a[9]}")
+        if a[10] != b[10]:
+            ab.append(f"Schritt {i}: Nebenziel {b[10]} statt {a[10]}")
+        elif a[10] and (not _num(b[11]) or abs(b[11] - a[11]) > max(0.001, abs(a[11]) * 0.005)):
+            ab.append(f"Schritt {i}: CSS-Abstand {b[11]} statt {a[11]}")
     return ab
 
 

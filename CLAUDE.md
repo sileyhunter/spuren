@@ -27,6 +27,9 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   einheit-2.0 mit Blättern für Datum, Uhrzeit, Sperre, Indoor, Metrik, Workout bearbeiten, Bahnlänge, Block, Zone, Export), `tests/test_v73.cjs`,
   `logo-einheit.jpg` (Kopfbild, Ausschnitt aus logo.jpg), `docs/v73-zuordnung.md` (Zuordnung ohne Werte); Felder je Einheit einheit-felder-1.0 und
   Einfahren/Intervall-Intensität einheit-anpassen-1.0 in `js/v66.js` (`V66.feldPruefen`, `V66.teileAnpassen`, `V66.aendern` Art «einheit»)
+- **V7.3 Etappe 2 (Schwimmen an Garmin):** garmin-senden-1.1 in `js/v66.js` (`V66.garminSchwimm`, `V66.garminPuls`, `V66.metrikVon`), `tools/garmin_senden.py`
+  (Prüfung und Rücklese für Schwimmen, Puls, RPE), `V66UI.schwimmEinheit`/`V66UI.swOpt` (dieselbe Schwimm-Einheit für Seite, Auftrag und Stand),
+  Export-Blatt in `js/v73-ui.js`; Tests in `tests/test_v73.cjs` und `tests/test_tools.py`
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
 - `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)
@@ -333,7 +336,7 @@ zugeordnet → `laktat_punkte`, Status «vorschau») und `saison` (Stunden «jet
 V5.7: `startorte` (ganze Liste → `startorte`, alte Fassung ins Audit) und `trainingsrouten` (gewählte Vorschläge → `trainingsrouten`, gleiche
 ID ersetzt mit Audit). Startorte und Routen nur verschlüsselt (data.enc.json), nie offen ins Repository.
 V6.6: `garmin_senden` (Auftrag «An Garmin senden» je Tag → `garmin_senden_add` → `garmin_auftraege` mit `status` «offen»; `garmin_senden.pruefen`:
-ID «gs-<Datum>», modus senden/auto/aus, Tag vom Erstellen bis eine Woche voraus, Workouts nur Rad/Laufen mit bekannten Feldern; abgelehnte mit
+ID «gs-<Datum>», modus senden/auto/aus, Tag vom Erstellen bis eine Woche voraus, Workouts nur Rad/Laufen/Schwimmen (1.1) mit bekannten Feldern; abgelehnte mit
 Grund in `garmin_abgelehnt`; dieselbe oder ältere Fassung wird nie nochmals offen). `planwoche` (Mein Plan einer Woche → `planwoche_add` → `plan_woche`, eigenplan-1.0; `merge_daily.planwoche_pruefen`: Montag, ID «wo-<Montag>»,
 Tage in der Woche, eindeutige Einheiten, Quelle vorschlag/eigen/bibliothek, Dauer 5–600 min, Tage vor der Änderung und gesperrte Tage unverändert
 gegenüber dem Stand davor; gleiche Woche ersetzt mit Audit). V6.2.2: `zonen` (auf der Seite bestätigte Zonenprofile → `zonen_add`, geprüft wie oben). V7.2: `verfuegbarkeit` (Zeit und Sportarten je Tag
@@ -562,7 +565,8 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
   Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
   Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
-- **Wissen `wissen-1.10` (`js/wissen.js`; 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.10 = V7.3 Einheit als
+- **Wissen `wissen-1.11` (`js/wissen.js`; 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.11 = V7.3 Etappe 2 Schwimmen,
+  Puls und RPE an Garmin im Kapitel «modelle», 1.10 = V7.3 Einheit als
   Schritte, Einfahren und Intervall-Intensität, RPE je Abschnitt im Kapitel «intervalle»; 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
   1.3: Kapitel «Vorschlag und Enduco vergleichen», 1.4: Prüfung der Quellen – Formulierungen nicht stärker als die Studien, eigene Festlegungen
   gekennzeichnet, Versionen wie im Code, 1.5: Wahl je Tag und Bibliothek im Kapitel «vergleich», 1.6: Mein Plan, TL ≈ geplanter Einheiten,
@@ -585,14 +589,24 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   und ab `config.planvergleich_ab` (falls gesetzt; sonst erste ganze Woche nach dem ersten Kalendereintrag). Sonst «teil» bzw. «nur-uhr», sichtbar.
   Regel ändern = Version in `V7.VERSIONS` erhöhen und `tests/test_v7.cjs` nachführen.
 
-## An Garmin senden (V6.6, garmin-senden-1.0, Entscheid E3 vom 13.11.2026)
+## An Garmin senden (V6.6, garmin-senden-1.0, Entscheid E3 vom 13.11.2026; 1.1 = V7.3 Etappe 2: Schwimmen, Puls, RPE)
 - Silas' Wunsch: eigene Einheiten von Hand bis eine Woche voraus an Garmin (Fenix und Edge), automatisch nur am Vortag um 23 Uhr (er passt den
   nächsten Tag bis etwa 23 Uhr an). Die Seite legt dafür nur einen Auftrag an; ausgeführt wird er im Nacht-Update (Schritt 3, als Letztes).
 - Auftrag je Tag (`garmin_auftraege`, ID «gs-<Datum>»): modus «senden» (nächstes Nacht-Update), «auto» (Nacht-Update am Vortag ab 23:00), «aus».
   Er trägt eine Momentaufnahme je Einheit (`V66.garminAuftrag`): Rad und Laufen als fertiges Workout (`V66.garminWorkout`: Name «IN · …»,
-  power.between in Watt bzw. pace.zone in m/s langsam → schnell aus dem aktiven Zonenprofil, Z1 und Pausen ohne Ziel, Z5 nach oben +15 %
-  (eigene Festlegung), Wiederholungen als eine Ebene, höchstens 50 Schritte, Fassung = Prüfsumme), Bibliothek nur als `wid` (Enduco-Workout,
-  wird nur eingeplant). Schwimmen, Tests, Kraft, Mobility: nicht gesendet, mit Grund.
+  Ziele in der Metrik der Einheit (`V66.metrikVon`): power.between in Watt bzw. pace.zone in m/s langsam → schnell, 1.1 Puls als heart.rate.zone
+  mit eigenem Bereich in bpm (ID 4, ohne zoneNumber; `V66.garminPuls`, Renntempo = oberes Drittel von Z2, eigene Festlegung) oder RPE ohne Ziel
+  mit RPE im Text; aus dem aktiven Zonenprofil, Z1 und Pausen ohne Ziel, Z5 nach oben +15 % bzw. Puls +10 % (eigene Festlegung), Wiederholungen
+  als eine Ebene, höchstens 50 Schritte, Fassung = Prüfsumme). **1.1 Schwimmen** (`V66.garminSchwimm`, Format wie Enduco aus `get_workout_by_id`
+  raw gelesen): sportType 4 «swimming», `poolLength` 25/50 mit `poolLengthUnit` meter (Bahnlänge des Geräts, `SWUI.becken`), Strecken in ganzen
+  Bahnen (distance), Pausen am Beckenrand als rest/fixed.rest, Übungen als «other» über die ganze Bahn («½ L | Name | Technik | RPE … | Bahn locker
+  beenden»), Wiederholungen mit `skipLastRestStep` false, Stil free, nötige Hilfsmittel als `equipmentType` (fins 1, kickboard 2, paddles 3 aus
+  Enduco-Workouts; pull_buoy 4 nach dem FIT-Profil, beim ersten Senden mit der Rücklese prüfen), freiwillige im Text; mit CSS-Test Nebenziel
+  swim.css.offset (17) = CSS-Geschwindigkeit − Zielgeschwindigkeit (m/s) und Tempo im Text, ohne Test bzw. Metrik RPE nur RPE im Text. Die Uhr
+  rechnet die Tempo-Ziele mit ihrer eigenen CSS; Garmin liefert sie nicht (get_user_profile geprüft am 16.11.2026), die Seite sagt es im
+  Export-Blatt. Die CSS nie nach Garmin schreiben. Die Schwimm-Einheit kommt immer aus `V66UI.schwimmEinheit` (dieselbe wie auf der Einheit-Seite,
+  `opt.schwimm`), sonst gleiche Fassung nicht möglich. Bibliothek nur als `wid` (Enduco-Workout, wird nur eingeplant). Tests, Schwimmkurs,
+  Kraft, Mobility: nicht gesendet, mit Grund.
 - `tools/garmin_senden.py plan` vergleicht offene Aufträge mit den Vermerken in `plan_garmin` (uid, Tag, Fassung, workout_id, scheduled_id):
   gleiche Fassung = nichts; andere Fassung = neue Fassung senden, danach die alte austragen (`nach`); nicht mehr im Plan = austragen; verschoben
   (neuerer Auftrag an einem anderen Tag) = nur am neuen Tag. Tag schon da = «verpasst» (für heute nur im Chat).
@@ -610,8 +624,9 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
     `unschedule_workout(scheduled_id)` (fehlt sie: in `get_scheduled_workouts(date, date)` den Eintrag mit `workout_id` suchen); mit `loeschen`
     danach `delete_workout(workout_id)` und mit `confirm=true` → `{"nr", "ok": true}`.
   - Fehlschlag eines Aufrufs: `{"nr", "ok": false, "fehler": "<kurz>"}`, weiter mit der nächsten Aktion.
-- Nie: Enduco-Workouts ändern oder löschen, Kalendereinträge ohne eigenen Vermerk austragen, Bibliotheks-Workouts löschen, Zonen nach Garmin
-  schreiben, etwas senden, das nicht in `work/garmin_plan.json` steht. Das Morgen-Update sendet nichts.
+- Nie: Enduco-Workouts ändern oder löschen, Kalendereinträge ohne eigenen Vermerk austragen, Bibliotheks-Workouts löschen, Zonen oder die CSS
+  nach Garmin schreiben, etwas senden, das nicht in `work/garmin_plan.json` steht. Das Morgen-Update sendet nichts (Entscheid A7 vom 16.11.2026:
+  ab Etappe 6 darf es bei «vorsichtig» die eigene harte Einheit des Tages durch die lockere ersetzen – erst, wenn Etappe 6 gebaut und beschrieben ist).
 - V7.3 «Export» einer Einheit (Einheit-Seite): der Auftrag des Tages trägt `teil: true` und enthält nur die gewählten Einheiten – diese und alle, die
   schon in Garmin oder im offenen Auftrag sind (`V66UI.einheitSenden`); was danach in Garmin ist, sind genau die Einheiten des Auftrags (wie bisher).
   Nach einer Änderung bleibt die Auswahl; ohne `teil` gilt der ganze Tag. `pruefen` lehnt ein `teil` ab, das nicht ja/nein ist.
@@ -619,6 +634,9 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   `V64.enducoAusUhr`, `tools/bibliothek.py` (bib-1.1, kein Enduco-Termin).
 - Die Seite zeigt je Einheit «in Garmin», «in Garmin, geändert» oder «wird gesendet» (`V66.garminStand`), je Tag den Auftrag (offen, gesendet,
   verpasst, Fehler mit Grund, abgelehnt). Rücklese geprüft am ersten echten Senden; bis dahin nie behaupten, das Format sei an Silas' Geräten geprüft.
+  1.1: `rueck` vergleicht zusätzlich die Texte der Schritte (gekürzt oder anders = abweichend), Bahnlänge, Stil, Hilfsmittel und Nebenziel (CSS-Abstand);
+  «ohne Ziel» darf als null oder no.target zurückkommen. Erstes echtes Senden einer Schwimm-Einheit: Rücklese im Chat zeigen und Silas bitten, auf der
+  Fenix zu prüfen (Übungsname sichtbar, Hilfsmittel, Pausen, Bahnen); bis dahin nie behaupten, Schwimmen sei auf dem Gerät geprüft.
 
 ## Meine Entwicklung und Regeln V5.5
 - **Vergleichbare Läufe `laufvergleich-1.0` (V7.1, Silas' Wunsch 16.11.2026):** Puls und Pace verschiedener Läufe nur aus Läufen, die `FK.laufVergleichbar`

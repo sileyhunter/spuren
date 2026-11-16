@@ -180,6 +180,7 @@
     return Object.assign({ wdh }, t, {
       zone_name: ZONE_NAME[t.zone] || t.zone,
       tempo: p ? (p[0] === p[1] ? `${mmss(p[0])}/100 m` : `${mmss(p[0])}–${mmss(p[1])}/100 m`) : null,
+      tempo_s: p ? [p[0], p[1]] : null,                                       // s/100 m (für das Garmin-Ziel, garmin-senden-1.1)
       rpe: RPE[t.zone] || null,
       dauer_s: isNum(dauer) ? Math.round(dauer + (t.pause_s || 0)) : null,   // mit allen Pausen (für die Summe)
       schwimm_s: isNum(schwimm) ? Math.round(wdh * schwimm) : null,            // nur die Schwimmzeit (Anzeige)
@@ -236,7 +237,7 @@
       for (const h of t.hilfsmittel || []) hm.add(h); for (const h of t.frei || []) frei.add(h);
     }
     for (const h of hm) frei.delete(h);
-    return { v: SW.VERSIONS.einheit, art, pool, bloecke: B, meter: art === "kurs" ? null : meter, dauer_s: offen || art === "kurs" ? null : Math.round(dauer),
+    return { v: SW.VERSIONS.einheit, art, pool, css_s: css, bloecke: B, meter: art === "kurs" ? null : meter, dauer_s: offen || art === "kurs" ? null : Math.round(dauer),
       hilfsmittel: [...hm], frei: [...frei], umfang_quelle: css ? "CSS-Test" : isNum(o.ref_s) ? "≈ dein Tempo aus Becken-Einheiten (kein Tempoziel)" : null };
   };
   /** Baustein-ID des Wochenvorschlags → Art der Schwimm-Einheit. */

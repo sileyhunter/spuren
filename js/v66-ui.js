@@ -35,9 +35,22 @@
   const aufbauText = (e, ds, km) => { try { return ds >= heute() ? V66().aufbauHinweis(e, ds, km, V64().laeufe(C.D.activities), heute()) : null; } catch (err) { console.error(err); return null; } };
   const aufbauZeigen = (p, text) => { if (p) { p.textContent = text ? "Aufbau: " + text : ""; p.hidden = !text; } };
 
-  /* ---------- An Garmin senden (garmin-senden-1.0) ---------- */
+  /* ---------- An Garmin senden (garmin-senden-1.0; 1.1: Schwimmen, Puls, RPE) ---------- */
   const skalen = () => (TR() && C ? TR().zonen(C.D.zonen).skalen : null);
   const gesendet = () => (C && Array.isArray(C.D.plan_garmin) ? C.D.plan_garmin : []);
+  /** garmin-senden-1.1: Schwimm-Einheit aus Mein Plan wie auf der Einheit-Seite (schwimmeinheit-1.0: Bahnlänge des Geräts, CSS aus dem Test,
+   *  Tempo aus Becken-Einheiten, Übungen der Woche). Gleiche Werte → gleiche Fassung beim Senden und beim Stand. */
+  function schwimmEinheit(e, ds, K) {
+    if (!e || e.sport !== "schwimm" || !window.SW || !window.SWUI || !(C || bereit())) return null;
+    const k = K || kontext(montag(ds));
+    try {
+      return window.SW.einheit(window.SW.artVon(e.id), { min: e.dauer, css_s: k && k.css ? k.css.s : null, pool: window.SWUI.becken(), ref_s: window.SW.refTempo(C.D.activities),
+        woche: window.SWUI.woche(ds) });
+    } catch (err) { console.error(err); return null; }
+  }
+  const swOpt = (ds, K) => ({ schwimm: (e) => schwimmEinheit(e, ds, K) });
+  M.schwimmEinheit = (e, ds, K) => (bereit() ? schwimmEinheit(e, ds, K) : null);
+  M.swOpt = (ds, K) => swOpt(ds, K);
   /** Auftrag eines Tages: noch nicht eingespielt (auf dem Gerät) vor dem Stand in den Daten. → { a, lokal } oder null */
   function auftrag(ds) {
     const id = "gs-" + ds, lok = ((UI() && UI().Inbox && UI().Inbox.data && UI().Inbox.data.garmin_senden) || []).find((x) => x && x.id === id);
@@ -56,7 +69,7 @@
     const I = UI().Inbox; if (!I || !I.data) return "Speicher auf diesem Gerät nicht verfügbar";
     if (!Array.isArray(I.data.garmin_senden)) I.data.garmin_senden = [];
     const U = x.t.rennen ? [] : uids ? x.t.einheiten.filter((e) => uids.has(e.uid)) : x.t.einheiten;
-    await I.upsert("garmin_senden", V66().garminAuftrag(ds, U, skalen(), modus, new Date().toISOString(), uids ? { teil: true } : null));
+    await I.upsert("garmin_senden", V66().garminAuftrag(ds, U, skalen(), modus, new Date().toISOString(), Object.assign(swOpt(ds, x.K), uids ? { teil: true } : {})));
     neuZeichnen();
     return null;
   }
@@ -115,7 +128,7 @@
   const STAND_WORT = { gesendet: "in Garmin", geaendert: "in Garmin, geändert", wartet: "wird gesendet" };
   function karte(e, K, ds) {
     const W = V6(), S = V66().schaetzung(e, bezug(K)), hk = e.teile && e.teile.length && P().hauptKey ? P().hauptKey(e) : null;
-    let st = null; try { const A = ds ? auftrag(ds) : null; st = ds ? V66().garminStand(e, ds, skalen(), gesendet(), A && (A.lokal ? Object.assign({ status: "offen" }, A.a) : A.a)) : null; } catch (err) { console.error(err); }
+    let st = null; try { const A = ds ? auftrag(ds) : null; st = ds ? V66().garminStand(e, ds, skalen(), gesendet(), A && (A.lokal ? Object.assign({ status: "offen" }, A.a) : A.a), swOpt(ds, K)) : null; } catch (err) { console.error(err); }
     const teile = [W.dauerText(e.dauer * 60), isNum(S.tl) ? `TL ≈ ${S.vollstaendig ? "" : "mind. "}${S.tl}` : "", isNum(S.km) && S.km > 0 ? `≈ ${komma(S.km)} km` : "", st ? STAND_WORT[st] : ""].filter(Boolean);
     const q = e.quelle === "eigen" ? "eigen" : e.quelle === "bibliothek" ? "Bibliothek" : "Vorschlag";
     if (e.uhrzeit) teile.unshift(e.uhrzeit);                               // V7.3: Uhrzeit aus «Festlegen»
@@ -284,7 +297,7 @@
       ${ohne.length ? `<p class="hint">Nicht gesendet: ${ohne.join(", ")}.</p>` : ""}
       <div class="row mp-akt"><button type="button" class="btn" data-mpgs ${sendbar.length || G.length ? "" : "disabled"}>${W.icon("weiter", 15)} ${sendbar.length || !G.length ? "An Garmin senden" : "Aus Garmin austragen"}</button></div>
       <label class="mp-auto"><input type="checkbox" data-mpgsauto ${auto ? "checked" : ""} ${sendbar.length || auto ? "" : "disabled"}> Am Vortag um 23 Uhr automatisch senden</label>
-      <p class="hint">${esc(V66().VERSIONS.garmin)}: Rad und Laufen als Workout mit Zielen aus deinem Zonenprofil (Name «IN · »), Bibliotheks-Workouts nur eingeplant; aufs Gerät kommen sie beim Synchronisieren (Fenix, Edge nur Rad). Gesendet wird im Nacht-Update; geänderte Einheiten werden ersetzt, Enduco bleibt unberührt.</p>`;
+      <p class="hint">${esc(V66().VERSIONS.garmin)}: Rad, Laufen und Schwimmen als Workout (Name «IN · ») mit Zielen in der Metrik der Einheit – Leistung bzw. Tempo, Puls oder RPE; Schwimmen mit Bahnen, Übungen und Pausen am Beckenrand. Bibliotheks-Workouts nur eingeplant; aufs Gerät kommen sie beim Synchronisieren (Fenix, Edge nur Rad). Gesendet wird im Nacht-Update; geänderte Einheiten werden ersetzt, Enduco bleibt unberührt.</p>`;
   }
   /** Knöpfe des Abschnitts binden; zurueck() öffnet das Tagesblatt wieder (nach einer Änderung oder aus einem Unterblatt). */
   M.binden = function (ov, ds, zurueck) {
@@ -297,7 +310,7 @@
       const f = await aendern(montag(ds), { art: x.t.gesperrt ? "entsperren" : "sperren", date: ds });
       if (f) fehler(f); else if (zurueck) zurueck();
     }));
-    ov.querySelectorAll("[data-mpgs]").forEach((b) => (b.onclick = async () => {        // garmin-senden-1.0: von Hand (nächstes Nacht-Update)
+    ov.querySelectorAll("[data-mpgs]").forEach((b) => (b.onclick = async () => {        // garmin-senden-1.1: von Hand (nächstes Nacht-Update)
       const f = await garminAuftragSpeichern(ds, "senden");
       if (f) fehler(f); else if (zurueck) zurueck();
     }));

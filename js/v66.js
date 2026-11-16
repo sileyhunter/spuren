@@ -674,18 +674,32 @@
     return out;
   };
 
-  /* ---------------- An Garmin senden (garmin-senden-1.0) ----------------
-     Einheiten aus Mein Plan als Garmin-Workout (Format von upload_workout): Rad mit Leistung (power.between, Watt), Laufen mit Tempo
-     (pace.zone, m/s, langsam → schnell) aus dem aktiven Zonenprofil; Z1 und Pausen ohne Ziel. Offene Grenze (Z5 nach oben): 15 % über der
-     bekannten Grenze, nur damit die Uhr einen Bereich zeigt (eigene Festlegung). Wiederholungen als Gruppe (eine Ebene). Schwimmen, Tests,
-     Kraft und Mobility werden nicht gesendet (Grund wird genannt); Bibliothek = Enduco-Workout, nur eingeplant. Name mit «IN · ». */
-  V66.VERSIONS.garmin = "garmin-senden-1.0";
+  /* ---------------- An Garmin senden (garmin-senden-1.1) ----------------
+     Einheiten aus Mein Plan als Garmin-Workout (Format von upload_workout), Name mit «IN · ». Wiederholungen als Gruppe (eine Ebene).
+     Rad und Laufen nach der Trainingsmetrik der Einheit (einheit-felder-1.0): Leistung (power.between, Watt) bzw. Tempo (pace.zone, m/s,
+     langsam → schnell) aus dem aktiven Zonenprofil, Puls (heart.rate.zone mit eigenem Bereich in bpm aus den Pulszonen, 1.1) oder RPE (ohne
+     Ziel, RPE im Text, 1.1); Z1 und Pausen ohne Ziel. Offene Grenze (Z5 nach oben): Leistung und Tempo 15 %, Puls 10 % über der bekannten
+     Grenze, nur damit die Uhr einen Bereich zeigt (eigene Festlegung).
+     1.1 (V7.3 Etappe 2): Schwimmen wie Enduco (Format aus get_workout_by_id raw gelesen): Bahnlänge, Strecken in ganzen Bahnen, Pausen am
+     Beckenrand (fixed.rest), Übungen als Schritt «other» über die ganze Bahn («½ L … Bahn locker beenden»), nötige Hilfsmittel als equipmentType,
+     freiwillige im Text, Stil Kraul; mit CSS-Test Nebenziel swim.css.offset (CSS-Geschwindigkeit − Zielgeschwindigkeit, m/s; die Uhr rechnet mit
+     ihrer eigenen CSS) und Tempo im Text, ohne Test RPE im Text.
+     Nicht gesendet (mit Grund): Schwimmkurs, Tests, Kraft, Mobility. Bibliothek = Enduco-Workout, wird nur eingeplant. */
+  V66.VERSIONS.garmin = "garmin-senden-1.1";
   V66.GARMIN_PREFIX = V64.EIGEN_PREFIX;
   V66.GARMIN_OFFEN = 1.15;
+  V66.GARMIN_OFFEN_PULS = 1.1;
   V66.GARMIN_MAX_SCHRITTE = 50;
   const gz = (L, nr) => (Array.isArray(L) ? L.find((z) => z && z.z === "Z" + nr) || null : null);
   const voll = (z) => z && isNum(z.von) && isNum(z.bis);
   const r3 = (x) => Math.round(x * 1000) / 1000;
+  const r4 = (x) => Math.round(x * 10000) / 10000;
+  const mmssG = (s) => `${Math.floor(Math.round(s) / 60)}:${String(Math.round(s) % 60).padStart(2, "0")}`;
+  /** Trainingsmetrik je Sportart (gleich wie V73.METRIKEN, einheit-felder-1.0); Standard = erste. */
+  V66.METRIK_JE = { rad: ["leistung", "puls", "rpe"], lauf: ["pace", "puls", "rpe"], schwimm: ["pace", "rpe"] };
+  V66.metrikVon = (e) => { const L = V66.METRIK_JE[e && e.sport] || ["rpe"]; return e && L.includes(e.metrik) ? e.metrik : L[0]; };
+  /** RPE je Abschnitt (rpe-zonen-1.0, gleich wie V73.RPE). */
+  V66.RPE = { pause: "RPE 1–2", z1: "RPE 1–2", z2: "RPE 3–4", renntempo: "RPE 4–5", z3: "RPE 5–6", z3o: "RPE 6–7", css: "RPE 7", vo2: "RPE 8–9" };
   /** Zielbereich eines Abschnitts für Garmin → { art: "watt"|"tempo", lo, hi, offen } oder null (ohne Ziel). Tempo in m/s, lo < hi. */
   V66.garminZiel = function (key, sport, skalen) {
     const S = skalen || {}, W5 = (x) => Math.round(x / 5) * 5;
@@ -715,6 +729,21 @@
     }
     return null;
   };
+  /** Pulsbereich eines Abschnitts für Garmin (bpm) aus rad_hf bzw. lauf_hf → { art: "puls", lo, hi, offen } oder null (Z1, Pause: ohne Ziel).
+   *  Gleiche Lage wie die Pulsziele der Einheit-Seite (V73.ziel); Renntempo = oberes Drittel von Z2 bis zum Beginn von Z3 (eigene Festlegung:
+   *  die Uhr braucht eine Untergrenze). */
+  V66.garminPuls = function (key, sport, skalen) {
+    const L = (skalen || {})[sport === "rad" ? "rad_hf" : sport === "lauf" ? "lauf_hf" : ""], z2 = gz(L, 2), z3 = gz(L, 3), z5 = gz(L, 5);
+    const p = (lo, hi, offen) => (isNum(lo) && isNum(hi) && lo > 0 && hi >= lo ? { art: "puls", lo: Math.round(lo), hi: Math.round(hi), offen: !!offen } : null);
+    switch (key) {
+      case "z2": return voll(z2) ? p(z2.von, z2.bis) : null;
+      case "z3": return voll(z3) ? p(z3.von, z3.bis) : null;
+      case "z3o": return voll(z3) ? p(z3.von + (2 / 3) * (z3.bis - z3.von), z3.bis) : null;
+      case "renntempo": return voll(z2) && z3 && isNum(z3.von) ? p(z2.von + (2 / 3) * (z2.bis - z2.von), z3.von) : null;
+      case "vo2": return z5 && isNum(z5.von) ? p(z5.von, isNum(z5.bis) ? z5.bis : z5.von * V66.GARMIN_OFFEN_PULS, !isNum(z5.bis)) : null;
+      default: return null;
+    }
+  };
   /** Abschnitte [key, min] → Folge mit Wiederholungen: gleiche Nachbarn zusammengelegt, dann je Stelle das längste Muster (1–4 Abschnitte,
    *  mindestens zweimal hintereinander) als Gruppe. → [{ key, s } | { wdh, teile: [{ key, s }] }] */
   V66.garminFolge = function (teile) {
@@ -742,36 +771,142 @@
     const h = (seed) => { let x = seed >>> 0; for (let i = 0; i < text.length; i++) { x ^= text.charCodeAt(i); x = Math.imul(x, 16777619) >>> 0; } return x.toString(16).padStart(8, "0"); };
     return h(2166136261) + h(0x811c9dc5 ^ 0x5bd1e995);
   };
-  const GSPORT = { rad: { sportTypeId: 2, sportTypeKey: "cycling" }, lauf: { sportTypeId: 1, sportTypeKey: "running" } };
-  const GTYP = { warmup: 1, cooldown: 2, interval: 3, recovery: 4 };
+  const GSPORT = { rad: { sportTypeId: 2, sportTypeKey: "cycling" }, lauf: { sportTypeId: 1, sportTypeKey: "running" }, schwimm: { sportTypeId: 4, sportTypeKey: "swimming" } };
+  const GTYP = { warmup: 1, cooldown: 2, interval: 3, recovery: 4, rest: 5, other: 7 };
+  const KEIN_ZIEL = { workoutTargetTypeId: 1, workoutTargetTypeKey: "no.target" };
+  const METER = { unitId: 1, unitKey: "meter", factor: 100.0 };
   /** Grund, warum eine Einheit nicht als Workout gesendet wird, oder null. */
   V66.garminGrund = function (e) {
     if (!e) return "keine Einheit";
     if (e.art === "bibliothek") return null;
     if (e.art === "test") return "Tests über die Test-Workouts (Testkalender)";
-    if (e.sport === "schwimm") return "Schwimmen folgt später (Garmin braucht Strecken je Abschnitt)";
-    if (!GSPORT[e.sport]) return "nur Rad und Laufen";
+    if (e.sport === "schwimm") return e.art === "kurs" || e.id === "schwimm_kurs" ? "Schwimmkurs: Inhalt laut Kurs" : null;
+    if (!GSPORT[e.sport]) return "nur Rad, Laufen und Schwimmen";
     if (!Array.isArray(e.teile) || !e.teile.length || e.teile[0][0] === "ohne") return "ohne Ablauf";
     return null;
   };
-  /** Einheit (V66.einheit/V64.einheit) → { workout (upload_workout), fassung, schritte, ohneZiel, offen } oder { fehler }. */
+  /** Text eines Rad- oder Lauf-Schritts für die Uhr: Zone und Ziel in der gewählten Metrik (höchstens 100 Zeichen). */
+  function garminText(key, sport, skalen, metrik) {
+    const name = V64.ZNAME[key];
+    if (!name) return String(key).slice(0, 100);
+    let z;
+    if (metrik === "rpe") z = V66.RPE[key] || "";
+    else if (metrik === "puls") {
+      const z2 = gz((skalen || {})[sport === "rad" ? "rad_hf" : "lauf_hf"], 2), p = V66.garminPuls(key, sport, skalen);
+      z = key === "z1" || key === "pause" ? (z2 && isNum(z2.von) ? `Puls unter ${Math.round(z2.von)}` : "") : p ? (p.offen ? `Puls über ${p.lo}` : `Puls ${p.lo}–${p.hi}`) : "";
+    } else z = V64.ziel(key, sport, skalen) || "";
+    return (name + (z ? ": " + z : "")).slice(0, 100);
+  }
+
+  /* ----- Schwimmen (1.1) ----- */
+  /** Hilfsmittel → Garmin equipmentType. IDs wie in Enduco-Workouts gelesen (fins 1, kickboard 2, paddles 3); pull_buoy 4 nach dem FIT-Profil,
+   *  wird beim ersten Senden mit der Rücklese geprüft. Schnorchel geht nur in den Text. */
+  V66.GARMIN_GERAET = { flossen: { id: 1, key: "fins", name: "Flossen" }, brett: { id: 2, key: "kickboard", name: "Brett" }, paddles: { id: 3, key: "paddles", name: "Paddles" },
+    pullbuoy: { id: 4, key: "pull_buoy", name: "Pullbuoy" }, schnorchel: { id: null, key: null, name: "Schnorchel" } };
+  const SW_WORT = { z1: "locker", z2: "Grundlage", z3: "zügig", css: "CSS", tech: "Technik", max: "maximal" };
+  const FREE = { strokeTypeId: 6, strokeTypeKey: "free" };
+  /** Bahnen als Text: 0,5 → «½ L», 1,5 → «1½ L», 6 → «6 L». */
+  V66.bahnenText = function (x) {
+    if (!isNum(x) || x <= 0) return null;
+    const g = Math.floor(x + 1e-9), r = Math.round((x - g) * 100) / 100, B = { 0.25: "¼", 0.5: "½", 0.75: "¾" };
+    if (!r) return `${g} L`;
+    return B[r] ? `${g || ""}${B[r]} L` : `${String(Math.round(x * 10) / 10).replace(".", ",")} L`;
+  };
+  /** Schwimm-Einheit (SW.einheit, schwimmeinheit-1.0) → Garmin-Schritte. metrik «pace»: mit CSS-Test Nebenziel swim.css.offset und Tempo im
+   *  Text; «rpe» oder ohne Test: RPE im Text. → { steps, schritte, meter, pool, css, aufbau } oder { fehler }. */
+  V66.garminSchwimm = function (S, metrik) {
+    if (!S || !Array.isArray(S.bloecke) || S.art === "kurs") return { fehler: "Schwimmkurs: Inhalt laut Kurs" };
+    if (S.art === "test") return { fehler: "Tests über die Test-Workouts (Testkalender)" };
+    const pool = S.pool === 50 ? 50 : 25, css = metrik !== "rpe" && isNum(S.css_s) && S.css_s > 0 ? S.css_s : null;
+    let nr = 0, n = 0, meter = 0;
+    const steps = [], aufbau = [];
+    const pause = (s) => { n++; return { type: "ExecutableStepDTO", stepOrder: ++nr, stepType: { stepTypeId: GTYP.rest, stepTypeKey: "rest" }, description: `Pause ${Math.round(s)} s`,
+      endCondition: { conditionTypeId: 8, conditionTypeKey: "fixed.rest" }, endConditionValue: Math.round(s), targetType: KEIN_ZIEL }; };
+    const schwimm = (b, t, i) => {
+      const m = t.m || 0, d = m + (t.zuende_m || 0), L = Math.max(1, Math.ceil(d / pool - 1e-9)), dist = L * pool;
+      const typ = b.id === "ein" && i === 0 && t.zone === "z1" ? "warmup" : b.id === "aus" ? "cooldown" : t.zone === "tech" ? "other" : t.zone === "z1" ? "recovery" : "interval";
+      const noetig = (t.hilfsmittel || []).filter((h) => V66.GARMIN_GERAET[h]), haupt = noetig.find((h) => V66.GARMIN_GERAET[h].id) || null;
+      const rpe = /RPE\s*([\d–-]+)/.exec(String(t.rpe || ""));
+      const name = b.id === "technik" || b.id === "beine" ? t.text : b.titel;
+      const teile = [V66.bahnenText(m / pool), name, SW_WORT[t.zone] || null, css && t.tempo ? t.tempo : rpe ? `RPE ${rpe[1]}` : null,
+        /gemischt/i.test(t.text || "") ? "gemischt" : null,
+        ...noetig.filter((h) => h !== haupt).map((h) => "mit " + V66.GARMIN_GERAET[h].name),
+        ...(t.frei || []).filter((h) => V66.GARMIN_GERAET[h] && !noetig.includes(h)).map((h) => V66.GARMIN_GERAET[h].name + " freiwillig"),
+        dist > m ? "Bahn locker beenden" : null].filter(Boolean);
+      const st = { type: "ExecutableStepDTO", stepOrder: ++nr, stepType: { stepTypeId: GTYP[typ], stepTypeKey: typ }, description: teile.join(" | ").slice(0, 100),
+        endCondition: { conditionTypeId: 3, conditionTypeKey: "distance" }, endConditionValue: dist, preferredEndConditionUnit: METER, targetType: KEIN_ZIEL };
+      if (css && Array.isArray(t.tempo_s) && isNum(t.tempo_s[0]) && isNum(t.tempo_s[1])) {
+        const mitte = (t.tempo_s[0] + t.tempo_s[1]) / 2;
+        Object.assign(st, { secondaryTargetType: { workoutTargetTypeId: 17, workoutTargetTypeKey: "swim.css.offset" }, secondaryTargetValueOne: r4(100 / css - 100 / mitte) });
+      }
+      st.strokeType = FREE;
+      if (haupt) st.equipmentType = { equipmentTypeId: V66.GARMIN_GERAET[haupt].id, equipmentTypeKey: V66.GARMIN_GERAET[haupt].key };
+      n++;
+      return { st, dist };
+    };
+    for (const b of S.bloecke) {
+      const namen = [];
+      (b.teile || []).forEach((t, i) => {
+        if (!((t.m || 0) > 0)) return;
+        const wdh = Math.max(1, t.wdh || 1), p = isNum(t.pause_s) && t.pause_s >= 5 ? t.pause_s : 0;
+        if (wdh > 1) {
+          const g = { type: "RepeatGroupDTO", stepOrder: ++nr, stepType: { stepTypeId: 6, stepTypeKey: "repeat" }, numberOfIterations: wdh,
+            endCondition: { conditionTypeId: 7, conditionTypeKey: "iterations" }, endConditionValue: wdh, smartRepeat: false, skipLastRestStep: false, workoutSteps: [] };
+          n++;
+          const x = schwimm(b, t, i);
+          g.workoutSteps.push(x.st);
+          if (p) g.workoutSteps.push(pause(p));
+          steps.push(g);
+          meter += wdh * x.dist;
+        } else {
+          const x = schwimm(b, t, i);
+          steps.push(x.st);
+          if (p) steps.push(pause(p));
+          meter += x.dist;
+        }
+        namen.push(b.id === "technik" ? t.text : `${wdh > 1 ? wdh + " × " : ""}${t.m} m`);
+      });
+      if (namen.length) aufbau.push(b.id === "technik" ? `Technik (${namen.join(", ")})` : `${b.titel} ${namen.join(" + ")}`);
+    }
+    if (!steps.length) return { fehler: "ohne Strecken" };
+    return { steps, schritte: n, meter, pool, css, aufbau: aufbau.join(", ") };
+  };
+
+  /** Einheit (V66.einheit/V64.einheit) → { workout (upload_workout), fassung, schritte, ohneZiel, offen } oder { fehler }.
+   *  opt = { date, uid, schwimm(e) → SW.einheit(...) (nur Schwimmen; dieselbe Einheit wie auf der Einheit-Seite) }. */
   V66.garminWorkout = function (e, skalen, opt) {
     const o = opt || {}, grund = V66.garminGrund(e);
     if (grund) return { fehler: grund };
     if (e.art === "bibliothek") return { fehler: "Bibliothek: nur einplanen" };
-    const folge = V66.garminFolge(e.teile), sport = GSPORT[e.sport];
+    const metrik = V66.metrikVon(e), sport = GSPORT[e.sport], name = (V66.GARMIN_PREFIX + String(e.titel || "Training")).slice(0, 60);
+    const tag = (f) => ` [IN ${o.uid || e.uid || "-"} ${f}]`;
+    if (e.sport === "schwimm") {
+      let S = null; try { S = typeof o.schwimm === "function" ? o.schwimm(e) : null; } catch (err) { S = null; }
+      if (!S) return { fehler: "Schwimm-Einheit nicht berechenbar" };
+      const r = V66.garminSchwimm(S, metrik);
+      if (r.fehler) return { fehler: r.fehler };
+      if (r.schritte > V66.GARMIN_MAX_SCHRITTE) return { fehler: `zu viele Schritte (${r.schritte}, Garmin höchstens ${V66.GARMIN_MAX_SCHRITTE})` };
+      const kern = { workoutName: name, sportType: sport, poolLength: r.pool, poolLengthUnit: METER, workoutSegments: [{ segmentOrder: 1, sportType: sport, workoutSteps: r.steps }] };
+      const fassung = V66.fassung(JSON.stringify(kern));
+      const ziel = r.css ? `Tempo-Ziele aus dem CSS-Test (${mmssG(r.css)}/100 m); die Uhr rechnet sie mit ihrer eigenen CSS.`
+        : isNum(S.css_s) && metrik === "rpe" ? "Nach Anstrengung (RPE), wie gewählt." : "Noch ohne CSS-Test: nach Anstrengung (RPE).";
+      const besch = [`Ironman Notebook · Mein Plan${o.date ? " · " + o.date : ""}.`, `${r.meter} m im ${r.pool}-m-Becken: ${r.aufbau}.`, ziel].join(" ").slice(0, 440) + tag(fassung);
+      return { workout: Object.assign({ workoutName: name, description: besch }, kern), fassung, schritte: r.schritte, ohneZiel: 0, offen: false, css: !!r.css, meter: r.meter };
+    }
+    const folge = V66.garminFolge(e.teile);
     let nr = 0, ohneZiel = 0, offen = false, n = 0;
     const flachN = folge.reduce((s, x) => s + (x.wdh ? x.teile.length : 1), 0);
     let pos = 0;
     const schritt = (x, typ) => {
-      const z = x.key === "z1" || x.key === "pause" || x.key === "test" ? null : V66.garminZiel(x.key, e.sport, skalen);
-      if (!z && x.key !== "z1" && x.key !== "pause") ohneZiel++;
+      const ohne = x.key === "z1" || x.key === "pause" || x.key === "test" || metrik === "rpe";
+      const z = ohne ? null : metrik === "puls" ? V66.garminPuls(x.key, e.sport, skalen) : V66.garminZiel(x.key, e.sport, skalen);
+      if (!z && x.key !== "z1" && x.key !== "pause" && metrik !== "rpe") ohneZiel++;
       if (z && z.offen) offen = true;
-      const text = V64.ZNAME[x.key] ? V64.ZNAME[x.key] + ((V64.ziel(x.key, e.sport, skalen) || "") ? ": " + V64.ziel(x.key, e.sport, skalen) : "") : x.key;
-      const st = { type: "ExecutableStepDTO", stepOrder: ++nr, stepType: { stepTypeId: GTYP[typ], stepTypeKey: typ }, description: text.slice(0, 100),
+      const st = { type: "ExecutableStepDTO", stepOrder: ++nr, stepType: { stepTypeId: GTYP[typ], stepTypeKey: typ }, description: garminText(x.key, e.sport, skalen, metrik),
         endCondition: { conditionTypeId: 2, conditionTypeKey: "time" }, endConditionValue: x.s };
-      if (!z) st.targetType = { workoutTargetTypeId: 1, workoutTargetTypeKey: "no.target" };
+      if (!z) st.targetType = KEIN_ZIEL;
       else if (z.art === "watt") Object.assign(st, { targetType: { workoutTargetTypeId: 6, workoutTargetTypeKey: "power.between" }, targetValueOne: z.lo, targetValueTwo: z.hi });
+      else if (z.art === "puls") Object.assign(st, { targetType: { workoutTargetTypeId: 4, workoutTargetTypeKey: "heart.rate.zone" }, targetValueOne: z.lo, targetValueTwo: z.hi });
       else Object.assign(st, { targetType: { workoutTargetTypeId: 6, workoutTargetTypeKey: "pace.zone" }, targetValueOne: z.lo, targetValueTwo: z.hi });
       n++;
       return st;
@@ -788,21 +923,22 @@
       return g;
     });
     if (n > V66.GARMIN_MAX_SCHRITTE) return { fehler: `zu viele Schritte (${n}, Garmin höchstens ${V66.GARMIN_MAX_SCHRITTE})` };
-    const name = (V66.GARMIN_PREFIX + String(e.titel || "Training")).slice(0, 60);
     const kern = { workoutName: name, sportType: sport, workoutSegments: [{ segmentOrder: 1, sportType: sport, workoutSteps: steps }] };
     const fassung = V66.fassung(JSON.stringify(kern));
     const ablauf = (e.ablauf || []).join("; ");
-    const besch = [`Ironman Notebook · Mein Plan${o.date ? " · " + o.date : ""}.`, ablauf ? ablauf + "." : "", e.zweck || ""].filter(Boolean).join(" ").slice(0, 440) + ` [IN ${o.uid || e.uid || "-"} ${fassung}]`;
+    const mt = metrik === "puls" ? "Ziele nach Puls." : metrik === "rpe" ? "Nach Anstrengung (RPE), ohne Ziele auf der Uhr." : "";
+    const besch = [`Ironman Notebook · Mein Plan${o.date ? " · " + o.date : ""}.`, ablauf ? ablauf + "." : "", e.zweck || "", mt].filter(Boolean).join(" ").slice(0, 440) + tag(fassung);
     return { workout: Object.assign({ workoutName: name, description: besch }, { sportType: sport, workoutSegments: kern.workoutSegments }), fassung, schritte: n, ohneZiel, offen };
   };
   /** Auftrag «An Garmin senden» für einen Tag (Eingabe garmin_senden): modus «senden» (nächstes Nacht-Update), «auto» (am Vortag ab 23 Uhr)
    *  oder «aus». einheiten = Einheiten von Mein Plan an diesem Tag (mit uid). → Eintrag mit Momentaufnahme je Einheit.
-   *  opt.teil (V7.3): nur eine Auswahl der Einheiten des Tages; was danach in Garmin ist, sind genau die Einheiten des Auftrags. */
+   *  opt.teil (V7.3): nur eine Auswahl der Einheiten des Tages; was danach in Garmin ist, sind genau die Einheiten des Auftrags.
+   *  opt.schwimm(e) (1.1): Schwimm-Einheit wie auf der Einheit-Seite. */
   V66.garminAuftrag = function (date, einheiten, skalen, modus, jetzt, opt) {
-    const E = [], ohne = [];
+    const E = [], ohne = [], sw = opt && opt.schwimm;
     for (const e of einheiten || []) {
       if (e.art === "bibliothek") { if (isNum(e.wid)) E.push({ uid: e.uid, quelle: "bibliothek", titel: e.titel, sport: e.sport, wid: e.wid, fassung: "bib-" + e.wid }); else ohne.push({ uid: e.uid, titel: e.titel, grund: "Workout fehlt" }); continue; }
-      const g = V66.garminWorkout(e, skalen, { date, uid: e.uid });
+      const g = V66.garminWorkout(e, skalen, { date, uid: e.uid, schwimm: sw });
       if (g.fehler) { ohne.push({ uid: e.uid, titel: e.titel, grund: g.fehler }); continue; }
       E.push({ uid: e.uid, quelle: e.quelle || "vorschlag", titel: e.titel, sport: e.sport, fassung: g.fassung, workout: g.workout, ohneZiel: g.ohneZiel || 0, offen: !!g.offen });
     }
@@ -819,10 +955,11 @@
     if (V64.istEigen(p.title || p.titel)) return true;
     return (gesendet || []).some((g) => g && g.quelle === "bibliothek" && !g.vorhanden && !g.entfernt && g.date === p.date && isNum(+p.wid) && +g.wid === +p.wid);
   };
-  /** Stand einer Einheit in Garmin: «gesendet» (gleiche Fassung), «geaendert» (andere Fassung gesendet), «wartet» (Auftrag offen), null. */
-  V66.garminStand = function (e, date, skalen, gesendet, auftrag) {
+  /** Stand einer Einheit in Garmin: «gesendet» (gleiche Fassung), «geaendert» (andere Fassung gesendet), «wartet» (Auftrag offen), null.
+   *  opt.schwimm(e) wie bei garminAuftrag (gleiche Fassung nur mit derselben Schwimm-Einheit). */
+  V66.garminStand = function (e, date, skalen, gesendet, auftrag, opt) {
     const g = (gesendet || []).find((x) => x && x.uid === e.uid && x.date === date && !x.entfernt);
-    const f = e.art === "bibliothek" ? "bib-" + e.wid : (V66.garminWorkout(e, skalen, { date, uid: e.uid }).fassung || null);
+    const f = e.art === "bibliothek" ? "bib-" + e.wid : (V66.garminWorkout(e, skalen, { date, uid: e.uid, schwimm: opt && opt.schwimm }).fassung || null);
     if (g) return g.fassung === f ? "gesendet" : "geaendert";
     if (auftrag && auftrag.status === "offen" && auftrag.modus !== "aus" && (auftrag.einheiten || []).some((x) => x.uid === e.uid)) return "wartet";
     return null;

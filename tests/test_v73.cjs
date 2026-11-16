@@ -1,5 +1,6 @@
 // Abnahmetests V7.3 Etappe 1 (js/v73.js, Ergänzungen in js/v66.js): Schritte (schritte-1.0), Felder je Einheit (einheit-felder-1.0),
-// Einfahren und Intervall-Intensität (einheit-anpassen-1.0), RPE je Abschnitt (rpe-zonen-1.0).
+// Einfahren und Intervall-Intensität (einheit-anpassen-1.0), RPE je Abschnitt (rpe-zonen-1.0); Etappe 2: Schwimmen, Puls und RPE an Garmin
+// (garmin-senden-1.1, js/v66.js).
 // Alle Zonen und Werte sind erfunden (keine persönlichen Werte im öffentlichen Repository). Aufruf: node --test tests/test_v73.cjs
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -190,4 +191,110 @@ test("einheit-2.0: Seite und Rechenteil in Schweizer Schreibweise, ohne feste Fa
   const benutzt = new Set([...ui.matchAll(/ic\("([a-z0-9]+)"/g)].map((m) => m[1]));
   for (const k of benutzt) assert.ok(V6.ICON[k], "Symbol fehlt: " + k);
   for (const k of ["warm", "kalt", "intervall", "runter2", "bahnende", "leiter", "technik"]) assert.ok(V6.ICON[k], k);
+});
+
+/* ---------------- Etappe 2: garmin-senden-1.1 ---------------- */
+const flachG = (steps) => steps.flatMap((s) => (s.type === "RepeatGroupDTO" ? [s].concat(s.workoutSteps) : [s]));
+const swOpt = (pool, css) => ({ schwimm: (e) => SW.einheit(SW.artVon(e.id), { min: e.dauer, css_s: css, pool, ref_s: 130, woche: 47 }) });
+const SKH = Object.assign({}, SK, { lauf_hf: [{ z: "Z1", von: null, bis: 125 }, { z: "Z2", von: 125, bis: 145 }, { z: "Z3", von: 145, bis: 160 }, { z: "Z4", von: 160, bis: 170 }, { z: "Z5", von: 170, bis: null }] });
+
+test("garmin-senden-1.1: Schwimmen wie Enduco – Bahnlänge, ganze Bahnen, Übung über die ganze Bahn, Pausen, Wiederholungen, Hilfsmittel", () => {
+  for (const id of ["schwimm_locker", "schwimm_css"]) for (const pool of [25, 50]) for (const min of [30, 45, 60, 75]) {
+    const e = V66.einheit({ uid: "s", vorlage: id, dauer: min, quelle: "eigen" }), o = swOpt(pool, null), S = o.schwimm(e);
+    const g = V66.garminWorkout(e, SK, Object.assign({ date: "2026-11-26", uid: "s" }, o));
+    assert.ok(!g.fehler, `${id} ${pool} ${min}: ${g.fehler}`);
+    const W = g.workout, L = W.workoutSegments[0].workoutSteps, F = flachG(L);
+    assert.deepEqual(W.sportType, { sportTypeId: 4, sportTypeKey: "swimming" }); assert.equal(W.poolLength, pool);
+    assert.deepEqual(W.poolLengthUnit, { unitId: 1, unitKey: "meter", factor: 100 });
+    assert.deepEqual(F.map((s) => s.stepOrder), F.map((_, i) => i + 1), "Reihenfolge über alle Schritte");
+    const meter = (X, k = 1) => X.reduce((a, s) => a + (s.type === "RepeatGroupDTO" ? meter(s.workoutSteps, s.numberOfIterations) : s.endCondition.conditionTypeKey === "distance" ? s.endConditionValue : 0) * k, 0);
+    assert.equal(meter(L), S.meter, `${id} ${pool}: dieselben Meter wie die Einheit`);
+    for (const s of F) {
+      if (s.type === "RepeatGroupDTO") { assert.equal(s.skipLastRestStep, false); assert.equal(s.smartRepeat, false); assert.equal(s.endCondition.conditionTypeId, 7); continue; }
+      assert.ok(s.description.length <= 100, s.description);
+      if (s.stepType.stepTypeKey === "rest") { assert.deepEqual(s.endCondition, { conditionTypeId: 8, conditionTypeKey: "fixed.rest" }); assert.ok(s.endConditionValue >= 5); continue; }
+      assert.equal(s.endCondition.conditionTypeKey, "distance"); assert.equal(s.endConditionValue % pool, 0, "ganze Bahnen");
+      assert.deepEqual(s.strokeType, { strokeTypeId: 6, strokeTypeKey: "free" }); assert.ok(!s.secondaryTargetType, "ohne CSS-Test kein Tempoziel");
+      assert.match(s.description, /RPE \d/);
+    }
+    assert.equal(L[0].stepType.stepTypeKey, "warmup"); assert.equal(L[L.length - 1].stepType.stepTypeKey, "cooldown");
+    const ueb = F.filter((s) => s.stepType && s.stepType.stepTypeKey === "other");
+    assert.ok(ueb.length >= 2, "Übungen als «other»");
+    for (const u of ueb) {
+      assert.equal(u.endConditionValue, pool, "Übung über die ganze Bahn");
+      if (pool === 50) assert.match(u.description, /^½ L \| .* \| Bahn locker beenden$/); else { assert.match(u.description, /^1 L \| /); assert.doesNotMatch(u.description, /Bahn locker beenden/); }
+    }
+    assert.match(W.description, new RegExp(`${S.meter} m im ${pool}-m-Becken`)); assert.match(W.description, /ohne CSS-Test/);
+  }
+  // Hilfsmittel: nötige als equipmentType (Brett = kickboard, Pullbuoy = pull_buoy), freiwillige nur im Text
+  const e = V66.einheit({ uid: "s", vorlage: "schwimm_locker", dauer: 60, quelle: "eigen" }), F = flachG(V66.garminWorkout(e, SK, Object.assign({ uid: "s" }, swOpt(25, null))).workout.workoutSegments[0].workoutSteps);
+  const beine = F.find((s) => /Kraulbeine/.test(s.description || "")), pull = F.find((s) => /Pull/.test(s.description || ""));
+  assert.deepEqual(beine.equipmentType, { equipmentTypeId: 2, equipmentTypeKey: "kickboard" }); assert.match(beine.description, /Flossen freiwillig/);
+  assert.deepEqual(pull.equipmentType, { equipmentTypeId: 4, equipmentTypeKey: "pull_buoy" }); assert.match(pull.description, /Paddles freiwillig/);
+  assert.ok(F.filter((s) => s.equipmentType).every((s) => /^(fins|kickboard|paddles|pull_buoy)$/.test(s.equipmentType.equipmentTypeKey)));
+});
+
+test("garmin-senden-1.1: Schwimmen mit CSS-Test – Nebenziel swim.css.offset wie Enduco, Tempo im Text; RPE gewählt oder ohne Test: nur Text", () => {
+  const css = 110, e = V66.einheit({ uid: "c", vorlage: "schwimm_css", dauer: 50, quelle: "eigen" });
+  const g = V66.garminWorkout(e, SK, Object.assign({ uid: "c" }, swOpt(50, css))), F = flachG(g.workout.workoutSegments[0].workoutSteps);
+  const haupt = F.find((s) => /Hauptserie/.test(s.description || ""));
+  assert.deepEqual(haupt.secondaryTargetType, { workoutTargetTypeId: 17, workoutTargetTypeKey: "swim.css.offset" });
+  assert.equal(haupt.secondaryTargetValueOne, 0, "CSS-Tempo = Abstand 0"); assert.match(haupt.description, /1:50\/100 m/);
+  const ein = F[0], mitte = css + 17.5;
+  assert.equal(ein.secondaryTargetValueOne, Math.round((100 / css - 100 / mitte) * 10000) / 10000, "Abstand = CSS-Geschwindigkeit − Zielgeschwindigkeit (m/s)");
+  assert.ok(ein.secondaryTargetValueOne > 0, "langsamer als CSS = positiv");
+  assert.ok(F.filter((s) => s.stepType && s.stepType.stepTypeKey === "other").every((s) => !s.secondaryTargetType && /RPE/.test(s.description)), "Übungen nach Gefühl");
+  assert.match(g.workout.description, /CSS-Test \(1:50\/100 m\).*eigenen CSS/);
+  assert.ok(F.every((s) => s.type === "RepeatGroupDTO" || s.targetType.workoutTargetTypeKey === "no.target"), "kein Hauptziel (wie Enduco)");
+  const r = V66.garminWorkout(Object.assign({}, e, { metrik: "rpe" }), SK, Object.assign({ uid: "c" }, swOpt(50, css)));
+  assert.ok(flachG(r.workout.workoutSegments[0].workoutSteps).every((s) => !s.secondaryTargetType), "RPE gewählt: kein Tempoziel");
+  assert.notEqual(r.fassung, g.fassung);
+  assert.notEqual(V66.garminWorkout(e, SK, Object.assign({ uid: "c" }, swOpt(25, css))).fassung, g.fassung, "andere Bahnlänge: neue Fassung");
+  // Stand nur mit derselben Schwimm-Einheit gleich
+  assert.equal(V66.garminStand(e, "2026-11-26", SK, [{ uid: "c", date: "2026-11-26", fassung: g.fassung }], null, swOpt(50, css)), "gesendet");
+  assert.equal(V66.garminStand(e, "2026-11-26", SK, [{ uid: "c", date: "2026-11-26", fassung: g.fassung }], null, swOpt(50, 105)), "geaendert");
+});
+
+test("garmin-senden-1.1: was beim Schwimmen nicht gesendet wird; Auftrag mit Schwimmen", () => {
+  const kurs = V66.einheit({ uid: "k", vorlage: "schwimm_kurs", dauer: 50, quelle: "eigen" }), test_ = V66.einheit({ uid: "t", vorlage: "test_css", dauer: 45, quelle: "eigen" });
+  assert.match(V66.garminGrund(kurs), /Schwimmkurs/); assert.match(V66.garminGrund(test_), /Test/);
+  const sw = V66.einheit({ uid: "s", vorlage: "schwimm_locker", dauer: 45, quelle: "eigen" });
+  assert.equal(V66.garminGrund(sw), null);
+  assert.match(V66.garminWorkout(sw, SK, {}).fehler, /nicht berechenbar/, "ohne Schwimm-Einheit nichts geraten");
+  const A = V66.garminAuftrag("2026-11-20", [sw, kurs], SK, "senden", "2026-11-17T20:00:00Z", swOpt(25, null));
+  assert.deepEqual(A.einheiten.map((x) => x.uid), ["s"]); assert.equal(A.einheiten[0].workout.sportType.sportTypeKey, "swimming");
+  assert.deepEqual(A.ohne.map((x) => [x.uid, /Schwimmkurs/.test(x.grund)]), [["k", true]]); assert.equal(A.v, "garmin-senden-1.1");
+});
+
+test("garmin-senden-1.1: Rad und Laufen nach Puls (eigener Bereich in bpm) oder RPE (ohne Ziel); gleiche Lage wie die Einheit-Seite", () => {
+  assert.deepEqual(V66.RPE, V73.RPE, "RPE je Abschnitt an einem Ort festgelegt (rpe-zonen-1.0)");
+  assert.deepEqual(V66.METRIK_JE, V73.METRIKEN);
+  for (const [vorlage, sport] of [["rad_vo2", "rad"], ["rad_tempo", "rad"], ["lauf_vo2", "lauf"], ["lauf_laktat", "lauf"], ["rad_lang_rt", "rad"]]) {
+    const e = V66.einheit({ uid: "p", vorlage, dauer: V66.bereich(vorlage).std, quelle: "eigen", metrik: "puls" });
+    const g = V66.garminWorkout(e, SKH, { uid: "p" }), F = flachG(g.workout.workoutSegments[0].workoutSteps).filter((s) => s.type !== "RepeatGroupDTO");
+    assert.ok(!g.fehler, g.fehler);
+    for (const s of F) {
+      const k = s.targetType.workoutTargetTypeKey;
+      assert.ok(k === "no.target" || k === "heart.rate.zone", `${vorlage}: ${k}`);
+      if (k === "heart.rate.zone") {
+        assert.equal(s.targetType.workoutTargetTypeId, 4); assert.ok(!("zoneNumber" in s), "eigener Bereich, keine Garmin-Zone");
+        assert.ok(s.targetValueOne >= 40 && s.targetValueOne <= s.targetValueTwo && s.targetValueTwo <= 230);
+      }
+    }
+    assert.match(g.workout.description, /Ziele nach Puls/);
+  }
+  // gleiche Grenzen wie der Text auf der Seite
+  const z2 = V66.garminPuls("z2", "rad", SKH), z3o = V66.garminPuls("z3o", "rad", SKH), vo2 = V66.garminPuls("vo2", "lauf", SKH);
+  assert.equal(V73.ziel("z2", "rad", SKH, null, "puls"), `Puls ${z2.lo}–${z2.hi}`);
+  assert.equal(V73.ziel("z3o", "rad", SKH, null, "puls"), `Puls ${z3o.lo}–${z3o.hi}`);
+  assert.equal(V73.ziel("vo2", "lauf", SKH, null, "puls"), `Puls über ${vo2.lo}`); assert.equal(vo2.hi, Math.round(170 * 1.1)); assert.equal(vo2.offen, true);
+  const rt = V66.garminPuls("renntempo", "rad", SKH); assert.equal(rt.hi, 138); assert.equal(rt.lo, 132, "oberes Drittel von Z2 (eigene Festlegung)");
+  assert.equal(V66.garminPuls("z1", "rad", SKH), null); assert.equal(V66.garminPuls("z2", "rad", {}), null, "ohne Pulszonen nichts geraten");
+  // RPE: keine Ziele, RPE im Text, nicht als «ohne Ziel» gezählt
+  const e = V66.einheit({ uid: "q", vorlage: "lauf_vo2", dauer: 50, quelle: "eigen", metrik: "rpe" }), g = V66.garminWorkout(e, SKH, { uid: "q" });
+  const F = flachG(g.workout.workoutSegments[0].workoutSteps).filter((s) => s.type !== "RepeatGroupDTO");
+  assert.ok(F.every((s) => s.targetType.workoutTargetTypeKey === "no.target")); assert.ok(F.some((s) => /RPE 8–9/.test(s.description)));
+  assert.equal(g.ohneZiel, 0);
+  const lei = V66.garminWorkout(V66.einheit({ uid: "q", vorlage: "lauf_vo2", dauer: 50, quelle: "eigen" }), SKH, { uid: "q" });
+  assert.notEqual(lei.fassung, g.fassung, "andere Metrik: neue Fassung");
 });

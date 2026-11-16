@@ -160,7 +160,9 @@
       if (b && b.wo) { wo = b.wo; pr = b.pr; baum = V73().ausWorkout(wo, (s) => { const z = V6().schrittZone(s, wo, sk); return z ? z.key : null; }, (s) => V6().zielText(s, wo)); }
     } else if (swim && SW() && SWUI()) {
       pool = SWUI().becken();
-      try { S = SW().einheit(SW().artVon(e.id), { min: e.dauer, css_s: css, pool, ref_s: SW().refTempo(C.D.activities), woche: SWUI().woche(Z.ds) }); } catch (err) { console.error(err); }
+      // dieselbe Schwimm-Einheit wie beim Senden an Garmin (garmin-senden-1.1)
+      if (U66() && U66().schwimmEinheit) S = U66().schwimmEinheit(e, Z.ds, K);
+      else try { S = SW().einheit(SW().artVon(e.id), { min: e.dauer, css_s: css, pool, ref_s: SW().refTempo(C.D.activities), woche: SWUI().woche(Z.ds) }); } catch (err) { console.error(err); }
       baum = V73().ausSchwimm(S);
     } else baum = V73().ausTeilen(e);
     const vorbei = Z.ds < heute();
@@ -477,7 +479,7 @@
       puls: "Ziele nach Puls aus den Pulszonen deines Zonenprofils.", rpe: "Nach Gefühl auf der Skala 1–10 (CR-10), ohne Messwert – eigene Zuordnung je Abschnitt." };
     const ov = blatt("v73-metrik", `<div class="blatt-titel">${ic(metIcon(jetzt), 34)}<h2 id="v59-ov-h" tabindex="-1">Trainingsmetrik</h2><p class="sub">Wonach du ${esc(X.titel)} steuerst.</p></div>
       <div class="v73-wahl" role="radiogroup" aria-label="Metrik">${L.map((m) => `<label class="v73-opt"><input type="radio" name="v73m" value="${m}"${m === jetzt ? " checked" : ""}><span>${ic(metIcon(m), 20)}<b>${esc(D.METRIK_NAME[m])}</b><small>${esc(SATZ[m])}</small></span></label>`).join("")}</div>
-      <p class="hint">Die Wahl gilt für die Anzeige der Ziele. An Garmin gehen vorerst die Ziele nach ${X.sport === "rad" ? "Leistung" : "Tempo"}; Puls und RPE als Ziel auf der Uhr folgen mit dem Schwimm-Export.</p>
+      <p class="hint">Die Wahl gilt für die Anzeige und für «Export» (${esc(V66().VERSIONS.garmin)}): ${X.sport === "schwimm" ? "mit Pace und CSS-Test Tempo-Ziele auf der Uhr, mit RPE nur der Text in den Schritten" : "Leistung bzw. Tempo und Puls als Bereich auf der Uhr, RPE ohne Ziel mit dem Text in den Schritten"}.</p>
       <p class="warn-t" data-v73f hidden></p>${fuss(`<button type="button" class="btn primary gross" data-v73ok>Auswählen</button>`)}`);
     ov.querySelector("[data-v73ok]").onclick = async () => {
       const v = (ov.querySelector("input[name=v73m]:checked") || {}).value; if (!v) return;
@@ -589,12 +591,27 @@
       ${fuss(e.wissen ? `<button type="button" class="btn primary gross" data-wissen="${esc(e.wissen)}">Im Wissen nachlesen</button>` : "")}`);
   }
 
-  /* ---------- Export: An Garmin senden, nur diese Einheit (garmin-senden-1.0 mit Auswahl) ---------- */
+  /* ---------- Export: An Garmin senden, nur diese Einheit (garmin-senden-1.0 mit Auswahl; 1.1 Schwimmen, Puls, RPE) ---------- */
+  /** Was an Garmin geht, in Worten (garmin-senden-1.1): Ziele je Metrik, beim Schwimmen Bahnen, Übungen, Pausen und CSS. → [Hinweis, CSS-Hinweis] */
+  function exportText(e, ds) {
+    if (e.quelle === "bibliothek") return ["das Enduco-Workout wird nur eingeplant", ""];
+    const V = V66(), m = V.metrikVon(e);
+    if (e.sport === "schwimm") {
+      let w = null; try { w = V.garminWorkout(e, X.sk, Object.assign({ date: ds, uid: e.uid }, U66().swOpt(ds, X.K))); } catch (err) { console.error(err); }
+      if (!w || w.fehler) return [`als Workout «IN · ${e.titel}»`, ""];
+      const css = X.css, satz = `als Workout «IN · ${e.titel}»: ${w.meter} m im ${w.workout.poolLength}-m-Becken mit Übungen${w.workout.poolLength === 50 ? " («½ L … Bahn locker beenden»)" : ""} und Pausen am Beckenrand`;
+      if (w.css) return [`${satz}; Tempo-Ziele aus deinem CSS-Test (${mmss(css)}/100 m), dazu das Tempo im Text`,
+        `Die Uhr rechnet die Tempo-Ziele mit ihrer eigenen CSS. Die Seite kann sie nicht lesen und schreibt sie nie nach Garmin – trag auf der Uhr bzw. in Garmin Connect dieselbe CSS ein (${mmss(css)}/100 m).`];
+      return [`${satz}; ${m === "rpe" && isNum(css) ? "nach Anstrengung (RPE), wie gewählt" : "noch ohne CSS-Test: nach Anstrengung (RPE) im Text der Schritte"}`, ""];
+    }
+    const ziel = { leistung: "Leistung aus deinem Zonenprofil", pace: "Tempo aus deinem Zonenprofil", puls: "Puls aus deinem Zonenprofil (eigener Bereich in bpm)", rpe: "ohne Ziele, mit RPE im Text" }[m];
+    return [`als Workout «IN · ${e.titel}» – ${m === "rpe" ? ziel : "Ziele nach " + ziel}`, ""];
+  }
   function exportBlatt() {
     if (X.art !== "plan" || X.vorbei) return;
     const e = X.e, ds = X.ds, G = U66(), V = V66(), grund = V.garminGrund(e);
     const A = G.auftrag(ds), a = A && A.a, g = G.gesendet().find((x) => x && x.uid === e.uid && x.date === ds && !x.entfernt);
-    let stand = null; try { stand = V.garminStand(e, ds, X.sk, G.gesendet(), a && (A.lokal ? Object.assign({ status: "offen" }, a) : a)); } catch (err) { console.error(err); }
+    let stand = null; try { stand = V.garminStand(e, ds, X.sk, G.gesendet(), a && (A.lokal ? Object.assign({ status: "offen" }, a) : a), G.swOpt(ds, X.K)); } catch (err) { console.error(err); }
     const zeit = (iso) => { try { return new Date(iso).toLocaleString("de-CH", { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }); } catch (err) { return iso; } };
     const zeilen = [];
     if (stand === "gesendet") zeilen.push(`<p class="v73-stand ok" role="status">${ic("haken", 18)}In Garmin${g && g.gesendet ? ` · gesendet ${esc(zeit(g.gesendet))}` : ""}.</p>`);
@@ -603,7 +620,7 @@
     if (a && !A.lokal && a.status === "fehler") { const fe = (a.fehler || []).filter((x) => String(x).startsWith(e.titel) || String(x).includes(e.uid)); if (fe.length) zeilen.push(`<p class="warn-t">Nicht gesendet: ${esc(fe.join("; "))}</p>`); }
     const ab = (C.D.garmin_abgelehnt || []).filter((x) => x && x.id === "gs-" + ds && (!a || String(x.erstellt || "") >= String(a.erstellt || ""))).pop();
     if (ab) zeilen.push(`<p class="warn-t">Auftrag abgelehnt: ${esc(ab.grund)}</p>`);
-    let knoepfe = "", hinweis = "";
+    let knoepfe = "", hinweis = "", cssHinweis = "";
     const fenster = G.garminFenster(ds), zuSpaet = ds === heute() || (ds === V64().addDays(heute(), 1) && G.nachtGelaufen() && stand !== "gesendet");
     if (grund) hinweis = `Diese Einheit geht nicht an Garmin: ${grund}.`;
     else if (ds === heute()) hinweis = "Für heute geht es nur noch im Chat («schick die Einheit von heute an Garmin»).";
@@ -613,13 +630,15 @@
       const auto = a && a.modus === "auto" && (A.lokal || a.status === "offen");
       knoepfe = `${stand !== "wartet" || auto ? `<div class="v73-wahl" role="radiogroup" aria-label="Wann senden"><label class="v73-opt"><input type="radio" name="v73g" value="senden" ${auto ? "" : "checked"}><span>${ic("play", 20)}<b>Mit dem nächsten Nacht-Update</b><small>gegen 23 Uhr; aufs Gerät beim Synchronisieren</small></span></label>
           <label class="v73-opt"><input type="radio" name="v73g" value="auto" ${auto ? "checked" : ""}><span>${ic("uhr", 20)}<b>Am Vortag um 23 Uhr</b><small>Änderungen bis dahin werden mitgenommen</small></span></label></div>` : ""}`;
-      hinweis = `${V.VERSIONS.garmin}: ${e.quelle === "bibliothek" ? "das Enduco-Workout wird nur eingeplant" : `als Workout «IN · ${e.titel}» mit Zielen aus deinem Zonenprofil (${X.sport === "rad" ? "Leistung" : "Tempo"})`}. Andere Einheiten des Tages bleiben, wie sie in Garmin sind. Enduco bleibt unberührt.`;
+      const [was, cssT] = exportText(e, ds);
+      hinweis = `${V.VERSIONS.garmin}: ${was}. Andere Einheiten des Tages bleiben, wie sie in Garmin sind. Enduco bleibt unberührt.`;
+      cssHinweis = cssT;
     }
     const kann = !grund && fenster && !zuSpaet;
     const haupt = kann && (stand !== "wartet" || (a && a.modus === "auto")) ? `<button type="button" class="btn primary gross" data-v73gs>${stand === "gesendet" ? "Nochmals senden" : "Senden"} ${ic("play", 18)}</button>` : "";
     const weg = kann && (g || stand === "wartet") ? `<button type="button" class="btn" data-v73gweg>${g ? "Aus Garmin austragen" : "Nicht senden"}</button>` : "";
     const ov = blatt("v73-export", `<div class="blatt-titel">${ic("play", 34)}<h2 id="v59-ov-h" tabindex="-1">An Garmin senden</h2><p class="sub">${esc(e.titel)} · ${esc(tagText(ds))}</p></div>
-      ${zeilen.join("")}${knoepfe}<p class="hint">${esc(hinweis)}</p><p class="warn-t" data-v73f hidden></p>
+      ${zeilen.join("")}${knoepfe}<p class="hint">${esc(hinweis)}</p>${cssHinweis ? `<p class="hint keep">${esc(cssHinweis)}</p>` : ""}<p class="warn-t" data-v73f hidden></p>
       ${fuss(`${weg}${haupt}`)}`);
     const los = async (weg) => {
       const modus = weg ? (a && a.modus === "auto" ? "auto" : "senden") : ((ov.querySelector("input[name=v73g]:checked") || {}).value || "senden");

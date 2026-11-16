@@ -1,5 +1,25 @@
 # Änderungen
 
+## V7.3.1 · 17.11.2026 · Auftrag V7.3, Etappe 2: Schwimmen an Garmin, Puls und RPE auf der Uhr (garmin-senden-1.1)
+- **Schwimmen wie Enduco:** «Export» bzw. «An Garmin senden» schickt eigene Schwimm-Einheiten aus Mein Plan als Garmin-Workout – Format aus den
+  Enduco-Workouts gelesen (`get_workout_by_id` raw): Bahnlänge des Geräts (25/50 m), Strecken in ganzen Bahnen, Pausen am Beckenrand (fixed.rest),
+  jede Technikübung als eigener Schritt «other» über die ganze Bahn («½ L | Reissverschluss | Technik | RPE 2–3 | Bahn locker beenden», im 25-m-Becken
+  ohne «Bahn beenden»), Wiederholungen als Gruppe, Stil Kraul, nötige Hilfsmittel als Hilfsmittel des Schritts (Brett, Pullbuoy, Flossen, Paddles),
+  freiwillige im Text. Mit CSS-Test bekommt jeder Schritt mit Tempo das Nebenziel «Abstand zur CSS» wie bei Enduco und das Tempo im Text; ohne Test
+  (oder Metrik RPE) die Anstrengung im Text. Die Uhr rechnet mit ihrer eigenen CSS – Garmin liefert sie nicht, das Export-Blatt sagt es; die CSS geht
+  nie nach Garmin. Schwimmkurs und CSS-Test werden nicht gesendet (mit Grund). Die Schwimm-Einheit ist dieselbe wie auf der Einheit-Seite
+  (`V66UI.schwimmEinheit`), deshalb stimmen Meter, Übungen und Fassung überein.
+- **Puls und RPE auf der Uhr:** Rad und Laufen mit Metrik Puls gehen mit eigenem Pulsbereich (bpm) je Schritt an Garmin (heart.rate.zone ohne
+  Garmin-Zone; Lage wie auf der Seite, Renntempo = oberes Drittel von Z2 und offene Z5 + 10 % als eigene Festlegungen), mit Metrik RPE ohne Ziel und
+  mit RPE im Text. Metrik-Blatt und Export-Blatt sagen, was gesendet wird.
+- **`tools/garmin_senden.py` 1.1:** Prüfung für Schwimmen (Bahnlänge, ganze Bahnen, Kraul, bekannte Hilfsmittel, Nebenziel CSS, Pausen) und Puls;
+  Rücklese vergleicht zusätzlich Texte (gekürzt = abweichend), Bahnlänge, Stil, Hilfsmittel und CSS-Abstand. Ablauf im Nacht-Update unverändert.
+- `js/schwimmen.js`: Teile tragen das Tempo als Zahl (`tempo_s`), die Einheit die CSS (`css_s`) – nur ergänzt, schwimmeinheit-1.0 unverändert.
+- Wissen wissen-1.11 (Kapitel «Modelle», Abschnitt «An Garmin senden»).
+- Tests: `tests/test_v73.cjs` (Schwimmen 25/50 m, 30–75 min, mit und ohne CSS, Hilfsmittel, Puls und RPE, gleiche Lage wie die Seite),
+  `tests/test_tools.py` (Prüfung und Rücklese für Schwimmen, Ablehnungen, Puls, Ablauf plan → rueck), `tests/test_v66.cjs` nachgeführt.
+  Noch nicht an Silas' Geräten geprüft: das erste echte Senden zeigt die Rücklese.
+
 ## V7.3 · 16.11.2026 · Auftrag V7.3 «wie enduco», Etappe 1: Einheit wie Trainingsbriefing, mit allen Schritten
 - **Schritte `schritte-1.0` (`js/v73.js`, ohne DOM):** jede Einheit als Schritte und Blöcke – einfahren, Belastung, Erholung, ausfahren, Pause; beim
   Schwimmen dazu Technikübung, «Bahn locker beenden» und Pause am Beckenrand. Wiederholungen werden erkannt, auch verschachtelt («3 × Serien» mit

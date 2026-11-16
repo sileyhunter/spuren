@@ -173,7 +173,7 @@ test("aufbau-1.1 in Mein Plan: Lauf über der Grenze oder nach einer Pause gemel
   assert.equal(V66.aufbauHinweis(V66.einheit({ uid: "r", vorlage: "rad_lang", dauer: 180, quelle: "eigen" }), "2026-11-20", 90, laeufe, MO), null, "nur Laufen");
 });
 
-/* ---------------- garmin-senden-1.0 ---------------- */
+/* ---------------- garmin-senden-1.0 (1.1: Schwimmen, Puls und RPE in tests/test_v73.cjs) ---------------- */
 const flach = (steps) => steps.flatMap((s) => (s.type === "RepeatGroupDTO" ? [s].concat(s.workoutSteps) : [s]));
 test("garmin-senden-1.0: Rad-Workout – Wiederholungen als Gruppe, Reihenfolge, Watt aus dem Zonenprofil, Z1 ohne Ziel", () => {
   const e = V66.einheit({ uid: "e-1", vorlage: "rad_vo2", dauer: V66.bereich("rad_vo2").std, quelle: "eigen" });
@@ -213,9 +213,10 @@ test("garmin-senden-1.0: Laufen mit Tempo in m/s (langsam → schnell); Fassung 
 
 test("garmin-senden-1.0: was nicht gesendet wird, mit Grund; Auftrag mit Momentaufnahme; Stand gesendet/geändert/wartet", () => {
   const sw = V66.einheit({ uid: "s", vorlage: "schwimm_css", dauer: 60, quelle: "eigen" });
-  assert.match(V66.garminGrund(sw), /Schwimmen/);
+  assert.equal(V66.garminGrund(sw), null, "garmin-senden-1.1: Schwimmen wird gesendet (tests/test_v73.cjs)");
+  assert.match(V66.garminWorkout(sw, SK, {}).fehler, /Schwimm-Einheit nicht berechenbar/, "ohne Schwimm-Einheit (opt.schwimm) nichts geraten");
   assert.match(V66.garminGrund(V66.einheit({ uid: "t", vorlage: "test_rad", dauer: 60, quelle: "eigen" })), /Test/);
-  assert.match(V66.garminGrund(V66.einheit({ uid: "k", vorlage: "kraft", dauer: 30, quelle: "eigen" })), /nur Rad und Laufen/);
+  assert.match(V66.garminGrund(V66.einheit({ uid: "k", vorlage: "kraft", dauer: 30, quelle: "eigen" })), /nur Rad, Laufen und Schwimmen/);
   const rad = V66.einheit({ uid: "r", vorlage: "rad_locker", dauer: 60, quelle: "eigen" });
   const bib = V66.einheit({ uid: "b", quelle: "bibliothek", wid: 42, sport: "rad", titel: "Beispiel", dauer: 45 });
   const A = V66.garminAuftrag("2026-11-20", [rad, sw, bib], SK, "auto", "2026-11-17T20:00:00Z");

@@ -1124,11 +1124,21 @@ out.mix = V66.garminAuftrag("2026-03-05", [E({ uid: "e-a", vorlage: "rad_locker"
 out.mix2 = V66.garminAuftrag("2026-03-05", [E({ uid: "e-a", vorlage: "rad_locker", dauer: 75, quelle: "eigen" }), E({ uid: "e-d", vorlage: "lauf_locker", dauer: 30, quelle: "eigen" })], SK, "senden", "2026-03-04T21:00:00Z");
 out.weiter = V66.garminAuftrag("2026-03-06", [E({ uid: "e-d", vorlage: "lauf_locker", dauer: 30, quelle: "eigen" })], SK, "senden", "2026-03-04T21:30:00Z");
 out.teil = V66.garminAuftrag("2026-03-05", [E({ uid: "e-a", vorlage: "rad_locker", dauer: 60, quelle: "eigen" })], SK, "senden", "2026-03-02T19:00:00Z", { teil: true });
+// garmin-senden-1.1: Schwimmen (Bahnlänge 25/50 m, mit und ohne CSS-Test), Puls und RPE (erfundene Pulszonen)
+const SW = require("./js/schwimmen.js");
+const swim = (pool, css) => ({ schwimm: (e) => SW.einheit(SW.artVon(e.id), { min: e.dauer, css_s: css, pool, ref_s: 130, woche: 47 }) });
+for (const [id, pool, css] of [["schwimm_locker", 25, null], ["schwimm_locker", 50, 110], ["schwimm_css", 50, null], ["schwimm_css", 25, 105]])
+  out[`sw_${id}_${pool}_${css}`] = V66.garminAuftrag("2026-03-05", [E({ uid: `s-${id}-${pool}`, vorlage: id, dauer: 60, quelle: "eigen" })], SK, "senden", "2026-03-02T19:00:00Z", swim(pool, css));
+out.kurs = V66.garminAuftrag("2026-03-05", [E({ uid: "s-kurs", vorlage: "schwimm_kurs", dauer: 50, quelle: "eigen" })], SK, "senden", "2026-03-02T19:00:00Z", swim(25, null));
+const SKH = Object.assign({}, SK, { rad_hf: [{ z: "Z1", von: null, bis: 120 }, { z: "Z2", von: 120, bis: 138 }, { z: "Z3", von: 138, bis: 156 }, { z: "Z4", von: 156, bis: 165 }, { z: "Z5", von: 165, bis: null }],
+  lauf_hf: [{ z: "Z1", von: null, bis: 125 }, { z: "Z2", von: 125, bis: 145 }, { z: "Z3", von: 145, bis: 160 }, { z: "Z4", von: 160, bis: 170 }, { z: "Z5", von: 170, bis: null }] });
+for (const id of ["rad_vo2", "rad_tempo", "lauf_vo2", "lauf_laktat"]) for (const m of ["puls", "rpe"])
+  out[`${m}_${id}`] = V66.garminAuftrag("2026-03-05", [E({ uid: `m-${id}`, vorlage: id, dauer: V66.bereich(id).std, quelle: "eigen", metrik: m })], SKH, "senden", "2026-03-02T19:00:00Z");
 console.log(JSON.stringify(out));"""
 _rg = subprocess.run(["node", "-e", _js_gs], cwd=ROOT, capture_output=True, text=True)
 _GA = json.loads(_rg.stdout)
-_einzel = {k: v for k, v in _GA.items() if k not in ("mix", "mix2", "weiter", "teil")}
-check("Garmin senden: jedes Workout der Seite (alle Rad- und Lauf-Vorlagen) besteht die Prüfung des Werkzeugs",
+_einzel = {k: v for k, v in _GA.items() if k not in ("mix", "mix2", "weiter", "teil", "kurs")}
+check("Garmin senden: jedes Workout der Seite (alle Rad- und Lauf-Vorlagen, Schwimmen 25/50 m mit und ohne CSS, Puls, RPE) besteht die Prüfung des Werkzeugs",
       all(GS.pruefen(a) is None and len(a["einheiten"]) == 1 for a in _einzel.values()), str({k: GS.pruefen(a) for k, a in _einzel.items()}))
 check("Garmin senden: gemischter Tag – Rad als Workout, Bibliothek nur mit ID, Schwimmen mit Grund nicht gesendet",
       GS.pruefen(_GA["mix"]) is None and [u["quelle"] for u in _GA["mix"]["einheiten"]] == ["eigen", "bibliothek"] and [x["uid"] for x in _GA["mix"]["ohne"]] == ["e-c"])
@@ -1148,7 +1158,10 @@ _falsch = {
     "mehr als eine Woche voraus": _mit(lambda a: a.update(date="2026-03-12", id="gs-2026-03-12")),
     "unbekanntes Feld": _mit(lambda a: a["einheiten"][0]["workout"].update(owner="x")),
     "Name ohne IN": _mit(lambda a: a["einheiten"][0]["workout"].update(workoutName="Fremd")),
-    "Schwimmen": _mit(lambda a: a["einheiten"][0]["workout"].update(sportType={"sportTypeId": 4, "sportTypeKey": "swimming"})),
+    "Rad als Schwimmen ohne Bahnlänge": _mit(lambda a: a["einheiten"][0]["workout"].update(sportType={"sportTypeId": 4, "sportTypeKey": "swimming"})),
+    "Bahnlänge am Rad": _mit(lambda a: a["einheiten"][0]["workout"].update(poolLength=25, poolLengthUnit={"unitId": 1, "unitKey": "meter", "factor": 100.0})),
+    "Puls zu hoch": _mit(lambda a: a["einheiten"][0]["workout"]["workoutSegments"][0]["workoutSteps"][1].update(
+        targetType={"workoutTargetTypeId": 4, "workoutTargetTypeKey": "heart.rate.zone"}, targetValueOne=150, targetValueTwo=250)),
     "Watt zu hoch": _mit(lambda a: a["einheiten"][0]["workout"]["workoutSegments"][0]["workoutSteps"][1].update(targetValueTwo=2500)),
     "Tempo-Ziel am Rad": _mit(lambda a: a["einheiten"][0]["workout"]["workoutSegments"][0]["workoutSteps"][1].update(targetType={"workoutTargetTypeId": 6, "workoutTargetTypeKey": "pace.zone"})),
     "Strecke statt Zeit": _mit(lambda a: a["einheiten"][0]["workout"]["workoutSegments"][0]["workoutSteps"][1].update(endCondition={"conditionTypeId": 3, "conditionTypeKey": "distance"})),
@@ -1157,6 +1170,107 @@ _falsch = {
     "doppelte Kennung": GS.pruefen(dict(_GA["mix"], einheiten=[_GA["mix"]["einheiten"][0], _GA["mix"]["einheiten"][0]])),
     "teil nicht ja/nein": GS.pruefen(dict(_GA["teil"], teil="ja")),
 }
+_sw = _GA["sw_schwimm_css_50_null"]["einheiten"][0]["workout"]
+_swf = []
+for _x in _sw["workoutSegments"][0]["workoutSteps"]:
+    _swf += [_x] + (_x.get("workoutSteps") or [])
+
+
+def _mit_sw(f, key="sw_schwimm_css_50_null"):
+    a = copy.deepcopy(_GA[key])
+    st = []
+    for x in a["einheiten"][0]["workout"]["workoutSegments"][0]["workoutSteps"]:
+        st += [x] + (x.get("workoutSteps") or [])
+    f(a["einheiten"][0]["workout"], st)
+    return GS.pruefen(a)
+
+
+_ueb = next(i for i, x in enumerate(_swf) if (x.get("stepType") or {}).get("stepTypeKey") == "other")
+_pz = next(i for i, x in enumerate(_swf) if (x.get("stepType") or {}).get("stepTypeKey") == "rest")
+_falsch_sw = {
+    "Bahnlänge 33 m": _mit_sw(lambda w, st: w.update(poolLength=33)),
+    "ohne Bahnlänge": _mit_sw(lambda w, st: w.pop("poolLength")),
+    "halbe Bahn als Strecke": _mit_sw(lambda w, st: st[_ueb].update(endConditionValue=25)),
+    "Zeit statt Strecke": _mit_sw(lambda w, st: st[_ueb].update(endCondition={"conditionTypeId": 2, "conditionTypeKey": "time"})),
+    "Rücken statt Kraul": _mit_sw(lambda w, st: st[_ueb].update(strokeType={"strokeTypeId": 2, "strokeTypeKey": "backstroke"})),
+    "unbekanntes Hilfsmittel": _mit_sw(lambda w, st: st[_ueb].update(equipmentType={"equipmentTypeId": 5, "equipmentTypeKey": "snorkel"})),
+    "Hauptziel Tempo": _mit_sw(lambda w, st: st[_ueb].update(targetType={"workoutTargetTypeId": 6, "workoutTargetTypeKey": "pace.zone"}, targetValueOne=0.8, targetValueTwo=0.9)),
+    "CSS-Abstand unmöglich": _mit_sw(lambda w, st: st[_ueb].update(secondaryTargetType={"workoutTargetTypeId": 17, "workoutTargetTypeKey": "swim.css.offset"}, secondaryTargetValueOne=2.0)),
+    "Pause ohne fixed.rest": _mit_sw(lambda w, st: st[_pz].update(endCondition={"conditionTypeId": 2, "conditionTypeKey": "time"})),
+    "Pause mit Strecke": _mit_sw(lambda w, st: st[_pz].update(preferredEndConditionUnit={"unitId": 1, "unitKey": "meter", "factor": 100.0})),
+    "Schwimm-Schrittart am Rad": _mit(lambda a: a["einheiten"][0]["workout"]["workoutSegments"][0]["workoutSteps"][1].update(stepType={"stepTypeId": 7, "stepTypeKey": "other"})),
+}
+check("Garmin senden (1.1): Schwimmen – Kraul, ganze Bahnen, Übungen «other», Pausen fixed.rest, Hilfsmittel nötig = equipmentType, Kurs nicht gesendet",
+      _sw["sportType"]["sportTypeId"] == 4 and _sw["poolLength"] == 50
+      and {(x.get("equipmentType") or {}).get("equipmentTypeKey") for z in _GA["sw_schwimm_locker_25_null"]["einheiten"][0]["workout"]["workoutSegments"][0]["workoutSteps"]
+           for x in [z] + (z.get("workoutSteps") or [])} >= {"kickboard", "pull_buoy"}
+      and all((x.get("stepType") or {}).get("stepTypeKey") in ("repeat", "rest") or x.get("strokeType") == GS.KRAUL for x in _swf)
+      and [u["uid"] for u in _GA["kurs"]["ohne"]] == ["s-kurs"] and not _GA["kurs"]["einheiten"] and GS.pruefen(_GA["kurs"]) is None
+      and any("secondaryTargetType" in x for x in [y for z in _GA["sw_schwimm_css_25_105"]["einheiten"][0]["workout"]["workoutSegments"][0]["workoutSteps"] for y in [z] + (z.get("workoutSteps") or [])])
+      and not any("secondaryTargetType" in x for x in _swf), str({k: GS.pruefen(v) for k, v in _GA.items() if k.startswith("sw_")}))
+check("Garmin senden (1.1): Prüfung lehnt beim Schwimmen ab – Bahnlänge, halbe Bahn, Zeit statt Strecke, Stil, Hilfsmittel, Hauptziel, CSS-Abstand, Pause",
+      all(_falsch_sw.values()), str({k: v for k, v in _falsch_sw.items() if not v}))
+check("Garmin senden (1.1): Puls als eigener Bereich (heart.rate.zone, bpm), RPE ohne Ziele",
+      all(GS.pruefen(_GA[k]) is None for k in _GA if k.startswith(("puls_", "rpe_")))
+      and any((x.get("targetType") or {}).get("workoutTargetTypeId") == 4 for x in _GA["puls_rad_vo2"]["einheiten"][0]["workout"]["workoutSegments"][0]["workoutSteps"]
+              for x in [x] + (x.get("workoutSteps") or []))
+      and all((x.get("targetType") or {}).get("workoutTargetTypeKey") in (None, "no.target") for x in _GA["rpe_lauf_vo2"]["einheiten"][0]["workout"]["workoutSegments"][0]["workoutSteps"]
+              for x in [x] + (x.get("workoutSteps") or []) if x.get("type") == "ExecutableStepDTO"))
+
+
+def _wie_garmin(w):
+    """Rücklese, wie Garmin ein Schwimm-Workout speichert (Form wie die raw-Antwort der Enduco-Workouts, Werte erfunden): zusätzliche Felder,
+    Zahlen als float, Stil/Hilfsmittel bei Pausen leer, Hauptziel null statt «no.target», Bahnlänge nur auf Workout-Ebene."""
+    w = copy.deepcopy(w)
+    w.update(workoutId=900000001, ownerId=1, updatedDate="2026-03-04T23:06:00.0", poolLength=float(w["poolLength"]))
+    w["poolLengthUnit"] = dict(w["poolLengthUnit"], unitId=1)
+    w["sportType"] = dict(w["sportType"], displayOrder=4)
+    for seg in w["workoutSegments"]:
+        seg.update(poolLength=None, poolLengthUnit=None, description=None)
+        def mach(L):
+            for x in L:
+                x["stepId"] = 1
+                x["stepType"] = dict(x["stepType"], displayOrder=x["stepType"]["stepTypeId"])
+                x["endCondition"] = dict(x["endCondition"], displayOrder=1, displayable=True)
+                x["endConditionValue"] = float(x["endConditionValue"])
+                if x.get("type") == "RepeatGroupDTO":
+                    mach(x["workoutSteps"])
+                    continue
+                x.setdefault("strokeType", {"strokeTypeId": 0, "strokeTypeKey": None, "displayOrder": 0})
+                x.setdefault("equipmentType", {"equipmentTypeId": 0, "equipmentTypeKey": None, "displayOrder": 0})
+                x.setdefault("secondaryTargetType", None)
+                x.setdefault("secondaryTargetValueOne", None)
+                if (x.get("stepType") or {}).get("stepTypeKey") != "rest":
+                    x["targetType"] = None
+                x.update(targetValueOne=None, targetValueTwo=None, zoneNumber=None, category=None, exerciseName=None)
+        mach(seg["workoutSteps"])
+    return w
+
+
+_sw2 = _GA["sw_schwimm_locker_50_110"]["einheiten"][0]["workout"]       # mit CSS-Abständen und Hilfsmitteln
+_ist_sw = _wie_garmin(_sw2)
+
+
+def _rueck_mit(f):
+    x = copy.deepcopy(_ist_sw)
+    st = []
+    for y in x["workoutSegments"][0]["workoutSteps"]:
+        st += [y] + (y.get("workoutSteps") or [])
+    f(x, st)
+    return GS.rueck(_sw2, x)
+
+
+_ue2 = next(i for i, x in enumerate(_ist_sw["workoutSegments"][0]["workoutSteps"]) if x.get("type") == "RepeatGroupDTO")
+_rueck_falsch = {
+    "Text gekürzt": _rueck_mit(lambda x, st: st[0].update(description=st[0]["description"][:20])),
+    "Hilfsmittel fehlt": _rueck_mit(lambda x, st: [y.update(equipmentType={"equipmentTypeId": 0, "equipmentTypeKey": None}) for y in st if (y.get("equipmentType") or {}).get("equipmentTypeKey")]),
+    "Bahnlänge": _rueck_mit(lambda x, st: x.update(poolLength=25.0 if _sw2["poolLength"] == 50 else 50.0)),
+    "CSS-Abstand": _rueck_mit(lambda x, st: [y.update(secondaryTargetValueOne=y["secondaryTargetValueOne"] + 0.05) for y in st if y.get("secondaryTargetValueOne")][:1]),
+    "Nebenziel weg": _rueck_mit(lambda x, st: [y.update(secondaryTargetType=None) for y in st if y.get("secondaryTargetType")]),
+    "Strecke": _rueck_mit(lambda x, st: st[0].update(endConditionValue=st[0]["endConditionValue"] + _sw2["poolLength"])),
+}
+check("Garmin senden (1.1): Rücklese Schwimmen – so wie Garmin speichert = gleich; gekürzter Text, Hilfsmittel, Bahnlänge, CSS-Abstand, Strecke = abweichend",
+      GS.rueck(_sw2, _ist_sw) == [] and all(_rueck_falsch.values()), str(GS.rueck(_sw2, _ist_sw)) + str({k: v for k, v in _rueck_falsch.items() if not v}))
 check("Garmin senden (V7.3): Auftrag für eine einzelne Einheit trägt «teil» und besteht die Prüfung; ohne Auswahl kein «teil»",
       _GA["teil"].get("teil") is True and GS.pruefen(_GA["teil"]) is None and "teil" not in _GA["mix"], str(GS.pruefen(_GA["teil"])))
 check("Garmin senden: Prüfung lehnt ab – ID, Modus, Tag zurück oder zu weit voraus, fremde Felder, Name, Sportart, Werte, Ziel, Ende, Reihenfolge, Bibliothek, Kennung",
@@ -1242,6 +1356,17 @@ check("Garmin senden (Aufrufe): plan → rueck «gleich» → eintragen; data.js
       _r1.returncode == 0 and json.loads(_r1.stdout)["aktionen"][0]["art"] == "hochladen" and _r2.returncode == 0 and "RÜCKLESEN: gleich" in _r2.stdout
       and _r3.returncode == 0 and _dc["plan_garmin"][0]["workout_id"] == 6001 and _dc["garmin_auftraege"][0]["status"] == "erledigt"
       and sorted(os.listdir(_tc)) == ["d.json", "e.json", "p.json", "r.json"], _r1.stderr + _r2.stdout + _r2.stderr + _r3.stdout + _r3.stderr)
+_ts = tempfile.mkdtemp()
+json.dump({"garmin_auftraege": [dict(_GA["sw_schwimm_locker_50_110"], status="offen")], "plan_garmin": []}, open(os.path.join(_ts, "d.json"), "w"))
+_s1 = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "tools", "garmin_senden.py"), "plan", os.path.join(_ts, "d.json"), "--jetzt", "2026-03-04T23:10"],
+                     capture_output=True, text=True)
+open(os.path.join(_ts, "p.json"), "w").write(_s1.stdout)
+json.dump(_wie_garmin(json.loads(_s1.stdout)["aktionen"][0]["workout"]), open(os.path.join(_ts, "r.json"), "w"))
+_s2 = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "tools", "garmin_senden.py"), "rueck", os.path.join(_ts, "p.json"), "1", os.path.join(_ts, "r.json")],
+                     capture_output=True, text=True)
+check("Garmin senden (1.1, Aufrufe): Schwimm-Auftrag → hochladen, Rücklese wie Garmin speichert «gleich»",
+      _s1.returncode == 0 and json.loads(_s1.stdout)["aktionen"][0]["art"] == "hochladen" and json.loads(_s1.stdout)["v"] == "garmin-senden-1.1"
+      and _s2.returncode == 0 and "RÜCKLESEN: gleich" in _s2.stdout, _s1.stderr + _s2.stdout + _s2.stderr)
 _DB2 = {"plan_garmin": [{"quelle": "bibliothek", "wid": 1000000009, "date": "2026-03-05", "vorhanden": False}]}
 bibliothek.einspielen(_DB2, {"planned": [{"date": "2026-03-05", "title": "Beispiel Lauf", "sport": "lauf", "dur_s": 2400, "wid": 1000000009, "quelle": "Enduco über Garmin"}]}, "2026-03-04")
 check("Bibliothek (bib-1.1): selbst eingeplante Einheit ist kein Enduco-Termin", not (_DB2.get("enduco_bib", {}).get("workouts", {}).get("1000000009") or {}).get("termine"),
