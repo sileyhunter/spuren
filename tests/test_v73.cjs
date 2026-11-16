@@ -85,10 +85,17 @@ test("schritte-1.0: Enduco-Schwimmbeschreibung lesen und Workout aus Garmin als 
   assert.equal(baum[0].art, "ein");
   const ab = baum.find((n) => n.typ === "abschnitt");
   assert.ok(ab, "Übungen als Abschnitt"); assert.equal(ab.kinder.length, 2); assert.equal(ab.kinder[0].name, "Reissverschluss");
-  assert.equal(ab.kinder[0].schritte[0].art, "technik"); assert.equal(ab.kinder[0].schritte[1].art, "pause");
+  // «½Lanes … Finish Lane»: 50 m = eine Bahn → ½ Bahn Übung, Rest der Bahn locker (wie Mein Plan), Zeit nach Strecke geteilt
+  const [ueb, bahn, pause] = ab.kinder[0].schritte;
+  assert.equal(ueb.art, "technik"); assert.equal(ueb.m, 25); assert.equal(ueb.bahnen, "½ L");
+  assert.equal(bahn.art, "bahn"); assert.equal(bahn.m, 25); assert.equal(bahn.bahnen, "½ L");
+  assert.equal(ueb.s + bahn.s, 80, "2:40/100 m × 50 m"); assert.equal(pause.art, "pause");
+  assert.equal(V73.strecke(baum), 800, "Strecke bleibt gleich");
   const serie = baum.find((n) => n.typ === "b");
   assert.equal(serie.wdh, 4); assert.equal(serie.name, "Grundlagenausdauer");
   assert.equal(baum[baum.length - 1].art, "aus");
+  assert.equal(V73.bruch("1½"), 1.5); assert.equal(V73.bruch("2"), 2); assert.equal(V73.bruch("x"), null);
+  assert.equal(V73.bahnenText(1.5), "1½ L"); assert.equal(V73.bahnenText(0.5), "½ L"); assert.equal(V73.bahnenText(3), "3 L");
 });
 
 test("Auswertung: Achse, Fokus, Coach, Ziele je Metrik, Bereiche der Zonen", () => {

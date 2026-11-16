@@ -37,6 +37,9 @@
   Fokus, Coach, Ziele je Metrik, Felder, Sperre, Anpassen, Neu berechnen), `tests/test_tools.py` (Felder in `planwoche_pruefen`, Auftrag mit `teil`),
   `tests/test_v64.cjs` (Wissen 1.10). Im Browser geprüft (390 px, Demo, hell und dunkel, 1280 px): Rad, Laufen, Schwimmen locker (25/50 m),
   CSS-Test, Schwimmkurs, lange Ausfahrt, Bibliothek; alle Blätter; Zurück ins Tagesblatt und in den Kalender.
+- Nachtrag nach der Prüfung mit den echten Daten: Übungen aus Bibliotheks-Workouts («½Lanes … Finish Lane», die Strecke des Schritts ist die ganze
+  Bahn) erscheinen wie in Mein Plan als «25 m · ½ L» Übung und «Bahn locker beenden» (Zeit nach Strecke geteilt, Summe gleich); «Diese Woche» auf Heute
+  zeigt «0 min» statt «0 s».
 
 ## V7.2 · 16.11.2026 · Wünsche vom 16.11.2026, Teil 2: Schwimmen wie im Becken, Verfügbarkeit und Kalender wie enduco
 - **Schwimm-Einheiten `schwimmeinheit-1.0` (`js/schwimmen.js`, `js/schwimmen-ui.js`):** eigene Schwimm-Einheiten (locker, CSS-Wiederholungen,

@@ -304,7 +304,7 @@
     box.innerHTML = `<div class="wl" role="group" aria-label="Diese Woche, Tag antippen für die Einheiten">${tage}</div>
       <div class="wl-fort">
         <div><span>Trainings</span><b>${w.n_ist} <small>/ ${w.n_woche}</small></b><i style="--p:${bar(w.n_ist, w.n_woche)}%"></i></div>
-        <div><span>Dauer</span><b>${esc(W.dauerText(w.s_ist))} <small>/ ${esc(W.dauerText(w.s_woche))}</small></b><i style="--p:${bar(w.s_ist, w.s_woche)}%"></i></div></div>
+        <div><span>Dauer</span><b>${esc(w.s_ist ? W.dauerText(w.s_ist) : "0 min")} <small>/ ${esc(W.dauerText(w.s_woche))}</small></b><i style="--p:${bar(w.s_ist, w.s_woche)}%"></i></div></div>
       <p class="hint">Erledigt = erfasste Aktivitäten (kommen mit dem Nacht-Update); geplant = Mein Plan. Ausgefüllt = erledigt, Rand = geplant, grau = geplant, aber an diesem Tag keine Aktivität dieser Sportart erfasst.
         Woche = erledigt + noch geplant + verpasst${w.n_verpasst ? ` (${w.n_verpasst} verpasst)` : ""}.</p>`;
     box.querySelectorAll("[data-wltag]").forEach((b) => (b.onclick = () => { if (window.APP && window.APP.tagBlatt) window.APP.tagBlatt(b.dataset.wltag); }));   // V6.6

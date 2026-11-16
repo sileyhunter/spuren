@@ -317,7 +317,7 @@
     const icon = sw && s.art === "pause" ? "leiter" : ART_ICON[s.art] || "intervall";
     const zeile = [];
     if (isNum(s.m) && s.m > 0) {
-      zeile.push(`<b>${s.m} m${s.bahnen ? ` · ${esc(s.bahnen)}` : ""}</b>`);
+      zeile.push(`<b>${komma(Math.round(s.m * 10) / 10)} m${s.bahnen ? ` · ${esc(s.bahnen)}` : ""}</b>`);
       if (isNum(s.s) && s.art !== "bahn") zeile.push(`<span class="v73-uhr">${ic("uhr", 14)}${sw || s.geschaetzt ? "≈ " : ""}${esc(D.dauerKurz(s.s))}</span>`);
     } else if (isNum(s.s)) zeile.push(`<b>${s.geschaetzt ? "≈ " : ""}${esc(D.dauerKurz(s.s))}</b>`);
     else zeile.push(`<b>offen</b>`);

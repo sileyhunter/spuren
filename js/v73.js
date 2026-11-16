@@ -15,6 +15,7 @@
   "use strict";
   const V73 = { VERSIONS: { schritte: "schritte-1.0", einheit: "einheit-2.0", rpe: "rpe-zonen-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
+  const komma = (x) => String(x).replace(".", ",");
 
   /* ---------------- Zonen der Abschnitte ---------------- */
   /** Zone 1–5 je Abschnittsart (Pause = Erholung = Zone 1); Test und «ohne» haben keine Zone. */
@@ -220,6 +221,19 @@
   /** Garmin-Hilfsmittel (equipment_type) → Schlüssel wie SW.HILFSMITTEL; Garmin-Stil (stroke_type) → Wort. */
   V73.GERAET = { kickboard: "brett", pull_buoy: "pullbuoy", fins: "flossen", paddles: "paddles", snorkel: "schnorchel" };
   V73.STIL = { free: "Kraulen", freestyle: "Kraulen", breaststroke: "Brust", backstroke: "Rücken", fly: "Delfin", butterfly: "Delfin", im: "Lagen", mixed: "Lagen", drill: "Übung" };
+  /** «½», «1½», «2» (Bahnen laut Enduco) → Zahl; sonst null. */
+  V73.bruch = function (t) {
+    const m = /^(\d+(?:[.,]\d+)?)?\s*([½¼¾])?$/.exec(String(t ?? "").trim());
+    if (!m || (!m[1] && !m[2])) return null;
+    return (m[1] ? +m[1].replace(",", ".") : 0) + (m[2] ? { "½": 0.5, "¼": 0.25, "¾": 0.75 }[m[2]] : 0);
+  };
+  /** Bahnen als Text: 0,5 → «½ L», 1,5 → «1½ L», 2 → «2 L». */
+  V73.bahnenText = function (x) {
+    if (!isNum(x) || x <= 0) return null;
+    const g = Math.floor(x + 1e-9), r = Math.round((x - g) * 100) / 100, Z = { 0.25: "¼", 0.5: "½", 0.75: "¾" };
+    if (!r) return `${g} L`;
+    return Z[r] ? `${g || ""}${Z[r]} L` : `${komma(Math.round(x * 10) / 10)} L`;
+  };
   V73.ausWorkout = function (wo, zoneVon, zielVon) {
     if (!wo || !Array.isArray(wo.schritte)) return [];
     const L = wo.schritte, out = [], swim = wo.sport === "schwimm";
@@ -230,23 +244,36 @@
       // Pause: feste Pause (Schwimmen «Break», sonst ohne Ziel und mit Zeit); Erholung: lockerer Abschnitt mit Strecke oder Ziel
       const art = rest ? (isNum(s.distanz_m) || s.ziel ? "erholung" : "pause") : ART[s.typ] || "belastung";
       const g = s.geraet ? V73.GERAET[String(s.geraet).toLowerCase()] || String(s.geraet).toLowerCase() : null;
-      return { typ: "s", art, zone: z, key: null,
+      const n = { typ: "s", art, zone: z, key: null,
         s: isNum(s.dauer_s) ? s.dauer_s : isNum(s.dauer_est) ? Math.round(s.dauer_est) : null, geschaetzt: !isNum(s.dauer_s) && isNum(s.dauer_est),
         m: isNum(s.distanz_m) ? s.distanz_m : null, bahnen: f.bahnen ? `${f.bahnen} L` : null, beenden: f.beenden,
         text: f.name || (art === "pause" ? (swim ? "Pause am Beckenrand" : "Pause") : swim ? "" : s.text || ""), ziel: zielVon ? zielVon(s) : null,
         kad: s.cad && isNum(s.cad.lo) && isNum(s.cad.hi) && s.cad.hi > 0 ? `${Math.round(s.cad.lo)}–${Math.round(s.cad.hi)} rpm` : null,
         hilfsmittel: g ? [g] : [], stil: swim && s.stil ? V73.STIL[String(s.stil).toLowerCase()] || null : null };
+      // Enduco «½Lanes … Finish Lane»: die Strecke des Schritts ist die ganze Bahn; geübt wird der Bruchteil, der Rest locker (wie Mein Plan)
+      const x = f.beenden ? V73.bruch(f.bahnen) : null;
+      if (isNum(x) && x > 0 && !Number.isInteger(x) && isNum(n.m) && n.m > 0) {
+        const ganz = Math.ceil(x), teil = Math.round((x / ganz) * n.m * 10) / 10, rest_m = Math.round((n.m - teil) * 10) / 10;
+        if (rest_m > 0) {
+          const s1 = isNum(n.s) ? Math.round((n.s * teil) / n.m) : null;
+          const b = { typ: "s", art: "bahn", key: "z1", zone: null, m: rest_m, bahnen: V73.bahnenText(ganz - x), s: isNum(n.s) ? n.s - s1 : null,
+            geschaetzt: n.geschaetzt, text: "Bahn locker beenden", hilfsmittel: [], stil: null };
+          n.m = teil; n.bahnen = V73.bahnenText(x); n.s = s1;
+          return [n, b];
+        }
+      }
+      return [n];
     };
     for (let i = 0; i < L.length;) {
       const s = L[i];
       if (s.gruppe != null && s.wdh === 1 && wo.gruppen && wo.gruppen[s.gruppe]) {
         const g = wo.gruppen[s.gruppe], per = Math.max(1, Math.round((g.bis - g.von + 1) / g.n));
-        const kinder = V73.gruppieren(L.slice(g.von, g.von + per).map(schritt));      // verschachtelte Wiederholungen (Garmin legt sie flach)
+        const kinder = V73.gruppieren(L.slice(g.von, g.von + per).flatMap(schritt));      // verschachtelte Wiederholungen (Garmin legt sie flach)
         const haupt = V73.flach(kinder).find((k) => k.art === "belastung" && k.text);
         out.push({ typ: "b", wdh: g.n, ohneLetzte: false, name: (haupt && haupt.text) || "Wiederholungen", beschreibung: null, schritte: kinder });
         i = Math.max(i + 1, g.bis + 1); continue;
       }
-      out.push(schritt(s)); i++;
+      out.push(...schritt(s)); i++;
     }
     // Schwimmen wie enduco: aufeinanderfolgende Übungsblöcke (Schritt mit «Bahn beenden») als Abschnitt «Technikübungen»
     if (wo.sport === "schwimm") {
