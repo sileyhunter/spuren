@@ -144,9 +144,12 @@
     if (s.cad && isNum(s.cad.lo) && isNum(s.cad.hi) && s.cad.hi > 0) zusatz.push(`Kadenz ${Math.round(s.cad.lo)}–${Math.round(s.cad.hi)}`);
     const name = e.sport === "schwimm" ? W.schrittName(s.text) : null;
     const ziel = W.zielText(s, e.wo);
+    // V7.2: Übung erklären («i») und Hilfsmittel des Schritts (Garmin equipment_type)
+    const SWm = window.SW, ueb = name && SWm ? SWm.finde(name) : null, ger = s.geraet && SWm ? SWm.HILFSMITTEL[SWm.GARMIN_GERAET[s.geraet]] || s.geraet : null;
+    if (ger) zusatz.push(ger);
     return `<li class="ek-s" style="--zc:${farbe}"><div class="ek-s-d"><b>${esc(dauer)}</b><span>${esc(W.schrittTyp(s, e.wo))}</span></div>
       <div class="ek-s-m"><span>${ziel ? esc(ziel) : s.typ === "rest" ? "" : "ohne Zielbereich"}</span>${name ? `<small>${esc(name)}</small>` : ""}${zusatz.length ? `<small>${esc(zusatz.join(" · "))}</small>` : ""}</div>
-      ${z && z.key !== "pause" ? W.zchip(z.key) : ""}</li>`;
+      ${z && z.key !== "pause" ? W.zchip(z.key) : ""}${ueb ? `<button type="button" class="sw-i" data-swu="${esc(ueb.id)}" aria-label="Übung erklären: ${esc(ueb.name)}">i</button>` : ""}</li>`;
   }
   function schritteListe(e) {
     const W = V6(), sk = TR().zonen(C.D.zonen).skalen;
@@ -203,6 +206,7 @@
           : route && key[0] === "n" && e.p.wid ? `<button type="button" class="btn primary gross" data-v6str="n:${esc(e.p.wid)}">${W.icon("route", 20)} Passende Route finden</button>` : ""}</div>`;
     const ov = V59().blatt("einheit", html);
     const sb = ov.querySelector("[data-str]"); if (sb) sb.addEventListener("click", () => V59().schliessen());
+    if (window.SWUI) window.SWUI.binden(ov, null, () => blatt(e, key, opt));   // V7.2: «i» erklärt die Übung, «Zurück» führt in die Einheit
     const nb = ov.querySelector("[data-v6str]");
     if (nb) nb.onclick = () => { V59().schliessen(); if (window.APP) { window.APP.showTab("karte"); window.APP.setPlanActive(true); } window.TRUI.show({ key: nb.dataset.v6str }); };
     if (opt.nachher) opt.nachher(ov);

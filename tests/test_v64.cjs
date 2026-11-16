@@ -234,7 +234,7 @@ test("Wissen: Schweizer Schreibweise (ss), keine Platzhalter, keine persönliche
 });
 
 test("Wissen: Regel-Liste verweist auf vorhandene Versionen und Kapitel", () => {
-  const M = { AN, FK, V62, V64, V59L: L, V66: require("../js/v66.js") };
+  const M = { AN, FK, V62, V64, V59L: L, V66: require("../js/v66.js"), SW: require("../js/schwimmen.js") };
   for (const [mod, key, text, kap] of WS.REGELN) {
     assert.ok(M[mod] && M[mod].VERSIONS && M[mod].VERSIONS[key], `${mod}.${key}`);
     assert.ok(text && WS.kapitel(kap), `${mod}.${key}: Kapitel ${kap}`);
@@ -244,7 +244,7 @@ test("Wissen: Regel-Liste verweist auf vorhandene Versionen und Kapitel", () => 
 
 test("Wissen 1.2/1.3: Kapitel «aufbau» und «vergleich» mit Quellen und Regeln", () => {
   const WS = require("../js/wissen.js");
-  assert.equal(WS.VERSION, "wissen-1.8");
+  assert.equal(WS.VERSION, "wissen-1.9");
   const k = WS.kapitel("aufbau");
   assert.ok(k, "Kapitel aufbau fehlt");
   const v = WS.verweise(k.text.join(" ") + " " + k.kurz);
@@ -491,7 +491,7 @@ test("Ziele (B23): Laufen Z1 «langsamer als», Rad «unter»; Titel-Regel als i
 test("Wissen 1.4 (Audit V6.4): Versionsangaben in den Texten entsprechen dem Code", () => {
   const TR = require("../js/training-route.js");
   const aktuell = new Map();
-  for (const V of [FK.VERSIONS, AN.VERSIONS, V64.VERSIONS, V62.VERSIONS, L.VERSIONS, V6.VERSIONS, TR.VERSIONS, require("../js/v66.js").VERSIONS])
+  for (const V of [FK.VERSIONS, AN.VERSIONS, V64.VERSIONS, V62.VERSIONS, L.VERSIONS, V6.VERSIONS, TR.VERSIONS, require("../js/v66.js").VERSIONS, require("../js/schwimmen.js").VERSIONS])
     for (const v of Object.values(V || {})) { const m = /^(.*)-(\d+\.\d+)$/.exec(v); if (m) aktuell.set(m[1], v); }
   const text = WS.KAPITEL.map((k) => k.text.join(" ") + " " + k.kurz).join(" ");
   const alt = [...text.matchAll(/\b([a-z]+(?:-[a-z]+)*)-(\d+\.\d+)\b/g)].map((m) => m[0]).filter((v) => { const p = v.replace(/-\d+\.\d+$/, ""); return aktuell.has(p) && aktuell.get(p) !== v; });

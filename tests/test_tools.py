@@ -997,6 +997,30 @@ merge_daily.v5_merge(_DP, {"planwoche_add": [_ent]})
 check("Mein Plan: gleiche Woche ersetzt mit Audit", _DP["plan_woche"][0]["tage"]["2026-03-07"]["gesperrt"] is False
       and any(a.get("was") == "Mein Plan ersetzt" for a in _DP.get("audit", [])))
 
+# eigenplan-1.1: vergangene Tage dürfen einmal «eingefroren» werden (wie gezeigt), danach nicht mehr geändert
+_EF = dict(_ent, geaendert="2026-03-06T08:00:00Z", ganz=True, tage=dict(_ent["tage"], **{"2026-03-03": {"gesperrt": False, "eingefroren": True, "einheiten": [
+    {"uid": "v-2026-03-03-0", "vorlage": "lauf_vo2", "dauer": 50, "quelle": "vorschlag"}]}}))
+_EF2 = dict(_EF, geaendert="2026-03-07T08:00:00Z", tage=dict(_EF["tage"], **{"2026-03-03": {"gesperrt": False, "eingefroren": True, "einheiten": []}}))
+check("Mein Plan: vergangenen Tag einfrieren geht einmal, danach unveränderlich (eigenplan-1.1)",
+      merge_daily.planwoche_pruefen(_EF, _ent) is None and "zurück" in (merge_daily.planwoche_pruefen(_EF2, _EF) or "")
+      and "zurück" in (merge_daily.planwoche_pruefen(dict(_EF, tage=dict(_EF["tage"], **{"2026-03-03": {"gesperrt": False, "einheiten": []}})), _ent) or ""),
+      str([merge_daily.planwoche_pruefen(_EF, _ent), merge_daily.planwoche_pruefen(_EF2, _EF)]))
+
+# ---------- V7.2 Verfügbarkeit (verfuegbarkeit-1.0, verfuegbarkeit_pruefen) ----------
+_VF = [{"id": "vf-wt-2", "art": "wochentag", "wt": 2, "min": 60, "sport": ["schwimm"], "v": "verfuegbarkeit-1.0", "geaendert": "2026-03-04T19:00:00Z"},
+       {"id": "vf-2026-03-05", "art": "tag", "date": "2026-03-05", "min": 0, "sport": [], "v": "verfuegbarkeit-1.0", "geaendert": "2026-03-04T19:00:00Z"},
+       {"id": "vf-2026-03-06", "art": "tag", "date": "2026-03-06", "min": None, "sport": None, "v": "verfuegbarkeit-1.0", "geaendert": "2026-03-04T19:00:00Z"}]
+_DV = {}
+merge_daily.v5_merge(_DV, {"verfuegbarkeit_add": _VF})
+check("Verfügbarkeit: Wochentag und Tage übernommen", sorted(v["id"] for v in _DV.get("plan_verfuegbarkeit", [])) == ["vf-2026-03-05", "vf-2026-03-06", "vf-wt-2"], str(_DV.get("plan_verfuegbarkeit")))
+_VFB = [dict(_VF[0], wt=8, id="vf-wt-8"), dict(_VF[0], id="vf-wt-3"), dict(_VF[1], min=61), dict(_VF[1], min=800), dict(_VF[1], sport=["ski"]),
+        dict(_VF[1], sport=["rad", "rad"]), dict(_VF[1], date="2026-02-30", id="vf-2026-02-30"), dict(_VF[1], art="monat"), dict(_VF[1], min=True)]
+check("Verfügbarkeit: falscher Wochentag, ID, Zeit, Sportart, Datum und Art abgelehnt",
+      all(merge_daily.verfuegbarkeit_pruefen(v) for v in _VFB), str([merge_daily.verfuegbarkeit_pruefen(v) for v in _VFB]))
+merge_daily.v5_merge(_DV, {"verfuegbarkeit_add": [{"id": "vf-2026-03-05", "art": "tag", "date": "2026-03-05", "entfernt": True, "v": "verfuegbarkeit-1.0", "geaendert": "2026-03-05T07:00:00Z"}]})
+check("Verfügbarkeit: zurücksetzen ersetzt mit Audit", next(v for v in _DV["plan_verfuegbarkeit"] if v["id"] == "vf-2026-03-05").get("entfernt") is True
+      and any(a.get("was") == "Verfügbarkeit ersetzt" for a in _DV.get("audit", [])))
+
 # ---------- V6.5 Enduco-Bibliothek (tools/bibliothek.py, bib-1.0) – erfundene Workouts ----------
 import bibliothek  # noqa: E402
 _S1 = [{"order": 1, "type": "warmup", "end_condition": "time", "end_condition_value": 600.0, "target_type": "power.zone", "target_value_low": 120.0, "target_value_high": 150.0},

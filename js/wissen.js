@@ -1,4 +1,4 @@
-/* V6.4 Wissen (wissen-1.8; 1.8 = V7.1 Kapitel «vergleichbar»: vergleichbare Läufe und effektive Zeit; 1.5 = V6.5 Wahl je Tag und Bibliothek im Kapitel «vergleich»; 1.6 = V6.6 Mein Plan und An Garmin senden im Kapitel «modelle», TL ≈ im Kapitel «last», bearbeitete Woche und eigene Garmin-Workouts im Kapitel «vergleich»; 1.7 = V6.6.2 Form zu Tagesbeginn und Rad-Last je System im Kapitel «last»): Erklärungen zu allen Modellen und Regeln der Seite – Zonen, Laktat und Messung, Schwellen-Methoden,
+/* V6.4 Wissen (wissen-1.9; 1.9 = V7.2 Schwimm-Einheit, Technikübungen und Verfügbarkeit; 1.8 = V7.1 Kapitel «vergleichbar»: vergleichbare Läufe und effektive Zeit; 1.5 = V6.5 Wahl je Tag und Bibliothek im Kapitel «vergleich»; 1.6 = V6.6 Mein Plan und An Garmin senden im Kapitel «modelle», TL ≈ im Kapitel «last», bearbeitete Woche und eigene Garmin-Workouts im Kapitel «vergleich»; 1.7 = V6.6.2 Form zu Tagesbeginn und Rad-Last je System im Kapitel «last»): Erklärungen zu allen Modellen und Regeln der Seite – Zonen, Laktat und Messung, Schwellen-Methoden,
    Intensitätsverteilung, Trainingsmodelle, Periodisierung, Taper, Langdistanz, Intervalle, Last, Erholung, Schwimmen, Verpflegung.
    Alle Texte in eigenen Worten (keine Zitate), jede Aussage mit Quelle; [[id]] im Text verweist auf WS.QUELLEN (DOI-Link).
    Ohne DOM (Inhalt), Anzeige in index.html (Ansicht «Wissen» unter Plan). */
@@ -8,7 +8,7 @@
   if (root) root.WS = WS;
 })(typeof window !== "undefined" ? window : null, function () {
   "use strict";
-  const WS = { VERSION: "wissen-1.8" };
+  const WS = { VERSION: "wissen-1.9" };
 
   /* ---------------- Quellen: Autoren, Jahr, Titel, Zeitschrift, DOI (oder URL) und der Kern in einem Satz (eigene Worte) ---------------- */
   WS.QUELLEN = {
@@ -291,10 +291,11 @@
         "<b>Kombiniert – dein Standard.</b> Bis zum Wechsel (vorgegeben: 1. Februar im Jahr des Hauptrennens) polarisiert, danach rennspezifisch. Begründung: Im Winter steht die Grundlage mit gezielten VO2max-Reizen im Vordergrund, wo polarisiert in Blöcken bis 12 Wochen leicht im Vorteil ist [[oliveira2024]]; ab Februar wird das Training dem Rennen ähnlicher [[laursen2005]] [[munoz2014a]]. Ehrlich gesagt: Dass diese Reihenfolge die beste ist, belegt keine Studie – bei Läufern war sogar die umgekehrte Abfolge (pyramidal, dann polarisiert) am wirksamsten [[filipas2022]]. Das Datum lässt sich im Plan ändern.",
         "<b>Die Wochenstruktur (alle Modelle).</b> Montag frei; Dienstag Lauf-Schlüsseleinheit und Schwimmkurs; Mittwoch Rad locker; Donnerstag Rad-Schlüsseleinheit und CSS-Schwimmen; Freitag Laufen locker; Samstag lange Ausfahrt (rennspezifisch mit Koppellauf); Sonntag langer Lauf und Schwimmen. Stunden: Schwimmen 20 %, Rad 50 %, Laufen 30 % (eigene Festlegung, [[#aufbau]]). Unter 7 Stunden fallen die lockeren Einheiten unter der Woche weg. Erholungswoche: nur eine, gekürzte Schlüsseleinheit (Rad), Laufen und Schwimmen locker. Taper: Schlüsseleinheiten mit einem Drittel bis der Hälfte weniger Wiederholungen, Intensität bleibt ([[#taper]]). Tests ersetzen die Einheit derselben Sportart; vor einem Stufentest wird die Schlüsseleinheit derselben Sportart locker.",
         "<b>Was nicht drin ist.</b> Krafttraining plant der Vorschlag nicht ein, obwohl es Ökonomie und Leistung verbessern kann ([[#langdistanz]]). Und: Der Vorschlag ersetzt Enduco nicht, solange du mit Enduco trainierst.",
-        "<b>Mein Plan.</b> Den Wochenvorschlag kannst du im Kalender je Tag ändern: Training hinzufügen (Sportart, Vorlage, Dauer), Dauer ändern, verschieben, entfernen, einen Tag sperren. Die Vorlagen sind die Bausteine dieser Modelle, Schlüsseleinheiten ab ihrer kurzen Fassung, darüber mit lockerem Training verlängert (vorlagen-1.0). Vergangene Tage bleiben, wie sie waren; ein gesperrter Tag ändert sich auch durch «Woche leeren» oder «Änderungen verwerfen» nicht (eigenplan-1.0). Der Vergleich mit Enduco nimmt dann deine bearbeitete Woche. Ob eine Änderung besser ist, sagt die Seite nicht; sie hält fest, was du geplant hast.",
+        "<b>Mein Plan.</b> Den Wochenvorschlag kannst du im Kalender je Tag ändern: Training hinzufügen (Sportart, Vorlage, Dauer), Dauer ändern, verschieben, entfernen, einen Tag sperren. Die Vorlagen sind die Bausteine dieser Modelle, Schlüsseleinheiten ab ihrer kurzen Fassung, darüber mit lockerem Training verlängert (vorlagen-1.0). Vergangene Tage bleiben, wie sie waren; ein gesperrter Tag ändert sich auch durch «Woche leeren», «Anpassen» oder «Neu berechnen» nicht (eigenplan-1.1). Der Vergleich mit Enduco nimmt dann deine bearbeitete Woche. Ob eine Änderung besser ist, sagt die Seite nicht; sie hält fest, was du geplant hast.",
+        "<b>Verfügbarkeit (verfuegbarkeit-1.0).</b> Je Tag oder je Wochentag legst du fest, wie viel Zeit du hast und welche Sportarten gehen (Schwimmen, Rad, Laufen). Der Vorschlag verteilt sich danach: Eine Einheit bleibt an ihrem Tag, wenn sie dort passt; sonst kommt sie auf den besten anderen Tag – nahe am ursprünglichen, harte Einheiten nicht an zwei Tagen hintereinander, nicht zweimal dieselbe Sportart am selben Tag, Ruhetage nur, wenn du dort Zeit eingetragen hast. Zuerst die Schlüsseleinheiten, dann die langen (mit dem Koppellauf), dann die lockeren. Passt eine Einheit nirgends ganz, wird sie gekürzt (lockere bis zur kürzesten Vorlage, Schlüsseleinheiten in der kurzen Fassung), sonst fällt sie weg – beides steht in den Hinweisen der Woche. Tests, der Schwimmkurs und deine eigenen Einheiten bleiben an ihrem Tag; in Rennwochen wird nichts verschoben. Die Reihenfolge und die Abzüge sind eigene Festlegungen, keine Studienvorgaben. Wochen ohne eigene Änderungen folgen der Verfügbarkeit von selbst; eine bearbeitete Woche bleibt, bis du «Anpassen» (Rest der Woche neu verteilen, Gesperrtes und Eigenes bleibt) oder «Neu berechnen» (diese und alle folgenden Wochen wieder nach dem Vorschlag) wählst.",
         "<b>An Garmin senden.</b> Rad- und Laufeinheiten aus Mein Plan lassen sich als Garmin-Workout auf die Uhr bringen: von Hand bis eine Woche voraus oder je Tag automatisch am Vortag ab 23 Uhr, damit du den nächsten Tag bis dahin noch ändern kannst. Die Ziele kommen aus deinem aktiven Zonenprofil – Leistung am Rad, Tempo beim Laufen; Einrollen, Auslaufen und Pausen ohne Ziel. Wo eine Zone nach oben offen ist (VO2max), zeigt die Uhr einen Bereich bis 15 % über der Untergrenze; das ist eine eigene Festlegung, damit die Uhr überhaupt einen Bereich anzeigen kann, keine Vorgabe aus einer Studie. Schwimmen, Tests sowie Kraft und Mobility werden nicht gesendet; Workouts aus der Bibliothek werden nur in den Kalender eingeplant. Ändert sich eine gesendete Einheit, wird zuerst die neue Fassung gesendet und dann die alte ausgetragen (garmin-senden-1.0). Enduco-Workouts bleiben unverändert."
       ],
-      seite: [["V64", "modell"], ["V64", "woche"], ["V64", "aufteilung"], ["V66", "eigenplan"], ["V66", "vorlagen"], ["V66", "garmin"]], quellen: ["roennestad2015", "helgerud2007", "oliveira2024", "stoeggl2014", "rosenblat2025", "laursen2005", "millet2000", "munoz2014a", "filipas2022"] },
+      seite: [["V64", "modell"], ["V64", "woche"], ["V64", "aufteilung"], ["V66", "eigenplan"], ["V66", "vorlagen"], ["V66", "verfuegbarkeit"], ["V66", "garmin"]], quellen: ["roennestad2015", "helgerud2007", "oliveira2024", "stoeggl2014", "rosenblat2025", "laursen2005", "millet2000", "munoz2014a", "filipas2022"] },
 
     { id: "norwegisch", titel: "Die norwegische Methode", kurz: "Viel lockerer Umfang und mehrere Einheiten knapp unter der zweiten Schwelle, deren Intensität mit Laktat überwacht wird. Ziel: möglichst viel Arbeit nahe der Schwelle bei wenig Ermüdung.",
       text: [
@@ -401,8 +402,10 @@
         "<b>Wo CSS liegt.</b> Etwas über dem Tempo des maximalen Laktat-Gleichgewichts [[dekerle2005]]: zügig, aber nicht beliebig lange haltbar. Darum taugt CSS für Wiederholungen mit kurzen Pausen, nicht als Dauertempo über 3,8 km.",
         "<b>Im Vorschlag.</b> CSS-Wiederholungen (100 m im CSS-Tempo, 15 s Pause) am Donnerstag, der Kurs am Dienstag für die Technik, eine lockere Einheit am Sonntag bei mehr Stunden. Lockeres Tempo etwa CSS + 8–12 s pro 100 m – eine Annahme, keine Studienvorgabe. Ohne CSS-Test gibt die Seite kein Tempo vor.",
         "<b>Tests.</b> Ein CSS-Test alle 6–8 Wochen am gleichen Wochentag, nicht an Kursabenden; immer gleiches Becken und gleiches Einschwimmen, sonst sind die Werte nicht vergleichbar.",
+        "<b>Eine Einheit im Becken (schwimmeinheit-1.0).</b> Eigene Schwimm-Einheiten stehen als Serien da, wie du sie im Becken schwimmst: Einschwimmen, zwei bis drei Technikübungen, bei längeren Einheiten Beine mit Brett, die Hauptserie, bei sehr langen Pull mit Pullbuoy, Ausschwimmen – jeweils mit Metern, Bahnen, Pause am Beckenrand und Hilfsmitteln. Die Meter folgen aus der Plandauer: mit CSS-Test aus dem CSS-Tempo, sonst aus deinem Tempo in den letzten Becken-Einheiten (dann nur als Richtwert, ohne Tempoziel). Ein- und Ausschwimmen etwa CSS + 15–20 s pro 100 m – wie die anderen Tempoangaben eine Annahme, keine Studienvorgabe.",
+        "<b>Technikübungen (uebungen-2.0).</b> Jede Woche andere Übungen aus drei Gruppen (Lage und Rotation, Armzug und Wasserfassung, Beine und Atmung), damit sich nichts einschleift und alles regelmässig vorkommt. Zu jeder Übung stehen Zweck, Ablauf, worauf du achtest, typische Fehler und die Hilfsmittel (Brett, Pullbuoy, Flossen, Paddles; «freiwillig» heisst: geht auch ohne). Die Beschreibungen sind eigene, an der üblichen Trainingspraxis orientiert; dass eine bestimmte Übung schneller macht, ist nicht durch Studien belegt. Den eigentlichen Nutzen sieht man nur im Wasser: im CSS-Test und bei der Technik auf Video.",
       ],
-      seite: [["V59L", "css"], ["V62", "testplan"]], quellen: ["wakayoshi1992", "dekerle2005"] },
+      seite: [["V59L", "css"], ["V62", "testplan"], ["SW", "einheit"], ["SW", "uebungen"]], quellen: ["wakayoshi1992", "dekerle2005"] },
 
     { id: "verpflegung", titel: "Verpflegung im Training und Rennen", kurz: "Je länger die Belastung, desto mehr Kohlenhydrate pro Stunde – bis etwa 90 g mit Glukose und Fruktose. Der Darm lässt sich daran gewöhnen: Rennverpflegung im Training üben.",
       text: [
@@ -438,6 +441,7 @@
     ["V64", "intensitaet", "Intensität je Sportart", "aufbau"],
     ["V64", "vergleich", "Vergleich mit Enduco und deine Wahl je Tag", "vergleich"],
     ["V66", "eigenplan", "Mein Plan: Woche im Kalender bearbeiten", "modelle"],
+    ["V66", "verfuegbarkeit", "Verfügbarkeit je Tag: Vorschlag verteilen", "modelle"],
     ["V66", "tl", "TL ≈ geplanter Einheiten", "last"],
     ["V66", "garmin", "An Garmin senden", "modelle"],
     ["V64", "tid", "Intensitätsverteilung und Abgleich", "tid"],
@@ -456,6 +460,8 @@
     ["FK", "langfahrt", "Sollband lange Ausfahrt", "langdistanz"],
     ["FK", "entwicklung", "Meine Entwicklung", "langdistanz"],
     ["V59L", "css", "CSS-Test", "schwimmen"],
+    ["SW", "einheit", "Schwimm-Einheit im Becken (Serien, Meter, Tempo)", "schwimmen"],
+    ["SW", "uebungen", "Technikübungen (Zweck, Ablauf, Hilfsmittel)", "schwimmen"],
     ["AN", "energie", "Energie und Verpflegung", "verpflegung"],
     ["FK", "fueling", "Verpflegungsprotokoll", "verpflegung"],
     ["FK", "koppel", "Koppelläufe", "langdistanz"],

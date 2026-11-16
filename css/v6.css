@@ -693,6 +693,15 @@ section.view:has(> nav.unter) * { scroll-margin-top: 66px; }
 .mp-auto { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: 2px 0 6px; }
 .mp-auto input { width: 22px; height: 22px; accent-color: var(--accent); flex: none; }
 .mp-auto:has(input[disabled]) { color: var(--muted); }
+/* V7.2 verfuegbarkeit-1.0: Form zu Tagesbeginn und Verfügbarkeit im Tagesblatt (Vorbild enduco) */
+.mp-form { margin: 4px 0 2px; } .mp-form i { font-style: normal; font-weight: 600; }
+.mp-vf { display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin: 8px 0; background: var(--surface-2); border: 1px solid var(--line); border-radius: 14px; }
+.mp-vf-t { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; } .mp-vf-t .abschnitt { margin: 0; }
+.mp-vf-t small { color: var(--muted); font-size: 12.5px; }
+.mp-vf-sp { display: flex; gap: 4px; } .mp-vf-sp i { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; color: var(--sp); background: color-mix(in srgb, var(--sp) 16%, transparent); }
+.mp-vf-wahl { gap: 8px; flex-wrap: wrap; margin: 4px 0 8px; } .mp-vf-wahl .chip { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; }
+.kw-vf { color: var(--muted); font-size: 12px; margin: 2px 0 0; }
+.kw-vt { margin: 6px 0 2px; } .kw-vt > summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; }
 .kw-kopf { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin: 2px 0 10px; }
 .kw-kopf small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 3px; }
 .kw-tage { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }

@@ -44,7 +44,7 @@ test("eigenplan-1.0: hinzufügen, Dauer, verschieben, entfernen – vergangene u
   const w = woche(), ctx = ctxFuer(w, "2026-11-18");                     // heute = Mittwoch
   let r = V66.aendern(null, { art: "hinzufuegen", date: "2026-11-19", einheit: { vorlage: "kraft", dauer: 30 } }, ctx);
   assert.ok(!r.fehler, r.fehler); let E = r.eintrag;
-  assert.equal(E.id, "wo-" + MO); assert.equal(E.v, "eigenplan-1.0");
+  assert.equal(E.id, "wo-" + MO); assert.equal(E.v, "eigenplan-1.1");
   const vorDo = w.tage.find((t) => t.date === "2026-11-19").einheiten.length;
   assert.equal(E.tage["2026-11-19"].einheiten.length, vorDo + 1, "Vorschlag des Tages übernommen, eigene dazu");
   assert.ok(E.tage["2026-11-19"].einheiten.slice(0, vorDo).every((s) => s.quelle === "vorschlag"));
@@ -240,4 +240,107 @@ test("vergleich-1.4 / bib-1.1: selbst gesendete Einträge im Garmin-Kalender sin
   assert.equal(V66.eigenGarmin({ title: "Beispiel", date: "2026-11-21", wid: 42 }, [{ quelle: "bibliothek", wid: 42, date: "2026-11-20" }]), false);
   const acts = [{ date: "2026-11-18", sport: "rad", wk: { name: "IN · Grundlage", plan_s: 3600 } }, { date: "2026-11-19", sport: "rad", wk: { name: "Beispiel", plan_s: 3600 } }];
   assert.deepEqual(V64.enducoAusUhr(acts, []).map((x) => x.titel), ["Beispiel"]);
+});
+
+/* ---------------- V7.2 verfuegbarkeit-1.0 und eigenplan-1.1 (erfundene Wochen, keine persönlichen Werte) ---------------- */
+const zeig = (w) => w.tage.map((t) => t.einheiten.map((e) => e.id).join("+"));
+const VF = (...L) => V66.verfuegbarkeit(L);
+
+test("verfuegbarkeit-1.0: Einträge prüfen, Tag vor Wochentag, zurücksetzen, Kurztext", () => {
+  const J = "2026-11-16T10:00:00Z";
+  assert.equal(V66.vfPruefen(V66.vfEintrag({ wt: 2 }, { min: 60, sport: ["schwimm"] }, J)), null);
+  assert.equal(V66.vfPruefen(V66.vfEintrag({ date: "2026-11-19" }, { min: 0, sport: [] }, J)), null);
+  assert.match(V66.vfPruefen({ id: "vf-wt-8", art: "wochentag", wt: 8 }), /1–7/);
+  assert.match(V66.vfPruefen({ id: "vf-2026-11-19", art: "tag", date: "2026-11-19", min: 61 }), /5-min/);
+  assert.match(V66.vfPruefen({ id: "vf-2026-11-19", art: "tag", date: "2026-11-19", sport: ["ski"] }), /Sportart/);
+  assert.match(V66.vfPruefen({ id: "vf-x", art: "tag", date: "2026-11-19" }), /ID/);
+  const f = VF(V66.vfEintrag({ wt: 4 }, { min: 90, sport: null }, J), V66.vfEintrag({ date: "2026-11-19" }, { min: 0, sport: [] }, J));
+  assert.equal(f("2026-11-19").quelle, "tag"); assert.equal(f("2026-11-19").min, 0);
+  assert.equal(f("2026-11-26").quelle, "wochentag"); assert.equal(f("2026-11-26").min, 90);
+  assert.equal(f("2026-11-20"), null); assert.equal(f.leer, false);
+  const g = VF([V66.vfEintrag({ date: "2026-11-19" }, { min: 30, sport: ["rad"] }, J)], [V66.vfEintrag({ date: "2026-11-19" }, null, J)]);
+  assert.equal(g("2026-11-19"), null, "zurückgesetzt"); assert.equal(g.leer, true);
+  assert.equal(V66.vfText({ min: 90, sport: ["rad", "lauf"] }), "1:30 h · Rad, Laufen");
+  assert.equal(V66.vfText({ min: null, sport: null }), "Zeit offen · alle Sportarten");
+  assert.equal(V66.vfText({ min: 0, sport: null }), "kein Training");
+});
+
+test("verfuegbarkeit-1.0: Vorschlag verteilen – Tag ohne Zeit, nur Schwimmen, Kurs fällt weg, Summen und Meldungen", () => {
+  const w = woche();
+  assert.equal(V66.wocheVerteilt(w, VF(), {}), w, "ohne Verfügbarkeit dieselbe Woche");
+  const roh = zeig(w);
+  const v = V66.wocheVerteilt(w, VF(V66.vfEintrag({ date: "2026-11-19" }, { min: 0, sport: [] })), {});
+  assert.notEqual(v, w); assert.deepEqual(zeig(w), roh, "die Vorschlagswoche selbst bleibt unverändert");
+  assert.equal(v.tage[3].einheiten.length, 0); assert.match(v.tage[3].notiz, /kein Training/);
+  assert.equal(v.minuten.total, w.minuten.total, "nichts verloren, nur verschoben");
+  assert.ok(v.verteilung.verschoben.length >= 2); assert.ok(v.hinweise.some((h) => /verschoben \(Verfügbarkeit\)/.test(h)));
+  // harte Rad- und Laufeinheiten nicht am selben Tag und nicht an zwei Tagen hintereinander
+  const hartAn = v.tage.map((t) => t.einheiten.some((e) => e.schluessel));
+  for (let i = 1; i < 7; i++) assert.ok(!(hartAn[i] && hartAn[i - 1]), "harte Einheiten nicht hintereinander: " + zeig(v).join(" | "));
+  // Dienstag nur Schwimmen 60 min: Lauf-Schlüssel geht weg, der Kurs bleibt
+  const s = V66.wocheVerteilt(w, VF(V66.vfEintrag({ wt: 2 }, { min: 60, sport: ["schwimm"] })), {});
+  assert.deepEqual(s.tage[1].einheiten.map((e) => e.sport), ["schwimm"]);
+  assert.equal(s.tage.flatMap((t) => t.einheiten).filter((e) => e.schluessel && e.sport === "lauf").length, 1, "Lauf-Schlüssel an einem anderen Tag");
+  // Dienstag ohne Schwimmen: Kurs entfällt (gemeldet)
+  const k = V66.wocheVerteilt(w, VF(V66.vfEintrag({ wt: 2 }, { min: null, sport: ["lauf"] })), {});
+  assert.ok(!k.tage[1].einheiten.some((e) => e.id === "schwimm_kurs")); assert.ok(k.verteilung.weg.some((x) => x.titel === "Schwimmkurs"));
+});
+
+test("verfuegbarkeit-1.0: wenig Zeit am eigenen Tag kürzt nur wenig, sonst ganz an einem anderen Tag; Rennwoche nur gemeldet", () => {
+  const w = woche(), sa = w.tage[5].einheiten[0];
+  const knapp = V66.wocheVerteilt(w, VF(V66.vfEintrag({ wt: 6 }, { min: sa.dauer - 15, sport: null })), {});
+  assert.equal(knapp.tage[5].einheiten[0].dauer, sa.dauer - 15); assert.equal(knapp.verteilung.gekuerzt.length, 1);
+  const kurz = V66.wocheVerteilt(w, VF(V66.vfEintrag({ wt: 6 }, { min: 45, sport: null })), {});
+  assert.ok(!kurz.tage[5].einheiten.some((e) => e.id === sa.id), "zu stark gekürzt: lieber an einem anderen Tag");
+  assert.equal(kurz.tage.flatMap((t) => t.einheiten).filter((e) => e.id === sa.id)[0].dauer, sa.dauer, "dort in voller Länge");
+  const keine = V66.wocheVerteilt(w, VF(...[1, 2, 3, 4, 5, 6, 7].map((wt) => V66.vfEintrag({ wt }, { min: 0, sport: [] }))), {});
+  assert.equal(keine.minuten.total, 0); assert.ok(keine.verteilung.weg.length >= 6, "alles gemeldet, nichts still");
+  const r = V64.woche({ woche: MO, phase: "Taper", stunden: 6, modell: "polarisiert", rennen: [{ date: "2026-11-22", name: "Testrennen" }] });
+  const rv = V66.wocheVerteilt(r, VF(V66.vfEintrag({ wt: 2 }, { min: 0, sport: [] })), {});
+  assert.deepEqual(zeig(rv), zeig(r), "Rennwoche: nichts verschoben"); assert.ok(rv.hinweise.some((h) => /Rennwoche/.test(h)));
+});
+
+test("eigenplan-1.1: verteilte Woche wird beim ersten Ändern ganz festgehalten; Anpassen und Neu berechnen", () => {
+  const w0 = woche(), verf = VF(V66.vfEintrag({ wt: 4 }, { min: 0, sport: [] })), wv = V66.wocheVerteilt(w0, verf, {});
+  const ctx = Object.assign(ctxFuer(wv, "2026-11-18"), { verteilt: true, verf, roh: (d) => (w0.tage.find((t) => t.date === d) || {}).einheiten, o: { phase: "Grundlage" } });
+  let E = V66.aendern(null, { art: "hinzufuegen", date: "2026-11-20", einheit: { vorlage: "kraft", dauer: 30 } }, ctx).eintrag;
+  assert.equal(E.ganz, true); assert.equal(Object.keys(E.tage).length, 7, "alle Tage festgehalten");
+  assert.equal(E.tage["2026-11-16"].eingefroren, true); assert.equal(E.tage["2026-11-17"].eingefroren, true); assert.equal(E.tage["2026-11-18"].eingefroren, undefined);
+  const P = V66.meinPlan(wv, E, {});
+  assert.deepEqual(P.tage.filter((t) => t.bearbeitet).map((t) => t.date), ["2026-11-20"], "nur der geänderte Tag gilt als bearbeitet");
+  assert.deepEqual(zeig(P).map((x, i) => (i === 4 ? x.replace(/\+kraft$/, "") : x)), zeig(wv), "gleich wie vorher, plus die eigene Einheit");
+  // Samstag fällt weg → Anpassen: eigene Einheit bleibt, vergangene Tage bleiben, nichts doppelt
+  const verf2 = VF(V66.vfEintrag({ wt: 4 }, { min: 0, sport: [] }), V66.vfEintrag({ wt: 6 }, { min: 0, sport: [] }));
+  E = V66.aendern(E, { art: "anpassen" }, Object.assign({}, ctx, { verf: verf2 })).eintrag;
+  const A = V66.meinPlan(wv, E, {});
+  assert.equal(A.tage[5].einheiten.length, 0); assert.ok(A.tage[4].einheiten.some((e) => e.id === "kraft" && e.quelle === "eigen"));
+  assert.deepEqual(zeig(A).slice(0, 2), zeig(wv).slice(0, 2), "Montag und Dienstag (vorbei) unverändert");
+  const ids = A.tage.flatMap((t) => t.einheiten.map((e) => e.id)).sort(), vorher = wv.tage.flatMap((t) => t.einheiten.map((e) => e.id)).concat(["kraft"]).sort();
+  assert.deepEqual(ids, vorher, "Anpassen verschiebt nur");
+  assert.equal(E.verteilung.art, "anpassen"); assert.ok(E.verteilung.meldungen.length >= 1);
+  // Sonntag sperren, Neu berechnen: Gesperrtes bleibt, eigene Einheit an anderen Tagen fällt weg, nichts doppelt
+  E = V66.aendern(E, { art: "sperren", date: "2026-11-22" }, ctx).eintrag;
+  E = V66.aendern(E, { art: "neuberechnen" }, Object.assign({}, ctx, { verf: verf2 })).eintrag;
+  const N = V66.meinPlan(wv, E, {});
+  assert.deepEqual(zeig(N)[6], zeig(A)[6], "gesperrter Sonntag bleibt"); assert.ok(!N.tage.some((t) => t.einheiten.some((e) => e.id === "kraft")));
+  const n = N.tage.flatMap((t) => t.einheiten.map((e) => e.id));
+  assert.equal(n.filter((x) => x === "rad_lang").length, 1, "die lange Ausfahrt nur einmal");
+  // künftige Woche ohne Sperren: Neu berechnen → wieder automatisch
+  const ctxF = Object.assign({}, ctx, { montag: "2026-11-23", heute: "2026-11-18", vorschlag: () => [] });
+  let F = V66.aendern(null, { art: "hinzufuegen", date: "2026-11-25", einheit: { vorlage: "kraft", dauer: 30 } }, ctxF).eintrag;
+  assert.equal(F.ganz, true);
+  F = V66.aendern(F, { art: "neuberechnen" }, ctxF).eintrag;
+  assert.deepEqual(F.tage, {}); assert.equal(F.ganz, undefined);
+  // ohne verteilte Woche: Verhalten wie eigenplan-1.0 (nur geänderte Tage gespeichert)
+  const E0 = V66.aendern(null, { art: "hinzufuegen", date: "2026-11-20", einheit: { vorlage: "kraft", dauer: 30 } }, ctxFuer(w0, "2026-11-18")).eintrag;
+  assert.equal(E0.ganz, undefined); assert.deepEqual(Object.keys(E0.tage), ["2026-11-20"]);
+});
+
+test("formPrognose: Fitness und Ermüdung mit der geplanten Last fortgeschrieben (pmc-2.0)", () => {
+  const p = V66.formPrognose({ ctl: 50, atl: 60 }, "2026-11-18", "2026-11-20", (d) => (d === "2026-11-18" ? 100 : null));
+  let ctl = 50, atl = 60; ctl += (100 - ctl) / 42; atl += (100 - atl) / 7; ctl += (0 - ctl) / 42; atl += (0 - atl) / 7;
+  assert.ok(Math.abs(p.ctl - ctl) < 1e-9 && Math.abs(p.atl - atl) < 1e-9);
+  assert.equal(p.form, Math.round(ctl) - Math.round(atl)); assert.equal(p.offen, 1);
+  assert.equal(V66.formPrognose({ ctl: 50, atl: 60 }, "2026-11-18", "2026-11-18", () => 0).offen, 0, "gleicher Tag: Stand zu Tagesbeginn");
+  assert.equal(V66.formPrognose(null, "2026-11-18", "2026-11-19"), null);
 });

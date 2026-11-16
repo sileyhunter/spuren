@@ -94,7 +94,8 @@
         const zeit = ec === "time" || ec === "fixed.rest";      // workout-1.1: feste Pause («Break: 30s») ist eine Zeit, kein offener Schritt
         out.push({ i: out.length, typ: TYP[t] || "interval", dauer_s: zeit && val > 0 ? val : null, distanz_m: ec === "distance" && val > 0 ? val : null,
           offen: !(zeit || ec === "distance"), ziel: zielAus(st, Z, sport), cad, gruppe: gi, wdh: rep,
-          ec: ec || null, val: isNum(val) ? val : null, text: st.description ? String(st.description).slice(0, 300) : null });
+          ec: ec || null, val: isNum(val) ? val : null, text: st.description ? String(st.description).slice(0, 300) : null,
+          geraet: st.equipment_type && st.equipment_type !== "none" ? String(st.equipment_type) : null });
       }
     };
     walk(steps, null, null);

@@ -18,6 +18,10 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
 - **V7.1:** `tools/serien_klar.mjs` (Reihen ausgewählter Aktivitäten nach `work/` entschlüsseln, nie committen), `tools/zeit_nachrechnen.py`
   (zeit-1.1 für Aktivitäten draussen mit GPS ohne eigene Regel aus der 2-s-Reihe nachrechnen, alte Werte ins Audit, `zq` = «reihe-2s»);
   `FK.laufVergleichbar` (laufvergleich-1.0) in `js/formkurve.js`; Tagebuch tagebuch-2.0 in `js/v53-extra.js`; Jahresstatistik umfang-tabelle-1.0 in `index.html`
+- **V7.2:** `js/schwimmen.js` (ohne DOM: Technikübungen uebungen-2.0, Schwimm-Einheit schwimmeinheit-1.0, Übung aus Enduco-Schritt finden),
+  `js/schwimmen-ui.js` (Einheit wie im Becken, Übungsblatt, Katalog unter Analyse → Schwimmen), `tests/test_v72.cjs`; Verfügbarkeit verfuegbarkeit-1.0
+  und Mein Plan eigenplan-1.1 in `js/v66.js` (`V66.verfuegbarkeit`, `V66.verteilen`, `V66.wocheVerteilt`, Aktionen «anpassen», «neuberechnen»,
+  «festhalten», `V66.formPrognose`), Oberfläche im Tagesblatt `js/v66-ui.js`, Anwendung im Plan-Kontext `js/v64-ui.js`
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
 - `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)
@@ -327,7 +331,10 @@ V6.6: `garmin_senden` (Auftrag «An Garmin senden» je Tag → `garmin_senden_ad
 ID «gs-<Datum>», modus senden/auto/aus, Tag vom Erstellen bis eine Woche voraus, Workouts nur Rad/Laufen mit bekannten Feldern; abgelehnte mit
 Grund in `garmin_abgelehnt`; dieselbe oder ältere Fassung wird nie nochmals offen). `planwoche` (Mein Plan einer Woche → `planwoche_add` → `plan_woche`, eigenplan-1.0; `merge_daily.planwoche_pruefen`: Montag, ID «wo-<Montag>»,
 Tage in der Woche, eindeutige Einheiten, Quelle vorschlag/eigen/bibliothek, Dauer 5–600 min, Tage vor der Änderung und gesperrte Tage unverändert
-gegenüber dem Stand davor; gleiche Woche ersetzt mit Audit). V6.2.2: `zonen` (auf der Seite bestätigte Zonenprofile → `zonen_add`, geprüft wie oben). V6.4: `modell` (gewähltes Trainingsmodell
+gegenüber dem Stand davor; gleiche Woche ersetzt mit Audit). V6.2.2: `zonen` (auf der Seite bestätigte Zonenprofile → `zonen_add`, geprüft wie oben). V7.2: `verfuegbarkeit` (Zeit und Sportarten je Tag
+«vf-JJJJ-MM-TT» oder je Wochentag «vf-wt-1…7», `entfernt` = zurücksetzen → `verfuegbarkeit_add` → `plan_verfuegbarkeit`; `merge_daily.verfuegbarkeit_pruefen`;
+gleiche ID ersetzt mit Audit). Mein Plan eigenplan-1.1: vergangene Tage einer Woche dürfen einmal mit `eingefroren: true` festgehalten werden (so, wie sie
+gezeigt wurden), danach nie mehr geändert; `ganz: true` = ganze Woche gespeichert. V6.4: `modell` (gewähltes Trainingsmodell
 → `modell_add` → `plan_modell`; `merge_daily.modell_pruefen`: bekanntes Modell, Wechsel als Datum; gleiche ID ersetzt mit Audit). V6.5: `planwahl`
 («Ich folge» je Tag → `planwahl_add` → `plan_wahl`; `merge_daily.planwahl_pruefen`: Datum, ID «pw-Datum», Wahl enduco/vorschlag/frei; gleicher Tag ersetzt mit Audit). V6.2.3: `garmin_verlauf` (Datei aus
 `tools/garmin_export.py`, auf der Seite gewählt → `garmin_export.einspielen`, nur fehlende Tageswerte; mehrere Dateien vor einem Update werden seit
@@ -469,7 +476,14 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   **Enduco erscheint im Kalender nicht** (weder Woche, Monat noch Tagesblatt; `calEvents` ohne `planned`). Mein Plan früherer Wochen nur, wenn sie
   gespeichert waren (`V7UI.planGilt`), sonst nur Absolviertes – kein nachgerechneter Vorschlag als «verpasst».
   Mein Plan = Wochenvorschlag (`V64UI.kontextFuer`) mit `plan_woche` (`V66.meinPlan`); Änderungen nur über `V66.aendern` (vergangene und gesperrte
-  Tage nie), gespeichert mit «Direkt speichern». Bearbeitete Wochen: Stunden und Verteilung aus den eigenen Einheiten, «bearbeitet» sichtbar
+  Tage nie), gespeichert mit «Direkt speichern».
+  **V7.2 verfuegbarkeit-1.0 / eigenplan-1.1:** ab der laufenden Woche wird der Vorschlag nach der Verfügbarkeit verteilt (`V66.wocheVerteilt`, ganze
+  Woche, unabhängig vom heutigen Tag; Wochen davor nie). Wochen ohne gespeicherte Listen folgen ihr von selbst; die erste Änderung an einer verteilten
+  Woche hält sie ganz fest (`ganz`, vergangene Tage `eingefroren`); vor dem Speichern einer Verfügbarkeit, die die laufende Woche betrifft, wird sie
+  festgehalten («festhalten»), damit vergangene Tage nicht wechseln. «Anpassen» verteilt ab heute neu (gesperrte Tage und eigene Einheiten bleiben),
+  «Neu berechnen» setzt diese und alle folgenden gespeicherten Wochen zurück (nur gesperrte Tage bleiben; künftige Wochen ohne Sperre wieder automatisch).
+  Tests, Schwimmkurs, Aktivierung und eigene Einheiten werden nie verschoben; in Rennwochen wird nichts verschoben. Gekürzt oder weggelassen wird nur
+  gemeldet, nie still. Die Gewichte der Verteilung sind eigene Festlegungen (Wissen, Kapitel «modelle»). Nichts davon geht an Garmin oder Enduco. Bearbeitete Wochen: Stunden und Verteilung aus den eigenen Einheiten, «bearbeitet» sichtbar
   (vergleich-1.3, seit 1.4 ohne eigene Garmin-Einträge als Enduco). TL ≈ und Distanz ≈ (tl-plan-1.0) sind Modelle, immer mit «≈»; ohne Bezugswert keine Zahl. Ein Lauf über der Aufbau-Grenze
   wird gemeldet, nie verhindert. Nach Garmin nur über «An Garmin senden» (Abschnitt «An Garmin senden»); Enduco wird nie geändert.
 - Die Seite schreibt selbst nie nach Garmin oder Enduco: keine Knöpfe zum Verschieben, Starten oder Löschen von Workouts. Einzige Ausnahme
@@ -647,7 +661,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Die exakten Grössen der SPS1-Dateien stehen in der Git-Historie.
 
 ## Prüfen vor jedem Push von Seite oder Werkzeugen
-`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `node --test tests/test_v66.cjs`, `node --test tests/test_v7.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
+`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `node --test tests/test_v66.cjs`, `node --test tests/test_v7.cjs`, `node --test tests/test_v72.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
 **Leck-Prüfung (V6.4.4):** `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json work/data.json`, `python3 -I tools/leck_pruefen.py work/data.json`
 («LECK-PRÜFUNG: bestanden»), danach `rm work/data.json`. Gilt für jeden Push von Seite, Werkzeugen, Tests oder Doku (nicht für die reinen Daten-Updates).
 Kein Live-Push, wenn ein Test oder die Leck-Prüfung fehlschlägt. Screenshots mit echten Daten nie ins Repo. **Ein Force-Push entfernt nichts von GitHub:**
@@ -721,6 +735,9 @@ Termine (`kind` «css», «geplant») stehen nur verschlüsselt im Testkalender 
 Abwesenheiten nie in Doku, Code oder Tests). Eintrag auf der Seite mit zwei Zeiten (Rest
 optional), über «Direkt speichern» → `css_tests`. Rohpace aus Garmin, Videovergleich und Fehlerboard sind ausgeblendet (Daten bleiben);
 Technik wertet Claude im Chat aus (Videos Bild für Bild), nie auf der Seite.
+**Schwimm-Einheiten (V7.2, schwimmeinheit-1.0, uebungen-2.0):** eigene Schwimm-Einheiten werden als Serien wie im Becken gezeigt (Meter, Bahnen,
+Pausen, Hilfsmittel); Tempo nur aus dem CSS-Test (locker CSS + 15–20 s, Grundlage CSS + 8–12 s, Annahmen), ohne Test nach Anstrengung. Übungstexte
+sind eigene Beschreibungen (nie aus Enduco oder Webseiten übernehmen); Hilfsmittel nur Brett, Pullbuoy, Flossen, Paddles (Schnorchel nur als Garmin-Feld).
 Protokoll-Vorlagen: `protokolle` (Liste mit `id name sport ablauf blut ende rahmen status`), ändern über `"protokolle": [ … ]` in `work/new.json`.
 **Testplan (V6.2, testplan-1.0, `js/v62.js`):** Die Seite schlägt Tests nach festen Regeln selbst vor (Status «vorschlag», Regel sichtbar), in
 Testkalender, Kalender und auf Heute (heute/morgen): CSS alle 6–8 Wochen am gleichen Wochentag wie zuletzt; Rad-Stufentest alle 8 Wochen am Samstag

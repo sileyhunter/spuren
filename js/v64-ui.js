@@ -62,11 +62,25 @@
     const css = cssAktuell(vorbei ? V.addDays(mo, -1) : null), sk = TR() ? TR().zonen(C.D.zonen).skalen : null;
     const w0 = V.woche({ woche: mo, phase, erholung, stunden, modell, tests, rennen: rennen(), css_s: css ? css.s : null,
       intensitaet: V.intensitaet(wahlEintrag()), laeufe: V.laeufe(C.D.activities), heute: st.heute, skalen: sk });
-    // V6.6 eigenplan-1.0: «Mein Plan» = Vorschlag mit deinen Änderungen (hinzugefügt, verschoben, gesperrt); w0 bleibt der reine Vorschlag
+    // V6.6 eigenplan-1.0: «Mein Plan» = Vorschlag mit deinen Änderungen (hinzugefügt, verschoben, gesperrt)
     const ctxE = { phase, css_s: css ? css.s : null, bibStufe: (wid) => (window.V65UI && window.V65UI.stufeWid ? window.V65UI.stufeWid(wid) : null) };
-    const w = window.V66 ? window.V66.meinPlan(w0, planEintrag(mo), ctxE) : w0;
-    return { w, w0, ctxE, wahl, S, css, vg, ausSaison, vorbei, offset };
+    // V7.2 verfuegbarkeit-1.0 / eigenplan-1.1: ab der laufenden Woche nach deiner Verfügbarkeit verteilt (ganze Woche, unabhängig vom heutigen Tag).
+    // Wochen ohne eigene Änderungen folgen ihr von selbst; ganz festgehaltene Wochen zeigen das Gespeicherte; ältere, nur teilweise gespeicherte
+    // Wochen (eigenplan-1.0) bleiben beim unverteilten Vorschlag, bis du «Anpassen» wählst. w0 = Vorschlag, auf dem Mein Plan aufbaut; w0roh = unverteilt.
+    const E = planEintrag(mo), verf = verfuegbarkeit();
+    let w0v = w0;
+    if (!vorbei && window.V66 && window.V66.wocheVerteilt) { try { w0v = window.V66.wocheVerteilt(w0, verf, { css_s: css ? css.s : null }); } catch (e) { console.error(e); } }
+    const teilweise = !!(E && !E.ganz && E.tage && Object.values(E.tage).some((t) => t && Array.isArray(t.einheiten)));
+    const basis = teilweise ? w0 : w0v;
+    const w = window.V66 ? window.V66.meinPlan(basis, E, ctxE) : basis;
+    return { w, w0: basis, w0roh: w0, verteilt: basis !== w0, verf, ctxE, wahl, S, css, vg, ausSaison, vorbei, offset };
   }
+  /** V7.2 verfuegbarkeit-1.0: Verfügbarkeit aus den Daten, darüber die noch nicht eingespielten Eingaben auf diesem Gerät. */
+  function verfuegbarkeit() {
+    if (!window.V66 || !window.V66.verfuegbarkeit) return null;
+    return window.V66.verfuegbarkeit(C.D.plan_verfuegbarkeit || [], ((UI() && UI().Inbox && UI().Inbox.data) || {}).verfuegbarkeit || []);
+  }
+  M.verfuegbarkeit = () => { C = C || (UI() && UI().C); return C ? verfuegbarkeit() : null; };
   /** V6.6 eigenplan-1.0: Mein Plan einer Woche (Daten, darüber die noch nicht eingespielte Fassung auf diesem Gerät). */
   function planEintrag(mo) {
     const id = "wo-" + mo, f = (L) => (L || []).find((e) => e && e.id === id) || null;
@@ -280,12 +294,15 @@
     const W = V6(), sk = TR() ? TR().zonen(C.D.zonen).skalen : {}, css = K.css ? K.css.s : null;
     const ziele = V64().ziele(e, sk, css), ueber = Math.round(e.minuten.mittel + e.minuten.hart);
     const fehlt = e.sport === "schwimm" ? "noch kein CSS-Test: nach Gefühl" : "kein aktives Zonenprofil: nach Gefühl";
+    // V7.2 schwimmeinheit-1.0: Schwimm-Einheiten als Serien wie im Becken (Übungen, Hilfsmittel, Pausen), nicht nur als Text
+    let swim = null;
+    try { if (e.sport === "schwimm" && window.SW && window.SWUI && e.art !== "bibliothek") swim = window.SW.einheit(window.SW.artVon(e.id), { min: e.dauer, css_s: css, pool: window.SWUI.becken(), ref_s: window.SW.refTempo(C.D.activities), woche: window.SWUI.woche(date) }); } catch (err) { console.error(err); }
     const html = `<div class="ek-blatt-kopf"><span class="ek-sport gross" style="--sp:${spFarbe(e.sport)}">${W.sportIcon(e.sport, 28)}</span>
         <div><h2 id="v59-ov-h" tabindex="-1">${esc(e.titel)}</h2><p class="sub">${esc(tagText(t.date))} · ${e.quelle === "eigen" ? "eigene Einheit (Mein Plan)" : `Vorschlag «${esc(K.w.modellName)}»`}</p></div></div>
       <div class="kv ek-kv"><div><b>${hm(e.dauer)} h</b><span>Dauer</span></div>${(e.sport === "rad" || e.sport === "lauf") && e.art !== "test" ? `<div><b>${ueber} min</b><span>über LT1</span></div>` : ""}${e.check ? `<div><b>Laktat</b><span>Kurzcheck</span></div>` : ""}</div>
       <h3 class="abschnitt">${W.icon("ablauf", 15)}Ablauf</h3>
-      ${e.art !== "test" ? W.profilSVG(profil(e), { gross: true, h: 96, label: "Ablauf: Breite = Dauer, Höhe und Farbe = Intensität" }) : ""}
-      <ul class="mo-ablauf">${e.ablauf.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
+      ${swim ? window.SWUI.html(swim) : `${e.art !== "test" ? W.profilSVG(profil(e), { gross: true, h: 96, label: "Ablauf: Breite = Dauer, Höhe und Farbe = Intensität" }) : ""}
+      <ul class="mo-ablauf">${e.ablauf.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`}
       ${ziele.length ? `<h3 class="abschnitt">${W.icon("fokus", 15)}Ziele</h3><ul class="mo-ziele">${ziele.map((z) => `<li>${chip(z.key)}<span>${z.text ? esc(z.text) : `<em>${esc(fehlt)}</em>`}</span></li>`).join("")}</ul>` : ""}
       <h3 class="abschnitt">Warum</h3><p class="ek-text">${esc(e.zweck)}</p>
       ${e.quellen.length ? `<ul class="mo-quellen">${e.quellen.map(quelleLi).join("")}</ul>` : ""}
@@ -294,6 +311,7 @@
       <div class="blatt-fuss"><button type="button" class="btn-zurueck" data-x aria-label="Zurück">${W.icon("zurueck", 22)}</button>
         ${e.wissen ? `<button type="button" class="btn primary gross" data-wissen="${esc(e.wissen)}">Im Wissen nachlesen</button>` : ""}</div>`;
     const ov = V59().blatt("modell-einheit", html);
+    if (swim) window.SWUI.binden(ov, () => M.einheitE(e, date, opt), () => M.einheitE(e, date, opt));
     if (opt.nachher) opt.nachher(ov);
   };
   M.profil = (e) => profil(e); M.chip = (k) => chip(k); M.hauptKey = (e) => hauptKey(e);

@@ -5,7 +5,11 @@
      Dauer in 5-min-Schritten; Schlüsseleinheiten ab ihrer kurzen Fassung, längere Wünsche werden mit lockerem Fahren bzw. Laufen (Z2) ergänzt.
    - tl-plan-1.0: TL ≈ geplanter Einheiten aus dem aktiven Zonenprofil (eigene Festlegung, Modell): Rad (Leistung ÷ LT2)², Laufen (Tempo ÷
      Tempo an der LT2)², Schwimmen (Tempo ÷ CSS)³, je × Stunden × 100 (wie last-2.0). Distanz ≈ für Laufen und Schwimmen aus Dauer und Ziel-Pace.
-     Ohne Bezugswert keine Zahl; Tests und Kraft ohne TL. */
+     Ohne Bezugswert keine Zahl; Tests und Kraft ohne TL.
+   - V7.2 verfuegbarkeit-1.0 (Wunsch vom 16.11.2026, Vorbild enduco): Zeit und erlaubte Sportarten je Tag oder je Wochentag; der Vorschlag wird
+     danach verteilt (V66.verteilen). eigenplan-1.1: Wochen ohne eigene Änderungen folgen der Verfügbarkeit von selbst; wird eine verteilte Woche
+     bearbeitet, wird sie als Ganzes festgehalten (vergangene Tage «eingefroren»), damit nichts zurückspringt. «Anpassen» verteilt den Rest der
+     Woche neu (Gesperrtes und Eigenes bleibt), «Neu berechnen» setzt Wochen auf den Vorschlag zurück (gesperrte Tage bleiben). */
 (function (root, factory) {
   const node = typeof module === "object" && module.exports;
   const V66 = factory(node ? require("./v64.js") : root && root.V64);
@@ -13,7 +17,8 @@
   if (root) root.V66 = V66;
 })(typeof window !== "undefined" ? window : null, function (V64) {
   "use strict";
-  const V66 = { VERSIONS: { eigenplan: "eigenplan-1.0", vorlagen: "vorlagen-1.0", tl: "tl-plan-1.0", wochenblatt: "wochenblatt-1.0", kalender: "kalender-2.0" } };
+  const V66 = { VERSIONS: { eigenplan: "eigenplan-1.1", vorlagen: "vorlagen-1.0", tl: "tl-plan-1.0", wochenblatt: "wochenblatt-1.0", kalender: "kalender-2.0",
+    verfuegbarkeit: "verfuegbarkeit-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const add = (iso, n) => V64.addDays(iso, n);
 
@@ -97,18 +102,23 @@
   /* ---------------- Mein Plan (eigenplan-1.0) ---------------- */
   V66.leer = (montag) => ({ id: "wo-" + montag, v: V66.VERSIONS.eigenplan, montag, tage: {} });
   const vorschlagGespeichert = (d, L) => (L || []).map((e, i) => ({ uid: `v-${d}-${i}`, vorlage: e.id, dauer: e.dauer, quelle: "vorschlag" }));
+  const kern = (s) => `${s.quelle}:${s.vorlage || s.wid}:${s.dauer}`;
   /** Mein Plan einer Woche: w = V64.woche(...), eintrag = plan_woche-Eintrag dieser Woche (oder null). Tage mit eigener Liste ersetzen den
    *  Vorschlag; gesperrte Tage tragen «gesperrt». Liefert eine neue Woche (w bleibt unverändert); jede Einheit hat uid und quelle. */
   V66.meinPlan = function (w, eintrag, ctx) {
     if (!w || !Array.isArray(w.tage)) return w;
+    const ganz = !!(eintrag && eintrag.ganz);
     const tage = w.tage.map((t) => {
-      const o = eintrag && eintrag.tage ? eintrag.tage[t.date] : null;
-      const neu = Object.assign({}, t, { vorschlag: t.einheiten, gesperrt: !!(o && o.gesperrt), bearbeitet: !!(o && Array.isArray(o.einheiten)) });
-      neu.einheiten = neu.bearbeitet ? o.einheiten.map((s) => V66.einheit(s, ctx)).filter(Boolean)
+      const o = eintrag && eintrag.tage ? eintrag.tage[t.date] : null, liste = !!(o && Array.isArray(o.einheiten));
+      // eigenplan-1.1: in einer ganz festgehaltenen Woche gilt ein Tag nur als bearbeitet, wenn er vom Vorschlag abweicht
+      const bearbeitet = liste && !(ganz && JSON.stringify(o.einheiten.map(kern)) === JSON.stringify(vorschlagGespeichert(t.date, t.einheiten).map(kern)));
+      const neu = Object.assign({}, t, { vorschlag: t.einheiten, gesperrt: !!(o && o.gesperrt), bearbeitet, eingefroren: !!(o && o.eingefroren) });
+      neu.einheiten = liste ? o.einheiten.map((s) => V66.einheit(s, ctx)).filter(Boolean)
         : (t.einheiten || []).map((e, i) => Object.assign({}, e, { uid: `v-${t.date}-${i}`, quelle: "vorschlag" }));
       return neu;
     });
-    const out = Object.assign({}, w, { tage, bearbeitet: tage.some((t) => t.bearbeitet), gesperrt: tage.filter((t) => t.gesperrt).map((t) => t.date), eigenplan: V66.VERSIONS.eigenplan });
+    const out = Object.assign({}, w, { tage, bearbeitet: tage.some((t) => t.bearbeitet), gesperrt: tage.filter((t) => t.gesperrt).map((t) => t.date), eigenplan: V66.VERSIONS.eigenplan,
+      festgehalten: ganz });
     if (!out.bearbeitet) return out;
     // Bearbeitete Woche: Stunden und Verteilung aus deinen Einheiten neu (wie V64.woche); Bibliothek ohne bekannte Ziele = offen, nicht gezählt
     const minuten = { schwimm: 0, rad: 0, lauf: 0 }, z = { locker: 0, mittel: 0, hart: 0, offen: 0 };
@@ -165,6 +175,16 @@
     const liste = (d) => { const t = tag(d); if (!Array.isArray(t.einheiten)) t.einheiten = vorschlagGespeichert(d, ctx.vorschlag ? ctx.vorschlag(d) : []); return t.einheiten; };
     const darf = (d) => (!inWoche(d) ? "nicht in dieser Woche" : d < ctx.heute ? "vergangen – nur lesen" : E.tage[d] && E.tage[d].gesperrt ? "gesperrt – zuerst entsperren" : null);
     const finde = (d, uid) => liste(d).findIndex((x) => x.uid === uid);
+    const wochenTage = () => Array.from({ length: 7 }, (_, i) => add(E.montag, i));
+    // eigenplan-1.1: eine nach der Verfügbarkeit verteilte Woche (ctx.verteilt) wird beim ersten Ändern als Ganzes festgehalten, so wie sie
+    // gezeigt wurde; vergangene Tage «eingefroren» (die Prüfung in merge_daily.py lässt nur das an vergangenen Tagen zu). Sonst sprängen Tage
+    // ohne eigene Liste auf den unverteilten Vorschlag zurück.
+    const festhalten = () => {
+      if (E.ganz) return;
+      for (const d of wochenTage()) { const t = tag(d); if (!Array.isArray(t.einheiten)) { liste(d); if (d < ctx.heute) t.eingefroren = true; } }
+      E.ganz = true;
+    };
+    if (ctx.verteilt && !E.ganz && !Object.values(E.tage).some((t) => Array.isArray(t.einheiten)) && !["verwerfen", "neuberechnen"].includes(a.art)) festhalten();
     let f = null;
     switch (a.art) {
       case "hinzufuegen": {
@@ -191,18 +211,318 @@
       }
       case "sperren": f = !inWoche(a.date) ? "nicht in dieser Woche" : a.date < ctx.heute ? "vergangen – nur lesen" : null; if (!f) tag(a.date).gesperrt = true; break;
       case "entsperren": f = !inWoche(a.date) ? "nicht in dieser Woche" : null; if (!f) tag(a.date).gesperrt = false; break;
-      case "verwerfen": for (const d of Object.keys(E.tage)) if (d >= ctx.heute && !E.tage[d].gesperrt) E.tage[d].einheiten = null; break;
+      case "verwerfen": case "neuberechnen": f = neuBerechnen(E, ctx, tag); break;
       case "leeren": for (let i = 0; i < 7; i++) { const d = add(E.montag, i); if (d >= ctx.heute && !(E.tage[d] && E.tage[d].gesperrt)) tag(d).einheiten = []; } break;
+      case "festhalten": festhalten(); break;
+      case "anpassen": festhalten(); f = anpassen(E, ctx); break;
       default: f = "unbekannte Aktion";
     }
     if (f) return { fehler: f, eintrag: eintrag || null };
-    for (const d of Object.keys(E.tage)) {           // Tage, die wieder genau dem Vorschlag entsprechen, folgen ihm wieder; Tage ohne Änderung weglassen
+    if (!E.ganz) for (const d of Object.keys(E.tage)) {           // Tage, die wieder genau dem Vorschlag entsprechen, folgen ihm wieder; Tage ohne Änderung weglassen
       const t = E.tage[d];
       if (Array.isArray(t.einheiten) && ctx.vorschlag && JSON.stringify(t.einheiten) === JSON.stringify(vorschlagGespeichert(d, ctx.vorschlag(d)))) t.einheiten = null;
       if (!t.gesperrt && t.einheiten == null) delete E.tage[d];
     }
     E.v = V66.VERSIONS.eigenplan; E.geaendert = ctx.jetzt || new Date().toISOString();
     return { eintrag: E };
+  };
+
+  /* ---------------- Verfügbarkeit (verfuegbarkeit-1.0) ---------------- */
+  V66.VF_SPORT = ["schwimm", "rad", "lauf"];
+  V66.VF_MAX = 720;                                                     // höchstens 12 h an einem Tag
+  const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
+  /** Wochentag 1 = Montag … 7 = Sonntag. */
+  V66.wtNr = (iso) => ((new Date(Date.parse(iso + "T12:00:00Z")).getUTCDay() + 6) % 7) + 1;
+  /** Prüft einen Verfügbarkeits-Eintrag (gleiche Regeln wie merge_daily.verfuegbarkeit_pruefen) → Fehlertext oder null.
+   *  Je Tag { id «vf-JJJJ-MM-TT», art «tag», date } oder je Wochentag { id «vf-wt-1» … «vf-wt-7», art «wochentag», wt }; dazu min (null = Zeit
+   *  offen, sonst 0–720 in 5-min-Schritten) und sport (null = alle, sonst Liste aus schwimm/rad/lauf, leer = kein Training) oder entfernt: true. */
+  V66.vfPruefen = function (e) {
+    if (!e || typeof e !== "object") return "kein Eintrag";
+    if (e.art === "wochentag") {
+      if (!(Number.isInteger(e.wt) && e.wt >= 1 && e.wt <= 7)) return "Wochentag 1–7";
+      if (e.id !== "vf-wt-" + e.wt) return "ID passt nicht zum Wochentag";
+    } else if (e.art === "tag") {
+      if (!ISO_RE.test(String(e.date || "")) || isNaN(Date.parse(e.date + "T12:00:00Z"))) return "kein Datum";
+      if (e.id !== "vf-" + e.date) return "ID passt nicht zum Datum";
+    } else return "unbekannte Art";
+    if (e.entfernt === true) return null;
+    if (e.min != null && !(Number.isInteger(e.min) && e.min >= 0 && e.min <= V66.VF_MAX && e.min % 5 === 0)) return "Zeit 0–12 h in 5-min-Schritten";
+    if (e.sport != null && !(Array.isArray(e.sport) && e.sport.every((x) => V66.VF_SPORT.includes(x)) && new Set(e.sport).size === e.sport.length)) return "unbekannte Sportart";
+    return null;
+  };
+  /** Verfügbarkeit je Datum aus den Einträgen (mehrere Listen: Daten, darüber die noch nicht eingespielten auf dem Gerät; spätere gewinnen).
+   *  Ein Tag geht vor seinem Wochentag. → f(date) = { min, sport, quelle «tag»|«wochentag», id } oder null; f.leer = nichts festgelegt. */
+  V66.verfuegbarkeit = function (...listen) {
+    const m = new Map();
+    for (const L of listen) for (const e of L || []) if (e && typeof e.id === "string" && !V66.vfPruefen(e)) m.set(e.id, e);
+    const f = (date) => {
+      if (!ISO_RE.test(String(date || ""))) return null;
+      const t = m.get("vf-" + date), w = m.get("vf-wt-" + V66.wtNr(date)), e = t && !t.entfernt ? t : w && !w.entfernt ? w : null;
+      return e ? { min: e.min == null ? null : e.min, sport: Array.isArray(e.sport) ? e.sport.slice() : null, quelle: e.art, id: e.id } : null;
+    };
+    f.leer = ![...m.values()].some((e) => !e.entfernt);
+    f.eintrag = (id) => m.get(id) || null;
+    return f;
+  };
+  /** Eintrag bauen: ziel = { date } oder { wt }; wert = { min, sport } oder null (= zurücksetzen). */
+  V66.vfEintrag = function (ziel, wert, jetzt) {
+    const base = ziel && ziel.date ? { id: "vf-" + ziel.date, art: "tag", date: ziel.date } : { id: "vf-wt-" + ziel.wt, art: "wochentag", wt: ziel.wt };
+    return Object.assign(base, wert ? { min: wert.min == null ? null : wert.min, sport: wert.sport == null ? null : wert.sport.slice() } : { entfernt: true },
+      { v: V66.VERSIONS.verfuegbarkeit, geaendert: jetzt || new Date().toISOString() });
+  };
+  /** Kurztext: «1:30 h · Rad, Laufen», «kein Training», «Zeit offen · Schwimmen». */
+  const SPW = { schwimm: "Schwimmen", rad: "Rad", lauf: "Laufen" };
+  V66.vfText = function (v) {
+    if (!v) return "nicht festgelegt";
+    if (v.min === 0 || (Array.isArray(v.sport) && !v.sport.length)) return "kein Training";
+    const z = v.min == null ? "Zeit offen" : `${Math.floor(v.min / 60)}:${String(v.min % 60).padStart(2, "0")} h`;
+    return `${z} · ${v.sport ? v.sport.map((x) => SPW[x]).join(", ") : "alle Sportarten"}`;
+  };
+
+  /* ---------------- Verteilen nach der Verfügbarkeit (verfuegbarkeit-1.0) ---------------- */
+  const ORTSFEST = new Set(["schwimm_kurs", "aktivierung", "test_rad", "test_lauf", "test_css"]);
+  const istOrtsfest = (e) => !!e && (ORTSFEST.has(e.id) || e.art === "test" || !!e.test);
+  const istEigen = (e) => !!e && (e.quelle === "eigen" || e.quelle === "bibliothek");
+  const hart = (e) => !!e && (!!e.schluessel || e.art === "schluessel_s");
+  const PRIO = (e) => (hart(e) ? 0 : e.art === "lang" ? 1 : e.art === "koppel" ? 3 : 2);
+  const TAGW = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+  const wtK = (iso) => TAGW[V66.wtNr(iso) - 1];
+  /** Kürzeste sinnvolle Dauer: lockere und lange Einheiten bis zur kürzesten Vorlage, Schlüsseleinheiten in der kurzen Fassung. */
+  function minDauer(e) {
+    const B = V66.bereich(e.vorlage || e.id);
+    if (!B || B.fest || istEigen(e)) return e.dauer;
+    if (e.art === "schluessel") return Math.min(e.dauer, V64.einheit(e.id, { kurz: true }).dauer);
+    return Math.min(e.dauer, B.min);
+  }
+  /** Einheit kürzer neu bauen (gleiche Vorlage, Merkmale bleiben); null, wenn das nicht geht. */
+  function kuerzer(e, d, o) {
+    const b = V64.BAUSTEINE[e.id]; if (!b || b.fix || istEigen(e)) return null;
+    let n;
+    if (b.art === "schluessel") { n = V64.einheit(e.id, Object.assign({}, o, { kurz: true })); if (!n || n.dauer > d) return null; }
+    else n = V64.einheit(e.id, Object.assign({}, o, { d: Math.max(5, Math.floor(d / 5) * 5) }));
+    if (!n) return null;
+    for (const k of ["check", "gekappt", "uid", "quelle", "vorlage", "drinnen", "vorTest", "spec"]) if (e[k] != null) n[k] = e[k];
+    if (e.check) n.ablauf = n.ablauf.concat((e.ablauf || []).filter((x) => /Kurzcheck/.test(x)));
+    if (e.drinnen && !/drinnen/.test(n.titel)) n.titel += " (drinnen)";
+    return n;
+  }
+  /**
+   * Verteilt die Einheiten einer Woche nach deiner Verfügbarkeit (Zeit je Tag, erlaubte Sportarten). tage = [{ date, wt, ruhetag, rennen, notiz,
+   * einheiten, fest }]; feste Tage (vergangen, gesperrt) bleiben, wie sie sind. Am Tag bleiben ausserdem Tests, der Schwimmkurs (fällt weg, wenn
+   * Schwimmen an dem Tag nicht geht), die Aktivierung und eigene Einheiten. Die übrigen Einheiten (Vorschlag) kommen der Reihe nach – Schlüssel,
+   * lang (mit Koppellauf), locker – auf einen erlaubten Tag mit genug Zeit: am eigenen Tag, wenn er passt, sonst der beste andere (nahe am
+   * ursprünglichen Tag, harte Einheiten nicht an zwei Tagen hintereinander, nicht zweimal dieselbe Sportart, Ruhetag nur, wenn du dort Zeit
+   * eingetragen hast). Passt eine Einheit nirgends ganz, wird sie gekürzt (bis zur kürzesten Vorlage bzw. kurzen Fassung), sonst entfällt sie –
+   * beides gemeldet, nie still. In Rennwochen wird nichts verschoben. opt = { o (Bausteine: phase, css_s, kurz), verbraucht: [Vorlagen, die schon
+   * an festen Tagen stehen] }. → { tage, protokoll: { verschoben, gekuerzt, weg, hinweise }, geaendert }
+   */
+  V66.verteilen = function (tage, verf, opt) {
+    opt = opt || {};
+    const P = { verschoben: [], gekuerzt: [], weg: [], hinweise: [] };
+    const T = (tage || []).map((t) => Object.assign({}, t, { einheiten: (t.einheiten || []).slice() }));
+    if (!verf) return { tage: T, protokoll: P, geaendert: false };
+    const V = T.map((t) => verf(t.date));
+    if (T.some((t) => t.rennen)) {                                    // Rennwoche: fester Ablauf, nichts verschieben – nur melden
+      T.forEach((t, i) => { const v = V[i], d = t.einheiten.reduce((x, e) => x + (e.dauer || 0), 0);
+        if (!t.fest && v && t.einheiten.length && ((v.min != null && d > v.min) || t.einheiten.some((e) => v.sport && V66.VF_SPORT.includes(e.sport) && !v.sport.includes(e.sport))))
+          P.hinweise.push(`Rennwoche: am ${wtK(t.date)} passt der Plan nicht zu deiner Verfügbarkeit – in der Rennwoche wird nichts verschoben, bitte selbst anpassen`); });
+      return { tage: T, protokoll: P, geaendert: P.hinweise.length > 0 };
+    }
+    const erlaubt = (i, sport) => !V[i] || !V[i].sport || !V66.VF_SPORT.includes(sport) || V[i].sport.includes(sport);
+    const kap = (i) => (V[i] && V[i].min != null ? V[i].min : Infinity);
+    const belegt = T.map(() => []), pool = [], verbraucht = (opt.verbraucht || []).slice(), ORD = new Map(), testTag = new Set();
+    T.forEach((t, i) => t.einheiten.forEach((e, j) => ORD.set(e, i * 100 + j)));    // Reihenfolge am Tag: wie vorher, Dazugekommenes danach
+    const summe = (i) => belegt[i].reduce((s, x) => s + (x.dauer || 0), 0), rest = (i) => kap(i) - summe(i);
+    T.forEach((t, i) => {
+      if (t.fest) { belegt[i] = t.einheiten.slice(); return; }
+      for (const e of t.einheiten) {
+        if (istEigen(e) || istOrtsfest(e)) {
+          if (e.id === "schwimm_kurs" && (!erlaubt(i, "schwimm") || kap(i) < Math.min(30, e.dauer))) {
+            P.weg.push({ titel: e.titel, date: t.date, grund: erlaubt(i, "schwimm") ? "keine Zeit" : "Schwimmen an diesem Tag nicht möglich" }); continue;
+          }
+          if (e.art === "test" && (!erlaubt(i, e.sport) || kap(i) < e.dauer)) { testTag.add(i); P.hinweise.push(`${e.titel} am ${wtK(t.date)} passt nicht zu deiner Verfügbarkeit – den Termin im Testkalender verschieben`); }
+          else if (istEigen(e) && !erlaubt(i, e.sport)) P.hinweise.push(`«${e.titel}» am ${wtK(t.date)}: eigene Einheit an einem Tag ohne diese Sportart (bleibt stehen)`);
+          belegt[i].push(e); continue;
+        }
+        const j = verbraucht.indexOf(e.vorlage || e.id);
+        if (j >= 0) { verbraucht.splice(j, 1); continue; }            // steht schon an einem festen Tag
+        pool.push({ e, von: i });
+      }
+    });
+    for (const p of pool) if (p.e.art === "lang" && p.e.sport === "rad") {                // Koppellauf gehört zur langen Ausfahrt
+      const k = pool.find((q) => q.e.art === "koppel" && q.von === p.von && !q.dran);
+      if (k) { p.koppel = k.e; k.dran = true; }
+    }
+    const L = pool.filter((p) => !p.dran).sort((a, b) => PRIO(a.e) - PRIO(b.e) || b.e.dauer - a.e.dauer || a.von - b.von);
+    // Harte Einheiten stören sich, wenn es dieselbe Sportart ist oder beide an Land (Rad, Laufen); CSS im Wasser neben dem Rad-Schlüssel ist
+    // die übliche Woche (Do). Lange Einheiten an Land vertragen keine harte am selben Tag.
+    const land = (x) => x.sport === "rad" || x.sport === "lauf";
+    const stoert = (a, b) => hart(a) && hart(b) && (a.sport === b.sport || (land(a) && land(b)));
+    const hartAm = (i, e) => i >= 0 && i < T.length && belegt[i].some((x) => stoert(x, e));
+    const ruheOk = (i) => !T[i].ruhetag || !!(V[i] && V[i].min !== 0 && (!V[i].sport || V[i].sport.length));
+    // Gewichte (eigene Festlegung): je Tag Abstand −5, je Einheit am Tag −10 (ab der dritten −25 mehr), gleiche Sportart am Tag −45, zwei harte
+    // am Tag −60, hart neben hart −20 je Seite, hart und lang an Land am selben Tag −40, zwei lange am Tag −50, Ruhetag ohne eingetragene Zeit −30.
+    const score = (p, i) => {
+      const B = belegt[i], e = p.e; let s = -5 * Math.abs(i - p.von) - 10 * B.length - (B.length >= 2 ? 25 : 0);
+      if (B.some((x) => x.sport === e.sport)) s -= 45;
+      if (hart(e)) { if (hartAm(i, e)) s -= 60; if (hartAm(i - 1, e)) s -= 20; if (hartAm(i + 1, e)) s -= 20; }
+      if (land(e) && ((hart(e) && B.some((x) => x.art === "lang" && land(x))) || (e.art === "lang" && B.some((x) => hart(x) && land(x))))) s -= 40;
+      if (e.art === "lang" && B.some((x) => x.art === "lang")) s -= 50;
+      if (!ruheOk(i)) s -= 30;
+      return s;
+    };
+    const waehle = (p, bed, mitEigenem) => { let best = null, bs = -Infinity; T.forEach((t, i) => { if (t.fest || (i === p.von && !mitEigenem) || !bed(i)) return; const s = score(p, i); if (s > bs) { bs = s; best = i; } }); return best; };
+    const VON = new Map(), WEG = new Map();
+    const setzen = (p, i, e, mitK) => {
+      if (e !== p.e) P.gekuerzt.push({ titel: p.e.titel, date: T[i].date, von: p.e.dauer, nach: e.dauer });
+      VON.set(e, p.von);
+      if (i !== p.von) { const r = { titel: e.titel, von: T[p.von].date, nach: T[i].date }; P.verschoben.push(r); WEG.set(e, r); }
+      belegt[i].push(e);
+      if (p.koppel) {
+        if (mitK) belegt[i].push(p.koppel);
+        else P.weg.push({ titel: p.koppel.titel, date: T[i].date, grund: erlaubt(i, "lauf") ? "keine Zeit nach der Ausfahrt" : "Laufen an diesem Tag nicht möglich" });
+      }
+    };
+    const kurz = (p, i) => { const n = kuerzer(p.e, Math.min(p.e.dauer, rest(i)), opt.o || {}); if (n && ORD.has(p.e)) ORD.set(n, ORD.get(p.e)); return n && n.dauer < p.e.dauer && n.dauer <= rest(i) ? n : null; };
+    // 1. Runde: jede Einheit bleibt an ihrem Tag, wenn die Sportart dort geht und Zeit da ist (wenn nötig gekürzt)
+    const offen = [];
+    for (const p of L) {
+      const i = p.von, sp = p.e.sport, k = p.koppel;
+      if (!erlaubt(i, sp)) { offen.push(p); continue; }
+      if (k && erlaubt(i, "lauf") && rest(i) >= p.e.dauer + k.dauer) { setzen(p, i, p.e, true); continue; }
+      if (rest(i) >= p.e.dauer) { setzen(p, i, p.e, false); continue; }
+      // am eigenen Tag nur wenig kürzen (höchstens ein Viertel, mindestens 15 min erlaubt); sonst lieber ganz an einem anderen Tag
+      const n = rest(i) >= minDauer(p.e) && p.e.dauer - rest(i) <= Math.max(15, 0.25 * p.e.dauer) ? kurz(p, i) : null;
+      if (n) setzen(p, i, n, false); else offen.push(p);
+    }
+    // 2. Runde: die übrigen auf den besten anderen erlaubten Tag mit genug Zeit; sonst gekürzt; sonst entfällt sie
+    for (const p of offen) {
+      const sp = p.e.sport, k = p.koppel;
+      let i = k ? waehle(p, (j) => erlaubt(j, sp) && erlaubt(j, "lauf") && rest(j) >= p.e.dauer + k.dauer) : null;
+      if (i != null) { setzen(p, i, p.e, true); continue; }
+      i = waehle(p, (j) => erlaubt(j, sp) && rest(j) >= p.e.dauer);
+      if (i != null) { setzen(p, i, p.e, false); continue; }
+      const m = minDauer(p.e);
+      i = m < p.e.dauer ? waehle(p, (j) => erlaubt(j, sp) && rest(j) >= m, true) : null;
+      const n = i != null ? kurz(p, i) : null;
+      if (n) { setzen(p, i, n, false); continue; }
+      P.weg.push({ titel: p.e.titel, date: T[p.von].date, grund: V66.VF_SPORT.includes(sp) && !T.some((t, j) => !t.fest && erlaubt(j, sp)) ? "diese Sportart ist an keinem freien Tag erlaubt" : "an keinem freien Tag genug Zeit" });
+      if (k) P.weg.push({ titel: k.titel, date: T[p.von].date, grund: "gehört zur langen Ausfahrt" });
+    }
+    // 3. Runde: lockere Einheiten von vollen Tagen auf einen deutlich besseren Tag (mehr als 20 Punkte), z. B. neben eine verschobene lange Ausfahrt
+    for (let i = 0; i < T.length; i++) for (const e of belegt[i].slice()) {
+      if (T[i].fest || PRIO(e) !== 2 || !VON.has(e)) continue;
+      const p = { e, von: VON.get(e) };
+      belegt[i].splice(belegt[i].indexOf(e), 1);
+      const jetzt = score(p, i), j = waehle(p, (k) => erlaubt(k, e.sport) && rest(k) >= e.dauer, true);
+      if (j != null && j !== i && score(p, j) > jetzt + 20) {
+        belegt[j].push(e);
+        const r = WEG.get(e);
+        if (r) { if (j === p.von) { P.verschoben.splice(P.verschoben.indexOf(r), 1); WEG.delete(e); } else r.nach = T[j].date; }
+        else if (j !== p.von) { const n = { titel: e.titel, von: T[p.von].date, nach: T[j].date }; P.verschoben.push(n); WEG.set(e, n); }
+      } else belegt[i].push(e);
+    }
+    T.forEach((t, i) => { if (!t.fest && !testTag.has(i) && isFinite(kap(i)) && rest(i) < 0) P.hinweise.push(`${wtK(t.date)}: ${-rest(i)} min mehr geplant als verfügbar (feste Einheiten)`); });
+    let geaendert = false;
+    const out = T.map((t, i) => {
+      if (t.fest) return t;
+      const alt = t.einheiten.map((e) => `${e.id}:${e.dauer}`).join("|"), neu = belegt[i].map((e) => `${e.id}:${e.dauer}`).join("|");
+      if (alt === neu) return t;
+      geaendert = true;
+      const ord = (e) => { const o = ORD.has(e) ? ORD.get(e) : null; return o != null && Math.floor(o / 100) === i ? o % 100 : 1000 + (o == null ? 99 : o); };
+      belegt[i].sort((a, b) => ord(a) - ord(b) || (a.art === "koppel") - (b.art === "koppel"));
+      const leer = !belegt[i].length, keinT = V[i] && (V[i].min === 0 || (Array.isArray(V[i].sport) && !V[i].sport.length));
+      return Object.assign({}, t, { einheiten: belegt[i], ruhetag: leer, notiz: leer ? (keinT ? "kein Training (Verfügbarkeit)" : t.notiz || null) : null });
+    });
+    return { tage: out, protokoll: P, geaendert: geaendert || P.hinweise.length > 0 };
+  };
+  /** Meldungen in Worten (für die Hinweise der Woche). */
+  V66.verteilText = function (P) {
+    if (!P) return [];
+    const out = [];
+    for (const x of P.verschoben) out.push(`«${x.titel}» von ${wtK(x.von)} auf ${wtK(x.nach)} verschoben (Verfügbarkeit)`);
+    for (const x of P.gekuerzt) out.push(`«${x.titel}» am ${wtK(x.date)} ${x.nach} statt ${x.von} min (Verfügbarkeit)`);
+    for (const x of P.weg) out.push(`«${x.titel}» (${wtK(x.date)}) entfällt: ${x.grund}`);
+    return out.concat(P.hinweise);
+  };
+  /** Summen einer Woche neu (wie V64.woche): Minuten je Sportart, Verteilung, Prüfung. */
+  function summenNeu(out, w) {
+    const minuten = { schwimm: 0, rad: 0, lauf: 0 }, z = { locker: 0, mittel: 0, hart: 0 };
+    for (const t of out.tage) for (const e of t.einheiten || []) {
+      if (minuten[e.sport] != null) minuten[e.sport] += e.dauer;
+      if (e.minuten) for (const k of ["locker", "mittel", "hart"]) z[k] += e.minuten[k] || 0;
+    }
+    minuten.total = minuten.schwimm + minuten.rad + minuten.lauf;
+    const tid = V64.tid(z);
+    return Object.assign(out, { minuten, zonen: z, tid, pruefung: V64.pruefen(w.modell, tid, { erholung: w.erholung, taper: w.taper, rennwoche: out.tage.some((t) => t.rennen),
+      gekappt: !!(w.gekappt && w.gekappt.length) }) });
+  }
+  const bausteinO = (w, ctx) => ({ phase: w && w.phase, css_s: ctx && ctx.css_s, kurz: !!(w && (w.taper || w.erholung)) });
+  /** Vorschlag einer ganzen Woche (V64.woche) nach deiner Verfügbarkeit – unabhängig vom heutigen Tag, damit vergangene Tage stehen bleiben.
+   *  ctx = { css_s }. → neue Woche (w bleibt unverändert) mit `verteilung` und den Meldungen in `hinweise`; ohne Wirkung dieselbe Woche. */
+  V66.wocheVerteilt = function (w, verf, ctx) {
+    if (!w || !Array.isArray(w.tage) || !verf || verf.leer || !w.tage.some((t) => verf(t.date))) return w;
+    const r = V66.verteilen(w.tage.map((t) => Object.assign({}, t, { fest: false })), verf, { o: bausteinO(w, ctx) });
+    if (!r.geaendert) return w;
+    const out = Object.assign({}, w, { tage: r.tage.map((t) => { const c = Object.assign({}, t); delete c.fest; return c; }),
+      verteilung: Object.assign({ v: V66.VERSIONS.verfuegbarkeit }, r.protokoll), hinweise: (w.hinweise || []).concat(V66.verteilText(r.protokoll)) });
+    return summenNeu(out, w);
+  };
+  /** Gespeicherte Einheit (Spezifikation) aus einer Einheit: Vorlage und Dauer, Quelle bleibt. */
+  const spezVon = (e, uid) => (e.spec ? Object.assign({}, e.spec, { dauer: e.dauer }) : { uid, vorlage: e.id, dauer: e.dauer, quelle: "vorschlag" });
+  /** «Anpassen»: Rest der Woche (ab heute, ohne gesperrte Tage) nach der Verfügbarkeit neu verteilen; eigene Einheiten und Gesperrtes bleiben. */
+  function anpassen(E, ctx) {
+    if (!ctx.verf) return "Verfügbarkeit nicht bekannt";
+    const tage = Array.from({ length: 7 }, (_, i) => add(E.montag, i)).map((d) => {
+      const t = E.tage[d] || {}, fest = d < ctx.heute || !!t.gesperrt;
+      const einheiten = (t.einheiten || []).map((s) => { const e = V66.einheit(s, ctx.ctxE || {}); return e ? Object.assign(e, { spec: s }) : null; }).filter(Boolean);
+      return { date: d, wt: wtK(d), ruhetag: !einheiten.length, einheiten, fest };
+    });
+    const r = V66.verteilen(tage, ctx.verf, { o: ctx.o || {} });
+    for (const t of r.tage) if (!t.fest) {
+      const used = new Set();
+      E.tage[t.date].einheiten = t.einheiten.map((e, i) => { const s = spezVon(e, `v-${t.date}-${i}`); if (used.has(s.uid)) s.uid = `v-${t.date}-${i}-${used.size}`; used.add(s.uid); return s; });
+    }
+    E.verteilung = { v: V66.VERSIONS.verfuegbarkeit, art: "anpassen", am: ctx.jetzt || new Date().toISOString(), meldungen: V66.verteilText(r.protokoll).slice(0, 20) };
+    return null;
+  }
+  /** «Neu berechnen» (auch «Änderungen verwerfen»): ab heute wieder der Vorschlag, gesperrte Tage bleiben. Ganz festgehaltene Wochen werden mit
+   *  dem unverteilten Vorschlag (ctx.roh) neu verteilt; künftige Wochen ohne Sperren folgen wieder von selbst dem Vorschlag. */
+  function neuBerechnen(E, ctx, tag) {
+    const tageW = Array.from({ length: 7 }, (_, i) => add(E.montag, i));
+    const gesperrt = tageW.filter((d) => E.tage[d] && E.tage[d].gesperrt), vorbei = tageW.filter((d) => d < ctx.heute && E.tage[d] && Array.isArray(E.tage[d].einheiten));
+    if (!E.ganz) { for (const d of Object.keys(E.tage)) if (d >= ctx.heute && !E.tage[d].gesperrt) E.tage[d].einheiten = null; return null; }
+    if (!gesperrt.length && !vorbei.length) { E.tage = {}; delete E.ganz; delete E.verteilung; return null; }        // ganz neu: wieder automatisch
+    if (!ctx.roh) return "Vorschlag nicht bekannt";
+    // Was an festen Tagen (vergangen, gesperrt) über deren eigenen Vorschlag hinaus steht, wurde dorthin verschoben: nicht nochmals verteilen
+    const verbraucht = [];
+    for (const d of tageW) {
+      const t = E.tage[d]; if (!(d < ctx.heute || (t && t.gesperrt)) || !t || !Array.isArray(t.einheiten)) continue;
+      const roh = (ctx.roh(d) || []).map((e) => e.id);
+      for (const s of t.einheiten) { if (s.quelle !== "vorschlag") continue; const j = roh.indexOf(s.vorlage); if (j >= 0) roh.splice(j, 1); else verbraucht.push(s.vorlage); }
+    }
+    const tage = tageW.map((d) => {
+      const t = E.tage[d] || {}, fest = d < ctx.heute || !!t.gesperrt;
+      const einheiten = fest ? (t.einheiten || []).map((s) => V66.einheit(s, ctx.ctxE || {})).filter(Boolean) : (ctx.roh(d) || []).map((e) => Object.assign({}, e));
+      return { date: d, wt: wtK(d), ruhetag: !einheiten.length, einheiten, fest };
+    });
+    const r = ctx.verf ? V66.verteilen(tage, ctx.verf, { o: ctx.o || {}, verbraucht }) : { tage, protokoll: null };
+    for (const t of r.tage) if (!t.fest) tag(t.date).einheiten = t.einheiten.map((e, i) => spezVon(e, `v-${t.date}-${i}`));
+    E.verteilung = r.protokoll ? { v: V66.VERSIONS.verfuegbarkeit, art: "neu", am: ctx.jetzt || new Date().toISOString(), meldungen: V66.verteilText(r.protokoll).slice(0, 20) } : undefined;
+    return null;
+  }
+  /** Form zu Beginn eines Tages, aus dem Stand am Ende von gestern fortgeschrieben mit der Last je Tag (lastAm(date) → Zahl oder null):
+   *  Fitness += (Last − Fitness)/42, Ermüdung += (Last − Ermüdung)/7 (pmc-2.0). start = { ctl, atl } am Ende des Vortags von vonISO.
+   *  → { ctl, atl, form, offen } (offen = Tage ohne Schätzung, als 0 gezählt). Ein Modell, keine Messung. */
+  V66.formPrognose = function (start, vonISO, bisISO, lastAm) {
+    if (!start || !isNum(start.ctl) || !isNum(start.atl) || !vonISO || !bisISO || bisISO < vonISO) return null;
+    let ctl = start.ctl, atl = start.atl, offen = 0;
+    for (let d = vonISO; d < bisISO; d = add(d, 1)) {
+      const x = lastAm ? lastAm(d) : 0; if (!isNum(x)) offen++;
+      const l = isNum(x) ? x : 0;
+      ctl += (l - ctl) / 42; atl += (l - atl) / 7;
+    }
+    return { ctl, atl, form: Math.round(ctl) - Math.round(atl), offen };
   };
 
   /* ---------------- Wochenart (wochenblatt-1.0) ---------------- */

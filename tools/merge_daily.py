@@ -307,6 +307,14 @@ def v5_merge(D, N):
         a, b = _upsert(D, "plan_woche", [w], what="Mein Plan")
         if a or b:
             msg.append(f"Mein Plan Woche {w['montag']}")
+    for v in N.get("verfuegbarkeit_add") or []:         # V7.2 verfuegbarkeit-1.0: Zeit und Sportarten je Tag oder Wochentag (gleiche ID ersetzt mit Audit)
+        fehler = verfuegbarkeit_pruefen(v)
+        if fehler:
+            msg.append(f"Verfügbarkeit nicht übernommen: {fehler}")
+            continue
+        a, b = _upsert(D, "plan_verfuegbarkeit", [v], what="Verfügbarkeit")
+        if a or b:
+            msg.append(f"Verfügbarkeit {v.get('date') or 'Wochentag ' + str(v.get('wt'))}" + (" zurückgesetzt" if v.get("entfernt") else ""))
     for g in N.get("garmin_senden_add") or []:          # V6.6 garmin-senden-1.0: Auftrag je Tag; gesendet wird im Nacht-Update (tools/garmin_senden.py)
         fehler = garmin_senden.pruefen(g)
         if fehler:
@@ -353,6 +361,42 @@ def planwahl_pruefen(w):
     return None
 
 
+VF_SPORT = ("schwimm", "rad", "lauf")
+
+
+def verfuegbarkeit_pruefen(v):
+    """V7.2 verfuegbarkeit-1.0 (wie V66.vfPruefen): je Tag {id «vf-JJJJ-MM-TT», art «tag», date} oder je Wochentag {id «vf-wt-1…7», art
+    «wochentag», wt}; min None oder 0–720 in 5-min-Schritten, sport None oder Liste aus schwimm/rad/lauf ohne Doppel; oder entfernt: true."""
+    if not isinstance(v, dict):
+        return "kein Eintrag"
+    if v.get("art") == "wochentag":
+        wt = v.get("wt")
+        if isinstance(wt, bool) or not isinstance(wt, int) or not 1 <= wt <= 7:
+            return "Wochentag 1–7"
+        if v.get("id") != f"vf-wt-{wt}":
+            return "ID passt nicht zum Wochentag"
+    elif v.get("art") == "tag":
+        try:
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(v.get("date"))):
+                raise ValueError
+            dt.date.fromisoformat(str(v.get("date")))
+        except ValueError:
+            return "kein Datum"
+        if v.get("id") != "vf-" + v["date"]:
+            return "ID passt nicht zum Datum"
+    else:
+        return "unbekannte Art"
+    if v.get("entfernt") is True:
+        return None
+    m = v.get("min")
+    if m is not None and (isinstance(m, bool) or not isinstance(m, int) or not 0 <= m <= 720 or m % 5):
+        return "Zeit 0–12 h in 5-min-Schritten"
+    sp = v.get("sport")
+    if sp is not None and (not isinstance(sp, list) or any(x not in VF_SPORT for x in sp) or len(set(sp)) != len(sp)):
+        return "unbekannte Sportart"
+    return None
+
+
 PLANWOCHE_QUELLEN = ("vorschlag", "eigen", "bibliothek")
 
 
@@ -384,7 +428,7 @@ def planwoche_pruefen(w, vorher=None):
             return f"kein Datum {d!r}"
         if not mo <= dd <= mo + dt.timedelta(days=6):
             return f"{d} liegt nicht in dieser Woche"
-        if not isinstance(t, dict) or not isinstance(t.get("gesperrt", False), bool):
+        if not isinstance(t, dict) or not isinstance(t.get("gesperrt", False), bool) or not isinstance(t.get("eingefroren", False), bool):
             return f"{d}: ungültig"
         E = t.get("einheiten")
         if E is None:
@@ -413,7 +457,10 @@ def planwoche_pruefen(w, vorher=None):
             continue
         neu, vor = tage.get(d) or {}, alt.get(d) or {}
         gleich = neu.get("einheiten") == vor.get("einheiten") and bool(neu.get("gesperrt")) == bool(vor.get("gesperrt"))
-        if dd < ge and not gleich:
+        # eigenplan-1.1: ein vergangener Tag darf einmal «eingefroren» werden (so festgehalten, wie er gezeigt wurde), nie geändert
+        eingefroren = vor.get("einheiten") is None and neu.get("eingefroren") is True and isinstance(neu.get("einheiten"), list) \
+            and bool(neu.get("gesperrt")) == bool(vor.get("gesperrt"))
+        if dd < ge and not (gleich or eingefroren):
             return f"{d} lag beim Ändern schon zurück"
         if vor.get("gesperrt") and neu.get("gesperrt") and neu.get("einheiten") != vor.get("einheiten"):
             return f"{d} ist gesperrt"

@@ -768,6 +768,22 @@ table.t.tr-vt { table-layout: auto; } table.t.tr-vt th, table.t.tr-vt td { paddi
 .tb-akt .tb-d { display: flex; flex-direction: column; min-width: 58px; font-size: 12.5px; } .tb-akt .tb-d small { color: var(--muted); font-size: 11.5px; }
 .tb-akt .tb-n { display: flex; flex-direction: column; min-width: 0; } .tb-akt .tb-n b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tb-akt .tb-n small { color: var(--muted); font-size: 12px; }
+/* V7.2 Schwimmen: Einheit wie im Becken, Übungen, Katalog */
+.sw-block { margin: 10px 0 0; } .sw-bt { margin: 0 0 6px; font: 600 12px var(--f-body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.sw-technik { border: 1px solid var(--line); border-radius: 14px; padding: 8px 10px; background: var(--surface); }
+.sw-technik > summary { cursor: pointer; font: 600 12.5px var(--f-body); letter-spacing: .05em; text-transform: uppercase; display: flex; gap: 8px; align-items: center; min-height: 32px; }
+.sw-teile { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.sw-t { display: grid; grid-template-columns: 74px minmax(0, 1fr) auto; gap: 8px; align-items: start; padding: 9px 10px; border-radius: 12px; background: var(--surface-2, var(--surface)); border-left: 4px solid var(--zc); }
+.sw-t-k b { display: block; font-size: 14px; } .sw-t-k small, .sw-t-m small { display: block; color: var(--muted); font-size: 11.5px; line-height: 1.35; }
+.sw-t-m span:first-child { font-size: 13.5px; } .sw-t-r { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+.sw-z { font-size: 11px; } .sw-i { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: italic 600 14px Georgia, serif; cursor: pointer; }
+.sw-hms { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; } .sw-hm { font-size: 11px; padding: 2px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-text); }
+.sw-hm.frei { background: transparent; border: 1px dashed var(--line); color: var(--muted); }
+.sw-mit { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; margin: 6px 0; }
+.sw-becken { gap: 6px; align-items: center; margin-top: 10px; } .sw-filter { gap: 10px; flex-wrap: wrap; } .sw-filter label { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+.sw-katalog { display: flex; flex-direction: column; gap: 6px; } .sw-k { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; background: var(--surface); }
+.sw-k > summary { cursor: pointer; display: flex; flex-direction: column; align-items: flex-start; text-align: left; min-height: 36px; justify-content: center; } .sw-k > summary small { color: var(--muted); font-size: 12px; }
+.sw-ablauf, .sw-achten, .sw-fehler { margin: 4px 0 8px; padding-left: 20px; font-size: 13.5px; line-height: 1.45; }
 .v53-lead { margin: 0; font-size: 14px; } .v53-lead b { font-size: 22px; color: var(--accent); }
 .v53-zbars { display: flex; flex-direction: column; gap: 6px; }
 .v53-zbars div { display: grid; grid-template-columns: 28px minmax(0, 1fr) 48px 44px; align-items: center; gap: 8px; position: relative; }
@@ -1577,8 +1593,8 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
         <div class="card-head"><div><h2>Schwimmtechnik-Coach</h2><div class="sub">Zwei Videos nebeneinander, Bild für Bild, mit eigenen Marken und Winkeln. Videos verlassen das Gerät nicht.</div></div></div>
         <div id="sw-coach"></div>
       </div>
-      <div class="card w12">
-        <h2>Technikübungen</h2><div class="sub">So werden die Übungen ausgeführt – Ziel, Ablauf, typische Fehler</div>
+      <div class="card w12" id="sw-uebungen-card">
+        <h2>Technikübungen</h2><div class="sub keep">Wofür, so geht's, worauf achten, typische Fehler und Hilfsmittel (Brett, Pullbuoy, Flossen, Paddles) – filtern nach Hilfsmittel oder Schwerpunkt</div>
         <div id="v53-drills"></div>
       </div>
       <div class="card w12" id="sw-tech-card" hidden data-ausgeblendet="Lernbausteine: die Bewertung kam aus dem Schwimmtechnik-Coach, der seit V5.9 ausgeblendet ist (V6.4.4, Audit D16). Daten bleiben">
@@ -1664,6 +1680,8 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <script src="js/v6-plan.js"></script>
 <script src="js/v64.js"></script>
 <script src="js/wissen.js"></script>
+<script src="js/schwimmen.js"></script>
+<script src="js/schwimmen-ui.js"></script>
 <script src="js/v64-ui.js"></script>
 <script src="js/v65.js"></script>
 <script src="js/v65-ui.js"></script>
@@ -3399,7 +3417,7 @@ function isoWeek(dt) { const d = new Date(dt); d.setHours(0, 0, 0, 0); d.setDate
 function v5Start() {
   if (!window.V5UI) return;
   V5_READY = V5UI.init({ D, chart, css, fmt, esc, dateCH, dLabel, pd, iso, today, SPORTS, IS_DEMO, hrsOf, effS, shareOrDownload, ACT_BY_ID, charts, mmss, hmm, ringSVG, weights,
-    planRoute: () => (window.RTUI ? window.RTUI.planRoute() : null), pmcHeute: () => FK.pmcMorgen(pmc(), iso(today)), races: () => (D.config?.races || RACES), tests: () => testsWithStatus() }).then(() => { if (window.V59) V59.init(V5UI.C); }).catch((e) => console.error(e));
+    planRoute: () => (window.RTUI ? window.RTUI.planRoute() : null), pmcHeute: () => FK.pmcMorgen(pmc(), iso(today)), pmc: () => pmc(), races: () => (D.config?.races || RACES), tests: () => testsWithStatus() }).then(() => { if (window.V59) V59.init(V5UI.C); }).catch((e) => console.error(e));
 }
 const charts = {};
 if (window.Chart) {

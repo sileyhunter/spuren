@@ -178,7 +178,7 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 67. **Etappe 6, Kalender und Woche:** jeden Tag antippen (Tagesblatt, auch künftige Tage), Wochenansicht mit Umschalter Monat, Training hinzufügen
     (Sportart, Art, Vorlage, Dauer), Tag sperren, Verschieben und Entfernen, Änderungen verwerfen / Rest der Woche neu planen / Woche leeren,
     TL ≈ und Distanz ≈ geplanter Einheiten, jede KW im Plan antippen (Belastung 1–3 oder Erholung, Stunden, TL), «Je Sportart» mit allen drei Sportarten.
-    **Erledigt mit V6.6 Etappe 6 (6.1–6.7),** offen: «Rest der Woche neu planen» (wochenplan-1.3); «An Garmin senden» ohne Schwimmen (Garmin braucht
+    **Erledigt mit V6.6 Etappe 6 (6.1–6.7),** «Rest der Woche neu planen» mit V7.2 («Woche anpassen», verfuegbarkeit-1.0); offen: «An Garmin senden» ohne Schwimmen (Garmin braucht
     Strecken je Abschnitt) und ohne Strecken (`upload_course`, kommt mit Etappe 7); das Format ist erst mit dem ersten echten Senden geprüft (Rücklese);
     Vorlagen über der Intensitätswahl ausgrauen kommt mit 8.1. Die Wochenansicht hat kein eigenes Band Mo–So über den Tagen (die Tagesliste
     zeigt Datum, Schloss und heute selbst); Wischen zwischen Wochen fehlt (Pfeile).
@@ -203,7 +203,7 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 
 ## Ergänzung enduco-Vergleich vom 13.11.2026 (`docs/ergaenzung-enduco-vergleich.md`; gebaut wird erst nach Silas' Okay)
 80. **Vorschläge C1–C12 und kleine Fehler D:** Analyse als Übersicht mit Detailseiten, Trainingsstatus im Verlauf, Heute entschlacken,
-    Trainingsverfügbarkeit je Tag, Plan über die ganze Saison, Renn-Blatt mit Zielzeit und Wettkampfpace, Einheit-Blatt vervollständigen,
+    Trainingsverfügbarkeit je Tag (erledigt mit V7.2, verfuegbarkeit-1.0), Plan über die ganze Saison, Renn-Blatt mit Zielzeit und Wettkampfpace, Einheit-Blatt vervollständigen,
     Agenda im Kalender, Zonen kompakter, Check-in «Alles durchschnittlich», Bibliothek mit Mini-Profil, Technikfehler → Übungen; dazu die vier
     kleinen Fehler unter D. Reihenfolge und Umfang entscheidet Silas.
 
@@ -225,3 +225,10 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 92. **Garmin-Tageswerte kommen kaum an** (Readiness, Body Battery, Stress; wellness-1.0) – Nacht- und Morgen-Update prüfen.
 93. **Gering:** Aufbau-Grenze für Wochen mehr als 30 Tage voraus; Titel gekürzter Einheiten; Schwimm-Last mit dem Rad-Schwellenpuls; Renntempo
     Rad für die Langdistanz am oberen Rand und kein 70.3-Renntempo; Dickhuth am rohen Minimum (ein einzelner tiefer Wert bestimmt die Basis).
+
+## Nach V7.2 (16.11.2026)
+94. **Verfügbarkeit:** die Verteilung tauscht keine Einheiten (z. B. lange Ausfahrt und langer Lauf, wenn das Wochenende fehlt) und plant die Stunden
+    nicht neu – weniger Zeit heisst gekürzt oder weggelassen, mehr Zeit wird nicht gefüllt. Gewichte der Verteilung sind eigene Festlegungen,
+    noch nicht an echten Wochen geprüft. Mehrere Zeitfenster je Tag (morgens/abends) und «drinnen/draussen» gibt es noch nicht.
+95. **Schwimm-Einheiten:** Umfang ohne CSS-Test nur aus dem Tempo der Becken-Einheiten (Richtwert); Übungen werden nicht nach deinen Technikfehlern
+    gewählt (C12 «Technikfehler → Übungen» offen); Schwimm-Einheiten gehen weiter nicht an Garmin.

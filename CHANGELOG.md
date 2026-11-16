@@ -1,5 +1,37 @@
 # Änderungen
 
+## V7.2 · 16.11.2026 · Wünsche vom 16.11.2026, Teil 2: Schwimmen wie im Becken, Verfügbarkeit und Kalender wie enduco
+- **Schwimm-Einheiten `schwimmeinheit-1.0` (`js/schwimmen.js`, `js/schwimmen-ui.js`):** eigene Schwimm-Einheiten (locker, CSS-Wiederholungen,
+  CSS-Test) stehen beim Antippen als Serien da wie im Becken: Einschwimmen, Technikübungen (aufklappbar), Beine mit Brett, Hauptserie, Pull mit
+  Pullbuoy bei langen Einheiten, Ausschwimmen – je Teil Meter, Bahnen («½ L» im 50-m-Becken), ≈ Zeit, Pause am Beckenrand, Tempo aus dem CSS-Test
+  oder Anstrengung (RPE) ohne Test, Hilfsmittel nötig/freiwillig. Meter aus der Plandauer (mit CSS aus dem CSS-Tempo, sonst Richtwert aus deinen
+  Becken-Einheiten, ohne Tempoziel). Beckenlänge 25/50 m je Gerät (Standard: häufigste in deinen Enduco-Schwimm-Workouts). Die Übungen wechseln
+  jede Woche (drei Gruppen: Lage und Rotation, Armzug, Beine und Atmung).
+- **Technikübungen `uebungen-2.0`:** 22 Übungen, je mit Wofür, So geht's, Worauf achten, Typische Fehler, Hilfsmitteln (Brett, Pullbuoy, Flossen,
+  Paddles; nötig oder freiwillig) und üblicher Dosierung – eigene Beschreibungen. Karte «Technikübungen» unter Analyse → Schwimmen mit Filter nach
+  Hilfsmittel und Schwerpunkt. In Enduco-Schwimm-Workouts (Bibliothek) zeigt jeder Schritt, der eine bekannte Übung ist, ein «i» mit dieser
+  Erklärung, dazu das Hilfsmittel aus Garmin (`equipment_type`).
+- **Verfügbarkeit `verfuegbarkeit-1.0` (Vorbild enduco):** im Tagesblatt je Tag oder «jeden Dienstag» Zeit (0–8 h, «offen») und erlaubte Sportarten
+  (Schwimmen, Rad, Laufen); gespeichert über «Direkt speichern» (Eingabe `verfuegbarkeit` → `plan_verfuegbarkeit`, `merge_daily.verfuegbarkeit_pruefen`).
+  Der Vorschlag verteilt sich danach (`V66.verteilen`): Einheiten bleiben an ihrem Tag, wenn sie dort passen (wenig zu lang: um höchstens ein Viertel
+  gekürzt); sonst auf den besten anderen erlaubten Tag – nahe am ursprünglichen, harte Rad- und Laufeinheiten nicht hintereinander und nicht am selben
+  Tag, nicht zweimal dieselbe Sportart, Ruhetag nur mit eingetragener Zeit; lockere Einheiten von vollen Tagen weg. Was nirgends passt, wird gekürzt
+  (bis zur kürzesten Vorlage bzw. kurzen Fassung) oder fällt weg – alles gemeldet. Tests, Schwimmkurs (fällt weg ohne Schwimmen), Aktivierung und
+  eigene Einheiten bleiben am Tag; in Rennwochen wird nichts verschoben (nur gemeldet). Gewichte sind eigene Festlegungen.
+- **Mein Plan `eigenplan-1.1`:** Wochen ohne eigene Änderungen folgen der Verfügbarkeit von selbst. Wird eine verteilte Woche bearbeitet, wird sie als
+  Ganzes festgehalten (vergangene Tage «eingefroren»; `merge_daily.planwoche_pruefen` erlaubt das einmal je vergangenem Tag), damit nichts
+  zurückspringt. Neu unter «Woche bearbeiten» und nach jeder Änderung der Verfügbarkeit: **«Woche anpassen»** (ab heute neu verteilen; gesperrte Tage
+  und eigene Einheiten bleiben) und **«Neu berechnen»** (diese und alle folgenden Wochen wieder nach dem Vorschlag; nur gesperrte Tage bleiben).
+  Damit ist «Rest der Woche neu planen» (offen seit V6.6) erledigt.
+- **Tagesblatt wie enduco:** oben Fitness, Ermüdung und Form zu Tagesbeginn mit Status (bis heute aus den Daten; kommende Tage ≈, fortgeschrieben mit
+  der geplanten Last von Mein Plan, bis 3 Wochen voraus, `V66.formPrognose`), darunter die Verfügbarkeit mit «Ändern». Kalender-Woche: «verfügbar …»
+  je Tag und was die Verfügbarkeit bewirkt hat.
+- Wissen wissen-1.9 (Kapitel «Schwimmen: CSS» mit Schwimm-Einheit und Übungen, Kapitel «Die Modelle zur Auswahl» mit Verfügbarkeit; Regeln ergänzt).
+- Tests: `tests/test_v72.cjs` (neu: Übungen, Finden aus Enduco-Schritten, Filter, Schwimm-Einheiten, Bahnen), `tests/test_v66.cjs` (Verfügbarkeit,
+  Verteilen, eigenplan-1.1, Anpassen, Neu berechnen, Form-Prognose), `tests/test_tools.py` (verfuegbarkeit_pruefen, Einfrieren vergangener Tage),
+  `tests/test_v64.cjs` (Wissen 1.9). Im Browser geprüft (390 px, echte Daten): Schwimm-Einheit, Übungsblatt, Enduco-Schwimm-Workout, Übungskatalog,
+  Tagesblatt mit Form und Verfügbarkeit, Verfügbarkeit speichern, Kalender-Woche nach der Änderung.
+
 ## V7.1 · 16.11.2026 · Wünsche vom 16.11.2026, Teil 1: Umfang, Tagebuch, effektive Zeit, vergleichbare Läufe, Morgen-Update
 - **Trainingsumfang `umfang-tabelle-1.0`:** Jahresstatistik als eine kompakte Tabelle für alle Sportarten (auch auf dem Handy keine Liste mehr):
   Kopfzeile = Legende (Anz., Std., km, Hm, ± Vorjahr), unter der Sportart klein Ø Puls und Rad Ø Watt / Laufen Ø Pace / Schwimmen CSS, unter den

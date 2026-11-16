@@ -4,7 +4,10 @@
    (Eingabe planwoche → plan_woche). Aufbau und Bedienung nach dem Vorbild enduco, Texte eigen.
    garmin-senden-1.0 (6.7, Entscheid E3): «An Garmin senden» je Tag oder Woche (bis eine Woche voraus) und «am Vortag um 23 Uhr automatisch» legen
    einen Auftrag mit Momentaufnahme an (Eingabe garmin_senden → garmin_auftraege); gesendet wird im Nacht-Update (tools/garmin_senden.py).
-   Die Seite selbst schreibt nie nach Garmin; Enduco wird nie geändert. */
+   Die Seite selbst schreibt nie nach Garmin; Enduco wird nie geändert.
+   V7.2 (verfuegbarkeit-1.0, eigenplan-1.1, Vorbild enduco): im Tagesblatt Form zu Tagesbeginn (bis heute gemessen, danach ≈ mit der geplanten
+   Last), Verfügbarkeit (Zeit und Sportarten je Tag oder je Wochentag, Eingabe verfuegbarkeit → plan_verfuegbarkeit), danach «Anpassen» oder
+   «Neu berechnen»; dieselben Aktionen unter «Woche bearbeiten». */
 (function () {
   "use strict";
   const M = (window.V66UI = window.V66UI || {});
@@ -66,7 +69,9 @@
     if (!bereit()) return "Seite noch nicht bereit";
     const K = kontext(mo); if (!K) return "Plan dieser Woche nicht berechenbar";
     const vorschlag = (d) => ((K.w0 || K.w).tage.find((t) => t.date === d) || { einheiten: [] }).einheiten;
-    const r = V66().aendern(P().planEintrag(mo), a, { heute: heute(), montag: mo, vorschlag });
+    const roh = (d) => ((K.w0roh || K.w0 || K.w).tage.find((t) => t.date === d) || { einheiten: [] }).einheiten;
+    const r = V66().aendern(P().planEintrag(mo), a, { heute: heute(), montag: mo, vorschlag, roh, verf: K.verf || null, verteilt: !!K.verteilt, ctxE: K.ctxE,
+      o: { phase: K.w.phase, css_s: K.css ? K.css.s : null, kurz: !!(K.w.taper || K.w.erholung) }, jetzt: new Date().toISOString() });
     if (r.fehler) return r.fehler;
     const I = UI().Inbox; if (!I || !I.data) return "Speicher auf diesem Gerät nicht verfügbar";
     if (!Array.isArray(I.data.planwoche)) I.data.planwoche = [];
@@ -105,9 +110,125 @@
     const akt = ds < heute() ? `<p class="hint">Vergangene Tage nur lesen.</p>`
       : `<div class="row mp-akt">${t.gesperrt ? "" : `<button type="button" class="btn primary" data-mpadd>${W.icon("plus", 16)} Training hinzufügen</button>`}
          <button type="button" class="btn" data-mplock aria-pressed="${t.gesperrt}">${W.icon("schloss", 15)} ${t.gesperrt ? "Entsperren" : "Tag sperren"}</button></div>
-         ${t.gesperrt ? `<p class="hint">Gesperrt: nicht bearbeitbar, «Woche leeren» und «Änderungen verwerfen» lassen ihn stehen.</p>` : ""}`;
-    return `${woche}<h3 class="abschnitt mp-kopf">Mein Plan ${status}</h3><div class="mp-liste">${karten}</div>${aufbau}${akt}${garminHTML(ds, t)}<p class="warn-t" data-mpfehler hidden></p>`;
+         ${t.gesperrt ? `<p class="hint">Gesperrt: nicht bearbeitbar; «Woche leeren», «Anpassen» und «Neu berechnen» lassen ihn stehen.</p>` : ""}`;
+    return `${woche}${formHTML(ds)}${vfHTML(ds, K)}<h3 class="abschnitt mp-kopf">Mein Plan ${status}</h3><div class="mp-liste">${karten}</div>${aufbau}${akt}${garminHTML(ds, t)}<p class="warn-t" data-mpfehler hidden></p>`;
   };
+
+  /* ---------- V7.2: Form zu Tagesbeginn und Verfügbarkeit im Tagesblatt ---------- */
+  /** Form zu Tagesbeginn (status-1.1): bis heute aus deinen Daten, für kommende Tage ≈ mit der geplanten Last von Mein Plan (TL ≈, Modell). */
+  function formTag(ds) {
+    const PM = C.pmc ? C.pmc() : null, FK = window.FK; if (!PM || !PM.length || !FK) return null;
+    const h = heute();
+    if (ds <= h) { const A = FK.pmcMorgen(PM, ds); return A ? { fitness: A.fitness, ermuedung: A.ermuedung, form: A.form, prognose: false } : null; }
+    if (ds > add(h, 21)) return null;                                   // weiter voraus: zu unsicher, nichts zeigen
+    let st = null; for (let i = PM.length - 1; i >= 0; i--) if (PM[i] && PM[i].date < h) { st = PM[i]; break; }
+    if (!st) return null;
+    const KM = new Map(), K = (d) => { const mo = montag(d); if (!KM.has(mo)) KM.set(mo, kontext(mo)); return KM.get(mo); };
+    const ohne = new Set();                                             // Einheiten ohne Schätzung (z. B. Schwimmen ohne CSS-Test): nicht gezählt
+    const lastAm = (d) => {
+      const ist = (C.D.activities || []).filter((a) => a && a.date === d);
+      if (ist.length) return ist.reduce((s2, a) => s2 + (isNum(a.tss) ? a.tss : 0), 0);
+      const k = K(d), t = k && k.w.tage.find((x) => x.date === d); if (!t) return 0; if (t.rennen) return null;
+      let sum = 0;
+      for (const e of t.einheiten) { if (!["rad", "lauf", "schwimm"].includes(e.sport)) continue; const S = V66().schaetzung(e, bezug(k)); if (isNum(S.tl)) sum += S.tl; else ohne.add(e.titel); }
+      return sum;
+    };
+    const r = V66().formPrognose({ ctl: st.ctl, atl: st.atl }, h, ds, lastAm);
+    return r ? { fitness: Math.round(r.ctl), ermuedung: Math.round(r.atl), form: r.form, prognose: true, offen: r.offen, ohne: [...ohne] } : null;
+  }
+  function formHTML(ds) {
+    let f = null; try { f = formTag(ds); } catch (e) { console.error(e); }
+    if (!f) return "";
+    const st = V6().status(f.form), pre = f.prognose ? "≈ " : "";
+    return `<div class="kv ek-kv mp-form"><div><b>${pre}${f.fitness}</b><span>Fitness</span></div><div><b>${pre}${f.ermuedung}</b><span>Ermüdung</span></div>
+      <div><b>${pre}${f.form > 0 ? "+" : ""}${f.form}</b><span>Form${st ? ` · <i class="st-farbe" style="--stc:${st.farbe}">${esc(st.name)}</i>` : ""}</span></div></div>
+      ${f.prognose ? `<p class="hint">Zu Tagesbeginn, fortgeschrieben mit der geplanten Last von Mein Plan (TL ≈ aus deinem Zonenprofil)${f.ohne && f.ohne.length ? `; ohne Schätzung nicht gezählt: ${esc(f.ohne.slice(0, 3).join(", "))}` : ""}${f.offen ? `; ${f.offen} Renntag${f.offen === 1 ? "" : "e"} als 0` : ""} – ein Modell, keine Messung (pmc-2.0).</p>` : ""}`;
+  }
+  const WT_LANG = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
+  function vfHTML(ds, K) {
+    const verf = K.verf || (P().verfuegbarkeit ? P().verfuegbarkeit() : null), v = verf ? verf(ds) : null;
+    const quelle = !v ? "nicht festgelegt – der Vorschlag plant frei" : v.quelle === "tag" ? "nur an diesem Tag" : `jeden ${WT_LANG[V66().wtNr(ds) - 1]}`;
+    const sp = v && v.sport ? v.sport : null, W = V6();
+    return `<div class="mp-vf"><div class="mp-vf-t"><span class="abschnitt">${W.icon("kalender", 14)}Verfügbarkeit</span><b>${esc(v ? V66().vfText(v) : "–")}</b><small>${esc(quelle)}</small></div>
+      ${v && sp && sp.length ? `<span class="mp-vf-sp">${sp.map((x) => `<i style="--sp:${spFarbe(x)}">${W.sportIcon(x, 14)}</i>`).join("")}</span>` : ""}
+      ${ds >= heute() ? `<button type="button" class="btn" data-mpvf>Ändern</button>` : ""}</div>`;
+  }
+  /** Verfügbarkeit eines Tages oder Wochentags ändern (Zeit, Sportarten); danach «Anpassen» oder «Neu berechnen». */
+  M.verfuegbarkeitBlatt = function (ds, zurueck) {
+    if (!bereit()) return;
+    const W = V6(), K = kontext(montag(ds)), verf = K && K.verf, v = verf ? verf(ds) : null, wtn = V66().wtNr(ds);
+    const startMin = v && v.min != null ? v.min : 90, offenZ = !!(v && v.min == null), sp0 = v && v.sport ? v.sport : V66().VF_SPORT.slice();
+    const html = `<h2 id="v59-ov-h" tabindex="-1">Verfügbarkeit</h2><p class="sub">${esc(tagText(ds))}</p>
+      <label class="mp-dauer"><span>Zeit</span><input type="range" min="0" max="480" step="15" value="${Math.min(480, startMin)}" data-vfmin aria-label="Trainingszeit in Minuten" ${offenZ ? "disabled" : ""}><output data-vfout></output></label>
+      <label class="mp-auto"><input type="checkbox" data-vfoffen ${offenZ ? "checked" : ""}> Zeit offen (keine Grenze)</label>
+      <h3 class="abschnitt">Sportarten</h3>
+      <div class="row mp-vf-wahl" role="group" aria-label="Erlaubte Sportarten">${V66().VF_SPORT.map((x) => `<button type="button" class="chip" data-vfsp="${x}" aria-pressed="${sp0.includes(x)}"><span class="mo-sp" style="--sp:${spFarbe(x)}">${W.sportIcon(x, 15)}</span>${x === "schwimm" ? "Schwimmen" : x === "rad" ? "Rad" : "Laufen"}</button>`).join("")}</div>
+      <h3 class="abschnitt">Gilt für</h3>
+      <div class="row mp-vf-wahl" role="radiogroup" aria-label="Gilt für"><button type="button" class="chip" data-vfziel="tag" aria-pressed="${!v || v.quelle === "tag"}">nur ${esc(dkurz(ds))}</button><button type="button" class="chip" data-vfziel="wt" aria-pressed="${!!(v && v.quelle === "wochentag")}">jeden ${esc(WT_LANG[wtn - 1])}</button></div>
+      <p class="hint">${esc(V66().VERSIONS.verfuegbarkeit)}: Der Vorschlag verteilt sich danach – Einheiten bleiben an ihrem Tag, wenn sie passen, sonst kommen sie auf einen anderen erlaubten Tag oder werden gekürzt (immer gemeldet). Wochen, die du bearbeitet hast, bleiben, bis du «Anpassen» wählst. Nichts geht an Garmin oder Enduco.</p>
+      <p class="warn-t" data-mpfehler hidden></p>
+      ${fuss("data-mpz", `<button type="button" class="btn" data-vfweg ${v ? "" : "disabled"}>Zurücksetzen</button><button type="button" class="btn primary gross" data-vfok>${W.icon("check", 18)} Speichern</button>`)}`;
+    const ov = V59().blatt("mp-vf", html);
+    const sl = ov.querySelector("[data-vfmin]"), out = ov.querySelector("[data-vfout]"), of = ov.querySelector("[data-vfoffen]");
+    const zeig = () => { out.textContent = of.checked ? "offen" : +sl.value === 0 ? "kein Training" : hm(+sl.value) + " h"; sl.disabled = of.checked; };
+    sl.oninput = zeig; of.onchange = zeig; zeig();
+    ov.querySelectorAll("[data-vfsp]").forEach((b) => (b.onclick = () => b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed") !== "true"))));
+    ov.querySelectorAll("[data-vfziel]").forEach((b) => (b.onclick = () => ov.querySelectorAll("[data-vfziel]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)))));
+    ov.querySelector("[data-mpz]").onclick = () => (zurueck ? zurueck() : V59().schliessen());
+    const fehler = (f) => { const p = ov.querySelector("[data-mpfehler]"); p.textContent = f; p.hidden = !f; };
+    const ziel = () => (ov.querySelector('[data-vfziel="wt"]').getAttribute("aria-pressed") === "true" ? { wt: wtn } : { date: ds });
+    const speichern = async (wert) => {
+      const z = ziel(), id = z.date ? "vf-" + z.date : "vf-wt-" + z.wt;
+      const f = await vfSpeichern(ds, z, wert && wert.zuruecksetzen ? (verf && verf.eintrag(id) ? null : undefined) : wert);
+      if (f) return fehler(f);
+      M.reaktionBlatt(ds, zurueck);
+    };
+    ov.querySelector("[data-vfok]").onclick = () => {
+      const sport = [...ov.querySelectorAll("[data-vfsp]")].filter((b) => b.getAttribute("aria-pressed") === "true").map((b) => b.dataset.vfsp);
+      speichern({ min: of.checked ? null : +sl.value, sport: sport.length === 3 ? null : sport });
+    };
+    ov.querySelector("[data-vfweg]").onclick = () => speichern({ zuruecksetzen: true });
+  };
+  /** Speichert einen Eintrag; die laufende Woche wird vorher so festgehalten, wie sie gezeigt wird (vergangene Tage bleiben). */
+  async function vfSpeichern(ds, ziel, wert) {
+    if (wert === undefined) return "Für diese Auswahl ist nichts eingetragen.";
+    const I = UI().Inbox; if (!I || !I.data) return "Speicher auf diesem Gerät nicht verfügbar";
+    const e = V66().vfEintrag(ziel, wert, new Date().toISOString()), f = V66().vfPruefen(e); if (f) return f;
+    const moH = montag(heute()), betrifft = ziel.wt ? true : montag(ziel.date) === moH;
+    if (betrifft && heute() > moH) { const r = await aendern(moH, { art: "festhalten" }); if (r) return r; }     // vergangene Tage bleiben, wie sie gezeigt wurden
+    if (!Array.isArray(I.data.verfuegbarkeit)) I.data.verfuegbarkeit = [];
+    await I.upsert("verfuegbarkeit", e);
+    neuZeichnen();
+    return null;
+  }
+  /** Nach einer Änderung der Verfügbarkeit: wie soll der Plan reagieren? */
+  M.reaktionBlatt = function (ds, zurueck) {
+    const W = V6(), mo = montag(ds), K = kontext(mo);
+    const html = `<h2 id="v59-ov-h" tabindex="-1">Gespeichert</h2><p class="sub">Verfügbarkeit ${esc(tagText(ds))}: ${esc(K && K.verf ? V66().vfText(K.verf(ds)) : "")}</p>
+      <ul class="mp-wahl">
+        <li><button type="button" class="mp-zeile" data-mpre="anpassen"><span class="mp-vt"><b>Woche anpassen</b><small>KW ${V6().isoWoche(mo)} ab heute neu verteilen; gesperrte Tage und deine eigenen Einheiten bleiben.</small></span>${W.icon("weiter", 18)}</button></li>
+        <li><button type="button" class="mp-zeile" data-mpre="neu"><span class="mp-vt"><b>Neu berechnen</b><small>Diese und alle folgenden Wochen wieder nach dem Vorschlag mit deiner Verfügbarkeit; nur gesperrte Tage bleiben.</small></span>${W.icon("weiter", 18)}</button></li>
+        <li><button type="button" class="mp-zeile" data-mpre="nichts"><span class="mp-vt"><b>Nur speichern</b><small>Wochen ohne eigene Änderungen folgen der Verfügbarkeit von selbst; bearbeitete bleiben.</small></span>${W.icon("weiter", 18)}</button></li></ul>
+      <p class="warn-t" data-mpfehler hidden></p>${fuss("data-mpz")}`;
+    const ov = V59().blatt("mp-vf", html);
+    const weiter = () => (zurueck ? zurueck() : V59().schliessen());
+    ov.querySelector("[data-mpz]").onclick = weiter;
+    ov.querySelectorAll("[data-mpre]").forEach((b) => (b.onclick = async () => {
+      const art = b.dataset.mpre; let f = null;
+      if (art === "anpassen") f = await aendern(mo, { art: "anpassen" });
+      if (art === "neu") f = await neuAlle(mo);
+      if (f) { const p = ov.querySelector("[data-mpfehler]"); p.textContent = f; p.hidden = false; return; }
+      weiter();
+    }));
+  };
+  /** «Neu berechnen»: diese Woche (ab heute) und alle späteren Wochen mit eigenem Plan wieder nach dem Vorschlag; gesperrte Tage bleiben. */
+  async function neuAlle(mo) {
+    const ab = mo < montag(heute()) ? montag(heute()) : mo;
+    const ids = new Set([...(C.D.plan_woche || []), ...((UI().Inbox.data || {}).planwoche || [])].filter((w) => w && w.montag >= ab).map((w) => w.montag));
+    ids.add(ab);
+    for (const m of [...ids].sort()) { if (m === ab || P().planEintrag(m)) { const f = await aendern(m, { art: "neuberechnen" }); if (f && m === ab) return f; } }
+    return null;
+  }
   /** Abschnitt «Garmin» im Tagesblatt: Stand des Auftrags, «An Garmin senden», «am Vortag um 23 Uhr automatisch». */
   function garminHTML(ds, t) {
     if (ds < heute()) return "";
@@ -141,6 +262,7 @@
     const fehler = (f) => { const p = ov.querySelector("[data-mpfehler]"); if (p) { p.textContent = f; p.hidden = !f; } };
     ov.querySelectorAll("[data-mpe]").forEach((b) => (b.onclick = () => M.einheit(ds, b.dataset.mpe, { zurueck })));
     ov.querySelectorAll("[data-mpadd]").forEach((b) => (b.onclick = () => M.hinzufuegen(ds, zurueck)));
+    ov.querySelectorAll("[data-mpvf]").forEach((b) => (b.onclick = () => M.verfuegbarkeitBlatt(ds, zurueck)));
     ov.querySelectorAll("[data-mplock]").forEach((b) => (b.onclick = async () => {
       const x = tagVon(ds); if (!x) return;
       const f = await aendern(montag(ds), { art: x.t.gesperrt ? "entsperren" : "sperren", date: ds });
@@ -333,11 +455,14 @@
     const ganzVorbei = add(mo, 6) < heute();
     const html = `<h2 id="v59-ov-h" tabindex="-1">Woche bearbeiten</h2><p class="sub">KW ${V6().isoWoche(mo)} · ${esc(dkurz(mo))}–${esc(dkurz(add(mo, 6)))}</p>
       ${ganzVorbei ? `<p class="hint">Vergangene Wochen nur lesen.</p>` : `<ul class="mp-wahl">
-        <li><button type="button" class="mp-zeile" data-mpwa="verwerfen" ${K.w.bearbeitet ? "" : "disabled"}><span class="mp-vt"><b>Änderungen verwerfen</b><small>Ab heute wieder der Vorschlag; gesperrte Tage bleiben.</small></span></button></li>
+        <li><button type="button" class="mp-zeile" data-mpwa="anpassen"><span class="mp-vt"><b>Woche anpassen</b><small>Ab heute nach deiner Verfügbarkeit neu verteilen; gesperrte Tage und eigene Einheiten bleiben.</small></span></button></li>
+        <li><button type="button" class="mp-zeile" data-mpwa="neu"><span class="mp-vt"><b>Neu berechnen</b><small>Diese und alle folgenden Wochen wieder nach dem Vorschlag (mit deiner Verfügbarkeit); nur gesperrte Tage bleiben.</small></span></button></li>
+        <li><button type="button" class="mp-zeile" data-mpwa="verwerfen" ${K.w.bearbeitet ? "" : "disabled"}><span class="mp-vt"><b>Änderungen verwerfen</b><small>Nur diese Woche: ab heute wieder der Vorschlag; gesperrte Tage bleiben.</small></span></button></li>
         <li><button type="button" class="mp-zeile" data-mpwa="leeren"><span class="mp-vt"><b>Woche leeren</b><small>Ab heute alle Tage frei, zum selbst Planen; gesperrte Tage bleiben.</small></span></button></li>
         <li><button type="button" class="mp-zeile" data-mpwgs ${wocheGarminTage(mo, K).length ? "" : "disabled"}><span class="mp-vt"><b>Woche an Garmin senden</b><small>Rad und Laufen ab morgen bis eine Woche voraus, mit dem nächsten Nacht-Update (${esc(V66().VERSIONS.garmin)}).</small></span></button></li></ul>
         <p class="mp-frage" data-mpfrage hidden></p>`}
-      <p class="hint">Rest der Woche neu planen (verpasste Einheiten neu verteilen) folgt mit wochenplan-1.3. Enduco bleibt unverändert.</p>
+      ${verteilHTML(mo, K)}
+      <p class="hint">Verfügbarkeit je Tag im Tagesblatt (${esc(V66().VERSIONS.verfuegbarkeit)}). Enduco und Garmin bleiben unverändert.</p>
       <p class="warn-t" data-mpfehler hidden></p>
       ${fuss("data-x")}`;
     const ov = V59().blatt("mp-woche", html);
@@ -353,11 +478,21 @@
     let offen = null;
     ov.querySelectorAll("[data-mpwa]").forEach((b) => (b.onclick = async () => {
       const art = b.dataset.mpwa, frage = ov.querySelector("[data-mpfrage]");
-      if (offen !== art) { offen = art; frage.innerHTML = `${art === "leeren" ? "Alle künftigen Tage der Woche leeren?" : "Alle Änderungen ab heute verwerfen?"} <button type="button" class="btn primary" data-mpja>Ja</button>`; frage.hidden = false;
-        frage.querySelector("[data-mpja]").onclick = async () => { const f = await aendern(mo, { art }); if (f) { const p = ov.querySelector("[data-mpfehler]"); p.textContent = f; p.hidden = false; } else if (zurueck) zurueck(); else V59().schliessen(); }; return; }
+      const FRAGE = { leeren: "Alle künftigen Tage der Woche leeren?", verwerfen: "Alle Änderungen dieser Woche ab heute verwerfen?", anpassen: "Den Rest der Woche nach deiner Verfügbarkeit neu verteilen?",
+        neu: "Diese und alle folgenden Wochen neu berechnen? Eigene Einheiten an nicht gesperrten Tagen fallen weg." };
+      if (offen !== art) { offen = art; frage.innerHTML = `${FRAGE[art]} <button type="button" class="btn primary" data-mpja>Ja</button>`; frage.hidden = false;
+        frage.querySelector("[data-mpja]").onclick = async () => { const f = art === "neu" ? await neuAlle(mo) : await aendern(mo, { art }); if (f) { const p = ov.querySelector("[data-mpfehler]"); p.textContent = f; p.hidden = false; } else if (zurueck) zurueck(); else V59().schliessen(); }; return; }
     }));
   };
 
+  /** V7.2: was die Verfügbarkeit in dieser Woche bewirkt hat (automatisch verteilt oder zuletzt angepasst/neu berechnet). */
+  function verteilHTML(mo, K) {
+    const E = P().planEintrag ? P().planEintrag(mo) : null;
+    const L = E && E.ganz ? (E.verteilung && E.verteilung.meldungen) || [] : K.w.verteilung ? V66().verteilText(K.w.verteilung) : [];
+    if (!L.length) return "";
+    const titel = E && E.ganz ? (E.verteilung && E.verteilung.art === "neu" ? "Zuletzt neu berechnet" : "Zuletzt angepasst") : "Nach deiner Verfügbarkeit verteilt";
+    return `<details class="kw-vt"><summary class="hint">${esc(titel)}: ${L.length} ${L.length === 1 ? "Meldung" : "Meldungen"}</summary><ul class="mo-ablauf">${L.slice(0, 12).map((x) => `<li>${esc(x)}</li>`).join("")}</ul></details>`;
+  }
   /** Tage einer Woche, die sich senden lassen (morgen bis eine Woche voraus, mit sendbaren Einheiten oder schon gesendeten). */
   function wocheGarminTage(mo, K) {
     return K.w.tage.filter((t) => garminFenster(t.date) && !(t.date === add(heute(), 1) && nachtGelaufen()) && (!t.rennen && t.einheiten.some((e) => !V66().garminGrund(e))
@@ -420,6 +555,7 @@
       </div>`;
     const tests = (C.tests ? C.tests() : []).filter((t) => t && t.date >= mo && t.date <= add(mo, 6));
     const NAME = { stufentest: "Stufentest", check: "Laktat-Kurzcheck", css: "CSS-Test" };
+    const vfZeile = (d) => { if (d < h || !K.verf) return ""; const v = K.verf(d); return v ? `<p class="kw-vf">verfügbar: ${esc(V66().vfText(v))}</p>` : ""; };
     const tage = K.w.tage.map((t) => {
       const ia = ist.filter((a) => a.date === t.date), tt = tests.filter((x) => x.date === t.date);
       const done = ia.map((a) => `<button type="button" class="kw-akt" data-ex="${esc(a.id)}" aria-label="${esc(a.name || "Aktivität")} analysieren"><span class="mo-sp voll" style="--sp:${spFarbe(a.sport)}">${W.sportIcon(a.sport, 15)}</span>
@@ -430,9 +566,9 @@
       const tx = tt.map((x) => `<p class="kw-test"><i class="c-test"></i>${esc(NAME[x.kind] || x.kind)}${x.done ? " ✓" : x.status === "vorschlag" ? " (Vorschlag)" : ""}</p>`).join("");
       return `<li class="kw-tag${t.date === h ? " heute" : ""}${t.gesperrt ? " gesperrt" : ""}${t.date < h ? " vorbei" : ""}">
         <button type="button" class="kw-tk" data-kwtag="${t.date}" aria-label="${esc(tagText(t.date))}${t.gesperrt ? ", gesperrt" : ""}: Tagesblatt öffnen"><b>${wt(t.date)}</b><small>${esc(dkurz(t.date))}</small>${t.gesperrt ? W.icon("schloss", 13) : ""}</button>
-        <div class="kw-inh">${done}${meins}${tx}${!done && !meins && !tx ? `<p class="mp-leer">${t.gesperrt ? "gesperrt" : "frei"}</p>` : ""}</div></li>`;
+        <div class="kw-inh">${done}${meins}${tx}${!done && !meins && !tx ? `<p class="mp-leer">${t.gesperrt ? "gesperrt" : esc(t.notiz || "frei")}</p>` : ""}${vfZeile(t.date)}</div></li>`;
     }).join("");
-    return `<div class="wl kw-leiste" role="group" aria-label="Tage der Woche">${leiste}</div>${ausw}
+    return `<div class="wl kw-leiste" role="group" aria-label="Tage der Woche">${leiste}</div>${ausw}${gilt && mo >= montag(h) ? verteilHTML(mo, K) : ""}
       <ol class="kw-tage">${tage}</ol>
       <p class="hint">Mein Plan = Wochenvorschlag mit deinen Änderungen (${esc(V66().VERSIONS.eigenplan)}); Tag antippen für Training hinzufügen, sperren oder ändern. Absolviert = Bewegungszeit laut Garmin, TL ≈ aus deinem Zonenprofil (${esc(window.V7 ? window.V7.VERSIONS.kalender : "")}).</p>`;
   };

@@ -254,6 +254,7 @@
   ];
   V.schwimmen = function () {
     const box = $("v53-drills"); if (!box || box.dataset.init) return;
+    if (window.SWUI && window.SW) { box.dataset.init = 1; window.SWUI.katalog(box); return; }   // V7.2 uebungen-2.0: ganzer Katalog mit Filtern
     box.dataset.init = 1;
     box.innerHTML = `<div class="v53-drills">${DRILLS.map((d) => `<article class="v53-drill"><h3>${d.t}</h3><p class="hint">Ziel: ${d.ziel}</p>
       <ol>${d.schritte.map((s) => `<li>${s}</li>`).join("")}</ol><p class="v53-err"><b>Typische Fehler:</b> ${d.fehler.join(" · ")}</p></article>`).join("")}</div>
