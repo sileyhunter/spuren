@@ -61,7 +61,7 @@
     let ov = $("ex"); if (!ov) { ov = document.createElement("div"); ov.id = "ex"; ov.className = "v5-overlay ex-ov"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-modal", "true"); document.body.appendChild(ov); }
     ov.hidden = false; document.body.classList.add("ex-offen"); if (window.V59 && window.V59.modalAuf) window.V59.modalAuf(ov);   // V6.4.4 (Audit D22)
     Object.assign(ST, { a, S: null, sel: null, cur: null, ints: null });
-    ov.innerHTML = `<div class="te-box ex"><div class="te-head ex-head"><div><h2 id="ex-h" tabindex="-1">${esc(a.name)}</h2><div class="sub">${c.dateCH(a.date)} · ${esc((c.SPORTS[a.sport] || {}).label || a.sport)} · ${c.hmm(a.mv || a.dur)} h${a.km ? ` · ${c.fmt(a.km, 1)} km` : ""}</div></div>
+    ov.innerHTML = `<div class="te-box ex"><div class="te-head ex-head"><div><h2 id="ex-h" tabindex="-1">${esc(a.name)}</h2><div class="sub">${c.dateCH(a.date)} · ${esc((c.SPORTS[a.sport] || {}).label || a.sport)} · ${c.hmm(a.mv || a.dur)} h${isNum(a.mv) && a.dur - a.mv >= 300 ? ` (Timer ${c.hmm(a.dur)} h)` : ""}${a.km ? ` · ${c.fmt(a.km, 1)} km` : ""}</div>${lvHtml(c, a)}</div>
       <button class="btn icon" id="ex-close" aria-label="Schliessen">×</button></div><div id="ex-rpe"></div>${notizHtml(c, a)}<div id="ex-body"><p class="hint"><span class="spin" aria-hidden="true"></span> Sekundenwerte werden geladen …</p></div></div>`;
     $("ex-close").onclick = EX.close; ov.setAttribute("aria-labelledby", "ex-h"); $("ex-h").focus({ preventScroll: true });
     ov.onclick = (e) => { if (e.target === ov) EX.close(); };
@@ -74,6 +74,12 @@
   };
   EX.close = function () { const ov = $("ex"); if (ov) { ov.hidden = true; ov.innerHTML = ""; if (window.V59 && window.V59.modalZu) window.V59.modalZu(ov); } document.body.classList.remove("ex-offen"); };
   /** V6.1 notizen-1.0: die Notiz der Aktivität aus Garmin, wörtlich (gespeichert je Garmin-ID). */
+  /** V7.1 laufvergleich-1.0: ob dieser Lauf für Puls-/Pace-Vergleiche taugt (mit Grund). */
+  function lvHtml(c, a) {
+    if (!a || a.sport !== "lauf" || !window.FK || !FK.laufVergleichbar) return "";
+    const r = FK.laufVergleichbar(a, { acts: c.D.activities });
+    return `<p class="ex-lv${r.ok ? "" : " nein"}">${r.ok ? "Für Puls- und Pace-Vergleiche geeignet" : "Für Puls- und Pace-Vergleiche nicht geeignet: " + esc(r.gruende.join("; "))} <small>(${esc(r.v)})</small></p>`;
+  }
   function notizHtml(c, a) {
     const n = a.gid && (c.D.garmin_notizen || {})[a.gid];
     return n && n.text ? `<details class="ex-notiz"><summary>Notiz aus Garmin</summary><p>${esc(n.text)}</p></details>` : "";

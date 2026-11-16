@@ -10,7 +10,8 @@
   FK.VERSIONS = {
     cockpit: "cockpit-1.0", readiness: "readiness-2.1", ampel_pruefung: "ampel-pruefung-1.1", langfahrt: "langfahrt-2.0", koppel: "koppel-1.1",
     fueling: "fueling-1.0", eta: "eta-1.0", cda: "cda-1.0", fit: "fit-js-1.0", wetter: "wetter-1.0",
-    pmc: "pmc-2.0", zonen: "zonenverteilung-2.0", orientierung: "langfahrt-orientierung-1.0", entwicklung: "entwicklung-1.0", laufeffizienz: "laufeffizienz-1.0",
+    pmc: "pmc-2.0", zonen: "zonenverteilung-2.0", orientierung: "langfahrt-orientierung-1.0", entwicklung: "entwicklung-1.0", laufeffizienz: "laufeffizienz-1.1",
+    laufvergleich: "laufvergleich-1.0",
     ringe: "ringe-1.0", laktat_drift: "laktat-drift-1.0",
   };
   const DAY = 864e5;
@@ -724,12 +725,13 @@
   FK.splitLabels = (sp) => (sp || []).map((s) => (s.bis ? `${s.von / 60}–${s.bis / 60} min` : `ab ${s.von / 60} min`));
   /** Achsenbereich aus den Werten mit Rand (nie ab 0, damit keine scheinbare Null-Pace entsteht). */
   FK.splitRange = function (vals, pad) { const v = (vals || []).filter(isNum); if (!v.length) return null; return [Math.floor(Math.min(...v) - pad), Math.ceil(Math.max(...v) + pad)]; };
-  /** Vergleich mit Solo-Läufen: ähnliche Dauer (±25 %) und Puls (±5 bpm), letzte 180 Tage, mindestens 3; sonst «nicht vergleichbar». */
+  /** Vergleich mit Solo-Läufen: ähnliche Dauer (±25 %) und Puls (±5 bpm), letzte 180 Tage, vergleichbar nach laufvergleich-1.0, mindestens 3; sonst «nicht vergleichbar». */
   FK.soloCompare = function (acts, run, brickRunIds, opt) {
     opt = Object.assign({ tage: 180, minN: 3 }, opt || {});
     const dur = run.mv || run.dur || 0;
     const sol = (acts || []).filter((a) => a.sport === "lauf" && a.id !== run.id && !brickRunIds.has(a.id) && a.sp && a.date <= run.date && a.date >= FK.addDays(run.date, -opt.tage)
-      && Math.abs((a.mv || a.dur || 0) - dur) <= 0.25 * dur && isNum(a.hr) && isNum(run.hr) && Math.abs(a.hr - run.hr) <= 5);
+      && Math.abs((a.mv || a.dur || 0) - dur) <= 0.25 * dur && isNum(a.hr) && isNum(run.hr) && Math.abs(a.hr - run.hr) <= 5
+      && FK.laufVergleichbar(a, { acts }).ok);                         // V7.1 laufvergleich-1.0: nur flache, gleichmässige Solo-Läufe
     const p0 = (a) => { const s = (a.sp || []).find((x) => x.von === 0); return s ? s.pace : null; };
     const vals = sol.map(p0).filter(isNum);
     if (vals.length < opt.minN || !isNum(p0(run))) return { status: "nicht vergleichbar", n: vals.length, grund: `nur ${vals.length} ähnliche Solo-Läufe (mindestens ${opt.minN})` };
@@ -863,15 +865,74 @@
     return res;
   };
   /**
-   * Lauf-Effizienz (laufeffizienz-1.0): Meter pro Herzschlag = Tempo (m/min) / Puls (Schläge/min), mit Bewegungszeit.
-   * Nur lockere Strassenläufe über opt.minKm, höchstens opt.maxHmKm Anstieg je km; GPS-/Pulsfehler und Ausreisser (> 3 MAD)
-   * werden entfernt und gezählt. Explorativ: kein Fortschrittsnachweis.
+   * Vergleichbare Läufe (laufvergleich-1.0, Wunsch Silas 16.11.2026, eigene Festlegung): bevor Puls und Pace verschiedener Läufe verglichen
+   * werden, entscheidet diese Regel, ob ein Lauf unter ähnlichen Bedingungen lief. Nicht vergleichbar: Laufband, Trail, unter 20 min oder 3 km,
+   * mehr als 10 Höhenmeter je km, Intervalle oder Tempo laut Titel bzw. Workout auf der Uhr (mehr als 2 verschiedene Ziel-Abschnitte),
+   * Tempo der 2. Hälfte mehr als 8 % anders als in der 1., sehr hart (TL über 95 je Stunde: Wettkampf, Test, Intervalle), Hitze ab 25 °C,
+   * Koppellauf (Start bis 30 min nach dem Ende einer Radeinheit). → { ok, gruende: [Text], ungeprueft: [Text], v }.
+   * ctx.acts: alle Aktivitäten (für den Koppellauf); ohne ctx wird der Koppellauf nicht geprüft (in ungeprueft genannt).
+   */
+  FK.LV = { minS: 1200, minKm: 3, hmKm: 10, gleich: 0.08, tlH: 95, hitze: 25, koppelMin: 30 };
+  const LV_WORT = /intervall|vo\s*2|vo₂|schwelle|threshold|tempo|sprint|neuro|steiger|fartlek|pyramid|hügel|huegel|\bberg|hill|\btest|wettkampf|rennen|\brace\b|vorbelast|priming|sweet\s*spot|renntempo|über[- ]?unter|\b\d+\s*[x×]\s*\d/i;
+  FK.laufVergleichbar = function (a, ctx) {
+    const L = FK.LV, gr = [], ung = [];
+    if (!a || a.sport !== "lauf") return { ok: false, gruende: ["kein Lauf"], ungeprueft: [], v: FK.VERSIONS.laufvergleich };
+    const typ = String(a.typ || "");
+    if (a.indoor || /laufband|treadmill|indoor|virtu/i.test(typ)) gr.push("Laufband oder drinnen (Tempo nicht vergleichbar)");
+    if (/trail|ultra|berg/i.test(typ)) gr.push("Trail (Gelände)");
+    const s = isNum(a.mv) ? a.mv : a.dur || 0, km = isNum(a.km) ? a.km : 0;
+    if (s < L.minS || km < L.minKm) gr.push(`zu kurz (unter ${L.minS / 60} min oder ${L.minKm} km)`);
+    const hmKm = km > 0 && isNum(a.hm) ? a.hm / km : null;
+    if (hmKm != null && hmKm > L.hmKm) gr.push(`hügelig (${Math.round(hmKm)} Hm je km, Grenze ${L.hmKm})`);
+    const titel = `${a.name || ""} ${(a.wk && a.wk.name) || ""}`;
+    if (LV_WORT.test(titel)) gr.push("Intervalle oder Tempo laut Titel bzw. Workout");
+    else if (a.wk && Array.isArray(a.wk.schritte)) {
+      const ziele = new Set(a.wk.schritte.filter((x) => x && x.typ === "aktiv" && (isNum(x.lo) || isNum(x.hi))).map((x) => `${x.ziel || ""}:${x.lo}-${x.hi}`));
+      if (ziele.size > 2) gr.push(`Intervalle laut Workout auf der Uhr (${ziele.size} verschiedene Ziel-Abschnitte)`);
+    }
+    if (a.dr && isNum(a.dr.x1) && isNum(a.dr.x2) && a.dr.x1 > 0 && a.dr.x2 > 0) {
+      const d = Math.abs(a.dr.x2 - a.dr.x1) / ((a.dr.x1 + a.dr.x2) / 2);
+      if (d > L.gleich) gr.push(`Tempo ungleichmässig (2. Hälfte ${Math.round(d * 100)} % anders als die 1.)`);
+    } else ung.push("Gleichmässigkeit (keine Sekundenwerte)");
+    const tl = isNum(a.tl2) ? a.tl2 : a.tss;
+    if (isNum(tl) && s > 0 && tl / (s / 3600) > L.tlH) gr.push(`sehr hart (TL ${Math.round(tl / (s / 3600))} je Stunde: Wettkampf, Test oder Intervalle)`);
+    if (a.wx && isNum(a.wx.temperature)) { if (a.wx.temperature >= L.hitze) gr.push(`Hitze (${Math.round(a.wx.temperature)} °C)`); }
+    else ung.push("Temperatur");
+    if (ctx && Array.isArray(ctx.acts)) {
+      const t0 = isNum(a.t0) ? a.t0 : null;
+      const vorher = ctx.acts.find((b) => b && b !== a && b.sport === "rad" && b.date === a.date && (() => {
+        if (t0 != null && isNum(b.t0)) { const ende = b.t0 + (isNum(b.el) ? b.el : b.dur || 0); return ende <= t0 + 60 && t0 - ende <= L.koppelMin * 60; }
+        if (!a.start || !b.start) return false;
+        const m = (x) => { const [h, mm] = String(x).split(":").map(Number); return h * 60 + mm; };
+        const ende = m(b.start) + (isNum(b.el) ? b.el : b.dur || 0) / 60; return ende <= m(a.start) + 1 && m(a.start) - ende <= L.koppelMin; })());
+      if (vorher) gr.push("Koppellauf (direkt nach dem Rad)");
+    } else ung.push("Koppellauf");
+    return { ok: gr.length === 0, gruende: gr, ungeprueft: ung, v: FK.VERSIONS.laufvergleich };
+  };
+  /** Läufe einer Liste nach laufvergleich-1.0 trennen → { ok: [a], aus: [{ a, gruende }], gruende: { Grund (kurz): Anzahl } }. */
+  FK.laufVergleichListe = function (acts, alle) {
+    const ok = [], aus = [], zahl = {};
+    for (const a of acts || []) {
+      const r = FK.laufVergleichbar(a, { acts: alle || acts });
+      if (r.ok) ok.push(a); else { aus.push({ a, gruende: r.gruende }); for (const g of r.gruende) { const k = g.replace(/\s*\(.*$/, ""); zahl[k] = (zahl[k] || 0) + 1; } }
+    }
+    return { ok, aus, gruende: zahl };
+  };
+  /** Kurztext für Hinweise: «12 Läufe ausgeschlossen: hügelig 7, Intervalle 4 …». */
+  FK.laufVergleichText = function (L) {
+    const e = Object.entries((L && L.gruende) || {}).sort((x, y) => y[1] - x[1]);
+    return L && L.aus.length ? `${L.aus.length} ${L.aus.length === 1 ? "Lauf" : "Läufe"} nicht vergleichbar (${FK.VERSIONS.laufvergleich}): ${e.map(([k, n]) => `${k} ${n}`).join(", ")}.` : `Alle Läufe vergleichbar (${FK.VERSIONS.laufvergleich}).`;
+  };
+  /**
+   * Lauf-Effizienz (laufeffizienz-1.1): Meter pro Herzschlag = Tempo (m/min) / Puls (Schläge/min), mit Bewegungszeit.
+   * 1.1: nur Läufe, die nach laufvergleich-1.0 vergleichbar sind (flach, gleichmässig, ohne Intervalle, kein Laufband/Trail/Koppellauf),
+   * dazu wie bisher ab opt.minKm; GPS-/Pulsfehler und Ausreisser (> 3 MAD) werden entfernt und gezählt. Explorativ: kein Fortschrittsnachweis.
    */
   FK.laufEffizienz = function (acts, opt) {
-    opt = Object.assign({ n: 60, maxTssH: 70, minKm: 4, maxHmKm: 15 }, opt || {});
-    const cand = (acts || []).filter((a) => a.sport === "lauf" && !a.indoor && !/trail/i.test(a.typ || "") && isNum(a.hr) && a.km > opt.minKm && (a.mv || a.dur)
-      && (a.tss == null || !a.dur || a.tss / (a.dur / 3600) < opt.maxTssH) && (a.hm || 0) / a.km <= opt.maxHmKm).slice(-opt.n);
-    const ex = { tempo: 0, puls: 0, ausreisser: 0 }, pts = [];
+    opt = Object.assign({ n: 60, minKm: 4 }, opt || {});
+    const laeufe = (acts || []).filter((a) => a.sport === "lauf" && isNum(a.hr) && a.km > opt.minKm && (a.mv || a.dur));
+    const LV = FK.laufVergleichListe(laeufe, acts), cand = LV.ok.slice(-opt.n);
+    const ex = { tempo: 0, puls: 0, ausreisser: 0, nicht_vergleichbar: LV.aus.length }, pts = [];
     for (const a of cand) {
       const v = (a.km * 1000) / (a.mv || a.dur);
       if (v < 1.8 || v > 5.5) { ex.tempo++; continue; }            // GPS-Sprung oder lange Gehpausen
@@ -883,7 +944,7 @@
       const m = median(pts.map((p) => p.y)), mad = median(pts.map((p) => Math.abs(p.y - m))) * 1.4826;
       if (mad) { keep = pts.filter((p) => Math.abs(p.y - m) <= 3 * mad); ex.ausreisser = pts.length - keep.length; }
     }
-    return { v: FK.VERSIONS.laufeffizienz, einheit: "m/Schlag", punkte: keep, ausgeschlossen: ex, n: cand.length };
+    return { v: FK.VERSIONS.laufeffizienz, einheit: "m/Schlag", punkte: keep, ausgeschlossen: ex, n: cand.length, vergleich: LV, vergleichText: FK.laufVergleichText(LV) };
   };
   /** Antwortfelder aus den Ergebnissen: deterministisch, keine Diagnose, keine Trainingsanweisung. */
   FK.entwicklungAntworten = function (ergebnisse) {

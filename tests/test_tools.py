@@ -1222,5 +1222,27 @@ check("Punkte (punkte-1.1): Kategorie von Hand bleibt (gleicher Name, ≤ 50 m),
       and _pk[("Post Beispiel", 46.0)]["cat"] == "jagd" and _pk[("Eigener Punkt", 46.1)]["cat"] == "cafe" and len(_dp["points"]) == 5
       and "Kategorie von Hand behalten: 1" in _rp.stdout and _dp["versions"]["punkte"]["v"] == "punkte-1.1", _rp.stdout + _rp.stderr)
 
+# zeit-1.1 (V7.1): übrige Aktivitäten draussen mit GPS-Strecke wie Wandern; nicht im Wasser; Nachrechnen aus der 2-s-Reihe (erfundene Werte)
+import series as _series  # noqa: E402
+import zeit as _zeit  # noqa: E402
+def _sess(sport, n_geh=600, n_steh=600, rest=300):
+    S = _series.Session(); S.sport = sport; S.start = 1700000000; S.timer = S.elapsed = n_geh + n_steh + rest
+    d = 0.0
+    for i in range(n_geh + n_steh + rest):
+        d += 0.0 if n_geh <= i < n_geh + n_steh else 1.3
+        S.ts.append(S.start + i); S.dist.append(d); S.alt.append(500.0); S.spd.append(None); S.pw.append(None); S.cad.append(None); S.hr.append(None)
+    return S
+_z0 = _zeit.zeit(_sess(0)); _zw = _zeit.zeit(_sess(41))
+check("zeit-1.1: Navigieren/Tracker (FIT-Sportart allgemein) mit 10 min Stehen → Stopp abgezogen, Regel wie Wandern",
+      _z0["regel"] == "wandern" and _z0["stop"] >= 540 and _z0["mov"] <= 960 and _zeit.VERSION == "zeit-1.1", str(_z0))
+check("zeit-1.1: Kajak (Wasser) ohne Bewegungsregel – Timer-Zeit bleibt", _zw["regel"] == "keine" and _zw["mov"] == 1500, str(_zw))
+_R = {"dt": 2, "t0": 1700000000, "seg": [[0, 750]], "d": [], "alt": []}
+_dd = 0.0
+for _i in range(750):
+    _dd += 0.0 if 300 <= _i < 600 else 2.6
+    _R["d"].append(round(_dd)); _R["alt"].append(5000)
+_zr = _zeit.zeit_reihe(_R, 1500, 1500)
+check("zeit-1.1 aus der 2-s-Reihe: 10 min Stehen erkannt (gleiche Regel wie aus der FIT-Datei)", _zr["nstop"] == 1 and 540 <= _zr["stop"] <= 620 and _zr["mov"] == 1500 - _zr["stop"], str(_zr))
+
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)

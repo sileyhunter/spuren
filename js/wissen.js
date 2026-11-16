@@ -1,4 +1,4 @@
-/* V6.4 Wissen (wissen-1.7; 1.5 = V6.5 Wahl je Tag und Bibliothek im Kapitel «vergleich»; 1.6 = V6.6 Mein Plan und An Garmin senden im Kapitel «modelle», TL ≈ im Kapitel «last», bearbeitete Woche und eigene Garmin-Workouts im Kapitel «vergleich»; 1.7 = V6.6.2 Form zu Tagesbeginn und Rad-Last je System im Kapitel «last»): Erklärungen zu allen Modellen und Regeln der Seite – Zonen, Laktat und Messung, Schwellen-Methoden,
+/* V6.4 Wissen (wissen-1.8; 1.8 = V7.1 Kapitel «vergleichbar»: vergleichbare Läufe und effektive Zeit; 1.5 = V6.5 Wahl je Tag und Bibliothek im Kapitel «vergleich»; 1.6 = V6.6 Mein Plan und An Garmin senden im Kapitel «modelle», TL ≈ im Kapitel «last», bearbeitete Woche und eigene Garmin-Workouts im Kapitel «vergleich»; 1.7 = V6.6.2 Form zu Tagesbeginn und Rad-Last je System im Kapitel «last»): Erklärungen zu allen Modellen und Regeln der Seite – Zonen, Laktat und Messung, Schwellen-Methoden,
    Intensitätsverteilung, Trainingsmodelle, Periodisierung, Taper, Langdistanz, Intervalle, Last, Erholung, Schwimmen, Verpflegung.
    Alle Texte in eigenen Worten (keine Zitate), jede Aussage mit Quelle; [[id]] im Text verweist auf WS.QUELLEN (DOI-Link).
    Ohne DOM (Inhalt), Anzeige in index.html (Ansicht «Wissen» unter Plan). */
@@ -8,7 +8,7 @@
   if (root) root.WS = WS;
 })(typeof window !== "undefined" ? window : null, function () {
   "use strict";
-  const WS = { VERSION: "wissen-1.7" };
+  const WS = { VERSION: "wissen-1.8" };
 
   /* ---------------- Quellen: Autoren, Jahr, Titel, Zeitschrift, DOI (oder URL) und der Kern in einem Satz (eigene Worte) ---------------- */
   WS.QUELLEN = {
@@ -412,6 +412,15 @@
       ],
       seite: [["AN", "energie"], ["FK", "fueling"]], quellen: ["jeukendrup2014", "jeukendrup2017"] },
 
+    { id: "vergleichbar", titel: "Läufe vergleichen und effektive Zeit", kurz: "Puls und Pace verschiedener Läufe lassen sich nur vergleichen, wenn die Bedingungen ähnlich sind. Die Seite prüft das vorher und zeigt als Dauer nur die Zeit in Bewegung.",
+      text: [
+        "<b>Warum vorher prüfen.</b> Bergauf, in Intervallen, bei Hitze oder direkt nach dem Rad liegt der Puls bei gleichem Tempo höher, ohne dass sich die Form verändert hat; auch bei langer gleichmässiger Belastung steigt er, vor allem durch Wärme und Flüssigkeitsverlust [[coyle2001]]. Mischt man solche Läufe mit lockeren flachen Läufen, sieht man eine Veränderung, die es nicht gibt.",
+        "<b>Die Regel (laufvergleich-1.0, eigene Festlegung).</b> Vergleichbar ist ein Lauf draussen, ab 20 Minuten und 3 km, mit höchstens 10 Höhenmetern je Kilometer, ohne Intervalle oder Tempo-Abschnitte (laut Titel oder Workout auf der Uhr), mit gleichmässigem Tempo (zweite Hälfte höchstens 8 % schneller oder langsamer als die erste), nicht sehr hart (Trainingslast höchstens 95 je Stunde), unter 25 °C und nicht direkt nach dem Rad. Laufband und Trail zählen nie. Bei jedem Lauf steht im Explorer, ob er taugt und warum nicht.",
+        "<b>Wo sie gilt.</b> Puls zu Pace unter Leistungsentwicklung, die Lauf-Effizienz und der Vergleich eines Koppellaufs mit Solo-Läufen. «Meine Entwicklung» vergleicht ohnehin nur gleichmässige 10-Minuten-Blöcke im Flachen – das ist der strengere Vergleich.",
+        "<b>Effektive Zeit (zeit-1.1).</b> Als Dauer zeigt die Seite die Bewegungszeit: die Timer-Zeit ohne Halte. Beim Wandern, auf Skitouren und seit zeit-1.1 auch bei Navigieren, Tracker, Jagen und anderen Aktivitäten draussen mit GPS gilt: kommst du in einer Minute weniger als 12 m und 3 Höhenmeter voran und dauert das mindestens 3 Minuten, zählt diese Zeit nicht (Warten am selben Ort, Ansitz, Pause). Im Wasser gilt das nicht, weil das GPS unter Wasser aussetzt. Die Trainingslast rechnet weiter mit der ganzen Timer-Zeit und dem Durchschnittspuls.",
+      ],
+      seite: [["FK", "laufvergleich"]], quellen: ["coyle2001"] },
+
     { id: "regeln", titel: "Rechenregeln dieser Seite", kurz: "Jede Regel hat eine Version. Ändert sich eine Regel, steigt die Version, ein Test kommt dazu und die Änderung steht im Änderungsprotokoll. So bleibt nachvollziehbar, womit eine Zahl gerechnet wurde.",
       text: [
         "Die Liste unten zeigt die aktuellen Versionen der Regeln, die das Training betreffen, und wo sie erklärt sind. Werte der Werkzeuge (z. B. Schwellen aus dem Stufentest) stehen mit ihrer Version in deinen Daten.",
@@ -437,6 +446,7 @@
     ["FK", "zonen", "Zonenverteilung des Absolvierten", "tid"],
     ["FK", "laktat_drift", "Laktat-Einzelmessungen über die Zeit", "laktat-messen"],
     ["FK", "pmc", "Fitness, Ermüdung, Form", "last"],
+    ["FK", "laufvergleich", "Vergleichbare Läufe (Puls und Pace)", "vergleichbar"],
     ["V59L", "last", "Trainingslast mit LT2", "last"],
     ["AN", "rpe", "Empfundene Anstrengung", "last"],
     ["FK", "readiness", "Ampel", "erholung"],

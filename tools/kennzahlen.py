@@ -26,7 +26,8 @@ VERSIONS = {
     "series": {"v": series.VERSION, "text": "Sekundenreihen aus FIT-Datei oder Garmin-Verbindung, Puls 0 = fehlend"},
     "zeit": {"v": zeit.VERSION, "text": "Gesamtzeit, Timer-Zeit, Bewegungszeit, Stopps, Unterbrechungen ab 5 min, geplante Erholung, aktive Zeit; "
                                         "Rad still < 2 km/h ab 2 min, Rolle ohne Treten, Laufen < 1 m/s ab 1 min, Wandern/Skitour ohne "
-                                        "Strecke (< 12 m) und Höhe (< 3 m) je Minute ab 3 min, Becken: Ruhebahnen"},
+                                        "Strecke (< 12 m) und Höhe (< 3 m) je Minute ab 3 min, Becken: Ruhebahnen; zeit-1.1: übrige Aktivitäten draussen "
+                                        "mit GPS-Strecke (Navigieren, Tracker, Jagen …) wie Wandern"},
     "stufen": {"v": stufen.VERSION, "text": "Stufen aus Zwift-Zielleistung oder Plateaus; Leistung = Median der Stufe; Puls = 30 s vor der Blutentnahme"},
     "hh_pdc": {"v": "hh-pdc-1.0", "text": "Puls-Histogramm 5 bpm ab 60, gewichtet bis zum nächsten Datensatz (max. 10 s); Leistungskurve aus 1-s-Reihe, Lücken bis 3 s gefüllt"},
     "ausdauer": {"v": "ausdauer-1.0", "text": "Drift: Bewegungszeit halbiert, Leistung bzw. Tempo je Puls in beiden Hälften, Entkopplung in %; "

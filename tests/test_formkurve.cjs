@@ -596,11 +596,32 @@ test("Lauf-Effizienz: Einheit m/Schlag, Ausreisser und Fehler werden entfernt un
   const r = (i, o) => ({ id: "l" + i, sport: "lauf", typ: "Laufen", date: FK.addDays("2026-03-01", i), km: 10, hm: 50, dur: 3300, mv: 3300, hr: 150, tss: 50, ...o });
   const acts = [0, 1, 2, 3, 4, 5].map((i) => r(i, { hr: 148 + i })).concat([r(7, { mv: 900, dur: 900, tss: 10 }), r(8, { hr: 60 }), r(9, { hr: 120 }), r(10, { typ: "Trail" }), r(11, { indoor: true })]);
   const L = FK.laufEffizienz(acts);
-  assert.equal(L.einheit, "m/Schlag"); assert.equal(L.v, "laufeffizienz-1.0");
-  assert.equal(L.n, 9);                                                // Trail und Laufband gar nicht erst dabei
-  assert.deepEqual(L.ausgeschlossen, { tempo: 1, puls: 1, ausreisser: 1 });
+  assert.equal(L.einheit, "m/Schlag"); assert.equal(L.v, "laufeffizienz-1.1");
+  assert.equal(L.n, 8);                                                // 1.1: Trail, Laufband und der 15-min-Lauf sind nach laufvergleich-1.0 nicht vergleichbar
+  assert.deepEqual(L.ausgeschlossen, { tempo: 0, puls: 1, ausreisser: 1, nicht_vergleichbar: 3 });
   const p = L.punkte[0];                                               // 10 km in 55 min = 181.8 m/min; / 148 = 1.2285 m/Schlag
   assert.equal(p.y, 1.229); assert.equal(p.mpm, 181.8);
+});
+
+/* ---------- V7.1: vergleichbare Läufe laufvergleich-1.0 (erfundene Werte) ---------- */
+test("laufvergleich-1.0: flach und gleichmässig ja; hügelig, Intervalle, Trail, Laufband, Hitze, ungleichmässig, Koppellauf nein", () => {
+  const r = (o) => ({ id: "x", sport: "lauf", typ: "Laufen", name: "Laufen 10 km", date: "2026-03-01", start: "18:00", km: 10, hm: 40, dur: 3300, mv: 3300, hr: 150, tss: 55,
+    dr: { x1: 10.9, x2: 11.0 }, wx: { temperature: 12 }, ...o });
+  assert.equal(FK.VERSIONS.laufvergleich, "laufvergleich-1.0");
+  const ok = FK.laufVergleichbar(r({}), { acts: [] });
+  assert.equal(ok.ok, true); assert.deepEqual(ok.gruende, []); assert.deepEqual(ok.ungeprueft, []);
+  const grund = (o, ctx) => FK.laufVergleichbar(r(o), ctx || { acts: [] }).gruende.join(" | ");
+  assert.match(grund({ hm: 150 }), /hügelig \(15 Hm je km/);
+  assert.match(grund({ name: "4 x 4 min VO2max" }), /Intervalle oder Tempo/);
+  assert.match(grund({ wk: { name: "Lauf", schritte: [{ typ: "aktiv", ziel: "pace", lo: 3, hi: 3.2 }, { typ: "aktiv", ziel: "pace", lo: 4, hi: 4.2 }, { typ: "aktiv", ziel: "pace", lo: 2.5, hi: 2.7 }] } }), /Intervalle laut Workout auf der Uhr \(3/);
+  assert.match(grund({ typ: "Trail Run" }), /Trail/); assert.match(grund({ indoor: true }), /Laufband/);
+  assert.match(grund({ wx: { temperature: 27 } }), /Hitze/); assert.match(grund({ dr: { x1: 10, x2: 11.5 } }), /ungleichmässig/);
+  assert.match(grund({ mv: 900, dur: 900, tss: 15 }), /zu kurz/); assert.match(grund({ tss: 110 }), /sehr hart/);
+  const rad = { id: "b", sport: "rad", date: "2026-03-01", start: "16:30", dur: 5100, el: 5200 };
+  assert.match(grund({}, { acts: [rad] }), /Koppellauf/);                       // Rad endet 17:56–17:57, Lauf startet 18:00
+  assert.equal(FK.laufVergleichbar(r({ dr: null, wx: null }), {}).ungeprueft.length, 3);   // ohne Sekundenwerte, Temperatur, Aktivitätsliste: genannt, nicht geraten
+  const L = FK.laufVergleichListe([r({}), r({ hm: 200 }), r({ name: "Tempo 3 x 10" })], []);
+  assert.equal(L.ok.length, 1); assert.equal(L.aus.length, 2); assert.match(FK.laufVergleichText(L), /2 Läufe nicht vergleichbar/);
 });
 
 /* ---------- V5.5 Schwimmen: CSS-Formular (A06) ---------- */

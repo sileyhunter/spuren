@@ -203,6 +203,7 @@
   V.ansicht = function (name) {
     const sec = document.getElementById("view-" + name); if (!sec || name === "karte") return;
     sec.querySelectorAll("table.t[data-liste]").forEach(alsListe);
+    sec.querySelectorAll("table.t.als-liste").forEach(alsListe);   // V7.1: neu gezeichnete Tabelle (innerHTML) behält die Klasse – Spaltennamen je Zelle wieder setzen
     for (const sel of LISTEN_IN) sec.querySelectorAll(sel + " table.t").forEach(alsListe);
     if (schmal()) sec.querySelectorAll(".tablewrap > table.t:not(.als-liste):not([data-keine-liste])").forEach((t) => { const w = t.parentElement; if (w.offsetParent && w.scrollWidth > w.clientWidth + 8) alsListe(t); });   // jede zu breite Tabelle: Liste statt Wischen
     sec.querySelectorAll(".card").forEach(infoKarte);

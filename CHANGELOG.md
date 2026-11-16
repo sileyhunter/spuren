@@ -1,5 +1,28 @@
 # Änderungen
 
+## V7.1 · 16.11.2026 · Wünsche vom 16.11.2026, Teil 1: Umfang, Tagebuch, effektive Zeit, vergleichbare Läufe, Morgen-Update
+- **Trainingsumfang `umfang-tabelle-1.0`:** Jahresstatistik als eine kompakte Tabelle für alle Sportarten (auch auf dem Handy keine Liste mehr):
+  Kopfzeile = Legende (Anz., Std., km, Hm, ± Vorjahr), unter der Sportart klein Ø Puls und Rad Ø Watt / Laufen Ø Pace / Schwimmen CSS, unter den
+  Stunden klein die Timer-Zeit, wenn sie abweicht; Legende in Worten darunter. Fehler behoben: eine Tabelle, die auf dem Handy als Liste gezeigt und
+  danach neu gezeichnet wurde, verlor die Spaltennamen je Wert (jetzt werden sie nach jedem Zeichnen wieder gesetzt).
+- **Trainingstagebuch `tagebuch-2.0`:** Sportfilter (Auswahl je Gerät, wirkt auch auf die Serie), Farblegende, jeder Tag antippbar (Tagesblatt mit den
+  Aktivitäten und «Analysieren»), «8 Wochen mehr», darunter die Liste aller Aktivitäten der gezeigten Wochen (antippen öffnet den Explorer).
+  Kreisgrösse neu abgestuft (ab 2 h gleich gross), Kreise bleiben rund.
+- **Effektive Zeit `zeit-1.1`:** Navigieren, Tracker, Jagen und andere Aktivitäten draussen mit GPS-Strecke bekommen dieselbe Stopp-Regel wie Wandern
+  (weniger als 12 m und 3 Höhenmeter je Minute, ab 3 min = Halt); nicht im Wasser (GPS unter Wasser) und nicht motorisiert. Nachgerechnet aus den
+  2-s-Reihen (`tools/serien_klar.mjs`, `tools/zeit_nachrechnen.py`, Markierung `zq` = «reihe-2s», alte Werte im Audit): 8 Aktivitäten geändert.
+  Wandern, Skitouren, Laufen und Rad hatten die Regel schon (zeit-1.0). Dauer in Kartenliste, Tagesblatt, Kalender-Monat, Tagebuch und Explorer = Bewegungszeit,
+  die Timer-Zeit steht daneben, wenn sie mehr als 5 min abweicht. Die Trainingslast rechnet weiter mit der Timer-Zeit (offen, Prüfbericht Nr. 82).
+- **Vergleichbare Läufe `laufvergleich-1.0` (eigene Festlegung):** bevor Puls und Pace verglichen werden, prüft `FK.laufVergleichbar`: draussen, ab
+  20 min und 3 km, höchstens 10 Hm je km, keine Intervalle oder Tempo-Abschnitte (Titel oder Workout auf der Uhr), 2. Hälfte höchstens 8 % schneller
+  oder langsamer, TL höchstens 95 je Stunde, unter 25 °C, kein Trail, Laufband oder Koppellauf. Gilt für «Puls zu Pace» (mit Liste der Gründe unter dem
+  Diagramm), Lauf-Effizienz (`laufeffizienz-1.1`) und den Vergleich Koppellauf gegen Solo-Läufe; der Explorer zeigt je Lauf, ob er taugt und warum nicht.
+  Wissen wissen-1.8 (Kapitel «Läufe vergleichen und effektive Zeit»). Morgen-Briefing: dieselbe Regel für Lauf-Vergleiche im Auftrag.
+- **Morgen-Update:** am 16.11.2026 kam um 08:34 nichts an (die Uhr hatte noch nicht synchronisiert; letzte Synchronisation 09:41) – im Chat nachgeholt.
+  Auf Silas' Wunsch läuft der Auftrag jetzt zweimal: 07:00 und 11:00 (der zweite holt nach, was um 07:00 noch fehlte).
+- Tests: `tests/test_tools.py` (zeit-1.1 aus FIT und aus der 2-s-Reihe, Wasser ohne Regel), `tests/test_formkurve.cjs` (laufvergleich-1.0, Lauf-Effizienz 1.1),
+  `tests/test_v64.cjs` (Wissen 1.8). Im Browser geprüft (390 px, echte Daten): Umfang, Tagebuch, Tagesblatt aus dem Tagebuch.
+
 ## V7.0 · 14.11.2026 · Bedienung nach dem Vorbild enduco (Etappe A: Phasen 1–4 des Auftrags «Masterprompt V7»)
 Auftrag von Silas vom 14.11.2026 mit 246 Bildschirmfotos der Enduco-App als Vorlage (Bilder und PDF nicht im Repository). Übernommen sind Aufbau,
 Bedienlogik und Hierarchie, keine Texte, Logos, Fotos oder Workouts. Zuordnung der Vorlage: `docs/v7-bestandsaufnahme.md`.

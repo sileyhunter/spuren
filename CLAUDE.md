@@ -15,6 +15,9 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
 - `tools/ftp_model.py` – FTP-Schätzung aus Leistungsdaten (wird von `import_export.py` nur mit `--ftp-neu` neu gerechnet)
 - `tools/series.py` – Sekundenreihen aus FIT-Datei oder Garmin-Verbindung (gleiche Struktur für beide Wege)
 - `tools/zeit.py`, `tools/stufen.py`, `tools/kennzahlen.py` – Zeitbegriffe (A3), Stufen (A5), gemeinsame Kennzahlen mit Versionen
+- **V7.1:** `tools/serien_klar.mjs` (Reihen ausgewählter Aktivitäten nach `work/` entschlüsseln, nie committen), `tools/zeit_nachrechnen.py`
+  (zeit-1.1 für Aktivitäten draussen mit GPS ohne eigene Regel aus der 2-s-Reihe nachrechnen, alte Werte ins Audit, `zq` = «reihe-2s»);
+  `FK.laufVergleichbar` (laufvergleich-1.0) in `js/formkurve.js`; Tagebuch tagebuch-2.0 in `js/v53-extra.js`; Jahresstatistik umfang-tabelle-1.0 in `index.html`
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
 - `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)
@@ -223,7 +226,7 @@ aus `get_user_summary`: `bodyBattery` = `bodyBatteryAtWakeTime`, `bbSleep` = `bo
 Gewicht: `weight_kg`, `ts_gmt` = `timestamp_gmt` (alle Messungen; das Skript nimmt pro Tag die Morgenmessung).
 Leere Werte als `null`. Unbekannte Felder weglassen. Werte nie schätzen.
 
-## Morgen-Update (V5.9.2, morgen-1.0, täglich 08:30, nur lesend auf Garmin)
+## Morgen-Update (V5.9.2, morgen-1.0, seit 16.11.2026 täglich 07:00 und 11:00, nur lesend auf Garmin)
 Zweck: das Workout des Tages und die Werte der letzten Nacht auf «Heute», bevor Silas trainiert (er exportiert Enduco-Workouts oft erst am
 Morgen nach Garmin). Keine Aktivitäten, keine FIT-Dateien, keine Sekundenreihen – das bleibt beim Nacht-Update. Nach Garmin wird nichts
 geschrieben, Enduco-Workouts werden nie geändert. Jeder Abruf, der fehlschlägt, wird weggelassen: kein Abbruch, keine Nachricht.
@@ -582,6 +585,10 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   verpasst, Fehler mit Grund, abgelehnt). Rücklese geprüft am ersten echten Senden; bis dahin nie behaupten, das Format sei an Silas' Geräten geprüft.
 
 ## Meine Entwicklung und Regeln V5.5
+- **Vergleichbare Läufe `laufvergleich-1.0` (V7.1, Silas' Wunsch 16.11.2026):** Puls und Pace verschiedener Läufe nur aus Läufen, die `FK.laufVergleichbar`
+  zulässt (draussen, ab 20 min und 3 km, ≤ 10 Hm/km, keine Intervalle/Tempo laut Titel oder Workout, 2. Hälfte ≤ 8 % anders, TL ≤ 95 je Stunde, < 25 °C,
+  kein Trail/Laufband/Koppellauf); Gründe immer sichtbar. Gilt auch für Lauf-Vergleiche im Chat und in den Aufträgen. Effektive Zeit = Bewegungszeit
+  (`zeit-1.1`: auch Navigieren, Tracker, Jagen u. a. draussen mit GPS; nicht im Wasser).
 - Vergleiche nur aus `eb`-Blöcken (Rad 190–210 W je System Rolle/Rennrad/MTB, Laufen 5:20–5:40/km flach), Urteil `entwicklung-1.0`
   (mind. 3 je Zeitraum, Bootstrap-Intervall, Guards Hitze/Höhe/Drift/Ausreisser). Laktat zählt erst bestätigt (B1), CSS nur aus Tests.
 - Form `pmc-2.0` (Fitness − Ermüdung desselben Tages; «Heute» zeigt seit status-1.1 die Form zu Tagesbeginn), Zonen `zonenverteilung-2.0` (je Sportart, Zonen je Datum, Garmin-Zonen nicht beurteilt).

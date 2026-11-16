@@ -18,9 +18,12 @@ Regeln je Sportart (still = kein Fortschritt in dieser Sekunde):
   Schwimmen Becken  aktive Bahnen = Schwimmzeit, Ruhebahnen = Satzpausen (ab 5 min Unterbrechung).
   Freiwasser        still unter 0,2 m/s; Stopp ab 1 min.
   Ski, Langlauf     still unter 0,5 m/s; Stopp ab 2 min.
-  Kraft, übrige     keine Bewegungsregel: Bewegungszeit = Timer-Zeit.
+  Übrige draussen   zeit-1.1 (Wunsch Silas 16.11.2026): Aktivitäten ohne eigene Regel mit GPS-Strecke (Navigieren, Tracker, Jagen,
+                    Eislaufen …) wie Wandern – Stehen am selben Ort ab 3 min zählt nicht als Bewegung. Nicht im Wasser (Schnorcheln,
+                    Rafting, Paddeln: GPS unter Wasser unzuverlässig, Treiben ist kein Stehen) und nicht motorisiert.
+  Kraft, übrige     keine Bewegungsregel (drinnen oder ohne Strecke): Bewegungszeit = Timer-Zeit.
 """
-VERSION = "zeit-1.0"
+VERSION = "zeit-1.1"
 UNTERBRECHUNG_S = 300
 RULES = {
     "rad": {"min_stop": 120, "v": 2 / 3.6},
@@ -30,6 +33,8 @@ RULES = {
     "schwimm_ow": {"min_stop": 60, "v": 0.2},
     "ski": {"min_stop": 120, "v": 0.5},
 }
+# zeit-1.1: nicht wie Wandern – im Wasser (GPS unter Wasser unzuverlässig, Treiben ist kein Stehen) und motorisiert (FIT-Sportarten)
+OHNE_GEH = {15, 19, 20, 22, 23, 24, 32, 36, 37, 38, 39, 40, 41, 42, 43, 44, 53}
 GAP_MAX = 10          # Lücken bis 10 s zwischen Datensätzen gelten als durchgehend (Smart Recording)
 
 
@@ -45,6 +50,8 @@ def rule_key(S):
         return "schwimm_pool" if S.sub == 17 else "schwimm_ow"
     if c == "ski":
         return "ski"
+    if c == "andere" and not S.indoor and S.sport not in OHNE_GEH and any(x is not None for x in (S.dist or [])):   # zeit-1.1: draussen mit GPS-Strecke wie Wandern
+        return "wandern"
     return None
 
 
@@ -179,3 +186,39 @@ def zeit(S):
                 "rec": round(rec), "act": round(max(0.0, mov - rec)),
                 "stops": [[int(s), round(d)] for s, d in stops]})
     return out
+
+
+class _Reihe:
+    """zeit-1.1: Session-Ersatz aus einer 2-s-Reihe (tools/serien.py, serie-1.0) für Aktivitäten ohne FIT-Datei im Zugriff.
+    Jeder belegte 2-s-Abschnitt wird ein Datensatz (Zeit = Abschnittsbeginn, Strecke und Höhe wie in der Reihe)."""
+
+    def __init__(self, R, timer, elapsed, sport=0, sub=0):
+        dt_ = R.get("dt") or 2
+        d, alt = R.get("d") or [], R.get("alt") or []
+        self.sport, self.sub, self.manu, self.timer, self.elapsed = sport, sub, None, float(timer or 0), float(elapsed or timer or 0)
+        self.ts, self.dist, self.alt, self.spd, self.pw, self.cad, self.hr = [], [], [], [], [], [], []
+        self.laps, self.lengths = [], []
+        t0, i = int(R.get("t0") or 0), 0
+        for b0, n in R.get("seg") or []:
+            for k in range(n):
+                j = i + k
+                dj = d[j] if j < len(d) else None
+                if dj is not None:
+                    self.ts.append(t0 + (b0 + k) * dt_)
+                    self.dist.append(float(dj))
+                    a = alt[j] if j < len(alt) else None
+                    self.alt.append(a / 10.0 if a is not None else None)
+                    self.spd.append(None)
+            i += n
+
+    indoor = False
+
+    @property
+    def category(self):
+        return "andere"
+
+
+def zeit_reihe(R, timer, elapsed=None):
+    """zeit-1.1 aus der 2-s-Reihe: Regel wie Wandern (still unter 12 m Strecke und 3 m Höhe je Minute, Stopp ab 3 min).
+    Gleiche Rechnung wie zeit(); Auflösung 2 s statt 1 s. → dict wie zeit()."""
+    return zeit(_Reihe(R, timer, elapsed))

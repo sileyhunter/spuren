@@ -50,7 +50,7 @@
     box.innerHTML = `<div class="goal-rows">${row("h", "Zeit", "h", 0)}${row("km", "Distanz", "km", 0)}${row("hm", "Höhenmeter", "m", 0)}</div>
       <details class="more"><summary>Ziele bearbeiten</summary><form class="v53-gform" id="v53-gform"><label>Ziel h<input name="h" inputmode="numeric" value="${own.h ? tgt.h : ""}" placeholder="${tgt.h}"></label><label>Ziel km<input name="km" inputmode="numeric" value="${own.km ? tgt.km : ""}" placeholder="${tgt.km}"></label><label>Ziel Hm<input name="hm" inputmode="numeric" value="${own.hm ? tgt.hm : ""}" placeholder="${tgt.hm}"></label></form>
         <p class="hint">Nur auf diesem Gerät gespeichert. Leer lassen = Vorjahr ${Y - 1} aufgerundet (${C.fmt(last.h)} h, ${C.fmt(last.km)} km, ${C.fmt(last.hm)} m).</p></details>
-      <p class="hint">Zeit = ${zeitName} (Regel zeit-1.0) für ${Y} und für das Vorjahresziel ${Y - 1}, also derselbe Zeitbegriff.${ohne ? ` ${ohne} ${ohne === 1 ? "Einheit" : "Einheiten"} ohne Sekundenwerte zählen mit der Timer-Zeit.` : ` Alle Einheiten beider Jahre haben eine ${zeitName}.`} Strich = Soll bis heute (${Math.round(frac * 100)} % des Jahres).</p>`;
+      <p class="hint">Zeit = ${zeitName} (Regel ${(C.D.versions && C.D.versions.zeit && C.D.versions.zeit.v) || "zeit-1.0"}) für ${Y} und für das Vorjahresziel ${Y - 1}, also derselbe Zeitbegriff.${ohne ? ` ${ohne} ${ohne === 1 ? "Einheit" : "Einheiten"} ohne Sekundenwerte zählen mit der Timer-Zeit.` : ` Alle Einheiten beider Jahre haben eine ${zeitName}.`} Strich = Soll bis heute (${Math.round(frac * 100)} % des Jahres).</p>`;
     $("v53-gform").onchange = (e) => {
       const f = e.currentTarget, a = store.get("sf.ziele", {});
       a[sp || "alle"] = { km: +f.km.value || undefined, h: +f.h.value || undefined, hm: +f.hm.value || undefined };
@@ -82,34 +82,61 @@
       `Gleicher Kalendertag, gleiche Zeitdefinition für alle Jahre${metric === "h" ? ` (${bew ? "Bewegungszeit" : "Timer-Zeit"})` : ""}.`;
   }
   const weekKey = (d) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); const wd = (x.getDay() + 6) % 7; x.setDate(x.getDate() - wd); return x.toISOString().slice(0, 10); };
+  /* V7.1 tagebuch-2.0 (Wunsch 16.11.2026): Sportfilter (Auswahl je Gerät), Farblegende, jeder Tag antippbar (Tagesblatt mit den Aktivitäten,
+     dort «Analysieren»), mehr Wochen und darunter die Liste der Aktivitäten (antippen öffnet den Explorer). Dauer = Bewegungszeit (C.effS). */
+  const TB = { sport: store.get("sf.tb.sport", ""), wochen: 8 };
+  const effS = (C, a) => (C.effS ? C.effS(a) : a.mv || a.dur || 0);
+  const tbActs = (C) => C.D.activities.filter((a) => a && a.date && (!TB.sport || a.sport === TB.sport));
   function streak(C) {
-    const weeks = new Set(C.D.activities.map((a) => weekKey(C.pd(a.date))));
+    const weeks = new Set(tbActs(C).map((a) => weekKey(C.pd(a.date))));
     let cur = new Date(C.today), n = 0;
     if (!weeks.has(weekKey(cur))) cur = new Date(cur.getTime() - 7 * DAY);       // laufende Woche noch ohne Training: zählt nicht gegen die Serie
     while (weeks.has(weekKey(cur))) { n++; cur = new Date(cur.getTime() - 7 * DAY); }
     const sorted = [...weeks].sort();
     let best = 0, run = 0, prev = null;
     for (const w of sorted) { run = prev && (new Date(w) - new Date(prev)) / DAY <= 7.5 ? run + 1 : 1; best = Math.max(best, run); prev = w; }
-    $("v53-streak").innerHTML = `<div class="v53-big"><b>${n}</b><span>Wochen in Folge mit Training</span></div><div class="v53-big muted"><b>${best}</b><span>längste Serie</span></div>`;
+    const was = TB.sport ? (C.SPORTS[TB.sport] || {}).label : "";
+    $("v53-streak").innerHTML = `<div class="v53-big"><b>${n}</b><span>Wochen in Folge mit ${was ? esc(was) + "-" : ""}Training</span></div><div class="v53-big muted"><b>${best}</b><span>längste Serie</span></div>`;
   }
+  const esc = (x) => String(x ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const WT = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
   function diary(C) {
-    const box = $("v53-diary"); const wk0 = new Date(weekKey(C.today));
-    const byDay = new Map();
-    for (const a of C.D.activities) { const k = a.date; const o = byDay.get(k) || { s: 0, sp: {} }; o.s += a.mv || a.dur || 0; o.sp[a.sport] = (o.sp[a.sport] || 0) + (a.mv || a.dur || 0); byDay.set(k, o); }
-    const rows = [];
-    for (let w = 0; w < 8; w++) {
+    const box = $("v53-diary"); if (!box) return;
+    const wk0 = new Date(weekKey(C.today)), SP = ["schwimm", "rad", "lauf", "ski", "wandern", "andere"].filter((k) => C.SPORTS[k]);
+    const byDay = new Map(), A = tbActs(C);
+    for (const a of A) { const k = a.date, o = byDay.get(k) || { s: 0, sp: {}, n: 0 }; const d = effS(C, a); o.s += d; o.n++; o.sp[a.sport] = (o.sp[a.sport] || 0) + d; byDay.set(k, o); }
+    const rows = [], von = C.iso(new Date(wk0.getTime() - (TB.wochen - 1) * 7 * DAY));
+    for (let w = 0; w < TB.wochen; w++) {
       const start = new Date(wk0.getTime() - w * 7 * DAY); let tot = 0; const cells = [];
       for (let d = 0; d < 7; d++) {
         const day = new Date(start.getTime() + d * DAY), k = C.iso(day), o = byDay.get(k);
-        if (day > C.today) { cells.push(`<i class="fut"></i>`); continue; }
-        if (!o) { cells.push(`<i title="${C.dateCH(k)}: frei"></i>`); continue; }
+        if (day > C.today) { cells.push(`<i class="fut" aria-hidden="true"></i>`); continue; }
+        if (!o) { cells.push(`<button type="button" class="tb-tag frei" data-tbtag="${k}" aria-label="${C.dateCH(k)}: frei – Tag öffnen"><i></i></button>`); continue; }
         tot += o.s;
-        const sp = Object.entries(o.sp).sort((a, b) => b[1] - a[1])[0][0], r = Math.min(18, 5 + Math.sqrt(o.s / 60) * 1.6);
-        cells.push(`<i class="on" style="--r:${r.toFixed(1)}px;--c:${(C.SPORTS[sp] || C.SPORTS.andere).color}" title="${C.dateCH(k)}: ${C.hmm(o.s)} h"></i>`);
+        const sp = Object.entries(o.sp).sort((a, b) => b[1] - a[1])[0][0], r = Math.min(14, 4 + Math.sqrt(o.s / 60) * 0.95);   // 30 min ≈ 9, 1 h ≈ 11, ab 2 h 14 px
+        const lab = `${C.dateCH(k)}: ${o.n} ${o.n === 1 ? "Aktivität" : "Aktivitäten"}, ${C.hmm(o.s)} h, meist ${(C.SPORTS[sp] || C.SPORTS.andere).label}`;
+        cells.push(`<button type="button" class="tb-tag" data-tbtag="${k}" aria-label="${esc(lab)} – Tag öffnen" title="${esc(lab)}"><i class="on" style="--r:${r.toFixed(1)}px;--c:${(C.SPORTS[sp] || C.SPORTS.andere).color}"></i></button>`);
       }
       rows.push(`<div class="v53-wk"><span>${start.getDate()}.${start.getMonth() + 1}.</span>${cells.join("")}<b>${C.hmm(tot)}</b></div>`);
     }
-    box.innerHTML = `<div class="v53-wk head"><span></span>${["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((x) => `<em>${x}</em>`).join("")}<b>h</b></div>${rows.join("")}<p class="hint">Kreisgrösse = Bewegungszeit des Tages, Farbe = Sportart mit der meisten Zeit.</p>`;
+    const legende = `<div class="tb-legende" aria-label="Farben der Sportarten">${SP.filter((k) => !TB.sport || k === TB.sport).map((k) => `<span><i style="--c:${C.SPORTS[k].color}"></i>${esc(C.SPORTS[k].label)}</span>`).join("")}</div>`;
+    const liste = A.filter((a) => a.date >= von && a.date <= C.iso(C.today)).sort((x, y) => (y.date + (y.start || "")).localeCompare(x.date + (x.start || "")));
+    const zeile = (a) => { const d = new Date(a.date + "T12:00:00"), s = C.SPORTS[a.sport] || C.SPORTS.andere;
+      const z = [C.hmm(effS(C, a)) + " h", a.km ? C.fmt(a.km, 1) + " km" : "", a.hm ? C.fmt(a.hm) + " Hm" : "", isNum(a.tl2 ?? a.tss) ? "TL " + C.fmt(a.tl2 ?? a.tss) : ""].filter(Boolean).join(" · ");
+      return `<li><button type="button" class="tb-akt" data-ex="${esc(a.id)}" aria-label="${esc(a.name || s.label)}, ${C.dateCH(a.date)} – Aktivität öffnen">
+        <span class="tb-d"><b>${WT[d.getDay()]} ${d.getDate()}.${d.getMonth() + 1}.</b>${a.start ? `<small>${esc(a.start)}</small>` : ""}</span>
+        <i style="--c:${s.color}" aria-hidden="true"></i><span class="tb-n"><b>${esc(a.name || s.label)}</b><small>${esc(z)}</small></span></button></li>`; };
+    box.innerHTML = `<div class="tb-filter"><label>Sportart <select id="tb-sport">${[["", "Alle Sportarten"]].concat(SP.map((k) => [k, C.SPORTS[k].label])).map(([v, n]) => `<option value="${v}"${v === TB.sport ? " selected" : ""}>${esc(n)}</option>`).join("")}</select></label></div>
+      ${legende}
+      <div class="v53-wk head"><span></span>${["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((x) => `<em>${x}</em>`).join("")}<b>h</b></div>${rows.join("")}
+      <p class="hint">Kreisgrösse = Bewegungszeit des Tages (ohne Halte), Farbe = Sportart mit der meisten Zeit. Tag antippen: alle Aktivitäten des Tages.</p>
+      <div class="row tb-mehr"><button type="button" class="btn" id="tb-mehr">8 Wochen mehr</button>${TB.wochen > 8 ? `<button type="button" class="btn" id="tb-weniger">Nur 8 Wochen</button>` : ""}</div>
+      <h3 class="mini-h">Aktivitäten ${TB.wochen > 8 ? `der letzten ${TB.wochen} Wochen` : "der letzten 8 Wochen"} (${liste.length})</h3>
+      ${liste.length ? `<ul class="tb-liste">${liste.map(zeile).join("")}</ul>` : `<p class="hint">Keine Aktivitäten${TB.sport ? " dieser Sportart" : ""} in diesem Zeitraum.</p>`}`;
+    $("tb-sport").onchange = (e) => { TB.sport = e.target.value; store.set("sf.tb.sport", TB.sport); streak(C); diary(C); };
+    $("tb-mehr").onclick = () => { TB.wochen = Math.min(104, TB.wochen + 8); diary(C); };
+    const w8 = $("tb-weniger"); if (w8) w8.onclick = () => { TB.wochen = 8; diary(C); };
+    box.querySelectorAll("[data-tbtag]").forEach((b) => (b.onclick = () => { if (window.APP && window.APP.tagBlatt) window.APP.tagBlatt(b.dataset.tbtag); }));
   }
   const PDC = [["5", "5 s"], ["15", "15 s"], ["30", "30 s"], ["60", "1 min"], ["300", "5 min"], ["600", "10 min"], ["1200", "20 min"], ["3600", "1 h"], ["7200", "2 h"]];
   const sysOf = (a) => (window.FK ? FK.bikeSys(a) : a.indoor ? "indoor" : "rennrad");

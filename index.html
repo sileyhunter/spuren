@@ -156,6 +156,18 @@ table.t td.wrap { white-space: normal; text-align: left; min-width: 220px; max-w
 table.t td.wrap small, table.t td .hint { white-space: normal; overflow-wrap: anywhere; }
 .tablewrap table.t th:first-child, .tablewrap table.t td:first-child { position: sticky; left: 0; background: var(--surface); z-index: 1; }
 @media (max-width: 520px) { table.t th, table.t td { padding: 6px 5px; font-size: 12px; } table.t tr.subrow td:first-child { padding-left: 16px; } }
+/* V7.1 umfang-tabelle-1.0: Jahresstatistik als kompakte Tabelle (alle Sportarten, Kopfzeile = Legende) */
+table.t.t-kompakt td, table.t.t-kompakt th { padding: 6px 5px; vertical-align: top; }
+table.t.t-kompakt td:first-child { white-space: normal; min-width: 0; position: static; }
+table.t.t-kompakt th:first-child { position: static; }
+table.t.t-kompakt td small { display: block; font-size: 11px; color: var(--muted); font-weight: 400; white-space: normal; line-height: 1.25; margin-top: 1px; }
+table.t.t-kompakt td:not(:first-child) small { white-space: nowrap; font-size: 10.5px; }
+table.t.t-kompakt td b { font-weight: 650; }
+table.t.t-kompakt .tk-sp { white-space: nowrap; }
+.t-legende, .hp-note { font-size: 12px; color: var(--muted); line-height: 1.45; margin: 8px 0 0; }
+.ex-lv { margin: 4px 0 0; font-size: 12.5px; color: var(--good); } .ex-lv.nein { color: var(--muted); } .ex-lv small { color: var(--muted); }
+.t-legende b { color: var(--fg); font-weight: 600; }
+@media (max-width: 420px) { table.t.t-kompakt td, table.t.t-kompakt th { padding: 6px 3px; font-size: 12px; } table.t.t-kompakt th { letter-spacing: .02em; } }
 .hp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 22px; }
 .hp-col { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 @media (max-width: 980px) { .hp-grid { grid-template-columns: minmax(0, 1fr); } }
@@ -740,6 +752,22 @@ table.t.tr-vt { table-layout: auto; } table.t.tr-vt th, table.t.tr-vt td { paddi
 .v53-wk i.on { width: calc(var(--r) * 2); height: calc(var(--r) * 2); background: var(--c); opacity: .85; }
 .v53-wk i.fut { background: transparent; border: 1px dashed var(--line); }
 .v53-wk.head { min-height: 18px; }
+/* V7.1 tagebuch-2.0: Tage antippbar, Legende, Sportfilter, Liste der Aktivitäten */
+.v53-wk .tb-tag { display: flex; align-items: center; justify-content: center; min-height: 40px; min-width: 0; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 10px; color: inherit; }
+.v53-wk .tb-tag:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.v53-wk .tb-tag i { flex: none; }
+.v53-wk .tb-tag:active i.on { transform: scale(.92); }
+.tb-filter { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 8px; }
+.tb-filter label { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }
+.tb-legende { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0 0 10px; font-size: 12.5px; color: var(--fg); }
+.tb-legende span { display: inline-flex; align-items: center; gap: 6px; }
+.tb-legende i, .tb-akt > i { width: 11px; height: 11px; border-radius: 50%; background: var(--c); flex: none; }
+.tb-mehr { margin: 6px 0 4px; gap: 8px; }
+.tb-liste { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.tb-akt { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; min-height: 48px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--fg); cursor: pointer; }
+.tb-akt .tb-d { display: flex; flex-direction: column; min-width: 58px; font-size: 12.5px; } .tb-akt .tb-d small { color: var(--muted); font-size: 11.5px; }
+.tb-akt .tb-n { display: flex; flex-direction: column; min-width: 0; } .tb-akt .tb-n b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-akt .tb-n small { color: var(--muted); font-size: 12px; }
 .v53-lead { margin: 0; font-size: 14px; } .v53-lead b { font-size: 22px; color: var(--accent); }
 .v53-zbars { display: flex; flex-direction: column; gap: 6px; }
 .v53-zbars div { display: grid; grid-template-columns: 28px minmax(0, 1fr) 48px 44px; align-items: center; gap: 8px; position: relative; }
@@ -1166,7 +1194,8 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
           <select id="y-year" aria-label="Jahr"></select>
         </div>
         <div class="kv" id="y-kv"></div>
-        <div class="tablewrap"><table class="t" id="t-year"></table></div>
+        <div class="tablewrap"><table class="t t-kompakt" id="t-year" data-keine-liste></table></div>
+        <p class="t-legende" id="y-legende"></p>
         <p class="hint" id="y-zeit"></p>
         <h3 class="mini-h">Erholung und Körper</h3>
         <div class="kv" id="y-kv2"></div>
@@ -1264,7 +1293,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
   <section class="view" id="view-tagebuch" role="region" aria-label="Aktivitäten" hidden>
     <div class="dash">
         <div class="card w12">
-        <h2>Serie und Trainingstagebuch</h2><div class="sub">Wochen in Folge mit mindestens einem Training, letzte 8 Wochen</div>
+        <h2>Serie und Trainingstagebuch</h2><div class="sub">Wochen in Folge mit mindestens einem Training · Tage antippen · Filter nach Sportart</div>
         <div class="v53-streak" id="v53-streak"></div>
         <div class="v53-diary" id="v53-diary"></div>
       </div>
@@ -1370,9 +1399,10 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
             <h3 class="mini-h">Lauf · Puls zu Pace</h3>
             <div class="chart tall"><canvas id="c-hrp" aria-label="Puls zu Pace nach Laufart"></canvas></div>
             <div class="tablewrap"><table class="t" id="t-hrp"></table></div>
+            <p class="keep hp-note" id="hp-lauf-note"></p>
           </div>
         </div>
-        <p class="hint">Rad: Fahrten mit Leistungsmesser ab 20 Minuten. Lauf: ab 15 Minuten und 2 km. Die Tabellen lesen den Puls an der Trendlinie ab, nur wenn genug Einheiten in diesem Bereich liegen (sonst –).</p>
+        <p class="hint">Rad: Fahrten mit Leistungsmesser ab 20 Minuten. Lauf: nur vergleichbare Läufe (laufvergleich-1.0: ab 20 Minuten und 3 km, höchstens 10 Höhenmeter je km, keine Intervalle oder Tempo-Abschnitte, gleichmässiges Tempo, kein Trail, Laufband, Koppellauf, keine Hitze ab 25 °C). Die Tabellen lesen den Puls an der Trendlinie ab, nur wenn genug Einheiten in diesem Bereich liegen (sonst –).</p>
       </div>
         <div class="card">
         <h2>Lauf: Effizienz <span class="badge muted">explorativ</span></h2>
@@ -2031,7 +2061,10 @@ D.activities.sort((a, b) => a._t - b._t);
    «Probe» = Rad mit der geschätzten FTP zum damaligen Zeitpunkt (ftp_e, siehe tools/ftp_model.py).
    Übernommen wird die Probe erst, wenn config.load_model = "ftp_est" gesetzt ist. */
 const ZEITBASIS = (D.config && D.config.zeitbasis) || "timer";        // "bewegung" seit 3.11.2026 (Silas)
+const ZEIT_V = (D.versions && D.versions.zeit && (D.versions.zeit.v || D.versions.zeit)) || "zeit-1.0";
 const hrsOf = (a) => ((ZEITBASIS === "bewegung" ? (a.mv ?? a.dur) : a.dur) || 0) / 3600;
+/** V7.1: effektive Zeit einer Aktivität für die Anzeige = Bewegungszeit (zeit-1.1: Timer ohne Halte, auch Navigieren/Tracker/Jagen u. a. mit GPS), sonst Timer-Zeit. */
+const effS = (a) => (a ? (Number.isFinite(a.mv) ? a.mv : a.dur) || 0 : 0);
 const FTPE = D.ftp_est || null;
 function ftpTrial(a) {
   if (a.ftp_e) return a.ftp_e;
@@ -2187,7 +2220,7 @@ function wavg(list, k) {         // nach Dauer gewichteter Schnitt, nur Einheite
   return t ? s / t : null;
 }
 function renderSummary(list) {
-  const km = list.reduce((s, a) => s + (a.km || 0), 0), hm = list.reduce((s, a) => s + (a.hm || 0), 0), h = list.reduce((s, a) => s + (a.dur || 0), 0) / 3600;
+  const km = list.reduce((s, a) => s + (a.km || 0), 0), hm = list.reduce((s, a) => s + (a.hm || 0), 0), h = list.reduce((s, a) => s + effS(a), 0) / 3600;   // V7.1: Bewegungszeit
   const nw = list.filter((a) => a.watt).length;
   document.getElementById("sum").innerHTML = `<div><b>${fmt(list.length)}</b><span>Aktivitäten</span></div><div><b>${fmt(km)}</b><span>km</span></div><div><b>${fmt(hm)}</b><span>Höhenmeter</span></div><div><b>${fmt(h)}</b><span>Stunden</span></div>` +
     `<div><b>${fmt(wavg(list, "hr"))}</b><span>Ø Puls</span></div><div title="${nw} Einheiten mit Leistungsmesser"><b>${fmt(wavg(list, "watt"))}</b><span>Ø Watt${nw && nw < list.length ? ` · ${fmt(nw)} mit Messer` : ""}</span></div>`;
@@ -2583,7 +2616,7 @@ function renderHits() {
   const list = hitsListe.slice(0, hitsN), rest = hitsListe.length - hitsN;
   const el = document.getElementById("hits");
   el.innerHTML = list.map((a) => `<div class="item"><button class="main" data-id="${esc(a.id)}"><span class="dot" style="background:${KARTE_FARBE[a.sport] || KARTE_FARBE.andere}"></span>
-    <span>${esc(a.name)}<br><small>${dateCH(a.date)} · ${fmt(a.km, 1)} km · ${fmt(a.hm)} hm · ${hmm(a.dur)}${a.wx && !a.indoor ? ` · ${fmt(a.wx.temperature)} °C, Wind ${fmt(a.wx.wind_speed)} km/h ${esc(String(a.wx.wind_direction_compass || "").toUpperCase())} <span class="prov prov-wetter" title="Garmin-Wetter um ${esc(String(a.wx.issue_time || "").slice(11, 16))} UTC. ${esc(window.FK ? FK.wxQuality(a.wx, a.coords && a.coords[0]).text : "")}. Wetterstation oder Modell, nicht am Ort gemessen.">Wetter ${esc(window.FK ? FK.wxQuality(a.wx, a.coords && a.coords[0]).stufe : "")}</span>` : ""}</small></span>
+    <span>${esc(a.name)}<br><small>${dateCH(a.date)} · ${fmt(a.km, 1)} km · ${fmt(a.hm)} hm · ${hmm(effS(a))}${a.wx && !a.indoor ? ` · ${fmt(a.wx.temperature)} °C, Wind ${fmt(a.wx.wind_speed)} km/h ${esc(String(a.wx.wind_direction_compass || "").toUpperCase())} <span class="prov prov-wetter" title="Garmin-Wetter um ${esc(String(a.wx.issue_time || "").slice(11, 16))} UTC. ${esc(window.FK ? FK.wxQuality(a.wx, a.coords && a.coords[0]).text : "")}. Wetterstation oder Modell, nicht am Ort gemessen.">Wetter ${esc(window.FK ? FK.wxQuality(a.wx, a.coords && a.coords[0]).stufe : "")}</span>` : ""}</small></span>
     <small>${a.watt ? a.watt + " W" : a.hr ? a.hr + " bpm" : ""}</small></button><button class="del ex-btn" data-ex="${esc(a.id)}">Analysieren</button>${a.wx && !a.indoor && window.V53 ? `<button class="del wxcopy" data-id="${esc(a.id)}" title="Wettertext für die Strava-Beschreibung kopieren">Wetter kopieren</button>` : ""}</div>`).join("") + (rest > 0 ? `<button class="btn hits-mehr" id="hits-mehr" type="button">Weitere ${Math.min(HITS_SCHRITT, rest)} anzeigen <small>(${rest} weitere)</small></button>` : "");
   el.querySelectorAll(".main").forEach((b) => b.addEventListener("click", () => selectActivity(b.dataset.id, true)));
   el.querySelectorAll(".wxcopy").forEach((b) => b.addEventListener("click", async () => {
@@ -3364,7 +3397,7 @@ function isoWeek(dt) { const d = new Date(dt); d.setHours(0, 0, 0, 0); d.setDate
    ===================================================================== */
 function v5Start() {
   if (!window.V5UI) return;
-  V5_READY = V5UI.init({ D, chart, css, fmt, esc, dateCH, dLabel, pd, iso, today, SPORTS, IS_DEMO, hrsOf, shareOrDownload, ACT_BY_ID, charts, mmss, hmm, ringSVG, weights,
+  V5_READY = V5UI.init({ D, chart, css, fmt, esc, dateCH, dLabel, pd, iso, today, SPORTS, IS_DEMO, hrsOf, effS, shareOrDownload, ACT_BY_ID, charts, mmss, hmm, ringSVG, weights,
     planRoute: () => (window.RTUI ? window.RTUI.planRoute() : null), pmcHeute: () => FK.pmcMorgen(pmc(), iso(today)), races: () => (D.config?.races || RACES), tests: () => testsWithStatus() }).then(() => { if (window.V59) V59.init(V5UI.C); }).catch((e) => console.error(e));
 }
 const charts = {};
@@ -3428,8 +3461,11 @@ function hrPoints(kind, from, to) {        // Punkte {x, y} je System im Zeitrau
     } else {
       const s = runSys(a);
       if (!s || !(a.km >= 2) || a.dur < 900) continue;
-      const pc = a.dur / a.km; if (pc < 170 || pc > 560) continue;
-      (out[s] ||= []).push({ x: Math.round(pc), y: a.hr, n: a.name, d: a.date, t: a.dur });
+      // V7.1 laufvergleich-1.0: nur Läufe unter ähnlichen Bedingungen (flach, gleichmässig, ohne Intervalle, kein Trail/Laufband/Koppellauf)
+      const lv = window.FK && FK.laufVergleichbar ? FK.laufVergleichbar(a, { acts: D.activities }) : { ok: true, gruende: [] };
+      if (!lv.ok) { (out._aus ||= []).push({ a, gruende: lv.gruende }); continue; }
+      const t = Number.isFinite(a.mv) ? a.mv : a.dur, pc = t / a.km; if (pc < 170 || pc > 560) continue;   // Pace aus der Bewegungszeit
+      (out[s] ||= []).push({ x: Math.round(pc), y: a.hr, n: a.name, d: a.date, t });
     }
   }
   return out;
@@ -3622,7 +3658,7 @@ const TABS = {
         if (e.a) {
           const a = e.a, sp = ["rad", "lauf", "schwimm", "wandern", "ski"].includes(a.sport) ? a.sport : "andere";
           return `<div class="cd-akt">${W6 ? `<span class="ek-sport" style="--sp:var(--sp-${sp})">${W6.sportIcon(a.sport, 20)}</span>` : `<span class="dot" style="background:${e.c}"></span>`}
-            <div class="cd-t"><b>${esc(a.name)}</b><small>${fmt(a.km, 1)} km · ${fmt(a.hm)} hm · ${hmm(a.dur)} h${a.hr ? " · Ø " + a.hr + " bpm" : ""}${a.watt ? " · " + a.watt + " W" : ""} · TL ${fmt(a.tss)}${a._lt2vor ? " (LT2 des ersten Tests)" : ""}</small>
+            <div class="cd-t"><b>${esc(a.name)}</b><small>${fmt(a.km, 1)} km · ${fmt(a.hm)} hm · ${hmm(effS(a))} h${Number.isFinite(a.mv) && a.dur - a.mv >= 300 ? ` (Timer ${hmm(a.dur)})` : ""}${a.hr ? " · Ø " + a.hr + " bpm" : ""}${a.watt ? " · " + a.watt + " W" : ""} · TL ${fmt(a.tss)}${a._lt2vor ? " (LT2 des ersten Tests)" : ""}</small>
             ${a.wk ? `<small>Plan «${esc(a.wk.name || "")}»: ${a.wk.plan_s ? hmm(a.wk.plan_s) + " h" : a.wk.plan_m ? (a.wk.plan_m >= 2000 ? fmt(a.wk.plan_m / 1000, 1) + " km" : a.wk.plan_m + " m") : "Dauer offen"} geplant, ${hmm(a.wk.ist_s)} h absolviert${a.wk.im_ziel != null ? ` · <b class="cd-ziel">${a.wk.im_ziel} % im Ziel</b>` : ""}</small>` : ""}</div>
             <button class="btn ex-btn" data-ex="${esc(a.id)}">Analysieren</button></div>`;
         }
@@ -3873,26 +3909,32 @@ const TABS = {
         const c = cssTests().filter((x) => x.datum >= from && x.datum <= to && Number.isFinite(FK.css(x.t400, x.t200))).sort((a, b) => a.datum.localeCompare(b.datum)).at(-1);
         return c ? `CSS ${mmss(FK.css(c.t400, c.t200))} /100 m` : "–";
       };
+      // V7.1 umfang-tabelle-1.0 (Wunsch 16.11.2026): alle Sportarten in einer kompakten Tabelle; die Kopfzeile ist die Legende,
+      // Puls und Watt/Pace stehen klein unter der Sportart, die Timer-Zeit klein unter den Stunden (keine Liste mehr auf dem Handy).
       const row = (label, l, lp, k, cls) => {
         if (!l.length && !lp.length) return "";
         const km = sum(l, "km"), kmp = sum(lp, "km"), h = l.reduce((x, a) => x + hrsOf(a), 0) * 3600, hp = lp.reduce((x, a) => x + hrsOf(a), 0) * 3600, ht = sum(l, "dur");
         // Vergleich nach km, wenn beide Jahre genug Distanz haben (beim Total nach Stunden), sonst nach Stunden
         const useKm = cls !== "total" && km >= 20 && kmp >= 20, d = useKm ? (km / kmp - 1) * 100 : hp >= 3 * 3600 ? (h / hp - 1) * 100 : null;
-        const cmp = d != null ? `<td class="${d >= 0 ? "up" : "down"}" title="Vergleich nach ${useKm ? "Kilometern" : "Stunden (" + (ZEITBASIS === "bewegung" ? "Bewegung" : "Timer") + ")"}">${(d >= 0 ? "+" : "") + fmt(d)} %</td>` : `<td>${h >= 3 * 3600 ? "neu" : "–"}</td>`;
-        return `<tr class="${cls || ""}"><td>${label}</td><td>${fmt(l.length)}</td><td>${fmt(ht / 3600)}</td><td title="Bewegungszeit (zeit-1.0)">${fmt(movH(l))}</td><td>${fmt(km)}</td><td>${fmt(sum(l, "hm"))}</td><td>${fmt(wavg(l, "hr"))}</td><td>${extra(k, l)}</td>${cmp}</tr>`;
+        const cmp = d != null ? `<td class="${d >= 0 ? "up" : "down"}" title="Vergleich nach ${useKm ? "Kilometern" : "Stunden (" + (ZEITBASIS === "bewegung" ? "Bewegung" : "Timer") + ")"}">${(d >= 0 ? "+" : "−") + fmt(Math.abs(d))} %</td>` : `<td>${h >= 3 * 3600 ? "neu" : "–"}</td>`;
+        const hr = wavg(l, "hr"), ex = extra(k, l), unter = [hr ? `Ø ${fmt(hr)} bpm` : "", ex !== "–" ? ex : ""].filter(Boolean).join(" · ");
+        const timer = Math.abs(ht / 3600 - movH(l)) >= 0.05 ? `<small>Timer ${fmt(ht / 3600)}</small>` : "";
+        return `<tr class="${cls || ""}"><td><span class="tk-sp">${label}</span>${unter ? `<small>${unter}</small>` : ""}</td><td>${fmt(l.length)}</td>`
+          + `<td title="Bewegungszeit (${ZEIT_V}); klein: Timer-Zeit"><b>${fmt(movH(l))}</b>${timer}</td><td>${km >= 0.5 ? fmt(km) : "–"}</td><td>${sum(l, "hm") >= 1 ? fmt(sum(l, "hm")) : "–"}</td>${cmp}</tr>`;
       };
-      const dot = (c) => `<span class="dot" style="background:${c};margin-right:8px"></span>`;
-      let html = `<tr><th>Sport</th><th>Anzahl</th><th title="Timer-Zeit, wie bisher">h Timer</th><th title="Timer-Zeit ohne Halte">h Bewegung</th><th>km</th><th>hm</th><th>Ø Puls</th><th title="Rad: Ø Watt · Laufen: Ø Pace · Schwimmen: letzter CSS-Test im Jahr (keine Rohpace, V5.9.4)">Ø Watt / Pace / CSS</th><th>ggü. ${Y - 1}</th></tr>`;
+      const dot = (c) => `<span class="dot" style="background:${c};margin-right:6px"></span>`;
+      let html = `<tr><th>Sportart</th><th title="Anzahl Einheiten">Anz.</th><th title="Stunden Bewegungszeit, darunter Timer-Zeit">Std.</th><th>km</th><th title="Höhenmeter">Hm</th><th title="gegenüber ${Y - 1}, gleicher Zeitraum">± ${String(Y - 1).slice(2)}</th></tr>`;
       for (const k of ["schwimm", "rad", "lauf", "ski", "wandern", "andere"]) {
         const l = L.filter((a) => a.sport === k), lp = Lp.filter((a) => a.sport === k);
         html += row(dot(SPORTS[k].color) + SPORTS[k].label, l, lp, k);
         if (k === "rad") for (const b of BIKE_SYS) html += row(b.label, l.filter((a) => bikeSys(a) === b.k), lp.filter((a) => bikeSys(a) === b.k), "rad", "subrow");
       }
       html += row("Total", L, Lp, "", "total");
+      document.getElementById("y-legende").innerHTML = `<b>Legende:</b> Anz. = Einheiten · Std. = Stunden Bewegungszeit (ohne Halte), klein darunter die Timer-Zeit, wenn sie abweicht · km, Hm = Kilometer und Höhenmeter · ± ${String(Y - 1).slice(2)} = gegenüber ${Y - 1} im gleichen Zeitraum (nach Kilometern, beim Total und ohne Strecke nach Stunden) · unter der Sportart: Ø Puls und Rad Ø Watt, Laufen Ø Pace, Schwimmen letzter CSS-Test.`;
       document.getElementById("t-year").innerHTML = html;
       const withMv = L.filter((a) => a.mv != null).length, diffs = ["schwimm", "rad", "lauf", "ski", "wandern", "andere"]
         .map((k) => { const l = L.filter((a) => a.sport === k); return [k, sum(l, "dur") / 3600 - movH(l)]; }).filter(([, d]) => d >= 0.5).sort((a, b) => b[1] - a[1]);
-      document.getElementById("y-zeit").textContent = (withMv ? "h Timer wie bisher. h Bewegung (Regel zeit-1.0) zieht Halte ab: Rad ab 2 min unter 2 km/h, Rolle jede Sekunde ohne Treten, Laufen ab 1 min unter 1 m/s, Wandern und Skitouren ab 3 min ohne Strecke und Höhe; geplante Pausen bleiben drin."
+      document.getElementById("y-zeit").textContent = (withMv ? `Bewegungszeit (Regel ${ZEIT_V}) = Timer-Zeit ohne Halte: Rad ab 2 min unter 2 km/h, Rolle jede Sekunde ohne Treten, Laufen ab 1 min unter 1 m/s, Wandern, Skitouren und seit zeit-1.1 auch Navigieren, Tracker, Jagen und andere Aktivitäten draussen mit GPS ab 3 min ohne Strecke und Höhe (Warten am selben Ort zählt nicht); geplante Pausen bleiben drin.`
         + (diffs.length ? ` Grösster Unterschied: ${diffs.slice(0, 2).map(([k, d]) => `${SPORTS[k].label} ${fmt(d)} h`).join(", ")}.` : "")
         + (withMv < L.length ? ` ${L.length - withMv} Einheiten ohne Sekundenwerte zählen mit der Timer-Zeit.` : "")
         + (ZEITBASIS === "bewegung" ? " Umfang, Wochenstunden und Jahresvergleich zählen seit 3.11.2026 die Bewegungszeit; die Trainingslast bleibt unverändert." : " Die Seite rechnet Umfang und Last weiter mit der Timer-Zeit, bis du die Umstellung freigibst.") : "");
@@ -3933,7 +3975,7 @@ const TABS = {
           { label: String(today.getFullYear() - 1), data: D.pdc.prev, borderColor: css("--muted"), backgroundColor: css("--muted"), borderDash: [5, 4], tension: 0.3, pointRadius: 0 }] },
           options: { scales: { y: { title: { display: true, text: "Watt" } } }, plugins: legendBottom } });
       }
-      const LE = FK.laufEffizienz(D.activities), ef = LE.punkte.map((p) => ({ x: p.date, y: p.y, p }));     // laufeffizienz-1.0
+      const LE = FK.laufEffizienz(D.activities), ef = LE.punkte.map((p) => ({ x: p.date, y: p.y, p }));     // laufeffizienz-1.1 mit laufvergleich-1.0
       chart("c-ef", { type: "line", data: { labels: ef.map((p) => dLabel(p.x)), datasets: [
         { label: "Einzelne Läufe", data: ef.map((p) => p.y), borderColor: SPORTS.lauf.color, backgroundColor: SPORTS.lauf.color, showLine: false, pointRadius: 3 },
         { label: "Mittel über 10 Läufe", data: ef.map((_, i) => { const w = ef.slice(Math.max(0, i - 9), i + 1); return +(w.reduce((s, p) => s + p.y, 0) / w.length).toFixed(3); }), borderColor: css("--fg"), borderWidth: 1.5, pointRadius: 0, tension: 0.3 }] },
@@ -3941,7 +3983,7 @@ const TABS = {
           tooltip: { callbacks: { label: (c) => { const p = ef[c.dataIndex].p; return c.datasetIndex ? `Mittel: ${fmt(c.raw, 2)} m/Schlag` : `${fmt(p.y, 2)} m/Schlag = ${fmt(p.mpm)} m/min ÷ ${p.hr} Schläge/min`; },
             footer: () => { const e = LE.ausgeschlossen, n = e.tempo + e.puls + e.ausreisser; return n ? `${n} Läufe entfernt: ${e.tempo} Tempo/GPS, ${e.puls} Puls, ${e.ausreisser} Ausreisser` : "keine Läufe entfernt"; } } } } } });
       const e = LE.ausgeschlossen;
-      document.getElementById("ef-note").textContent = `${LE.punkte.length} von ${LE.n} lockeren, flachen Strassenläufen (letzte 60, über 4 km, höchstens 15 Hm/km). Entfernt: ${e.tempo} wegen Tempo/GPS, ${e.puls} wegen Puls, ${e.ausreisser} Ausreisser (mehr als 3 MAD vom Median). Regel ${LE.v}.`;
+      document.getElementById("ef-note").textContent = `${LE.punkte.length} von ${LE.n} vergleichbaren Läufen (letzte 60, über 4 km; ${LE.vergleichText}). Entfernt: ${e.tempo} wegen Tempo/GPS, ${e.puls} wegen Puls, ${e.ausreisser} Ausreisser (mehr als 3 MAD vom Median). Regel ${LE.v}.`;
       this.hr();
       if (window.V5UI) V5_READY.then(() => { V5UI.eta(); V5UI.aero(); if (window.V55) V55.trend(V5UI.C); });
     },
@@ -3984,7 +4026,11 @@ const TABS = {
       const v = document.getElementById("hp-range").value || "12m";
       const [from, to] = v === "12m" ? [iso(addDays(today, -365)), iso(today)] : v === "alle" ? ["0000-01-01", "9999-12-31"] : [`${v}-01-01`, `${v}-12-31`];
       hrScatter("c-hrw", BIKE_SYS, hrPoints("rad", from, to), "Watt (NP)", false);
-      hrScatter("c-hrp", RUN_SYS, hrPoints("lauf", from, to), "Pace min/km (rechts schneller)", true);
+      const PL = hrPoints("lauf", from, to);
+      hrScatter("c-hrp", RUN_SYS, PL, "Pace min/km (rechts schneller)", true);
+      const nl = document.getElementById("hp-lauf-note");
+      if (nl && window.FK) { const zahl = {}; for (const x of PL._aus || []) for (const g of x.gruende) { const k = g.replace(/\s*\(.*$/, ""); zahl[k] = (zahl[k] || 0) + 1; }
+        nl.textContent = FK.laufVergleichText({ aus: PL._aus || [], gruende: zahl }) + " Nur flache, gleichmässige Läufe ohne Intervalle zählen – so sind Puls und Pace unter ähnlichen Bedingungen gemessen."; }
       hrRefTable("t-hrw", "rad", BIKE_SYS, 200, "200 W");
       hrRefTable("t-hrp", "lauf", RUN_SYS, 330, "5:30 /km");
     },
@@ -4209,7 +4255,7 @@ function calEvents(ds) {
   testsWithStatus().forEach((t) => { if (t.date === ds) ev.push({ cls: "test", text: (t.done ? "✓ " : "") + testName(t) + (t.status === "vorschlag" && !t.done ? " (Vorschlag)" : ""), title: t.note || "" }); });
   (D.lactate || []).forEach((l) => { if (l.date === ds && !(D.tests || []).some((t) => t.kind === l.kind && Math.abs(pd(l.date) - pd(t.date)) <= 4 * DAY)) ev.push({ cls: "test", text: "✓ " + KIND[l.kind], title: l.block || "" }); });
   cssTests().forEach((c) => { if (c.datum === ds && !(D.tests || []).some((t) => t.kind === "css" && Math.abs(pd(c.datum) - pd(t.date)) <= 4 * DAY)) ev.push({ cls: "test", text: "✓ CSS-Test", title: Number.isFinite(FK.css(c.t400, c.t200)) ? `CSS ${mmss(FK.css(c.t400, c.t200))} /100 m` : "" }); });
-  D.activities.forEach((a) => { if (a.date === ds) ev.push({ cls: "", c: (SPORTS[a.sport] || SPORTS.andere).color, text: `${a.typ || SPORTS[a.sport].label} ${hmm(a.dur)}`, title: a.name, a }); });
+  D.activities.forEach((a) => { if (a.date === ds) ev.push({ cls: "", c: (SPORTS[a.sport] || SPORTS.andere).color, text: `${a.typ || SPORTS[a.sport].label} ${hmm(effS(a))}`, title: a.name, a }); });
   // V7 kalender-3.0: Einträge aus dem Garmin-Kalender (Enduco) erscheinen nicht mehr im Kalender; geplant = Mein Plan (V66UI/V7UI)
   return ev;
 }
