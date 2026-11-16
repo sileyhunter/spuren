@@ -17,7 +17,9 @@ Gebaut wird Etappe für Etappe, jede erst nach Silas' Okay.
 | 6 | Ampel passt das Training des Tages automatisch an (`ampel-plan-1.0`): bei «vorsichtig» keine harten oder mittleren Abschnitte, Nachholen in der Woche, «Trotzdem wie geplant» | offen |
 | 7 | Krafttraining als feste Zusatzeinheit je Woche (`kraft-plan-1.0`), Woche darauf abgestimmt | offen |
 
-Vorgeschlagene Reihenfolge (16.11.2026, gilt nach Silas' Okay): 1 → 2 → 6 → 3 → 7 → 4 → 5. Der Laufaufbau bleibt je Einzellauf (aufbau-1.1).
+Reihenfolge (von Silas bestätigt am 16.11.2026): 1 → 2 → 6 → 3 → 7 → 4 → 5; jede Etappe erst nach seinem Okay (Etappe 2 freigegeben am
+16.11.2026). Der Laufaufbau bleibt je Einzellauf (aufbau-1.1). Entscheid A7 (16.11.2026): Das Morgen-Update darf bei «vorsichtig» die eigene harte
+Einheit des Tages in Garmin durch die lockere Fassung ersetzen – gilt ab Etappe 6; Enduco-Workouts bleiben unberührt.
 
 ## Etappe 1 – Vorlage → Ironman Notebook
 
