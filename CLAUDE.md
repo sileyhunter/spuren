@@ -544,7 +544,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
   Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
   Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
-- **Wissen `wissen-1.7` (`js/wissen.js`, 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
+- **Wissen `wissen-1.9` (`js/wissen.js`; 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit; 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
   1.3: Kapitel «Vorschlag und Enduco vergleichen», 1.4: Prüfung der Quellen – Formulierungen nicht stärker als die Studien, eigene Festlegungen
   gekennzeichnet, Versionen wie im Code, 1.5: Wahl je Tag und Bibliothek im Kapitel «vergleich», 1.6: Mein Plan, TL ≈ geplanter Einheiten,
   bearbeitete Woche im Vergleich, 1.7: Form zu Tagesbeginn und Rad-Last je System im Kapitel «last»):** alle Modelle und Regeln der Seite in eigenen Worten (nie Text aus Studien oder Webseiten übernehmen),
