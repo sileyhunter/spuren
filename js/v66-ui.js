@@ -49,20 +49,48 @@
   /** Lief das Nacht-Update heute schon? Dann geht ein neuer Auftrag für morgen erst in der nächsten Nacht – zu spät (nur noch im Chat). */
   const nachtGelaufen = () => { const m = /^(\d{2})\.(\d{2})\.(\d{4})/.exec(String(C.D.updated || "")); return !!m && C.D.updated_lauf === "Nacht-Update" && `${m[3]}-${m[2]}-${m[1]}` === heute(); };
   const istAktiv = (A) => A && (A.lokal || A.a.status === "offen") && A.a.modus !== "aus";
-  /** Auftrag für einen Tag neu anlegen (Momentaufnahme der Einheiten von Mein Plan). */
-  async function garminAuftragSpeichern(ds, modus) {
+  /** Auftrag für einen Tag neu anlegen (Momentaufnahme der Einheiten von Mein Plan). uids (V7.3, «Export» einer Einheit): nur diese Einheiten
+   *  (Auftrag mit «teil»); ohne uids alle Einheiten des Tages. */
+  async function garminAuftragSpeichern(ds, modus, uids) {
     const x = tagVon(ds); if (!x) return "Tag nicht berechenbar";
     const I = UI().Inbox; if (!I || !I.data) return "Speicher auf diesem Gerät nicht verfügbar";
     if (!Array.isArray(I.data.garmin_senden)) I.data.garmin_senden = [];
-    await I.upsert("garmin_senden", V66().garminAuftrag(ds, x.t.rennen ? [] : x.t.einheiten, skalen(), modus, new Date().toISOString()));
+    const U = x.t.rennen ? [] : uids ? x.t.einheiten.filter((e) => uids.has(e.uid)) : x.t.einheiten;
+    await I.upsert("garmin_senden", V66().garminAuftrag(ds, U, skalen(), modus, new Date().toISOString(), uids ? { teil: true } : null));
     neuZeichnen();
     return null;
   }
-  /** Nach einer Änderung: offene Aufträge der betroffenen Tage mit der neuen Fassung erneuern (gleicher Modus). */
-  async function auftraegeNachfuehren(tage) {
-    for (const d of tage) { const A = auftrag(d); if (istAktiv(A) && garminFenster(d)) await garminAuftragSpeichern(d, A.a.modus); }
+  /** Auswahl eines Auftrags mit «teil»: seine Einheiten (auch die nicht sendbaren). */
+  const auswahl = (a) => new Set([...(a.einheiten || []), ...(a.ohne || [])].map((u) => u && u.uid).filter(Boolean));
+  /** Nach einer Änderung: offene Aufträge der betroffenen Tage mit der neuen Fassung erneuern (gleicher Modus, gleiche Auswahl). Eine verschobene
+   *  Einheit bleibt ausgewählt, wenn sie es am alten Tag war (V7.3). */
+  async function auftraegeNachfuehren(tage, a) {
+    // Verschoben: war die Einheit am alten Tag zum Senden gewählt, kommt sie am neuen Tag mit (dort ohne offenen Auftrag: neuer Auftrag mit Auswahl)
+    const B = a && a.art === "verschieben" ? auftrag(a.date) : null, mit = !!(B && istAktiv(B) && (!B.a.teil || auswahl(B.a).has(a.uid)));
+    for (const d of tage) {
+      const A = auftrag(d);
+      if (!(istAktiv(A) && garminFenster(d))) {
+        if (mit && d === a.nach && garminFenster(d)) await garminAuftragSpeichern(d, B.a.modus, new Set([a.uid, ...gesendet().filter((g) => g && g.date === d && !g.entfernt).map((g) => g.uid)]));
+        continue;
+      }
+      let uids = A.a.teil ? auswahl(A.a) : null;
+      if (uids && mit && a.nach === d) uids.add(a.uid);
+      await garminAuftragSpeichern(d, A.a.modus, uids);
+    }
   }
-  M.auftrag = auftrag;
+  M.auftrag = (ds) => (bereit() ? auftrag(ds) : null);
+  /** V7.3 «Export» einer Einheit: Auftrag des Tages mit dieser Einheit (weg = austragen) und allen, die schon in Garmin oder im offenen Auftrag sind. */
+  M.einheitSenden = async function (ds, uid, modus, weg) {
+    if (!bereit()) return "Seite noch nicht bereit";
+    const A = auftrag(ds), uids = new Set(gesendet().filter((g) => g && g.date === ds && !g.entfernt).map((g) => g.uid));
+    if (!weg && istAktiv(A) && !A.a.teil) return garminAuftragSpeichern(ds, modus);       // ganzer Tag schon im Auftrag: bleibt ganz (neuer Modus)
+    if (istAktiv(A)) for (const u of A.a.teil ? auswahl(A.a) : (tagVon(ds) || { t: { einheiten: [] } }).t.einheiten.map((e) => e.uid)) uids.add(u);
+    if (weg) uids.delete(uid); else uids.add(uid);
+    return garminAuftragSpeichern(ds, modus, uids);
+  };
+  M.garminFenster = (ds) => bereit() && garminFenster(ds);
+  M.nachtGelaufen = () => bereit() && nachtGelaufen();
+  M.gesendet = () => (bereit() ? gesendet() : []);
 
   /** Eine Änderung anwenden (V66.aendern) und über «Direkt speichern» sichern; → Fehlertext oder null. */
   async function aendern(mo, a) {
@@ -77,7 +105,7 @@
     if (!Array.isArray(I.data.planwoche)) I.data.planwoche = [];
     await I.upsert("planwoche", r.eintrag);
     const tage = a.date ? [a.date].concat(a.nach ? [a.nach] : []) : Array.from({ length: 7 }, (_, i) => add(mo, i));
-    try { await auftraegeNachfuehren(tage.filter((d) => d >= heute())); } catch (e) { console.error(e); }
+    try { await auftraegeNachfuehren(tage.filter((d) => d >= heute()), a); } catch (e) { console.error(e); }
     neuZeichnen();
     return null;
   }
@@ -90,9 +118,10 @@
     let st = null; try { const A = ds ? auftrag(ds) : null; st = ds ? V66().garminStand(e, ds, skalen(), gesendet(), A && (A.lokal ? Object.assign({ status: "offen" }, A.a) : A.a)) : null; } catch (err) { console.error(err); }
     const teile = [W.dauerText(e.dauer * 60), isNum(S.tl) ? `TL ≈ ${S.vollstaendig ? "" : "mind. "}${S.tl}` : "", isNum(S.km) && S.km > 0 ? `≈ ${komma(S.km)} km` : "", st ? STAND_WORT[st] : ""].filter(Boolean);
     const q = e.quelle === "eigen" ? "eigen" : e.quelle === "bibliothek" ? "Bibliothek" : "Vorschlag";
+    if (e.uhrzeit) teile.unshift(e.uhrzeit);                               // V7.3: Uhrzeit aus «Festlegen»
     return `<button type="button" class="mo-e mp-e${e.quelle === "eigen" ? " eigen" : ""}" data-mpe="${esc(e.uid)}">
       <span class="mo-sp" style="--sp:${spFarbe(e.sport)}">${W.sportIcon(e.sport, 16)}</span>
-      <span class="mo-et"><b>${esc(e.titel)}</b><small>${esc(teile.join(" · "))} · ${q}</small></span>${hk ? P().chip(hk) : ""}</button>`;
+      <span class="mo-et"><b>${e.gesperrt ? `<span class="mp-schloss" title="Einheit gesperrt">${W.icon("schloss", 13)}</span>` : ""}${esc(e.titel)}</b><small>${esc(teile.join(" · "))} · ${q}</small></span>${hk ? P().chip(hk) : ""}</button>`;
   }
   /** Abschnitt «Mein Plan» im Tagesblatt (Einheiten, Sperre, Aktionen). */
   M.tagSektion = function (ds) {
@@ -304,6 +333,8 @@
   M.einheit = function (ds, uid, opt) {
     opt = opt || {};
     if (!bereit()) return;
+    // V7.3 einheit-2.0: die Einheit öffnet als ganze Seite (js/v73-ui.js); «Zurück» führt dorthin, woher sie kam
+    if (window.V73UI && window.V73UI.plan && window.V73UI.plan(ds, uid, { zurueck: opt.zurueck || null })) return;
     const x = tagVon(ds); const e = x && x.t.einheiten.find((y) => y.uid === uid); if (!e) return;
     const mo = montag(ds), zurueck = opt.zurueck || null, darf = istAenderbar(ds, x.t);
     const B = e.quelle === "bibliothek" ? null : V66().bereich(e.vorlage || e.id);

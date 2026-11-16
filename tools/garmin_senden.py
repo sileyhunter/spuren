@@ -171,6 +171,8 @@ def pruefen(a):
             return f"{u.get('titel') or u['uid']}: {f}"
     if not isinstance(a.get("ohne", []), list):
         return "Liste «ohne» ungültig"
+    if "teil" in a and not isinstance(a["teil"], bool):          # V7.3: Auftrag nur für ausgewählte Einheiten («Export» einer Einheit)
+        return "«teil» ja oder nein"
     return None
 
 

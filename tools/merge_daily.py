@@ -398,6 +398,25 @@ def verfuegbarkeit_pruefen(v):
 
 
 PLANWOCHE_QUELLEN = ("vorschlag", "eigen", "bibliothek")
+EINHEIT_FELDER = ("uhrzeit", "gesperrt", "metrik", "drinnen", "ein_min", "pausen")
+EINHEIT_METRIKEN = ("leistung", "pace", "puls", "rpe")
+
+
+def einheit_feld_pruefen(k, v):
+    """V7.3 einheit-felder-1.0 (gleiche Regeln wie V66.feldPruefen): Feld einer Einheit in Mein Plan → Fehlertext oder None. None = nicht gesetzt."""
+    if v is None:
+        return None
+    if k == "uhrzeit":
+        return None if isinstance(v, str) and re.fullmatch(r"([01]\d|2[0-3]):[0-5][05]", v) else "Uhrzeit hh:mm in 5-min-Schritten"
+    if k in ("gesperrt", "drinnen"):
+        return None if isinstance(v, bool) else "ja oder nein"
+    if k == "metrik":
+        return None if v in EINHEIT_METRIKEN else "unbekannte Metrik"
+    if k == "ein_min":
+        return None if isinstance(v, int) and not isinstance(v, bool) and 5 <= v <= 40 and v % 5 == 0 else "Einfahren 5–40 min"
+    if k == "pausen":
+        return None if isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 100 and v % 10 == 0 else "Intervall-Intensität 0–100 % in 10er-Schritten"
+    return "unbekanntes Feld"
 
 
 def planwoche_pruefen(w, vorher=None):
@@ -444,6 +463,10 @@ def planwoche_pruefen(w, vorher=None):
                 return f"{d}: unbekannte Quelle"
             if isinstance(e.get("dauer"), bool) or not isinstance(e.get("dauer"), (int, float)) or not 5 <= e["dauer"] <= 600:
                 return f"{d}: Dauer ausserhalb 5–600 min"
+            for k in EINHEIT_FELDER:                                    # V7.3 einheit-felder-1.0
+                f = einheit_feld_pruefen(k, e.get(k))
+                if f:
+                    return f"{d}: {f}"
             if e["quelle"] == "bibliothek":
                 if isinstance(e.get("wid"), bool) or not isinstance(e.get("wid"), int) or e.get("sport") not in ("rad", "lauf", "schwimm"):
                     return f"{d}: Bibliothek ohne Workout oder Sportart"

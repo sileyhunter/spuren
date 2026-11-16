@@ -452,6 +452,7 @@
   /** Kapitel öffnen (aus jedem Teil der Seite): Ansicht «Wissen», Kapitel aufklappen und hinscrollen. */
   M.oeffneWissen = function (id) {
     if (V59() && V59()._ovArt) V59().schliessen();
+    if (window.V73UI && window.V73UI.offen && window.V73UI.offen()) window.V73UI.schliessen({ still: true });   // V7.3: Einheit-Seite zu
     if (window.APP && window.APP.showTab) window.APP.showTab("wissen"); else location.hash = "#wissen";
     setTimeout(() => {
       M.wissenZeichnen();

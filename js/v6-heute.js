@@ -176,6 +176,8 @@
    *  opt.datumText statt des Datums (z. B. «exportiert am …»). Ohne «Passende Route finden». */
   H.einheitP = function (p, opt) {
     C = UI() && UI().C; if (!C || !V6()) return;
+    // V7.3 einheit-2.0: Bibliotheks-Workouts als ganze Seite (nur lesen, js/v73-ui.js); ohne Schritte weiter als Blatt
+    if (Array.isArray(p.steps) && p.steps.length && window.V73UI && window.V73UI.workout && window.V73UI.workout(p, opt || {})) return;
     blatt(einheit(p, null), "x", opt || {});
   };
   function blatt(e, key, opt) {

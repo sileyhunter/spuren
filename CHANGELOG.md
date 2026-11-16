@@ -1,5 +1,43 @@
 # Änderungen
 
+## V7.3 · 16.11.2026 · Auftrag V7.3 «wie enduco», Etappe 1: Einheit wie Trainingsbriefing, mit allen Schritten
+- **Schritte `schritte-1.0` (`js/v73.js`, ohne DOM):** jede Einheit als Schritte und Blöcke – einfahren, Belastung, Erholung, ausfahren, Pause; beim
+  Schwimmen dazu Technikübung, «Bahn locker beenden» und Pause am Beckenrand. Wiederholungen werden erkannt, auch verschachtelt («3 × Serien» mit
+  «13 × 30 s hart / 15 s locker»), auch wenn der letzten Wiederholung die Erholung fehlt. Blöcke heissen nach ihrem Inhalt (VO2max-Intervalle,
+  Schwellen-Intervalle, Schwelle mit Laktat, Tempo-Blöcke, Renntempo-Blöcke, CSS-Wiederholungen …), jeder Schritt hat eine eigene Anweisung.
+  Quelle sind immer die Abschnitte der Einheit (`teile`, Schwimm-Einheit, Workout aus Garmin): Zeiten und Zonen sind dieselben wie bei TL ≈, Profil,
+  Fokus und Verteilung. Bibliotheks-Workouts: Blockname aus der Schritt-Beschreibung, «Finish Lane» → Zeile «Bahn beenden», «Break» → «Pause am
+  Beckenrand», Übungsblöcke als Abschnitt «Technikübungen», Hilfsmittel und Stil aus Garmin (`stroke_type` neu in `TR.auffalten`).
+- **Einheit als ganze Seite `einheit-2.0` (`js/v73-ui.js`, Vorbild enduco, eigene Gestaltung):** schiebt von rechts herein (kurz graue Platzhalter),
+  Kopfbild über die ganze Breite (eigener Bergausschnitt aus logo.jpg, `logo-einheit.jpg`, getönt in der Sportfarbe) mit «Trainingsbriefing», Schloss
+  und Titel; beim Scrollen bleibt oben ein schmaler Kopf. Chips Datum · Uhrzeit «Festlegen» · Sperren; Kacheln Outdoor/Indoor bzw. Bahnlänge ·
+  Metrik · Optionen; Dauer · Training Load ≈ · Distanz ≈; Fokus-Skala mit Chips und «i»; Equipment (Schwimmen); Ablauf mit Zeitachse; alle Schritte als
+  Karten (Symbol je Art, Dauer bzw. Meter und Bahnen mit ≈ Zeit, Ziel in der gewählten Metrik, Anweisung, Trittfrequenz, Stil, Hilfsmittel, Zonen-Chip);
+  Blockkopf → Blatt mit Erklärung und Schritten; Coach-Karte (Zweck und Aufbau, «i» → Warum mit Quellen); Intensitätszonen mit Bereich, Zeit und Anteil
+  («i» → Intensitätsverteilung). Unten schwebend «Zurück» und «Export». Gilt für Mein Plan (Kalender, Tagesblatt, Heute, Woche nach Modell) und für
+  Bibliotheks-Workouts (nur lesen); «Zurück» führt dorthin, woher die Einheit kam.
+- **Blätter aus der Seite:** Datum (verschieben innerhalb der Woche), Uhrzeit-Rad (Stunden, Minuten in 5er-Schritten; die Uhrzeit steht danach in
+  Kalender, Tagesblatt und Heute), Sperren je Einheit (bleibt bei «Woche anpassen» und «Neu berechnen»), «Zu Indoor ändern?», Trainingsmetrik (Rad
+  Leistung/Puls/RPE, Laufen Pace/Puls/RPE, Schwimmen Pace/RPE), Bahnlänge, «Workout bearbeiten» (Trainingsdauer, Warm-up-Dauer, Intervall-Intensität,
+  Löschen mit Rückfrage), Zone erklärt, Export.
+- **Felder je Einheit `einheit-felder-1.0`:** `uhrzeit`, `gesperrt`, `metrik`, `drinnen`, `ein_min`, `pausen` in `plan_woche` (`V66.aendern` Art
+  «einheit», `V66.feldPruefen` = `merge_daily.einheit_feld_pruefen`). Eine gesperrte Einheit lässt sich nur entsperren; verschieben, entfernen und
+  ändern lehnt die Seite ab; «Neu berechnen» lässt Tage mit gesperrten Einheiten stehen.
+- **Einfahren und Intervall-Intensität `einheit-anpassen-1.0` (eigene Festlegung):** Warm-up 5–40 min (zuerst Z1, Rest Z2); Intervall-Intensität
+  0–100 % in 10er-Schritten, 50 % = Vorlage: Pausen zwischen den Intervallen × (1,5 − Wert/100); Intervalle und Ausfahren bleiben. Ändert den Inhalt –
+  aus «Vorschlag» wird «eigen».
+- **RPE je Abschnitt `rpe-zonen-1.0` (eigene Zuordnung auf der CR-10-Skala):** locker 1–2, Grundlage 3–4, Renntempo 4–5, Tempo 5–6, knapp unter LT2 6–7,
+  CSS 7, VO2max 8–9. Pulsziele aus den Pulszonen des aktiven Zonenprofils (gleiche Lage wie die Leistungs- und Pace-Ziele).
+- **Export einer Einheit (garmin-senden-1.0 mit Auswahl):** «Export» legt den Auftrag des Tages mit dieser Einheit an; Einheiten, die schon in Garmin
+  oder im offenen Auftrag sind, bleiben drin (`teil: true`, `V66UI.einheitSenden`; nach Änderungen bleibt die Auswahl). Stand im Blatt: in Garmin,
+  geändert, wird gesendet, Fehler, abgelehnt; «Aus Garmin austragen». `tools/garmin_senden.py` prüft `teil` (ja/nein). An Garmin gehen weiter die Ziele
+  nach Leistung bzw. Tempo; Puls- und RPE-Ziele auf der Uhr kommen mit dem Schwimm-Export (Etappe 2).
+- Wissen wissen-1.10 (Kapitel «Intervalle»: Einheit als Schritte, Einfahren und Intervall-Intensität, Steuern nach Anstrengung; Regeln ergänzt).
+- Tests: `tests/test_v73.cjs` (neu: Dauer und Zonen aller Vorlagen, Blöcke und Namen, Schwimmen, Enduco-Beschreibung, Workout aus Garmin, Achse,
+  Fokus, Coach, Ziele je Metrik, Felder, Sperre, Anpassen, Neu berechnen), `tests/test_tools.py` (Felder in `planwoche_pruefen`, Auftrag mit `teil`),
+  `tests/test_v64.cjs` (Wissen 1.10). Im Browser geprüft (390 px, Demo, hell und dunkel, 1280 px): Rad, Laufen, Schwimmen locker (25/50 m),
+  CSS-Test, Schwimmkurs, lange Ausfahrt, Bibliothek; alle Blätter; Zurück ins Tagesblatt und in den Kalender.
+
 ## V7.2 · 16.11.2026 · Wünsche vom 16.11.2026, Teil 2: Schwimmen wie im Becken, Verfügbarkeit und Kalender wie enduco
 - **Schwimm-Einheiten `schwimmeinheit-1.0` (`js/schwimmen.js`, `js/schwimmen-ui.js`):** eigene Schwimm-Einheiten (locker, CSS-Wiederholungen,
   CSS-Test) stehen beim Antippen als Serien da wie im Becken: Einschwimmen, Technikübungen (aufklappbar), Beine mit Brett, Hauptserie, Pull mit

@@ -323,6 +323,26 @@
     ampel: '<rect x="7" y="2.5" width="10" height="19" rx="4"/><circle cx="12" cy="7.5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="16.5" r="1.6"/>',
     schlaf: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
     beine: '<path d="M9 3.5v7l-2 9.5h3l2-7 2 7h3l-2-9.5v-7"/>', energie: '<path d="M13 2.5 5 13.5h6l-1 8 8-11h-6l1-8z"/>', kopf: '<circle cx="12" cy="10" r="6.5"/><path d="M9.5 16.5V21M14.5 16.5V21M9.5 9.5h.5M14 9.5h.5"/>',
+    // V7.3 Einheit-Seite (einheit-2.0): eigene Symbole für Schritte, Kacheln und Chips
+    warm: '<path d="M9 14.2V5.5a2 2 0 0 1 4 0v8.7a3.8 3.8 0 1 1-4 0z"/><path d="M11 9.5v6.5M17 9.5l2.2-2.5 2.2 2.5M19.2 7v7"/>',
+    kalt: '<path d="M9 14.2V5.5a2 2 0 0 1 4 0v8.7a3.8 3.8 0 1 1-4 0z"/><path d="M11 12v4M17 11.5l2.2 2.5 2.2-2.5M19.2 14V7"/>',
+    runter2: '<path d="m6 6 6 6 6-6M6 11l6 6 6-6"/>',
+    bahnende: '<path d="M3.5 12h12M11.5 8l4 4-4 4M20 6v12"/>',
+    leiter: '<path d="M8 3.5v17M16 3.5v17M8 8h8M8 12.5h8M8 17h8"/>',
+    technik: '<path d="M4 17.5c2.6-6.4 6-9.5 10-9.5 2.3 0 4.2 1.2 5.6 3"/><path d="m20.3 7.2-.6 4-3.9-.9"/><circle cx="6.5" cy="7" r="1.6"/>',
+    uhr: '<circle cx="12" cy="13" r="7.5"/><path d="M12 9v4l2.6 1.6M9.5 3h5M12 3v2.5"/>',
+    herz: '<path d="M12 20s-7.5-4.5-7.5-10.1A4.2 4.2 0 0 1 12 7.3a4.2 4.2 0 0 1 7.5 2.6C19.5 15.5 12 20 12 20z"/>',
+    tacho: '<path d="M4.5 16.5a7.5 7.5 0 1 1 15 0"/><path d="m12 16.5 3.4-4.8M7 16.5h.5M16.5 16.5h.5"/>',
+    draussen: '<path d="m2.5 19.5 6.5-11 4.2 7 2.3-3.5 6 7.5z"/><circle cx="17.5" cy="5.5" r="2"/>',
+    drinnen: '<path d="M4 11.5 12 4.5l8 7M6 10v10h12V10"/><path d="M10 20v-5h4v5"/>',
+    regler: '<path d="M4.5 7h9M18 7h1.5M4.5 17h3.5M12 17h7.5"/><circle cx="15.8" cy="7" r="2.1"/><circle cx="10" cy="17" r="2.1"/>',
+    info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.2M12 7.7v.3"/>',
+    play: '<path d="M8.5 5.5v13l10-6.5z"/>',
+    offen: '<rect x="6" y="11" width="12" height="9" rx="2"/><path d="M9 11V8a3 3 0 0 1 5.8-1.1"/>',
+    coach: '<path d="M5 5h14a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 16h-7.5L7 19.5V16H5a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 5 5z"/><path d="M8 9.5h8M8 12.5h5"/>',
+    geraet: '<rect x="7" y="3.5" width="10" height="17" rx="5"/><path d="M10 8h4"/>',
+    becken: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9.7h18M3 14.3h18"/>',
+    haken: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
   };
   V6.icon = (k, w) => svg(V6.ICON[k] || V6.ICON.andere, w);
   V6.sportIcon = (sport, w) => V6.icon(V6.ICON[sport] ? sport : "andere", w);

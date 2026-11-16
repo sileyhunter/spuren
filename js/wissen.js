@@ -1,4 +1,4 @@
-/* V6.4 Wissen (wissen-1.9; 1.9 = V7.2 Schwimm-Einheit, Technikübungen und Verfügbarkeit; 1.8 = V7.1 Kapitel «vergleichbar»: vergleichbare Läufe und effektive Zeit; 1.5 = V6.5 Wahl je Tag und Bibliothek im Kapitel «vergleich»; 1.6 = V6.6 Mein Plan und An Garmin senden im Kapitel «modelle», TL ≈ im Kapitel «last», bearbeitete Woche und eigene Garmin-Workouts im Kapitel «vergleich»; 1.7 = V6.6.2 Form zu Tagesbeginn und Rad-Last je System im Kapitel «last»): Erklärungen zu allen Modellen und Regeln der Seite – Zonen, Laktat und Messung, Schwellen-Methoden,
+/* V6.4 Wissen (wissen-1.10; 1.10 = V7.3 Einheit als Schritte, Einfahren und Intervall-Intensität, RPE je Abschnitt im Kapitel «intervalle»; 1.9 = V7.2 Schwimm-Einheit, Technikübungen und Verfügbarkeit; 1.8 = V7.1 Kapitel «vergleichbar»: vergleichbare Läufe und effektive Zeit; 1.5 = V6.5 Wahl je Tag und Bibliothek im Kapitel «vergleich»; 1.6 = V6.6 Mein Plan und An Garmin senden im Kapitel «modelle», TL ≈ im Kapitel «last», bearbeitete Woche und eigene Garmin-Workouts im Kapitel «vergleich»; 1.7 = V6.6.2 Form zu Tagesbeginn und Rad-Last je System im Kapitel «last»): Erklärungen zu allen Modellen und Regeln der Seite – Zonen, Laktat und Messung, Schwellen-Methoden,
    Intensitätsverteilung, Trainingsmodelle, Periodisierung, Taper, Langdistanz, Intervalle, Last, Erholung, Schwimmen, Verpflegung.
    Alle Texte in eigenen Worten (keine Zitate), jede Aussage mit Quelle; [[id]] im Text verweist auf WS.QUELLEN (DOI-Link).
    Ohne DOM (Inhalt), Anzeige in index.html (Ansicht «Wissen» unter Plan). */
@@ -8,7 +8,7 @@
   if (root) root.WS = WS;
 })(typeof window !== "undefined" ? window : null, function () {
   "use strict";
-  const WS = { VERSION: "wissen-1.9" };
+  const WS = { VERSION: "wissen-1.10" };
 
   /* ---------------- Quellen: Autoren, Jahr, Titel, Zeitschrift, DOI (oder URL) und der Kern in einem Satz (eigene Worte) ---------------- */
   WS.QUELLEN = {
@@ -372,8 +372,11 @@
         "<b>30/15 (Rad).</b> 3 Serien à 13 × 30 s hart / 15 s locker brachten bei gut trainierten und bei Elite-Radfahrern mehr als lange Intervalle (4 × 5 min) mit gleicher empfundener Anstrengung [[roennestad2015]] [[roennestad2020]].",
         "<b>Schwellen-Intervalle.</b> Mehrere Wiederholungen knapp unter LT2 mit kurzen Pausen: viel Arbeit an der Schwelle bei überschaubarer Ermüdung ([[#norwegisch]]).",
         "<b>Dosierung.</b> Alle Wiederholungen gleich stark; bricht die Leistung deutlich ein, ist die Einheit vorbei. Harte Einheiten nur nach einem guten Morgen – zeigt die Ampel Vorsicht, die Einheit locker fahren oder schieben.",
+        "<b>Die Einheit als Schritte.</b> Jede Einheit zeigt die Seite als Folge von Schritten: einfahren, Belastung, Erholung, ausfahren – beim Schwimmen dazu Technikübung, «Bahn locker beenden» und Pause am Beckenrand. Wiederholungen stehen als Block mit Namen («3 × Serien», darin «13 × 30 s hart / 15 s locker»). Die Schritte entstehen aus denselben Abschnitten, mit denen die Seite TL ≈, Profil und Verteilung rechnet; sie zeigen nichts, was nicht auch dort zählt (schritte-1.0).",
+        "<b>Einfahren und Intervall-Intensität anpassen.</b> Zwei eigene Festlegungen ohne Studie dahinter (einheit-anpassen-1.0): Die Warm-up-Dauer ersetzt die Zeit vor dem ersten Intervall (zuerst locker wie bisher, der Rest in der Grundlage). Die Intervall-Intensität verlängert oder verkürzt nur die Pausen zwischen den Intervallen – 50 % wie die Vorlage, 0 % anderthalbmal so lang, 100 % halb so lang; die Intervalle selbst bleiben. Kürzere Pausen machen eine Serie härter, weil sich Atmung und Puls weniger erholen [[buchheit2013a]].",
+        "<b>Steuern nach Anstrengung.</b> Wer statt nach Leistung oder Tempo nach Gefühl trainiert, wählt in der Einheit die Metrik RPE. Die Seite ordnet jedem Abschnitt einen Bereich auf der Skala 0–10 (CR-10) zu – locker 1–2, Grundlage 3–4, Renntempo 4–5, Tempo 5–6, knapp unter LT2 6–7, CSS 7, VO2max 8–9. Die Skala selbst ist erprobt [[foster2001]]; die Zuordnung zu den Abschnitten ist eine eigene Festlegung (rpe-zonen-1.0).",
       ],
-      seite: [["V64", "woche"]], quellen: ["buchheit2013a", "buchheit2013b", "helgerud2007", "roennestad2015", "roennestad2020"] },
+      seite: [["V64", "woche"], ["V73", "schritte"], ["V73", "rpe"], ["V66", "anpassen"]], quellen: ["buchheit2013a", "buchheit2013b", "helgerud2007", "roennestad2015", "roennestad2020", "foster2001"] },
 
     { id: "last", titel: "Trainingslast, Fitness und Form", kurz: "Jede Einheit erzeugt Fitness und Ermüdung. Die Ermüdung klingt schneller ab; die Differenz ist die Form. Wie gross die Last einer Einheit ist, berechnet die Seite aus Dauer und Intensität relativ zu deiner LT2.",
       text: [
@@ -444,6 +447,10 @@
     ["V66", "verfuegbarkeit", "Verfügbarkeit je Tag: Vorschlag verteilen", "modelle"],
     ["V66", "tl", "TL ≈ geplanter Einheiten", "last"],
     ["V66", "garmin", "An Garmin senden", "modelle"],
+    ["V73", "schritte", "Einheit als Schritte und Blöcke", "intervalle"],
+    ["V73", "rpe", "RPE je Abschnitt (eigene Zuordnung)", "intervalle"],
+    ["V66", "anpassen", "Einfahren und Intervall-Intensität je Einheit", "intervalle"],
+    ["V66", "felder", "Uhrzeit, Sperre, Metrik und Indoor je Einheit", "modelle"],
     ["V64", "tid", "Intensitätsverteilung und Abgleich", "tid"],
     ["V62", "testplan", "Tests im Plan", "laktat-messen"],
     ["V62", "zonenvorschlag", "Zonen aus LT1 und LT2", "zonen"],

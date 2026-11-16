@@ -95,7 +95,8 @@
         out.push({ i: out.length, typ: TYP[t] || "interval", dauer_s: zeit && val > 0 ? val : null, distanz_m: ec === "distance" && val > 0 ? val : null,
           offen: !(zeit || ec === "distance"), ziel: zielAus(st, Z, sport), cad, gruppe: gi, wdh: rep,
           ec: ec || null, val: isNum(val) ? val : null, text: st.description ? String(st.description).slice(0, 300) : null,
-          geraet: st.equipment_type && st.equipment_type !== "none" ? String(st.equipment_type) : null });
+          geraet: st.equipment_type && st.equipment_type !== "none" ? String(st.equipment_type) : null,
+          stil: st.stroke_type && !/^(any_stroke|none)$/i.test(String(st.stroke_type)) ? String(st.stroke_type) : null });   // V7.3: Schwimmstil (Garmin stroke_type)
       }
     };
     walk(steps, null, null);

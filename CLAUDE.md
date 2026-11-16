@@ -22,6 +22,11 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   `js/schwimmen-ui.js` (Einheit wie im Becken, Übungsblatt, Katalog unter Analyse → Schwimmen), `tests/test_v72.cjs`; Verfügbarkeit verfuegbarkeit-1.0
   und Mein Plan eigenplan-1.1 in `js/v66.js` (`V66.verfuegbarkeit`, `V66.verteilen`, `V66.wocheVerteilt`, Aktionen «anpassen», «neuberechnen»,
   «festhalten», `V66.formPrognose`), Oberfläche im Tagesblatt `js/v66-ui.js`, Anwendung im Plan-Kontext `js/v64-ui.js`
+- **V7.3 (Auftrag «wie enduco», Etappe 1):** `js/v73.js` (ohne DOM: Schritte und Blöcke jeder Einheit schritte-1.0 aus `teile`, Schwimm-Einheit oder
+  Workout aus Garmin; RPE je Abschnitt rpe-zonen-1.0; Ziele je Metrik, Zeit je Zone, Fokus, Achse), `js/v73-ui.js` (Einheit als ganze Seite
+  einheit-2.0 mit Blättern für Datum, Uhrzeit, Sperre, Indoor, Metrik, Workout bearbeiten, Bahnlänge, Block, Zone, Export), `tests/test_v73.cjs`,
+  `logo-einheit.jpg` (Kopfbild, Ausschnitt aus logo.jpg), `docs/v73-zuordnung.md` (Zuordnung ohne Werte); Felder je Einheit einheit-felder-1.0 und
+  Einfahren/Intervall-Intensität einheit-anpassen-1.0 in `js/v66.js` (`V66.feldPruefen`, `V66.teileAnpassen`, `V66.aendern` Art «einheit»)
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
 - `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)
@@ -334,7 +339,9 @@ Tage in der Woche, eindeutige Einheiten, Quelle vorschlag/eigen/bibliothek, Daue
 gegenüber dem Stand davor; gleiche Woche ersetzt mit Audit). V6.2.2: `zonen` (auf der Seite bestätigte Zonenprofile → `zonen_add`, geprüft wie oben). V7.2: `verfuegbarkeit` (Zeit und Sportarten je Tag
 «vf-JJJJ-MM-TT» oder je Wochentag «vf-wt-1…7», `entfernt` = zurücksetzen → `verfuegbarkeit_add` → `plan_verfuegbarkeit`; `merge_daily.verfuegbarkeit_pruefen`;
 gleiche ID ersetzt mit Audit). Mein Plan eigenplan-1.1: vergangene Tage einer Woche dürfen einmal mit `eingefroren: true` festgehalten werden (so, wie sie
-gezeigt wurden), danach nie mehr geändert; `ganz: true` = ganze Woche gespeichert. V6.4: `modell` (gewähltes Trainingsmodell
+gezeigt wurden), danach nie mehr geändert; `ganz: true` = ganze Woche gespeichert. V7.3 einheit-felder-1.0: je Einheit optional `uhrzeit` (hh:mm, 5-min-Schritte),
+`gesperrt`, `metrik` (leistung/pace/puls/rpe), `drinnen`, `ein_min` (5–40, 5er-Schritte), `pausen` (0–100, 10er-Schritte, 50 = Vorlage); geprüft mit
+`merge_daily.einheit_feld_pruefen` (gleiche Regeln wie `V66.feldPruefen`); eine gesperrte Einheit wird nur entsperrt, nie verschoben, geändert oder entfernt. V6.4: `modell` (gewähltes Trainingsmodell
 → `modell_add` → `plan_modell`; `merge_daily.modell_pruefen`: bekanntes Modell, Wechsel als Datum; gleiche ID ersetzt mit Audit). V6.5: `planwahl`
 («Ich folge» je Tag → `planwahl_add` → `plan_wahl`; `merge_daily.planwahl_pruefen`: Datum, ID «pw-Datum», Wahl enduco/vorschlag/frei; gleicher Tag ersetzt mit Audit). V6.2.3: `garmin_verlauf` (Datei aus
 `tools/garmin_export.py`, auf der Seite gewählt → `garmin_export.einspielen`, nur fehlende Tageswerte; mehrere Dateien vor einem Update werden seit
@@ -449,6 +456,17 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Designs) im gemeinsamen `:root`. Im SVG als `style="fill:var(--…)"` (nicht als `fill="…"`), auf der Karte (MapLibre) über `RTUI.farbe()`.
   `tests/test_v6.cjs` prüft: keine festen Farben, jede Variable in beiden Designs, Schrift auf Markern ≥ 4,5 : 1.
 
+## Einheit als Seite (V7.3, einheit-2.0, schritte-1.0)
+- Jede Einheit aus Mein Plan (Kalender, Tagesblatt, Heute, Woche nach Modell) und jedes Bibliotheks-Workout öffnet als ganze Seite (`V73UI.plan(ds, uid,
+  { zurueck })`, `V73UI.workout(p, opt)`); `V66UI.einheit` und `V6H.einheitP` leiten dorthin, das alte Blatt bleibt nur als Rückfall. Die Seite liegt unter den
+  Blättern (`#v59-ov`): Auswahl, Bestätigung und Erklärung kommen als Blatt von unten (`V59.blatt`); «Zurück» schliesst die Seite und ruft `zurueck()`
+  (z. B. Tagesblatt wieder auf). Wissen-Links schliessen die Seite (`V64UI.oeffneWissen`).
+- Schritte nur aus den Abschnitten der Einheit ableiten (`V73.ausTeilen`, `V73.ausSchwimm`, `V73.ausWorkout`) – nie eigene Zeiten oder Zonen erfinden; neue
+  Vorlagen brauchen nur `teile`, Blockname und Anweisung kommen aus `js/v73.js` (Texte eigen, keine Zahlen). Regel ändern = Version in `V73.VERSIONS` und
+  `tests/test_v73.cjs` nachführen.
+- Änderungen nur über `V66UI.aendern` (Mein Plan) bzw. `V66UI.einheitSenden` (Export); vergangene Tage nur lesen, gesperrte Tage und Einheiten wie oben.
+- Farben nur über Variablen bzw. `V6.ZONEN`; neue Symbole in `V6.ICON`.
+
 ## Design V6 (design-1.1; design-1.0 Vorlage «enduco als Vorbild» vom 13.11.2026, 1.1 Planer-Farben aus Variablen, Teil 0b)
 - Übernommen werden Aufbau, Bedienlogik und Farbsprache, nie Texte, Logos, Symbole, Fotos oder Grafiken von enduco; eigene Symbole in `V6.ICON`.
 - Eine Zone, eine Farbe: nur über `--zc-…` (css/v6.css) bzw. `V6.ZONEN`; Sportarten `--sp-…`, Monitoring `--mon-…`, Rennen und heute `--race`.
@@ -544,7 +562,8 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
   Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
   Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
-- **Wissen `wissen-1.9` (`js/wissen.js`; 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit; 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
+- **Wissen `wissen-1.10` (`js/wissen.js`; 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.10 = V7.3 Einheit als
+  Schritte, Einfahren und Intervall-Intensität, RPE je Abschnitt im Kapitel «intervalle»; 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
   1.3: Kapitel «Vorschlag und Enduco vergleichen», 1.4: Prüfung der Quellen – Formulierungen nicht stärker als die Studien, eigene Festlegungen
   gekennzeichnet, Versionen wie im Code, 1.5: Wahl je Tag und Bibliothek im Kapitel «vergleich», 1.6: Mein Plan, TL ≈ geplanter Einheiten,
   bearbeitete Woche im Vergleich, 1.7: Form zu Tagesbeginn und Rad-Last je System im Kapitel «last»):** alle Modelle und Regeln der Seite in eigenen Worten (nie Text aus Studien oder Webseiten übernehmen),
@@ -593,6 +612,9 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   - Fehlschlag eines Aufrufs: `{"nr", "ok": false, "fehler": "<kurz>"}`, weiter mit der nächsten Aktion.
 - Nie: Enduco-Workouts ändern oder löschen, Kalendereinträge ohne eigenen Vermerk austragen, Bibliotheks-Workouts löschen, Zonen nach Garmin
   schreiben, etwas senden, das nicht in `work/garmin_plan.json` steht. Das Morgen-Update sendet nichts.
+- V7.3 «Export» einer Einheit (Einheit-Seite): der Auftrag des Tages trägt `teil: true` und enthält nur die gewählten Einheiten – diese und alle, die
+  schon in Garmin oder im offenen Auftrag sind (`V66UI.einheitSenden`); was danach in Garmin ist, sind genau die Einheiten des Auftrags (wie bisher).
+  Nach einer Änderung bleibt die Auswahl; ohne `teil` gilt der ganze Tag. `pruefen` lehnt ein `teil` ab, das nicht ja/nein ist.
 - Eigene Einträge im Garmin-Kalender («IN · …», eingeplante Bibliothek ohne `vorhanden`) sind nie Enduco: `V66.eigenGarmin` (vergleich-1.4),
   `V64.enducoAusUhr`, `tools/bibliothek.py` (bib-1.1, kein Enduco-Termin).
 - Die Seite zeigt je Einheit «in Garmin», «in Garmin, geändert» oder «wird gesendet» (`V66.garminStand`), je Tag den Auftrag (offen, gesendet,
@@ -661,7 +683,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Die exakten Grössen der SPS1-Dateien stehen in der Git-Historie.
 
 ## Prüfen vor jedem Push von Seite oder Werkzeugen
-`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `node --test tests/test_v66.cjs`, `node --test tests/test_v7.cjs`, `node --test tests/test_v72.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
+`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `node --test tests/test_v66.cjs`, `node --test tests/test_v7.cjs`, `node --test tests/test_v72.cjs`, `node --test tests/test_v73.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
 **Leck-Prüfung (V6.4.4):** `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json work/data.json`, `python3 -I tools/leck_pruefen.py work/data.json`
 («LECK-PRÜFUNG: bestanden»), danach `rm work/data.json`. Gilt für jeden Push von Seite, Werkzeugen, Tests oder Doku (nicht für die reinen Daten-Updates).
 Kein Live-Push, wenn ein Test oder die Leck-Prüfung fehlschlägt. Screenshots mit echten Daten nie ins Repo. **Ein Force-Push entfernt nichts von GitHub:**

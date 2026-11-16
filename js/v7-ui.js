@@ -67,7 +67,7 @@
     const chips = pr.fokus.length ? pr.fokus.map((f) => W.zchip(f.key)).join("") : hk ? (P().chip ? P().chip(hk) : "") : "";
     return `<div class="card ek-karte v7-ek${klein ? " klein" : ""}">
       <div class="ek-oben"><span class="ek-sport" style="--sp:${spVar(e.sport)}">${W.sportIcon(e.sport, klein ? 18 : 22)}</span>
-        <div class="ek-titel"><b>${esc(e.titel)}</b><span>${esc(SPW[e.sport] || "Training")} · Mein Plan · ${q}</span></div>
+        <div class="ek-titel"><b>${e.gesperrt ? `<span class="mp-schloss" title="Einheit gesperrt">${W.icon("schloss", 14)}</span>` : ""}${esc(e.titel)}</b><span>${e.uhrzeit ? esc(e.uhrzeit) + " · " : ""}${esc(SPW[e.sport] || "Training")} · Mein Plan · ${q}</span></div>
         <div class="ek-chips">${chips}</div></div>
       ${klein ? "" : `<div class="ek-zahlen">${zahlen.map(([w, l]) => `<div><b>${esc(w)}</b><span>${esc(l)}</span></div>`).join("")}</div>`}
       ${pr.balken.length ? W.profilSVG(pr, { h: klein ? 26 : 40, label: "Ablauf: Breite = Dauer, Höhe und Farbe = Zone" }) : `<p class="ek-ohne">Ohne Zielzonen.</p>`}

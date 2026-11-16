@@ -18,7 +18,7 @@
 })(typeof window !== "undefined" ? window : null, function (V64) {
   "use strict";
   const V66 = { VERSIONS: { eigenplan: "eigenplan-1.1", vorlagen: "vorlagen-1.0", tl: "tl-plan-1.0", wochenblatt: "wochenblatt-1.0", kalender: "kalender-2.0",
-    verfuegbarkeit: "verfuegbarkeit-1.0" } };
+    verfuegbarkeit: "verfuegbarkeit-1.0", felder: "einheit-felder-1.0", anpassen: "einheit-anpassen-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const add = (iso, n) => V64.addDays(iso, n);
 
@@ -71,6 +71,8 @@
     ctx = ctx || {};
     if (!s) return null;
     const mehr = { uid: s.uid, quelle: s.quelle || "eigen", vorlage: s.vorlage || null, drinnen: !!s.drinnen };
+    // V7.3 einheit-felder-1.0: Uhrzeit, Sperre und Metrik je Einheit (nur übernommen, wenn gültig)
+    for (const k of ["uhrzeit", "gesperrt", "metrik"]) if (s[k] != null && s[k] !== false && !V66.feldPruefen(k, s[k])) mehr[k] = s[k];
     if (s.quelle === "bibliothek") {
       // Stufe aus den Zielen der Schritte (ctx.bibStufe, js/v65-ui.js), sonst laut Titel (V64.planStufe), sonst offen – nie geraten
       const st = (ctx.bibStufe && ctx.bibStufe(s.wid)) || ((V64.planStufe(null, s.titel) || {}).stufe) || "offen";
@@ -95,8 +97,61 @@
         e.ablauf = e.ablauf.concat([`dann ${rest} min locker (Z2)`]);
       }
     }
+    // V7.3 einheit-anpassen-1.0: Einfahren und Intervall-Intensität (Pausen zwischen den Belastungen) je Einheit, eigene Festlegung
+    const einOk = s.ein_min != null && !V66.feldPruefen("ein_min", s.ein_min), pOk = s.pausen != null && s.pausen !== 50 && !V66.feldPruefen("pausen", s.pausen);
+    if ((einOk || pOk) && e.teile.some(([k]) => ARBEIT_K.has(k))) {
+      e.teile = V66.teileAnpassen(e.teile, { ein_min: einOk ? s.ein_min : null, pausen: pOk ? s.pausen : null });
+      e.dauer = Math.round(e.teile.reduce((x, t) => x + t[1], 0));
+      if (e.sport === "rad" || e.sport === "lauf") { const m = { locker: 0, mittel: 0, hart: 0 }; for (const [k, v] of e.teile) { const z = V64.DREI[k]; if (z) m[z] += v; } e.minuten = m; }
+      e.ablauf = e.ablauf.concat([[einOk ? `Einfahren angepasst: ${s.ein_min} min` : "", pOk ? `Pausen ${s.pausen < 50 ? "länger" : "kürzer"} (Intervall-Intensität ${s.pausen} %)` : ""].filter(Boolean).join(", ")]);
+      mehr.ein_min = einOk ? s.ein_min : null; mehr.pausen = pOk ? s.pausen : 50;
+    }
     if (s.drinnen) e.titel += " (drinnen)";
     return Object.assign(e, mehr);
+  };
+  /* V7.3 einheit-felder-1.0: Felder je Einheit in Mein Plan (Uhrzeit, Sperre, Metrik, drinnen, Einfahren, Intervall-Intensität). */
+  V66.FELDER = { uhrzeit: 1, gesperrt: 1, metrik: 1, drinnen: 1, ein_min: 1, pausen: 1 };
+  V66.METRIKEN = ["leistung", "pace", "puls", "rpe"];
+  /** Prüft ein Feld einer Einheit → Fehlertext oder null (null-Wert = Feld entfernen, immer erlaubt). Gleiche Regeln wie merge_daily.einheit_feld_pruefen. */
+  V66.feldPruefen = function (k, v) {
+    if (v == null) return null;
+    switch (k) {
+      case "uhrzeit": return /^([01]\d|2[0-3]):[0-5][05]$/.test(String(v)) ? null : "Uhrzeit hh:mm in 5-min-Schritten";
+      case "gesperrt": case "drinnen": return typeof v === "boolean" ? null : "ja oder nein";
+      case "metrik": return V66.METRIKEN.includes(v) ? null : "unbekannte Metrik";
+      case "ein_min": return Number.isInteger(v) && v >= 5 && v <= 40 && v % 5 === 0 ? null : "Einfahren 5–40 min";
+      case "pausen": return Number.isInteger(v) && v >= 0 && v <= 100 && v % 10 === 0 ? null : "Intervall-Intensität 0–100 % in 10er-Schritten";
+      default: return "unbekanntes Feld";
+    }
+  };
+  const ARBEIT_K = new Set(["z3", "z3o", "vo2", "css", "renntempo"]);
+  const GESPERRT_E = "Einheit gesperrt – zuerst entsperren";
+  /** einheit-anpassen-1.0 (eigene Festlegung): Abschnitte [key, min] anpassen. ein_min = Dauer vor dem ersten Belastungsabschnitt (zuerst Z1 wie
+   *  bisher, höchstens ein_min, Rest Z2); pausen = Intervall-Intensität 0–100 % (50 = wie die Vorlage): Erholungen zwischen dem ersten und dem
+   *  letzten Belastungsabschnitt und jede kurze Pause nach dem ersten (auch die der letzten Wiederholung) × (1,5 − pausen/100), unter 1 min
+   *  auf 5 s, sonst auf 15 s gerundet; das Ausfahren bleibt. Einheiten ohne Belastungsabschnitt bleiben. */
+  V66.teileAnpassen = function (teile, a) {
+    if (!Array.isArray(teile) || !teile.length || !a) return teile;
+    let T = teile.map((t) => [t[0], t[1]]);
+    const erste = T.findIndex((t) => ARBEIT_K.has(t[0]));
+    if (erste < 0) return T;
+    let letzte = -1; for (let i = T.length - 1; i >= 0; i--) if (ARBEIT_K.has(T[i][0])) { letzte = i; break; }
+    if (isNum(a.pausen) && a.pausen !== 50) {
+      const f = 1.5 - a.pausen / 100;
+      // Pausen nach dem ersten Belastungsabschnitt (auch die Pause der letzten Wiederholung, sonst bricht die Serie) und lockere Abschnitte
+      // zwischen den Belastungen; das Ausfahren bleibt
+      for (let i = erste + 1; i < T.length; i++) if (T[i][0] === "pause" || (T[i][0] === "z1" && i < letzte)) {
+        const s = T[i][1] * 60 * f, r = s < 60 ? Math.max(5, Math.round(s / 5) * 5) : Math.max(15, Math.round(s / 15) * 15);
+        T[i][1] = r / 60;
+      }
+    }
+    if (isNum(a.ein_min)) {
+      const z1 = T.slice(0, erste).filter((t) => t[0] === "z1").reduce((s, t) => s + t[1], 0);
+      const z1n = Math.min(z1 > 0 ? z1 : 5, a.ein_min), z2n = Math.max(0, a.ein_min - z1n), vor = [];
+      if (z1n > 0) vor.push(["z1", z1n]); if (z2n > 0) vor.push(["z2", z2n]);
+      T = vor.concat(T.slice(erste));
+    }
+    return T;
   };
 
   /* ---------------- Mein Plan (eigenplan-1.0) ---------------- */
@@ -157,13 +212,15 @@
     if (!s.uid || typeof s.uid !== "string") return "ohne Kennung";
     if (!["vorschlag", "eigen", "bibliothek"].includes(s.quelle)) return "unbekannte Quelle";
     if (!isNum(s.dauer) || s.dauer < 5 || s.dauer > 600) return "Dauer ausserhalb 5–600 min";
+    for (const k of Object.keys(V66.FELDER)) if (s[k] != null) { const f = V66.feldPruefen(k, s[k]); if (f) return f; }   // V7.3
     if (s.quelle === "bibliothek") return isNum(s.wid) && ["rad", "lauf", "schwimm"].includes(s.sport) ? null : "Bibliothek ohne Workout oder Sportart";
     const B = V66.bereich(s.vorlage); if (!B) return "unbekannte Vorlage";
     if (s.quelle === "eigen" && (s.dauer < B.min || s.dauer > B.max)) return `Dauer ${B.min}–${B.max} min`;
     return null;
   };
   /** Eine Änderung anwenden (rein, ohne Speichern). a.art: hinzufuegen {date, einheit}, entfernen {date, uid}, dauer {date, uid, dauer},
-   *  verschieben {date, uid, nach}, sperren {date}, entsperren {date}, verwerfen, leeren. ctx = { heute, montag, vorschlag(date) → Einheiten
+   *  verschieben {date, uid, nach}, sperren {date}, entsperren {date}, verwerfen, leeren; V7.3: einheit {date, uid, felder} (Uhrzeit, Sperre,
+   *  Metrik, drinnen, Einfahren, Pausen; gesperrte Einheiten nur entsperren, nie ändern, verschieben oder entfernen). ctx = { heute, montag, vorschlag(date) → Einheiten
    *  des Vorschlags an diesem Tag, jetzt, neuId }. Vergangene Tage nur lesen, gesperrte Tage unveränderlich. → { eintrag } oder { fehler, eintrag }. */
   V66.aendern = function (eintrag, a, ctx) {
     ctx = ctx || {};
@@ -193,10 +250,11 @@
         f = V66.einheitPruefen(s); if (!f) liste(a.date).push(s);
         break;
       }
-      case "entfernen": { f = darf(a.date); if (f) break; const i = finde(a.date, a.uid); if (i < 0) f = "Einheit nicht gefunden"; else liste(a.date).splice(i, 1); break; }
+      case "entfernen": { f = darf(a.date); if (f) break; const i = finde(a.date, a.uid); if (i < 0) f = "Einheit nicht gefunden"; else if (liste(a.date)[i].gesperrt) f = GESPERRT_E; else liste(a.date).splice(i, 1); break; }
       case "dauer": {
         f = darf(a.date); if (f) break;
         const L = liste(a.date), i = finde(a.date, a.uid); if (i < 0) { f = "Einheit nicht gefunden"; break; }
+        if (L[i].gesperrt) { f = GESPERRT_E; break; }
         if (L[i].quelle === "bibliothek") { f = "Dauer wie im Enduco-Workout"; break; }
         const B = V66.bereich(L[i].vorlage); if (!B || B.fest) { f = "feste Dauer"; break; }
         if (!isNum(a.dauer) || a.dauer < B.min || a.dauer > B.max) { f = `Dauer ${B.min}–${B.max} min`; break; }
@@ -206,7 +264,25 @@
       case "verschieben": {
         f = darf(a.date) || darf(a.nach) || (a.date === a.nach ? "gleicher Tag" : null); if (f) break;
         const i = finde(a.date, a.uid); if (i < 0) { f = "Einheit nicht gefunden"; break; }
+        if (liste(a.date)[i].gesperrt) { f = GESPERRT_E; break; }
         const [x] = liste(a.date).splice(i, 1); liste(a.nach).push(x);
+        break;
+      }
+      case "einheit": {                                                // V7.3 einheit-felder-1.0: Uhrzeit, Sperre, Metrik, drinnen, Einfahren, Pausen
+        f = darf(a.date); if (f) break;
+        const L = liste(a.date), i = finde(a.date, a.uid); if (i < 0) { f = "Einheit nicht gefunden"; break; }
+        const F = a.felder || {}, alt = L[i], neu = Object.assign({}, alt);
+        if (alt.gesperrt && F.gesperrt !== false) { f = GESPERRT_E; break; }
+        for (const [k, v] of Object.entries(F)) {
+          if (!V66.FELDER[k]) { f = "unbekanntes Feld"; break; }
+          const g = V66.feldPruefen(k, v); if (g) { f = g; break; }
+          if (v == null || v === false || (k === "pausen" && v === 50)) delete neu[k]; else neu[k] = v;
+        }
+        if (f) break;
+        if ((neu.ein_min != null || neu.pausen != null || neu.drinnen) && neu.quelle === "bibliothek") { f = "Bibliothek: Ablauf wie im Enduco-Workout"; break; }
+        // Inhalt geändert (Einfahren, Pausen, drinnen) = eigene Einheit wie beim Ändern der Dauer; Uhrzeit, Sperre und Metrik lassen die Quelle
+        if (neu.quelle === "vorschlag" && ["ein_min", "pausen", "drinnen"].some((k) => neu[k] !== alt[k])) neu.quelle = "eigen";
+        L[i] = neu;
         break;
       }
       case "sperren": f = !inWoche(a.date) ? "nicht in dieser Woche" : a.date < ctx.heute ? "vergangen – nur lesen" : null; if (!f) tag(a.date).gesperrt = true; break;
@@ -282,7 +358,7 @@
   /* ---------------- Verteilen nach der Verfügbarkeit (verfuegbarkeit-1.0) ---------------- */
   const ORTSFEST = new Set(["schwimm_kurs", "aktivierung", "test_rad", "test_lauf", "test_css"]);
   const istOrtsfest = (e) => !!e && (ORTSFEST.has(e.id) || e.art === "test" || !!e.test);
-  const istEigen = (e) => !!e && (e.quelle === "eigen" || e.quelle === "bibliothek");
+  const istEigen = (e) => !!e && (e.quelle === "eigen" || e.quelle === "bibliothek" || !!e.gesperrt);   // V7.3: gesperrte Einheit bleibt am Tag
   const hart = (e) => !!e && (!!e.schluessel || e.art === "schluessel_s");
   const PRIO = (e) => (hart(e) ? 0 : e.art === "lang" ? 1 : e.art === "koppel" ? 3 : 2);
   const TAGW = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
@@ -488,21 +564,23 @@
   }
   /** «Neu berechnen» (auch «Änderungen verwerfen»): ab heute wieder der Vorschlag, gesperrte Tage bleiben. Ganz festgehaltene Wochen werden mit
    *  dem unverteilten Vorschlag (ctx.roh) neu verteilt; künftige Wochen ohne Sperren folgen wieder von selbst dem Vorschlag. */
+  /** V7.3: Tag mit Sperre oder mit einer gesperrten Einheit – bleibt bei «Neu berechnen» so, wie er ist. */
+  const festTag = (t) => !!t && (!!t.gesperrt || (Array.isArray(t.einheiten) && t.einheiten.some((s) => s && s.gesperrt)));
   function neuBerechnen(E, ctx, tag) {
     const tageW = Array.from({ length: 7 }, (_, i) => add(E.montag, i));
-    const gesperrt = tageW.filter((d) => E.tage[d] && E.tage[d].gesperrt), vorbei = tageW.filter((d) => d < ctx.heute && E.tage[d] && Array.isArray(E.tage[d].einheiten));
-    if (!E.ganz) { for (const d of Object.keys(E.tage)) if (d >= ctx.heute && !E.tage[d].gesperrt) E.tage[d].einheiten = null; return null; }
+    const gesperrt = tageW.filter((d) => festTag(E.tage[d])), vorbei = tageW.filter((d) => d < ctx.heute && E.tage[d] && Array.isArray(E.tage[d].einheiten));
+    if (!E.ganz) { for (const d of Object.keys(E.tage)) if (d >= ctx.heute && !festTag(E.tage[d])) E.tage[d].einheiten = null; return null; }
     if (!gesperrt.length && !vorbei.length) { E.tage = {}; delete E.ganz; delete E.verteilung; return null; }        // ganz neu: wieder automatisch
     if (!ctx.roh) return "Vorschlag nicht bekannt";
     // Was an festen Tagen (vergangen, gesperrt) über deren eigenen Vorschlag hinaus steht, wurde dorthin verschoben: nicht nochmals verteilen
     const verbraucht = [];
     for (const d of tageW) {
-      const t = E.tage[d]; if (!(d < ctx.heute || (t && t.gesperrt)) || !t || !Array.isArray(t.einheiten)) continue;
+      const t = E.tage[d]; if (!(d < ctx.heute || festTag(t)) || !t || !Array.isArray(t.einheiten)) continue;
       const roh = (ctx.roh(d) || []).map((e) => e.id);
       for (const s of t.einheiten) { if (s.quelle !== "vorschlag") continue; const j = roh.indexOf(s.vorlage); if (j >= 0) roh.splice(j, 1); else verbraucht.push(s.vorlage); }
     }
     const tage = tageW.map((d) => {
-      const t = E.tage[d] || {}, fest = d < ctx.heute || !!t.gesperrt;
+      const t = E.tage[d] || {}, fest = d < ctx.heute || festTag(t);
       const einheiten = fest ? (t.einheiten || []).map((s) => V66.einheit(s, ctx.ctxE || {})).filter(Boolean) : (ctx.roh(d) || []).map((e) => Object.assign({}, e));
       return { date: d, wt: wtK(d), ruhetag: !einheiten.length, einheiten, fest };
     });
@@ -718,8 +796,9 @@
     return { workout: Object.assign({ workoutName: name, description: besch }, { sportType: sport, workoutSegments: kern.workoutSegments }), fassung, schritte: n, ohneZiel, offen };
   };
   /** Auftrag «An Garmin senden» für einen Tag (Eingabe garmin_senden): modus «senden» (nächstes Nacht-Update), «auto» (am Vortag ab 23 Uhr)
-   *  oder «aus». einheiten = Einheiten von Mein Plan an diesem Tag (mit uid). → Eintrag mit Momentaufnahme je Einheit. */
-  V66.garminAuftrag = function (date, einheiten, skalen, modus, jetzt) {
+   *  oder «aus». einheiten = Einheiten von Mein Plan an diesem Tag (mit uid). → Eintrag mit Momentaufnahme je Einheit.
+   *  opt.teil (V7.3): nur eine Auswahl der Einheiten des Tages; was danach in Garmin ist, sind genau die Einheiten des Auftrags. */
+  V66.garminAuftrag = function (date, einheiten, skalen, modus, jetzt, opt) {
     const E = [], ohne = [];
     for (const e of einheiten || []) {
       if (e.art === "bibliothek") { if (isNum(e.wid)) E.push({ uid: e.uid, quelle: "bibliothek", titel: e.titel, sport: e.sport, wid: e.wid, fassung: "bib-" + e.wid }); else ohne.push({ uid: e.uid, titel: e.titel, grund: "Workout fehlt" }); continue; }
@@ -727,7 +806,11 @@
       if (g.fehler) { ohne.push({ uid: e.uid, titel: e.titel, grund: g.fehler }); continue; }
       E.push({ uid: e.uid, quelle: e.quelle || "vorschlag", titel: e.titel, sport: e.sport, fassung: g.fassung, workout: g.workout, ohneZiel: g.ohneZiel || 0, offen: !!g.offen });
     }
-    return { id: "gs-" + date, date, modus, erstellt: jetzt, v: V66.VERSIONS.garmin, einheiten: modus === "aus" ? [] : E, ohne: modus === "aus" ? [] : ohne };
+    const out = { id: "gs-" + date, date, modus, erstellt: jetzt, v: V66.VERSIONS.garmin, einheiten: modus === "aus" ? [] : E, ohne: modus === "aus" ? [] : ohne };
+    // V7.3: «Export» einer einzelnen Einheit – der Auftrag enthält nur die gewählten Einheiten (diese und die schon in Garmin); beim Nachführen
+    // nach einer Änderung bleibt die Auswahl (ohne «teil»: alle Einheiten des Tages wie bisher)
+    if (opt && opt.teil) out.teil = true;
+    return out;
   };
   /** Eintrag im Garmin-Kalender (planned), den Silas selbst gesendet hat: Name «IN · » oder eine eingeplante Bibliotheks-Einheit mit Vermerk
    *  (nicht schon vorher von Enduco eingeplant). Solche Einträge sind nie Enduco (vergleich-1.4, bib-1.1). */

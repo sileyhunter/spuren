@@ -1006,6 +1006,21 @@ check("Mein Plan: vergangenen Tag einfrieren geht einmal, danach unveränderlich
       and "zurück" in (merge_daily.planwoche_pruefen(dict(_EF, tage=dict(_EF["tage"], **{"2026-03-03": {"gesperrt": False, "einheiten": []}})), _ent) or ""),
       str([merge_daily.planwoche_pruefen(_EF, _ent), merge_daily.planwoche_pruefen(_EF2, _EF)]))
 
+# ---------- V7.3 Felder je Einheit (einheit-felder-1.0) ----------
+_F_OK = {"uid": "v-2026-03-05-0", "vorlage": "rad_schwelle", "dauer": 80, "quelle": "eigen", "uhrzeit": "06:30", "gesperrt": True,
+         "metrik": "puls", "drinnen": False, "ein_min": 20, "pausen": 30}
+_WF = dict(_WO, tage={"2026-03-05": {"gesperrt": False, "einheiten": [_F_OK]}})
+check("Felder je Einheit: gültige Uhrzeit, Sperre, Metrik, drinnen, Einfahren und Pausen angenommen", merge_daily.planwoche_pruefen(_WF, None) is None,
+      str(merge_daily.planwoche_pruefen(_WF, None)))
+_F_BAD = [{"uhrzeit": "6:30"}, {"uhrzeit": "06:31"}, {"uhrzeit": "24:00"}, {"gesperrt": "ja"}, {"metrik": "watt"}, {"drinnen": 1},
+          {"ein_min": 3}, {"ein_min": 45}, {"ein_min": 12}, {"pausen": 55}, {"pausen": 110}, {"pausen": True}]
+_F_ERG = [merge_daily.planwoche_pruefen(dict(_WO, tage={"2026-03-05": {"gesperrt": False, "einheiten": [dict(_F_OK, **x)]}}), None) for x in _F_BAD]
+check("Felder je Einheit: falsche Uhrzeit, Sperre, Metrik, drinnen, Einfahren und Pausen abgelehnt", all(_F_ERG), str(_F_ERG))
+check("Felder je Einheit: gleiche Regeln wie die Seite (einheit_feld_pruefen)",
+      merge_daily.einheit_feld_pruefen("uhrzeit", "23:55") is None and merge_daily.einheit_feld_pruefen("pausen", 0) is None
+      and merge_daily.einheit_feld_pruefen("pausen", 100) is None and merge_daily.einheit_feld_pruefen("metrik", "rpe") is None
+      and merge_daily.einheit_feld_pruefen("farbe", "rot") is not None and merge_daily.einheit_feld_pruefen("uhrzeit", None) is None)
+
 # ---------- V7.2 Verfügbarkeit (verfuegbarkeit-1.0, verfuegbarkeit_pruefen) ----------
 _VF = [{"id": "vf-wt-2", "art": "wochentag", "wt": 2, "min": 60, "sport": ["schwimm"], "v": "verfuegbarkeit-1.0", "geaendert": "2026-03-04T19:00:00Z"},
        {"id": "vf-2026-03-05", "art": "tag", "date": "2026-03-05", "min": 0, "sport": [], "v": "verfuegbarkeit-1.0", "geaendert": "2026-03-04T19:00:00Z"},
@@ -1108,10 +1123,11 @@ out.mix = V66.garminAuftrag("2026-03-05", [E({ uid: "e-a", vorlage: "rad_locker"
   E({ uid: "e-c", vorlage: "schwimm_css", dauer: 60, quelle: "eigen" })], SK, "auto", "2026-03-02T19:00:00Z");
 out.mix2 = V66.garminAuftrag("2026-03-05", [E({ uid: "e-a", vorlage: "rad_locker", dauer: 75, quelle: "eigen" }), E({ uid: "e-d", vorlage: "lauf_locker", dauer: 30, quelle: "eigen" })], SK, "senden", "2026-03-04T21:00:00Z");
 out.weiter = V66.garminAuftrag("2026-03-06", [E({ uid: "e-d", vorlage: "lauf_locker", dauer: 30, quelle: "eigen" })], SK, "senden", "2026-03-04T21:30:00Z");
+out.teil = V66.garminAuftrag("2026-03-05", [E({ uid: "e-a", vorlage: "rad_locker", dauer: 60, quelle: "eigen" })], SK, "senden", "2026-03-02T19:00:00Z", { teil: true });
 console.log(JSON.stringify(out));"""
 _rg = subprocess.run(["node", "-e", _js_gs], cwd=ROOT, capture_output=True, text=True)
 _GA = json.loads(_rg.stdout)
-_einzel = {k: v for k, v in _GA.items() if k not in ("mix", "mix2", "weiter")}
+_einzel = {k: v for k, v in _GA.items() if k not in ("mix", "mix2", "weiter", "teil")}
 check("Garmin senden: jedes Workout der Seite (alle Rad- und Lauf-Vorlagen) besteht die Prüfung des Werkzeugs",
       all(GS.pruefen(a) is None and len(a["einheiten"]) == 1 for a in _einzel.values()), str({k: GS.pruefen(a) for k, a in _einzel.items()}))
 check("Garmin senden: gemischter Tag – Rad als Workout, Bibliothek nur mit ID, Schwimmen mit Grund nicht gesendet",
@@ -1139,7 +1155,10 @@ _falsch = {
     "Reihenfolge": _mit(lambda a: a["einheiten"][0]["workout"]["workoutSegments"][0]["workoutSteps"][1].update(stepOrder=9)),
     "Bibliothek ohne ID": GS.pruefen(dict(_GA["mix"], einheiten=[dict(_GA["mix"]["einheiten"][1], wid=None)])),
     "doppelte Kennung": GS.pruefen(dict(_GA["mix"], einheiten=[_GA["mix"]["einheiten"][0], _GA["mix"]["einheiten"][0]])),
+    "teil nicht ja/nein": GS.pruefen(dict(_GA["teil"], teil="ja")),
 }
+check("Garmin senden (V7.3): Auftrag für eine einzelne Einheit trägt «teil» und besteht die Prüfung; ohne Auswahl kein «teil»",
+      _GA["teil"].get("teil") is True and GS.pruefen(_GA["teil"]) is None and "teil" not in _GA["mix"], str(GS.pruefen(_GA["teil"])))
 check("Garmin senden: Prüfung lehnt ab – ID, Modus, Tag zurück oder zu weit voraus, fremde Felder, Name, Sportart, Werte, Ziel, Ende, Reihenfolge, Bibliothek, Kennung",
       all(_falsch.values()), str({k: v for k, v in _falsch.items() if not v}))
 _tg = tempfile.mkdtemp()
