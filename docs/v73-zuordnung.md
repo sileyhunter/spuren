@@ -14,6 +14,10 @@ Gebaut wird Etappe für Etappe, jede erst nach Silas' Okay.
 | 3 | Planeinstellungen: Basis-Fitness je Sportart, Steigerung (ein Regler für alle drei Sportarten), Indoor-Phase, Schwimm-Equipment, Bahnlänge, Stile | offen |
 | 4 | Kalender mit Zwei-Wochen-Raster und durchlaufender Liste, Zyklus, Bearbeiten-Modus, Tagesblatt; Aktivitäten draussen im Voraus planen (`aktivitaet-plan-1.0`) | offen |
 | 5 | Heute, Navigation, Training planen mit Kategorien | offen |
+| 6 | Ampel passt das Training des Tages automatisch an (`ampel-plan-1.0`): bei «vorsichtig» keine harten oder mittleren Abschnitte, Nachholen in der Woche, «Trotzdem wie geplant» | offen |
+| 7 | Krafttraining als feste Zusatzeinheit je Woche (`kraft-plan-1.0`), Woche darauf abgestimmt | offen |
+
+Vorgeschlagene Reihenfolge (16.11.2026, gilt nach Silas' Okay): 1 → 2 → 6 → 3 → 7 → 4 → 5. Der Laufaufbau bleibt je Einzellauf (aufbau-1.1).
 
 ## Etappe 1 – Vorlage → Ironman Notebook
 
