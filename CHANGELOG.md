@@ -16,6 +16,8 @@
   nach seinem Okay.
 - Wissen 1.17: Kapitel «Krafttraining» (Rønnestad & Mujika 2014, Rønnestad et al. 2010, Doma et al. 2017, Lauersen et al. 2014, Foster et al. 2001), «Was nicht drin ist»
   im Kapitel «Modelle» und «Kraft» im Kapitel «Langdistanz» nachgeführt. Neue Symbole «notiz» und «ausnahme» (eigene). Tests: `tests/test_v76.cjs`, `tests/test_tools.py`.
+- Eine mit Garmin aufgezeichnete Krafteinheit (Typ «Krafttraining»/«Strength») erledigt das geplante Krafttraining desselben Tages (Tagesleiste, Kalender,
+  Tagesblatt; `V6.sportVon`), sonst stünde es nach dem Tag als verpasst da.
 - Nebenbei: `chart()` zeichnet ohne Chart.js beim zweiten Mal nicht mehr ins Leere (Fehler nur ohne Netz); RPE der Krafttrainings zählt nicht in der Kalibrierung rpe-1.0.
 
 ## V7.5.2 · 17.11.2026 · Basis-Fitness Variante A, 20/50/30 wählbar (basis-1.1, wissen-1.16)

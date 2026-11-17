@@ -226,6 +226,9 @@
   const addDays = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
   V6.montag = (iso) => { const d = new Date(iso + "T12:00:00Z"); return addDays(iso, -((d.getUTCDay() + 6) % 7)); };
   /** Tage der Woche mit erledigten und geplanten Sportarten; Fortschritt Trainings und Dauer (erledigt / geplant). planDauer(p) → s */
+  /** V7.6 kraft-plan-1.0: Sportart einer Aktivität für den Abgleich mit Mein Plan – Garmin-Krafttraining (Typ «Krafttraining»/«Strength») = «kraft». */
+  V6.KRAFT_TYP = /^(krafttraining|strength|strength_training)$/i;
+  V6.sportVon = (a) => (a && a.sport === "andere" && (V6.KRAFT_TYP.test(String(a.typ || "").replace(/\u200b/g, "")) || /^kraft\s*training$/i.test(String(a.name || "").replace(/\u200b/g, ""))) ? "kraft" : (a && a.sport) || "andere");
   V6.woche = function (acts, planned, heuteISO, planDauer) {
     // Je Tag: Geplantes gilt als erledigt, wenn am selben Tag eine Aktivität derselben Sportart erfasst ist (jede Aktivität zählt einmal).
     // Fortschritt: erledigt / (erledigt + noch offen + verpasst) – so stimmt er auch, wenn für vergangene Tage nichts geplant war.
@@ -234,7 +237,7 @@
     for (let i = 0; i < 7; i++) {
       const iso = addDays(m, i), ist = (acts || []).filter((a) => a.date === iso), plan = (planned || []).filter((p) => p.date === iso);
       n_ist += ist.length; s_ist += ist.reduce((s, a) => s + (a.dur || a.mv || 0), 0);
-      const frei = ist.map((a) => a.sport || "andere"), zeichen = [];
+      const frei = ist.map((a) => V6.sportVon(a)), zeichen = [];
       for (const p of plan) {
         const sp = p.sport || "andere", k = frei.indexOf(sp);
         if (k >= 0) { frei.splice(k, 1); zeichen.push({ sport: sp, art: "ist" }); continue; }

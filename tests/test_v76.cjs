@@ -142,3 +142,16 @@ test("kraft-plan-1.0: sRPE = RPE × Minuten (Foster), Garmin-Aktivität «Kraftt
   assert.equal(V76.aktivitaet(acts, "2026-11-26").id, "g3");
   assert.equal(V76.aktivitaet(acts, "2026-11-27"), null);
 });
+
+test("kraft-plan-1.0: eine Garmin-Krafteinheit erledigt das geplante Krafttraining (Tagesleiste, Kalender)", () => {
+  const V6 = require("../js/v6.js");
+  assert.equal(V6.sportVon({ sport: "andere", typ: "Krafttraining" }), "kraft");
+  assert.equal(V6.sportVon({ sport: "andere", typ: "Strength" }), "kraft");
+  assert.equal(V6.sportVon({ sport: "andere", typ: "Navigieren", name: "Abendrunde" }), "andere");
+  assert.equal(V6.sportVon({ sport: "rad", typ: "Krafttraining" }), "rad");
+  const acts = [{ date: "2026-11-24", sport: "andere", typ: "Krafttraining", dur: 3600 }];
+  const plan = [{ date: "2026-11-24", sport: "kraft", dur_s: 5400 }, { date: "2026-11-26", sport: "kraft", dur_s: 5400 }];
+  const w = V6.woche(acts, plan, "2026-11-27");
+  assert.deepEqual(w.tage[1].zeichen, [{ sport: "kraft", art: "ist" }]);
+  assert.deepEqual(w.tage[3].zeichen, [{ sport: "kraft", art: "verpasst" }]);
+});

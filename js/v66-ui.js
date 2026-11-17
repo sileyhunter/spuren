@@ -640,7 +640,7 @@
       const ia = ist.filter((a) => a.date === t.date), tt = tests.filter((x) => x.date === t.date);
       const done = ia.map((a) => `<button type="button" class="kw-akt" data-ex="${esc(a.id)}" aria-label="${esc(a.name || "Aktivität")} analysieren"><span class="mo-sp voll" style="--sp:${spFarbe(a.sport)}">${W.sportIcon(a.sport, 15)}</span>
           <span class="mo-et"><b>${esc(a.name || "Aktivität")}</b><small>${esc(W.dauerText(sek(a)))}${isNum(a.km) && a.km > 0 ? ` · ${komma(Math.round(a.km * 10) / 10)} km` : ""}${isNum(a.tss) && a.tss > 0 ? ` · TL ${Math.round(a.tss)}` : ""}</small></span><span class="kw-ok">${W.icon("check", 14)}</span></button>`).join("");
-      const frei = ia.map((a) => a.sport);          // erledigt: eine Aktivität derselben Sportart am selben Tag (wie die Tagesleiste)
+      const frei = ia.map((a) => (V6().sportVon ? V6().sportVon(a) : a.sport));          // erledigt (V7.6: Garmin-Krafttraining = kraft): eine Aktivität derselben Sportart am selben Tag (wie die Tagesleiste)
       const meins = t.rennen ? `<p class="mp-leer">${W.icon("flagge", 15)} ${esc(t.rennen.name)}</p>` : t.einheiten.map((e) => { const j = frei.indexOf(e.sport); if (j >= 0) frei.splice(j, 1);
         const kk = karte(e, K, t.date); return j >= 0 ? kk.replace('class="mo-e mp-e', 'class="mo-e mp-e erl') : kk; }).join("");
       const tx = tt.map((x) => `<p class="kw-test"><i class="c-test"></i>${esc(NAME[x.kind] || x.kind)}${x.done ? " ✓" : x.status === "vorschlag" ? " (Vorschlag)" : ""}</p>`).join("");

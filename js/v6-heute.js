@@ -110,7 +110,7 @@
     const D = C.D, day = heuteISO(), st = L().standText(D.updated, day, D.updated_lauf), U = window.V7UI;
     const X = U ? U.meinTag(day) : null, rennen = X && X.t.rennen, E = X && !rennen ? X.t.einheiten : [];
     const A = (D.activities || []).filter((a) => a && a.date === day);
-    const frei = A.map((a) => a.sport);                                           // eine erfasste Aktivität derselben Sportart erledigt eine geplante Einheit
+    const frei = A.map((a) => (V6().sportVon ? V6().sportVon(a) : a.sport));      // eine erfasste Aktivität derselben Sportart erledigt eine geplante Einheit (V7.6: Krafttraining)
     const karten = E.map((e) => { const k = frei.indexOf(e.sport); if (k >= 0) frei.splice(k, 1); return { e, erledigt: k >= 0 }; });
     const leer = !A.length && !E.length && !rennen;
     // V7.4 ampel-plan-1.0: Anpassung durch die Ampel (Gründe, ursprüngliche Einheit, «Trotzdem wie geplant») und «Woche anpassen?»
