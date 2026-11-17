@@ -325,14 +325,15 @@
   }
   function planWerkzeugeZeichnen() {
     const box = $("v7-plan-werkzeuge"); if (!box || !bereit()) return;
-    const W = V6(), L = [["plan-einstellungen", "regler", "Planeinstellungen", "Steigerung, Basis je Sportart, Indoor-Phase, Schwimmen"],
+    const W = V6(), L = [["plan-einstellungen", "regler", "Planeinstellungen", "Basis-Fitness, Indoor-Phase, Schwimmen, Trainingsumfang"],
       ["plan-rennen", "flagge", "Rennen", "Haupt- und Vorbereitungsrennen mit Strecken"],
       ["plan-modell", "intervall", "Trainingsmodell", "Polarisiert, pyramidal, rennspezifisch – Intensität je Sportart"],
       ["plan-stunden", "status", "Wochenstunden", "Vorschlag je Woche aus deinen Wochen, Erholung und Taper"],
       ["plan-aufbau", "lauf", "Aufbau-Check", "Laufumfang ohne Sprünge steigern"],
       ["plan-tests", "ampel", "Testkalender", "Stufentests, Laktat-Kurzchecks und CSS-Tests"]];
     box.innerHTML = `<h2 class="v7-abschnitt">Plan verwalten</h2><ul class="v6-aktionen v7-liste">${L.map(([z, ic, t2, s2]) => `<li><button type="button" data-ziel="${z}">${W.icon(ic, 22)}<span><b>${esc(t2)}</b><small>${esc(s2)}</small></span>${pfeil()}</button></li>`).join("")}</ul>`;
-    box.querySelectorAll("[data-ziel]").forEach((b) => (b.onclick = () => geh(b.dataset.ziel)));
+    // V7.5.1: die Planeinstellungen sind ein Blatt (Folge Laufen → Rad → Schwimmen → Trainingsumfang), keine eigene Ansicht
+    box.querySelectorAll("[data-ziel]").forEach((b) => (b.onclick = () => (b.dataset.ziel === "plan-einstellungen" ? window.V75UI && window.V75UI.flow() : geh(b.dataset.ziel))));
   }
 
   /* ---------------- Labor (Expertenbereich) ---------------- */
@@ -358,8 +359,7 @@
   window.addEventListener("resize", kopfHoehe); setTimeout(kopfHoehe, 50);
 
   /* ---------------- Ansicht gezeigt / neu zeichnen ---------------- */
-  const ZEICHNER = { analyse: analyseZeichnen, planvergleich: planvergleichZeichnen, plan: () => { planKopfZeichnen(); planWerkzeugeZeichnen(); }, labor: laborZeichnen,
-    "plan-einstellungen": () => { if (window.V75UI) window.V75UI.zeichnen(); } };                // V7.5 Etappe 3 (js/v75-ui.js)
+  const ZEICHNER = { analyse: analyseZeichnen, planvergleich: planvergleichZeichnen, plan: () => { planKopfZeichnen(); planWerkzeugeZeichnen(); }, labor: laborZeichnen };
   M.gezeigt = function (name) {
     kopfHoehe();
     const f = ZEICHNER[name]; if (!f) return;

@@ -1,10 +1,10 @@
 /* Ironman Notebook V7.5 – Etappe 3 «Planeinstellungen» (Auftrag V7.3 «wie enduco», Vorbild: die Planeinstellungen von enduco), Rechenlogik ohne DOM.
    - planeinstellungen-1.0: Einstellungen des Plans je Gruppe (Eingabe «planeinstellung» → plan_einstellungen, «Direkt speichern», gleiche ID ersetzt
-     mit Audit; gleiche Prüfung wie merge_daily.planeinstellung_pruefen): Steigerung, Basis je Sportart, Indoor-Phase Rad und Laufen, Schwimmen
-     (Hilfsmittel, Standard-Bahnlänge, Stile). Ohne Eintrag gilt der Standard – der Plan rechnet dann wie bisher.
-   - basis-1.0: Basis-Fitness je Sportart. Angezeigt wird die Fitness der Sportart (42-Tage-Mittel ihrer Trainingslast wie pmc-2.0, Stand zu Tagesbeginn)
-     und der gewohnte Umfang: Anteil der Sportart an den Stunden der 8 abgeschlossenen Wochen × «jetzt» (saison-1.2); zusammen ergibt das genau «jetzt».
-     Der Plan beginnt beim gewohnten Umfang oder bei deinem Wert je Sportart.
+     mit Audit; gleiche Prüfung wie merge_daily.planeinstellung_pruefen): Steigerung, Indoor-Phase Rad und Laufen, Schwimmen (Hilfsmittel,
+     Standard-Bahnlänge, Stile, Anfänger-Modus). Ohne Eintrag gilt der Standard – der Plan rechnet dann wie bisher.
+   - basis-1.0: Basis-Fitness je Sportart = Fitness der Sportart (42-Tage-Mittel ihrer Trainingslast wie pmc-2.0, Stand zu Tagesbeginn), angezeigt wie
+     bei enduco. Wie sie den Start des Plans bestimmt (Auftrag: «zuerst als Vorschlag, dann bauen»), ist noch offen; bis Silas entscheidet, beginnt
+     der Plan wie bisher bei «jetzt» (saison-1.2) mit der Aufteilung 20/50/30.
    - steigerung-1.0: ein Regler für Schwimmen, Rad und Laufen (50–150 %, Standard 100 %). Jede Sportart geht von ihrer Basis zu ihrem Anteil an der
      Spitzenwoche (aufteilung-1.0); nach i Wochen ist der Anteil des Wegs min(1, Regler · i/(N − 1)), N = Wochen bis zum Taper. 100 % = gleichmässig
      bis zur Woche vor dem Taper (wie saison-1.2), mehr = früher an der Spitze und dort bis zum Taper, weniger = die Spitze wird nicht erreicht.
@@ -30,14 +30,13 @@
 
   /* ---------------- Einstellungen (planeinstellungen-1.0) ---------------- */
   V75.STEIGERUNG = { min: 50, max: 150, schritt: 5, standard: 100, plus: 0.1, plus_min_h: 0.5 };
-  V75.BASIS_MAX = 30;                                                   // Stunden je Woche und Sportart
   V75.INDOOR_MAX_TAGE = 366;
   V75.HILFSMITTEL = ["brett", "pullbuoy", "flossen", "paddles"];
-  V75.STILE = ["ruecken", "brust", "delfin"];                            // Kraul ist immer dabei
-  V75.IDS = { steigerung: "pe-steigerung", basis: "pe-basis", indoor_rad: "pe-indoor-rad", indoor_lauf: "pe-indoor-lauf", schwimm: "pe-schwimm" };
-  /** Standard = wie bis V7.4: 100 %, gewohnter Umfang, keine Indoor-Phase, alle Hilfsmittel, Bahnlänge wie bisher (Gerät bzw. Enduco), Kraul und Rücken. */
-  V75.standard = () => ({ steigerung: V75.STEIGERUNG.standard, basis: { schwimm: null, rad: null, lauf: null }, indoor: { rad: null, lauf: null },
-    schwimm: { hilfsmittel: V75.HILFSMITTEL.slice(), pool: null, stile: ["ruecken"] }, stand: {} });
+  V75.STILE = ["ruecken", "brust"];                                      // Kraul ist immer dabei; Delfin plant die Seite nicht
+  V75.IDS = { steigerung: "pe-steigerung", indoor_rad: "pe-indoor-rad", indoor_lauf: "pe-indoor-lauf", schwimm: "pe-schwimm" };
+  /** Standard = wie bis V7.4: 100 %, keine Indoor-Phase, alle Hilfsmittel, Bahnlänge wie bisher (Gerät bzw. Enduco), Kraul und Rücken, kein Anfänger-Modus. */
+  V75.standard = () => ({ steigerung: V75.STEIGERUNG.standard, indoor: { rad: null, lauf: null },
+    schwimm: { hilfsmittel: V75.HILFSMITTEL.slice(), pool: null, stile: ["ruecken"], anfaenger: false }, stand: {} });
   const teilmenge = (x, erlaubt) => Array.isArray(x) && x.every((k) => erlaubt.includes(k)) && new Set(x).size === x.length;
   /** Prüft einen Eintrag → Fehlertext oder null (gleiche Regeln wie merge_daily.planeinstellung_pruefen). */
   V75.pruefen = function (e) {
@@ -46,9 +45,6 @@
     switch (e.id) {
       case "pe-steigerung":
         return Number.isInteger(e.wert) && e.wert >= V75.STEIGERUNG.min && e.wert <= V75.STEIGERUNG.max && e.wert % V75.STEIGERUNG.schritt === 0 ? null : "Steigerung 50–150 % in 5er-Schritten";
-      case "pe-basis":
-        for (const s of SPORT) { const v = e[s]; if (v != null && !(isNum(v) && v >= 0 && v <= V75.BASIS_MAX && Number.isInteger(v * 2))) return "Basis 0–30 h pro Woche in halben Stunden"; }
-        return null;
       case "pe-indoor-rad": case "pe-indoor-lauf":
         if (e.von == null && e.bis == null) return null;
         if (!istDatum(e.von) || !istDatum(e.bis)) return "Indoor-Phase: von und bis als Datum";
@@ -59,6 +55,7 @@
         if (!teilmenge(e.hilfsmittel, V75.HILFSMITTEL)) return "unbekanntes Hilfsmittel";
         if (e.pool != null && e.pool !== 25 && e.pool !== 50) return "Bahnlänge 25 oder 50 m";
         if (!teilmenge(e.stile, V75.STILE)) return "unbekannter Stil";
+        if (e.anfaenger != null && typeof e.anfaenger !== "boolean") return "Anfänger-Modus ja oder nein";
         return null;
       default: return "unbekannte Einstellung";
     }
@@ -77,30 +74,20 @@
     }
     for (const [id, x] of M) {
       if (id === "pe-steigerung") E.steigerung = x.wert;
-      else if (id === "pe-basis") for (const s of SPORT) E.basis[s] = isNum(x[s]) ? x[s] : null;
       else if (id === "pe-indoor-rad" || id === "pe-indoor-lauf") E.indoor[id === "pe-indoor-rad" ? "rad" : "lauf"] = x.von && x.bis ? { von: x.von, bis: x.bis } : null;
-      else if (id === "pe-schwimm") E.schwimm = { hilfsmittel: x.hilfsmittel.slice(), pool: x.pool === 25 || x.pool === 50 ? x.pool : null, stile: x.stile.slice() };
+      else if (id === "pe-schwimm") E.schwimm = { hilfsmittel: x.hilfsmittel.slice(), pool: x.pool === 25 || x.pool === 50 ? x.pool : null, stile: x.stile.slice(), anfaenger: x.anfaenger === true };
       E.stand[id] = x.geaendert || null;
     }
     return E;
   };
 
   /* ---------------- Basis je Sportart (basis-1.0) ---------------- */
-  /** vg = AN.saisonVorgaben(...) ({ jetzt, ist8: Map Montag → {schwimm, rad, lauf}}), E = V75.einstellungen(...), A = Aufteilung (ohne Stunden in den
-   *  8 Wochen). → { schwimm: { h, gewohnt, eigen, anteil }, rad, lauf, summe, gewohnt_summe, eigen, quelle } */
+  /** Start des Plans je Sportart. Bis Silas über die Regel entschieden hat (Vorschlag offen): wie bisher «jetzt» × Aufteilung 20/50/30.
+   *  vg = AN.saisonVorgaben(...) ({ jetzt }), A = Aufteilung. → { schwimm: { h, anteil }, rad, lauf, summe, jetzt, quelle } */
   V75.basis = function (vg, E, A) {
-    A = A || aufteilung(); E = E || V75.standard();
-    const sum = { schwimm: 0, rad: 0, lauf: 0 };
-    if (vg && vg.ist8 && typeof vg.ist8.values === "function") for (const r of vg.ist8.values()) for (const s of SPORT) sum[s] += (r && r[s]) || 0;
-    const tot = sum.schwimm + sum.rad + sum.lauf, jetzt = vg && isNum(vg.jetzt) ? vg.jetzt : 8;
-    const out = { summe: 0, gewohnt_summe: 0, eigen: false, jetzt, quelle: tot > 0 ? "anteil" : "aufteilung" };
-    for (const s of SPORT) {
-      const anteil = tot > 0 ? sum[s] / tot : A[s], gewohnt = Math.round(jetzt * anteil * 100) / 100;
-      const eigen = E.basis && isNum(E.basis[s]) ? E.basis[s] : null;
-      out[s] = { h: eigen != null ? eigen : gewohnt, gewohnt, eigen, anteil };
-      out.summe += out[s].h; out.gewohnt_summe += gewohnt; if (eigen != null) out.eigen = true;
-    }
-    out.summe = Math.round(out.summe * 100) / 100; out.gewohnt_summe = Math.round(out.gewohnt_summe * 100) / 100;
+    A = A || aufteilung();
+    const jetzt = vg && isNum(vg.jetzt) ? vg.jetzt : 8, out = { summe: jetzt, jetzt, quelle: "aufteilung" };
+    for (const s of SPORT) out[s] = { h: jetzt * A[s], anteil: A[s] };
     return out;
   };
   /** Fitness je Sportart (wie pmc-2.0: x += (Last − x)/42 je Kalendertag, Tage ohne Training mit 0) am Ende des Vortags von «heute».

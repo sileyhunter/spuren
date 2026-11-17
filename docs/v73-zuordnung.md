@@ -11,7 +11,7 @@ Gebaut wird Etappe für Etappe, jede erst nach Silas' Okay.
 |---|---|---|
 | 1 | Einheit wie Trainingsbriefing, mit allen Schritten (`schritte-1.0`, `einheit-2.0`, `einheit-felder-1.0`, `einheit-anpassen-1.0`, `rpe-zonen-1.0`) | V7.3 |
 | 2 | Schwimm-Einheiten mit Technikübungen an Garmin (`garmin-senden-1.1`); Puls- und RPE-Ziele auf der Uhr | V7.3.1 (auf der Uhr noch nicht geprüft) |
-| 3 | Planeinstellungen: Basis-Fitness je Sportart, Steigerung (ein Regler für alle drei Sportarten), Indoor-Phase, Schwimm-Equipment, Bahnlänge, Stile | V7.5 |
+| 3 | Planeinstellungen: Basis-Fitness je Sportart, Steigerung (ein Regler für alle drei Sportarten), Indoor-Phase, Schwimm-Equipment, Bahnlänge, Anfänger-Modus, Stile | V7.5, V7.5.1 (Regel der Basis-Fitness offen: Vorschlag vom 17.11.2026) |
 | 4 | Kalender mit Zwei-Wochen-Raster und durchlaufender Liste, Zyklus, Bearbeiten-Modus, Tagesblatt; Aktivitäten draussen im Voraus planen (`aktivitaet-plan-1.0`) | offen |
 | 5 | Heute, Navigation, Training planen mit Kategorien | offen |
 | 6 | Ampel passt das Training des Tages automatisch an (`ampel-plan-1.0`): bei «vorsichtig» keine harten oder mittleren Abschnitte, Nachholen in der Woche, «Trotzdem wie geplant» | V7.4 (Garmin-Ersatz am Morgen auf der Uhr noch nicht geprüft) |
@@ -52,14 +52,15 @@ Einheit des Tages in Garmin durch die lockere Fassung ersetzen – gilt ab Etapp
 | Morgen-Update ersetzt die harte Einheit auf der Uhr (A7) | `tools/ampel_heute.mjs`, `garmin_senden.py ampel`, lockere Fassung im Auftrag | nur für Aufträge ab V7.4 (die tragen die lockere Fassung); auf der Uhr noch nicht geprüft |
 
 
-## Etappe 3 – Planeinstellungen (V7.5, planeinstellungen-1.0)
+## Etappe 3 – Planeinstellungen (V7.5, planeinstellungen-1.0; V7.5.1 nach dem Auftrag)
 
-| Vorlage (enduco) | V7.5 | Anders, weil |
+| Vorlage (enduco) | V7.5.1 | Anders, weil |
 |---|---|---|
-| Je Sportart «Zusätzliche Einstellungen» mit Base Fitnesslevel (Zahl im Kreis) | Plan → Planeinstellungen, je Sportart «Basis-Fitness» mit der Fitness der Sportart (`V75.fitness`) | der Plan rechnet in Stunden: der Start je Sportart (basis-1.0) ist der gewohnte Umfang aus den 8 Wochen oder dein Wert; die Fitness steht nur zum Vergleich |
-| Trainingsumfang: Kurve, Bereich, Regler mit Prozent und Stufe, schraffierte Enden | Karte und Blatt «Trainingsumfang» (Linie, Bereich 50–150 %, Regler, Stufe), steigerung-1.0 | ein Regler für alle drei Sportarten (Silas' Wunsch); 100 % = gleichmässig bis zur Woche vor dem Taper (wie bisher), Obergrenze 10 % pro Woche als feste Grenze |
+| Blätter nacheinander Laufen → Rad → Schwimmen → Trainingsumfang, unten «‹», zuletzt «Fertig ✓» | Blatt «Planeinstellungen» als Folge (`V75UI.flow`) aus Plan → Plan verwalten (zuoberst), dem Profil und den Wochenstunden | jede Auswahl wird schon beim «Übernehmen» gespeichert (nichts geht verloren, wenn das Blatt zugeht) |
+| Je Sportart «Zusätzliche Einstellungen» mit Base Fitnesslevel (Zahl im Kreis) | je Sportart «Basis-Fitness» mit der Fitness der Sportart im Ring (`V75.fitness`, Last wie auf der Seite) | Wirkung auf den Plan offen: Rechenregel als Vorschlag an Silas (17.11.2026), bis dahin Start wie bis V7.4 («jetzt» × 20/50/30), noch kein eigener Wert |
+| Trainingsumfang: Kurve, Bereich, Regler mit Prozent und Stufe, schraffierte Enden | Blatt «Trainingsumfang»: Kurve bis zum Hauptrennen, Bereich 50–150 %, Regler mit Sperrzonen, Wort und Farbe je Bereich (steigerung-1.0) | ein Regler für alle drei Sportarten (Silas' Wunsch); 100 % = gleichmässig bis zur Woche vor dem Taper (wie bisher), Obergrenze 10 % pro Woche als feste Grenze; eigene Worte (sanft, ausgewogen, zügig, steil, maximal) |
 | Indoor Training Einstellungen (temporäre Phase) für Rad und Laufen | Indoor-Phase von … bis … (indoor-phase-1.0) | Dauer und Inhalt bleiben; einzelne Einheiten auf ihrer Seite umstellbar (nur Abweichungen gespeichert) |
 | Schwimm Equipment | Brett, Pullbuoy, Flossen, Paddles (schwimmeinheit-1.2) | ohne Brett Beine in Seitlage mit Flossen, ohne Pullbuoy kein Pull – die Zeit geht in die Hauptserie |
 | Standard Bahnlänge | Standard-Bahnlänge 25/50 m; je Einheit auf der Einheit-Seite (einheit-felder-1.1) | vorher je Gerät |
-| Stile | Kraul immer, dazu Rücken, Brust, Delfin im Ein- und Ausschwimmen | Technik und Hauptserien bleiben Kraul (Triathlon); auf der Uhr «Freistil», die Stile im Text |
-| Beginner Modus | – | nicht Teil von Etappe 3 |
+| Beginner Modus (Schalter) | Anfänger-Modus (Schalter): einfache Übungen, kürzere Wiederholungen, längere Pausen (schwimmeinheit-1.2) | Wirkung eigene Festlegung, im Wissen beschrieben |
+| Stile | Kraul immer, dazu Rücken und/oder Brust: je Woche einer als Teil am Ende des Ein- und Ausschwimmens, auf der Uhr mit diesem Stil (garmin-senden-1.2) | Technik und Hauptserien bleiben Kraul (Triathlon); Kraul nicht abwählbar; Delfin plant die Seite nicht |

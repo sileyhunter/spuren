@@ -37,8 +37,9 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   (`V66.aendern` Art «erholung»), lockere Fassung im Garmin-Auftrag (`V66.garminAuftrag` opt.ampel, `garmin_senden.py ampel`, Entscheid A7)
 - **V7.5 (Etappe 3 «Planeinstellungen», planeinstellungen-1.0):** `js/v75.js` (ohne DOM: Einstellungen prüfen und zusammenführen `V75.pruefen`/`V75.einstellungen`,
   Basis-Fitness je Sportart basis-1.0 `V75.basis`/`V75.fitness`, Steigerung steigerung-1.0 `V75.rampe`/`V75.verlauf`, Indoor-Phase indoor-phase-1.0
-  `V75.indoorAnwenden`), `js/v75-ui.js` (Ansicht Plan → Planeinstellungen mit Blättern; `V75UI.einstellungen`, `.schwimmOpt`, `.pool`, `.drinnenFeld`),
-  `tests/test_v75.cjs`; Schwimm-Einheit schwimmeinheit-1.2 in `js/schwimmen.js` (Hilfsmittel, Stile), Bahnlänge je Einheit und `drinnen` false einheit-felder-1.1
+  `V75.indoorAnwenden`), `js/v75-ui.js` (V7.5.1: Blatt-Folge Laufen → Rad → Schwimmen → Trainingsumfang `V75UI.flow`; `V75UI.einstellungen`, `.schwimmOpt`,
+  `.pool`, `.drinnenFeld`), `tests/test_v75.cjs`; Schwimm-Einheit schwimmeinheit-1.2 in `js/schwimmen.js` (Hilfsmittel, Stile als eigener Teil, Anfänger-Modus),
+  Stil je Schritt an Garmin garmin-senden-1.2 (`V66.STIL_GARMIN`, `tools/garmin_senden.py`), Bahnlänge je Einheit und `drinnen` false einheit-felder-1.1
   in `js/v66.js`, Stunden je Sportart im Plan-Kontext `js/v64-ui.js` (`K.basis75`, `K.rampe`), Wochenstunden `js/v56.js`
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
@@ -370,8 +371,9 @@ nur Schwimmen, nicht Bibliothek) und `drinnen: false` bleibt (ausdrücklich drau
 `merge_daily.einheit_feld_pruefen` (gleiche Regeln wie `V66.feldPruefen`); eine gesperrte Einheit wird nur entsperrt, nie verschoben, geändert oder entfernt. V6.4: `modell` (gewähltes Trainingsmodell
 → `modell_add` → `plan_modell`; `merge_daily.modell_pruefen`: bekanntes Modell, Wechsel als Datum; gleiche ID ersetzt mit Audit). V6.5: `planwahl`
 («Ich folge» je Tag → `planwahl_add` → `plan_wahl`; `merge_daily.planwahl_pruefen`: Datum, ID «pw-Datum», Wahl enduco/vorschlag/frei; gleicher Tag ersetzt mit Audit).
-V7.5: `planeinstellung` (je Gruppe «pe-steigerung» {wert}, «pe-basis» {schwimm, rad, lauf}, «pe-indoor-rad»/«pe-indoor-lauf» {von, bis}, «pe-schwimm» {hilfsmittel, pool,
-stile} → `planeinstellung_add` → `plan_einstellungen`; `merge_daily.planeinstellung_pruefen` wie `V75.pruefen`; gleiche ID ersetzt mit Audit, eine ältere Fassung (`geaendert`) nie). V6.2.3: `garmin_verlauf` (Datei aus
+V7.5: `planeinstellung` (je Gruppe «pe-steigerung» {wert}, «pe-indoor-rad»/«pe-indoor-lauf» {von, bis}, «pe-schwimm» {hilfsmittel, pool, stile (ruecken/brust),
+anfaenger (V7.5.1)} → `planeinstellung_add` → `plan_einstellungen`; `merge_daily.planeinstellung_pruefen` wie `V75.pruefen`; gleiche ID ersetzt mit Audit, eine ältere
+Fassung (`geaendert`) nie; «pe-basis» gibt es erst mit Silas' Entscheid zur Regel und wird bis dahin abgelehnt). V6.2.3: `garmin_verlauf` (Datei aus
 `tools/garmin_export.py`, auf der Seite gewählt → `garmin_export.einspielen`, nur fehlende Tageswerte; mehrere Dateien vor einem Update werden seit
 V6.4.4 alle eingespielt, `garmin_verlauf` darf eine Liste sein). V5.9.3: `routen` (im Planer gespeicherte Routen → `routes`, gleiche ID ersetzt mit Audit), `routen_entfernt` (auf der Seite gelöscht → aus
 `routes` entfernt, alte Fassung ins Audit), `laktat_punkte_bestaetigt` («Laktat hier» aus dem Explorer auf der Seite bestätigt → Kurzcheck in
@@ -460,7 +462,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - Start auf «Heute» (Hash-Links wie `#laktat`, `#plan`, `#wissen`, `#planvergleich` oder `#checkin` gehen direkt; `#checkin` öffnet das Check-in-Blatt;
   alte Namen über `ALIAS`: `#training` → `#umfang`). Fünf Bereiche in der Leiste (`#leiste`, `GRUPPEN` in index.html): Heute · Kalender · Plan · Analyse ·
   Outdoor (Karte); ab 1024 px als Seitenleiste links (`--v7-oben` aus `V7UI`). Erste Ebene einfach, Einzelheiten als eigene Ansicht mit «Zurück» oben
-  links (`ELTERN`: Ansicht → [Elternansicht, Titel]; `.v7-kopf`), keine Unterleisten mehr. Plan: plan-einstellungen (V7.5), plan-rennen, plan-modell, plan-stunden, plan-aufbau,
+  links (`ELTERN`: Ansicht → [Elternansicht, Titel]; `.v7-kopf`), keine Unterleisten mehr. Plan: plan-rennen, plan-modell, plan-stunden, plan-aufbau,
   plan-tests. Analyse: Start `analyse` (Karten, `V7UI`) → umfang, intensitaet, erholung, leistung, laktat, planvergleich, ausdauer, tagebuch,
   schwimmen, koerper. Labor (labor, wissen, bibliothek) öffnet über das Profil oben rechts (Einstellungen), nicht über die Leiste.
 - Karten wurden in V7 zwischen Ansichten verschoben, ihre IDs blieben. `QUELLEN` in index.html nennt, welche alte Ansicht sie zeichnet (z. B.
@@ -495,20 +497,28 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - Änderungen nur über `V66UI.aendern` (Mein Plan) bzw. `V66UI.einheitSenden` (Export); vergangene Tage nur lesen, gesperrte Tage und Einheiten wie oben.
 - Farben nur über Variablen bzw. `V6.ZONEN`; neue Symbole in `V6.ICON`.
 
-## Planeinstellungen (V7.5, planeinstellungen-1.0, Etappe 3 des Auftrags V7.3, freigegeben am 17.11.2026)
-- Ansicht Plan → «Plan verwalten» → Planeinstellungen (`#plan-einstellungen`, `js/v75-ui.js`), Vorbild die Planeinstellungen von enduco (Aufbau und Antippen;
-  Texte, Symbole und Grafiken eigen). Gespeichert über «Direkt speichern» (Eingabe `planeinstellung`); ohne Eintrag gilt der Standard = Verhalten bis V7.4.
-- **Basis-Fitness (basis-1.0):** angezeigt die Fitness je Sportart (42-Tage-Mittel ihrer Last mit `config.load_model`, Stand zu Tagesbeginn; nur zum Vergleich mit
-  Enduco). Der Plan beginnt beim gewohnten Umfang je Sportart = Anteil an den 8 abgeschlossenen Wochen × «jetzt» (saison-1.2), oder beim eigenen Wert (0–30 h,
-  halbe Stunden). Ein früher in Wochenstunden gespeichertes «jetzt» skaliert den gewohnten Umfang weiter; die Wochenstunden-Ansicht speichert nur noch die Spitze.
+## Planeinstellungen (V7.5, planeinstellungen-1.0, Etappe 3 des Auftrags V7.3, freigegeben am 17.11.2026; V7.5.1 nach dem Auftrag nachgebaut)
+- Ein Blatt als Folge wie die Vorlage: Laufen → Rad → Schwimmen → Trainingsumfang (unten «‹», «Weiter», auf dem letzten «Fertig ✓»; `V75UI.flow`), geöffnet über
+  Plan → «Plan verwalten» (zuoberst), das Profil (Training; «‹» auf dem ersten Blatt zurück ins Profil), die Wochenstunden («Trainingsumfang ändern», direkt beim
+  letzten Blatt) und den Link `#plan-einstellungen` (Plan mit dem Blatt). Vorbild die Planeinstellungen von enduco (Aufbau und Antippen; Texte, Symbole und Grafiken
+  eigen). Jede Auswahl wird beim «Übernehmen» gespeichert, der Anfänger-Modus beim Umschalten, die Steigerung mit «Fertig ✓» (über «Direkt speichern», Eingabe
+  `planeinstellung`); ohne Eintrag gilt der Standard = Verhalten bis V7.4.
+- **Basis-Fitness (basis-1.0):** angezeigt die Fitness je Sportart im Ring (42-Tage-Mittel ihrer Last mit `config.load_model`, Stand zu Tagesbeginn; zum Vergleich
+  mit Enduco). Wie sie den Start des Plans bestimmt, ist offen (Auftrag: «Rechenregel zuerst als Vorschlag»; Vorschlag vom 17.11.2026: 7 × Fitness ÷ Last pro Stunde
+  der Sportart, Alternative Anteil der 8 Wochen × «jetzt»). Bis zu Silas' Entscheid beginnt der Plan wie bis V7.4 bei «jetzt» × 20/50/30; «jetzt» und Spitze
+  stehen wieder in den Wochenstunden. Kein eigener Wert, bis die Regel feststeht.
 - **Steigerung (steigerung-1.0):** ein Regler für alle drei Sportarten (Silas' Wunsch), 50–150 % in 5er-Schritten. Jede Sportart von der Basis zu Spitze ×
   aufteilung-1.0; Anteil des Wegs nach i Wochen min(1, Regler · i/(N − 1)), N = Wochen bis zum Taper; 100 % = genau saison-1.2. Höchstens 10 % (mindestens 0,5 h)
   über der Woche davor (eigene Festlegung, wie das Maximum bei enduco). Woche 0 bleibt die Basis; Erholung 65 %, B-Rennen 50 %, Taper 60/40 % unverändert.
-  Vergangene Wochen (vergleich-1.4) mit den Einstellungen, die vor ihrem Montag gespeichert waren (`V75.einstellungen` opt.bis).
+  Vergangene Wochen (vergleich-1.4) mit den Einstellungen, die vor ihrem Montag gespeichert waren (`V75.einstellungen` opt.bis). Je Bereich ein Wort und eine Farbe
+  (`V75UI.STUFEN`, eigene Worte): sanft 50–70, ausgewogen 75–110 (100 = Standard), zügig 115–125, steil 130–140, maximal 145–150 %; Kurve bis zum Hauptrennen
+  (Belastungswochen ohne Erholungs-Dellen, Taper, Achse ab 0 h) mit dem Bereich 50–150 %, live beim Ziehen; Sperrzonen an beiden Enden des Reglers.
 - **Indoor-Phase (indoor-phase-1.0):** je Rad und Laufen ein Zeitraum (höchstens ein Jahr). Einheiten ohne eigene Wahl (`drinnen_fest`) gelten dort als drinnen –
   angewendet in `js/v64-ui.js` nach Mein Plan und vor der Ampel (lockere Fassung und Garmin-Auftrag bleiben drinnen). Dauer und Inhalt bleiben; Bibliothek bleibt.
-- **Schwimmen:** Equipment (Brett, Pullbuoy, Flossen, Paddles), Standard-Bahnlänge (25/50; vorher je Gerät `sf.sw.becken`, das als Rückfall bleibt), Stile neben
-  Kraul (Rücken, Brust, Delfin; Standard Rücken wie bisher) → schwimmeinheit-1.2. Je Einheit die Bahnlänge auf der Einheit-Seite (einheit-felder-1.1 `pool`).
+- **Schwimmen:** Equipment (Brett, Pullbuoy, Flossen, Paddles), Standard-Bahnlänge (25/50; vorher je Gerät `sf.sw.becken`, das als Rückfall bleibt), Anfänger-Modus
+  (Schalter), Stile neben Kraul (Rücken, Brust; Kraul immer; Standard Rücken wie bisher; Delfin plant die Seite nicht) → schwimmeinheit-1.2: je Woche ein gewählter Stil
+  (abwechselnd) als eigener Teil am Ende des Ein- und Ausschwimmens, ganze Bahnen, auf der Uhr mit diesem Stil (garmin-senden-1.2). Je Einheit die Bahnlänge auf
+  der Einheit-Seite (einheit-felder-1.1 `pool`). Vorbelegt am 17.11.2026 aus Silas' Enduco-Einstellungen (Bildschirmfoto): 50 m, Kraul und Brust, alle vier Hilfsmittel.
 - Nach dem Speichern rechnen Plan, Kalender und Heute neu (Ereignis «meinplan»); offene Garmin-Aufträge dieser und der nächsten Woche werden abgeglichen
   (`V66UI.auftraegeAbgleichen`). Nichts davon geht an Enduco. Regel ändern = Version in `V75.VERSIONS`, Wissen (Kapitel «planeinstellungen») und `tests/test_v75.cjs`.
 
@@ -630,7 +640,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
   Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
   Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
-- **Wissen `wissen-1.14` (`js/wissen.js`; 1.14 = V7.5 Kapitel «planeinstellungen», 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.13 = V7.4 Ampel passt das Training an (Kapitel «erholung», Düking 2021, Manresa-Rocamora 2021), 1.12 = V7.3.2 Übungen aus der Enduco-Liste, 1.11 = V7.3 Etappe 2 Schwimmen,
+- **Wissen `wissen-1.15` (`js/wissen.js`; 1.15 = V7.5.1 Planeinstellungen als Blatt-Folge, Basis-Regel offen, Anfänger-Modus, Stile auf der Uhr; 1.14 = V7.5 Kapitel «planeinstellungen», 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.13 = V7.4 Ampel passt das Training an (Kapitel «erholung», Düking 2021, Manresa-Rocamora 2021), 1.12 = V7.3.2 Übungen aus der Enduco-Liste, 1.11 = V7.3 Etappe 2 Schwimmen,
   Puls und RPE an Garmin im Kapitel «modelle», 1.10 = V7.3 Einheit als
   Schritte, Einfahren und Intervall-Intensität, RPE je Abschnitt im Kapitel «intervalle»; 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
   1.3: Kapitel «Vorschlag und Enduco vergleichen», 1.4: Prüfung der Quellen – Formulierungen nicht stärker als die Studien, eigene Festlegungen
@@ -654,7 +664,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   und ab `config.planvergleich_ab` (falls gesetzt; sonst erste ganze Woche nach dem ersten Kalendereintrag). Sonst «teil» bzw. «nur-uhr», sichtbar.
   Regel ändern = Version in `V7.VERSIONS` erhöhen und `tests/test_v7.cjs` nachführen.
 
-## An Garmin senden (V6.6, garmin-senden-1.0, Entscheid E3 vom 13.11.2026; 1.1 = V7.3 Etappe 2: Schwimmen, Puls, RPE)
+## An Garmin senden (V6.6, garmin-senden-1.0, Entscheid E3 vom 13.11.2026; 1.1 = V7.3 Etappe 2: Schwimmen, Puls, RPE; 1.2 = V7.5.1: Stil je Schritt)
 - Silas' Wunsch: eigene Einheiten von Hand bis eine Woche voraus an Garmin (Fenix und Edge), automatisch nur am Vortag um 23 Uhr (er passt den
   nächsten Tag bis etwa 23 Uhr an). Die Seite legt dafür nur einen Auftrag an; ausgeführt wird er im Nacht-Update (Schritt 3, als Letztes).
 - Auftrag je Tag (`garmin_auftraege`, ID «gs-<Datum>»): modus «senden» (nächstes Nacht-Update), «auto» (Nacht-Update am Vortag ab 23:00), «aus».
@@ -663,9 +673,10 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   mit eigenem Bereich in bpm (ID 4, ohne zoneNumber; `V66.garminPuls`, Renntempo = oberes Drittel von Z2, eigene Festlegung) oder RPE ohne Ziel
   mit RPE im Text; aus dem aktiven Zonenprofil, Z1 und Pausen ohne Ziel, Z5 nach oben +15 % bzw. Puls +10 % (eigene Festlegung), Wiederholungen
   als eine Ebene, höchstens 50 Schritte, Fassung = Prüfsumme). **1.1 Schwimmen** (`V66.garminSchwimm`, Format wie Enduco aus `get_workout_by_id`
-  raw gelesen): sportType 4 «swimming», `poolLength` 25/50 mit `poolLengthUnit` meter (Bahnlänge des Geräts, `SWUI.becken`), Strecken in ganzen
+  raw gelesen): sportType 4 «swimming», `poolLength` 25/50 mit `poolLengthUnit` meter (Bahnlänge der Einheit, sonst Standard aus den Planeinstellungen, `SWUI.becken`), Strecken in ganzen
   Bahnen (distance), Pausen am Beckenrand als rest/fixed.rest, Übungen als «other» über die ganze Bahn («½ L | Name | Technik | RPE … | Bahn locker
-  beenden»), Wiederholungen mit `skipLastRestStep` false, Stil free, nötige Hilfsmittel als `equipmentType` (fins 1, kickboard 2, paddles 3 aus
+  beenden»), Wiederholungen mit `skipLastRestStep` false, Stil free (1.2: je Schritt wie in der Einheit, Rücken backstroke 2, Brust breaststroke 3 wie in den
+  Enduco-Workouts mit Brust; das ganze Einschwimmen «warmup»), nötige Hilfsmittel als `equipmentType` (fins 1, kickboard 2, paddles 3 aus
   Enduco-Workouts; pull_buoy 4 am 17.11.2026 mit einem Test-Upload bestätigt), freiwillige im Text; mit CSS-Test Nebenziel
   swim.css.offset (17) = CSS-Geschwindigkeit − Zielgeschwindigkeit (m/s) und Tempo im Text, ohne Test bzw. Metrik RPE nur RPE im Text. Die Uhr
   rechnet die Tempo-Ziele mit ihrer eigenen CSS; Garmin liefert sie nicht (get_user_profile geprüft am 16.11.2026), die Seite sagt es im
@@ -856,8 +867,10 @@ Name oder Synonym, Übungsstrecke 12,5/25/50 m und nötige Hilfsmittel wie dort,
 aus drei von fünf Gruppen (`SW.ROTATION`, eigene Einteilung), jede Gruppe beim nächsten Mal mit der nächsten Übung; «Schulterdehnung» nur im Katalog
 (Ausführung unklar). schwimmeinheit-1.1: immer drei Übungen je 2 ×, Strecke laut Liste, dann die Bahn locker fertig, 5 s Pause (wie Enduco); keine
 Brett-Beine als Übung, wenn die Einheit einen Beine-Block hat. schwimmeinheit-1.2 (V7.5, Planeinstellungen): Übungen nur mit vorhandenen Hilfsmitteln; ohne Brett
-Beine in Seitlage mit Flossen, ohne beides kein Beine-Block; ohne Pullbuoy kein Pull; Ein- und Ausschwimmen mit den gewählten Stilen gemischt (Kraul immer, auf der Uhr
-«free»); die Technikübungen stehen immer direkt nach dem Einschwimmen (Silas' Wunsch vom 17.11.2026, Test in `tests/test_v75.cjs`).
+Beine in Seitlage mit Flossen, ohne beides kein Beine-Block; ohne Pullbuoy kein Pull; im Ein- und Ausschwimmen am Ende ein Teil im Stil der Woche (Rücken bzw. Brust,
+abwechselnd, wenn beide gewählt; auf der Uhr backstroke bzw. breaststroke, sonst «free», V7.5.1); Anfänger-Modus (V7.5.1): keine anspruchsvollen Übungen (`SW.ANSPRUCHSVOLL`),
+15 s Pause, Hauptserie 100 m mit 45 s, CSS 50 m mit 30 s, Beine und Steigerungen 25 m, Pull 50 m mit 30 s; die Technikübungen stehen immer direkt nach dem
+Einschwimmen (Silas' Wunsch vom 17.11.2026, Test in `tests/test_v75.cjs`).
 Protokoll-Vorlagen: `protokolle` (Liste mit `id name sport ablauf blut ende rahmen status`), ändern über `"protokolle": [ … ]` in `work/new.json`.
 **Testplan (V6.2, testplan-1.0, `js/v62.js`):** Die Seite schlägt Tests nach festen Regeln selbst vor (Status «vorschlag», Regel sichtbar), in
 Testkalender, Kalender und auf Heute (heute/morgen): CSS alle 6–8 Wochen am gleichen Wochentag wie zuletzt; Rad-Stufentest alle 8 Wochen am Samstag

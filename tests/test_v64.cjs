@@ -244,7 +244,7 @@ test("Wissen: Regel-Liste verweist auf vorhandene Versionen und Kapitel", () => 
 
 test("Wissen 1.2/1.3: Kapitel «aufbau» und «vergleich» mit Quellen und Regeln", () => {
   const WS = require("../js/wissen.js");
-  assert.equal(WS.VERSION, "wissen-1.14");
+  assert.equal(WS.VERSION, "wissen-1.15");
   const k = WS.kapitel("aufbau");
   assert.ok(k, "Kapitel aufbau fehlt");
   const v = WS.verweise(k.text.join(" ") + " " + k.kurz);

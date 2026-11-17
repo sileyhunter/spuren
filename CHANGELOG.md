@@ -1,5 +1,24 @@
 # Änderungen
 
+## V7.5.1 · 17.11.2026 · Etappe 3 nach dem Auftrag: Blatt-Folge, Anfänger-Modus, Stile auf der Uhr (garmin-senden-1.2, wissen-1.15)
+- **Planeinstellungen als Folge wie die Vorlage:** Laufen → Rad → Schwimmen → Trainingsumfang, unten «‹» und «Weiter», auf dem letzten «Fertig ✓».
+  Geöffnet über Plan → Plan verwalten (zuoberst), das Profil (Training) und die Wochenstunden («Trainingsumfang ändern»); der Link `#plan-einstellungen`
+  öffnet Plan mit dem Blatt. Die eigene Ansicht aus V7.5 entfällt. Jede Auswahl wird beim «Übernehmen» gespeichert, die Steigerung mit «Fertig ✓».
+- **Basis-Fitness:** Die Ringe zeigen die Fitness je Sportart; wie sie den Start des Plans bestimmt, legt Silas nach dem Vorschlag vom 17.11.2026 fest
+  (so verlangt der Auftrag: «Rechenregel zuerst als Vorschlag»). Bis dahin beginnt der Plan wieder wie bis V7.4 bei «jetzt» mit 20/50/30 (die Regel aus V7.5,
+  «Anteil der 8 Wochen», ist zurückgenommen), «jetzt» steht wieder in den Wochenstunden, und es gibt keinen eigenen Wert («pe-basis» wird abgelehnt).
+- **Trainingsumfang:** je Bereich ein Wort und eine Farbe (sanft, ausgewogen mit dem Standard 100 %, zügig, steil, maximal), Griff in der Farbe des Bereichs;
+  die Kurve reicht bis zum Hauptrennen (mit Taper, Achse ab 0 h), Fläche = Bereich 50–150 %, live beim Ziehen.
+- **Schwimmen (schwimmeinheit-1.2):** Anfänger-Modus als Schalter – nur einfache Übungen mit 15 s Pause, Hauptserie 100 m mit 45 s, CSS 50 m mit 30 s, Beine
+  und Steigerungen 25 m, Pull 50 m mit 30 s; die Übungen bleiben direkt nach dem Einschwimmen. Stile: Kraul immer, dazu Rücken und/oder Brust (Delfin
+  entfällt); je Woche ein gewählter Stil (abwechselnd) als eigener Teil am Ende des Ein- und des Ausschwimmens, in ganzen Bahnen, statt «gemischt».
+- **An Garmin (garmin-senden-1.2):** dieser Teil geht mit seinem Stil an die Uhr – Rücken «backstroke», Brust «breaststroke» (Kennung aus einem
+  Enduco-Workout mit Brust gelesen), alles andere «free»; das ganze Einschwimmen ist «warmup». `tools/garmin_senden.py` prüft die drei Stile und liest sie
+  zurück. Auf der Fenix noch nicht geprüft.
+- Auf dem Gerät fallen Planeinstellungen weg, sobald die Daten dieselbe oder eine neuere Fassung haben oder sie ungültig sind (z. B. «pe-basis» aus V7.5).
+- Wissen 1.15 (Kapitel «Planeinstellungen»: Basis offen, Worte des Reglers, Stile, Anfänger-Modus; «Aufbau» ohne «eigenes Verhältnis»). Tests in
+  `tests/test_v75.cjs` (Stil-Teile, Anfänger-Modus, Garmin-Stile), `tests/test_tools.py`, `tests/test_v73.cjs`.
+
 ## V7.5 · 17.11.2026 · Etappe 3: Planeinstellungen wie bei enduco (planeinstellungen-1.0, basis-1.0, steigerung-1.0, indoor-phase-1.0, wissen-1.14)
 - **Neue Ansicht Plan → Planeinstellungen** (erste Zeile unter «Plan verwalten»): Trainingsumfang mit Kurve, je Sportart Basis-Fitness, für Rad und Laufen
   die Indoor-Phase, fürs Schwimmen Equipment, Standard-Bahnlänge und Stile. Gespeichert mit «Direkt speichern» (Eingabe `planeinstellung` →

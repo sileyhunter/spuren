@@ -74,9 +74,13 @@
         ["pb", "pb_offiziell", (e) => e.id], ["css", "css_tests", (e) => e.id], ["fehler", "fehlerboard", (e) => e.id],
         ["rpe", "rpe", (e) => e.id], ["intervalle", "intervall_korr", (e) => e.id], ["laktat_punkte", "laktat_punkte", (e) => e.id], ["saison", "saison_plan", (e) => e.id],
         ["trainingsrouten", "trainingsrouten", (e) => e.id], ["routen", "routes", (e) => e.id], ["modell", "plan_modell", (e) => e.id], ["planwahl", "plan_wahl", (e) => e.id], ["planwoche", "plan_woche", (e) => e.id],
-        ["verfuegbarkeit", "plan_verfuegbarkeit", (e) => e.id], ["planeinstellung", "plan_einstellungen", (e) => e.id]];
+        ["verfuegbarkeit", "plan_verfuegbarkeit", (e) => e.id]];
       for (const [loc, key, idf] of pairs) { const m = srv(key, idf); this.data[loc] = (this.data[loc] || []).filter((e) => !(m.has(idf(e)) && same(m.get(idf(e)), stripLocal(e)))); }
       if (Array.isArray(this.data.startorte) && same(this.data.startorte, D.startorte || [])) this.data.startorte = null;
+      // V7.5.1 planeinstellungen-1.0: eine Einstellung gilt aus den Daten, sobald dort dieselbe oder eine neuere Fassung steht; ungültige (z. B. «pe-basis»
+      // aus V7.5, bis die Regel feststeht) fallen weg, statt liegen zu bleiben
+      const peD = new Map((D.plan_einstellungen || []).map((x) => [x.id, x]));
+      this.data.planeinstellung = (this.data.planeinstellung || []).filter((e) => !(window.V75 && window.V75.pruefen(e)) && !(peD.has(e.id) && String(peD.get(e.id).geaendert || "") >= String(e.geaendert || "")));
       const conf = new Set((D.lactate || []).map((l) => l.id));
       this.data.laktat_bestaetigt = (this.data.laktat_bestaetigt || []).filter((id) => !conf.has(id));
       const lpOk = new Set((D.laktat_punkte || []).filter((p) => p.status === "übernommen").map((p) => p.id));       // V5.9.3

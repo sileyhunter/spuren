@@ -368,9 +368,8 @@ def v5_merge(D, N):
         print("V5:", "; ".join(msg))
 
 
-PE_SPORT = ("schwimm", "rad", "lauf")
 PE_HILFSMITTEL = ("brett", "pullbuoy", "flossen", "paddles")
-PE_STILE = ("ruecken", "brust", "delfin")
+PE_STILE = ("ruecken", "brust")                        # Kraul immer dabei, Delfin plant die Seite nicht
 
 
 def _pe_datum(s):
@@ -384,9 +383,9 @@ def _pe_datum(s):
 
 def planeinstellung_pruefen(e):
     """V7.5 planeinstellungen-1.0 (gleiche Regeln wie V75.pruefen): Eintrag je Gruppe → Fehlertext oder None.
-    pe-steigerung {wert 50–150 in 5er-Schritten}; pe-basis {schwimm, rad, lauf: None oder 0–30 h in halben Stunden}; pe-indoor-rad/-lauf {von, bis
-    als Datum, bis nicht vor von, höchstens 366 Tage; beide None = keine Phase}; pe-schwimm {hilfsmittel ⊆ brett/pullbuoy/flossen/paddles, pool None/25/50,
-    stile ⊆ ruecken/brust/delfin, je ohne Doppel}. geaendert optional als Zeitpunkt."""
+    pe-steigerung {wert 50–150 in 5er-Schritten}; pe-indoor-rad/-lauf {von, bis als Datum, bis nicht vor von, höchstens 366 Tage; beide None = keine
+    Phase}; pe-schwimm {hilfsmittel ⊆ brett/pullbuoy/flossen/paddles, pool None/25/50, stile ⊆ ruecken/brust, je ohne Doppel, anfaenger optional ja/nein}.
+    geaendert optional als Zeitpunkt. (Die Basis je Sportart kommt erst mit Silas' Entscheid zur Regel.)"""
     if not isinstance(e, dict):
         return "kein Eintrag"
     g = e.get("geaendert")
@@ -401,12 +400,6 @@ def planeinstellung_pruefen(e):
     if i == "pe-steigerung":
         w = e.get("wert")
         return None if zahl(w) and float(w).is_integer() and 50 <= w <= 150 and int(w) % 5 == 0 else "Steigerung 50–150 % in 5er-Schritten"   # 100.0 aus JSON wie in JS gültig
-    if i == "pe-basis":
-        for s in PE_SPORT:
-            v = e.get(s)
-            if v is not None and not (zahl(v) and 0 <= v <= 30 and float(v * 2).is_integer()):
-                return "Basis 0–30 h pro Woche in halben Stunden"
-        return None
     if i in ("pe-indoor-rad", "pe-indoor-lauf"):
         if e.get("von") is None and e.get("bis") is None:
             return None
@@ -426,6 +419,8 @@ def planeinstellung_pruefen(e):
             return "Bahnlänge 25 oder 50 m"
         if not teil(e.get("stile"), PE_STILE):
             return "unbekannter Stil"
+        if e.get("anfaenger") is not None and not isinstance(e.get("anfaenger"), bool):
+            return "Anfänger-Modus ja oder nein"
         return None
     return "unbekannte Einstellung"
 

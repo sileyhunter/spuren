@@ -269,6 +269,7 @@
     const zeile = (z, ic, t, u) => `<li><button type="button" data-esz="${z}">${ico(ic, 22)}<span><b>${esc(t)}</b><small>${esc(u)}</small></span>${ico("weiter", 18)}</button></li>`;
     const ov = oeffne("einst", `<div class="te-head"><h2 id="v59-ov-h" tabindex="-1">Profil und Einstellungen</h2><button class="btn" data-x>Schliessen</button></div>
       <section class="es" id="es-training"><h3>Training</h3><ul class="v6-aktionen">
+        ${zeile("plan-einstellungen", "regler", "Planeinstellungen", "Basis-Fitness, Indoor-Phase, Schwimmen, Trainingsumfang")}
         ${zeile("laktat#zc-card", "fokus", "Trainingszonen", "Zonen je Sportart aus deinen Schwellen, Freigabe und Verlauf")}
         ${zeile("laktat", "ampel", "Laktat und Schwellen", "Stufentests, Einzelmessungen, LT1 und LT2")}
         ${zeile("plan-tests", "kalender", "Testkalender", "Wann welcher Test sinnvoll ist")}
@@ -303,7 +304,9 @@
       <section class="es" id="es-aus"><h3>Ausgeblendete Karten</h3><p class="hint">Ausgeblendet heisst nicht gelöscht: Die Daten bleiben. Einblenden gilt für dieses Gerät.</p>
         <ul class="es-l">${karten.map((el) => `<li><label class="row"><input type="checkbox" data-ein="${esc(el.id)}" ${ein.has(el.id) ? "checked" : ""}> <span><b>${esc(titel(el))}</b><br><small>${esc(el.dataset.ausblendbar)}</small></span></label></li>`).join("") || "<li>Keine.</li>"}</ul></section>`);
     ov.querySelectorAll("[data-esz]").forEach((b) => (b.onclick = () => {
-      const [v, id] = b.dataset.esz.split("#"); V.schliessen();
+      const [v, id] = b.dataset.esz.split("#");
+      if (v === "plan-einstellungen" && window.V75UI && window.V75UI.flow) { window.V75UI.flow({ zurueck: () => V.einstellungen() }); return; }   // V7.5.1: Blatt-Folge, «‹» zurück ins Profil
+      V.schliessen();
       if (window.APP && window.APP.showTab) window.APP.showTab(v); else location.hash = "#" + v;
       if (id) setTimeout(() => { const el = $(id); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); }, 160);
     }));

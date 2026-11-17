@@ -5,8 +5,10 @@
      in Metern und Bahnen (Beckenlänge 25 oder 50 m), Pausen am Beckenrand, Tempo aus dem CSS-Test (sonst Anstrengung nach Gefühl, RPE 1–10, nie ein
      geratenes Tempo). Der Umfang (Meter für die geplante Zeit) wird mit dem CSS bzw. ≈ mit deinem Tempo aus Becken-Einheiten bemessen und ist immer «≈».
    - schwimmeinheit-1.2 (V7.5, Planeinstellungen): nur Übungen mit vorhandenen Hilfsmitteln; ohne Brett die Beine in Seitlage mit Flossen, ohne beides
-     kein Beine-Block; ohne Pullbuoy kein Pull-Block (die Zeit geht in die Hauptserie); freiwillige Hilfsmittel nur, wenn vorhanden. Ein- und Ausschwimmen
-     mit deinen Stilen gemischt (Kraul immer). Die Technikübungen bleiben direkt nach dem Einschwimmen.
+     kein Beine-Block; ohne Pullbuoy kein Pull-Block (die Zeit geht in die Hauptserie); freiwillige Hilfsmittel nur, wenn vorhanden. Stile: Kraul immer;
+     Rücken bzw. Brust (gewählt, abwechselnd je Woche) als eigener Teil am Ende des Ein- und des Ausschwimmens, mit diesem Stil auch auf der Uhr.
+     Anfänger-Modus: nur einfache Übungen mit 15 s Pause, kürzere Wiederholungen (Hauptserie 100 m, CSS 50 m) mit längeren Pausen, Beine und
+     Steigerungen 25 m, Pull 50 m. Die Technikübungen bleiben direkt nach dem Einschwimmen.
    Eigene Festlegungen, keine Studienvorgaben; Texte eigen (nichts aus Apps oder Webseiten übernommen). */
 (function (root, factory) {
   const SW = factory();
@@ -248,9 +250,13 @@
     }
     return out;
   };
-  /** Stile neben Kraul (Planeinstellungen, schwimmeinheit-1.2): Ein- und Ausschwimmen gemischt; Technik, Beine, Haupt- und Pull-Serien bleiben Kraul. */
-  SW.STILE = { ruecken: "Rücken", brust: "Brust", delfin: "Delfin" };
-  SW.STILE_STANDARD = ["ruecken"];                                       // wie bis schwimmeinheit-1.1: «Kraul und Rücken gemischt»
+  /** Stile neben Kraul (Planeinstellungen, schwimmeinheit-1.2): als eigener Teil am Ende des Ein- und Ausschwimmens; Technik, Beine, Haupt- und
+   *  Pull-Serien bleiben Kraul (Triathlon). Delfin plant die Seite nicht (eigene Festlegung). */
+  SW.STILE = { ruecken: "Rücken", brust: "Brust" };
+  SW.STILE_STANDARD = ["ruecken"];                                       // wie bis schwimmeinheit-1.1 (dort «Kraul und Rücken gemischt»)
+  /** Anfänger-Modus: diese Übungen gelten als anspruchsvoll und kommen dann nicht vor (eigene Einteilung). */
+  SW.ANSPRUCHSVOLL = ["einarmig", "einarmig_brett", "dreidreidrei", "zwei_pro_seite", "atempyramide", "atmung5", "tarzan", "wasserwerfen", "entenpaddeln",
+    "seitlage", "zurueckspulen", "po_achsel_kopf", "wriggen", "senkrecht", "delfinbeine"];
   /** «Kraul», «Kraul und Brust», «Kraul, Rücken und Brust». */
   SW.stileText = function (stile) {
     const L = ["Kraul"].concat((stile || []).filter((k) => SW.STILE[k]).map((k) => SW.STILE[k]));
@@ -280,8 +286,9 @@
   const r25 = (m) => Math.max(25, Math.round(m / 25) * 25);
   /**
    * Schwimm-Einheit für «Mein Plan». art: «locker» | «css» | «test» | «kurs»; o = { min, css_s, pool (25|50), ref_s (s/100 m aus Becken-Einheiten, nur
-   * für den Umfang), woche (Nummer für die Übungswahl), hilfsmittel (vorhandene; ohne Angabe alle), stile (neben Kraul; ohne Angabe Rücken) }.
-   * → { v, art, pool, bloecke: [{ id, titel, teile }], meter, dauer_s, hilfsmittel, frei, umfang_quelle, ohne_hilfsmittel }
+   * für den Umfang), woche (Nummer für die Übungswahl), hilfsmittel (vorhandene; ohne Angabe alle), stile (neben Kraul; ohne Angabe Rücken), anfaenger }.
+   * Jeder Teil trägt stil («kraul», «ruecken», «brust»; Übungen «kraul»). → { v, art, pool, bloecke: [{ id, titel, teile }], meter, dauer_s, hilfsmittel,
+   * frei, umfang_quelle, stile, stil (der Woche), anfaenger, ohne_hilfsmittel }
    */
   SW.einheit = function (art, o) {
     o = o || {};
@@ -289,49 +296,60 @@
     const ref = css ? css + 12 : isNum(o.ref_s) ? o.ref_s : null, pace = { css, ref };
     // schwimmeinheit-1.2: vorhandene Hilfsmittel und Stile aus den Planeinstellungen (ohne Angabe wie bisher: alle Hilfsmittel, Kraul und Rücken)
     const vorhanden = Array.isArray(o.hilfsmittel) ? o.hilfsmittel : null, hat = (h) => !vorhanden || vorhanden.includes(h);
-    const stile = Array.isArray(o.stile) ? o.stile.filter((k) => SW.STILE[k]) : SW.STILE_STANDARD, gemischt = stile.length ? `${SW.stileText(stile)} gemischt` : "Kraul";
-    const geht = (id) => { const u = SW.uebung(id); return !!u && u.h.noetig.every(hat); };
-    // schwimmeinheit-1.1: Übungsstrecke wie in der Enduco-Liste (12,5/25/50 m), dann die Bahn locker fertig; 5 s Pause am Beckenrand wie dort
+    const stile = Array.isArray(o.stile) ? o.stile.filter((k) => SW.STILE[k]) : SW.STILE_STANDARD, anf = !!o.anfaenger;
+    const stil = stile.length ? stile[Math.abs(Math.round(o.woche || 0)) % stile.length] : null;      // Stil der Woche (abwechselnd, wenn beide gewählt)
+    const geht = (id) => { const u = SW.uebung(id); return !!u && u.h.noetig.every(hat) && !(anf && SW.ANSPRUCHSVOLL.includes(id)); };
+    // schwimmeinheit-1.1: Übungsstrecke wie in der Enduco-Liste (12,5/25/50 m), dann die Bahn locker fertig; 5 s Pause am Beckenrand wie dort (Anfänger 15 s)
     const T = min * 60, drill = (id, wdh) => { const u = SW.uebung(id), m = (SW.ENDUCO[id] || [25])[0], ganz = Math.ceil(m / pool - 1e-9) * pool;
-      return { wdh, m, zuende_m: ganz - m, zone: "tech", pause_s: 5, text: u.name, uebung: id, hilfsmittel: u.h.noetig.slice(), frei: u.h.frei.filter(hat) }; };
+      return { wdh, m, zuende_m: ganz - m, zone: "tech", pause_s: anf ? 15 : 5, text: u.name, uebung: id, hilfsmittel: u.h.noetig.slice(), frei: u.h.frei.filter(hat) }; };
     const B = [];
-    const add = (id, titel, teile) => B.push({ id, titel, teile: teile.map((t) => teil(t, pace)) });
+    const add = (id, titel, teile) => B.push({ id, titel, teile: teile.map((t) => teil(Object.assign({ stil: "kraul" }, t), pace)) });
+    // Ein- und Ausschwimmen: Kraul, am Ende ein Teil im Stil der Woche (ganze Bahnen, etwa ein Drittel bzw. die Hälfte)
+    const ganzeBahnen = (m, f) => Math.max(pool, Math.min(m - pool, Math.round((m * f) / pool) * pool));
+    const locker = (m, pause, kraulText, stilText, f, schluss) => {
+      const s2 = schluss ? `; ${schluss}` : "";
+      if (!stil || m < 2 * pool) return [{ wdh: 1, m, zone: "z1", pause_s: pause, text: kraulText + s2 }];
+      const x = ganzeBahnen(m, f);
+      return [{ wdh: 1, m: m - x, zone: "z1", pause_s: 0, text: kraulText }, { wdh: 1, m: x, zone: "z1", pause_s: pause, text: stilText + s2, stil }];
+    };
+    const stilName = stil ? SW.STILE[stil] : null;
     if (art === "kurs") {
       add("kurs", "Schwimmkurs", [{ wdh: 1, m: 0, zone: "z2", pause_s: 0, text: "Inhalt laut Kurs" }]);
     } else if (art === "test") {
-      add("ein", "Einschwimmen", [{ wdh: 1, m: 300, zone: "z1", pause_s: 30, text: `Lockeres Einschwimmen, ${gemischt}` }, { wdh: 4, m: 25, zone: "z3", pause_s: 20, text: "Steigerungen", uebung: "steigerung" }]);
+      add("ein", "Einschwimmen", locker(300, 30, "Lockeres Einschwimmen, Kraul", `Locker ${stilName}`, 1 / 3).concat([{ wdh: 4, m: 25, zone: "z3", pause_s: 20, text: "Steigerungen", uebung: "steigerung" }]));
       add("haupt", "Test", [{ wdh: 1, m: 400, zone: "max", pause_s: 120, text: "400 m maximal, gleichmässig einteilen – Zeit stoppen und merken" },
         { wdh: 1, m: 200, zone: "z1", pause_s: 120, text: "Erholung: locker schwimmen (mit den Pausen etwa 10 min bis zum 200er)" },
         { wdh: 1, m: 200, zone: "max", pause_s: 60, text: "200 m maximal – Zeit stoppen" }]);
-      add("aus", "Ausschwimmen", [{ wdh: 1, m: 300, zone: "z1", pause_s: 0, text: "Locker ausschwimmen; beide Zeiten auf der Seite eintragen" }]);
+      add("aus", "Ausschwimmen", locker(300, 0, "Locker ausschwimmen, Kraul", `Locker ${stilName} ausschwimmen`, 1 / 2, "beide Zeiten auf der Seite eintragen"));
     } else {
       const lang = T >= 55 * 60, kurz = T < 35 * 60;
       // Beine-Block: mit Brett, sonst in Seitlage mit Flossen, ohne beides keiner; die Übung des Blocks kommt nicht nochmals unter den Technikübungen
       const beine = art === "css" || kurz ? null : hat("brett") ? "beine_brett" : hat("flossen") ? "beine_seitlage" : null;
       const nicht = SW.UEBUNGEN.filter((u) => !geht(u.id)).map((u) => u.id).concat(beine ? [beine] : []);
       const ids = SW.uebungenDerWoche(o.woche, 3, nicht);    // drei Übungen wie bei Enduco, direkt nach dem Einschwimmen
-      add("ein", "Einschwimmen", [{ wdh: 1, m: kurz ? 200 : lang ? 400 : 300, zone: "z1", pause_s: 30, text: `Locker einschwimmen, ${gemischt}` }]);
+      add("ein", "Einschwimmen", locker(kurz ? 200 : lang ? 400 : 300, 30, "Locker einschwimmen, Kraul", `Locker ${stilName}`, 1 / 3));
       add("technik", "Technikübungen", ids.map((id) => drill(id, 2)));
-      if (art === "css") add("steig", "Steigerungen", [{ wdh: 4, m: 50, zone: "z3", pause_s: 20, text: "Steigerungen von locker bis zügig", uebung: "steigerung" }]);
-      else if (beine === "beine_brett") add("beine", "Beine", [{ wdh: 4, m: 50, zone: "z2", pause_s: 20, text: "Kraulbeine mit Brett", uebung: "beine_brett", hilfsmittel: ["brett"], frei: hat("flossen") ? ["flossen"] : [] }]);
-      else if (beine) add("beine", "Beine", [{ wdh: 4, m: 50, zone: "z2", pause_s: 20, text: "Kraulbeine in Seitlage mit Flossen (ohne Brett)", uebung: "beine_seitlage", hilfsmittel: ["flossen"], frei: [] }]);
-      const aus = { wdh: 1, m: kurz ? 100 : 200, zone: "z1", pause_s: 0, text: stile.length ? `Locker ausschwimmen, ${gemischt}` : "Locker ausschwimmen" };
-      const pull = art !== "css" && lang && hat("pullbuoy") ? { wdh: 4, m: 100, zone: "z2", pause_s: 20, text: hat("paddles") ? "Pull mit Pullbuoy, Paddles nach Gefühl" : "Pull mit Pullbuoy",
-        uebung: "pull", hilfsmittel: ["pullbuoy"], frei: hat("paddles") ? ["paddles"] : [] } : null;
-      const fix = B.reduce((s, b) => s + b.teile.reduce((x, t) => x + (t.dauer_s || 0), 0), 0) + teil(aus, pace).dauer_s + (pull ? teil(pull, pace).dauer_s : 0);
+      const kurzStrecke = anf ? 25 : 50;                                   // Anfänger-Modus: Beine und Steigerungen 25 m
+      if (art === "css") add("steig", "Steigerungen", [{ wdh: 4, m: kurzStrecke, zone: "z3", pause_s: 20, text: "Steigerungen von locker bis zügig", uebung: "steigerung" }]);
+      else if (beine === "beine_brett") add("beine", "Beine", [{ wdh: 4, m: kurzStrecke, zone: "z2", pause_s: 20, text: "Kraulbeine mit Brett", uebung: "beine_brett", hilfsmittel: ["brett"], frei: hat("flossen") ? ["flossen"] : [] }]);
+      else if (beine) add("beine", "Beine", [{ wdh: 4, m: kurzStrecke, zone: "z2", pause_s: 20, text: "Kraulbeine in Seitlage mit Flossen (ohne Brett)", uebung: "beine_seitlage", hilfsmittel: ["flossen"], frei: [] }]);
+      const aus = locker(kurz ? 100 : 200, 0, "Locker ausschwimmen, Kraul", `Locker ${stilName} ausschwimmen`, 1 / 2).map((t) => Object.assign({ stil: "kraul" }, t));
+      const pull = art !== "css" && lang && hat("pullbuoy") ? { wdh: 4, m: anf ? 50 : 100, zone: "z2", pause_s: anf ? 30 : 20, text: hat("paddles") ? "Pull mit Pullbuoy, Paddles nach Gefühl" : "Pull mit Pullbuoy",
+        uebung: "pull", hilfsmittel: ["pullbuoy"], frei: hat("paddles") ? ["paddles"] : [], stil: "kraul" } : null;
+      const fix = B.reduce((s, b) => s + b.teile.reduce((x, t) => x + (t.dauer_s || 0), 0), 0) + aus.reduce((x, t) => x + teil(t, pace).dauer_s, 0) + (pull ? teil(pull, pace).dauer_s : 0);
       const rest = isNum(ref) ? T - fix : null;
       let haupt;
       if (art === "css") {
-        const rep = (css ? css : ref || 120) + 15, n = isNum(rest) ? Math.max(6, Math.min(16, Math.floor(rest / rep))) : 10;
-        haupt = { wdh: n, m: 100, zone: "css", pause_s: 15, text: css ? "100 m im CSS-Tempo" : "100 m zügig (noch kein CSS-Test)" };
+        const m = anf ? 50 : 100, p = anf ? 30 : 15, rep = ((css ? css : ref || 120) * m) / 100 + p, n = isNum(rest) ? Math.max(anf ? 8 : 6, Math.min(anf ? 24 : 16, Math.floor(rest / rep))) : anf ? 12 : 10;
+        haupt = { wdh: n, m, zone: "css", pause_s: p, text: css ? `${m} m im CSS-Tempo` : `${m} m zügig (noch kein CSS-Test)` };
       } else {
-        const L = T >= 60 * 60 ? 400 : T >= 40 * 60 ? 300 : 200, rep = isNum(ref) ? L / 100 * ref + 30 : null;
-        const n = isNum(rest) && rep ? Math.max(1, Math.floor(rest / rep)) : Math.max(1, Math.round((T / 60 - 25) / 8));
-        haupt = { wdh: n, m: L, zone: "z2", pause_s: 30, text: "Ruhig und gleichmässig, auf die Übungen achten" };
+        const L = anf ? 100 : T >= 60 * 60 ? 400 : T >= 40 * 60 ? 300 : 200, p = anf ? 45 : 30, rep = isNum(ref) ? L / 100 * ref + p : null;
+        const n = isNum(rest) && rep ? Math.max(1, Math.floor(rest / rep)) : Math.max(1, Math.round((T / 60 - 25) / (anf ? 3 : 8)));
+        haupt = { wdh: n, m: L, zone: "z2", pause_s: p, text: "Ruhig und gleichmässig, auf die Übungen achten" };
       }
       add("haupt", "Hauptserie", [haupt]);
       if (pull) add("pull", "Pull", [pull]);
-      add("aus", "Ausschwimmen", [aus]);
+      add("aus", "Ausschwimmen", aus);
     }
     let meter = 0, dauer = 0, offen = false; const hm = new Set(), frei = new Set();
     for (const b of B) for (const t of b.teile) {
@@ -341,7 +359,7 @@
     for (const h of hm) frei.delete(h);
     return { v: SW.VERSIONS.einheit, art, pool, css_s: css, bloecke: B, meter: art === "kurs" ? null : meter, dauer_s: offen || art === "kurs" ? null : Math.round(dauer),
       hilfsmittel: [...hm], frei: [...frei], umfang_quelle: css ? "CSS-Test" : isNum(o.ref_s) ? "≈ dein Tempo aus Becken-Einheiten (kein Tempoziel)" : null,
-      stile: stile.slice(), ohne_hilfsmittel: vorhanden ? Object.keys(SW.HILFSMITTEL).filter((h) => h !== "schnorchel" && !vorhanden.includes(h)) : [] };
+      stile: stile.slice(), stil, anfaenger: anf, ohne_hilfsmittel: vorhanden ? Object.keys(SW.HILFSMITTEL).filter((h) => h !== "schnorchel" && !vorhanden.includes(h)) : [] };
   };
   /** Baustein-ID des Wochenvorschlags → Art der Schwimm-Einheit. */
   SW.artVon = (id) => ({ schwimm_locker: "locker", schwimm_css: "css", test_css: "test", schwimm_kurs: "kurs" }[id] || "locker");

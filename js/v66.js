@@ -703,7 +703,7 @@
     return out;
   };
 
-  /* ---------------- An Garmin senden (garmin-senden-1.1) ----------------
+  /* ---------------- An Garmin senden (garmin-senden-1.2) ----------------
      Einheiten aus Mein Plan als Garmin-Workout (Format von upload_workout), Name mit «IN · ». Wiederholungen als Gruppe (eine Ebene).
      Rad und Laufen nach der Trainingsmetrik der Einheit (einheit-felder-1.0): Leistung (power.between, Watt) bzw. Tempo (pace.zone, m/s,
      langsam → schnell) aus dem aktiven Zonenprofil, Puls (heart.rate.zone mit eigenem Bereich in bpm aus den Pulszonen, 1.1) oder RPE (ohne
@@ -713,8 +713,10 @@
      Beckenrand (fixed.rest), Übungen als Schritt «other» über die ganze Bahn («½ L … Bahn locker beenden»), nötige Hilfsmittel als equipmentType,
      freiwillige im Text, Stil Kraul; mit CSS-Test Nebenziel swim.css.offset (CSS-Geschwindigkeit − Zielgeschwindigkeit, m/s; die Uhr rechnet mit
      ihrer eigenen CSS) und Tempo im Text, ohne Test RPE im Text.
+     1.2 (V7.5.1, Planeinstellungen): Stil je Schritt wie in der Schwimm-Einheit (schwimmeinheit-1.2): Kraul «free», Rücken «backstroke», Brust
+     «breaststroke» (wie Enduco für Brust: strokeTypeId 3 aus einem Enduco-Workout gelesen); das ganze Einschwimmen ist «warmup».
      Nicht gesendet (mit Grund): Schwimmkurs, Tests, Kraft, Mobility. Bibliothek = Enduco-Workout, wird nur eingeplant. */
-  V66.VERSIONS.garmin = "garmin-senden-1.1";
+  V66.VERSIONS.garmin = "garmin-senden-1.2";
   V66.GARMIN_PREFIX = V64.EIGEN_PREFIX;
   V66.GARMIN_OFFEN = 1.15;
   V66.GARMIN_OFFEN_PULS = 1.1;
@@ -834,6 +836,9 @@
     pullbuoy: { id: 4, key: "pull_buoy", name: "Pullbuoy" }, schnorchel: { id: null, key: null, name: "Schnorchel" } };
   const SW_WORT = { z1: "locker", z2: "Grundlage", z3: "zügig", css: "CSS", tech: "Technik", max: "maximal" };
   const FREE = { strokeTypeId: 6, strokeTypeKey: "free" };
+  /** garmin-senden-1.2: Stil der Schwimm-Einheit → Garmin-Stil (Übungen und Pausen bleiben wie bisher). */
+  V66.STIL_GARMIN = { kraul: FREE, ruecken: { strokeTypeId: 2, strokeTypeKey: "backstroke" }, brust: { strokeTypeId: 3, strokeTypeKey: "breaststroke" } };
+  const STIL_WORT = { ruecken: "Rücken", brust: "Brust" };
   /** Bahnen als Text: 0,5 → «½ L», 1,5 → «1½ L», 6 → «6 L». */
   V66.bahnenText = function (x) {
     if (!isNum(x) || x <= 0) return null;
@@ -853,10 +858,10 @@
       endCondition: { conditionTypeId: 8, conditionTypeKey: "fixed.rest" }, endConditionValue: Math.round(s), targetType: KEIN_ZIEL }; };
     const schwimm = (b, t, i) => {
       const m = t.m || 0, d = m + (t.zuende_m || 0), L = Math.max(1, Math.ceil(d / pool - 1e-9)), dist = L * pool;
-      const typ = b.id === "ein" && i === 0 && t.zone === "z1" ? "warmup" : b.id === "aus" ? "cooldown" : t.zone === "tech" ? "other" : t.zone === "z1" ? "recovery" : "interval";
+      const typ = b.id === "ein" && t.zone === "z1" ? "warmup" : b.id === "aus" ? "cooldown" : t.zone === "tech" ? "other" : t.zone === "z1" ? "recovery" : "interval";
       const noetig = (t.hilfsmittel || []).filter((h) => V66.GARMIN_GERAET[h]), haupt = noetig.find((h) => V66.GARMIN_GERAET[h].id) || null;
       const rpe = /RPE\s*([\d–-]+)/.exec(String(t.rpe || ""));
-      const name = b.id === "technik" || b.id === "beine" ? t.text : b.titel;
+      const name = b.id === "technik" || b.id === "beine" ? t.text : STIL_WORT[t.stil] ? `${b.titel} ${STIL_WORT[t.stil]}` : b.titel;
       const teile = [V66.bahnenText(m / pool), name, SW_WORT[t.zone] || null, css && t.tempo ? t.tempo : rpe ? `RPE ${rpe[1]}` : null,
         /gemischt/i.test(t.text || "") ? "gemischt" : null,
         ...noetig.filter((h) => h !== haupt).map((h) => "mit " + V66.GARMIN_GERAET[h].name),
@@ -868,7 +873,7 @@
         const mitte = (t.tempo_s[0] + t.tempo_s[1]) / 2;
         Object.assign(st, { secondaryTargetType: { workoutTargetTypeId: 17, workoutTargetTypeKey: "swim.css.offset" }, secondaryTargetValueOne: r4(100 / css - 100 / mitte) });
       }
-      st.strokeType = FREE;
+      st.strokeType = V66.STIL_GARMIN[t.stil] || FREE;                                   // 1.2: Stil des Teils (Übungen Kraul)
       if (haupt) st.equipmentType = { equipmentTypeId: V66.GARMIN_GERAET[haupt].id, equipmentTypeKey: V66.GARMIN_GERAET[haupt].key };
       n++;
       return { st, dist };

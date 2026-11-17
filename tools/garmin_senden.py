@@ -1,4 +1,4 @@
-"""garmin-senden-1.1 (V6.6, Etappe 6.7, Entscheid E3 von Silas am 13.11.2026; 1.1 = V7.3 Etappe 2): Einheiten aus «Mein Plan» an Garmin senden.
+"""garmin-senden-1.2 (V6.6, Etappe 6.7, Entscheid E3 von Silas am 13.11.2026; 1.1 = V7.3 Etappe 2; 1.2 = V7.5.1): Einheiten aus «Mein Plan» an Garmin senden.
 
 Die Seite legt je Tag einen Auftrag an (Eingabe garmin_senden → merge_daily.py → garmin_auftraege), mit einer Momentaufnahme je Einheit:
 fertiges Garmin-Workout (Format von upload_workout, Name «IN · …») bzw. bei der Bibliothek nur die Workout-ID (Enduco-Workout, wird nur
@@ -10,6 +10,7 @@ Vermerk in plan_garmin hat; Enduco-Workouts werden nie geändert oder gelöscht.
 1.1: Schwimmen (swimming, 4) im Format der Enduco-Workouts (Bahnlänge, Strecken in ganzen Bahnen, Pausen fixed.rest, Schritt «other» für
 Übungen, Stil Kraul, Hilfsmittel als equipmentType, Nebenziel swim.css.offset); Rad und Laufen zusätzlich mit Pulsbereich (heart.rate.zone, bpm).
 Die Rücklese vergleicht auch Texte, Bahnlänge, Stil, Hilfsmittel und Nebenziele.
+1.2: Stil je Schritt wie in der Schwimm-Einheit: Kraul (free), Rücken (backstroke) oder Brust (breaststroke, wie in Enduco-Workouts).
 
 V7.4 ampel-plan-1.0 (Entscheid A7 vom 16.11.2026): Jede Einheit im Auftrag kann ihre lockere Fassung mittragen (`ampel`: Titel, Fassung, Workout).
 «ampel» rechnet im Morgen-Update, was zu tun ist: Ist der Entscheid von heute (ampel_anpassung) «vorsichtig» oder «krank» und nicht «Trotzdem wie
@@ -28,7 +29,7 @@ import re
 import sys
 import zoneinfo
 
-V = "garmin-senden-1.1"
+V = "garmin-senden-1.2"
 PREFIX = "IN · "
 TZ = zoneinfo.ZoneInfo("Europe/Zurich")
 AB_UHR = dt.time(23, 0)                   # automatisch frühestens um 23:00 am Vortag (Silas, E3)
@@ -43,6 +44,7 @@ KEIN_ZIEL = {"workoutTargetTypeId": 1, "workoutTargetTypeKey": "no.target"}
 PULS = {"workoutTargetTypeId": 4, "workoutTargetTypeKey": "heart.rate.zone"}
 CSS_OFFSET = {"workoutTargetTypeId": 17, "workoutTargetTypeKey": "swim.css.offset"}
 KRAUL = {"strokeTypeId": 6, "strokeTypeKey": "free"}
+STILE = (KRAUL, {"strokeTypeId": 2, "strokeTypeKey": "backstroke"}, {"strokeTypeId": 3, "strokeTypeKey": "breaststroke"})   # 1.2
 GERAET = {1: "fins", 2: "kickboard", 3: "paddles", 4: "pull_buoy"}
 QUELLEN = ("vorschlag", "eigen", "bibliothek")
 
@@ -131,7 +133,7 @@ def workout_pruefen(w):
                 or abs(v / pool - round(v / pool)) > 1e-9 or x.get("preferredEndConditionUnit") != METER:
             return "Strecke nicht in ganzen Bahnen (höchstens 2000 m)"
         zaehler["m"] += v * faktor
-        if x.get("strokeType") != KRAUL:
+        if x.get("strokeType") not in STILE:
             return "Stil ungültig"
         if "equipmentType" in x:
             g = x["equipmentType"] or {}

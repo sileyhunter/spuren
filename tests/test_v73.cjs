@@ -214,7 +214,9 @@ test("garmin-senden-1.1: Schwimmen wie Enduco – Bahnlänge, ganze Bahnen, Übu
       assert.ok(s.description.length <= 100, s.description);
       if (s.stepType.stepTypeKey === "rest") { assert.deepEqual(s.endCondition, { conditionTypeId: 8, conditionTypeKey: "fixed.rest" }); assert.ok(s.endConditionValue >= 5); continue; }
       assert.equal(s.endCondition.conditionTypeKey, "distance"); assert.equal(s.endConditionValue % pool, 0, "ganze Bahnen");
-      assert.deepEqual(s.strokeType, { strokeTypeId: 6, strokeTypeKey: "free" }); assert.ok(!s.secondaryTargetType, "ohne CSS-Test kein Tempoziel");
+      // garmin-senden-1.2: Stil je Schritt wie in der Einheit (Standard: am Ende von Ein- und Ausschwimmen ein Teil Rücken), sonst Kraul
+      const soll = /^\d+ L \| (Einschwimmen|Ausschwimmen) Rücken/.test(s.description) ? { strokeTypeId: 2, strokeTypeKey: "backstroke" } : { strokeTypeId: 6, strokeTypeKey: "free" };
+      assert.deepEqual(s.strokeType, soll, s.description); assert.ok(!s.secondaryTargetType, "ohne CSS-Test kein Tempoziel");
       assert.match(s.description, /RPE \d/);
     }
     assert.equal(L[0].stepType.stepTypeKey, "warmup"); assert.equal(L[L.length - 1].stepType.stepTypeKey, "cooldown");
@@ -265,7 +267,7 @@ test("garmin-senden-1.1: was beim Schwimmen nicht gesendet wird; Auftrag mit Sch
   assert.match(V66.garminWorkout(sw, SK, {}).fehler, /nicht berechenbar/, "ohne Schwimm-Einheit nichts geraten");
   const A = V66.garminAuftrag("2026-11-20", [sw, kurs], SK, "senden", "2026-11-17T20:00:00Z", swOpt(25, null));
   assert.deepEqual(A.einheiten.map((x) => x.uid), ["s"]); assert.equal(A.einheiten[0].workout.sportType.sportTypeKey, "swimming");
-  assert.deepEqual(A.ohne.map((x) => [x.uid, /Schwimmkurs/.test(x.grund)]), [["k", true]]); assert.equal(A.v, "garmin-senden-1.1");
+  assert.deepEqual(A.ohne.map((x) => [x.uid, /Schwimmkurs/.test(x.grund)]), [["k", true]]); assert.equal(A.v, "garmin-senden-1.2");
 });
 
 test("garmin-senden-1.1: Rad und Laufen nach Puls (eigener Bereich in bpm) oder RPE (ohne Ziel); gleiche Lage wie die Einheit-Seite", () => {

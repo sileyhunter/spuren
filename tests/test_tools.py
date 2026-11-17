@@ -1192,7 +1192,7 @@ _falsch_sw = {
     "ohne Bahnlänge": _mit_sw(lambda w, st: w.pop("poolLength")),
     "halbe Bahn als Strecke": _mit_sw(lambda w, st: st[_ueb].update(endConditionValue=25)),
     "Zeit statt Strecke": _mit_sw(lambda w, st: st[_ueb].update(endCondition={"conditionTypeId": 2, "conditionTypeKey": "time"})),
-    "Rücken statt Kraul": _mit_sw(lambda w, st: st[_ueb].update(strokeType={"strokeTypeId": 2, "strokeTypeKey": "backstroke"})),
+    "Delfin (plant die Seite nicht)": _mit_sw(lambda w, st: st[_ueb].update(strokeType={"strokeTypeId": 5, "strokeTypeKey": "fly"})),
     "unbekanntes Hilfsmittel": _mit_sw(lambda w, st: st[_ueb].update(equipmentType={"equipmentTypeId": 5, "equipmentTypeKey": "snorkel"})),
     "Hauptziel Tempo": _mit_sw(lambda w, st: st[_ueb].update(targetType={"workoutTargetTypeId": 6, "workoutTargetTypeKey": "pace.zone"}, targetValueOne=0.8, targetValueTwo=0.9)),
     "CSS-Abstand unmöglich": _mit_sw(lambda w, st: st[_ueb].update(secondaryTargetType={"workoutTargetTypeId": 17, "workoutTargetTypeKey": "swim.css.offset"}, secondaryTargetValueOne=2.0)),
@@ -1200,15 +1200,19 @@ _falsch_sw = {
     "Pause mit Strecke": _mit_sw(lambda w, st: st[_pz].update(preferredEndConditionUnit={"unitId": 1, "unitKey": "meter", "factor": 100.0})),
     "Schwimm-Schrittart am Rad": _mit(lambda a: a["einheiten"][0]["workout"]["workoutSegments"][0]["workoutSteps"][1].update(stepType={"stepTypeId": 7, "stepTypeKey": "other"})),
 }
-check("Garmin senden (1.1): Schwimmen – Kraul, ganze Bahnen, Übungen «other», Pausen fixed.rest, Hilfsmittel nötig = equipmentType, Kurs nicht gesendet",
+_swst = [x for x in _swf if (x.get("stepType") or {}).get("stepTypeKey") not in ("repeat", "rest")]
+check("Garmin senden (1.2): Schwimmen – Stil je Schritt (Übungen Kraul, Rücken am Ende von Ein- und Ausschwimmen), ganze Bahnen, Übungen «other», Pausen fixed.rest, Hilfsmittel nötig = equipmentType, Kurs nicht gesendet",
       _sw["sportType"]["sportTypeId"] == 4 and _sw["poolLength"] == 50
       and {(x.get("equipmentType") or {}).get("equipmentTypeKey") for z in _GA["sw_schwimm_locker_25_null"]["einheiten"][0]["workout"]["workoutSegments"][0]["workoutSteps"]
            for x in [z] + (z.get("workoutSteps") or [])} >= {"kickboard", "pull_buoy"}
-      and all((x.get("stepType") or {}).get("stepTypeKey") in ("repeat", "rest") or x.get("strokeType") == GS.KRAUL for x in _swf)
+      and all(x.get("strokeType") in GS.STILE for x in _swst)
+      and all(x.get("strokeType") == GS.KRAUL for x in _swst if x["stepType"]["stepTypeKey"] == "other")
+      and [x["strokeType"]["strokeTypeKey"] for x in _swst if x.get("strokeType") != GS.KRAUL] == ["backstroke", "backstroke"]
+      and all(("Rücken" in (x.get("description") or "")) == (x.get("strokeType") != GS.KRAUL) for x in _swst)
       and [u["uid"] for u in _GA["kurs"]["ohne"]] == ["s-kurs"] and not _GA["kurs"]["einheiten"] and GS.pruefen(_GA["kurs"]) is None
       and any("secondaryTargetType" in x for x in [y for z in _GA["sw_schwimm_css_25_105"]["einheiten"][0]["workout"]["workoutSegments"][0]["workoutSteps"] for y in [z] + (z.get("workoutSteps") or [])])
       and not any("secondaryTargetType" in x for x in _swf), str({k: GS.pruefen(v) for k, v in _GA.items() if k.startswith("sw_")}))
-check("Garmin senden (1.1): Prüfung lehnt beim Schwimmen ab – Bahnlänge, halbe Bahn, Zeit statt Strecke, Stil, Hilfsmittel, Hauptziel, CSS-Abstand, Pause",
+check("Garmin senden (1.2): Prüfung lehnt beim Schwimmen ab – Bahnlänge, halbe Bahn, Zeit statt Strecke, Stil (nur Kraul, Rücken, Brust), Hilfsmittel, Hauptziel, CSS-Abstand, Pause",
       all(_falsch_sw.values()), str({k: v for k, v in _falsch_sw.items() if not v}))
 check("Garmin senden (1.1): Puls als eigener Bereich (heart.rate.zone, bpm), RPE ohne Ziele",
       all(GS.pruefen(_GA[k]) is None for k in _GA if k.startswith(("puls_", "rpe_")))
@@ -1365,7 +1369,7 @@ json.dump(_wie_garmin(json.loads(_s1.stdout)["aktionen"][0]["workout"]), open(os
 _s2 = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "tools", "garmin_senden.py"), "rueck", os.path.join(_ts, "p.json"), "1", os.path.join(_ts, "r.json")],
                      capture_output=True, text=True)
 check("Garmin senden (1.1, Aufrufe): Schwimm-Auftrag → hochladen, Rücklese wie Garmin speichert «gleich»",
-      _s1.returncode == 0 and json.loads(_s1.stdout)["aktionen"][0]["art"] == "hochladen" and json.loads(_s1.stdout)["v"] == "garmin-senden-1.1"
+      _s1.returncode == 0 and json.loads(_s1.stdout)["aktionen"][0]["art"] == "hochladen" and json.loads(_s1.stdout)["v"] == "garmin-senden-1.2"
       and _s2.returncode == 0 and "RÜCKLESEN: gleich" in _s2.stdout, _s1.stderr + _s2.stdout + _s2.stderr)
 _DB2 = {"plan_garmin": [{"quelle": "bibliothek", "wid": 1000000009, "date": "2026-03-05", "vorhanden": False}]}
 bibliothek.einspielen(_DB2, {"planned": [{"date": "2026-03-05", "title": "Beispiel Lauf", "sport": "lauf", "dur_s": 2400, "wid": 1000000009, "quelle": "Enduco über Garmin"}]}, "2026-03-04")
@@ -1511,15 +1515,19 @@ _PE_FAELLE = [
     {"id": "pe-schwimm", "hilfsmittel": ["brett", "pullbuoy", "flossen", "paddles"], "pool": 50, "stile": ["brust"]},
     {"id": "pe-schwimm", "hilfsmittel": [], "pool": None, "stile": []}, {"id": "pe-schwimm", "hilfsmittel": ["brett", "brett"], "pool": 25, "stile": []},
     {"id": "pe-schwimm", "hilfsmittel": ["schnorchel"], "pool": 25, "stile": []}, {"id": "pe-schwimm", "hilfsmittel": [], "pool": 33, "stile": []},
-    {"id": "pe-schwimm", "hilfsmittel": [], "pool": 25, "stile": ["kraul"]}, {"id": "pe-anderes", "wert": 1}, {"id": "pe-steigerung", "wert": 100, "geaendert": "gestern"}]
+    {"id": "pe-schwimm", "hilfsmittel": [], "pool": 25, "stile": ["kraul"]}, {"id": "pe-anderes", "wert": 1}, {"id": "pe-steigerung", "wert": 100, "geaendert": "gestern"},
+    {"id": "pe-schwimm", "hilfsmittel": ["brett"], "pool": 50, "stile": ["ruecken", "brust"], "anfaenger": True},          # V7.5.1: Anfänger-Modus
+    {"id": "pe-schwimm", "hilfsmittel": [], "pool": None, "stile": [], "anfaenger": "ja"}, {"id": "pe-schwimm", "hilfsmittel": [], "pool": None, "stile": ["delfin"]},
+    {"id": "pe-schwimm", "hilfsmittel": [], "pool": 25, "stile": ["ruecken", "brust"], "anfaenger": False}]
 _rpe = subprocess.run(["node", "-e", "const V75 = require('./js/v75.js'); const F = JSON.parse(process.argv[1]); console.log(JSON.stringify(F.map((e) => V75.pruefen(e))));",
                        json.dumps(_PE_FAELLE)], cwd=ROOT, capture_output=True, text=True)
 _pe_js = json.loads(_rpe.stdout or "[]")
 _pe_py = [merge_daily.planeinstellung_pruefen(e) for e in _PE_FAELLE]
 check("Planeinstellungen: Python prüft wie die Seite (V75.pruefen) – gleiche Entscheide in allen Fällen",
       len(_pe_js) == len(_PE_FAELLE) and [x is None for x in _pe_js] == [x is None for x in _pe_py], _rpe.stderr + str(list(zip(_pe_js, _pe_py))))
-check("Planeinstellungen: gültig nur Steigerung 50–150 in 5er-Schritten, Basis in halben Stunden 0–30, Indoor-Phase höchstens ein Jahr, bekannte Hilfsmittel und Stile",
-      [x is None for x in _pe_py] == [True, False, False, False, True, True, False, False, False, True, True, False, False, False, False, True, True, False, False, False, False, False, False], str(_pe_py))
+check("Planeinstellungen: gültig nur Steigerung 50–150 in 5er-Schritten, Indoor-Phase höchstens ein Jahr, bekannte Hilfsmittel, Stile Rücken/Brust, Anfänger ja/nein; Basis erst mit der Regel",
+      [x is None for x in _pe_py] == [True, False, False, False, True, False, False, False, False, True, True, False, False, False, False, True, True, False, False, False, False, False, False,
+                                      True, False, False, True], str(_pe_py))
 _tp = tempfile.mkdtemp()
 json.dump({"activities": [], "days": []}, open(os.path.join(_tp, "d.json"), "w"))
 for _x in ({"id": "pe-steigerung", "v": "planeinstellungen-1.0", "wert": 120, "geaendert": "2026-03-02T08:00:00Z"},

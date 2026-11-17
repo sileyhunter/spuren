@@ -1086,62 +1086,67 @@ button.v73-opt { border: 0; padding: 0; background: none; color: var(--fg); font
 .aa-hinweis { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; }
 .kw-ampel { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--warn-text); }
 .v73-aa { margin: 12px 0 4px; border-radius: 14px; background: var(--surface-2); }
-/* V7.5 Etappe 3: Planeinstellungen (js/v75-ui.js) – Trainingsumfang mit Kurve und Regler, je Sportart Basis-Fitness, Indoor-Phase, Schwimmen */
-.pe-karte { background: none; border: 0; box-shadow: none; padding: 0; }
-.pe-ein { margin: 0 2px 12px; color: var(--muted); font-size: 13.5px; line-height: 1.45; }
-.pe-meldung { margin: 0 0 10px; padding: 10px 14px; border-radius: 12px; background: var(--ok-bg); color: var(--ok-text); font-weight: 600; font-size: 14px; }
-.pe-umfang { width: 100%; display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 0; border-radius: 16px; background: var(--surface); color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
-.pe-umfang:focus-visible, .pe-liste button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
-.pe-umfang-k { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.pe-umfang-k > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.pe-umfang-k small { color: var(--muted); font-size: 11.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
-.pe-umfang-k b { font: 700 20px/1.2 var(--f-body); }
-.pe-umfang-k em { font-style: normal; color: var(--muted); font-size: 13px; }
-.pe-umfang-k > svg { color: var(--faint); flex: none; }
-.pe-umfang-t { color: var(--muted); font-size: 12.5px; line-height: 1.4; }
-.pe-svg { display: block; width: 100%; height: auto; }
-.pe-svg.klein { max-height: 92px; }
-.pe-gitter { stroke: var(--line-2); stroke-width: 1; stroke-dasharray: 3 3; }
-.pe-band { fill: var(--good); fill-opacity: .22; stroke: none; }
-.pe-linie { fill: none; stroke: var(--race); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-.pe-punkt { fill: var(--race); stroke: var(--fg); stroke-width: 2; }
-.pe-ax { fill: var(--muted); font-size: 10px; }
-.pe-sport { display: flex; align-items: center; gap: 8px; margin-top: 20px; }
+/* V7.5 Etappe 3: Planeinstellungen (js/v75-ui.js) – V7.5.1 Blatt-Folge Laufen → Rad → Schwimmen → Trainingsumfang, Kurve und Regler, Schalter */
+.pe-kopf { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 2px 6px; color: var(--muted); font-size: 11.5px; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; }
+.pe-punkte { list-style: none; display: flex; gap: 6px; margin: 0; padding: 0; }
+.pe-punkte li { width: 8px; height: 8px; border-radius: 4px; background: var(--line-2); }
+.pe-punkte li.fertig { background: var(--muted); }
+.pe-punkte li.an { width: 22px; background: var(--accent); }
 .pe-sp { display: inline-grid; place-items: center; color: var(--sp); }
+.pe-sp.gross svg { width: 34px; height: 34px; }
+.pe-meldung { margin: 0 0 10px; padding: 10px 14px; border-radius: 12px; background: var(--ok-bg); color: var(--ok-text); font-weight: 600; font-size: 14px; }
 .pe-liste button { grid-template-columns: 32px minmax(0, 1fr) auto 18px; }
+.pe-liste button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 .pe-liste em { font-style: normal; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--fg); }
 .pe-liste > li > button > svg:first-child { color: var(--muted); }
 .pe-ring, .v6-aktionen span.pe-ring { width: 30px; height: 30px; box-sizing: border-box; border-radius: 50%; border: 2.5px solid var(--sp); display: flex; flex-direction: row; align-items: center; justify-content: center;
   font: 700 12.5px/1 var(--f-body); font-variant-numeric: tabular-nums; color: var(--fg); }
-.blatt-titel .pe-ring { width: 56px; height: 56px; border-width: 3.5px; font-size: 20px; margin: 0 auto 6px; }
+.blatt-titel .pe-ring, .pe-ring.gross { width: 56px; height: 56px; border-width: 3.5px; font-size: 20px; margin: 0 auto 6px; }
+.pe-schalter-z label { min-height: 58px; display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 12px; align-items: center; background: var(--surface);
+  border-radius: 14px; padding: 11px 14px; cursor: pointer; }
+.pe-schalter-z label > svg { color: var(--muted); }
+.pe-schalter-z input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.pe-schalter { position: relative; width: 50px; height: 30px; border-radius: 15px; background: var(--line-2); transition: background .15s; }
+.pe-schalter::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: var(--fg); transition: transform .15s; }
+.pe-schalter-z input:checked + .pe-schalter { background: var(--accent); }
+.pe-schalter-z input:checked + .pe-schalter::after { transform: translateX(20px); background: var(--accent-fg); }
+.pe-schalter-z input:focus-visible + .pe-schalter { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.pe-schalter-z input:disabled + .pe-schalter { opacity: .6; }
+.pe-svg { display: block; width: 100%; height: auto; }
+.pe-gitter { stroke: var(--line-2); stroke-width: 1; stroke-dasharray: 3 3; }
+.pe-taper { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 3; }
+.pe-band { fill: var(--good); fill-opacity: .22; stroke: none; }
+.pe-linie { fill: none; stroke: var(--fg); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.pe-punkt { fill: var(--race); stroke: var(--fg); stroke-width: 2; }
+.pe-ax { fill: var(--muted); font-size: 10px; }
 .pe-legende { display: flex; justify-content: center; gap: 18px; font-size: 13px; color: var(--muted); }
 .pe-legende i { display: inline-block; width: 18px; height: 10px; margin-right: 6px; border-radius: 3px; }
-.pe-legende i.l { height: 3px; vertical-align: 3px; background: var(--race); }
+.pe-legende i.l { height: 3px; vertical-align: 3px; background: var(--fg); }
 .pe-legende i.b { background: var(--ok-bg); border: 1px solid var(--ok-line); }
 .pe-kurve { margin: 6px 0 2px; }
 .pe-wert { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-top: 6px; }
 .pe-wert b { font: 700 34px/1.1 var(--f-display); font-variant-numeric: tabular-nums; }
-.pe-wert span { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-.pe-wert span.hoch { color: var(--warn-text); }
+.pe-wert span { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--fg); }
+.pe-wert span i { width: 12px; height: 12px; border-radius: 50%; background: var(--stufe, var(--ci2)); }
+.pe-wert span em { font-style: normal; }
 .pe-regler { position: relative; padding: 6px 28px; margin: 6px 0 4px; }
 .pe-regler::before, .pe-regler::after { content: ""; position: absolute; top: 4px; bottom: 4px; width: 26px; border-radius: 6px;
   background: repeating-linear-gradient(135deg, var(--line-2) 0 2px, transparent 2px 7px); }
 .pe-regler::before { left: 0; } .pe-regler::after { right: 0; }
 .pe-regler input[type="range"] { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 44px; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; cursor: pointer; }
-.pe-regler input[type="range"]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--ci1), var(--ci2), var(--ci3), var(--ci4), var(--ci5)); }
-.pe-regler input[type="range"]::-moz-range-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--ci1), var(--ci2), var(--ci3), var(--ci4), var(--ci5)); }
-.pe-regler input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 32px; height: 32px; margin-top: -13px; border-radius: 50%; background: var(--race); border: 4px solid var(--fg); }
+.pe-regler input[type="range"]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--ci1) 10%, var(--ci2) 42%, var(--ci3) 70%, var(--ci4) 85%, var(--ci5) 97%); }
+.pe-regler input[type="range"]::-moz-range-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--ci1) 10%, var(--ci2) 42%, var(--ci3) 70%, var(--ci4) 85%, var(--ci5) 97%); }
+.pe-regler input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 32px; height: 32px; margin-top: -13px; border-radius: 50%; background: var(--stufe, var(--race)); border: 4px solid var(--fg); }
 .pe-regler input[type="range"]::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: var(--race); border: 4px solid var(--fg); }
 .pe-regler input[type="range"]:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 10px; }
 .pe-text { margin: 4px 0 0; font-size: 14px; line-height: 1.45; }
-.pe-stepper { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 10px 0 4px; }
-.pe-stepper .btn { min-width: 52px; min-height: 48px; font-size: 22px; }
-.pe-stepper output { min-width: 150px; text-align: center; font: 700 20px/1.2 var(--f-body); font-variant-numeric: tabular-nums; }
 .pe-daten { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 10px; }
 .pe-daten label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
 .pe-daten input { min-height: 44px; padding: 8px 10px; font: inherit; color: var(--fg); }
 .pe-check > span svg { color: transparent; border: 2px solid var(--line-2); border-radius: 6px; }
 .pe-check input:checked + span svg { color: var(--accent-fg); background: var(--accent); border-color: var(--accent); }
 .pe-check input:disabled + span { cursor: default; }
+.pe-toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60; max-width: min(92vw, 440px); margin: 0;
+  padding: 11px 16px; border-radius: 12px; background: var(--sheet); border: 1px solid var(--ok-line); color: var(--fg); font-weight: 600; font-size: 14px; }
 .v56-start { margin: 10px 0 6px; font-size: 14px; line-height: 1.45; }
-:root[data-theme="light"] .card.pe-karte, .card.pe-karte { border: 0; background: none; box-shadow: none; padding: 0; }
