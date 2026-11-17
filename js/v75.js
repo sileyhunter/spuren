@@ -57,7 +57,7 @@
   /** Standard: Start aus der Basis-Fitness (ab START_AB), keine eigene Fitness, 100 %, keine Indoor-Phase, alle Hilfsmittel, Bahnlänge wie bisher (Gerät
    *  bzw. Enduco), Kraul und Rücken, kein Anfänger-Modus. */
   V75.standard = () => ({ start: "fitness", basis: { schwimm: null, rad: null, lauf: null }, steigerung: V75.STEIGERUNG.standard, indoor: { rad: null, lauf: null },
-    schwimm: { hilfsmittel: V75.HILFSMITTEL.slice(), pool: null, stile: ["ruecken"], anfaenger: false },
+    schwimm: { hilfsmittel: V75.HILFSMITTEL.slice(), pool: null, stile: ["ruecken"], anfaenger: false, kurs_bis: null, kurs_nur: false },   // V7.6.2 kurs-1.0
     kraft: { aktiv: false, modus: "auto", tage: [1, 2, 3, 4, 5, 6, 7], wt: null, uhrzeit: null, dauer: V75.KRAFT.dauer, notiz: null }, kraftWochen: {},
     lang: { rad: [], lauf: [] }, stand: {} });
   const teilmenge = (x, erlaubt) => Array.isArray(x) && x.every((k) => erlaubt.includes(k)) && new Set(x).size === x.length;
@@ -114,6 +114,8 @@
         if (e.pool != null && e.pool !== 25 && e.pool !== 50) return "Bahnlänge 25 oder 50 m";
         if (!teilmenge(e.stile, V75.STILE)) return "unbekannter Stil";
         if (e.anfaenger != null && typeof e.anfaenger !== "boolean") return "Anfänger-Modus ja oder nein";
+        if (e.kurs_bis != null && !istDatum(e.kurs_bis)) return "Schwimmkurs: letzter Kurstag als Datum";       // V7.6.2 kurs-1.0
+        if (e.kurs_nur != null && typeof e.kurs_nur !== "boolean") return "Schwimmkurs: nur Schwimmen ja oder nein";
         return null;
       default: return "unbekannte Einstellung";
     }
@@ -163,7 +165,8 @@
       else if (id.startsWith("pe-basis-")) E.basis[id.slice(9)] = isNum(x.wert) ? x.wert : null;
       else if (id === "pe-steigerung") E.steigerung = x.wert;
       else if (id === "pe-indoor-rad" || id === "pe-indoor-lauf") E.indoor[id === "pe-indoor-rad" ? "rad" : "lauf"] = x.von && x.bis ? { von: x.von, bis: x.bis } : null;
-      else if (id === "pe-schwimm") E.schwimm = { hilfsmittel: x.hilfsmittel.slice(), pool: x.pool === 25 || x.pool === 50 ? x.pool : null, stile: x.stile.slice(), anfaenger: x.anfaenger === true };
+      else if (id === "pe-schwimm") E.schwimm = { hilfsmittel: x.hilfsmittel.slice(), pool: x.pool === 25 || x.pool === 50 ? x.pool : null, stile: x.stile.slice(), anfaenger: x.anfaenger === true,
+        kurs_bis: istDatum(x.kurs_bis) ? x.kurs_bis : null, kurs_nur: x.kurs_nur === true };
       else if (id === "pe-kraft") E.kraft = { aktiv: x.aktiv, modus: x.modus || "fest", tage: tageOk(x.tage) && x.tage.length ? x.tage.slice().sort() : [1, 2, 3, 4, 5, 6, 7],
         wt: x.wt == null ? null : x.wt, uhrzeit: x.uhrzeit || null, dauer: x.dauer || V75.KRAFT.dauer, notiz: x.notiz || null };
       else if (id === "pe-lang") E.lang = { rad: tageOk(x.rad) ? x.rad.slice().sort() : [], lauf: tageOk(x.lauf) ? x.lauf.slice().sort() : [] };

@@ -237,7 +237,13 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 96. **Aufbau-Grenze in Wochen mehr als 4 Wochen voraus** (aufbau-1.1): geplante, noch nicht gelaufene Läufe zählen nicht – liegt der letzte gelaufene Lauf mehr als
     30 Tage vor einer Woche, plant sie lange und lockere Läufe mit höchstens 30 min («kein Lauf in den 30 Tagen davor»). Betrifft nur weit vorausgeplante Wochen; mit
     jedem gelaufenen Lauf rückt die Grenze nach. Vorschlag: geplante Läufe von Mein Plan bis zur Woche als «geplant» mitrechnen.
+    **Erledigt in V7.6.2 (aufbau-1.2):** die geplanten Läufe der Wochen dazwischen zählen mit (bis zum Vortag, Distanz ≈ aus dem Zonenprofil).
 97. **Langer Lauf am Donnerstag** (aus enduco übernommen) hat neben Rad-Schlüssel und CSS-Schwimmen (Wochenmodell Do) keinen Platz und bleibt am Sonntag; der Hinweis
     steht jede Woche. Entweder einen anderen Tag wählen oder das Wochenmodell anders verteilen (Rad-Schlüssel auf einen anderen Tag).
+    **Erledigt am 17.11.2026 (V7.6.2, Silas: «offene Punkte bereinigen»):** Tage für lange Einheiten Laufen = Sonntag (gilt ab der Woche vom 23.11.2026).
+99. **Schwimmkurs: letzter Kurstag** (kurs-1.0, V7.6.2): bis Silas das Datum nennt, gilt jeder Dienstag als Kurstag (nur Schwimmen). Sobald bekannt: unter Planeinstellungen →
+    Schwimmen → «Schwimmkurs» eintragen; danach plant die Seite dienstags wieder alle Sportarten (2:45 h) und lockeres Schwimmen statt des Kurses.
+100. **Zonen-Prüfung für Einheiten nach Puls** (laktat-hf-1.0 erfasst Puls und Laktat; die Prüfung «passt / Z2 zu hoch / unklar» ist nur vorgeschlagen, Etappe 4 mit
+    aktivitaet-plan-1.0 für Skitour, Wandern, Langlauf und Traillauf – erst nach Silas' Okay).
 98. **Krafttraining:** der automatische Tag wird an der schon verteilten Woche gewählt; eine Woche mit Tests am Wochenende lässt oft nur den Tag des langen Laufs
     (Hinweis). Die Übungen plant die Seite nicht; Kraft geht nicht an Garmin.

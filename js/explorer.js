@@ -60,7 +60,7 @@
     const a = c.ACT_BY_ID.get(id); if (!a) return;
     let ov = $("ex"); if (!ov) { ov = document.createElement("div"); ov.id = "ex"; ov.className = "v5-overlay ex-ov"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-modal", "true"); document.body.appendChild(ov); }
     ov.hidden = false; document.body.classList.add("ex-offen"); if (window.V59 && window.V59.modalAuf) window.V59.modalAuf(ov);   // V6.4.4 (Audit D22)
-    Object.assign(ST, { a, S: null, sel: null, cur: null, ints: null });
+    Object.assign(ST, { a, S: null, sel: null, cur: null, ints: null, vor: opt && opt.laktat ? opt.laktat : null });
     ov.innerHTML = `<div class="te-box ex"><div class="te-head ex-head"><div><h2 id="ex-h" tabindex="-1">${esc(a.name)}</h2><div class="sub">${c.dateCH(a.date)} · ${esc((c.SPORTS[a.sport] || {}).label || a.sport)} · ${c.hmm(a.mv || a.dur)} h${isNum(a.mv) && a.dur - a.mv >= 300 ? ` (Timer ${c.hmm(a.dur)} h)` : ""}${a.km ? ` · ${c.fmt(a.km, 1)} km` : ""}</div>${lvHtml(c, a)}</div>
       <button class="btn icon" id="ex-close" aria-label="Schliessen">×</button></div><div id="ex-rpe"></div>${notizHtml(c, a)}<div id="ex-body"><p class="hint"><span class="spin" aria-hidden="true"></span> Sekundenwerte werden geladen …</p></div></div>`;
     $("ex-close").onclick = EX.close; ov.setAttribute("aria-labelledby", "ex-h"); $("ex-h").focus({ preventScroll: true });
@@ -118,6 +118,7 @@
     $("ex-la").onclick = () => laktatDialog();
     bindCharts();
     zeichne(); sel(); intervalle(); laktat();
+    if (ST.vor) { const v = ST.vor; ST.vor = null; laktatDialog(v); }       // V7.6.2: aus einer Notiz-Vorschau (Zeit, Wert, Fenster vorbelegt)
   }
   function methode(S) {
     return `Sekundenwerte aus der FIT-Datei, je ${S.dt} s gemittelt (serie-1.0). NP: 30-s-Mittel, 4. Potenz, Wurzel (Lücken unterbrechen). Drift (Pw:HR bzw. Tempo:Puls):
@@ -251,21 +252,36 @@
     const srv = (C().D.laktat_punkte || []).filter((p) => p.act === id);
     const m = new Map(srv.concat(lok).map((p) => [p.id, p])); return [...m.values()];
   }
-  function laktatDialog() {
-    const S = ST.S, ts = ST.cur != null ? S.t[ST.cur] : S.t[ST.sel[1]];
+  function laktatDialog(vor) {
+    const S = ST.S, ts = vor && isNum(vor.t) ? vor.t : ST.cur != null ? S.t[ST.cur] : S.t[ST.sel[1]];
+    // V7.6.2 laktat-hf-1.0: Einheiten nach Puls (nicht Rad oder Laufen) nehmen den Puls der 10 min davor; sonst wie bisher das Intervall bzw. 5 min
+    const fe0 = vor && vor.fenster ? String(vor.fenster) : ["rad", "lauf"].includes(ST.a.sport) ? "auto" : "10";
     $("ex-lak").innerHTML = `<form class="css-form ex-lf" id="ex-lf"><h3 class="mini-h">Laktat bei ${hms(ts)}</h3><div class="css-grid">
-      <label>Laktat (mmol/l)<input name="la" inputmode="decimal" placeholder="1.8" required></label><label>Zeit (min:s)<input name="t" value="${hms(ts)}"></label>
-      <label class="span2">Notiz<input name="n" placeholder="z. B. Ohrläppchen, Lactate Scout"></label></div>
+      <label>Laktat (mmol/l)<input name="la" inputmode="decimal" placeholder="1.8" required value="${vor && isNum(vor.la) ? String(vor.la).replace(".", ",") : ""}"></label><label>Zeit (min:s)<input name="t" value="${hms(ts)}"></label>
+      <label class="span2">Puls aus<select name="fe">${[["auto", "Intervall bzw. letzte 5 min (automatisch)"], ["10", "den 10 min vor der Messung"], ["15", "den 15 min vor der Messung"], ["20", "den 20 min vor der Messung"]]
+        .map(([k, t]) => `<option value="${k}"${k === fe0 ? " selected" : ""}>${t}</option>`).join("")}</select></label>
+      <label class="span2">Notiz<input name="n" placeholder="z. B. Ohrläppchen, Lactate Scout" value="${vor && vor.notiz ? esc(vor.notiz) : ""}"></label></div>
+      <p class="hint" id="ex-lf-hf" aria-live="polite"></p>
       <div class="row"><button class="btn primary" type="submit">Zuordnen</button><button class="btn" type="button" id="ex-lf-x">Abbrechen</button></div></form>`;
     $("ex-lf-x").onclick = () => laktat();
+    const zeit = (v) => { const p = String(v).split(":").map(Number); const t = p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p.length === 2 ? p[0] * 60 + p[1] : NaN; return isNum(t) ? t : ts; };
+    const fenster = (f) => { const t = zeit(f.t.value), ab = f.fe.value === "auto" ? AN.laktatAbschnitt(S, t, ST.ints.liste) : AN.laktatFenster(S, t, +f.fe.value); return { t, ab, st: AN.stats(S, ab.i0, ab.i1) }; };
+    const zeigen = () => {                                                 // V7.6.2: Puls im gewählten Fenster schon vor dem Speichern sehen
+      const f = $("ex-lf"), o = $("ex-lf-hf"); if (!f || !o) return;
+      const { ab, st } = fenster(f), an = AN.pulsAnstieg(S, ab.i0, ab.i1);
+      o.textContent = st ? `${hms(S.t[ab.i0])}–${hms(S.t[ab.i1] + S.dt)}: Ø Puls ${f0(st.hr)}, max ${f0(st.hrmax)}${isNum(an) ? `, Anstieg ${f1(an)} %` : ""}${isNum(st.w) && st.w > 0 ? ` · Ø ${f0(st.w)} W` : ""}.` : "";
+    };
+    $("ex-lf").fe.onchange = zeigen; $("ex-lf").t.oninput = zeigen; zeigen();
     $("ex-lf").onsubmit = async (e) => {
       e.preventDefault(); const f = e.target, la = parseFloat(String(f.la.value).replace(",", "."));
-      const p = String(f.t.value).split(":").map(Number), t = p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p.length === 2 ? p[0] * 60 + p[1] : ts;
       if (!isNum(la) || la <= 0 || la > 25) { f.la.focus(); return; }
-      const ab = AN.laktatAbschnitt(S, t, ST.ints.liste), st = AN.stats(S, ab.i0, ab.i1);
+      const { t, ab, st } = fenster(f);
       await UI().Inbox.upsert("laktat_punkte", { id: `lp-${ST.a.id}-${Math.round(t)}`, act: ST.a.id, datum: ST.a.date, sport: ST.a.sport, t: Math.round(t), la,
         abschnitt: { von: S.t[ab.i0], bis: S.t[ab.i1] + S.dt, grund: ab.grund, w: st.w != null ? Math.round(st.w) : null, np: st.np != null ? Math.round(st.np) : null,
-          hr: st.hr != null ? Math.round(st.hr) : null, pace: st.pace != null ? Math.round(st.pace) : null }, notiz: f.n.value.trim() || null, status: "vorschau", quelle: "von Hand im Explorer" });
+          hr: st.hr != null ? Math.round(st.hr) : null, pace: st.pace != null ? Math.round(st.pace) : null,
+          hr_max: st.hrmax != null ? Math.round(st.hrmax) : null, hr_anstieg: AN.pulsAnstieg(S, ab.i0, ab.i1), ...(ab.fenster_s ? { fenster_s: ab.fenster_s } : {}) },
+        t_timer: Math.round(AN.idxAt(S, t) * S.dt),                                  // Zeit ohne Timer-Stopps (wie t_s der Kurzchecks)
+        notiz: f.n.value.trim() || null, status: "vorschau", quelle: vor && vor.quelle ? vor.quelle : "von Hand im Explorer", ...(vor && vor.vorschau ? { vorschau: vor.vorschau } : {}) });
       zeichne(); laktat();
     };
   }

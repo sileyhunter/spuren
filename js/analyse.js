@@ -9,7 +9,7 @@
 })(typeof window !== "undefined" ? window : globalThis, function (FK) {
   "use strict";
   const AN = {};
-  AN.VERSIONS = { explorer: "explorer-1.0", intervalle: "intervalle-1.0", plan: "plan-1.0", ermuedung: "ermuedung-1.0", rpe: "rpe-1.0", energie: "energie-1.0", saison: "saison-1.2" };
+  AN.VERSIONS = { explorer: "explorer-1.0", intervalle: "intervalle-1.0", plan: "plan-1.0", ermuedung: "ermuedung-1.0", rpe: "rpe-1.0", energie: "energie-1.0", saison: "saison-1.2", laktat_hf: "laktat-hf-1.0" };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const mean = (a) => { let s = 0, n = 0; for (const x of a) if (isNum(x)) { s += x; n++; } return n ? s / n : null; };
   const maxOf = (a) => { let m = null; for (const x of a) if (isNum(x) && (m == null || x > m)) m = x; return m; };
@@ -139,6 +139,18 @@
 
   /* ---------------- Laktat einem Abschnitt zuordnen ---------------- */
   /** Messpunkt zur Zeit ts: Abschnitt = das Intervall, das ts enthält oder direkt davor endet (≤ 60 s), sonst die letzten 5 min. */
+  /** V7.6.2 laktat-hf-1.0 (Silas' Wunsch vom 17.11.2026): Puls aus der Aufzeichnung für die «min» Minuten vor der Messung (10, 15 oder 20) –
+   *  für Einheiten nach Puls (Skitour, Wandern, Langlauf, Grundlage), wo es kein Intervall gibt. Beginnt die Aufzeichnung später, ab Start. */
+  AN.laktatFenster = function (S, ts, min) {
+    const m = [10, 15, 20].includes(min) ? min : 10, i1 = AN.idxAt(S, ts), i0 = AN.idxAt(S, Math.max(0, ts - m * 60));
+    return { i0, i1, fenster_s: m * 60, grund: `${m} min vor der Messung (Puls aus der Aufzeichnung, ${AN.VERSIONS.laktat_hf})` };
+  };
+  /** Pulsanstieg im Abschnitt wie beim Kurzcheck: Ø Puls der 2. Hälfte gegenüber der 1. Hälfte in % (eine Nachkommastelle). */
+  AN.pulsAnstieg = function (S, i0, i1) {
+    if (!S.hr || i1 - i0 < 2) return null;
+    const h = S.hr.slice(i0, i1 + 1), m = h.length >> 1, a = mean(h.slice(0, m)), b = mean(h.slice(m));
+    return isNum(a) && isNum(b) && a > 0 ? Math.round(1000 * (b / a - 1)) / 10 : null;
+  };
   AN.laktatAbschnitt = function (S, ts, liste) {
     const hit = (liste || []).find((x) => S.t[x.i0] <= ts && ts <= S.t[x.i1] + S.dt) || (liste || []).filter((x) => S.t[x.i1] <= ts && ts - S.t[x.i1] <= 60).pop();
     if (hit) return { i0: hit.i0, i1: hit.i1, grund: "Intervall, in dem oder direkt nach dem gemessen wurde" };

@@ -106,6 +106,38 @@
     };
     if (reduziert()) fertig(); else setTimeout(fertig, 240);
   };
+  /* ---------- V7.6.2 bilder-1.0: eigene Fotos im Kopf (verschlüsselt in bilder/, tools/bilder_crypt.mjs; welche es gibt: config.bilder) ---------- */
+  const BILD = new Map(), BILD_OK = new Map();
+  /** Bild zur Einheit: Schwimmen, Laufen, Rad (lange Ausfahrt mit eigenem Bild, sonst das Rad-Bild), Wandern, Skitour; sonst keins (Berg). */
+  function bildKey(sport, e) {
+    const cfg = C && C.D && C.D.config && C.D.config.bilder; if (!cfg || window.SPUREN_DEMO) return null;
+    let k = sport === "rad" && e && (e.art === "lang" || /^rad_lang/.test(e.id || e.vorlage || "")) ? "rad-lang" : sport;
+    if (k === "rad-lang" && !cfg[k]) k = "rad";
+    return cfg[k] ? k : null;
+  }
+  function bildLaden(key) {
+    const D = C && C.D, info = key && D && D.config && D.config.bilder ? D.config.bilder[key] : null;
+    if (!info || !D.serien_salz || !window.AN || !window.SPUREN_VAULT || !window.SPUREN_VAULT.openBin) return Promise.resolve(null);
+    if (!BILD.has(key)) BILD.set(key, (async () => {
+      try {
+        const r = await fetch(`bilder/${await window.AN.serieName(D.serien_salz, "bild:" + key)}.bin`);
+        if (!r.ok) return null;
+        const jpg = await window.SPUREN_VAULT.openBin(new Uint8Array(await r.arrayBuffer()));
+        const o = { url: URL.createObjectURL(new Blob([jpg], { type: "image/jpeg" })), pos: /^\d{1,3}% \d{1,3}%$/.test(info.pos || "") ? info.pos : "50% 40%" };
+        BILD_OK.set(key, o);
+        return o;
+      } catch (err) { console.error(err); return null; }
+    })());
+    return BILD.get(key);
+  }
+  /** Nach dem Zeichnen: Bild nachladen und einblenden, wenn es noch nicht da war. */
+  function bildEinsetzen(key) {
+    if (!key || BILD_OK.has(key)) return;
+    bildLaden(key).then((o) => {
+      const h = o && SEITE && !SEITE.hidden && SEITE.querySelector(`.v73-hero[data-bild="${key}"]`); if (!h) return;
+      h.style.setProperty("--hero-bild", `url('${o.url}')`); h.style.setProperty("--hero-pos", o.pos); h.classList.add("bild");
+    });
+  }
   function platzhalter(sport) {
     return `<div class="v73-hero" style="--sp:${spVar(sport)}"><div class="v73-hero-text"><span class="v73-ph" style="width:46%;height:12px"></span>
         <span class="v73-ph" style="width:72%;height:28px;margin-top:10px"></span></div></div>
@@ -194,22 +226,25 @@
     const offen = new Set([...sc.querySelectorAll("details[data-v73ab]")].filter((d) => !d.open).map((d) => d.dataset.v73ab));
     let aa = ""; try { aa = X.art === "plan" && window.V74UI ? window.V74UI.einheitBanner(X.ds, X.e, X.t) : ""; } catch (err) { console.error(err); }   // V7.4 ampel-plan-1.0
     const kraft = X.art === "plan" && X.sport === "kraft" && !!V76();      // V7.6 kraft-plan-1.0: ohne Ablauf, Schritte und Zonen
-    sc.innerHTML = kopf() + `<div class="v73-inhalt">${chips()}${aa}${kacheln()}${kennzahlen()}${kraft ? kraftAbschnitt() + coach() : fokus() + equipment() + ablauf() + schritte() + coach() + zonen()}${extra()}${fussnote()}</div>`;
+    const bk = bildKey(X.sport, X.e);
+    sc.innerHTML = kopf(bk) + `<div class="v73-inhalt">${chips()}${aa}${kacheln()}${kennzahlen()}${kraft ? kraftAbschnitt() + coach() : fokus() + equipment() + ablauf() + schritte() + coach() + zonen()}${extra()}${fussnote()}</div>`;
     sc.querySelectorAll("details[data-v73ab]").forEach((d) => { if (offen.has(d.dataset.v73ab)) d.open = false; });
     sc.scrollTop = oben;
     SEITE.querySelector(".v73-mini b").textContent = X.titel;
     SEITE.querySelector(".v73-haupt").innerHTML = X.art === "plan" && !X.vorbei && !kraft ? `<button type="button" class="btn primary v73-export" data-v73="export">Export ${ic("play", 18)}</button>` : "";
     binden();
     if (kraft) kraftBinden(sc);
+    bildEinsetzen(bk);
     if (window.V74UI) window.V74UI.binden(sc, () => zeichnen());
     const f = LETZT && SEITE.querySelector(`[data-v73="${LETZT}"]`);
     if (f && document.activeElement === document.body) try { f.focus({ preventScroll: true }); } catch (e) { /* */ }
   }
-  function kopf() {
+  function kopf(bk) {
     const W = V6(), gesperrt = X.art === "plan" && (X.e.gesperrt || X.t.gesperrt);
     const unter = X.art === "workout" ? `${SPORT_WORT[X.sport] || ""} · ${X.quelle}`
       : X.e.kraft_plan ? (X.e.kraft_auto ? "Tag automatisch · Planeinstellungen" : "fester Termin · Planeinstellungen") : X.e.quelle === "bibliothek" ? "aus deiner Enduco-Bibliothek" : X.e.quelle === "eigen" ? "eigene Einheit · Mein Plan" : `Vorschlag «${X.K.w.modellName || "Modell"}» · Mein Plan`;
-    return `<div class="v73-hero" style="--sp:${spVar(X.sport)}"><span class="v73-hero-sym" aria-hidden="true">${W.sportIcon(X.sport, 150)}</span>
+    const o = bk ? BILD_OK.get(bk) : null;
+    return `<div class="v73-hero${o ? " bild" : ""}"${bk ? ` data-bild="${bk}"` : ""} style="--sp:${spVar(X.sport)}${o ? `;--hero-bild:url('${o.url}');--hero-pos:${o.pos}` : ""}"><span class="v73-hero-sym" aria-hidden="true">${W.sportIcon(X.sport, 150)}</span>
       <div class="v73-hero-text"><p class="v73-ueber">${W.sportIcon(X.sport, 16)}${gesperrt ? `<span class="v73-schloss" title="gesperrt">${ic("schloss", 15)}</span>` : ""}<span>Trainingsbriefing</span></p>
         <h1 id="v73-titel" tabindex="-1">${esc(X.titel)}</h1><p class="v73-unter">${esc(unter)}</p></div></div>`;
   }

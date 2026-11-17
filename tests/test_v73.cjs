@@ -302,3 +302,26 @@ test("garmin-senden-1.1: Rad und Laufen nach Puls (eigener Bereich in bpm) oder 
   const lei = V66.garminWorkout(V66.einheit({ uid: "q", vorlage: "lauf_vo2", dauer: 50, quelle: "eigen" }), SKH, { uid: "q" });
   assert.notEqual(lei.fassung, g.fassung, "andere Metrik: neue Fassung");
 });
+
+/* ---------------- V7.6.2 bilder-1.0: Kopfbilder der Einheit-Seite, nur verschlüsselt im Repository ---------------- */
+test("bilder-1.0: Bild verschlüsselt (SPS2, auf 64 KiB aufgefüllt), Name aus dem Salz, EXIF erkannt, Offline-Cache behält Bilder", async () => {
+  const B = await import("../tools/bilder_crypt.mjs"), L = await import("../tools/serienlib.mjs");
+  const crypto = require("node:crypto"), fs = require("node:fs"), path = require("node:path");
+  const key = crypto.randomBytes(32);
+  const jpg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xdb, 0x00, 0x04, 0x00, 0x00, 0xff, 0xda]), crypto.randomBytes(70000), Buffer.from([0xff, 0xd9])]);
+  const f = B.bildSchliessen(key, jpg);
+  assert.equal(f.subarray(0, 4).toString("latin1"), "SPS2"); assert.equal(f.length % B.STUFE, 0); assert.equal(f.length, 2 * B.STUFE, "Grösse nur grob sichtbar");
+  assert.deepEqual(B.bildOeffnen(key, f), jpg);
+  const kaputt = Buffer.from(f); kaputt[100] ^= 1; assert.throws(() => B.bildOeffnen(key, kaputt));
+  assert.throws(() => B.bildOeffnen(crypto.randomBytes(32), f), undefined, "anderer Schlüssel");
+  assert.equal(B.jpegOhneExif(jpg), null);
+  const exif = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe1, 0x00, 0x08]), Buffer.from("Exif\0\0", "latin1"), Buffer.from([0xff, 0xda])]);
+  assert.match(B.jpegOhneExif(exif), /EXIF/); assert.match(B.jpegOhneExif(Buffer.from("abc")), /kein JPEG/);
+  const salz = "00112233445566778899aabbccddeeff";
+  assert.match(B.bildName(salz, "skitour"), /^[0-9a-f]{24}$/); assert.notEqual(B.bildName(salz, "skitour"), L.serieName(salz, "skitour"));
+  assert.ok(B.SCHLUESSEL_RE.test("rad-lang") && !B.SCHLUESSEL_RE.test("../x"));
+  const sw = fs.readFileSync(path.join(__dirname, "..", "sw.js"), "utf8");
+  assert.match(sw, /\(serien\|bilder\)/, "Service Worker übernimmt verschlüsselte Bilder wie Reihen");
+  const ui = fs.readFileSync(path.join(__dirname, "..", "js", "v73-ui.js"), "utf8");
+  assert.match(ui, /SPUREN_DEMO/, "die Demo zeigt keine Fotos");
+});

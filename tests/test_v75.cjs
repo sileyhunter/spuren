@@ -26,7 +26,7 @@ test("planeinstellungen-1.0: Standard wie bisher, Prüfung je Gruppe", () => {
   const E = V75.standard();
   assert.equal(E.steigerung, 100); assert.deepEqual(E.indoor, { rad: null, lauf: null });
   assert.equal(E.start, "fitness", "Variante A (Silas' Wahl 17.11.2026)"); assert.deepEqual(E.basis, { schwimm: null, rad: null, lauf: null });
-  assert.deepEqual(E.schwimm, { hilfsmittel: ["brett", "pullbuoy", "flossen", "paddles"], pool: null, stile: ["ruecken"], anfaenger: false });
+  assert.deepEqual(E.schwimm, { hilfsmittel: ["brett", "pullbuoy", "flossen", "paddles"], pool: null, stile: ["ruecken"], anfaenger: false, kurs_bis: null, kurs_nur: false });
   const ok = [{ id: "pe-steigerung", wert: 50 }, { id: "pe-steigerung", wert: 150 }, { id: "pe-indoor-rad", von: "2026-12-01", bis: "2027-02-28" },
     { id: "pe-indoor-lauf", von: null, bis: null }, { id: "pe-schwimm", hilfsmittel: [], pool: 25, stile: ["brust"] },
     { id: "pe-schwimm", hilfsmittel: ["brett"], pool: 50, stile: ["ruecken", "brust"], anfaenger: true }, { id: "pe-schwimm", hilfsmittel: [], pool: null, stile: [], anfaenger: false }];
@@ -295,4 +295,34 @@ test("garmin-senden-1.2: Stil je Schritt wie in der Einheit – Rücken backstro
     const ein = F.filter((s) => /Einschwimmen/.test(s.description));
     assert.equal(ein.length, 2); for (const s of ein) assert.equal(s.stepType.stepTypeKey, "warmup");
   }
+});
+
+/* ---------------- V7.6.2 kurs-1.0: Schwimmkurs mit letztem Kurstag, an Kurstagen nur Schwimmen ---------------- */
+test("kurs-1.0: letzter Kurstag und «nur Schwimmen» prüfen und übernehmen", () => {
+  const ok = { id: "pe-schwimm", hilfsmittel: ["brett"], pool: 50, stile: ["brust"], anfaenger: false };
+  assert.equal(V75.pruefen(Object.assign({}, ok, { kurs_bis: "2026-12-15", kurs_nur: true })), null);
+  assert.equal(V75.pruefen(Object.assign({}, ok, { kurs_bis: null, kurs_nur: false })), null);
+  assert.match(V75.pruefen(Object.assign({}, ok, { kurs_bis: "15.12.2026" })), /letzter Kurstag/);
+  assert.match(V75.pruefen(Object.assign({}, ok, { kurs_nur: "ja" })), /nur Schwimmen/);
+  const E = V75.einstellungen([V75.eintrag("pe-schwimm", Object.assign({}, ok, { kurs_bis: "2026-12-15", kurs_nur: true }), "2026-11-17T10:00:00Z")], []);
+  assert.deepEqual([E.schwimm.kurs_bis, E.schwimm.kurs_nur], ["2026-12-15", true]);
+  assert.deepEqual([V75.standard().schwimm.kurs_bis, V75.standard().schwimm.kurs_nur], [null, false], "Standard: Kurs ohne Ende, Dienstag normal");
+});
+
+test("kurs-1.0: nach dem letzten Kurstag lockeres Schwimmen statt Kurs; an Kurstagen nur Schwimmen (Zeit des Tages bleibt, «Kein Training» geht vor)", () => {
+  const vor = V64.woche({ woche: "2026-12-14", stunden: 9, kurs_bis: "2026-12-15" }), nach = V64.woche({ woche: "2026-12-21", stunden: 9, kurs_bis: "2026-12-15" });
+  assert.ok(vor.tage[1].einheiten.some((e) => e.id === "schwimm_kurs"));
+  assert.ok(!nach.tage[1].einheiten.some((e) => e.id === "schwimm_kurs") && nach.tage[1].einheiten.some((e) => e.id === "schwimm_locker"));
+  assert.ok(V64.woche({ woche: "2027-03-01", stunden: 9 }).tage[1].einheiten.some((e) => e.id === "schwimm_kurs"), "ohne Datum läuft der Kurs weiter");
+  const vf = V66.verfuegbarkeit([V66.vfEintrag({ wt: 2 }, { min: 165, sport: null }, "2026-11-17T10:00:00Z"), V66.vfEintrag({ date: "2026-12-08" }, { min: 0, sport: [] }, "2026-11-17T10:00:00Z")]);
+  const k = V66.mitKurs(vf, { nur: true, bis: "2026-12-15" });
+  assert.deepEqual([k("2026-12-01").min, k("2026-12-01").sport, k("2026-12-01").kurs], [165, ["schwimm"], true]);
+  assert.equal(V66.vfText(k("2026-12-01")), "2:45 h · Schwimmen (Schwimmkurs)");
+  assert.equal(k("2026-12-08").min, 0, "kein Training geht vor");
+  assert.deepEqual(k("2026-12-22").sport, null, "nach dem Kurs wieder alle Sportarten");
+  assert.equal(k("2026-12-02"), null, "nur dienstags (Mittwoch ohne Eintrag bleibt offen)");
+  assert.equal(V66.mitKurs(vf, { nur: false, bis: null }), vf, "ausgeschaltet: unverändert");
+  // in der Verteilung: Rad und Laufen ziehen vom Kurstag weg
+  const w = V64.woche({ woche: "2026-11-30", stunden: 9, kurs_bis: "2026-12-15" }), r = V66.wocheVerteilt(w, k, {});
+  assert.ok(r.tage[1].einheiten.every((e) => e.sport === "schwimm"), r.tage[1].einheiten.map((e) => e.id).join(","));
 });

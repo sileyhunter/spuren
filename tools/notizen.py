@@ -329,6 +329,8 @@ def _gleiche_messung(D, refs, t_s, la, eigene_id):
         if any(abs(t - t_s) <= TOL_S for t in ts) or (not ts and any(abs((z.get("la") or -9) - la) < 0.05 for z in p.get("zeilen") or [])):
             return "schon als Vorschau vorhanden"
     for p in D.get("laktat_punkte") or []:
+        if p.get("vorschau") == eigene_id:                  # V7.6.2: im Explorer mit dem Puls aus der Aufzeichnung erfasst
+            return "schon als Laktatpunkt mit dem Puls aus der Aufzeichnung vorhanden"
         if p.get("act") in refs and isinstance(p.get("t"), (int, float)) and abs(p["t"] - t_s) <= TOL_S:
             return "schon als Laktatpunkt aus dem Explorer vorhanden"
     return None

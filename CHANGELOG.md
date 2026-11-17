@@ -1,5 +1,18 @@
 # Änderungen
 
+## V7.6.2 · 17.11.2026 · Offene Punkte bereinigt, Kopfbilder, Kurzcheck nach Puls (bilder-1.0, kurs-1.0, aufbau-1.2, laktat-hf-1.0, wissen-1.19)
+- **Kopfbilder der Einheit-Seite aus Silas' Fotos** (Wunsch vom 17.11.2026): Schwimmen, Laufen, Rad, lange Ausfahrt, Wandern und Skitour statt des Berg-Symbols. Die Fotos
+  liegen nur verschlüsselt im Repository (`bilder/`, Format wie die Reihen, 64-KiB-Stufen, Namen aus dem Salz, ohne EXIF); die Demo zeigt weiter das Symbol.
+  Neues Werkzeug `tools/bilder_crypt.mjs` (schreiben, pruefen).
+- **Schwimmkurs mit letztem Kurstag** (kurs-1.0): unter Schwimmen «Schwimmkurs (Dienstag)» mit Datum und «An Kurstagen nur Schwimmen». Der Dienstag steht wieder auf 2:45 h
+  mit allen Sportarten; solange der Kurs läuft, bleibt er ein reiner Schwimmtag, danach plant die Seite dort ohne weiteres Zutun alle Sportarten und lockeres Schwimmen.
+- **Aufbau-Grenze weit voraus** (aufbau-1.2, offener Punkt 96): geplante Läufe der Wochen dazwischen zählen mit – Wochen ab etwa vier Wochen voraus sahen bisher wie nach
+  einer Laufpause aus (lange Läufe höchstens 30 min).
+- **Langer Lauf am Sonntag** (offener Punkt 97, ab der Woche vom 23.11.2026): am Donnerstag hatte er neben Rad-Schlüssel und CSS keinen Platz.
+- **Kurzcheck nach Puls** (laktat-hf-1.0, Wunsch vom 17.11.2026 für Skitour, Wandern, Langlauf und Grundlage): im Explorer «Puls aus den 10, 15 oder 20 min vor der
+  Messung»; gespeichert mit höchstem Puls, Pulsanstieg und Zeit. Eine Messung aus der Garmin-Notiz lässt sich im Bestätigen-Blatt mit «Puls aus der Aufzeichnung» so erfassen.
+  Zonen ändern sich dadurch nicht; die Zonen-Prüfung für Einheiten nach Puls ist mit der Planung von Skitour, Wandern und Langlauf (Etappe 4) vorgeschlagen.
+
 ## V7.6.1 · 17.11.2026 · Etappe 7, Teil 2: Woche ums Krafttraining abgestimmt, Tag automatisch; Planeinstellungen «Allgemein» (kraft-plan-1.1, verfuegbarkeit-1.1, pmc-2.1, wissen-1.18)
 - **Krafttraining, Tag automatisch oder fest** (Silas' Wunsch: der Tag soll nicht fix sein, nie vor Intervallen, ein Tag mit kurzem Lauf geht, Donnerstag nie): «Automatisch»
   mit möglichen Tagen – die Seite bewertet jeden möglichen Tag an der schon nach der Verfügbarkeit verteilten Woche (eigene Gewichte, Wissen «kraft») und nimmt den besten;

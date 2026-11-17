@@ -212,7 +212,8 @@
           ${zeile(`data-pe="pool"`, ic("becken", 22), "Standard-Bahnlänge", S.pool ? "für deine Schwimm-Einheiten; je Einheit änderbar" : "noch nicht festgelegt – bisher wie dein Gerät bzw. deine Enduco-Workouts", `${pool} m`)}
           <li class="pe-schalter-z"><label>${ic("technik", 22)}<span><b>Anfänger-Modus</b><small>Kürzere Wiederholungen, längere Pausen, nur einfache Übungen</small></span>
             <input type="checkbox" role="switch" data-pe-anf${S.anfaenger ? " checked" : ""}><i class="pe-schalter" aria-hidden="true"></i></label></li>
-          ${zeile(`data-pe="stile"`, ic("schwimm", 22), "Stile", SW() ? SW().stileText(S.stile) : "Kraul")}</ul>`;
+          ${zeile(`data-pe="stile"`, ic("schwimm", 22), "Stile", SW() ? SW().stileText(S.stile) : "Kraul")}
+          ${zeile(`data-pe="kurs"`, ic("kalender", 22), "Schwimmkurs (Dienstag)", kursText(S))}</ul>`;
     } else if (s === "kraft") {
       const K = E.kraft, D = V76(), ab = V64().addDays(V64().montag(heute()), 7), AUS = D ? D.ausnahmen(E, ab) : [];
       const ausText = (a) => (a.aus ? "ausgelassen" : `am ${D.TAGE[wtVon(a.tag) - 1]}${a.uhrzeit ? " " + a.uhrzeit : ""}`);
@@ -304,7 +305,7 @@
     if (art === "verf") { if (U66() && U66().verfuegbarkeitWoche) U66().verfuegbarkeitWoche(() => seite(i)); return; }   // V7.6.1 verfuegbarkeit-1.1
     if (art === "tests") { V59().schliessen(); if (window.APP && window.APP.showTab) window.APP.showTab("plan-tests"); else location.hash = "#plan-tests"; return; }
     const ov = art === "basis" ? basisBlatt(sport, i) : art === "indoor" ? indoorBlatt(sport, i) : art === "equipment" ? equipmentBlatt(i) : art === "pool" ? poolBlatt(i) : art === "stile" ? stileBlatt(i)
-      : art === "kraft" ? kraftBlatt(i) : art === "kraftwoche" ? kraftWocheBlatt(sport, i) : art === "lang" ? langBlatt(i) : null;
+      : art === "kraft" ? kraftBlatt(i) : art === "kraftwoche" ? kraftWocheBlatt(sport, i) : art === "lang" ? langBlatt(i) : art === "kurs" ? kursBlatt(i) : null;
     if (!ov) return;
     ov.querySelectorAll("[data-pe-z]").forEach((b) => (b.onclick = () => seite(i)));
   }
@@ -381,10 +382,32 @@
     };
     return ov;
   }
-  /** Gruppe «pe-schwimm» als Ganzes (Hilfsmittel, Bahnlänge, Stile, Anfänger-Modus); → Fehlertext oder null. */
+  /** Gruppe «pe-schwimm» als Ganzes (Hilfsmittel, Bahnlänge, Stile, Anfänger-Modus, V7.6.2 Schwimmkurs); → Fehlertext oder null. */
   function schwimmSpeichern(E, aenderung) {
-    const s = Object.assign({ hilfsmittel: E.schwimm.hilfsmittel, pool: E.schwimm.pool, stile: E.schwimm.stile, anfaenger: E.schwimm.anfaenger === true }, aenderung);
-    return sichern("pe-schwimm", { hilfsmittel: s.hilfsmittel, pool: s.pool, stile: s.stile, anfaenger: s.anfaenger });
+    const s = Object.assign({ hilfsmittel: E.schwimm.hilfsmittel, pool: E.schwimm.pool, stile: E.schwimm.stile, anfaenger: E.schwimm.anfaenger === true,
+      kurs_bis: E.schwimm.kurs_bis || null, kurs_nur: E.schwimm.kurs_nur === true }, aenderung);
+    return sichern("pe-schwimm", { hilfsmittel: s.hilfsmittel, pool: s.pool, stile: s.stile, anfaenger: s.anfaenger, kurs_bis: s.kurs_bis, kurs_nur: s.kurs_nur });
+  }
+  /** V7.6.2 kurs-1.0: Schwimmkurs am Dienstag – bis wann, und ob an Kurstagen nur geschwommen wird (kein Rad, kein Laufen). */
+  const kursText = (S) => (S.kurs_bis && S.kurs_bis < heute() ? `vorbei (letzter Kurstag ${tagLang(S.kurs_bis)})`
+    : `${S.kurs_bis ? `bis ${tagLang(S.kurs_bis)}` : "ohne Enddatum"}${S.kurs_nur ? " · an Kurstagen nur Schwimmen" : ""}`);
+  function kursBlatt(i) {
+    const E = M.einstellungen(), S = E.schwimm;
+    const ov = V59().blatt("pe", `<div class="blatt-titel">${ic("kalender", 34)}<h2 id="v59-ov-h" tabindex="-1">Schwimmkurs</h2>
+        <p class="sub">Dein Kurs am Dienstag: im Plan als eigene Einheit, nach dem letzten Kurstag wird daraus lockeres Schwimmen.</p></div>
+      <label class="pe-notiz"><span>Letzter Kurstag</span><input type="date" data-kbis value="${esc(S.kurs_bis || "")}"></label>
+      <p class="hint">Leer = der Kurs läuft weiter. Nach diesem Tag plant die Seite am Dienstag wieder normal.</p>
+      <div class="pe-schalter-z einzeln"><label><span></span><span><b>An Kurstagen nur Schwimmen</b><small>Kein Rad und kein Laufen am Dienstag, solange der Kurs läuft</small></span>
+        <input type="checkbox" role="switch" data-knur${S.kurs_nur ? " checked" : ""}><i class="pe-schalter" aria-hidden="true"></i></label></div>
+      <p class="hint">kurs-1.0: Die Zeit des Tages kommt aus deiner Trainingsverfügbarkeit; «Kein Training» geht vor. Einheiten, die am Dienstag stünden, verteilt die Seite auf andere Tage
+        (gemeldet). Gilt sofort – die laufende Woche, wenn sie schon festgehalten ist, erst mit «Anpassen».</p>
+      <p class="warn-t" data-pef hidden></p>${fuss(okKnopf())}`);
+    ov.querySelector("[data-peok]").onclick = () => {
+      const bis = ov.querySelector("[data-kbis]").value || null, nur = ov.querySelector("[data-knur]").checked;
+      if (bis === (S.kurs_bis || null) && nur === (S.kurs_nur === true)) { seite(i); return; }
+      schwimmUnd(ov, i, E, { kurs_bis: bis, kurs_nur: nur }, `Schwimmkurs: ${kursText({ kurs_bis: bis, kurs_nur: nur })}.`);
+    };
+    return ov;
   }
   async function schwimmUnd(ov, i, E, aenderung, ok) {
     ov.querySelectorAll("button").forEach((b) => (b.disabled = true));

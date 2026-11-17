@@ -199,7 +199,7 @@
   };
   let zaehler = 0;
   const neuId = () => "e-" + Date.now().toString(36) + "-" + (zaehler++).toString(36) + Math.random().toString(36).slice(2, 6);
-  /** Aufbau-Check (aufbau-1.1) für einen Lauf in Mein Plan: gemeldet, nie verhindert. e = Einheit, km = Distanz ≈ (V66.schaetzung),
+  /** Aufbau-Check (aufbau-1.2) für einen Lauf in Mein Plan: gemeldet, nie verhindert. e = Einheit, km = Distanz ≈ (V66.schaetzung),
    *  laeufe = V64.laeufe(Aktivitäten), heute = ISO. Grenze wie im Wochenvorschlag: 10 % über dem längsten Lauf der 30 Tage davor;
    *  ohne Lauf in diesen 30 Tagen (Pause) höchstens V64.PAUSE_MIN min locker. Ohne Läufe in den Daten nichts. → Text oder null. */
   V66.aufbauHinweis = function (e, datum, km, laeufe, heute) {
@@ -357,13 +357,26 @@
     return Object.assign(base, wert ? { min: wert.min == null ? null : wert.min, sport: wert.sport == null ? null : wert.sport.slice() } : { entfernt: true },
       { v: V66.VERSIONS.verfuegbarkeit, geaendert: jetzt || new Date().toISOString() });
   };
+  /** V7.6.2 kurs-1.0: an Kurstagen (Dienstag, bis zum letzten Kurstag; ohne Datum jeder Dienstag) nur Schwimmen, wenn so eingestellt. Die Zeit bleibt
+   *  die des Tages; «Kein Training» und eine Verfügbarkeit ohne Schwimmen gehen vor (so, wie du sie gesetzt hast). kurs = { nur, bis }. */
+  V66.mitKurs = function (verf, kurs) {
+    if (!kurs || !kurs.nur) return verf;
+    const kursTag = (d) => ISO_RE.test(String(d || "")) && V66.wtNr(d) === 2 && (!kurs.bis || d <= kurs.bis);
+    const f = (d) => {
+      const v = verf ? verf(d) : null;
+      if (!kursTag(d) || (v && (v.min === 0 || (Array.isArray(v.sport) && !v.sport.includes("schwimm"))))) return v;
+      return Object.assign({ min: null, quelle: null, id: null }, v || {}, { sport: ["schwimm"], kurs: true });
+    };
+    f.leer = false; f.eintrag = verf && verf.eintrag ? verf.eintrag : () => null; f.kursTag = kursTag;
+    return f;
+  };
   /** Kurztext: «1:30 h · Rad, Laufen», «kein Training», «Zeit offen · Schwimmen». */
   const SPW = { schwimm: "Schwimmen", rad: "Rad", lauf: "Laufen" };
   V66.vfText = function (v) {
     if (!v) return "nicht festgelegt";
     if (v.min === 0 || (Array.isArray(v.sport) && !v.sport.length)) return "kein Training";
     const z = v.min == null ? "Zeit offen" : `${Math.floor(v.min / 60)}:${String(v.min % 60).padStart(2, "0")} h`;
-    return `${z} · ${v.sport ? v.sport.map((x) => SPW[x]).join(", ") : "alle Sportarten"}`;
+    return `${z} · ${v.sport ? v.sport.map((x) => SPW[x]).join(", ") : "alle Sportarten"}${v.kurs ? " (Schwimmkurs)" : ""}`;
   };
 
   /* ---------------- Verteilen nach der Verfügbarkeit (verfuegbarkeit-1.0) ---------------- */

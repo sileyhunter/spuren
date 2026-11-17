@@ -1,5 +1,5 @@
 /* V6.4 Etappe 4 · Oberfläche: Plan → «Woche nach Modell» und «Trainingsmodell», Ansicht «Wissen» (Plan → Wissen).
-   Rechenlogik in js/v64.js (modell-1.0, wochenplan-1.2, tid-1.0, intensitaet-1.1, aufbau-1.1), Inhalte in js/wissen.js.
+   Rechenlogik in js/v64.js (modell-1.0, wochenplan-1.2, tid-1.0, intensitaet-1.1, aufbau-1.2), Inhalte in js/wissen.js.
    V6.4.2: Karte «Aufbau-Check» (Plan) und «Intensität je Sportart» im Trainingsmodell (gespeichert im selben Eintrag «modell»).
    V6.4.3: «Woche nach Modell» auch für vergangene Wochen (nachgerechnet mit dem Stand vor dem Montag) mit «Vergleich mit Enduco» (vergleich-1.1;
    V6.5 vergleich-1.2: «Ich folge» je Tag, gespeichert als Eingabe «planwahl» → plan_wahl; V6.6 vergleich-1.3/1.4: «Vorschlag» ist die in Mein Plan
@@ -74,7 +74,9 @@
     const css = cssAktuell(vorbei ? V.addDays(mo, -1) : null), sk = TR() ? TR().zonen(C.D.zonen).skalen : null;
     // V6.6 eigenplan-1.0: «Mein Plan» = Vorschlag mit deinen Änderungen (hinzugefügt, verschoben, gesperrt)
     const ctxE = { phase, css_s: css ? css.s : null, bibStufe: (wid) => (window.V65UI && window.V65UI.stufeWid ? window.V65UI.stufeWid(wid) : null) };
-    const verf = verfuegbarkeit(), lang = E75 ? E75.lang : null;
+    // V7.6.2 kurs-1.0: an Kurstagen nur Schwimmen (Planeinstellungen → Schwimmen → Schwimmkurs)
+    const KS = E75 && E75.schwimm ? E75.schwimm : null;
+    const verf = window.V66 && window.V66.mitKurs && KS ? window.V66.mitKurs(verfuegbarkeit(), { nur: KS.kurs_nur, bis: KS.kurs_bis }) : verfuegbarkeit(), lang = E75 ? E75.lang : null;
     // V7.6 kraft-plan-1.1 (js/v76.js): das Krafttraining aus den Planeinstellungen am passenden Tag. Den Tag wählt es an der schon verteilten Woche
     // (so steht jede Einheit an ihrem Tag); passt es dort (V76.passt), bleibt diese Woche, sonst wird mit dem Krafttraining neu verteilt (es belegt seine
     // Zeit, am Tag danach keine harte Einheit an Land). Regel 2 danach (V76.abstimmen). → { roh: unverteilt mit Krafttraining, v: verteilt }
@@ -89,8 +91,10 @@
       return { roh: r, v: !d || D76.passt(kP, o.verf) ? kP : verteilt(r) };
     };
     const abgestimmt = (w) => (window.V76 && window.V76.abstimmen ? window.V76.abstimmen(w, { ctxE }) : w);
+    // aufbau-1.2 (V7.6.2): für Wochen nach der laufenden zählen die geplanten Läufe der Wochen dazwischen mit (V64.laufGrenze, r.geplant)
+    const laeufe = V.laeufe(C.D.activities).concat(offset > 0 ? geplanteLaeufe(offset) : []);
     const X0 = mitKraft(V.woche({ woche: mo, phase, erholung, stunden, aufteilung, modell, tests, rennen: rennen(), css_s: css ? css.s : null,
-      intensitaet: V.intensitaet(wahlEintrag()), laeufe: V.laeufe(C.D.activities), heute: st.heute, skalen: sk })), w0 = X0.roh;
+      intensitaet: V.intensitaet(wahlEintrag()), laeufe, heute: st.heute, skalen: sk, kurs_bis: KS ? KS.kurs_bis : null })), w0 = X0.roh;
     // V7.2 verfuegbarkeit-1.0 / eigenplan-1.1: ab der laufenden Woche nach deiner Verfügbarkeit verteilt (ganze Woche, unabhängig vom heutigen Tag).
     // Wochen ohne eigene Änderungen folgen ihr von selbst; ganz festgehaltene Wochen zeigen das Gespeicherte; ältere, nur teilweise gespeicherte
     // Wochen (eigenplan-1.0) bleiben beim unverteilten Vorschlag, bis du «Anpassen» wählst. w0 = Vorschlag, auf dem Mein Plan aufbaut; w0roh = unverteilt.
@@ -110,11 +114,41 @@
     const erh = (d) => {
       if (!wErh) {
         wErh = abgestimmt(mitKraft(V.woche({ woche: mo, phase, erholung: true, stunden: Math.max(1, Math.round(stunden * 0.65 * 2) / 2), aufteilung, modell, tests, rennen: rennen(), css_s: css ? css.s : null,
-          intensitaet: V.intensitaet(wahlEintrag()), laeufe: V.laeufe(C.D.activities), heute: st.heute, skalen: sk })).v);
+          intensitaet: V.intensitaet(wahlEintrag()), laeufe, heute: st.heute, skalen: sk, kurs_bis: KS ? KS.kurs_bis : null })).v);
       }
       return ((wErh.tage.find((t) => t.date === d) || {}).einheiten) || [];
     };
-    return { w: wa, wPlan: w, w0: basis, w0roh: w0, verteilt: !teilweise && !!(w0v && w0v.verteilung), verf, lang, ctxE, wahl, S, css, vg, ausSaison, vorbei, offset, erh, E75, basis75: ba, rampe: R };
+    return { w: wa, wPlan: w, w0: basis, w0roh: w0, verteilt: !teilweise && !!(w0v && w0v.verteilung), verf, lang, ctxE, wahl, S, css, vg, ausSaison, vorbei, offset, erh, E75, basis75: ba, rampe: R, skalen: sk };
+  }
+  /** aufbau-1.2 (V7.6.2): geplante Läufe ab heute aus den Wochen vor der Woche «offset» (was dort gilt: Mein Plan mit Verteilung und Ampel), Distanz
+   *  aus dem Zonenprofil wie der Vorschlag (V64.kmSchaetzung). Nur die Wochen, die ins 30-Tage-Fenster reichen; jede Woche einmal je Durchgang
+   *  (zwischengespeichert: neu bei «meinplan», neuen Daten, neuem Tag, spätestens nach 3 s). */
+  let PROJ = null;
+  document.addEventListener("meinplan", () => { PROJ = null; });
+  function geplanteLaeufe(offset) {
+    const V = V64(), h = heuteISO(), jetzt = Date.now();
+    if (!PROJ || PROJ.D !== C.D || PROJ.h !== h || jetzt - PROJ.zeit > 3000) PROJ = { D: C.D, h, zeit: jetzt, wochen: new Map() };
+    const P = PROJ, gelaufen = new Set(V.laeufe(C.D.activities).filter((r) => r.date === h).map((r) => r.date)), out = [];
+    for (let k = Math.max(0, offset - 5); k < offset; k++) {
+      if (!P.wochen.has(k)) {
+        P.wochen.set(k, []);                                                  // gegen Wiederholung, falls die Woche sich selbst bräuchte
+        let L = [];
+        try {
+          const K = kontext(k);
+          if (K && K.w) for (const t of K.w.tage || []) {
+            if (t.date < h || (t.date === h && gelaufen.has(h))) continue;
+            for (const e of t.einheiten || []) {
+              if (e.sport !== "lauf") continue;
+              const km = V.kmSchaetzung(e, K.skalen);
+              if (isNum(km) && km >= 0.5) L.push({ date: t.date, km, min: e.dauer || null, name: e.titel || "", id: null, geplant: true });
+            }
+          }
+        } catch (err) { console.error(err); L = []; }
+        P.wochen.set(k, L);
+      }
+      for (const r of P.wochen.get(k)) out.push(r);
+    }
+    return out;
   }
   /** V7.2 verfuegbarkeit-1.0: Verfügbarkeit aus den Daten, darüber die noch nicht eingespielten Eingaben auf diesem Gerät. */
   function verfuegbarkeit() {
@@ -389,7 +423,7 @@
     };
   }
 
-  /* ---------- Aufbau-Check (aufbau-1.1) ---------- */
+  /* ---------- Aufbau-Check (aufbau-1.2) ---------- */
   const km1 = (x) => komma((Math.round(x * 10) / 10).toFixed(1));
   const tausend = (x) => Math.round(x).toLocaleString("de-CH");
   function aufbauZeichnen() {

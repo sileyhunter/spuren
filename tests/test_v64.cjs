@@ -244,7 +244,7 @@ test("Wissen: Regel-Liste verweist auf vorhandene Versionen und Kapitel", () => 
 
 test("Wissen 1.2/1.3: Kapitel «aufbau» und «vergleich» mit Quellen und Regeln", () => {
   const WS = require("../js/wissen.js");
-  assert.equal(WS.VERSION, "wissen-1.18");
+  assert.equal(WS.VERSION, "wissen-1.19");
   const k = WS.kapitel("aufbau");
   assert.ok(k, "Kapitel aufbau fehlt");
   const v = WS.verweise(k.text.join(" ") + " " + k.kurz);
@@ -333,6 +333,12 @@ test("Aufbau: Grenze für einen Tag (nur absolvierte Läufe), danach und auf 0,1
   assert.equal(V64.laufGrenze(L, "2026-11-19", "2026-11-13").ref.km, 16.4, "Fenster 20.10.–13.11. (nur absolvierte Läufe)");
   assert.equal(V64.laufGrenze(L, "2026-11-20", "2026-11-13").ref.km, 12.9, "ab dem 31. Tag zählt der 20.10. nicht mehr");
   assert.equal(V64.laufGrenze(L, "2026-12-30", "2026-11-13"), null);
+  // aufbau-1.2 (V7.6.2): geplante Läufe der Wochen dazwischen zählen bis zum Vortag (nicht nur bis heute) – keine Scheinpause weit voraus
+  const G = L.concat([{ date: "2026-12-20", km: 14.5, geplant: true }, { date: "2026-12-31", km: 20, geplant: true }]);
+  assert.equal(V64.laufGrenze(G, "2026-12-30", "2026-11-13").ref.km, 14.5, "geplanter Lauf im Fenster");
+  assert.equal(V64.laufGrenze(G, "2026-12-30", "2026-11-13").km, 15.9);
+  assert.equal(V64.laufGrenze(G, "2026-11-19", "2026-11-13").ref.km, 16.4, "geplante Läufe nach dem Tag zählen nicht");
+  assert.equal(V64.VERSIONS.aufbau, "aufbau-1.2");
   const A = V64.aufbau([lauf("2026-10-20", 16.4), lauf("2026-10-28", 11.3), lauf("2026-11-03", 12.9)], "2026-11-13");
   assert.equal(A.naechster, "2026-11-13"); assert.equal(A.danach.ab, "2026-11-20"); assert.equal(A.danach.km, 14.1);
   assert.equal(V64.aufbau([lauf("2026-11-13", 5)], "2026-11-13").naechster, "2026-11-14", "heute schon gelaufen: ab morgen");
@@ -436,7 +442,7 @@ test("aufbau-1.1 (B8): nach einer Laufpause (kein Lauf in 30 Tagen) langer und l
   assert.deepEqual([so.id, so.dauer], ["lauf_locker", V64.PAUSE_MIN]);
   assert.ok(w.hinweise.some((h) => /kein Lauf in den 30 Tagen davor/.test(h)));
   assert.ok(w.hinweise.some((h) => /am Di: kein Lauf in den 30 Tagen davor – harte Läufe/.test(h)));
-  assert.equal(V64.VERSIONS.aufbau, "aufbau-1.1");
+  assert.ok(/^aufbau-1\.[12]$/.test(V64.VERSIONS.aufbau));                // seit 1.2 auch geplante Läufe (Test oben)
   // ohne Läufe in den Daten: keine Begrenzung (nicht bestimmbar)
   assert.ok(woche({ phase: "Aufbau", stunden: 12, laeufe: [], heute: "2026-11-15", skalen: SK }).tage[6].einheiten.find((e) => e.sport === "lauf").dauer > V64.PAUSE_MIN);
 });
@@ -496,7 +502,7 @@ test("Wissen 1.4 (Audit V6.4): Versionsangaben in den Texten entsprechen dem Cod
   const text = WS.KAPITEL.map((k) => k.text.join(" ") + " " + k.kurz).join(" ");
   const alt = [...text.matchAll(/\b([a-z]+(?:-[a-z]+)*)-(\d+\.\d+)\b/g)].map((m) => m[0]).filter((v) => { const p = v.replace(/-\d+\.\d+$/, ""); return aktuell.has(p) && aktuell.get(p) !== v; });
   assert.deepEqual(alt, [], "veraltete Versionen im Wissenstext");
-  assert.ok(/readiness-2\.2/.test(text) && /saison-1\.2/.test(text) && /aufbau-1\.1/.test(text) && /vergleich-1\.4/.test(text) && /intensitaet-1\.1/.test(text));
+  assert.ok(/readiness-2\.2/.test(text) && /saison-1\.2/.test(text) && /aufbau-1\.2/.test(text) && /vergleich-1\.4/.test(text) && /intensitaet-1\.1/.test(text));
   // Audit B: Titel Rosenblat 2019, sechsstufige Skala, keine «trainierbare» Ermüdungsresistenz, Muñoz 2014b nicht als Überlegenheit
   assert.match(WS.QUELLEN.rosenblat2019.t, /intensity distribution on endurance sport performance/);
   assert.ok(!/Fünf-Zonen-Skala|trainierbare Eigenschaft|Hälfte der Wiederholungen|Stark für die VO2max/.test(text + JSON.stringify(WS.QUELLEN)));

@@ -375,13 +375,23 @@
     const flags = (z) => { const f = []; if (z.la == null) f.push("kein Laktatwert"); if (p.art === "stufentest" && z.status && z.status !== "eindeutig") f.push(z.status); if (z.fit && isNum(z.fit.dx) && Math.abs(z.fit.dx) > grenze) f.push(`Leistung ${C.fmt(z.fit.dx, rad ? 0 : 1)} ${u} neben der Tabelle`); if (z.hinweis) f.push(z.hinweis); return f; };
     const mitLa = Z.filter((z) => z.la != null).length, auff = Z.filter((z) => flags(z).length).length;
     const ausNotiz = p.quelle_art === "notiz";      // V6.1 notizen-1.0: Werte laut Garmin-Notiz, nicht aus FIT nachgerechnet
+    // V7.6.2 laktat-hf-1.0: Messung aus der Notiz mit dem Puls der Aufzeichnung (10–20 min davor) im Explorer erfassen – für Einheiten nach Puls
+    const hfAkt = ausNotiz && p.art === "check" && window.EX ? (C.D.activities || []).find((x) => String(x.gid) === String(p.aktivitaet) || String(x.id) === String(p.aktivitaet)) : null;
     const rows = Z.map((z, i) => { const f = flags(z); return `<tr class="${f.length ? "flag" : ""}"><td>${ausNotiz && p.block ? esc(p.block) : z.stufe ?? i + 1}</td><td>${d0(z.x)}</td><td>${z.fit ? d0(z.fit.x) : "–"}</td><td>${z.la != null ? C.fmt(z.la, 1) : "–"}</td><td>${isNum(z.hf) ? z.hf : "–"}${z.fit && isNum(z.fit.hr_vor) ? ` / ${Math.round(z.fit.hr_vor)}` : ""}</td><td class="l">${f.length ? `<small class="warn-t">${esc(f.join("; "))}</small>` : "ok"}</td></tr>`; }).join("");
     const ov = oeffne("best", `<div class="te-head"><h2 id="v59-ov-h" tabindex="-1">${p.art === "check" ? "Messung" : "Test"} bestätigen · ${esc(C.dateCH(p.datum))} · ${rad ? "Rad" : "Lauf"}</h2><button class="btn" data-x>Abbrechen</button></div>
       <p class="hint">Quelle: ${esc(p.datei || "–")}${p.zuordnung ? ` · Zuordnung zur Aktivität: ${esc(p.zuordnung)}` : ""}${p.regel ? ` (${esc(p.regel)})` : ""}. Bestätigst du, übernimmt das nächste Update ${p.art === "check" ? "die Messung" : `alle ${mitLa} Stufen mit Laktatwert`} als Laktatmessung und rechnet die Schwellen neu; deine Zonen ändern sich dadurch nicht.</p>
       <div class="tablewrap"><table class="t v59-bt" data-liste><tr><th>${p.art === "check" ? "Block" : "Stufe"}</th><th>${ausNotiz ? "Notiz" : "Tabelle"} ${u}</th><th>FIT ${u}</th><th>Laktat</th><th>Puls ${ausNotiz ? "Notiz" : "Tab."} / FIT</th><th class="l">Prüfen</th></tr>${rows}</table></div>
       ${(p.hinweise || []).length ? `<ul class="es-l">${p.hinweise.map((h) => `<li><small>${esc(h)}</small></li>`).join("")}</ul>` : ""}
       ${auff ? `<p class="verdict warn">${auff} von ${Z.length} Zeilen mit Hinweis – bitte ansehen. Falsche Werte korrigiere ich im Chat, bevor du bestätigst.</p>` : ""}
+      ${hfAkt ? `<p class="hint">Puls lieber aus der Aufzeichnung? Der Explorer nimmt den Ø Puls der 10, 15 oder 20 min vor der Messung (wählbar) und übernimmt Zeit und Laktat aus der Notiz; danach bestätigst du dort.</p>
+      <div class="row"><button class="btn" type="button" data-hf>Puls aus der Aufzeichnung</button></div>` : ""}
       <div class="row"><button class="btn primary" type="button" data-ok>${p.art === "check" ? "Messung bestätigen" : `Test bestätigen – alle ${mitLa} Stufen`}</button><button class="btn" type="button" data-x>Abbrechen</button></div>`);
+    const hfB = ov.querySelector("[data-hf]");
+    if (hfB) hfB.onclick = () => {
+      const k = (p.kandidaten || [])[0] || {}, z = Z[0] || {};
+      V.schliessen();
+      window.EX.open(hfAkt.id, { laktat: { t: k.t_s, la: z.la, fenster: 10, notiz: p.block ? `Notiz: ${p.block}` : null, quelle: "aus der Garmin-Notiz, Puls aus der Aufzeichnung", vorschau: p.id } });
+    };
     ov.querySelector("[data-ok]").onclick = async () => {
       if (!I.data.laktat_bestaetigt.includes(id)) I.data.laktat_bestaetigt.push(id);
       await I.save(); V.schliessen(); try { UI().library(); } catch (e) { console.error(e); }
@@ -394,7 +404,7 @@
     const hms = (s) => { s = Math.round(s || 0); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); };
     const ab = p.abschnitt || {}, lauf = p.sport === "lauf";
     const ov = oeffne("best", `<div class="te-head"><h2 id="v59-ov-h" tabindex="-1">Laktat bestätigen · ${esc(C.dateCH(p.datum))}</h2><button class="btn" data-x>Abbrechen</button></div>
-      <p>${esc(a.name || "Einheit")}: <b>${C.fmt(p.la, 1)} mmol/l</b> bei ${hms(p.t)} · Abschnitt ${hms(ab.von)}–${hms(ab.bis)} · ${lauf ? (isNum(ab.pace) ? "Pace " + Math.floor(ab.pace / 60) + ":" + String(Math.round(ab.pace % 60)).padStart(2, "0") + " /km" : "Pace –") : `Ø ${isNum(ab.w) ? ab.w + " W" : "–"}${isNum(ab.np) ? ` · NP ${ab.np} W` : ""}`} · Puls Ø ${isNum(ab.hr) ? ab.hr : "–"}</p>
+      <p>${esc(a.name || "Einheit")}: <b>${C.fmt(p.la, 1)} mmol/l</b> bei ${hms(p.t)} · Abschnitt ${hms(ab.von)}–${hms(ab.bis)} · ${lauf ? (isNum(ab.pace) ? "Pace " + Math.floor(ab.pace / 60) + ":" + String(Math.round(ab.pace % 60)).padStart(2, "0") + " /km" : "Pace –") : !isNum(ab.w) && !["rad", "lauf"].includes(p.sport) ? "nach Puls" : `Ø ${isNum(ab.w) ? ab.w + " W" : "–"}${isNum(ab.np) ? ` · NP ${ab.np} W` : ""}`} · Puls Ø ${isNum(ab.hr) ? ab.hr : "–"}${isNum(ab.hr_max) ? ` · max ${ab.hr_max}` : ""}${isNum(ab.hr_anstieg) ? ` · Anstieg ${C.fmt(ab.hr_anstieg, 1)} %` : ""}</p>
       <p class="hint">Zuordnung: ${esc(ab.grund || "–")}. Bestätigst du, übernimmt das nächste Update den Wert als Kurzcheck (Quelle «aus Explorer»). Zonen ändern sich dadurch nicht.</p>
       <div class="row"><button class="btn primary" type="button" data-ok>Als Kurzcheck bestätigen</button><button class="btn" type="button" data-x>Abbrechen</button></div>`);
     ov.querySelector("[data-ok]").onclick = async () => {

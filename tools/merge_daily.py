@@ -174,10 +174,19 @@ def laktatpunkt_uebernehmen(D, pid):
     mmss = lambda s: f"{int(s) // 60}:{int(s) % 60:02d}" if isinstance(s, (int, float)) else "?"  # noqa: E731
     e = {"id": pid, "kind": "check", "date": p.get("datum"), "sport": p.get("sport"), "block": f"Explorer {mmss(ab.get('von'))}–{mmss(ab.get('bis'))}",
          "w": ab.get("w") if p.get("sport") != "lauf" else None, "pace_s": ab.get("pace") if p.get("sport") == "lauf" else None,
-         "np": ab.get("np"), "hr_avg": ab.get("hr"), "hr_max": None, "drift": None, "lactate": p.get("la"),
+         "np": ab.get("np"), "hr_avg": ab.get("hr"), "hr_max": ab.get("hr_max"), "drift": ab.get("hr_anstieg"), "lactate": p.get("la"),
          "note": "aus Explorer" + (f"; {p['notiz']}" if p.get("notiz") else ""), "activity": p.get("act"),
          "quelle": f"{p.get('quelle') or 'Explorer'}, Abschnitt {mmss(ab.get('von'))}–{mmss(ab.get('bis'))} ({ab.get('grund') or 'Zuordnung'})",
          "bestaetigt": dt.date.today().isoformat()}
+    # V7.6.2 laktat-hf-1.0: Zeit der Messung (el_s seit Start, t_s ohne Timer-Stopps) und Puls-Fenster vor der Messung, wenn gewählt
+    if isinstance(p.get("t"), (int, float)):
+        e["el_s"] = p["t"]
+    if isinstance(p.get("t_timer"), (int, float)):
+        e["t_s"] = p["t_timer"]
+    if isinstance(ab.get("fenster_s"), (int, float)):
+        e["fenster_s"] = ab["fenster_s"]
+    if p.get("vorschau"):
+        e["note"] += f"; Messung aus der Garmin-Notiz ({p['vorschau']})"
     _upsert(D, "lactate", [e], idf=lambda x: x.get("id"), what="Laktat")
     p["status"] = "übernommen"
     return True
@@ -491,6 +500,10 @@ def planeinstellung_pruefen(e):
             return "unbekannter Stil"
         if e.get("anfaenger") is not None and not isinstance(e.get("anfaenger"), bool):
             return "Anfänger-Modus ja oder nein"
+        if e.get("kurs_bis") is not None and _pe_datum(e.get("kurs_bis")) is None:      # V7.6.2 kurs-1.0
+            return "Schwimmkurs: letzter Kurstag als Datum"
+        if e.get("kurs_nur") is not None and not isinstance(e.get("kurs_nur"), bool):
+            return "Schwimmkurs: nur Schwimmen ja oder nein"
         return None
     return "unbekannte Einstellung"
 

@@ -908,6 +908,14 @@ html.v73-offen, html.v73-offen body { overflow: hidden; }
 .v73-hero::after { content: ""; position: absolute; inset: 0; z-index: -1;
   background: linear-gradient(180deg, rgba(0, 0, 0, .1) 0%, transparent 42%, var(--bg) 100%);
   background: linear-gradient(180deg, color-mix(in srgb, var(--sp) 46%, transparent) 0%, color-mix(in srgb, var(--sp) 10%, transparent) 46%, var(--bg) 100%); }
+/* V7.6.2 bilder-1.0: eigenes Foto je Sportart (in Farbe, abgedunkelt; unten in den Hintergrund auslaufend wie die Vorlage) */
+.v73-hero.bild { min-height: 268px; }
+.v73-hero.bild::before { background-image: var(--hero-bild); background-position: var(--hero-pos, 50% 40%); filter: brightness(.74) saturate(.9); animation: v73-bild .35s ease-out; }
+:root[data-theme="light"] .v73-hero.bild::before { filter: brightness(.96) saturate(.95); opacity: 1; }
+.v73-hero.bild::after { background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 34%, transparent) 0%, transparent 30%, color-mix(in srgb, var(--bg) 62%, transparent) 70%, var(--bg) 100%); }
+.v73-hero.bild .v73-hero-sym { display: none; }
+@keyframes v73-bild { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .v73-hero.bild::before { animation: none; } }
 .v73-hero-sym { position: absolute; right: -14px; top: calc(14px + env(safe-area-inset-top, 0px)); z-index: -1; color: var(--sp); opacity: .2; }
 .v73-hero-sym svg { stroke-width: 1.2; }
 .v73-hero-text { display: flex; flex-direction: column; min-width: 0; width: 100%; max-width: 760px; margin: 0 auto; }

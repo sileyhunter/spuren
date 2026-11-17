@@ -159,3 +159,24 @@ test("Dateiname der Reihe wie tools/serien_crypt.mjs (SHA-256 aus Salz und ID, 2
   assert.equal(await AN.serieName("0f1e2d", "g10000000001"), soll);
   assert.notEqual(await AN.serieName("0f1e2e", "g10000000001"), soll, "anderes Salz, anderer Name");
 });
+
+/* ---------------- V7.6.2 laktat-hf-1.0: Puls aus der Aufzeichnung vor der Messung ---------------- */
+test("laktat-hf-1.0: Fenster 10/15/20 min vor der Messung, Pulsanstieg wie beim Kurzcheck, Timer-Stopp zählt nicht als Zeit", () => {
+  // 40 min Aufzeichnung im 2-s-Raster, nach 10 min 2 min Timer-Stopp; Puls steigt in den letzten 20 min gleichmässig von 120 auf 140
+  const n1 = 300, n2 = 900, hr = [];
+  for (let i = 0; i < n1 + n2; i++) hr.push(i < n1 + 300 ? 120 : 120 + (20 * (i - n1 - 300)) / 600);
+  const S = AN.decode({ id: "x", sport: "skitour", dt: 2, seg: [[0, n1], [n1 + 60, n2]], hr });
+  assert.equal(AN.VERSIONS.laktat_hf, "laktat-hf-1.0");
+  const ende = S.t[S.n - 1];
+  for (const m of [10, 15, 20]) {
+    const F = AN.laktatFenster(S, ende, m);
+    assert.equal(F.fenster_s, m * 60); near(S.t[F.i1] - S.t[F.i0], m * 60, 2, `${m} min`);
+    assert.match(F.grund, new RegExp(`${m} min vor der Messung`));
+  }
+  assert.equal(AN.laktatFenster(S, ende, 7).fenster_s, 600, "nur 10, 15 oder 20 min; sonst 10");
+  const F = AN.laktatFenster(S, ende, 20), st = AN.stats(S, F.i0, F.i1);
+  near(st.hr, 130, 0.2, "Ø Puls der 20 min"); near(AN.pulsAnstieg(S, F.i0, F.i1), 100 * (135 / 125 - 1), 0.2, "2. gegen 1. Hälfte in %");
+  assert.equal(AN.laktatFenster(S, 300, 20).i0, 0, "Aufzeichnung kürzer als das Fenster: ab Start");
+  assert.equal(AN.pulsAnstieg({ hr: null }, 0, 10), null);
+  near(AN.idxAt(S, ende) * S.dt, (n1 + n2 - 1) * 2, 0.1, "Zeit ohne Timer-Stopp (t_timer) = Anzahl Werte × 2 s");
+});

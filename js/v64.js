@@ -23,7 +23,7 @@
   if (root) root.V64 = V64;
 })(typeof window !== "undefined" ? window : null, function (V62) {
   "use strict";
-  const V64 = { VERSIONS: { modell: "modell-1.0", woche: "wochenplan-1.2", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.1", aufbau: "aufbau-1.1", vergleich: "vergleich-1.4" } };
+  const V64 = { VERSIONS: { modell: "modell-1.0", woche: "wochenplan-1.2", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.1", aufbau: "aufbau-1.2", vergleich: "vergleich-1.4" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const T = (iso) => Date.parse(iso + "T12:00:00Z");
   const add = (iso, n) => new Date(T(iso) + n * 864e5).toISOString().slice(0, 10);
@@ -363,7 +363,9 @@
     const sw = clamp(r5(min.schwimm / N.schwimm), 30, 75);
 
     tag("Mo").ruhetag = true;
-    tag("Di").einheiten.push(laufK, V64.einheit("schwimm_kurs", o(sw)));
+    // V7.6.2 kurs-1.0: der Schwimmkurs nur bis zum letzten Kurstag (Planeinstellungen); danach am Dienstag lockeres Schwimmen
+    const kursDi = !c.kurs_bis || add(woche, 1) <= c.kurs_bis;
+    tag("Di").einheiten.push(laufK, V64.einheit(kursDi ? "schwimm_kurs" : "schwimm_locker", o(sw)));
     if (radL) tag("Mi").einheiten.push(V64.einheit("rad_locker", o(radL)));
     tag("Do").einheiten.push(radK);
     if (N.schwimm >= 2) tag("Do").einheiten.push(erh ? V64.einheit("schwimm_locker", o(sw)) : gewaehlt("schwimm", "schwimm_css", sw));   // B14: Erholung = eine Schlüsseleinheit
@@ -491,11 +493,13 @@
   V64.laeufe = (acts) => (acts || []).filter((a) => a && a.sport === "lauf" && isNum(a.km) && a.km >= 0.5 && a.km <= 100 && /^\d{4}-\d{2}-\d{2}$/.test(a.date || ""))
     .map((a) => ({ date: a.date, start: a.start || "", km: a.km, min: (a.mv || a.dur || 0) / 60, name: a.name || "", id: a.id || null }))
     .sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start));
-  /** Grenze für einen Lauf am «datum»: 10 % über dem längsten absolvierten Lauf im Fenster [datum − 30, datum − 1] (nur Läufe bis «heute»). */
+  /** Grenze für einen Lauf am «datum»: 10 % über dem längsten Lauf im Fenster [datum − 30, datum − 1] – absolvierte Läufe bis «heute»,
+   *  aufbau-1.2 (V7.6.2) dazu geplante Läufe (r.geplant, aus Mein Plan der Wochen dazwischen) bis zum Vortag; sonst gälte ab etwa vier Wochen
+   *  voraus «kein Lauf in den 30 Tagen davor». */
   V64.laufGrenze = function (laeufe, datum, heute) {
-    const von = add(datum, -30), bis = heute && heute < datum ? heute : add(datum, -1);
+    const von = add(datum, -30), bis = heute && heute < datum ? heute : add(datum, -1), bisPlan = add(datum, -1);
     let ref = null;
-    for (const r of laeufe || []) if (r.date >= von && r.date <= bis && (!ref || r.km >= ref.km)) ref = r;
+    for (const r of laeufe || []) if (r.date >= von && r.date <= (r.geplant ? bisPlan : bis) && (!ref || r.km >= ref.km)) ref = r;
     return ref ? { km: km1(ref.km * 1.1), ref } : null;
   };
   /** Geschätzte Distanz einer vorgeschlagenen Laufeinheit aus dem Zonenprofil (Pace je Abschnitt; Z1 und Trab mit dem langsamen Rand von Z2,

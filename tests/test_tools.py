@@ -1617,6 +1617,32 @@ check("kraft-plan-1.1 / verfuegbarkeit-1.1: Python prüft Tag automatisch, mögl
 check("kraft-plan-1.1 / verfuegbarkeit-1.1: gültig automatisch mit möglichen Tagen 1–7 (jeder einmal) oder fest mit Wochentag; lange Einheiten je Sportart 1–7, "
       "leer = keine Vorliebe, vorher erlaubt",
       [x is None for x in _k11_py] == [True, True, False, False, False, False, False, False, True, True, True, True, False, False, False, True, False], str(_k11_py))
+# V7.6.2 laktat-hf-1.0: Laktatpunkt mit dem Puls der 10–20 min vor der Messung → Kurzcheck mit Puls max, Pulsanstieg, Zeit und Fenster
+import notizen as _notizen_lh  # noqa: E402
+_LH = {"lactate": [], "laktat_punkte": [{"id": "lp-g10000000009-5400", "act": "g10000000009", "datum": "2026-12-05", "sport": "skitour", "t": 5400, "t_timer": 5280,
+        "la": 1.6, "abschnitt": {"von": 4800, "bis": 5400, "grund": "10 min vor der Messung (Puls aus der Aufzeichnung, laktat-hf-1.0)", "w": None, "np": None,
+        "hr": 141, "pace": None, "hr_max": 147, "hr_anstieg": 2.4, "fenster_s": 600}, "notiz": "Notiz: Min 90", "status": "vorschau",
+        "quelle": "aus der Garmin-Notiz, Puls aus der Aufzeichnung", "vorschau": "ln-10000000009-90"}], "audit": []}
+_lh_ok = merge_daily.laktatpunkt_uebernehmen(_LH, "lp-g10000000009-5400")
+_lh = (_LH.get("lactate") or [{}])[0]
+check("laktat-hf-1.0: Kurzcheck übernimmt Ø und max Puls, Pulsanstieg, Zeit (seit Start und ohne Timer-Stopps) und das Fenster",
+      _lh_ok and _lh.get("hr_avg") == 141 and _lh.get("hr_max") == 147 and _lh.get("drift") == 2.4 and _lh.get("el_s") == 5400 and _lh.get("t_s") == 5280
+      and _lh.get("fenster_s") == 600 and "ln-10000000009-90" in _lh.get("note", "") and _LH["laktat_punkte"][0]["status"] == "übernommen", str(_lh))
+_lh2 = {"lactate": [], "laktat_vorschau": [], "laktat_punkte": [{"id": "lp-x", "act": "anders", "t": 99999, "vorschau": "ln-10000000009-90"}]}
+check("laktat-hf-1.0: eine Notiz-Messung, die im Explorer mit dem Puls erfasst wurde, gibt keine zweite Vorschau",
+      bool(_notizen_lh._gleiche_messung(_lh2, {"g10000000009", 10000000009}, 5400, 1.6, "ln-10000000009-90"))
+      and not _notizen_lh._gleiche_messung(_lh2, {"g10000000009", 10000000009}, 5400, 1.6, "ln-10000000009-45"))
+
+# V7.6.2 kurs-1.0: Schwimmkurs mit letztem Kurstag und «an Kurstagen nur Schwimmen» – gleich wie V75.pruefen
+_KU_BASIS = {"id": "pe-schwimm", "hilfsmittel": ["brett"], "pool": 50, "stile": ["brust"], "anfaenger": False}
+_KU_FAELLE = [dict(_KU_BASIS, kurs_bis="2026-12-15", kurs_nur=True), dict(_KU_BASIS, kurs_bis=None, kurs_nur=False), dict(_KU_BASIS, kurs_bis="15.12.2026"),
+              dict(_KU_BASIS, kurs_bis="2026-02-30"), dict(_KU_BASIS, kurs_nur="ja"), dict(_KU_BASIS)]
+_kuj = subprocess.run(["node", "-e", "const V75 = require('./js/v75.js'); const F = JSON.parse(process.argv[1]); console.log(JSON.stringify(F.map((e) => V75.pruefen(e))));",
+                       json.dumps(_KU_FAELLE)], cwd=ROOT, capture_output=True, text=True)
+_ku_js = json.loads(_kuj.stdout or "[]")
+_ku_py = [merge_daily.planeinstellung_pruefen(e) for e in _KU_FAELLE]
+check("kurs-1.0: Python prüft letzten Kurstag und «nur Schwimmen» wie die Seite (gleiche Entscheide)",
+      len(_ku_js) == len(_KU_FAELLE) and [x is None for x in _ku_js] == [x is None for x in _ku_py] == [True, True, False, False, False, True], _kuj.stderr + str(list(zip(_ku_js, _ku_py))))
 check("einheit-felder-1.1: Bahnlänge 25 oder 50 m je Einheit, drinnen false erlaubt (ausdrücklich draussen)",
       merge_daily.einheit_feld_pruefen("pool", 50) is None and merge_daily.einheit_feld_pruefen("pool", 33) and merge_daily.einheit_feld_pruefen("pool", True)
       and merge_daily.einheit_feld_pruefen("drinnen", False) is None and "pool" in merge_daily.EINHEIT_FELDER)
