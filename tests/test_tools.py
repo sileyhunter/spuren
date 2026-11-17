@@ -1588,6 +1588,35 @@ for _x in ({"id": "pe-kraft", "v": "planeinstellungen-1.0", "aktiv": True, "wt":
 _DK = {x["id"]: x for x in json.load(open(os.path.join(_tk, "d.json"))).get("plan_einstellungen", [])}
 check("kraft-plan-1.0 (merge_daily): neueste Fassung mit der mitgetragenen (vorher) gespeichert, Ausnahme je Woche als eigene ID",
       _DK["pe-kraft"]["wt"] == 4 and _DK["pe-kraft"]["vorher"]["wt"] == 3 and _DK["pe-kraft-2026-11-30"]["aus"] is True, json.dumps(_DK))
+# V7.6.1 kraft-plan-1.1 (Tag automatisch: modus, mögliche Tage) und verfuegbarkeit-1.1 (pe-lang, ab der nächsten Woche mit vorher) – gleich wie V75.pruefen
+_K11_FAELLE = [
+    {"id": "pe-kraft", "aktiv": True, "modus": "auto", "tage": [1, 2, 3, 5, 6, 7], "dauer": 90},
+    {"id": "pe-kraft", "aktiv": True, "modus": "fest", "wt": 2},
+    {"id": "pe-kraft", "aktiv": True, "modus": "auto", "tage": []},
+    {"id": "pe-kraft", "aktiv": True, "modus": "auto"},
+    {"id": "pe-kraft", "aktiv": True, "modus": "auto", "tage": [1, 1]},
+    {"id": "pe-kraft", "aktiv": True, "modus": "auto", "tage": [0, 3]},
+    {"id": "pe-kraft", "aktiv": True, "modus": "immer", "wt": 2},
+    {"id": "pe-kraft", "aktiv": True, "modus": "fest"},
+    {"id": "pe-kraft", "aktiv": False, "modus": "auto", "tage": []},
+    {"id": "pe-kraft", "aktiv": True, "modus": "auto", "tage": [2.0]},                       # ganzzahlig wie 2 (JSON)
+    {"id": "pe-lang", "rad": [6, 7], "lauf": [4]},
+    {"id": "pe-lang", "rad": [], "lauf": []},
+    {"id": "pe-lang", "rad": [6, 6]},
+    {"id": "pe-lang", "lauf": [8]},
+    {"id": "pe-lang", "lauf": "So"},
+    {"id": "pe-lang", "rad": [6], "geaendert": "2026-11-18T10:00:00Z", "vorher": {"rad": [], "lauf": [], "geaendert": "2026-11-10T10:00:00Z"}},
+    {"id": "pe-lang", "rad": [6], "vorher": {"rad": [9], "geaendert": "2026-11-10T10:00:00Z"}},
+]
+_k11j = subprocess.run(["node", "-e", "const V75 = require('./js/v75.js'); const F = JSON.parse(process.argv[1]); console.log(JSON.stringify(F.map((e) => V75.pruefen(e))));",
+                        json.dumps(_K11_FAELLE)], cwd=ROOT, capture_output=True, text=True)
+_k11_js = json.loads(_k11j.stdout or "[]")
+_k11_py = [merge_daily.planeinstellung_pruefen(e) for e in _K11_FAELLE]
+check("kraft-plan-1.1 / verfuegbarkeit-1.1: Python prüft Tag automatisch, mögliche Tage und Tage für lange Einheiten wie die Seite (gleiche Entscheide)",
+      len(_k11_js) == len(_K11_FAELLE) and [x is None for x in _k11_js] == [x is None for x in _k11_py], _k11j.stderr + str(list(zip(_k11_js, _k11_py))))
+check("kraft-plan-1.1 / verfuegbarkeit-1.1: gültig automatisch mit möglichen Tagen 1–7 (jeder einmal) oder fest mit Wochentag; lange Einheiten je Sportart 1–7, "
+      "leer = keine Vorliebe, vorher erlaubt",
+      [x is None for x in _k11_py] == [True, True, False, False, False, False, False, False, True, True, True, True, False, False, False, True, False], str(_k11_py))
 check("einheit-felder-1.1: Bahnlänge 25 oder 50 m je Einheit, drinnen false erlaubt (ausdrücklich draussen)",
       merge_daily.einheit_feld_pruefen("pool", 50) is None and merge_daily.einheit_feld_pruefen("pool", 33) and merge_daily.einheit_feld_pruefen("pool", True)
       and merge_daily.einheit_feld_pruefen("drinnen", False) is None and "pool" in merge_daily.EINHEIT_FELDER)

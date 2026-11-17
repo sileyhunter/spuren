@@ -208,7 +208,7 @@
   function kopf() {
     const W = V6(), gesperrt = X.art === "plan" && (X.e.gesperrt || X.t.gesperrt);
     const unter = X.art === "workout" ? `${SPORT_WORT[X.sport] || ""} · ${X.quelle}`
-      : X.e.kraft_plan ? "fester Termin · Planeinstellungen" : X.e.quelle === "bibliothek" ? "aus deiner Enduco-Bibliothek" : X.e.quelle === "eigen" ? "eigene Einheit · Mein Plan" : `Vorschlag «${X.K.w.modellName || "Modell"}» · Mein Plan`;
+      : X.e.kraft_plan ? (X.e.kraft_auto ? "Tag automatisch · Planeinstellungen" : "fester Termin · Planeinstellungen") : X.e.quelle === "bibliothek" ? "aus deiner Enduco-Bibliothek" : X.e.quelle === "eigen" ? "eigene Einheit · Mein Plan" : `Vorschlag «${X.K.w.modellName || "Modell"}» · Mein Plan`;
     return `<div class="v73-hero" style="--sp:${spVar(X.sport)}"><span class="v73-hero-sym" aria-hidden="true">${W.sportIcon(X.sport, 150)}</span>
       <div class="v73-hero-text"><p class="v73-ueber">${W.sportIcon(X.sport, 16)}${gesperrt ? `<span class="v73-schloss" title="gesperrt">${ic("schloss", 15)}</span>` : ""}<span>Trainingsbriefing</span></p>
         <h1 id="v73-titel" tabindex="-1">${esc(X.titel)}</h1><p class="v73-unter">${esc(unter)}</p></div></div>`;
@@ -407,7 +407,7 @@
   function kraftZahlen() {
     const r = rpeKraft(), kv = [[V6().dauerText(X.e.dauer * 60), "Dauer"], [X.e.uhrzeit || "–", "Uhrzeit"], [r && isNum(r.srpe) ? String(r.srpe) : "–", "sRPE"]];
     return `<div class="v73-kv">${kv.map(([w, l]) => `<div><b>${esc(w)}</b><span>${esc(l)}</span></div>`).join("")}</div>
-      <p class="hint">${esc(V76().VERSIONS.kraft)}: Krafttraining zählt nicht zu den Wochenstunden und nicht in TL ≈ und Form, belegt aber seine Zeit am Tag. sRPE = RPE × Minuten als eigene Zahl.</p>`;
+      <p class="hint">${esc(V76().VERSIONS.kraft)}: Krafttraining zählt nicht zu den Wochenstunden und nicht in TL ≈, Fitness und Form, belegt aber seine Zeit am Tag${X.e.kraft_auto ? "; den Tag hat die Seite gewählt (nicht vor einer harten Rad- oder Laufeinheit)" : ""}. sRPE = RPE × Minuten als eigene Zahl.</p>`;
   }
   /** Übungen (Notiz aus den Planeinstellungen), RPE nach der Einheit, «Nur diese Woche» und der Termin. */
   function kraftAbschnitt() {

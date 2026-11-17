@@ -3367,10 +3367,10 @@ function recovery(i) {                                                          
   return Math.max(1, Math.min(99, Math.round(((d.hrv / b.hrv - 0.8) / 0.4) * 55 + ((b.rhr / d.rhr - 0.9) / 0.2) * 20 + sl * 25)));
 }
 const _pmc = {};
-function pmc(key = "tss") {           // Fitness (42 Tage), Ermüdung (7 Tage), Form = Fitness − Ermüdung desselben Tages (FK.pmc, pmc-2.0)
+function pmc(key = "tss") {           // Fitness (42 Tage), Ermüdung (7 Tage), Form = Fitness − Ermüdung desselben Tages (FK.pmc, pmc-2.1: ohne Krafttraining)
   if (_pmc[key]) return _pmc[key];
   if (!D.activities.length) return (_pmc[key] = []);
-  const byDay = new Map(); D.activities.forEach((a) => byDay.set(a.date, (byDay.get(a.date) || 0) + (a[key] || 0)));
+  const byDay = new Map(); D.activities.forEach((a) => { if (FK.zaehlt(a)) byDay.set(a.date, (byDay.get(a.date) || 0) + (a[key] || 0)); });   // pmc-2.1: ohne Krafttraining
   return (_pmc[key] = FK.pmc(byDay, D.activities[0].date, iso(today)));
 }
 function pmcStand() {                 // letzte erfasste Einheit: macht sichtbar, ob das heutige Training schon drin ist
@@ -3383,7 +3383,7 @@ const MODEL_ROWS = () => {
   const dv = (k) => { const v = (D.versions || {})[k]; return v ? (typeof v === "string" ? v : v.v) : null; };
   return [
     ["Trainingslast", LAST_AKTIV ? dv("last") : "Garmin (wie geliefert)", LAST_AKTIV ? "Rad: NP gegen die LT2 aus einem Rad-Stufentest auf demselben System (Rolle bzw. draussen; je Datum der letzte Test davor, vorher der erste, gekennzeichnet; nie FTP, keine Umrechnung zwischen Leistungsmessern); draussen ohne eigene LT2 nach Puls; übrige Sportarten wie geliefert" : "Rad mit der in Garmin eingestellten FTP; Vorschlag mit LT2 in «Wochenlast je Sportart»", "tools/last.py, index.html lastWoche()"],
-    ["Fitness, Ermüdung, Form", FK.VERSIONS.pmc, "Tageslast exponentiell geglättet (42 bzw. 7 Tage); Form = Fitness − Ermüdung desselben Tages; Vortageswert als «Form zu Tagesbeginn»", "js/formkurve.js FK.pmc"],
+    ["Fitness, Ermüdung, Form", FK.VERSIONS.pmc, "Tageslast exponentiell geglättet (42 bzw. 7 Tage); Form = Fitness − Ermüdung desselben Tages; Vortageswert als «Form zu Tagesbeginn»; Krafttraining zählt nicht (pmc-2.1)", "js/formkurve.js FK.pmc"],
     ["Intensitätsverteilung", FK.VERSIONS.zonen, "je Sportart; Pulsgrenzen aus dem Zonenprofil, das am Tag der Einheit galt; ohne Profil nur Garmin-Zonen, nicht beurteilt; Mindestdaten sonst «Beurteilung unsicher»", "js/formkurve.js FK.zoneVerdict"],
     ["Koppellauf", FK.VERSIONS.koppel, "Kandidat bei 0–45 min Wechsel; über 35 min «lange Pause», zählt erst nach Bestätigung", "js/formkurve.js FK.findBricks"],
     ["Meine Entwicklung", FK.VERSIONS.entwicklung || null, "Belegkennzahlen aus vergleichbaren, gleichmässigen Blöcken je Gerätesystem; Guards für n, Protokoll, Drift, Hitze", "js/formkurve.js FK.entwicklung, tools/entwicklung.py"],
@@ -3849,10 +3849,10 @@ const TABS = {
     lastWoche() {                     // V5.9.1 last-2.0: Wochenlast je Sportart in Farbe; Vergleich Garmin-FTP → LT2 (bis zum Okay nur Vorschlag)
       const n = +document.getElementById("last-range").value || 12, weeks = lastWeeks(n), ks = ["schwimm", "rad", "lauf", "wandern", "ski", "andere"];
       const adopted = LAST_AKTIV, hatRef = LAST_REF.length > 0, tl = (a) => a.tss || 0;
-      const W = weeks.map((w) => D.activities.filter((a) => inWeek(a, w))), tot = W.map((l) => Math.round(l.reduce((s, a) => s + tl(a), 0)));
-      const vg = V59L.lastVergleich(D.activities, weeks.map(iso)), neuT = vg.map((r) => Math.round(Object.values(r).reduce((s, x) => s + x[1], 0)));
+      const W = weeks.map((w) => D.activities.filter((a) => inWeek(a, w) && FK.zaehlt(a))), tot = W.map((l) => Math.round(l.reduce((s, a) => s + tl(a), 0)));   // pmc-2.1: ohne Krafttraining
+      const vg = V59L.lastVergleich(D.activities.filter(FK.zaehlt), weeks.map(iso)), neuT = vg.map((r) => Math.round(Object.values(r).reduce((s, x) => s + x[1], 0)));
       const altT = vg.map((r) => Math.round(Object.values(r).reduce((s, x) => s + x[0], 0)));
-      document.getElementById("last-sub").textContent = `Letzte ${n} Wochen · Trainingslast, wie sie in Fitness und Ermüdung eingeht; alle Sportarten zählen · Rad ${adopted ? "mit deiner LT2 (Rolle) bzw. " + (LAST_DRAUSSEN.length ? "eigener LT2" : "nach Puls") + " (draussen)" : "mit der Garmin-FTP"}`;
+      document.getElementById("last-sub").textContent = `Letzte ${n} Wochen · Trainingslast, wie sie in Fitness und Ermüdung eingeht; alle Sportarten ausser Krafttraining (${FK.VERSIONS.pmc}) · Rad ${adopted ? "mit deiner LT2 (Rolle) bzw. " + (LAST_DRAUSSEN.length ? "eigener LT2" : "nach Puls") + " (draussen)" : "mit der Garmin-FTP"}`;
       const ds = ks.map((k) => ({ label: SPORTS[k].label, backgroundColor: SPORTS[k].color, borderRadius: 2, stack: "u", maxBarThickness: 34,
         data: W.map((l) => Math.round(l.filter((a) => a.sport === k).reduce((s, a) => s + tl(a), 0))) })).filter((d) => d.data.some((v) => v));
       if (hatRef) ds.push({ type: "line", label: adopted ? "Total mit Garmin-FTP (früher)" : "Total mit LT2 (Vorschlag)", data: adopted ? altT : neuT,

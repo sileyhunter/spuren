@@ -1,4 +1,5 @@
-/* Abnahmetests V7.6 – Krafttraining als feste Zusatzeinheit (kraft-plan-1.0, js/v76.js). Nur erfundene Werte. */
+/* Abnahmetests V7.6 – Krafttraining als Zusatzeinheit (kraft-plan-1.0 fester Tag, 1.1 Tag automatisch und Abstimmung der Woche, js/v76.js);
+   V7.6.1 Tage für lange Einheiten (verfuegbarkeit-1.1). Nur erfundene Werte. */
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -12,7 +13,7 @@ const kraftEintrag = (felder, am, alt) => V75.eintrag("pe-kraft", Object.assign(
 const E = (daten, geraet, opt) => V75.einstellungen(daten || [], geraet || [], opt || {});
 const woche = (o) => V64.woche(Object.assign({ woche: MO, stunden: 9, phase: "Grundlage" }, o || {}));
 
-test("kraft-plan-1.0: Termin an jedem Wochentag, Uhrzeit und Standard-Dauer 1:30 h", () => {
+test("kraft-plan-1.1: fester Termin an jedem Wochentag, Uhrzeit und Standard-Dauer 1:30 h", () => {
   for (let wt = 1; wt <= 7; wt++) {
     const t = V76.termin(E([kraftEintrag({ wt, uhrzeit: null, dauer: undefined })]), MO);
     assert.equal(t.date, V64.addDays(MO, wt - 1));
@@ -121,13 +122,108 @@ test("kraft-plan-1.0: Prüfung der Einträge (wie merge_daily.planeinstellung_pr
   assert.match(V75.pruefen({ id: "pe-steigerung", wert: 100, vorher: { wert: 90, geaendert: "2026-11-10T10:00:00Z" } }), /vorherige Fassung/);
 });
 
-test("kraft-plan-1.0: Erholungswoche und Rennwoche – der Termin steht bis zur Abstimmung (Vorschlag offen) unverändert im Plan", () => {
-  const Ek = E([kraftEintrag({ wt: 3 })]);
-  const erh = V76.einplanen(woche({ erholung: true }), Ek);
-  assert.equal(erh.tage[2].einheiten.find((e) => e.kraft_plan).dauer, 90);
-  // Testtag: Krafttraining kommt als eigene Einheit dazu, ersetzt den Test nicht
-  const mitTest = V76.einplanen(woche({ tests: [{ date: V64.addDays(MO, 2), kind: "css", status: "geplant" }] }), Ek);
-  assert.ok(mitTest.tage[2].einheiten.some((e) => e.art === "test") && mitTest.tage[2].einheiten.some((e) => e.kraft_plan));
+const V74 = require("../js/v74.js");
+const kraftWoche = (w) => w.tage.findIndex((t) => t.einheiten.some((e) => e.sport === "kraft"));
+const hartLand = (e) => V66.hart(e) && (e.sport === "rad" || e.sport === "lauf");
+const auto = (felder) => kraftEintrag(Object.assign({ modus: "auto", tage: [1, 2, 3, 4, 5, 6, 7], wt: null }, felder));
+
+test("kraft-plan-1.1 (automatisch): nie vor einer harten Rad- oder Laufeinheit, nur an möglichen Tagen, lieber mit kurzer lockerer Einheit", () => {
+  const w0 = woche();
+  const w = V76.einplanen(w0, E([auto({ tage: [1, 2, 3, 5, 6, 7] })]));                  // Donnerstag nicht möglich
+  const i = kraftWoche(w);
+  assert.ok(i >= 0, "eingeplant");
+  assert.notEqual(i, 3, "nicht am Donnerstag");
+  const nach = w.tage[i + 1];
+  assert.ok(!nach || !nach.einheiten.some(hartLand), "am Tag danach keine harte Einheit an Land");
+  for (let k = 0; k < 7; k++) if (k !== i && [1, 2, 3, 5, 6, 7].includes(k + 1) && !(w0.tage[k + 1] && w0.tage[k + 1].einheiten.some(hartLand)))
+    assert.ok(V76.bewerten(w0, i, 90, null) >= V76.bewerten(w0, k, 90, null), "der gewählte Tag ist der beste");
+  // kurze lockere Einheit (bis 60 min) gibt Punkte, längere kosten
+  const t = { tage: [{ date: MO, einheiten: [{ sport: "lauf", art: "locker", dauer: 40 }] }, { date: V64.addDays(MO, 1), einheiten: [] }] };
+  const u = { tage: [{ date: MO, einheiten: [{ sport: "lauf", art: "locker", dauer: 80 }] }, { date: V64.addDays(MO, 1), einheiten: [] }] };
+  assert.ok(V76.bewerten(t, 0, 90, null) > V76.bewerten(u, 0, 90, null));
+  assert.equal(V76.text(E([auto({ tage: [1, 2, 3, 5, 6, 7] })]).kraft), "automatisch (Mo–Mi, Fr–So) 18:00 · 1:30 h");
+  // kein Training laut Verfügbarkeit: dort nie
+  const verf = (d) => (V66.wtNr(d) !== 2 ? { min: 0, sport: [] } : null);
+  assert.equal(kraftWoche(V76.einplanen(w0, E([auto({})]), { verf })), 1, "nur der Dienstag ist möglich");
+});
+
+test("kraft-plan-1.1 Regel 1: fester Tag vor der harten Einheit – sie zieht beim Verteilen um, sonst wird sie locker", () => {
+  const w0 = woche(), doHart = w0.tage[3].einheiten.find(hartLand);
+  assert.ok(doHart, "erfundene Woche mit harter Einheit am Donnerstag");
+  const w = V76.einplanen(w0, E([kraftEintrag({ wt: 3 })]));                             // Mittwoch fest
+  const r = V66.wocheVerteilt(w, null, {});                                                // ohne Verfügbarkeit: nur die Regel
+  assert.ok(!r.tage[3].einheiten.some(hartLand), "Donnerstag ohne harte Einheit an Land");
+  assert.ok(r.tage.some((t, i) => i !== 3 && t.einheiten.some((e) => e.titel === doHart.titel)), "die harte Einheit steht an einem anderen Tag");
+  assert.ok(r.tage[2].einheiten.some((e) => e.sport === "kraft"), "Krafttraining bleibt am Mittwoch");
+  // nur der Donnerstag erlaubt Rad (erfunden): die harte Einheit wird dort locker
+  const sp = doHart.sport, verf = (d) => (V66.wtNr(d) === 4 ? { min: null, sport: [sp] } : { min: null, sport: ["schwimm", "lauf", "rad"].filter((x) => x !== sp) });
+  const r2 = V66.wocheVerteilt(w, verf, {});
+  assert.ok(!r2.tage[3].einheiten.some(hartLand));
+  assert.ok(r2.tage[3].einheiten.some((e) => e.sport === sp && e.art === "locker"), "locker statt hart");
+  assert.ok(r2.hinweise.some((h) => /locker statt hart/.test(h)));
+  // die Ampel holt keine Schlüsseleinheit am Tag nach dem Krafttraining nach
+  const a = V74.woche(r, (d) => (d === r.tage[1].date ? { status: "vorsichtig", ampel: "vorsichtig", gruende: ["erfunden"] } : null));
+  assert.ok(!a.tage[3].einheiten.some(hartLand));
+});
+
+test("kraft-plan-1.1 Regel 2: am Krafttag eine lockere Einheit an Land höchstens 60 min, harte Einheit mit Abstand", () => {
+  const w0 = woche(), i = w0.tage.findIndex((t) => t.einheiten.some((e) => e.art === "locker" && (e.sport === "rad" || e.sport === "lauf") && e.dauer > 60));
+  assert.ok(i >= 0, "erfundene Woche mit langer lockerer Einheit");
+  const w = V76.abstimmen(V76.einplanen(w0, E([kraftEintrag({ wt: i + 1 })])), {});        // Regel 2 nach dem Verteilen
+  assert.ok(w.tage[i].einheiten.filter((e) => e.art === "locker" && (e.sport === "rad" || e.sport === "lauf")).every((e) => e.dauer <= 60));
+  assert.ok(w.hinweise.some((h) => /gekürzt/.test(h)));
+  assert.ok(w.minuten.total < w0.minuten.total, "die Wochensumme rechnet mit der gekürzten Einheit");
+  const t = { woche: MO, tage: [{ date: MO, einheiten: [{ id: "lauf_vo2", sport: "lauf", art: "schluessel", schluessel: true, titel: "Intervalle", dauer: 60, uhrzeit: "17:00" }] }] };
+  for (let k = 1; k < 7; k++) t.tage.push({ date: V64.addDays(MO, k), einheiten: [] });
+  const h = V76.abstimmen(V76.einplanen(t, E([kraftEintrag({ wt: 1, uhrzeit: "19:00" })])));
+  assert.ok(h.hinweise.some((x) => /mindestens 6 h Abstand/.test(x)));
+});
+
+test("kraft-plan-1.1 Regel 4: nicht am Test- und am Vortag – fest einen Tag früher, sonst fällt es aus", () => {
+  const test = (tag) => ({ tests: [{ date: V64.addDays(MO, tag), kind: "css", status: "geplant" }] });
+  const f = V76.einplanen(woche(test(3)), E([kraftEintrag({ wt: 3 })]));                // Test am Donnerstag, Kraft fest Mittwoch
+  assert.equal(kraftWoche(f), 1, "einen Tag früher (Dienstag)");
+  const g = V76.einplanen(woche(Object.assign(test(1), {})), E([kraftEintrag({ wt: 1 })])); // Test am Dienstag, Kraft Montag: kein Tag davor
+  assert.equal(kraftWoche(g), -1);
+  assert.equal(g.kraft.status, "weg");
+  const a = V76.einplanen(woche(test(3)), E([auto({})]));
+  assert.ok(![2, 3].includes(kraftWoche(a)), "automatisch nie am Test- oder Vortag");
+});
+
+test("kraft-plan-1.1 Regel 5 und 6: keine Kraft in Rennwochen, im Taper nur 7–10 Tage vor dem A-Rennen, Erholungswoche zwei Drittel", () => {
+  const rennen = [{ date: V64.addDays(MO, 6), name: "Testrennen", prio: "B" }];
+  const r = V76.einplanen(woche({ rennen }), E([kraftEintrag({ wt: 3 })]));
+  assert.equal(kraftWoche(r), -1);
+  assert.ok(r.hinweise.some((h) => /Rennwoche/.test(h)));
+  const haupt = V64.addDays(MO, 13);                                                       // Rennen am Sonntag der nächsten Woche
+  const t = V76.einplanen(woche({ phase: "Taper" }), E([kraftEintrag({ wt: 2 })]), { haupt });
+  const i = kraftWoche(t);
+  assert.ok(i >= 3 && i <= 6, "7–10 Tage vor dem Rennen");
+  assert.equal(t.tage[i].einheiten.find((e) => e.sport === "kraft").dauer, 60, "zwei Drittel von 1:30 h");
+  const fr = V76.einplanen(woche({ phase: "Taper" }), E([kraftEintrag({ wt: 2 })]), { haupt: V64.addDays(MO, 20) });
+  assert.equal(kraftWoche(fr), -1, "früher im Taper keine Kraft");
+  const erh = V76.einplanen(woche({ erholung: true }), E([kraftEintrag({ wt: 3 })]));
+  assert.equal(erh.tage[2].einheiten.find((e) => e.sport === "kraft").dauer, 60);
+});
+
+test("kraft-plan-1.1 Regel 7: bei «vorsichtig» bleibt das Krafttraining", () => {
+  const w = V76.einplanen(woche(), E([kraftEintrag({ wt: 2 })]));
+  const a = V74.woche(w, (d) => (d === w.tage[1].date ? { status: "vorsichtig", ampel: "vorsichtig", gruende: ["erfunden"] } : null));
+  assert.equal(a.tage[1].einheiten.find((e) => e.sport === "kraft").dauer, 90);
+});
+
+test("verfuegbarkeit-1.1: lange Einheiten bevorzugt an den gewählten Tagen (Empfehlung)", () => {
+  const w0 = woche(), sa = w0.tage[5].einheiten.find((e) => e.art === "lang" && e.sport === "rad");
+  assert.ok(sa, "erfundene Woche mit langer Ausfahrt am Samstag");
+  const r = V66.wocheVerteilt(w0, null, { lang: { rad: [7], lauf: [] } });
+  assert.ok(r.tage[6].einheiten.some((e) => e.titel === sa.titel), "lange Ausfahrt am Sonntag");
+  assert.ok(!r.tage[5].einheiten.some((e) => e.titel === sa.titel));
+  const k = V66.wocheVerteilt(w0, null, { lang: { rad: [6], lauf: [] } });
+  assert.equal(k, w0, "schon am bevorzugten Tag: nichts verschoben");
+  assert.equal(V75.pruefen({ id: "pe-lang", rad: [6, 7], lauf: [4] }), null);
+  assert.match(V75.pruefen({ id: "pe-lang", rad: [6, 6] }), /jeder einmal/);
+  assert.match(V75.pruefen({ id: "pe-lang", lauf: [8] }), /1–7/);
+  assert.deepEqual(E([V75.eintrag("pe-lang", { rad: [7, 6], lauf: [4] })]).lang, { rad: [6, 7], lauf: [4] });
 });
 
 test("kraft-plan-1.0: sRPE = RPE × Minuten (Foster), Garmin-Aktivität «Krafttraining» des Tages", () => {
@@ -154,4 +250,51 @@ test("kraft-plan-1.0: eine Garmin-Krafteinheit erledigt das geplante Krafttraini
   const w = V6.woche(acts, plan, "2026-11-27");
   assert.deepEqual(w.tage[1].zeichen, [{ sport: "kraft", art: "ist" }]);
   assert.deepEqual(w.tage[3].zeichen, [{ sport: "kraft", art: "verpasst" }]);
+});
+
+test("verfuegbarkeit-1.1 und kraft-plan-1.1: Tage für lange Einheiten und das Krafttraining gelten ab der Woche nach dem Speichern (vorher)", () => {
+  const alt = V75.eintrag("pe-lang", { rad: [6], lauf: [7] }, "2026-11-10T10:00:00Z");
+  const neu = V75.eintrag("pe-lang", { rad: [7], lauf: [4] }, "2026-11-25T10:00:00Z", alt);      // Mittwoch der Woche vom 23.11.
+  assert.equal(V75.pruefen(neu), null);
+  assert.deepEqual(neu.vorher.rad, [6], "trägt die Fassung mit, die in dieser Woche noch gilt");
+  assert.deepEqual(E([neu], [], { startBis: MO }).lang, { rad: [6], lauf: [7] }, "laufende Woche: alte Fassung");
+  assert.deepEqual(E([neu], [], { startBis: V64.addDays(MO, 7) }).lang, { rad: [7], lauf: [4] }, "ab der nächsten Woche: neue");
+  const k = V76.einplanen(woche(), E([kraftEintrag({ modus: "auto", tage: [1, 2, 3, 5, 6, 7], wt: null })]));
+  const e = k.tage.flatMap((t) => t.einheiten).find((x) => x.kraft_plan);
+  assert.equal(e.kraft_auto, true, "die Einheit weiss, dass die Seite den Tag gewählt hat");
+  assert.match(e.zweck, /Den Tag wählt die Seite/);
+  assert.equal(V76.einplanen(woche(), E([kraftEintrag({ wt: 2 })])).tage[1].einheiten.find((x) => x.kraft_plan).kraft_auto, false);
+});
+
+test("kraft-plan-1.1 (automatisch): der Tag wird an der schon verteilten Woche gewählt – nicht vor einer harten Einheit, die erst dorthin zieht", () => {
+  const w0 = woche();
+  const diHart = w0.tage[1].einheiten.find(hartLand);
+  assert.ok(diHart, "erfundene Woche mit harter Einheit am Dienstag");
+  // Dienstag nur Schwimmen (erfunden): die harte Einheit zieht beim Verteilen weg – wohin, zeigt die verteilte Woche
+  const verf = (d) => (V66.wtNr(d) === 2 ? { min: null, sport: ["schwimm"] } : null);
+  const P = V66.wocheVerteilt(w0, verf, {}), ziel = P.tage.findIndex((t) => t.einheiten.some((e) => e.titel === diHart.titel));
+  assert.ok(ziel >= 0 && ziel !== 1);
+  const E1 = E([kraftEintrag({ modus: "auto", tage: [1, 2, 3, 4, 5, 6, 7], wt: null })]);
+  const kP = V76.einplanen(P, E1, { verf }), i = kraftWoche(kP);
+  assert.notEqual(i + 1, ziel, "nicht am Tag vor der harten Einheit an ihrem neuen Tag");
+  assert.equal(V76.passt(kP, verf), true, "passt ohne Umziehen");
+  // derselbe Tag in der unverteilten Woche (für Mein Plan) und, wenn es nicht passt, neu verteilt: am Tag danach nie hart an Land
+  const roh = V76.einplanen(w0, E1, { verf, tag: kP.kraft.date });
+  assert.equal(kraftWoche(roh), i);
+  const r = V76.abstimmen(V66.wocheVerteilt(roh, verf, {}), {});
+  for (let j = 0; j < 6; j++) if (r.tage[j].einheiten.some((e) => e.sport === "kraft")) assert.ok(!r.tage[j + 1].einheiten.some(hartLand), "Tag danach ohne harte Einheit an Land");
+  // passt nicht: Tag zu knapp (erfunden 30 min) → neu verteilen nötig
+  const eng = (d) => (d === kP.kraft.date ? { min: 30, sport: null } : verf(d));
+  assert.equal(V76.passt(kP, eng), false);
+});
+
+test("verfuegbarkeit-1.1: Grund beim Verschieben und Hinweis, wenn eine lange Einheit an keinem gewählten Tag Platz hat", () => {
+  const w0 = woche(), so = w0.tage[6].einheiten.find((e) => e.art === "lang" && e.sport === "lauf");
+  assert.ok(so, "erfundene Woche mit langem Lauf am Sonntag");
+  const zuVoll = (d) => (V66.wtNr(d) === 4 ? { min: 30, sport: null } : null);           // Donnerstag nur 30 min (erfunden)
+  const r = V66.wocheVerteilt(w0, zuVoll, { lang: { rad: [], lauf: [4] } });
+  assert.ok(!r.tage[3].einheiten.some((e) => e.titel === so.titel));
+  assert.ok(r.hinweise.some((h) => h.includes(`«${so.titel}»`) && /statt an deinem Tag für lange Einheiten \(Do\)/.test(h)), r.hinweise.join(" | "));
+  const g = V66.wocheVerteilt(w0, null, { lang: { rad: [7], lauf: [] } });
+  assert.ok(g.hinweise.some((h) => /verschoben \(Tag für lange Einheiten\)/.test(h)), g.hinweise.join(" | "));
 });

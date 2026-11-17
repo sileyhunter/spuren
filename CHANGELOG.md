@@ -1,5 +1,25 @@
 # Änderungen
 
+## V7.6.1 · 17.11.2026 · Etappe 7, Teil 2: Woche ums Krafttraining abgestimmt, Tag automatisch; Planeinstellungen «Allgemein» (kraft-plan-1.1, verfuegbarkeit-1.1, pmc-2.1, wissen-1.18)
+- **Krafttraining, Tag automatisch oder fest** (Silas' Wunsch: der Tag soll nicht fix sein, nie vor Intervallen, ein Tag mit kurzem Lauf geht, Donnerstag nie): «Automatisch»
+  mit möglichen Tagen – die Seite bewertet jeden möglichen Tag an der schon nach der Verfügbarkeit verteilten Woche (eigene Gewichte, Wissen «kraft») und nimmt den besten;
+  passt das Krafttraining dort ohne Umziehen, bleibt die Woche, sonst wird sie mit ihm neu verteilt. «Fester Tag» wie bisher.
+- **Die neun Regeln (von Silas am 17.11.2026 freigegeben):** am Tag danach keine harte Rad- oder Laufeinheit (umziehen, sonst locker, gemeldet; die Ampel holt dort nichts
+  nach, ampel-plan-1.1); am Krafttag darf eine harte Einheit bleiben (Hinweis unter 6 h Abstand), eine lockere Einheit an Land höchstens 60 min, lange nur Hinweis; belegt
+  seine Zeit, zählt nicht; nicht am Test- und Vortag; keine Kraft in Rennwochen, im Taper nur 7–10 Tage vor dem A-Rennen mit zwei Dritteln; Erholungswoche zwei Drittel;
+  «vorsichtig»: bleibt; sRPE als eigene Zahl; nicht an Garmin.
+- **Krafttraining zählt nicht mehr in Fitness, Ermüdung und Form** (pmc-2.1), in der Ampel-Last (readiness-2.2; an 180 Tagen nachgerechnet: ein Tag anders) und in den Ringen
+  (ringe-1.1), in der Form-Prognose und in «Wochenlast je Sportart». In «Diese Woche» (Heute) und in der Wochenauswertung (Kalender) steht es als eigene Zeile, nicht in
+  Trainings und Dauer.
+- **Planeinstellungen → Allgemein** (neue erste Seite, Vorbild «Allgemeine Planeinstellungen» von enduco, Texte eigen): **Trainingsverfügbarkeit** aller sieben Wochentage
+  in einem Blatt (Kein Training, Sportarten, Zeit in 15-min-Schritten bis 10 h oder offen; auch aus dem Tagesblatt), **Tage für lange Einheiten** (Rad und Laufen, ab der
+  nächsten Woche; Empfehlung, eine lange Einheit zieht nur auf einen gewählten Tag mit Platz und ohne harte Einheit an Land, sonst Hinweis), Testkalender.
+- Verteilen (verfuegbarkeit-1.1): Meldungen nennen den Grund (Verfügbarkeit, Tag für lange Einheiten, Tag nach dem Krafttraining); hart und lang an Land am selben Tag −120
+  statt −40. Silas' Einstellungen aus Enduco übernommen (Mo frei, Di nur Schwimmen, Mi–Fr 2:45 h, Sa/So 5:00 h, lange Ausfahrt Sa/So, langer Lauf Do; Krafttraining
+  automatisch ohne Do, 1:30 h) – die laufende Woche bleibt, wie sie war.
+- Tests: `tests/test_v76.cjs` (Regeln, Tag automatisch, lange Tage, ab nächster Woche), `tests/test_formkurve.cjs` (Last ohne Krafttraining), `tests/test_tools.py`
+  (Python prüft modus, mögliche Tage und pe-lang wie die Seite).
+
 ## V7.6 · 17.11.2026 · Etappe 7, Teil 1: Krafttraining als fester Termin (kraft-plan-1.0, wissen-1.17)
 - **Planeinstellungen → Krafttraining** (neue Seite zwischen Schwimmen und Trainingsumfang, auch aus dem Tagesblatt und der Einheit-Seite): an/aus, Wochentag,
   Uhrzeit (Stunde und Minute in 5er-Schritten oder ohne), Dauer 15–180 min (Standard 1:30 h), Notiz für die Übungen. Gilt ab der Woche nach dem Speichern.

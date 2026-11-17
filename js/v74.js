@@ -17,7 +17,7 @@
   if (root) root.V74 = V74;
 })(typeof window !== "undefined" ? window : null, function (V64, V66) {
   "use strict";
-  const V74 = { VERSIONS: { ampelplan: "ampel-plan-1.0" } };
+  const V74 = { VERSIONS: { ampelplan: "ampel-plan-1.1" } };            // 1.1 (V7.6.1): kein Nachholen von Rad oder Laufen am Tag nach einem Krafttraining
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
   const add = (iso, n) => { const d = new Date(Date.parse(iso + "T12:00:00Z") + n * 864e5); return d.toISOString().slice(0, 10); };
@@ -132,6 +132,8 @@
       const t = tage[i], nach = tage[i + 1];
       if (t.rennen || t.gesperrt || t.einheiten.some(istTest)) return -1;
       if (nach && (nach.rennen || nach.einheiten.some(istTest))) return -1;                       // nicht am Tag vor einem Test oder Rennen
+      const vor = tage[i - 1];                                                                    // V7.6 kraft-plan-1.1: nicht am Tag nach einem Krafttraining (Rad, Laufen)
+      if (vor && (H.sport === "rad" || H.sport === "lauf") && vor.einheiten.some((x) => x.sport === "kraft")) return -1;
       for (const k of [i - 1, i, i + 1]) { const n = tage[k]; if (n && n.einheiten.some((x) => hartAmTag(x) && stoert(x, H))) return -1; }
       const j = t.einheiten.findIndex((x) => x.sport === H.sport && x.id === LOCKER[x.sport] && !x.gesperrt && x.quelle !== "bibliothek" && !x.ampel);
       if (j < 0) return -1;

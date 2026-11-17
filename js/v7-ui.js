@@ -60,7 +60,7 @@
   M.einheitKarte = function (e, ds, klein) {
     const W = V6(), pr = M.profil(e), hk = e.teile && e.teile.length && P() && P().hauptKey ? P().hauptKey(e) : null;
     let S = null; try { const x = M.meinTag(ds); S = x ? V66().schaetzung(e, V66().bezug(window.TR ? window.TR.zonen(C.D.zonen).skalen : null, x.K && x.K.css ? x.K.css.s : null)) : null; } catch (err) { console.error(err); }
-    const q = (e.kraft_plan ? "fester Termin" : e.quelle === "eigen" ? "eigen" : e.quelle === "bibliothek" ? "Bibliothek" : "Vorschlag") + (e.ampel ? (e.ampel.von ? " · Ampel" : " · nachgeholt") : "");   // V7.4 ampel-plan-1.0; V7.6 Krafttraining aus den Planeinstellungen
+    const q = (e.kraft_plan ? (e.kraft_auto ? "Tag automatisch" : "fester Termin") : e.quelle === "eigen" ? "eigen" : e.quelle === "bibliothek" ? "Bibliothek" : "Vorschlag") + (e.ampel ? (e.ampel.von ? " · Ampel" : " · nachgeholt") : "");   // V7.4 ampel-plan-1.0; V7.6 Krafttraining aus den Planeinstellungen
     const zahlen = [[dt((e.dauer || 0) * 60), "Dauer"]];
     if (S && isNum(S.km) && S.km > 0) zahlen.push([`≈ ${String(S.km).replace(".", ",")} km`, "Distanz"]);
     if (S && isNum(S.tl)) zahlen.push([`${S.vollstaendig ? "≈ " : "mind. "}${S.tl}`, "TL"]);
@@ -325,7 +325,7 @@
   }
   function planWerkzeugeZeichnen() {
     const box = $("v7-plan-werkzeuge"); if (!box || !bereit()) return;
-    const W = V6(), L = [["plan-einstellungen", "regler", "Planeinstellungen", "Basis-Fitness, Indoor-Phase, Schwimmen, Trainingsumfang"],
+    const W = V6(), L = [["plan-einstellungen", "regler", "Planeinstellungen", "Verfügbarkeit, lange Einheiten, Basis-Fitness, Schwimmen, Krafttraining, Trainingsumfang"],
       ["plan-rennen", "flagge", "Rennen", "Haupt- und Vorbereitungsrennen mit Strecken"],
       ["plan-modell", "intervall", "Trainingsmodell", "Polarisiert, pyramidal, rennspezifisch – Intensität je Sportart"],
       ["plan-stunden", "status", "Wochenstunden", "Vorschlag je Woche aus deinen Wochen, Erholung und Taper"],

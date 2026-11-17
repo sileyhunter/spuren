@@ -370,7 +370,7 @@ def v5_merge(D, N):
 
 PE_HILFSMITTEL = ("brett", "pullbuoy", "flossen", "paddles")
 PE_STILE = ("ruecken", "brust")                        # Kraul immer dabei, Delfin plant die Seite nicht
-PE_START_IDS = ("pe-start", "pe-basis-schwimm", "pe-basis-rad", "pe-basis-lauf", "pe-kraft")   # V7.6: gelten ab der Woche nach dem Speichern (vorher)
+PE_START_IDS = ("pe-start", "pe-basis-schwimm", "pe-basis-rad", "pe-basis-lauf", "pe-kraft", "pe-lang")   # V7.6: gelten ab der Woche nach dem Speichern (vorher); V7.6.1 pe-lang
 
 
 def _pe_datum(s):
@@ -405,7 +405,7 @@ def planeinstellung_pruefen(e):
     v = e.get("vorher")
     if v is not None:
         if e.get("id") not in PE_START_IDS:
-            return "vorherige Fassung nur bei Start, Basis-Fitness und Krafttraining"
+            return "vorherige Fassung nur bei Start, Basis-Fitness, Krafttraining und langen Einheiten"
         if not isinstance(v, dict) or v.get("vorher") is not None or not isinstance(v.get("geaendert"), str) or not zeit_ok(v.get("geaendert")):
             return "vorherige Fassung ungültig"
         f = planeinstellung_pruefen({**v, "id": e.get("id")})
@@ -432,13 +432,21 @@ def planeinstellung_pruefen(e):
         if e.get("uhrzeit") is not None and not uhr(e.get("uhrzeit")):
             return "Uhrzeit hh:mm in 5-min-Schritten"
         return None if e.get("aus") is True or e.get("tag") is not None else "auslassen oder einen Tag wählen"
-    if i == "pe-kraft":
+    def tage_ok(L):
+        return isinstance(L, list) and all(ganz(x) and 1 <= x <= 7 for x in L) and len(set(L)) == len(L)
+    if i == "pe-kraft":                                  # kraft-plan-1.1: modus auto (mögliche Tage) oder fest (Wochentag); ohne modus = fest
         if not isinstance(e.get("aktiv"), bool):
             return "Krafttraining an oder aus"
+        if e.get("modus") is not None and e.get("modus") not in ("auto", "fest"):
+            return "Tag automatisch oder fest"
         w = e.get("wt")
         if w is not None and not (ganz(w) and 1 <= w <= 7):
             return "Wochentag 1–7"
-        if e.get("aktiv") and w is None:
+        if e.get("tage") is not None and not tage_ok(e.get("tage")):
+            return "mögliche Tage 1–7, jeder einmal"
+        if e.get("aktiv") and e.get("modus") == "auto" and not (isinstance(e.get("tage"), list) and e.get("tage")):
+            return "mögliche Tage fehlen"
+        if e.get("aktiv") and e.get("modus") != "auto" and w is None:
             return "Wochentag fehlt"
         if e.get("uhrzeit") is not None and not uhr(e.get("uhrzeit")):
             return "Uhrzeit hh:mm in 5-min-Schritten"
@@ -451,6 +459,11 @@ def planeinstellung_pruefen(e):
         return None
     if i == "pe-start":
         return None if e.get("art") in ("fitness", "aufteilung") else "Start: Basis-Fitness oder Aufteilung"
+    if i == "pe-lang":                                   # verfuegbarkeit-1.1: bevorzugte Tage für lange Einheiten
+        for k in ("rad", "lauf"):
+            if e.get(k) is not None and not tage_ok(e.get(k)):
+                return "Tage für lange Einheiten 1–7, jeder einmal"
+        return None
     if i in ("pe-basis-schwimm", "pe-basis-rad", "pe-basis-lauf"):
         w = e.get("wert")
         return None if w is None or (zahl(w) and float(w).is_integer() and 0 <= w <= 200) else "Basis-Fitness 0–200 als ganze Zahl"

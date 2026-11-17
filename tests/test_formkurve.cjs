@@ -174,7 +174,7 @@ test("Readiness 2.1 (Audit V6.4 B3): Stand am Morgen – eine harte Einheit dess
   const mit = FK.readiness(base(), ACTS.concat([{ id: "heute", date: D70, sport: "rad", tss: 400, mv: 5 * 3600 }]), [], D70);
   assert.equal(mit.status, ohne.status);
   assert.deepEqual(mit.indikatoren.last, ohne.indikatoren.last, "Last bis gestern");
-  assert.equal(FK.VERSIONS.readiness, "readiness-2.1");
+  assert.equal(FK.VERSIONS.readiness, "readiness-2.2");
   // Ampel-Prüfung: derselbe Block landet in derselben Gruppe, egal wie gross die Einheit des Tages war
   const dd = days("2026-01-01", 70, (i) => ({ hrv: 80 + ((i * 7) % 5) - 2, rhr: 46 + (i % 3) - 1, sleepH: 7.5 }));
   const acts = []; for (let i = 0; i < 70; i++) acts.push({ id: "b" + i, date: dd[i].date, sport: "rad", tss: 50, indoor: true, ...(i % 2 ? {} : { eb: { v: "eb-1.0", art: "rad200", n: 1, w: 200, hr: 140 } }) });
@@ -425,7 +425,23 @@ test("Form: Tageswechsel ohne Training und neue Aktivität am letzten Tag", () =
 test("Form: Beispiel wie im Screenshot (Fitness 91, Ermüdung 89) ergibt Form +2, Vortageswert getrennt", () => {
   const A = FK.pmcAnzeige({ date: "2026-11-07", ctl: 90.5, atl: 89.4, tsbStart: -9.6, last: 130 });
   assert.deepEqual([A.fitness, A.ermuedung, A.form, A.form_exakt, A.form_tagesbeginn], [91, 89, 2, 1.1, -10]);
-  assert.equal(A.v, "pmc-2.0");
+  assert.equal(A.v, "pmc-2.1");
+});
+
+/* ---------- V7.6.1 pmc-2.1, readiness-2.2, ringe-1.1 (Silas' Wunsch vom 17.11.2026): Krafttraining zählt nicht in der Last ---------- */
+test("pmc-2.1: Krafttraining aus Garmin (Typ oder Name) zählt nicht in Fitness, Ermüdung, Ampel-Last und Ringe – andere Einheiten schon", () => {
+  const kraft = [{ date: "2026-03-02", sport: "andere", typ: "Krafttraining", tss: 40 }, { date: "2026-03-03", sport: "andere", typ: "Strength", tss: 30 },
+    { date: "2026-03-04", sport: "andere", typ: null, name: "Krafttraining", tss: 20 }, { date: "2026-03-05", sport: "kraft", tss: 25 }];
+  const sonst = [{ date: "2026-03-02", sport: "rad", tss: 80 }, { date: "2026-03-03", sport: "andere", typ: "Yoga", name: "Mobility", tss: 10 }];
+  assert.ok(kraft.every(FK.istKraft) && !sonst.some(FK.istKraft));
+  const L = FK.dailyLoad(kraft.concat(sonst));
+  assert.deepEqual([...L.entries()], [["2026-03-02", 80], ["2026-03-03", 10]]);
+  const mit = FK.pmc(new Map([["2026-03-02", 80], ["2026-03-03", 10]]), "2026-03-01", "2026-03-06"), ohne = FK.pmc(L, "2026-03-01", "2026-03-06");
+  assert.deepEqual(ohne, mit, "gleiche Form wie ohne die Krafteinheiten");
+  const days = []; for (let i = 0; i < 70; i++) days.push({ date: FK.addDays("2026-03-06", -69 + i), hrv: 80, rhr: 50, sleepScore: 75, sleepH: 7 });
+  const r1 = FK.ringe(days, sonst, "2026-03-03"), r2 = FK.ringe(days, sonst.concat(kraft), "2026-03-03");
+  assert.equal(r2.belastung, r1.belastung); assert.equal(r2.tss, r1.tss);
+  assert.equal(FK.VERSIONS.pmc, "pmc-2.1"); assert.equal(FK.VERSIONS.readiness, "readiness-2.2"); assert.equal(FK.VERSIONS.ringe, "ringe-1.1");
 });
 
 /* ---------- status-1.1 (Prüfbericht 13.11.2026, Befund 3): «Heute» mit der Form zu Tagesbeginn ---------- */
@@ -682,7 +698,7 @@ test("ringe-1.0: Erholung aus HRV und Ruhepuls gegen eigene 60 Tage, Schlaf nur 
   const eins = FK.ringe(days, acts.concat([{ date: heute, tss: r.ctl - r.tss }]), heute); assert.ok(Math.abs(eins.belastung - 50) <= 1, "Tageslast = Fitness");
   const ruhe = FK.ringe(days, acts.filter((a) => a.date !== heute), heute); assert.equal(ruhe.belastung, 0);
   const V = FK.ringeVerlauf(days, acts, heute, 7);
-  assert.equal(V.length, 7); assert.equal(V[6].date, heute); assert.ok(V.every((x) => x.v === "ringe-1.0"));
+  assert.equal(V.length, 7); assert.equal(V[6].date, heute); assert.ok(V.every((x) => x.v === "ringe-1.1"));
   assert.equal(FK.ringeVerlauf([], [], heute, 3)[0].belastung, null, "ohne Daten: unbekannt");
 });
 

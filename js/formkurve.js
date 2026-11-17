@@ -8,11 +8,11 @@
   "use strict";
   const FK = {};
   FK.VERSIONS = {
-    cockpit: "cockpit-1.0", readiness: "readiness-2.1", ampel_pruefung: "ampel-pruefung-1.1", langfahrt: "langfahrt-2.0", koppel: "koppel-1.1",
+    cockpit: "cockpit-1.0", readiness: "readiness-2.2", ampel_pruefung: "ampel-pruefung-1.1", langfahrt: "langfahrt-2.0", koppel: "koppel-1.1",
     fueling: "fueling-1.0", eta: "eta-1.0", cda: "cda-1.0", fit: "fit-js-1.0", wetter: "wetter-1.0",
-    pmc: "pmc-2.0", zonen: "zonenverteilung-2.0", orientierung: "langfahrt-orientierung-1.0", entwicklung: "entwicklung-1.0", laufeffizienz: "laufeffizienz-1.1",
+    pmc: "pmc-2.1", zonen: "zonenverteilung-2.0", orientierung: "langfahrt-orientierung-1.0", entwicklung: "entwicklung-1.0", laufeffizienz: "laufeffizienz-1.1",
     laufvergleich: "laufvergleich-1.0",
-    ringe: "ringe-1.0", laktat_drift: "laktat-drift-1.0",
+    ringe: "ringe-1.1", laktat_drift: "laktat-drift-1.0",
   };
   const DAY = 864e5;
   const isNum = (v) => typeof v === "number" && isFinite(v);
@@ -210,11 +210,17 @@
     return f;
   };
 
-  /* ---------------- Readiness (readiness-2.1; V6.3 readiness-2.0, bis V6.2 readiness-1.0) ---------------- */
+  /* ---------------- Readiness (readiness-2.2 = 2.1 mit der Last ohne Krafttraining; V6.3 readiness-2.0, bis V6.2 readiness-1.0) ---------------- */
   const HRV_OK = (v) => isNum(v) && v >= 10 && v <= 250;
   const RHR_OK = (v) => isNum(v) && v >= 25 && v <= 120;
-  /** Tageslast (TSS-Summe) je Datum. */
-  FK.dailyLoad = function (acts) { const m = new Map(); for (const a of acts || []) if (a.date) m.set(a.date, (m.get(a.date) || 0) + (a.tss || 0)); return m; };
+  /** V7.6.1 (pmc-2.1, readiness-2.2, ringe-1.1; Silas' Wunsch vom 17.11.2026): Krafttraining aus Garmin (Typ «Krafttraining»/«Strength») ist ein Zusatz und
+   *  zählt nicht in Fitness, Ermüdung, Form, Ampel-Last und Ringe; es bleibt in den Listen. */
+  FK.KRAFT_TYP = /^(krafttraining|strength|strength_training|kraft)$/i;
+  FK.istKraft = (a) => !!a && (a.sport === "kraft" || (a.sport === "andere" && (FK.KRAFT_TYP.test(String(a.typ || "").replace(/\u200b/g, ""))
+    || /^kraft\s*training$/i.test(String(a.name || "").replace(/\u200b/g, "")))));
+  FK.zaehlt = (a) => !!a && !FK.istKraft(a);
+  /** Tageslast (TSS-Summe) je Datum, ohne Krafttraining (readiness-2.2). */
+  FK.dailyLoad = function (acts) { const m = new Map(); for (const a of acts || []) if (a.date && FK.zaehlt(a)) m.set(a.date, (m.get(a.date) || 0) + (a.tss || 0)); return m; };
 
   /* ---------------- Fitness, Ermüdung, Form (pmc-2.0) ----------------
      Exponentiell geglättete Tageslast (Kalendertage, Ortszeit): Fitness x_d = x_{d−1} + (Last_d − x_{d−1}) / 42,
@@ -255,7 +261,7 @@
   FK.ringeVerlauf = function (days, acts, bisISO, n, opt) {
     n = n || 7; const aktBis = opt && opt.aktBis ? opt.aktBis : null;
     const byDate = new Map((days || []).map((d) => [d.date, d]));
-    const loads = new Map(); for (const a of acts || []) if (a && a.date) loads.set(a.date, (loads.get(a.date) || 0) + (isNum(a.tss) ? a.tss : 0));
+    const loads = new Map(); for (const a of acts || []) if (a && a.date && FK.zaehlt(a)) loads.set(a.date, (loads.get(a.date) || 0) + (isNum(a.tss) ? a.tss : 0));   // ringe-1.1: ohne Krafttraining
     const dates = [...loads.keys(), ...(days || []).map((d) => d.date)].sort();
     const von = FK.addDays(bisISO, -(n - 1));
     const P = dates.length ? FK.pmc(loads, dates[0] < von ? dates[0] : von, bisISO) : [];

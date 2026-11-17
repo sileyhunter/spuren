@@ -269,7 +269,7 @@
     const zeile = (z, ic, t, u) => `<li><button type="button" data-esz="${z}">${ico(ic, 22)}<span><b>${esc(t)}</b><small>${esc(u)}</small></span>${ico("weiter", 18)}</button></li>`;
     const ov = oeffne("einst", `<div class="te-head"><h2 id="v59-ov-h" tabindex="-1">Profil und Einstellungen</h2><button class="btn" data-x>Schliessen</button></div>
       <section class="es" id="es-training"><h3>Training</h3><ul class="v6-aktionen">
-        ${zeile("plan-einstellungen", "regler", "Planeinstellungen", "Basis-Fitness, Indoor-Phase, Schwimmen, Trainingsumfang")}
+        ${zeile("plan-einstellungen", "regler", "Planeinstellungen", "Verfügbarkeit, lange Einheiten, Basis-Fitness, Schwimmen, Krafttraining, Trainingsumfang")}
         ${zeile("laktat#zc-card", "fokus", "Trainingszonen", "Zonen je Sportart aus deinen Schwellen, Freigabe und Verlauf")}
         ${zeile("laktat", "ampel", "Laktat und Schwellen", "Stufentests, Einzelmessungen, LT1 und LT2")}
         ${zeile("plan-tests", "kalender", "Testkalender", "Wann welcher Test sinnvoll ist")}

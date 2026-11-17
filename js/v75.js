@@ -41,12 +41,14 @@
   V75.START_AB = "2026-11-23";                                           // Standard «fitness» ab dieser Woche; Wochen davor wie bis V7.5.1
   V75.FIT_MAX = 200; V75.BASIS_MAX = 30;                                 // eigene Fitness 0–200; Start höchstens 30 h je Sportart
   V75.KRAFT = { dauer: 90, min: 15, max: 180, notiz: 500 };             // V7.6 kraft-plan-1.0: Standard 1:30 h
+  V75.KRAFT_MODUS = ["auto", "fest"];                                    // kraft-plan-1.1: Tag automatisch (aus den möglichen Tagen) oder fest
+  const tageOk = (L) => Array.isArray(L) && L.every((x) => Number.isInteger(x) && x >= 1 && x <= 7) && new Set(L).size === L.length;
   V75.IDS = { start: "pe-start", basis_schwimm: "pe-basis-schwimm", basis_rad: "pe-basis-rad", basis_lauf: "pe-basis-lauf", steigerung: "pe-steigerung",
-    indoor_rad: "pe-indoor-rad", indoor_lauf: "pe-indoor-lauf", schwimm: "pe-schwimm", kraft: "pe-kraft" };
+    indoor_rad: "pe-indoor-rad", indoor_lauf: "pe-indoor-lauf", schwimm: "pe-schwimm", kraft: "pe-kraft", lang: "pe-lang" };
   // Gruppen, die den Aufbau des Plans ändern – sie gelten ab der Woche nach dem Speichern (opt.startBis), damit sich eine Woche nicht unter der Woche ändert.
   // V7.6: ein solcher Eintrag trägt die Fassung, die in der Woche des Speicherns noch gilt (vorher) – merge_daily behält je ID nur die neueste Fassung,
   // ohne vorher würde die laufende Woche nach dem nächsten Update auf den Standard fallen.
-  const START_IDS = ["pe-start", "pe-basis-schwimm", "pe-basis-rad", "pe-basis-lauf", "pe-kraft"];
+  const START_IDS = ["pe-start", "pe-basis-schwimm", "pe-basis-rad", "pe-basis-lauf", "pe-kraft", "pe-lang"];   // V7.6.1: auch die Tage für lange Einheiten
   V75.START_IDS = START_IDS;
   const KRAFT_WOCHE = /^pe-kraft-(\d{4}-\d{2}-\d{2})$/;                  // Ausnahme je Woche (Montag): auslassen oder verschieben
   const UHR = /^([01]\d|2[0-3]):[0-5][05]$/;
@@ -56,7 +58,8 @@
    *  bzw. Enduco), Kraul und Rücken, kein Anfänger-Modus. */
   V75.standard = () => ({ start: "fitness", basis: { schwimm: null, rad: null, lauf: null }, steigerung: V75.STEIGERUNG.standard, indoor: { rad: null, lauf: null },
     schwimm: { hilfsmittel: V75.HILFSMITTEL.slice(), pool: null, stile: ["ruecken"], anfaenger: false },
-    kraft: { aktiv: false, wt: null, uhrzeit: null, dauer: V75.KRAFT.dauer, notiz: null }, kraftWochen: {}, stand: {} });
+    kraft: { aktiv: false, modus: "auto", tage: [1, 2, 3, 4, 5, 6, 7], wt: null, uhrzeit: null, dauer: V75.KRAFT.dauer, notiz: null }, kraftWochen: {},
+    lang: { rad: [], lauf: [] }, stand: {} });
   const teilmenge = (x, erlaubt) => Array.isArray(x) && x.every((k) => erlaubt.includes(k)) && new Set(x).size === x.length;
   /** Prüft einen Eintrag → Fehlertext oder null (gleiche Regeln wie merge_daily.planeinstellung_pruefen). */
   V75.pruefen = function (e) {
@@ -64,7 +67,7 @@
     if (e.geaendert != null && (typeof e.geaendert !== "string" || isNaN(Date.parse(e.geaendert)))) return "Zeitpunkt der Änderung ungültig";
     if (e.vorher != null) {                                             // V7.6: Fassung, die in der Woche des Speicherns noch gilt (nur Gruppen ab nächster Woche)
       const v = e.vorher;
-      if (!START_IDS.includes(e.id)) return "vorherige Fassung nur bei Start, Basis-Fitness und Krafttraining";
+      if (!START_IDS.includes(e.id)) return "vorherige Fassung nur bei Start, Basis-Fitness, Krafttraining und langen Einheiten";
       if (typeof v !== "object" || Array.isArray(v) || v.vorher != null || typeof v.geaendert !== "string" || isNaN(Date.parse(v.geaendert))) return "vorherige Fassung ungültig";
       const f = V75.pruefen(Object.assign({}, v, { id: e.id }));
       if (f) return "vorherige Fassung: " + f;
@@ -80,16 +83,22 @@
       return e.aus === true || e.tag != null ? null : "auslassen oder einen Tag wählen";
     }
     switch (e.id) {
-      case "pe-kraft":
+      case "pe-kraft":                                                     // kraft-plan-1.1: modus auto (mögliche Tage) oder fest (Wochentag); ohne modus = fest
         if (typeof e.aktiv !== "boolean") return "Krafttraining an oder aus";
+        if (e.modus != null && !V75.KRAFT_MODUS.includes(e.modus)) return "Tag automatisch oder fest";
         if (e.wt != null && !(Number.isInteger(e.wt) && e.wt >= 1 && e.wt <= 7)) return "Wochentag 1–7";
-        if (e.aktiv && e.wt == null) return "Wochentag fehlt";
+        if (e.tage != null && !tageOk(e.tage)) return "mögliche Tage 1–7, jeder einmal";
+        if (e.aktiv && e.modus === "auto" && !(Array.isArray(e.tage) && e.tage.length)) return "mögliche Tage fehlen";
+        if (e.aktiv && e.modus !== "auto" && e.wt == null) return "Wochentag fehlt";
         if (e.uhrzeit != null && !UHR.test(String(e.uhrzeit))) return "Uhrzeit hh:mm in 5-min-Schritten";
         if (e.dauer != null && !(Number.isInteger(e.dauer) && e.dauer >= V75.KRAFT.min && e.dauer <= V75.KRAFT.max && e.dauer % 5 === 0)) return "Dauer 15–180 min in 5-min-Schritten";
         if (e.notiz != null && !(typeof e.notiz === "string" && e.notiz.length <= V75.KRAFT.notiz)) return "Notiz höchstens 500 Zeichen";
         return null;
       case "pe-start":
         return V75.START.includes(e.art) ? null : "Start: Basis-Fitness oder Aufteilung";
+      case "pe-lang":                                                      // verfuegbarkeit-1.1: bevorzugte Tage für lange Einheiten
+        for (const k of ["rad", "lauf"]) if (e[k] != null && !tageOk(e[k])) return "Tage für lange Einheiten 1–7, jeder einmal";
+        return null;
       case "pe-basis-schwimm": case "pe-basis-rad": case "pe-basis-lauf":
         return e.wert == null || (Number.isInteger(e.wert) && e.wert >= 0 && e.wert <= V75.FIT_MAX) ? null : "Basis-Fitness 0–200 als ganze Zahl";
       case "pe-steigerung":
@@ -155,7 +164,9 @@
       else if (id === "pe-steigerung") E.steigerung = x.wert;
       else if (id === "pe-indoor-rad" || id === "pe-indoor-lauf") E.indoor[id === "pe-indoor-rad" ? "rad" : "lauf"] = x.von && x.bis ? { von: x.von, bis: x.bis } : null;
       else if (id === "pe-schwimm") E.schwimm = { hilfsmittel: x.hilfsmittel.slice(), pool: x.pool === 25 || x.pool === 50 ? x.pool : null, stile: x.stile.slice(), anfaenger: x.anfaenger === true };
-      else if (id === "pe-kraft") E.kraft = { aktiv: x.aktiv, wt: x.wt == null ? null : x.wt, uhrzeit: x.uhrzeit || null, dauer: x.dauer || V75.KRAFT.dauer, notiz: x.notiz || null };
+      else if (id === "pe-kraft") E.kraft = { aktiv: x.aktiv, modus: x.modus || "fest", tage: tageOk(x.tage) && x.tage.length ? x.tage.slice().sort() : [1, 2, 3, 4, 5, 6, 7],
+        wt: x.wt == null ? null : x.wt, uhrzeit: x.uhrzeit || null, dauer: x.dauer || V75.KRAFT.dauer, notiz: x.notiz || null };
+      else if (id === "pe-lang") E.lang = { rad: tageOk(x.rad) ? x.rad.slice().sort() : [], lauf: tageOk(x.lauf) ? x.lauf.slice().sort() : [] };
       else if (KRAFT_WOCHE.test(id)) { const mo = KRAFT_WOCHE.exec(id)[1]; if (x.entfernt !== true) E.kraftWochen[mo] = { aus: x.aus === true, tag: x.tag || null, uhrzeit: x.uhrzeit || null }; }
       E.stand[id] = x.geaendert || null;
     }

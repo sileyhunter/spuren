@@ -244,7 +244,7 @@ test("Wissen: Regel-Liste verweist auf vorhandene Versionen und Kapitel", () => 
 
 test("Wissen 1.2/1.3: Kapitel «aufbau» und «vergleich» mit Quellen und Regeln", () => {
   const WS = require("../js/wissen.js");
-  assert.equal(WS.VERSION, "wissen-1.17");
+  assert.equal(WS.VERSION, "wissen-1.18");
   const k = WS.kapitel("aufbau");
   assert.ok(k, "Kapitel aufbau fehlt");
   const v = WS.verweise(k.text.join(" ") + " " + k.kurz);
@@ -496,7 +496,7 @@ test("Wissen 1.4 (Audit V6.4): Versionsangaben in den Texten entsprechen dem Cod
   const text = WS.KAPITEL.map((k) => k.text.join(" ") + " " + k.kurz).join(" ");
   const alt = [...text.matchAll(/\b([a-z]+(?:-[a-z]+)*)-(\d+\.\d+)\b/g)].map((m) => m[0]).filter((v) => { const p = v.replace(/-\d+\.\d+$/, ""); return aktuell.has(p) && aktuell.get(p) !== v; });
   assert.deepEqual(alt, [], "veraltete Versionen im Wissenstext");
-  assert.ok(/readiness-2\.1/.test(text) && /saison-1\.2/.test(text) && /aufbau-1\.1/.test(text) && /vergleich-1\.4/.test(text) && /intensitaet-1\.1/.test(text));
+  assert.ok(/readiness-2\.2/.test(text) && /saison-1\.2/.test(text) && /aufbau-1\.1/.test(text) && /vergleich-1\.4/.test(text) && /intensitaet-1\.1/.test(text));
   // Audit B: Titel Rosenblat 2019, sechsstufige Skala, keine «trainierbare» Ermüdungsresistenz, Muñoz 2014b nicht als Überlegenheit
   assert.match(WS.QUELLEN.rosenblat2019.t, /intensity distribution on endurance sport performance/);
   assert.ok(!/Fünf-Zonen-Skala|trainierbare Eigenschaft|Hälfte der Wiederholungen|Stark für die VO2max/.test(text + JSON.stringify(WS.QUELLEN)));

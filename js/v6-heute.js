@@ -296,10 +296,13 @@
     const box = $("wochen-leiste"); if (!box) return;
     const W = V6(), D = C.D, day = heuteISO();
     const mo = window.V64 ? window.V64.montag(day) : day;
-    const MP = window.V7UI ? window.V7UI.meinPlanWoche(mo).map((x) => ({ date: x.date, sport: x.sport, dur_s: x.dur_s })) : [];   // V7: Mein Plan statt Garmin-Kalender
-    const w = W.woche(D.activities, MP, day, (p) => p.dur_s);
+    const MP0 = window.V7UI ? window.V7UI.meinPlanWoche(mo).map((x) => ({ date: x.date, sport: x.sport, dur_s: x.dur_s })) : [];   // V7: Mein Plan statt Garmin-Kalender
+    // V7.6.1 (Silas' Wunsch vom 17.11.2026): Krafttraining ist ein Zusatz – nicht in Trainings und Dauer, eigene Zeile darunter; in der Tagesleiste bleibt es
+    const istK = (a) => (W.sportVon ? W.sportVon(a) : a.sport) === "kraft", MP = MP0.filter((p) => p.sport !== "kraft");
+    const w = W.woche(D.activities.filter((a) => !istK(a)), MP, day, (p) => p.dur_s), wk = W.woche(D.activities.filter(istK), MP0.filter((p) => p.sport === "kraft"), day, (p) => p.dur_s);
+    const wl = W.woche(D.activities, MP0, day, (p) => p.dur_s);
     const WORT = { ist: "erledigt", plan: "geplant", verpasst: "geplant, keine Aktivität dieser Sportart erfasst" };
-    const tage = w.tage.map((t) => {
+    const tage = wl.tage.map((t) => {
       const lab = `${tagText(t.iso)}: ${t.zeichen.length ? t.zeichen.map((z) => `${SPORT_WORT[z.sport] || z.sport} ${WORT[z.art]}`).join(", ") : "nichts"}`;
       return `<button type="button" class="wl-tag${t.heute ? " heute" : ""}" data-wltag="${esc(t.iso)}" aria-label="${esc(lab)}"><span class="wl-wt">${t.wt}</span><span class="wl-d">${+t.iso.slice(8)}</span>
         <span class="wl-sp">${t.zeichen.slice(0, 3).map((z) => `<i class="${z.art}" style="--sp:${spFarbe(z.sport)}">${W.sportIcon(z.sport, 14)}</i>`).join("")}${t.zeichen.length > 3 ? `<small>+${t.zeichen.length - 3}</small>` : ""}</span></button>`;
@@ -309,6 +312,7 @@
       <div class="wl-fort">
         <div><span>Trainings</span><b>${w.n_ist} <small>/ ${w.n_woche}</small></b><i style="--p:${bar(w.n_ist, w.n_woche)}%"></i></div>
         <div><span>Dauer</span><b>${esc(w.s_ist ? W.dauerText(w.s_ist) : "0 min")} <small>/ ${esc(W.dauerText(w.s_woche))}</small></b><i style="--p:${bar(w.s_ist, w.s_woche)}%"></i></div></div>
+      ${wk.n_woche ? `<p class="wl-kraft">${W.icon("kraft", 14)}Krafttraining: ${wk.n_ist} von ${wk.n_woche}${wk.s_ist ? ` · ${esc(W.dauerText(wk.s_ist))}` : ""} <small>(Zusatz, nicht in Trainings und Dauer)</small></p>` : ""}
       <p class="hint">Erledigt = erfasste Aktivitäten (kommen mit dem Nacht-Update); geplant = Mein Plan. Ausgefüllt = erledigt, Rand = geplant, grau = geplant, aber an diesem Tag keine Aktivität dieser Sportart erfasst.
         Woche = erledigt + noch geplant + verpasst${w.n_verpasst ? ` (${w.n_verpasst} verpasst)` : ""}.</p>`;
     box.querySelectorAll("[data-wltag]").forEach((b) => (b.onclick = () => { if (window.APP && window.APP.tagBlatt) window.APP.tagBlatt(b.dataset.wltag); }));   // V6.6

@@ -1182,3 +1182,37 @@ button.v73-opt { border: 0; padding: 0; background: none; color: var(--fg); font
 .v76-rpe button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 .pe-schalter-z.einzeln label > span:nth-child(2) { display: flex; flex-direction: column; gap: 2px; }
 .pe-schalter-z.einzeln label small { color: var(--muted); font-size: 13px; line-height: 1.35; }
+.wl-kraft { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 10px 0 0; font-size: 14px; }
+.wl-kraft small { color: var(--muted); }
+
+/* V7.6.1 Planeinstellungen «Allgemein» (verfuegbarkeit-1.1): Trainingsverfügbarkeit der ganzen Woche, Tage für lange Einheiten; Krafttraining Tag automatisch */
+.pe-tage button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-fg); }
+.pe-feld-t .pe-sp { margin-right: 6px; vertical-align: -3px; }
+.pe-info { display: flex; gap: 10px; align-items: flex-start; margin: 16px 0 8px; padding: 12px 14px; border-radius: 14px; background: var(--surface-2); color: var(--muted); font-size: 13.5px; line-height: 1.45; }
+.pe-info svg { flex: 0 0 auto; margin-top: 2px; color: var(--fg); }
+.pe-modus { margin-bottom: 4px; }
+.mp-vf-woche { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 40px; margin: -2px 0 6px; padding: 0 4px; border: 0; background: transparent; color: var(--accent-text); font: 600 14px/1.2 var(--f-body); cursor: pointer; text-align: left; }
+.mp-vf-woche svg:last-child { margin-left: auto; }
+.mp-vf-woche:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 8px; }
+.vw-liste { list-style: none; margin: 4px 0 0; padding: 0; }
+.vw-tag { padding: 12px 0 10px; border-bottom: 1px solid var(--line); }
+.vw-tag:last-child { border-bottom: 0; }
+.vw-kopf { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.vw-kopf b { font-size: 16px; }
+.vw-kopf em { font-style: normal; font-weight: 700; font-variant-numeric: tabular-nums; }
+.vw-tag.aus .vw-kopf em { color: var(--muted); font-weight: 600; }
+.vw-zeile { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.vw-an { position: relative; flex: 0 0 auto; width: 60px; height: 36px; padding: 0; border-radius: 18px; border: 1.5px solid var(--line-2); background: var(--surface-2); cursor: pointer; transition: background .15s; }
+.vw-an i { position: absolute; top: 3px; left: 3px; width: 27px; height: 27px; display: grid; place-items: center; border-radius: 50%; background: var(--surface); color: var(--fg); transition: transform .15s; }
+.vw-an[aria-checked="true"] { background: var(--accent); border-color: var(--accent); }
+.vw-an[aria-checked="true"] i { transform: translateX(24px); background: var(--accent-fg); color: var(--accent); }
+.vw-an:focus-visible, .vw-chip:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.vw-sp { display: flex; gap: 6px; }
+.vw-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; min-width: 52px; padding: 0 10px; border-radius: 12px; border: 1.5px solid var(--line-2); background: var(--surface); color: var(--muted); cursor: pointer; }
+.vw-chip i { display: none; width: 15px; height: 15px; place-items: center; border-radius: 50%; background: var(--fg); color: var(--bg); }
+.vw-chip[aria-pressed="true"] { border-color: var(--sp); background: color-mix(in srgb, var(--sp) 16%, transparent); color: var(--fg); }
+.vw-chip[aria-pressed="true"] svg:first-child { color: var(--sp); }
+.vw-chip[aria-pressed="true"] i { display: inline-grid; }
+.vw-regler { margin: 6px 0 0; }
+.kw-kraft { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.mp-vf-t b { text-wrap: balance; }

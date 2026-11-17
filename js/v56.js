@@ -77,7 +77,7 @@
     const mitTraining = wochen.filter((w) => n(w) >= 3).length, m = h.reduce((s, x) => s + x, 0) / h.length, sd = Math.sqrt(h.reduce((s, x) => s + (x - m) ** 2, 0) / h.length);
     const dates = [...new Set(C.D.activities.filter((a) => a.date >= von).map((a) => a.date))].sort();
     let gap = 0, gapAt = null; for (let i = 1; i < dates.length; i++) { const g = (new Date(dates[i]) - new Date(dates[i - 1])) / 864e5 - 1; if (g > gap) { gap = g; gapAt = dates[i - 1]; } }
-    const load = new Map(); for (const a of C.D.activities) load.set(a.date, (load.get(a.date) || 0) + (a.tss || 0));
+    const load = new Map(); for (const a of C.D.activities) if (!F.zaehlt || F.zaehlt(a)) load.set(a.date, (load.get(a.date) || 0) + (a.tss || 0));   // pmc-2.1: ohne Krafttraining
     const pm = C.D.activities.length ? F.pmc(load, F.addDays(von, -120), bis) : null;
     let ramp = null;
     if (pm && pm.length > 8) { const r = []; for (let i = 7; i < pm.length; i++) if (pm[i].date >= von && new Date(pm[i].date + "T12:00:00Z").getUTCDay() === 0) r.push(pm[i].ctl - pm[i - 7].ctl); ramp = r.length ? { max: Math.max(...r), ueber: r.filter((x) => x > 8).length } : null; }

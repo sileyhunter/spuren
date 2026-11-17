@@ -21,7 +21,7 @@ const standVon = (m) => (d) => m[d] || null;
 
 /* ---------------- Entscheid je Tag ---------------- */
 test("ampel-plan-1.0: jede Ampelstufe → Entscheid; ohne Morgenwerte zählt nur der Check-in", () => {
-  assert.equal(V74.VERSIONS.ampelplan, "ampel-plan-1.0");
+  assert.equal(V74.VERSIONS.ampelplan, "ampel-plan-1.1");
   const r = (status, extra) => Object.assign({ datum: DI, status, alle_gruende: [{ w: 7, txt: "HRV deutlich unter Referenz", kind: "hrv" }, { w: 1, txt: "Schlaf 7,5 h", kind: "schlaf+" }],
     indikatoren: { befinden: { status: "gut" } } }, extra || {});
   for (const st of ["bereit", "normal", "nicht beurteilbar"]) assert.equal(V74.entscheid(r(st), { morgenwerte: true }).status, "wie_geplant", st);

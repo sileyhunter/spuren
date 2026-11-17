@@ -128,7 +128,7 @@
     const K = kontext(mo); if (!K) return "Plan dieser Woche nicht berechenbar";
     const vorschlag = (d) => ((K.w0 || K.w).tage.find((t) => t.date === d) || { einheiten: [] }).einheiten;
     const roh = (d) => ((K.w0roh || K.w0 || K.w).tage.find((t) => t.date === d) || { einheiten: [] }).einheiten;
-    const r = V66().aendern(P().planEintrag(mo), a, { heute: heute(), montag: mo, vorschlag, roh, verf: K.verf || null, verteilt: !!K.verteilt, ctxE: K.ctxE,
+    const r = V66().aendern(P().planEintrag(mo), a, { heute: heute(), montag: mo, vorschlag, roh, verf: K.verf || null, verteilt: !!K.verteilt, ctxE: K.ctxE, lang: K.lang || null,
       o: { phase: K.w.phase, css_s: K.css ? K.css.s : null, kurz: !!(K.w.taper || K.w.erholung) }, jetzt: new Date().toISOString(),
       erholung: K.erh || null, grund: a.art === "erholung" ? "Ampel: mehrere Tage «vorsichtig» (ampel-plan-1.0)" : null });
     if (r.fehler) return r.fehler;
@@ -148,7 +148,7 @@
     const W = V6(), S = V66().schaetzung(e, bezug(K)), hk = e.teile && e.teile.length && P().hauptKey ? P().hauptKey(e) : null;
     let st = null; try { const A = ds ? auftrag(ds) : null; st = ds ? V66().garminStand(e, ds, skalen(), gesendet(), A && (A.lokal ? Object.assign({ status: "offen" }, A.a) : A.a), swOpt(ds, K)) : null; } catch (err) { console.error(err); }
     const teile = [W.dauerText(e.dauer * 60), isNum(S.tl) ? `TL ≈ ${S.vollstaendig ? "" : "mind. "}${S.tl}` : "", isNum(S.km) && S.km > 0 ? `≈ ${komma(S.km)} km` : "", st ? STAND_WORT[st] : ""].filter(Boolean);
-    const q = (e.kraft_plan ? "fester Termin" : e.quelle === "eigen" ? "eigen" : e.quelle === "bibliothek" ? "Bibliothek" : "Vorschlag") + (e.ampel ? (e.ampel.von ? " · Ampel" : " · nachgeholt") : "");   // V7.6
+    const q = (e.kraft_plan ? (e.kraft_auto ? "Tag automatisch" : "fester Termin") : e.quelle === "eigen" ? "eigen" : e.quelle === "bibliothek" ? "Bibliothek" : "Vorschlag") + (e.ampel ? (e.ampel.von ? " · Ampel" : " · nachgeholt") : "");   // V7.6
     if (e.uhrzeit) teile.unshift(e.uhrzeit);                               // V7.3: Uhrzeit aus «Festlegen»
     return `<button type="button" class="mo-e mp-e${e.quelle === "eigen" ? " eigen" : ""}" data-mpe="${esc(e.uid)}">
       <span class="mo-sp" style="--sp:${spFarbe(e.sport)}">${W.sportIcon(e.sport, 16)}</span>
@@ -173,7 +173,7 @@
          ${t.gesperrt ? `<p class="hint">Gesperrt: nicht bearbeitbar; «Woche leeren», «Anpassen» und «Neu berechnen» lassen ihn stehen.</p>` : ""}`;
     // V7.4 ampel-plan-1.0: Anpassung durch die Ampel (Gründe, ursprüngliche Einheit, «Trotzdem wie geplant») und «Woche anpassen?»
     let ampel = ""; try { ampel = window.V74UI ? window.V74UI.banner(ds, t) + window.V74UI.erholungKarte(ds, K) : ""; } catch (err) { console.error(err); }
-    return `${woche}${formHTML(ds)}${vfHTML(ds, K)}${kraftHTML(ds)}<h3 class="abschnitt mp-kopf">Mein Plan ${status}</h3>${ampel}<div class="mp-liste">${karten}</div>${aufbau}${akt}${garminHTML(ds, t)}<p class="warn-t" data-mpfehler hidden></p>`;
+    return `${woche}${formHTML(ds)}${vfHTML(ds, K)}${kraftHTML(ds, K)}<h3 class="abschnitt mp-kopf">Mein Plan ${status}</h3>${ampel}<div class="mp-liste">${karten}</div>${aufbau}${akt}${garminHTML(ds, t)}<p class="warn-t" data-mpfehler hidden></p>`;
   };
 
   /* ---------- V7.2: Form zu Tagesbeginn und Verfügbarkeit im Tagesblatt ---------- */
@@ -188,7 +188,7 @@
     const KM = new Map(), K = (d) => { const mo = montag(d); if (!KM.has(mo)) KM.set(mo, kontext(mo)); return KM.get(mo); };
     const ohne = new Set();                                             // Einheiten ohne Schätzung (z. B. Schwimmen ohne CSS-Test): nicht gezählt
     const lastAm = (d) => {
-      const ist = (C.D.activities || []).filter((a) => a && a.date === d);
+      const ist = (C.D.activities || []).filter((a) => a && a.date === d && (!window.FK || window.FK.zaehlt(a)));   // pmc-2.1: Krafttraining zählt nicht
       if (ist.length) return ist.reduce((s2, a) => s2 + (isNum(a.tss) ? a.tss : 0), 0);
       const k = K(d), t = k && k.w.tage.find((x) => x.date === d); if (!t) return 0; if (t.rennen) return null;
       let sum = 0;
@@ -204,7 +204,7 @@
     const st = V6().status(f.form), pre = f.prognose ? "≈ " : "";
     return `<div class="kv ek-kv mp-form"><div><b>${pre}${f.fitness}</b><span>Fitness</span></div><div><b>${pre}${f.ermuedung}</b><span>Ermüdung</span></div>
       <div><b>${pre}${f.form > 0 ? "+" : ""}${f.form}</b><span>Form${st ? ` · <i class="st-farbe" style="--stc:${st.farbe}">${esc(st.name)}</i>` : ""}</span></div></div>
-      ${f.prognose ? `<p class="hint">Zu Tagesbeginn, fortgeschrieben mit der geplanten Last von Mein Plan (TL ≈ aus deinem Zonenprofil)${f.ohne && f.ohne.length ? `; ohne Schätzung nicht gezählt: ${esc(f.ohne.slice(0, 3).join(", "))}` : ""}${f.offen ? `; ${f.offen} Renntag${f.offen === 1 ? "" : "e"} als 0` : ""} – ein Modell, keine Messung (pmc-2.0).</p>` : ""}`;
+      ${f.prognose ? `<p class="hint">Zu Tagesbeginn, fortgeschrieben mit der geplanten Last von Mein Plan (TL ≈ aus deinem Zonenprofil)${f.ohne && f.ohne.length ? `; ohne Schätzung nicht gezählt: ${esc(f.ohne.slice(0, 3).join(", "))}` : ""}${f.offen ? `; ${f.offen} Renntag${f.offen === 1 ? "" : "e"} als 0` : ""}; Krafttraining zählt nicht – ein Modell, keine Messung (${window.FK ? window.FK.VERSIONS.pmc : "pmc"}).</p>` : ""}`;
   }
   const WT_LANG = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
   function vfHTML(ds, K) {
@@ -213,15 +213,19 @@
     const sp = v && v.sport ? v.sport : null, W = V6();
     return `<div class="mp-vf"><div class="mp-vf-t"><span class="abschnitt">${W.icon("kalender", 14)}Verfügbarkeit</span><b>${esc(v ? V66().vfText(v) : "–")}</b><small>${esc(quelle)}</small></div>
       ${v && sp && sp.length ? `<span class="mp-vf-sp">${sp.map((x) => `<i style="--sp:${spFarbe(x)}">${W.sportIcon(x, 14)}</i>`).join("")}</span>` : ""}
-      ${ds >= heute() ? `<button type="button" class="btn" data-mpvf>Ändern</button>` : ""}</div>`;
+      ${ds >= heute() ? `<button type="button" class="btn" data-mpvf>Ändern</button>` : ""}</div>
+      <button type="button" class="mp-vf-woche" data-mpvfw>${W.icon("kalender", 14)}Trainingsverfügbarkeit der ganzen Woche ${W.icon("weiter", 14)}</button>`;
   }
-  /** V7.6 kraft-plan-1.0: der feste Termin fürs Krafttraining (Planeinstellungen), änderbar aus dem Tagesblatt. */
-  function kraftHTML(ds) {
+  /** V7.6 kraft-plan-1.1: Krafttraining aus den Planeinstellungen (Tag automatisch oder fest) und was daraus in dieser Woche wurde; änderbar aus dem Tagesblatt. */
+  function kraftHTML(ds, KW) {
     if (!window.V76 || !window.V75UI || !window.V75UI.kraft) return "";
     const E = window.V75UI.einstellungen(); if (!E) return "";
-    const W = V6(), K = E.kraft;
-    return `<div class="mp-vf mp-kraft"><div class="mp-vf-t"><span class="abschnitt">${W.icon("kraft", 14)}Krafttraining</span><b>${esc(window.V76.text(K))}</b>
-        <small>${K.aktiv ? "fester Termin pro Woche · Planeinstellungen" : "kein fester Termin – in den Planeinstellungen festlegen"}</small></div>
+    const W = V6(), K = E.kraft, x = KW && KW.w ? KW.w.kraft : null, D = window.V76;
+    const woche = !x ? "" : x.status === "geplant" ? `diese Woche: ${x.date === ds ? "an diesem Tag" : D.TAGE[V66().wtNr(x.date) - 1]}${x.kurz ? ` · ${D.dauerText(x.dauer)} (${x.kurz})` : ""}`
+      : x.status === "aus" ? "diese Woche ausgelassen" : `diese Woche keins: ${x.grund === "kein Tag" ? "kein möglicher Tag" : x.grund}`;
+    const satz = K.aktiv ? `${K.modus === "auto" ? "den Tag wählt die Seite" : "fester Tag"} · Planeinstellungen${woche ? " · " + woche : ""}` : "kein Krafttraining – in den Planeinstellungen festlegen";
+    return `<div class="mp-vf mp-kraft"><div class="mp-vf-t"><span class="abschnitt">${W.icon("kraft", 14)}Krafttraining</span><b>${esc(D.text(K))}</b>
+        <small>${esc(satz)}</small></div>
       ${ds >= heute() ? `<button type="button" class="btn" data-mpkraft>${K.aktiv ? "Ändern" : "Festlegen"}</button>` : ""}</div>`;
   }
   /** Verfügbarkeit eines Tages oder Wochentags ändern (Zeit, Sportarten); danach «Anpassen» oder «Neu berechnen». */
@@ -272,10 +276,100 @@
     neuZeichnen();
     return null;
   }
+  /** V7.6.1 verfuegbarkeit-1.1 (Vorbild enduco «Trainingsverfügbarkeit», Silas' Wunsch vom 17.11.2026): alle sieben Wochentage in einem Blatt – kein Training
+   *  oder Sportarten und höchstens so viel Zeit (15-min-Schritte bis 10 h, ganz rechts «offen»). «Fertig» speichert je geänderten Wochentag einen Eintrag
+   *  vf-wt-N (offen mit allen Sportarten = Eintrag entfernt); die laufende Woche wird vorher einmal festgehalten. Danach «Anpassen», «Neu berechnen» oder «Nur speichern». */
+  const VW_MAX = 600, VW_OFFEN = VW_MAX + 15, VW_SPW = { schwimm: "Schwimmen", rad: "Rad", lauf: "Laufen" };
+  M.verfuegbarkeitWoche = function (zurueck) {
+    if (!bereit()) return;
+    const W = V6(), SP = V66().VF_SPORT, mo = montag(heute()), K = kontext(mo), verf = (K && K.verf) || (P().verfuegbarkeit ? P().verfuegbarkeit() : null);
+    const alt = (n) => { const e = verf && verf.eintrag ? verf.eintrag("vf-wt-" + n) : null; return e && !e.entfernt ? e : null; };
+    const aus = (v) => !!v && (v.min === 0 || (Array.isArray(v.sport) && !v.sport.length));
+    const S = WT_LANG.map((_, k) => { const e = alt(k + 1); return { an: !aus(e), sport: e && Array.isArray(e.sport) && e.sport.length ? SP.filter((x) => e.sport.includes(x)) : SP.slice(), min: e && e.min ? e.min : null }; });
+    const wert = (s) => (!s.an ? "Kein Training" : s.min == null ? "offen" : W.dauerText(s.min * 60));
+    const zeile = (s, k) => `<li class="vw-tag" data-vw="${k}"><div class="vw-kopf"><b id="vw-t${k}">${WT_LANG[k]}</b><em data-vwwert>${esc(wert(s))}</em></div>
+        <div class="vw-zeile"><button type="button" class="vw-an" role="switch" aria-checked="${s.an}" aria-label="${WT_LANG[k]}: trainieren" data-vwan><i>${W.icon(s.an ? "haken" : "schlaf", 16)}</i></button>
+          <span class="vw-sp" role="group" aria-labelledby="vw-t${k}" data-vwsps${s.an ? "" : " hidden"}>${SP.map((x) => `<button type="button" class="vw-chip" data-vwsp="${x}" aria-pressed="${s.sport.includes(x)}" aria-label="${VW_SPW[x]}" style="--sp:${spFarbe(x)}">${W.sportIcon(x, 17)}<i aria-hidden="true">${W.icon("haken", 11)}</i></button>`).join("")}</span></div>
+        <div class="vw-regler pe-fit" data-vwreg${s.an ? "" : " hidden"}><button type="button" class="btn" data-vwm aria-label="${WT_LANG[k]}: 15 min weniger">−</button>
+          <input type="range" min="15" max="${VW_OFFEN}" step="15" value="${s.min == null ? VW_OFFEN : Math.min(VW_MAX, Math.max(15, s.min))}" data-vwr aria-label="${WT_LANG[k]}: höchstens">
+          <button type="button" class="btn" data-vwp aria-label="${WT_LANG[k]}: 15 min mehr">+</button></div></li>`;
+    const html = `<div class="blatt-titel">${W.icon("kalender", 34)}<h2 id="v59-ov-h" tabindex="-1">Trainingsverfügbarkeit</h2>
+        <p class="sub">Wie viel Zeit du an jedem Wochentag höchstens hast und welche Sportarten gehen.</p></div>
+      <ul class="vw-liste">${S.map(zeile).join("")}</ul>
+      <p class="hint">${esc(V66().VERSIONS.verfuegbarkeit)}: gilt jede Woche; einen einzelnen Tag änderst du im Tagesblatt (geht vor). Der Vorschlag verteilt sich danach – Einheiten bleiben an
+        ihrem Tag, wenn sie passen, sonst kommen sie auf einen anderen erlaubten Tag oder werden gekürzt (immer gemeldet). Ganz rechts = offen (keine Grenze). Krafttraining belegt seine Zeit am Tag.
+        Die laufende Woche bleibt, wie sie gezeigt wird («Anpassen» verteilt sie neu). Nichts geht an Garmin oder Enduco.</p>
+      <p class="warn-t" data-mpfehler hidden></p>
+      ${fuss("data-mpz", `<button type="button" class="btn primary gross" data-vwok>Fertig ${W.icon("haken", 18)}</button>`)}`;
+    const ov = V59().blatt("mp-vf", html);
+    const aria = (r, s) => r.setAttribute("aria-valuetext", s.min == null ? "offen" : W.dauerText(s.min * 60));
+    ov.querySelectorAll("[data-vw]").forEach((li) => {
+      const k = +li.dataset.vw, s = S[k], r = li.querySelector("[data-vwr]");
+      const zeig = () => {
+        li.querySelector("[data-vwwert]").textContent = wert(s);
+        const an = li.querySelector("[data-vwan]"); an.setAttribute("aria-checked", String(s.an)); an.querySelector("i").innerHTML = W.icon(s.an ? "haken" : "schlaf", 16);
+        li.querySelector("[data-vwsps]").hidden = !s.an; li.querySelector("[data-vwreg]").hidden = !s.an; li.classList.toggle("aus", !s.an); aria(r, s);
+      };
+      const setz = (v) => { v = Math.max(15, Math.min(VW_OFFEN, v)); r.value = v; s.min = v >= VW_OFFEN ? null : v; zeig(); };
+      li.querySelector("[data-vwan]").onclick = () => { s.an = !s.an; if (s.an && !s.sport.length) s.sport = SP.slice(); zeig(); };
+      li.querySelectorAll("[data-vwsp]").forEach((b) => (b.onclick = () => {
+        const x = b.dataset.vwsp, drin = s.sport.includes(x);
+        if (drin && s.sport.length === 1) return;                                          // mindestens eine Sportart – sonst «Kein Training»
+        s.sport = drin ? s.sport.filter((y) => y !== x) : SP.filter((y) => y === x || s.sport.includes(y));
+        b.setAttribute("aria-pressed", String(!drin));
+      }));
+      r.oninput = () => setz(+r.value);
+      li.querySelector("[data-vwm]").onclick = () => setz((s.min == null ? VW_OFFEN : s.min) - 15);
+      li.querySelector("[data-vwp]").onclick = () => setz((s.min == null ? VW_OFFEN : s.min) + 15);
+      zeig();
+    });
+    ov.querySelector("[data-mpz]").onclick = () => (zurueck ? zurueck() : V59().schliessen());
+    const norm = (v) => (!v ? "frei" : aus(v) ? "aus" : JSON.stringify([v.min == null ? null : v.min, Array.isArray(v.sport) && v.sport.length < SP.length ? SP.filter((x) => v.sport.includes(x)) : null]));
+    ov.querySelector("[data-vwok]").onclick = async (ev) => {
+      const L = [];
+      S.forEach((s, k) => {
+        const neu = !s.an ? { min: 0, sport: [] } : { min: s.min, sport: s.sport.length === SP.length ? null : s.sport.slice() };
+        const offen = s.an && neu.min == null && neu.sport == null, e = alt(k + 1);
+        if (offen ? !e : e && norm(e) === norm(neu)) return;                                 // unverändert
+        L.push({ wt: k + 1, wert: offen ? null : neu });
+      });
+      if (!L.length) { if (zurueck) zurueck(); else V59().schliessen(); return; }
+      ev.currentTarget.disabled = true;
+      const f = await vfWocheSpeichern(L);
+      if (f) { ev.currentTarget.disabled = false; const p = ov.querySelector("[data-mpfehler]"); p.textContent = f; p.hidden = false; return; }
+      M.reaktionBlatt(heute(), zurueck, `Trainingsverfügbarkeit: ${L.length === 1 ? WT_LANG[L[0].wt - 1] : `${L.length} Wochentage`} geändert – gilt jede Woche.`);
+    };
+  };
+  /** Mehrere Wochentage auf einmal speichern; die laufende Woche vorher einmal festhalten (vergangene Tage bleiben, wie sie gezeigt wurden). */
+  async function vfWocheSpeichern(L) {
+    const I = UI().Inbox; if (!I || !I.data) return "Speicher auf diesem Gerät nicht verfügbar";
+    const jetzt = new Date().toISOString(), E = L.map((x) => V66().vfEintrag({ wt: x.wt }, x.wert, jetzt));
+    for (const e of E) { const f = V66().vfPruefen(e); if (f) return `${WT_LANG[e.wt - 1]}: ${f}`; }
+    const moH = montag(heute());
+    if (heute() > moH) { const r = await aendern(moH, { art: "festhalten" }); if (r) return r; }
+    if (!Array.isArray(I.data.verfuegbarkeit)) I.data.verfuegbarkeit = [];
+    for (const e of E) await I.upsert("verfuegbarkeit", e);
+    neuZeichnen();
+    return null;
+  }
+  /** Kurztext der Wochenvorlage für die Planeinstellungen: «Mo kein Training · Di–Fr 2:45 h · Sa, So 5:00 h» (gleiche Tage zusammen). */
+  M.verfuegbarkeitText = function () {
+    if (!bereit() || !P().verfuegbarkeit) return "";
+    const verf = P().verfuegbarkeit(), W = V6(), K = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+    const t = (n) => { const e = verf.eintrag ? verf.eintrag("vf-wt-" + n) : null; if (!e || e.entfernt) return "frei";
+      if (e.min === 0 || (Array.isArray(e.sport) && !e.sport.length)) return "kein Training";
+      const sp = Array.isArray(e.sport) && e.sport.length < 3 ? ` (${e.sport.map((x) => VW_SPW[x]).join(", ")})` : "";
+      return (e.min == null ? "offen" : W.dauerText(e.min * 60)) + sp; };
+    const T = [1, 2, 3, 4, 5, 6, 7].map(t);
+    if (T.every((x) => x === "frei")) return "nicht festgelegt – der Vorschlag plant frei";
+    const out = []; let a = 0;
+    while (a < 7) { let b = a; while (b + 1 < 7 && T[b + 1] === T[a]) b++; out.push(`${b - a >= 2 ? `${K[a]}–${K[b]}` : K.slice(a, b + 1).join(", ")} ${T[a]}`); a = b + 1; }
+    return out.join(" · ");
+  };
   /** Nach einer Änderung der Verfügbarkeit: wie soll der Plan reagieren? */
-  M.reaktionBlatt = function (ds, zurueck) {
+  M.reaktionBlatt = function (ds, zurueck, sub) {
     const W = V6(), mo = montag(ds), K = kontext(mo);
-    const html = `<h2 id="v59-ov-h" tabindex="-1">Gespeichert</h2><p class="sub">Verfügbarkeit ${esc(tagText(ds))}: ${esc(K && K.verf ? V66().vfText(K.verf(ds)) : "")}</p>
+    const html = `<h2 id="v59-ov-h" tabindex="-1">Gespeichert</h2><p class="sub">${esc(sub || `Verfügbarkeit ${tagText(ds)}: ${K && K.verf ? V66().vfText(K.verf(ds)) : ""}`)}</p>
       <ul class="mp-wahl">
         <li><button type="button" class="mp-zeile" data-mpre="anpassen"><span class="mp-vt"><b>Woche anpassen</b><small>KW ${V6().isoWoche(mo)} ab heute neu verteilen; gesperrte Tage und deine eigenen Einheiten bleiben.</small></span>${W.icon("weiter", 18)}</button></li>
         <li><button type="button" class="mp-zeile" data-mpre="neu"><span class="mp-vt"><b>Neu berechnen</b><small>Diese und alle folgenden Wochen wieder nach dem Vorschlag mit deiner Verfügbarkeit; nur gesperrte Tage bleiben.</small></span>${W.icon("weiter", 18)}</button></li>
@@ -334,6 +428,7 @@
     ov.querySelectorAll("[data-mpe]").forEach((b) => (b.onclick = () => M.einheit(ds, b.dataset.mpe, { zurueck })));
     ov.querySelectorAll("[data-mpadd]").forEach((b) => (b.onclick = () => M.hinzufuegen(ds, zurueck)));
     ov.querySelectorAll("[data-mpvf]").forEach((b) => (b.onclick = () => M.verfuegbarkeitBlatt(ds, zurueck)));
+    ov.querySelectorAll("[data-mpvfw]").forEach((b) => (b.onclick = () => M.verfuegbarkeitWoche(zurueck)));   // V7.6.1 verfuegbarkeit-1.1
     ov.querySelectorAll("[data-mpkraft]").forEach((b) => (b.onclick = () => window.V75UI.kraft({ zurueck: zurueck || (() => V59().schliessen()) })));   // V7.6
     if (window.V74UI) window.V74UI.binden(ov, zurueck);                    // V7.4: «Trotzdem wie geplant», «Woche anpassen?»
     ov.querySelectorAll("[data-mplock]").forEach((b) => (b.onclick = async () => {
@@ -613,6 +708,9 @@
     for (const p of MP) if (planSp[p.sport] != null) planSp[p.sport] += p.dur_s;
     for (const a of ist) if (istSp[a.sport] != null) istSp[a.sport] += sek(a);
     const planS = SP3.reduce((s2, x) => s2 + planSp[x], 0), istS = SP3.reduce((s2, x) => s2 + istSp[x], 0), maxS = Math.max(planS, istS, 1);
+    // V7.6.1 (Silas' Wunsch vom 17.11.2026): Krafttraining als eigene Zeile – geplant aus Mein Plan, erledigt = Garmin-Krafttraining (V6.sportVon)
+    const kraftIst = ist.filter((a) => (W.sportVon ? W.sportVon(a) : a.sport) === "kraft");
+    const kraftZ = { plan: MP.filter((p) => p.sport === "kraft").length, ist: kraftIst.length, s: kraftIst.reduce((s2, a) => s2 + sek(a), 0) };
     const z5 = [0, 0, 0, 0, 0]; let zOhne = 0;
     for (const a of ist) {
       if (a.sport !== "rad" && a.sport !== "lauf") continue;
@@ -630,6 +728,7 @@
         <div class="kw-st"><span>geplant</span>${stapel(planSp, maxS, true)}</div>
         <div class="kw-st"><span>absolviert</span>${stapel(istSp, maxS, false)}</div>
         <p class="kw-leg">${SP3.map((x) => `<i style="background:${spFarbe(x)}"></i>${x === "schwimm" ? "Schwimmen" : x === "rad" ? "Rad" : "Laufen"} ${hm(istSp[x] / 60)}<small>/${hm(planSp[x] / 60)}</small>`).join(" ")}</p>
+        ${kraftZ.plan || kraftZ.ist ? `<p class="kw-leg kw-kraft">${W.icon("kraft", 14)}Krafttraining ${kraftZ.ist}${gilt ? `<small>/${kraftZ.plan}</small>` : ""}${kraftZ.s ? ` · ${esc(W.dauerText(kraftZ.s))}` : ""} <small>– Zusatz, nicht in Stunden, TL und Form</small></p>` : ""}
         ${p3 ? `<div class="kw-st"><span>Zonen</span><span class="v7-stapel">${z5.map((v, i) => (v > 0 ? `<i style="flex:${v};background:var(--zc-z${i + 1})"></i>` : "")).join("")}</span></div>
           <p class="kw-leg">Rad und Laufen nach Puls: ${p3[0]} % unter LT1 · ${p3[1]} % LT1–LT2 · ${p3[2]} % über LT2${zOhne > 0 ? ` · ${esc(W.dauerText(zOhne))} ohne Puls` : ""}</p>` : ""}
       </div>`;

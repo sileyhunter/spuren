@@ -15,7 +15,7 @@ Gebaut wird Etappe für Etappe, jede erst nach Silas' Okay.
 | 4 | Kalender mit Zwei-Wochen-Raster und durchlaufender Liste, Zyklus, Bearbeiten-Modus, Tagesblatt; Aktivitäten draussen im Voraus planen (`aktivitaet-plan-1.0`) | offen |
 | 5 | Heute, Navigation, Training planen mit Kategorien | offen |
 | 6 | Ampel passt das Training des Tages automatisch an (`ampel-plan-1.0`): bei «vorsichtig» keine harten oder mittleren Abschnitte, Nachholen in der Woche, «Trotzdem wie geplant» | V7.4 (Garmin-Ersatz am Morgen auf der Uhr noch nicht geprüft) |
-| 7 | Krafttraining als feste Zusatzeinheit je Woche (`kraft-plan-1.0`), Woche darauf abgestimmt | V7.6 Teil 1 (Termin, Anzeige, RPE); Abstimmung der Woche wartet auf Silas' Okay zum Vorschlag |
+| 7 | Krafttraining als feste Zusatzeinheit je Woche (`kraft-plan-1.0`), Woche darauf abgestimmt | V7.6 Teil 1 (Termin, Anzeige, RPE); V7.6.1 Teil 2 (Abstimmung der Woche, Tag automatisch, `kraft-plan-1.1`), dazu Planeinstellungen «Allgemein» |
 
 Reihenfolge (von Silas bestätigt am 16.11.2026): 1 → 2 → 6 → 3 → 7 → 4 → 5; jede Etappe erst nach seinem Okay (Etappe 2 freigegeben am
 16.11.2026, Etappe 6 und Etappe 3 am 17.11.2026). Der Laufaufbau bleibt je Einzellauf (aufbau-1.1). Entscheid A7 (16.11.2026): Das Morgen-Update darf bei «vorsichtig» die eigene harte
@@ -65,17 +65,27 @@ Einheit des Tages in Garmin durch die lockere Fassung ersetzen – gilt ab Etapp
 | Beginner Modus (Schalter) | Anfänger-Modus (Schalter): einfache Übungen, kürzere Wiederholungen, längere Pausen (schwimmeinheit-1.2) | Wirkung eigene Festlegung, im Wissen beschrieben |
 | Stile | Kraul immer, dazu Rücken und/oder Brust: je Woche einer als Teil am Ende des Ein- und Ausschwimmens, auf der Uhr mit diesem Stil (garmin-senden-1.2) | Technik und Hauptserien bleiben Kraul (Triathlon); Kraul nicht abwählbar; Delfin plant die Seite nicht |
 
-## Etappe 7 – Krafttraining (V7.6, kraft-plan-1.0, Teil 1)
+## Etappe 7 – Krafttraining (V7.6 Teil 1 kraft-plan-1.0, V7.6.1 Teil 2 kraft-plan-1.1)
 
 | Soll (Auftrag) | V7.6 | Anders, weil |
 |---|---|---|
-| Einstellung «Krafttraining» in den Planeinstellungen, auch aus dem Tagesblatt: Wochentag, Uhrzeit, Dauer (1:30 h), wiederkehrend | Seite in der Blatt-Folge (fünf Blätter) und Blatt `V75UI.kraft`, dazu eine Notiz für die Übungen; gilt ab der Woche nach dem Speichern | wie Start und Basis-Fitness: die laufende Woche bleibt (`vorher`) |
+| Einstellung «Krafttraining» in den Planeinstellungen, auch aus dem Tagesblatt: Wochentag, Uhrzeit, Dauer (1:30 h), wiederkehrend | Seite in der Blatt-Folge (sechs Blätter seit V7.6.1) und Blatt `V75UI.kraft`, dazu eine Notiz für die Übungen; seit V7.6.1 Tag «Automatisch» (mögliche Tage) oder «Fester Tag»; gilt ab der Woche nach dem Speichern | wie Start und Basis-Fitness: die laufende Woche bleibt (`vorher`); automatisch auf Silas' Wunsch vom 17.11.2026 |
 | Einzelne Wochen verschieben oder auslassen | «Nur diese Woche» auf der Einheit-Seite: Ausnahme `pe-kraft-<Montag>` in kommenden Wochen, sonst über Mein Plan | in der laufenden Woche über Mein Plan, damit vergangene Tage nicht wechseln |
 | «Direkt speichern» mit Prüfung in `merge_daily.py` | `planeinstellung` → `planeinstellung_pruefen` (gleich wie `V75.pruefen`) | – |
 | Zählt nicht zu den Wochenstunden, belegt aber Zeit am Tag | feste Einheit im Vorschlag, beim Verteilen ortsfest (`V66.verteilen`) | – |
-| Nicht in TL ≈ und Form | keine TL ≈, nicht in der Form-Prognose | aufgezeichnete Garmin-Krafteinheiten zählen wie bisher in pmc-2.0 (Rückfrage an Silas) |
+| Nicht in TL ≈ und Form | keine TL ≈, nicht in der Form-Prognose; seit V7.6.1 zählen auch aufgezeichnete Garmin-Krafteinheiten nicht mehr in Fitness, Form, Ampel-Last und Ringe (pmc-2.1, readiness-2.2, ringe-1.1) | Silas' Antwort vom 17.11.2026; eigene Zeile in «Diese Woche» und in der Wochenauswertung |
 | RPE nach der Einheit → sRPE als eigene Zahl | RPE 1–10 auf der Einheit-Seite, sRPE = RPE × Minuten (Garmin-Dauer, sonst geplant) | nicht in der Kalibrierung rpe-1.0 |
-| Kalender, Heute, Tagesblatt mit Kraft-Symbol und Uhrzeit; Einheit-Seite mit Dauer, Uhrzeit, Notiz | gleich, Quelle «fester Termin» | ohne Ablauf, Zonen und Export |
+| Kalender, Heute, Tagesblatt mit Kraft-Symbol und Uhrzeit; Einheit-Seite mit Dauer, Uhrzeit, Notiz | gleich, Quelle «fester Termin» bzw. «Tag automatisch» | ohne Ablauf, Zonen und Export |
 | Garmin: nicht gesendet | nicht gesendet (Grund im Auftrag) | – |
-| Abstimmung der Woche (Tag danach, Krafttag, Tests, Taper, Rennwochen, Erholungswoche) | Vorschlag an Silas am 17.11.2026 | wird erst nach seinem Okay gebaut |
-| Wissen: Kapitel «Krafttraining» mit Quellen und Regeln; «Was nicht drin ist» | Kapitel «kraft» (wissen-1.17) mit Termin, Zeit, RPE und Quellen | die Regeln der Abstimmung kommen mit dem Okay dazu |
+| Abstimmung der Woche (Tag danach, Krafttag, Tests, Taper, Rennwochen, Erholungswoche) | V7.6.1: die neun Regeln (von Silas am 17.11.2026 freigegeben) in `V66.verteilen`, `V76.einplanen`, `V76.abstimmen`, `V74.woche` | – |
+| Wissen: Kapitel «Krafttraining» mit Quellen und Regeln; «Was nicht drin ist» | Kapitel «kraft» (wissen-1.18) mit Termin, Tag automatisch, Regeln, Gewichten, RPE und Quellen | – |
+
+## Wünsche vom 17.11.2026 – Planeinstellungen «Allgemein» (V7.6.1, verfuegbarkeit-1.1)
+
+| Soll (Silas' Nachricht, Vorlage enduco «Allgemeine Planeinstellungen») | V7.6.1 | Anders, weil |
+|---|---|---|
+| Verfügbarkeit je Wochentag wie bei enduco: Kein Training oder Sportarten und Zeit in 15-min-Schritten | Seite «Allgemein» → «Trainingsverfügbarkeit»: alle sieben Tage in einem Blatt, Schalter, Sportarten, Zeit bis 10 h oder offen; auch aus dem Tagesblatt | ganz rechts «offen» (keine Grenze) gibt es bei enduco nicht; ein einzelner Tag weiter im Tagesblatt |
+| Tage für lange Läufe und lange Ausfahrten wählen | «Tage für lange Einheiten» (Rad, Laufen), Empfehlung beim Verteilen | gilt ab der nächsten Woche; eine lange Einheit zieht nur, wo Platz ist und keine harte Einheit an Land steht |
+| Dienstag nur Schwimmen (Schwimmkurs bis Dezember) | Dienstag mit Sportart Schwimmen | ein Enddatum gibt es je Wochentag nicht: im Dezember den Dienstag wieder auf alle Sportarten stellen |
+| Einstellungen von enduco übernehmen | Mo kein Training, Di 2:45 h nur Schwimmen, Mi–Fr 2:45 h, Sa/So 5:00 h; lange Ausfahrt Sa/So, langer Lauf Do; Krafttraining automatisch ohne Do | der lange Lauf am Do hat neben Rad-Schlüssel und CSS keinen Platz – er bleibt am So, die Woche meldet es |
+| (bei enduco weiter: Gesperrte Tage, Wöchentliche Trainingseinheiten, Trainingsdauer, Aktive Regeneration) | Testkalender als dritte Zeile; gesperrte Tage weiter im Tagesblatt | nicht gewünscht, nicht gebaut |

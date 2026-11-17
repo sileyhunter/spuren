@@ -10,6 +10,9 @@
    Start, eigene Basis-Fitness und Steigerung gelten ab der nächsten Woche; die laufende Woche bleibt, wie sie ist.
    V7.6 (kraft-plan-1.0, js/v76.js): Seite «Krafttraining» zwischen Schwimmen und Trainingsumfang – fester Termin (Wochentag, Uhrzeit, Dauer, Notiz für die
    Übungen) ab der nächsten Woche, Ausnahmen kommender Wochen zurück zur Regel; auch aus dem Tagesblatt (V75UI.flow({ seite: "kraft" })).
+   V7.6.1 (kraft-plan-1.1, verfuegbarkeit-1.1, Silas' Wünsche vom 17.11.2026, Vorbild «Allgemeine Planeinstellungen» von enduco): erste Seite «Allgemein» mit
+   Trainingsverfügbarkeit (alle Wochentage, V66UI.verfuegbarkeitWoche), Tagen für lange Einheiten (pe-lang, ab der nächsten Woche) und dem Testkalender;
+   Krafttraining mit Tag automatisch (mögliche Tage) oder fest.
    Danach rechnen Plan, Kalender und Heute neu (Ereignis «meinplan»), offene Garmin-Aufträge dieser und der nächsten Woche werden nachgeführt.
    Nichts davon geht an Enduco. */
 (function () {
@@ -145,8 +148,8 @@
   }
 
   /* ---------- Blatt-Folge: Laufen → Rad → Schwimmen → Krafttraining → Trainingsumfang ---------- */
-  const SEITEN = ["lauf", "rad", "schwimm", "kraft", "umfang"];
-  const TITEL = { lauf: "Laufen", rad: "Rad", schwimm: "Schwimmen", kraft: "Krafttraining", umfang: "Trainingsumfang" };
+  const SEITEN = ["allgemein", "lauf", "rad", "schwimm", "kraft", "umfang"];
+  const TITEL = { allgemein: "Allgemein", lauf: "Laufen", rad: "Rad", schwimm: "Schwimmen", kraft: "Krafttraining", umfang: "Trainingsumfang" };
   let FLOW = { zurueck: null, entwurf: null, entwurfStart: null };
   const pfeil = () => ic("weiter", 18);
   function zeile(attr, links, titel, satz, wert) {
@@ -183,7 +186,17 @@
     const s = SEITEN[i], E = M.einstellungen(), BA = basisAb(kontext());
     if (!E) return;
     let inhalt;
-    if (s === "lauf" || s === "rad") {
+    if (s === "allgemein") {                                              // V7.6.1: wie «Allgemeine Planeinstellungen» bei enduco (Texte eigen)
+      const vt = U66() && U66().verfuegbarkeitText ? U66().verfuegbarkeitText() : "";
+      inhalt = `<div class="blatt-titel">${ic("regler", 34)}<h2 id="v59-ov-h" tabindex="-1">Allgemein</h2>
+          <p class="sub">Wann du trainieren kannst – für Schwimmen, Rad und Laufen.</p></div>${meldungHTML(meldung)}
+        <ul class="v6-aktionen pe-liste">
+          ${zeile(`data-pe="verf"`, ic("kalender", 22), "Trainingsverfügbarkeit", vt || "Höchstens so viel Zeit je Wochentag")}
+          ${zeile(`data-pe="lang"`, ic("uhr", 22), "Tage für lange Einheiten", langText(E.lang))}
+          ${zeile(`data-pe="tests"`, ic("tacho", 22), "Leistungstests", "Testkalender – die Seite schlägt die Termine vor")}</ul>
+        <p class="hint">Die Verfügbarkeit gilt jede Woche (einen einzelnen Tag änderst du im Tagesblatt); die Tage für lange Einheiten ab der nächsten Woche.
+          Beides sind Grenzen und Wünsche für den Vorschlag – was nicht passt, wird gemeldet, nie still verschoben.</p>`;
+    } else if (s === "lauf" || s === "rad") {
       inhalt = `<div class="blatt-titel"><span class="pe-sp gross" style="--sp:var(--sp-${s})">${V6().sportIcon(s, 34)}</span><h2 id="v59-ov-h" tabindex="-1">${esc(TITEL[s])}</h2>
           <p class="sub">Was dein Plan ${esc(IM_SPORT[s])} berücksichtigt.</p></div>${meldungHTML(meldung)}
         <ul class="v6-aktionen pe-liste">
@@ -204,13 +217,14 @@
       const K = E.kraft, D = V76(), ab = V64().addDays(V64().montag(heute()), 7), AUS = D ? D.ausnahmen(E, ab) : [];
       const ausText = (a) => (a.aus ? "ausgelassen" : `am ${D.TAGE[wtVon(a.tag) - 1]}${a.uhrzeit ? " " + a.uhrzeit : ""}`);
       inhalt = `<div class="blatt-titel"><span class="pe-sp gross" style="--sp:var(--fg)">${ic("kraft", 34)}</span><h2 id="v59-ov-h" tabindex="-1">Krafttraining</h2>
-          <p class="sub">Ein fester Termin pro Woche – zusätzlich zu Schwimmen, Rad und Laufen.</p></div>${meldungHTML(meldung)}
+          <p class="sub">Einmal pro Woche – zusätzlich zu Schwimmen, Rad und Laufen.</p></div>${meldungHTML(meldung)}
         <ul class="v6-aktionen pe-liste">
-          ${zeile(`data-pe="kraft"`, ic("kalender", 22), "Termin", K.aktiv ? "jede Woche" : "kein festes Krafttraining", D ? D.text(K) : "")}
+          ${zeile(`data-pe="kraft"`, ic("kalender", 22), "Termin", K.aktiv ? (D ? D.text(K) : "jede Woche") : "kein Krafttraining eingeplant", "")}
           ${K.aktiv ? zeile(`data-pe="kraft"`, ic("notiz", 22), "Übungen", K.notiz ? K.notiz : "noch keine Notiz – für dich, die Seite plant keine Übungen", "") : ""}
           ${AUS.map((a) => zeile(`data-pe="kraftwoche" data-mo="${a.mo}"`, ic("ausnahme", 22), `Woche vom ${tagLang(a.mo)}`, `nur diese Woche: ${ausText(a)}`, "")).join("")}</ul>
-        <p class="hint">${esc(D ? D.VERSIONS.kraft : "kraft-plan")}: zählt nicht zu den Wochenstunden Schwimmen, Rad, Laufen und nicht in TL ≈ und Form, belegt aber seine Zeit am Tag
-          (beim Verteilen nach deiner Verfügbarkeit bleibt es an seinem Tag). Nach Garmin geht es nicht. Eine einzelne Woche verschiebst oder lässt du auf der Seite der Einheit aus.</p>`;
+        <p class="hint">${esc(D ? D.VERSIONS.kraft : "kraft-plan")}: zählt nicht zu den Wochenstunden Schwimmen, Rad, Laufen und nicht in TL ≈, Fitness und Form, belegt aber seine Zeit am Tag.
+          Am Tag danach steht keine harte Rad- oder Laufeinheit; nicht am Tag eines Tests und nicht am Vortag, nicht in Rennwochen; in Erholungswochen und im Taper kürzer.
+          Nach Garmin geht es nicht. Eine einzelne Woche verschiebst oder lässt du auf der Seite der Einheit aus.</p>`;
     } else {
       const st = FLOW.entwurf != null ? FLOW.entwurf : E.steigerung, start = FLOW.entwurfStart || BA.E.start;
       inhalt = `<div class="blatt-titel">${ic("trend", 34)}<h2 id="v59-ov-h" tabindex="-1">Trainingsumfang</h2>
@@ -287,8 +301,10 @@
   const okKnopf = () => `<button type="button" class="btn primary" data-peok>Übernehmen ${ic("haken", 18)}</button>`;
   function unterBlatt(art, sport, i) {
     if (!bereit()) return;
+    if (art === "verf") { if (U66() && U66().verfuegbarkeitWoche) U66().verfuegbarkeitWoche(() => seite(i)); return; }   // V7.6.1 verfuegbarkeit-1.1
+    if (art === "tests") { V59().schliessen(); if (window.APP && window.APP.showTab) window.APP.showTab("plan-tests"); else location.hash = "#plan-tests"; return; }
     const ov = art === "basis" ? basisBlatt(sport, i) : art === "indoor" ? indoorBlatt(sport, i) : art === "equipment" ? equipmentBlatt(i) : art === "pool" ? poolBlatt(i) : art === "stile" ? stileBlatt(i)
-      : art === "kraft" ? kraftBlatt(i) : art === "kraftwoche" ? kraftWocheBlatt(sport, i) : null;
+      : art === "kraft" ? kraftBlatt(i) : art === "kraftwoche" ? kraftWocheBlatt(sport, i) : art === "lang" ? langBlatt(i) : null;
     if (!ov) return;
     ov.querySelectorAll("[data-pe-z]").forEach((b) => (b.onclick = () => seite(i)));
   }
@@ -306,7 +322,7 @@
     const wert0 = eigen != null ? eigen : ber != null ? Math.round(ber) : 0;
     const max = Math.min(V75().FIT_MAX, Math.max(50, 10 * Math.ceil((2 * Math.max(ber || 0, eigen || 0, 1)) / 10)));
     const lastText = sport === "rad" && C.D.config && /^last-2/.test(C.D.config.load_model || "") ? "mit deiner LT2 bzw. nach Puls, last-2.1" : "wie von Garmin geliefert";
-    const t1 = `Die Fitness ist das 42-Tage-Mittel deiner Trainingslast ${esc(IM_SPORT[sport])} (Last ${esc(lastText)}), wie pmc-2.0, nur mit dieser Sportart, Stand Montag ${tagKurz(BA.mo)} `
+    const t1 = `Die Fitness ist das 42-Tage-Mittel deiner Trainingslast ${esc(IM_SPORT[sport])} (Last ${esc(lastText)}), wie ${esc(window.FK ? window.FK.VERSIONS.pmc : "pmc")}, nur mit dieser Sportart, Stand Montag ${tagKurz(BA.mo)} `
       + `(bis zum Sonntag davor) – so ändert sich eine Woche unter der Woche nicht. Bei enduco heisst das «Base Fitnesslevel»; dort wird die Last etwas anders gerechnet.`;
     const t2 = isNum(D.tl_h) ? `Last pro Stunde ${esc(IM_SPORT[sport])}: ${komma(D.tl_h)} (${komma(D.h)} h in den ${D.wochen} Wochen vor dem Montag).`
       : `Für die Last pro Stunde fehlt Training ${esc(IM_SPORT[sport])} (weniger als 1 h in 52 Wochen): diese Sportart beginnt mit «jetzt» × Anteil.`;
@@ -424,19 +440,26 @@
     const ov = kraftBlatt(null, zur); if (!ov) return;
     ov.querySelectorAll("[data-pe-z]").forEach((b) => (b.onclick = () => zur()));
   };
-  /** V7.6 kraft-plan-1.0: fester Termin – an/aus, Wochentag, Uhrzeit (Stunde und Minute in 5er-Schritten oder ohne), Dauer 15–180 min, Notiz. */
+  /** V7.6 kraft-plan-1.1: an/aus, Tag automatisch (mögliche Tage, die Seite wählt jede Woche den besten) oder fest (Wochentag), Uhrzeit (Stunde und Minute
+   *  in 5er-Schritten oder ohne), Dauer 15–180 min, Notiz. */
   function kraftBlatt(i, zur) {
     const E = M.einstellungen(), K = E.kraft, D = V76(); if (!D) return null;
     const ab = tagLang(V64().addDays(V64().montag(heute()), 7));
-    let wt = K.wt || 3, an = !!K.aktiv;
+    let wt = K.wt || 3, an = !!K.aktiv, modus = K.modus === "fest" ? "fest" : "auto", tage = (K.tage && K.tage.length ? K.tage : [1, 2, 3, 4, 5, 6, 7]).slice();
     const [h0, m0] = K.uhrzeit ? K.uhrzeit.split(":") : ["", "00"];
     const opt = (n, w, f) => Array.from({ length: n }, (_, k) => { const v = String(k * f).padStart(2, "0"); return `<option value="${v}"${v === w ? " selected" : ""}>${v}</option>`; }).join("");
-    const ov = V59().blatt("pe", `<div class="blatt-titel">${ic("kraft", 34)}<h2 id="v59-ov-h" tabindex="-1">Krafttraining</h2><p class="sub">Dein fester Termin pro Woche.</p></div>
+    const ov = V59().blatt("pe", `<div class="blatt-titel">${ic("kraft", 34)}<h2 id="v59-ov-h" tabindex="-1">Krafttraining</h2><p class="sub">Einmal pro Woche, zusätzlich zu Schwimmen, Rad und Laufen.</p></div>
       <div class="pe-schalter-z einzeln"><label><span></span><span><b>Jede Woche einplanen</b><small>als eigene Einheit in Mein Plan, im Kalender und auf Heute</small></span>
         <input type="checkbox" role="switch" data-pek-an${an ? " checked" : ""}><i class="pe-schalter" aria-hidden="true"></i></label></div>
       <div class="pe-kraft" data-pek-felder${an ? "" : " hidden"}>
-        <p class="pe-feld-t" id="pek-wt">Wochentag</p>
-        <div class="pe-tage" role="radiogroup" aria-labelledby="pek-wt">${D.TAGE_KURZ.map((t, k) => `<button type="button" role="radio" aria-checked="${k + 1 === wt}" aria-label="${D.TAGE[k]}" data-pekt="${k + 1}">${t}</button>`).join("")}</div>
+        <p class="pe-feld-t" id="pek-modus">Tag</p>
+        <div class="pe-start pe-modus" role="radiogroup" aria-labelledby="pek-modus">${[["auto", "Automatisch", "die Seite wählt jede Woche den besten Tag"], ["fest", "Fester Tag", "immer am selben Wochentag"]].map(([k, t, u]) =>
+          `<button type="button" role="radio" aria-checked="${k === modus}" data-pekmo="${k}"><b>${t}</b><small>${u}</small></button>`).join("")}</div>
+        <div data-pek-auto${modus === "auto" ? "" : " hidden"}><p class="pe-feld-t" id="pek-tage">Mögliche Tage</p>
+          <div class="pe-tage" role="group" aria-labelledby="pek-tage">${D.TAGE_KURZ.map((t, k) => `<button type="button" aria-pressed="${tage.includes(k + 1)}" aria-label="${D.TAGE[k]}" data-pekat="${k + 1}">${t}</button>`).join("")}</div>
+          <p class="hint">Nie am Tag vor einer harten Rad- oder Laufeinheit, lieber an einem Tag mit einer kurzen lockeren Einheit, mit Zeit laut deiner Verfügbarkeit; Tage mit «Kein Training» nie.</p></div>
+        <div data-pek-fest${modus === "fest" ? "" : " hidden"}><p class="pe-feld-t" id="pek-wt">Wochentag</p>
+          <div class="pe-tage" role="radiogroup" aria-labelledby="pek-wt">${D.TAGE_KURZ.map((t, k) => `<button type="button" role="radio" aria-checked="${k + 1 === wt}" aria-label="${D.TAGE[k]}" data-pekt="${k + 1}">${t}</button>`).join("")}</div></div>
         <p class="pe-feld-t" id="pek-zeit">Uhrzeit</p>
         <div class="pe-zeit" role="group" aria-labelledby="pek-zeit"><select data-pekh aria-label="Stunde"><option value=""${h0 ? "" : " selected"}>ohne</option>${opt(24, h0, 1)}</select>
           <span aria-hidden="true">:</span><select data-pekm aria-label="Minute"${h0 ? "" : " disabled"}>${opt(12, m0, 5)}</select></div>
@@ -447,16 +470,25 @@
         <p class="pe-text" data-peks role="status" aria-live="polite"></p>
         <label class="pe-notiz"><span>Notiz für die Übungen</span><textarea data-pekn rows="3" maxlength="${V75().KRAFT.notiz}" placeholder="z. B. Kniebeugen, Kreuzheben, Rumpf">${esc(K.notiz || "")}</textarea></label></div>
       <p class="hint">${esc(D.VERSIONS.kraft)}: gilt ab der Woche vom ${ab}; die laufende Woche bleibt, wie sie ist (dort änderst du die Einheit auf ihrer Seite).
-        Standard 1:30 h. Das Krafttraining zählt nicht zu den Wochenstunden und nicht in TL ≈ und Form; seine Zeit fehlt am Tag für Schwimmen, Rad und Laufen.</p>
+        Standard 1:30 h. Das Krafttraining zählt nicht zu den Wochenstunden und nicht in TL ≈, Fitness und Form; seine Zeit fehlt am Tag für Schwimmen, Rad und Laufen.
+        Am Tag danach keine harte Rad- oder Laufeinheit, nicht am Tag eines Tests und am Vortag, nicht in Rennwochen; Erholungswoche und Taper zwei Drittel.</p>
       <p class="warn-t" data-pef hidden></p>${fuss(okKnopf())}`);
     const sw = ov.querySelector("[data-pek-an]"), felderEl = ov.querySelector("[data-pek-felder]"), dEl = ov.querySelector("[data-pekd]");
     const hEl = ov.querySelector("[data-pekh]"), mEl = ov.querySelector("[data-pekm]");
+    const entwurf = () => ({ aktiv: true, modus, tage: modus === "auto" ? tage.slice().sort() : null, wt: modus === "fest" ? wt : null,
+      uhrzeit: hEl.value ? `${hEl.value}:${mEl.value}` : null, dauer: +dEl.value });
     const zeig = () => {
-      const d = +dEl.value, h = hEl.value;
-      dEl.setAttribute("aria-valuetext", D.dauerText(d));
-      ov.querySelector("[data-peks]").textContent = `${D.TAGE[wt - 1]}${h ? ` ${h}:${mEl.value}` : ""} · ${D.dauerText(d)}`;
+      dEl.setAttribute("aria-valuetext", D.dauerText(+dEl.value));
+      ov.querySelector("[data-peks]").textContent = modus === "auto" && !tage.length ? "Mindestens ein möglicher Tag" : D.text(entwurf());
+      ov.querySelector("[data-pek-auto]").hidden = modus !== "auto"; ov.querySelector("[data-pek-fest]").hidden = modus !== "fest";
     };
     sw.onchange = () => { an = sw.checked; felderEl.hidden = !an; };
+    ov.querySelectorAll("[data-pekmo]").forEach((b) => (b.onclick = () => {
+      modus = b.dataset.pekmo; ov.querySelectorAll("[data-pekmo]").forEach((x) => x.setAttribute("aria-checked", String(x.dataset.pekmo === modus))); zeig();
+    }));
+    ov.querySelectorAll("[data-pekat]").forEach((b) => (b.onclick = () => {
+      const n = +b.dataset.pekat; tage = tage.includes(n) ? tage.filter((x) => x !== n) : tage.concat([n]).sort(); b.setAttribute("aria-pressed", String(tage.includes(n))); zeig();
+    }));
     ov.querySelectorAll("[data-pekt]").forEach((b) => (b.onclick = () => {
       wt = +b.dataset.pekt; ov.querySelectorAll("[data-pekt]").forEach((x) => x.setAttribute("aria-checked", String(+x.dataset.pekt === wt))); zeig();
     }));
@@ -466,10 +498,45 @@
     ov.querySelector("[data-pekdp]").onclick = () => { dEl.value = Math.min(V75().KRAFT.max, +dEl.value + 5); zeig(); };
     zeig();
     ov.querySelector("[data-peok]").onclick = () => {
-      const uhrzeit = hEl.value ? `${hEl.value}:${mEl.value}` : null, notiz = ov.querySelector("[data-pekn]").value.trim() || null, dauer = +dEl.value;
-      const neu = an ? { aktiv: true, wt, uhrzeit, dauer, notiz } : { aktiv: false, wt: K.wt || null, uhrzeit: K.uhrzeit || null, dauer: K.dauer || V75().KRAFT.dauer, notiz: K.notiz || null };
-      if (JSON.stringify(neu) === JSON.stringify({ aktiv: !!K.aktiv, wt: K.wt || null, uhrzeit: K.uhrzeit || null, dauer: K.dauer || V75().KRAFT.dauer, notiz: K.notiz || null })) { if (zur) zur(); else seite(i); return; }
-      speichernUnd(ov, i, "pe-kraft", neu, an ? `Krafttraining ${D.text(neu)} – gilt ab der Woche vom ${ab}.` : `Kein festes Krafttraining mehr – ab der Woche vom ${ab}.`, zur);
+      const notiz = ov.querySelector("[data-pekn]").value.trim() || null;
+      const vorher = { aktiv: !!K.aktiv, modus: K.modus || "fest", tage: K.modus === "auto" ? K.tage.slice() : null, wt: K.modus === "auto" ? null : K.wt || null,
+        uhrzeit: K.uhrzeit || null, dauer: K.dauer || V75().KRAFT.dauer, notiz: K.notiz || null };
+      const neu = an ? Object.assign(entwurf(), { notiz }) : Object.assign({}, vorher, { aktiv: false });
+      if (an && modus === "auto" && !tage.length) { const p = ov.querySelector("[data-pef]"); p.textContent = "Wähle mindestens einen möglichen Tag."; p.hidden = false; return; }
+      if (neu.tage == null) delete neu.tage;
+      if (vorher.tage == null) delete vorher.tage;
+      if (JSON.stringify(neu) === JSON.stringify(vorher)) { if (zur) zur(); else seite(i); return; }
+      speichernUnd(ov, i, "pe-kraft", neu, an ? `Krafttraining ${D.text(neu)} – gilt ab der Woche vom ${ab}.` : `Kein Krafttraining mehr – ab der Woche vom ${ab}.`, zur);
+    };
+    return ov;
+  }
+  /** V7.6.1 verfuegbarkeit-1.1 (Vorbild «Bevorzugte Tage für lange Einheiten» bei enduco, Texte eigen): Tage je Rad und Laufen, ab der nächsten Woche. */
+  const langText = (L) => {
+    const D = V76(), t = (x) => (x && x.length ? (D ? D.tageText(x) : x.join(", ")) : "egal");
+    return L && ((L.rad && L.rad.length) || (L.lauf && L.lauf.length)) ? `Lange Ausfahrt ${t(L.rad)} · langer Lauf ${t(L.lauf)}` : "keine Vorliebe – die Seite plant Sa und So";
+  };
+  function langBlatt(i, zur) {
+    const E = M.einstellungen(), D = V76(); if (!D) return null;
+    const ab = tagLang(V64().addDays(V64().montag(heute()), 7)), W = { rad: (E.lang.rad || []).slice(), lauf: (E.lang.lauf || []).slice() };
+    const gruppe = (sp) => `<p class="pe-feld-t" id="pel-${sp}"><span class="pe-sp" style="--sp:var(--sp-${sp})">${V6().sportIcon(sp, 18)}</span>${sp === "rad" ? "Lange Ausfahrt" : "Langer Lauf"}</p>
+      <div class="pe-tage" role="group" aria-labelledby="pel-${sp}">${D.TAGE_KURZ.map((t, k) => `<button type="button" aria-pressed="${W[sp].includes(k + 1)}" aria-label="${D.TAGE[k]}" data-pel="${sp}" data-pelt="${k + 1}">${t}</button>`).join("")}</div>`;
+    const ov = V59().blatt("pe", `<div class="blatt-titel">${ic("uhr", 34)}<h2 id="v59-ov-h" tabindex="-1">Tage für lange Einheiten</h2>
+        <p class="sub">An welchen Tagen die lange Ausfahrt und der lange Lauf am liebsten stehen.</p></div>
+      ${gruppe("rad")}${gruppe("lauf")}
+      <p class="pe-info">${ic("info", 16)}<span>Eine Empfehlung, keine Pflicht: Die Seite legt die lange Einheit bevorzugt auf einen dieser Tage. Passt sie dort nicht (Zeit oder Sportart laut deiner
+        Verfügbarkeit, eine harte Rad- oder Laufeinheit am selben Tag), bleibt sie an ihrem Tag – das steht dann in den Hinweisen der Woche. Ohne Wahl plant die Seite die lange Ausfahrt am
+        Samstag und den langen Lauf am Sonntag.</span></p>
+      <p class="hint">${esc(window.V66 ? window.V66.VERSIONS.verfuegbarkeit : "verfuegbarkeit")}: gilt ab der Woche vom ${ab}; die laufende Woche bleibt, wie sie ist.</p>
+      <p class="warn-t" data-pef hidden></p>${fuss(okKnopf())}`);
+    ov.querySelectorAll("[data-pel]").forEach((b) => (b.onclick = () => {
+      const sp = b.dataset.pel, n = +b.dataset.pelt;
+      W[sp] = W[sp].includes(n) ? W[sp].filter((x) => x !== n) : W[sp].concat([n]).sort();
+      b.setAttribute("aria-pressed", String(W[sp].includes(n)));
+    }));
+    ov.querySelector("[data-peok]").onclick = () => {
+      const neu = { rad: W.rad.slice().sort(), lauf: W.lauf.slice().sort() };
+      if (JSON.stringify(neu) === JSON.stringify({ rad: (E.lang.rad || []).slice().sort(), lauf: (E.lang.lauf || []).slice().sort() })) { if (zur) zur(); else seite(i); return; }
+      speichernUnd(ov, i, "pe-lang", neu, `Tage für lange Einheiten: ${langText(neu)} – gilt ab der Woche vom ${ab}.`, zur);
     };
     return ov;
   }

@@ -41,12 +41,17 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   `.pool`, `.drinnenFeld`; V7.5.2 `V75UI.basisDaten` (Stand Montag) und `V75UI.plan` (laufende Woche + Rampe ab der nächsten, für Kurve und Wochenstunden)), `tests/test_v75.cjs`; Schwimm-Einheit schwimmeinheit-1.2 in `js/schwimmen.js` (Hilfsmittel, Stile als eigener Teil, Anfänger-Modus),
   Stil je Schritt an Garmin garmin-senden-1.2 (`V66.STIL_GARMIN`, `tools/garmin_senden.py`), Bahnlänge je Einheit und `drinnen` false einheit-felder-1.1
   in `js/v66.js`, Stunden je Sportart im Plan-Kontext `js/v64-ui.js` (`K.basis75`, `K.rampe`), Wochenstunden `js/v56.js`
-- **V7.6 (Etappe 7 «Krafttraining», kraft-plan-1.0; Teil 1 Termin, Anzeige, RPE – die Abstimmung der Woche wartet auf Silas' Okay zum Vorschlag vom 17.11.2026):**
-  `js/v76.js` (ohne DOM: Termin je Woche `V76.termin`, Einheit `V76.einheit`, in die Woche `V76.einplanen` (im Plan-Kontext `js/v64-ui.js` vor dem Verteilen),
-  Ausnahmen `V76.ausnahmen`, Garmin-Aktivität «Krafttraining» des Tages `V76.aktivitaet`, sRPE `V76.srpe`), Seite «Krafttraining» in der Blatt-Folge und Blatt
-  `V75UI.kraft` (`js/v75-ui.js`, auch aus dem Tagesblatt `js/v66-ui.js` und der Einheit-Seite), Abschnitt auf der Einheit-Seite `js/v73-ui.js` (Übungen, RPE,
-  «Nur diese Woche», Termin), `tests/test_v76.cjs`; Krafttraining bleibt beim Verteilen an seinem Tag (`V66.verteilen`), Dauer 15–180 min (Standard 1:30 h);
-  `vorher` in den Planeinstellungen (`V75.eintrag`, `V75.aktuell`, `merge_daily.planeinstellung_pruefen`)
+- **V7.6 (Etappe 7 «Krafttraining», kraft-plan-1.1; Teil 1 Termin, Anzeige, RPE; V7.6.1 Abstimmung der Woche, Regeln von Silas am 17.11.2026 freigegeben):**
+  `js/v76.js` (ohne DOM: Termin je Woche `V76.termin` (Tag automatisch oder fest), Einheit `V76.einheit`, Tag wählen und eintragen `V76.einplanen` (Bewertung
+  `V76.bewerten`), `V76.passt`, Regel 2 nach dem Verteilen `V76.abstimmen`, Ausnahmen `V76.ausnahmen`, Garmin-Aktivität «Krafttraining» des Tages `V76.aktivitaet`,
+  sRPE `V76.srpe`), Seite «Krafttraining» in der Blatt-Folge und Blatt `V75UI.kraft` (`js/v75-ui.js`, auch aus dem Tagesblatt `js/v66-ui.js` und der Einheit-Seite),
+  Abschnitt auf der Einheit-Seite `js/v73-ui.js` (Übungen, RPE, «Nur diese Woche», Termin), `tests/test_v76.cjs`; im Plan-Kontext `js/v64-ui.js` (`mitKraft`): Tag an der
+  schon verteilten Woche wählen, passt es dort nicht, mit dem Krafttraining neu verteilen; Krafttraining bleibt beim Verteilen an seinem Tag, am Tag danach keine harte
+  Einheit an Land (`V66.verteilen`), Dauer 15–180 min (Standard 1:30 h); `vorher` in den Planeinstellungen (`V75.eintrag`, `V75.aktuell`, `merge_daily.planeinstellung_pruefen`)
+- **V7.6.1 (Silas' Wünsche vom 17.11.2026, Vorbild «Allgemeine Planeinstellungen» von enduco):** erste Seite «Allgemein» der Planeinstellungen (`js/v75-ui.js`):
+  Trainingsverfügbarkeit aller Wochentage (`V66UI.verfuegbarkeitWoche`, `V66UI.verfuegbarkeitText` in `js/v66-ui.js`, auch aus dem Tagesblatt), Tage für lange Einheiten
+  (`pe-lang`, verfuegbarkeit-1.1 in `V66.verteilen`), Testkalender; Krafttraining zählt nicht in Fitness, Ermüdung, Form, Ampel-Last und Ringe (`FK.istKraft`, `FK.zaehlt`;
+  pmc-2.1, readiness-2.2, ringe-1.1) und steht in «Diese Woche» (Heute) und in der Wochenauswertung (Kalender) als eigene Zeile
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
 - `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)
@@ -380,8 +385,9 @@ nur Schwimmen, nicht Bibliothek) und `drinnen: false` bleibt (ausdrücklich drau
 V7.5: `planeinstellung` (je Gruppe «pe-start» {art fitness/aufteilung} und «pe-basis-schwimm»/«-rad»/«-lauf» {wert: eigene Fitness 0–200 oder null} (V7.5.2, basis-1.1),
 «pe-steigerung» {wert}, «pe-indoor-rad»/«pe-indoor-lauf» {von, bis}, «pe-schwimm» {hilfsmittel, pool, stile (ruecken/brust), anfaenger (V7.5.1)} → `planeinstellung_add`
 → `plan_einstellungen`; `merge_daily.planeinstellung_pruefen` wie `V75.pruefen`; gleiche ID ersetzt mit Audit, eine ältere Fassung (`geaendert`) nie; «pe-basis» mit Stunden
-aus V7.5 wird abgelehnt). V7.6 kraft-plan-1.0: «pe-kraft» {aktiv, wt 1–7, uhrzeit, dauer 15–180 in 5er-Schritten, notiz ≤ 500} und «pe-kraft-<Montag>» {aus und/oder
-tag dieser Woche, uhrzeit; entfernt = wieder die Regel}; «pe-start», «pe-basis-…» und «pe-kraft» tragen optional `vorher` = die Fassung, die in der Woche des Speicherns
+aus V7.5 wird abgelehnt). V7.6 kraft-plan-1.1: «pe-kraft» {aktiv, modus auto/fest (ohne = fest), tage 1–7 je einmal (auto), wt 1–7 (fest), uhrzeit, dauer 15–180 in
+5er-Schritten, notiz ≤ 500} und «pe-kraft-<Montag>» {aus und/oder tag dieser Woche, uhrzeit; entfernt = wieder die Regel}; V7.6.1 «pe-lang» {rad, lauf: Wochentage 1–7 je
+einmal, leer = keine Vorliebe}; «pe-start», «pe-basis-…», «pe-kraft» und «pe-lang» tragen optional `vorher` = die Fassung, die in der Woche des Speicherns
 noch gilt (gleiche Regeln, mit `geaendert`, ohne eigenes `vorher`) – sie gelten ab der nächsten Woche, und `plan_einstellungen` behält je ID nur die neueste Fassung.
 `rpe` mit ID «kraft-<Datum>» (sport «kraft», min, srpe, quelle garmin/plan) wie jedes RPE; die Kalibrierung rpe-1.0 lässt es aus. V6.2.3: `garmin_verlauf` (Datei aus
 `tools/garmin_export.py`, auf der Seite gewählt → `garmin_export.einspielen`, nur fehlende Tageswerte; mehrere Dateien vor einem Update werden seit
@@ -456,7 +462,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   den Abfahrten (`RT.istDoppelt` mit Bereichen), nie aus der ganzen Route mit dem gemeinsamen Aufstieg.
 - Rennrad `varianten-3.0`: direkteste, velofreundliche, ruhigste (consider_traffic 1) – alle über das Profil ohne Gravel; `alternativen-1.1` ohne
   zusätzlichen Gravel. Windpfeile `windpfeile-1.1`: 3–20, Gegen-/Rückenwind ±5 km/h, abschaltbar (`sf.rt.windkarte`).
-- **Ampel `readiness-2.1` (V6.3, Etappe 3; 2.1 V6.4.4):** wie readiness-1.0 (HRV-7-Tage gegen eigene 60 Tage nach Plews/Buchheit, Ruhepuls 3 Tage, Schlaf,
+- **Ampel `readiness-2.2` (V6.3, Etappe 3; 2.1 V6.4.4; 2.2 V7.6.1: Last ohne Krafttraining, am 17.11.2026 an 180 Tagen nachgerechnet):** wie readiness-1.0 (HRV-7-Tage gegen eigene 60 Tage nach Plews/Buchheit, Ruhepuls 3 Tage, Schlaf,
   Last 7/28 Tage, Befinden, Krankheit), dazu: Befinden als Anteil auf der Skala (belastet ab 0,75, mittel ab 0,5; vier Fragen inkl. Schlaf);
   Schlaf 5–6 h nur noch Hinweis (kein Warnzeichen, aber dann nicht «bereit»; unter 5 h weiter starkes Zeichen). **readiness-2.1 (V6.4.4):** Last
   nur bis gestern (die Ampel ist der Stand am Morgen; eine Einheit des Tages ändert sie nicht). Grundlage `ampel-pruefung-1.1` (`FK.ampelPruefung`,
@@ -464,7 +470,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   10-min-Blöcken (`eb`) gegen dieselbe Blockart in den 60 Tagen davor, je Ampel-Stand jenes Morgens; am 13.11.2026 an den eigenen
   Daten geprüft, daraus die beiden Änderungen (Schlaf 5–6 h nur Hinweis; Garmins Readiness nur gezeigt, nicht in die Ampel eingerechnet). Die Seite zeigt die Prüfung live unter «Passt die Ampel zu dir?» (Gruppen unter 5 Blöcken ohne Wert).
   Keine Zahlen daraus in Doku oder Tests schreiben; Regeländerung = neue Version und neue Prüfung.
-- Heute `ringe-1.0` (`FK.ringeVerlauf`): Erholung Φ((z_lnHRV − z_Ruhepuls)/2) gegen 60 Tage (mind. 14 Werte), Schlaf = Garmin-Schlafwert genau dieser
+- Heute `ringe-1.1` (`FK.ringeVerlauf`; 1.1 = Belastung ohne Krafttraining): Erholung Φ((z_lnHRV − z_Ruhepuls)/2) gegen 60 Tage (mind. 14 Werte), Schlaf = Garmin-Schlafwert genau dieser
   Nacht, Belastung = (1 − 2^(−TSS/CTL_Vortag)) · 100; alle 0–100 %, Lücken bleiben leer, Tag mit Datum. Kein medizinisches Mass. Ein Tag, dessen
   Einheiten noch nicht eingespielt sind (`FK.aktivitaetenBis`: Nacht-Update = Tag des Laufs, Morgen-Update = Vortag), hat Belastung «offen», nie 0 %.
 
@@ -534,18 +540,32 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   der Einheit-Seite (einheit-felder-1.1 `pool`). Vorbelegt am 17.11.2026 aus Silas' Enduco-Einstellungen (Bildschirmfoto): 50 m, Kraul und Brust, alle vier Hilfsmittel.
 - Nach dem Speichern rechnen Plan, Kalender und Heute neu (Ereignis «meinplan»); offene Garmin-Aufträge dieser und der nächsten Woche werden abgeglichen
   (`V66UI.auftraegeAbgleichen`). Nichts davon geht an Enduco. Regel ändern = Version in `V75.VERSIONS`, Wissen (Kapitel «planeinstellungen») und `tests/test_v75.cjs`.
-- **Krafttraining (V7.6, kraft-plan-1.0, Etappe 7):** Seite zwischen Schwimmen und Trainingsumfang (die Folge hat fünf Blätter), Blatt `V75UI.kraft` (auch aus dem Tagesblatt
-  und der Einheit-Seite): an/aus, Wochentag, Uhrzeit (oder ohne), Dauer 15–180 min (Standard 1:30 h), Notiz für die Übungen (die Seite plant keine Übungen). Der Termin gilt
-  ab der Woche nach dem Speichern (`vorher` hält die laufende Woche fest). Er steht als Einheit «Krafttraining» («fester Termin», `kraft_plan`) im Wochenvorschlag:
-  nicht in den Wochenstunden, nicht in TL ≈ und Form-Prognose, nicht an Garmin; beim Verteilen nach der Verfügbarkeit bleibt er wie ein Test an seinem Tag und belegt
-  dort seine Zeit. Aufgezeichnete Garmin-Krafteinheiten zählen wie bisher mit ihrer Last in pmc-2.0. «Nur diese Woche» auf der Einheit-Seite: in kommenden Wochen, deren
-  Tage dem Vorschlag folgen, als Ausnahme «pe-kraft-<Montag>» (die Woche rechnet mit dem neuen Tag); in der laufenden Woche und an gespeicherten Tagen über Mein Plan
-  (verschieben, entfernen). RPE 1–10 nach der Einheit → sRPE = RPE × Minuten (Garmin-Dauer «Krafttraining» des Tages, sonst geplant), eigene Zahl.
-  **Abstimmung der Woche** (Tag danach, Krafttag, Tests, Taper, Rennwochen, Erholungswoche, Ampel): als Vorschlag an Silas am 17.11.2026 – erst nach seinem Okay bauen,
-  dann Version, Wissen (Kapitel «kraft») und `tests/test_v76.cjs` nachführen.
+- **Allgemein (V7.6.1, verfuegbarkeit-1.1, Vorbild «Allgemeine Planeinstellungen» von enduco, Texte eigen):** erste Seite der Folge (sechs Blätter: Allgemein → Laufen →
+  Rad → Schwimmen → Krafttraining → Trainingsumfang). «Trainingsverfügbarkeit»: alle sieben Wochentage in einem Blatt (`V66UI.verfuegbarkeitWoche`, auch aus dem Tagesblatt
+  «Trainingsverfügbarkeit der ganzen Woche»): Schalter Kein Training, Sportarten (mindestens eine), Zeit in 15-min-Schritten bis 10 h, ganz rechts «offen»; «Fertig» speichert
+  je geänderten Wochentag «vf-wt-N» (offen mit allen Sportarten = entfernt), die laufende Woche wird vorher einmal festgehalten, danach wie im Tagesblatt «Anpassen»,
+  «Neu berechnen» oder «Nur speichern». «Tage für lange Einheiten» (`pe-lang`, ab der nächsten Woche): Empfehlung beim Verteilen (+80 am gewählten Tag, −20 an anderen);
+  eine lange Einheit verlässt ihren Tag nur, wenn ein gewählter Tag Sportart, Zeit und keine harte Einheit an Land hat, sonst bleibt sie und die Woche meldet es; hart und
+  lang an Land am selben Tag −120 (bis 1.0 −40). Verschieben trägt einen Grund (Verfügbarkeit, Tag für lange Einheiten, Tag nach dem Krafttraining).
+  **Übernommen am 17.11.2026 aus Silas' Enduco-Einstellungen (Bildschirmfotos) und seiner Nachricht:** Mo kein Training, Di nur Schwimmen (Schwimmkurs bis Dezember – danach
+  den Dienstag wieder auf alle Sportarten stellen), Mi–Fr 2:45 h, Sa und So 5:00 h; lange Ausfahrt Sa/So, langer Lauf Do (wie Enduco); Krafttraining automatisch ohne Do.
+- **Krafttraining (V7.6, kraft-plan-1.1, Etappe 7; Regeln von Silas am 17.11.2026 freigegeben):** Seite zwischen Schwimmen und Trainingsumfang, Blatt `V75UI.kraft` (auch aus
+  dem Tagesblatt und der Einheit-Seite): an/aus, Tag «Automatisch» (mögliche Tage; Silas: alle ausser Do, dort schliesst der Kraftraum früh) oder «Fester Tag» (Wochentag),
+  Uhrzeit (oder ohne), Dauer 15–180 min (Standard 1:30 h), Notiz für die Übungen (die Seite plant keine Übungen). Gilt ab der Woche nach dem Speichern (`vorher` hält die
+  laufende Woche fest). Einheit «Krafttraining» (`kraft_plan`, `kraft_auto`) im Wochenvorschlag: nicht in den Wochenstunden, nicht in TL ≈, Fitness, Form und Ampel-Last
+  (pmc-2.1), nicht an Garmin; belegt beim Verteilen seine Zeit. **Regeln:** (1) am Tag danach keine harte Rad- oder Laufeinheit (umziehen, sonst locker, gemeldet); (2) am
+  Krafttag darf eine harte Einheit bleiben (Kraft danach, Hinweis unter 6 h Abstand), eine lockere Einheit an Land aus dem Vorschlag höchstens 60 min (`V76.abstimmen`, nach
+  dem Verteilen), lange Einheit nur Hinweis; (3) belegt Zeit, zählt nicht; (4) nicht am Test- und am Vortag (fest: einen Tag früher, sonst fällt es aus); (5) keine Kraft in
+  Rennwochen, im Taper des A-Rennens nur 7–10 Tage davor mit zwei Dritteln; (6) Erholungswoche zwei Drittel; (7) «vorsichtig»: bleibt (die Ampel holt am Tag danach keine
+  harte Rad- oder Laufeinheit nach); (8) sRPE = RPE × Minuten als eigene Zahl; (9) nicht an Garmin. **Automatisch:** jeder mögliche Tag (nicht «Kein Training», nicht gesperrt,
+  nicht test-nah, im Taper nur im Fenster) wird an der schon verteilten Woche bewertet (`V76.bewerten`, eigene Gewichte: Tag danach hart an Land −100, lang −10; am Tag lang
+  −50, hart −5, locker bis 60 min +10, länger −20; Zeit reicht nicht −30 und −5 je 15 min, höchstens −80); passt es dort (`V76.passt`), bleibt die Woche, sonst neu verteilt.
+  Aufgezeichnete Garmin-Krafteinheiten (Typ «Krafttraining»/«Strength») zählen seit pmc-2.1 nicht mehr in Fitness und Form; sie stehen in «Diese Woche» und in der
+  Wochenauswertung als eigene Zeile. «Nur diese Woche» auf der Einheit-Seite: in kommenden Wochen, deren Tage dem Vorschlag folgen, als Ausnahme «pe-kraft-<Montag>»; in der
+  laufenden Woche und an gespeicherten Tagen über Mein Plan (verschieben, entfernen). Regel ändern = Version in `V76.VERSIONS`, Wissen (Kapitel «kraft») und `tests/test_v76.cjs`.
 
 ## Ampel passt das Training an (V7.4, ampel-plan-1.0, Etappe 6 des Auftrags V7.3, freigegeben am 17.11.2026)
-- Entscheid je Tag aus der Ampel (readiness-2.1, `V74.entscheid`): «bereit», «normal», «nicht beurteilbar» = wie geplant; «vorsichtig» = keine harten und
+- Entscheid je Tag aus der Ampel (readiness-2.2, `V74.entscheid`): «bereit», «normal», «nicht beurteilbar» = wie geplant; «vorsichtig» = keine harten und
   keine mittleren Abschnitte (Rad, Laufen, Schwimmen: lockere Einheit derselben Sportart, `V74.locker`; Renntempo fällt weg; Einheiten über 90 min oder
   der Art «lang» höchstens zwei Drittel; Tests werden locker und im Testkalender verschoben); Krankheitszeichen im Check-in = Ruhetag. Solange für heute
   weder Schlaf noch HRV der Nacht da sind, zählt nur der Check-in (Befinden «belastet» = vorsichtig). Gesperrte Einheiten und Tage bleiben unverändert
@@ -553,7 +573,8 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - Nachholen (`V74.woche`): eine Schlüsseleinheit (Rad, Laufen, CSS; harte Bibliothek), die locker wurde, kommt am nächsten passenden Tag derselben Woche
   an die Stelle einer lockeren Einheit derselben Sportart (Platz und Kennung der ersetzten Einheit, höchstens so lang, sonst die kurze Fassung): nicht
   neben einer harten Einheit an Land bzw. derselben Sportart, nicht an Test- oder Renntagen und deren Vortag, nicht an gesperrten Tagen, nur mit Zeit
-  laut Verfügbarkeit, nie in Rennwochen und nie nach Krankheitszeichen. Ist der Nachhol-Tag selbst «vorsichtig», gilt dort wieder die lockere Einheit.
+  laut Verfügbarkeit, als Rad- oder Laufeinheit nicht am Tag nach einem Krafttraining (ampel-plan-1.1, V7.6.1), nie in Rennwochen und nie nach Krankheitszeichen.
+  Ist der Nachhol-Tag selbst «vorsichtig», gilt dort wieder die lockere Einheit.
   Passt kein Tag, entfällt sie – gemeldet, nie still.
 - Gespeichert wird nur der Entscheid je Tag (`ampel_anpassung`, von der Seite ohne Knopfdruck, wenn er sich ändert, und vom Morgen-Update); vergangene
   Tage gelten so, wie entschieden, heute live, kommende Tage ohne Entscheid. Die Schicht wird beim Zeichnen angewendet (`V64UI` kontext → `V74UI.anwenden`):
@@ -662,7 +683,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
   Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
   Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
-- **Wissen `wissen-1.17` (`js/wissen.js`; 1.17 = V7.6 Kapitel «kraft» (Rønnestad & Mujika 2014, Rønnestad et al. 2010, Doma et al. 2017, Lauersen et al. 2014, Foster et al. 2001); 1.16 = V7.5.2 Basis-Fitness Variante A; 1.15 = V7.5.1 Planeinstellungen als Blatt-Folge, Basis-Regel offen, Anfänger-Modus, Stile auf der Uhr; 1.14 = V7.5 Kapitel «planeinstellungen», 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.13 = V7.4 Ampel passt das Training an (Kapitel «erholung», Düking 2021, Manresa-Rocamora 2021), 1.12 = V7.3.2 Übungen aus der Enduco-Liste, 1.11 = V7.3 Etappe 2 Schwimmen,
+- **Wissen `wissen-1.18` (`js/wissen.js`; 1.18 = V7.6.1 Abstimmung ums Krafttraining, Tag automatisch, Tage für lange Einheiten, Form ohne Krafttraining; 1.17 = V7.6 Kapitel «kraft» (Rønnestad & Mujika 2014, Rønnestad et al. 2010, Doma et al. 2017, Lauersen et al. 2014, Foster et al. 2001); 1.16 = V7.5.2 Basis-Fitness Variante A; 1.15 = V7.5.1 Planeinstellungen als Blatt-Folge, Basis-Regel offen, Anfänger-Modus, Stile auf der Uhr; 1.14 = V7.5 Kapitel «planeinstellungen», 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.13 = V7.4 Ampel passt das Training an (Kapitel «erholung», Düking 2021, Manresa-Rocamora 2021), 1.12 = V7.3.2 Übungen aus der Enduco-Liste, 1.11 = V7.3 Etappe 2 Schwimmen,
   Puls und RPE an Garmin im Kapitel «modelle», 1.10 = V7.3 Einheit als
   Schritte, Einfahren und Intervall-Intensität, RPE je Abschnitt im Kapitel «intervalle»; 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
   1.3: Kapitel «Vorschlag und Enduco vergleichen», 1.4: Prüfung der Quellen – Formulierungen nicht stärker als die Studien, eigene Festlegungen
@@ -751,7 +772,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   (`zeit-1.1`: auch Navigieren, Tracker, Jagen u. a. draussen mit GPS; nicht im Wasser).
 - Vergleiche nur aus `eb`-Blöcken (Rad 190–210 W je System Rolle/Rennrad/MTB, Laufen 5:20–5:40/km flach), Urteil `entwicklung-1.0`
   (mind. 3 je Zeitraum, Bootstrap-Intervall, Guards Hitze/Höhe/Drift/Ausreisser). Laktat zählt erst bestätigt (B1), CSS nur aus Tests.
-- Form `pmc-2.0` (Fitness − Ermüdung desselben Tages; «Heute» zeigt seit status-1.1 die Form zu Tagesbeginn), Zonen `zonenverteilung-2.0` (je Sportart, Zonen je Datum, Garmin-Zonen nicht beurteilt).
+- Form `pmc-2.1` (Fitness − Ermüdung desselben Tages; 2.1 = ohne Krafttraining, Silas' Wunsch vom 17.11.2026; «Heute» zeigt seit status-1.1 die Form zu Tagesbeginn), Zonen `zonenverteilung-2.0` (je Sportart, Zonen je Datum, Garmin-Zonen nicht beurteilt).
 - Routenplaner: Varianten (seit V5.6 `varianten-2.0`) nur über das erlaubte Rennradprofil, nie ein unzulässiger Weg;
   `zeit-rt-1.2`/`wetter-rt-1.2` (Pausen je Zwischenziel; fehlende Wetterwerte bleiben unbekannt, nie 0 – Fahrzeit dann mit
   «Wind nicht berücksichtigt» und ±2 m/s im Band); Fehlerband aus `kalibrierung-1.1` (Population, Steigungsklasse).

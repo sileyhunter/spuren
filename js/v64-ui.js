@@ -72,20 +72,32 @@
     const wahl = V.wahl(wahlEintrag(), S && S.haupt ? S.haupt.date : null, mo), modell = V.modellFuer(wahl, mo);
     const tests = st.tests;
     const css = cssAktuell(vorbei ? V.addDays(mo, -1) : null), sk = TR() ? TR().zonen(C.D.zonen).skalen : null;
-    // V7.6 kraft-plan-1.0 (js/v76.js): das Krafttraining aus den Planeinstellungen als feste Einheit am Tag – vor dem Verteilen, damit es dort seine Zeit belegt
-    const kraft = (w) => (window.V76 && E75 ? window.V76.einplanen(w, E75) : w);
-    const w0 = kraft(V.woche({ woche: mo, phase, erholung, stunden, aufteilung, modell, tests, rennen: rennen(), css_s: css ? css.s : null,
-      intensitaet: V.intensitaet(wahlEintrag()), laeufe: V.laeufe(C.D.activities), heute: st.heute, skalen: sk }));
     // V6.6 eigenplan-1.0: «Mein Plan» = Vorschlag mit deinen Änderungen (hinzugefügt, verschoben, gesperrt)
     const ctxE = { phase, css_s: css ? css.s : null, bibStufe: (wid) => (window.V65UI && window.V65UI.stufeWid ? window.V65UI.stufeWid(wid) : null) };
+    const verf = verfuegbarkeit(), lang = E75 ? E75.lang : null;
+    // V7.6 kraft-plan-1.1 (js/v76.js): das Krafttraining aus den Planeinstellungen am passenden Tag. Den Tag wählt es an der schon verteilten Woche
+    // (so steht jede Einheit an ihrem Tag); passt es dort (V76.passt), bleibt diese Woche, sonst wird mit dem Krafttraining neu verteilt (es belegt seine
+    // Zeit, am Tag danach keine harte Einheit an Land). Regel 2 danach (V76.abstimmen). → { roh: unverteilt mit Krafttraining, v: verteilt }
+    const verteilt = (w) => (!vorbei && window.V66 && window.V66.wocheVerteilt ? window.V66.wocheVerteilt(w, verf, { css_s: css ? css.s : null, lang, ctxE }) : w);
+    const mitKraft = (roh) => {
+      const D76 = window.V76;
+      if (!D76 || !E75) return { roh, v: verteilt(roh) };
+      const o = { verf: vorbei ? null : verf, haupt: S && S.haupt ? S.haupt.date : null, ctxE };
+      if (vorbei) { const r = D76.einplanen(roh, E75, o); return { roh: r, v: r }; }
+      const kP = D76.einplanen(verteilt(roh), E75, o), d = kP.kraft && kP.kraft.status === "geplant" ? kP.kraft.date : null;
+      const r = D76.einplanen(roh, E75, Object.assign({}, o, d ? { tag: d } : {}));
+      return { roh: r, v: !d || D76.passt(kP, o.verf) ? kP : verteilt(r) };
+    };
+    const abgestimmt = (w) => (window.V76 && window.V76.abstimmen ? window.V76.abstimmen(w, { ctxE }) : w);
+    const X0 = mitKraft(V.woche({ woche: mo, phase, erholung, stunden, aufteilung, modell, tests, rennen: rennen(), css_s: css ? css.s : null,
+      intensitaet: V.intensitaet(wahlEintrag()), laeufe: V.laeufe(C.D.activities), heute: st.heute, skalen: sk })), w0 = X0.roh;
     // V7.2 verfuegbarkeit-1.0 / eigenplan-1.1: ab der laufenden Woche nach deiner Verfügbarkeit verteilt (ganze Woche, unabhängig vom heutigen Tag).
     // Wochen ohne eigene Änderungen folgen ihr von selbst; ganz festgehaltene Wochen zeigen das Gespeicherte; ältere, nur teilweise gespeicherte
     // Wochen (eigenplan-1.0) bleiben beim unverteilten Vorschlag, bis du «Anpassen» wählst. w0 = Vorschlag, auf dem Mein Plan aufbaut; w0roh = unverteilt.
-    const E = planEintrag(mo), verf = verfuegbarkeit();
-    let w0v = w0;
-    if (!vorbei && window.V66 && window.V66.wocheVerteilt) { try { w0v = window.V66.wocheVerteilt(w0, verf, { css_s: css ? css.s : null }); } catch (e) { console.error(e); } }
+    const E = planEintrag(mo);
+    const w0v = X0.v;
     const teilweise = !!(E && !E.ganz && E.tage && Object.values(E.tage).some((t) => t && Array.isArray(t.einheiten)));
-    const basis = teilweise ? w0 : w0v;
+    const basis = abgestimmt(teilweise ? w0 : w0v);
     const wM = window.V66 ? window.V66.meinPlan(basis, E, ctxE) : basis;
     // V7.5 indoor-phase-1.0: Rad und Laufen in der Indoor-Phase drinnen (ausser ausdrücklich anders gewählt) – vor der Ampel, damit die lockere
     // Fassung und der Garmin-Auftrag drinnen bleiben
@@ -97,13 +109,12 @@
     let wErh = null;
     const erh = (d) => {
       if (!wErh) {
-        const w1 = kraft(V.woche({ woche: mo, phase, erholung: true, stunden: Math.max(1, Math.round(stunden * 0.65 * 2) / 2), aufteilung, modell, tests, rennen: rennen(), css_s: css ? css.s : null,
-          intensitaet: V.intensitaet(wahlEintrag()), laeufe: V.laeufe(C.D.activities), heute: st.heute, skalen: sk }));
-        wErh = window.V66 && window.V66.wocheVerteilt ? window.V66.wocheVerteilt(w1, verf, { css_s: css ? css.s : null }) : w1;
+        wErh = abgestimmt(mitKraft(V.woche({ woche: mo, phase, erholung: true, stunden: Math.max(1, Math.round(stunden * 0.65 * 2) / 2), aufteilung, modell, tests, rennen: rennen(), css_s: css ? css.s : null,
+          intensitaet: V.intensitaet(wahlEintrag()), laeufe: V.laeufe(C.D.activities), heute: st.heute, skalen: sk })).v);
       }
       return ((wErh.tage.find((t) => t.date === d) || {}).einheiten) || [];
     };
-    return { w: wa, wPlan: w, w0: basis, w0roh: w0, verteilt: basis !== w0, verf, ctxE, wahl, S, css, vg, ausSaison, vorbei, offset, erh, E75, basis75: ba, rampe: R };
+    return { w: wa, wPlan: w, w0: basis, w0roh: w0, verteilt: !teilweise && !!(w0v && w0v.verteilung), verf, lang, ctxE, wahl, S, css, vg, ausSaison, vorbei, offset, erh, E75, basis75: ba, rampe: R };
   }
   /** V7.2 verfuegbarkeit-1.0: Verfügbarkeit aus den Daten, darüber die noch nicht eingespielten Eingaben auf diesem Gerät. */
   function verfuegbarkeit() {

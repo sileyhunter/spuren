@@ -232,3 +232,12 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
     noch nicht an echten Wochen geprüft. Mehrere Zeitfenster je Tag (morgens/abends) und «drinnen/draussen» gibt es noch nicht.
 95. **Schwimm-Einheiten:** Umfang ohne CSS-Test nur aus dem Tempo der Becken-Einheiten (Richtwert); Übungen werden nicht nach deinen Technikfehlern
     gewählt (C12 «Technikfehler → Übungen» offen); Schwimm-Einheiten gehen weiter nicht an Garmin.
+
+## Nach V7.6.1 (17.11.2026)
+96. **Aufbau-Grenze in Wochen mehr als 4 Wochen voraus** (aufbau-1.1): geplante, noch nicht gelaufene Läufe zählen nicht – liegt der letzte gelaufene Lauf mehr als
+    30 Tage vor einer Woche, plant sie lange und lockere Läufe mit höchstens 30 min («kein Lauf in den 30 Tagen davor»). Betrifft nur weit vorausgeplante Wochen; mit
+    jedem gelaufenen Lauf rückt die Grenze nach. Vorschlag: geplante Läufe von Mein Plan bis zur Woche als «geplant» mitrechnen.
+97. **Langer Lauf am Donnerstag** (aus enduco übernommen) hat neben Rad-Schlüssel und CSS-Schwimmen (Wochenmodell Do) keinen Platz und bleibt am Sonntag; der Hinweis
+    steht jede Woche. Entweder einen anderen Tag wählen oder das Wochenmodell anders verteilen (Rad-Schlüssel auf einen anderen Tag).
+98. **Krafttraining:** der automatische Tag wird an der schon verteilten Woche gewählt; eine Woche mit Tests am Wochenende lässt oft nur den Tag des langen Laufs
+    (Hinweis). Die Übungen plant die Seite nicht; Kraft geht nicht an Garmin.
