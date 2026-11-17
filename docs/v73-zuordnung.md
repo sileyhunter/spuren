@@ -14,11 +14,11 @@ Gebaut wird Etappe für Etappe, jede erst nach Silas' Okay.
 | 3 | Planeinstellungen: Basis-Fitness je Sportart, Steigerung (ein Regler für alle drei Sportarten), Indoor-Phase, Schwimm-Equipment, Bahnlänge, Stile | offen |
 | 4 | Kalender mit Zwei-Wochen-Raster und durchlaufender Liste, Zyklus, Bearbeiten-Modus, Tagesblatt; Aktivitäten draussen im Voraus planen (`aktivitaet-plan-1.0`) | offen |
 | 5 | Heute, Navigation, Training planen mit Kategorien | offen |
-| 6 | Ampel passt das Training des Tages automatisch an (`ampel-plan-1.0`): bei «vorsichtig» keine harten oder mittleren Abschnitte, Nachholen in der Woche, «Trotzdem wie geplant» | offen |
+| 6 | Ampel passt das Training des Tages automatisch an (`ampel-plan-1.0`): bei «vorsichtig» keine harten oder mittleren Abschnitte, Nachholen in der Woche, «Trotzdem wie geplant» | V7.4 (Garmin-Ersatz am Morgen auf der Uhr noch nicht geprüft) |
 | 7 | Krafttraining als feste Zusatzeinheit je Woche (`kraft-plan-1.0`), Woche darauf abgestimmt | offen |
 
 Reihenfolge (von Silas bestätigt am 16.11.2026): 1 → 2 → 6 → 3 → 7 → 4 → 5; jede Etappe erst nach seinem Okay (Etappe 2 freigegeben am
-16.11.2026). Der Laufaufbau bleibt je Einzellauf (aufbau-1.1). Entscheid A7 (16.11.2026): Das Morgen-Update darf bei «vorsichtig» die eigene harte
+16.11.2026, Etappe 6 am 17.11.2026). Der Laufaufbau bleibt je Einzellauf (aufbau-1.1). Entscheid A7 (16.11.2026): Das Morgen-Update darf bei «vorsichtig» die eigene harte
 Einheit des Tages in Garmin durch die lockere Fassung ersetzen – gilt ab Etappe 6; Enduco-Workouts bleiben unberührt.
 
 ## Etappe 1 – Vorlage → Ironman Notebook
@@ -38,3 +38,16 @@ Einheit des Tages in Garmin durch die lockere Fassung ersetzen – gilt ab Etapp
 | Workout bearbeiten (Dauer, Warm-up, Intervall-Intensität, Löschen) | `einheit-anpassen-1.0` (eigene Festlegung), Löschen mit Rückfrage | – |
 | Trainingsmetrik | Rad Leistung/Puls/RPE, Laufen Pace/Puls/RPE, Schwimmen Pace/RPE (`rpe-zonen-1.0`) | auf der Uhr vorerst Leistung bzw. Tempo; Puls und RPE mit Etappe 2 (eine Format-Änderung mit Rücklese) |
 | «Starten / Export» | Knopf «Export» → Auftrag «An Garmin senden» nur für diese Einheit | heisst «Export»: die Seite kann nichts starten; gesendet wird im Nacht-Update |
+
+## Etappe 6 – Ampel passt das Training an (V7.4, ampel-plan-1.0)
+
+| Soll (Auftrag) | V7.4 | Anders, weil |
+|---|---|---|
+| «bereit»/«normal» wie geplant, «vorsichtig» ohne harte und mittlere Abschnitte, lange Einheiten höchstens zwei Drittel | `V74.entscheid`, `V74.locker` | als lang gilt auch eine Einheit über 90 min (eigene Festlegung); Tests werden locker und im Testkalender verschoben |
+| Krankheitszeichen = Ruhetag; «nicht beurteilbar» = Check-in entscheidet | gleich; ohne Morgenwerte der Nacht zählt nur der Check-in | – |
+| Nachholen in derselben Woche, nicht neben harten Einheiten, nicht vor Test oder Rennen; sonst gemeldet | `V74.woche` | höchstens so lang wie die ersetzte lockere Einheit (sonst kurze Fassung), nie nach Krankheitszeichen, nie in Rennwochen |
+| ab dem dritten Tag «vorsichtig»: «Woche anpassen?» | Karte auf Heute und im Tagesblatt, Aktion «erholung» (eigenplan-1.2) | – |
+| «angepasst wegen Ampel» mit Gründen und ursprünglicher Einheit, «Trotzdem wie geplant» je Tag | Heute, Tagesblatt, Einheit-Seite, Kalender (`js/v74-ui.js`) | gesperrte Einheiten bleiben unverändert (Hinweis), wie bei enduco |
+| eigene Schicht je Tag (`ampel_anpassung`, «Direkt speichern», Prüffunktion) | Eingabe `ampel`, `merge_daily.ampel_pruefen`, Seite speichert ohne Knopfdruck | gespeichert wird der Entscheid, die Einheiten rechnet die Seite daraus (Mein Plan bleibt) |
+| Morgen-Update ersetzt die harte Einheit auf der Uhr (A7) | `tools/ampel_heute.mjs`, `garmin_senden.py ampel`, lockere Fassung im Auftrag | nur für Aufträge ab V7.4 (die tragen die lockere Fassung); auf der Uhr noch nicht geprüft |
+

@@ -39,6 +39,7 @@
       planwoche: [],                                                  // V6.6: Mein Plan je Woche (eigenplan-1.0) → planwoche_add → plan_woche
       verfuegbarkeit: [],                                             // V7.2: Verfügbarkeit je Tag oder Wochentag (verfuegbarkeit-1.0) → plan_verfuegbarkeit
       garmin_senden: [],                                              // V6.6: Auftrag «An Garmin senden» je Tag (garmin-senden-1.0) → garmin_auftraege
+      ampel: [],                                                      // V7.4: Entscheid der Ampel je Tag, «Trotzdem wie geplant» (ampel-plan-1.0) → ampel_anpassung
       eg: { gesendet: {}, dateien: [] } }; },                          // V5.9.3 eingang-1.0: was schon direkt gesendet ist (js/eingang.js)
     async ensureVault() {
       if (this.vault) return this.vault;

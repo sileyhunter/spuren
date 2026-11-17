@@ -337,8 +337,86 @@ def v5_merge(D, N):
         else:
             L.append(dict(g, status="offen"))
         msg.append(f"Garmin-Auftrag {g['date']} ({g['modus']})")
+    for x in N.get("ampel_add") or []:                   # V7.4 ampel-plan-1.0: Entscheid der Ampel je Tag (Seite oder Morgen-Update), «Trotzdem wie geplant»
+        fehler = ampel_pruefen(x)
+        if fehler:
+            msg.append(f"Ampel nicht übernommen: {fehler}")
+            continue
+        L = D.setdefault("ampel_anpassung", [])
+        i = next((k for k, y in enumerate(L) if isinstance(y, dict) and y.get("id") == x["id"]), None)
+        neu = ampel_zusammen(L[i] if i is not None and not ampel_pruefen(L[i]) else None, x)
+        if i is None:
+            L.append(neu)
+        elif L[i] != neu:
+            D.setdefault("audit", []).append({"zeit": dt.datetime.now(ZRH).isoformat(timespec="seconds"), "was": "Ampel-Entscheid ersetzt", "id": x["id"], "alt": L[i]})
+            L[i] = neu
+        else:
+            continue
+        msg.append(f"Ampel {x['date']}: {neu['status']}" + (" (trotzdem wie geplant)" if (neu.get("trotzdem") or {}).get("an") else ""))
     if msg:
         print("V5:", "; ".join(msg))
+
+
+AMPEL_STATUS = ("wie_geplant", "vorsichtig", "krank")
+AMPEL_STAND = ("bereit", "normal", "vorsichtig", "nicht beurteilbar")
+
+
+def _zeit_iso(s):
+    try:
+        t = dt.datetime.fromisoformat(str(s).replace("Z", "+00:00"))
+        return t if t.tzinfo else t.replace(tzinfo=ZRH)
+    except ValueError:
+        return None
+
+
+def ampel_pruefen(x):
+    """V7.4 ampel-plan-1.0 (gleiche Regeln wie V74.pruefen in js/v74.js): Entscheid der Ampel für einen Tag → Fehlertext oder None.
+    ID «aa-JJJJ-MM-TT», Entscheid wie_geplant/vorsichtig/krank, Ampel-Stand, höchstens 6 Gründe, Quelle seite/morgen-update, Zeitpunkt am selben Tag
+    (±1,5 Tage um Mittag), «Trotzdem» als {an: ja/nein, am: Zeitpunkt}."""
+    if not isinstance(x, dict):
+        return "kein Eintrag"
+    ds = str(x.get("date") or "")
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", ds):
+        return "kein Datum"
+    try:
+        d = dt.date.fromisoformat(ds)
+    except ValueError:
+        return "kein Datum"
+    if x.get("id") != "aa-" + ds:
+        return "ID passt nicht zum Datum"
+    if x.get("status") not in AMPEL_STATUS:
+        return "unbekannter Entscheid"
+    if x.get("ampel") not in AMPEL_STAND:
+        return "unbekannter Ampel-Stand"
+    g = x.get("gruende")
+    if not isinstance(g, list) or len(g) > 6 or any(not isinstance(t, str) or len(t) > 300 for t in g):
+        return "Gründe ungültig"
+    if not isinstance(x.get("morgenwerte"), bool):
+        return "Morgenwerte ja oder nein"
+    if x.get("quelle") not in ("seite", "morgen-update"):
+        return "unbekannte Quelle"
+    t = _zeit_iso(x.get("geaendert"))
+    if not t:
+        return "ohne Zeitpunkt"
+    if abs((t - dt.datetime.combine(d, dt.time(12, 0), dt.timezone.utc)).total_seconds()) > 1.5 * 86400:
+        return "Entscheid nicht am selben Tag"
+    tz = x.get("trotzdem")
+    if tz is not None and not (isinstance(tz, dict) and isinstance(tz.get("an"), bool) and _zeit_iso(tz.get("am"))):
+        return "«Trotzdem» ungültig"
+    return None
+
+
+def ampel_zusammen(alt, neu):
+    """Zwei Fassungen desselben Tages (gleiche Regel wie V74.zusammen): Entscheid aus der neueren (geaendert), «Trotzdem» aus der zuletzt
+    gedrückten (am) – eine spät eingespielte Eingabe vom Handy hebt so den Entscheid des Morgen-Updates nicht auf und umgekehrt."""
+    L = sorted([x for x in (alt, neu) if isinstance(x, dict)], key=lambda x: _zeit_iso(x["geaendert"]))
+    out = dict(L[-1])
+    T = sorted([x["trotzdem"] for x in L if isinstance(x.get("trotzdem"), dict)], key=lambda t: _zeit_iso(t["am"]))
+    if T:
+        out["trotzdem"] = T[-1]
+    else:
+        out.pop("trotzdem", None)
+    return out
 
 
 PLANWAHL = ("enduco", "vorschlag", "frei")

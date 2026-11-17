@@ -9,7 +9,9 @@
    - V7.2 verfuegbarkeit-1.0 (Wunsch vom 16.11.2026, Vorbild enduco): Zeit und erlaubte Sportarten je Tag oder je Wochentag; der Vorschlag wird
      danach verteilt (V66.verteilen). eigenplan-1.1: Wochen ohne eigene Änderungen folgen der Verfügbarkeit von selbst; wird eine verteilte Woche
      bearbeitet, wird sie als Ganzes festgehalten (vergangene Tage «eingefroren»), damit nichts zurückspringt. «Anpassen» verteilt den Rest der
-     Woche neu (Gesperrtes und Eigenes bleibt), «Neu berechnen» setzt Wochen auf den Vorschlag zurück (gesperrte Tage bleiben). */
+     Woche neu (Gesperrtes und Eigenes bleibt), «Neu berechnen» setzt Wochen auf den Vorschlag zurück (gesperrte Tage bleiben).
+   - V7.4 eigenplan-1.2 (ampel-plan-1.0, js/v74.js): «Woche anpassen?» rechnet auf deinen Knopfdruck den Rest der Woche wie eine Erholungswoche
+     (Aktion «erholung»); die Ampel-Schicht selbst ändert Mein Plan nie. Zu jeder Einheit trägt der Garmin-Auftrag die lockere Fassung mit. */
 (function (root, factory) {
   const node = typeof module === "object" && module.exports;
   const V66 = factory(node ? require("./v64.js") : root && root.V64);
@@ -17,7 +19,7 @@
   if (root) root.V66 = V66;
 })(typeof window !== "undefined" ? window : null, function (V64) {
   "use strict";
-  const V66 = { VERSIONS: { eigenplan: "eigenplan-1.1", vorlagen: "vorlagen-1.0", tl: "tl-plan-1.0", wochenblatt: "wochenblatt-1.0", kalender: "kalender-2.0",
+  const V66 = { VERSIONS: { eigenplan: "eigenplan-1.2", vorlagen: "vorlagen-1.0", tl: "tl-plan-1.0", wochenblatt: "wochenblatt-1.0", kalender: "kalender-2.0",
     verfuegbarkeit: "verfuegbarkeit-1.0", felder: "einheit-felder-1.0", anpassen: "einheit-anpassen-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const add = (iso, n) => V64.addDays(iso, n);
@@ -173,7 +175,7 @@
       return neu;
     });
     const out = Object.assign({}, w, { tage, bearbeitet: tage.some((t) => t.bearbeitet), gesperrt: tage.filter((t) => t.gesperrt).map((t) => t.date), eigenplan: V66.VERSIONS.eigenplan,
-      festgehalten: ganz });
+      festgehalten: ganz, erholung_ab: eintrag && eintrag.erholung && eintrag.erholung.ab ? eintrag.erholung.ab : null });
     if (!out.bearbeitet) return out;
     // Bearbeitete Woche: Stunden und Verteilung aus deinen Einheiten neu (wie V64.woche); Bibliothek ohne bekannte Ziele = offen, nicht gezählt
     const minuten = { schwimm: 0, rad: 0, lauf: 0 }, z = { locker: 0, mittel: 0, hart: 0, offen: 0 };
@@ -291,6 +293,7 @@
       case "leeren": for (let i = 0; i < 7; i++) { const d = add(E.montag, i); if (d >= ctx.heute && !(E.tage[d] && E.tage[d].gesperrt)) tag(d).einheiten = []; } break;
       case "festhalten": festhalten(); break;
       case "anpassen": festhalten(); f = anpassen(E, ctx); break;
+      case "erholung": festhalten(); f = erholungRest(E, ctx, tag); break;   // V7.4 eigenplan-1.2: «Woche anpassen?» nach mehreren Tagen «vorsichtig»
       default: f = "unbekannte Aktion";
     }
     if (f) return { fehler: f, eintrag: eintrag || null };
@@ -533,6 +536,7 @@
     return Object.assign(out, { minuten, zonen: z, tid, pruefung: V64.pruefen(w.modell, tid, { erholung: w.erholung, taper: w.taper, rennwoche: out.tage.some((t) => t.rennen),
       gekappt: !!(w.gekappt && w.gekappt.length) }) });
   }
+  V66.summen = summenNeu;                                               // V7.4: auch für die Ampel-Schicht (js/v74.js)
   const bausteinO = (w, ctx) => ({ phase: w && w.phase, css_s: ctx && ctx.css_s, kurz: !!(w && (w.taper || w.erholung)) });
   /** Vorschlag einer ganzen Woche (V64.woche) nach deiner Verfügbarkeit – unabhängig vom heutigen Tag, damit vergangene Tage stehen bleiben.
    *  ctx = { css_s }. → neue Woche (w bleibt unverändert) mit `verteilung` und den Meldungen in `hinweise`; ohne Wirkung dieselbe Woche. */
@@ -587,6 +591,23 @@
     const r = ctx.verf ? V66.verteilen(tage, ctx.verf, { o: ctx.o || {}, verbraucht }) : { tage, protokoll: null };
     for (const t of r.tage) if (!t.fest) tag(t.date).einheiten = t.einheiten.map((e, i) => spezVon(e, `v-${t.date}-${i}`));
     E.verteilung = r.protokoll ? { v: V66.VERSIONS.verfuegbarkeit, art: "neu", am: ctx.jetzt || new Date().toISOString(), meldungen: V66.verteilText(r.protokoll).slice(0, 20) } : undefined;
+    return null;
+  }
+  /** V7.4 eigenplan-1.2 («Woche anpassen?», ampel-plan-1.0): Rest der Woche ab heute wie eine Erholungswoche – die Tage bekommen die Einheiten
+   *  des Vorschlags mit Erholung (ctx.erholung(date), nach der Verfügbarkeit verteilt); gesperrte Tage und Tage mit gesperrter Einheit bleiben,
+   *  vergangene Tage auch. Nur auf deinen Knopfdruck, nie von selbst. */
+  function erholungRest(E, ctx, tag) {
+    if (typeof ctx.erholung !== "function") return "Erholungswoche nicht berechenbar";
+    let n = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = add(E.montag, i);
+      if (d < ctx.heute || festTag(E.tage[d])) continue;
+      const used = new Set();
+      tag(d).einheiten = (ctx.erholung(d) || []).map((e, j) => { const s = spezVon(e, `v-${d}-e${j}`); if (used.has(s.uid)) s.uid += "-" + used.size; used.add(s.uid); return s; });
+      n++;
+    }
+    if (!n) return "keine änderbaren Tage mehr in dieser Woche";
+    E.erholung = { ab: ctx.heute, am: ctx.jetzt || new Date().toISOString(), grund: ctx.grund || "Ampel: mehrere Tage «vorsichtig»" };
     return null;
   }
   /** Form zu Beginn eines Tages, aus dem Stand am Ende von gestern fortgeschrieben mit der Last je Tag (lastAm(date) → Zahl oder null):
@@ -935,12 +956,20 @@
    *  opt.teil (V7.3): nur eine Auswahl der Einheiten des Tages; was danach in Garmin ist, sind genau die Einheiten des Auftrags.
    *  opt.schwimm(e) (1.1): Schwimm-Einheit wie auf der Einheit-Seite. */
   V66.garminAuftrag = function (date, einheiten, skalen, modus, jetzt, opt) {
-    const E = [], ohne = [], sw = opt && opt.schwimm;
+    const E = [], ohne = [], sw = opt && opt.schwimm, lo = opt && typeof opt.ampel === "function" ? opt.ampel : null;
+    // V7.4 ampel-plan-1.0 (Entscheid A7): zu jeder Einheit mit harten, mittleren oder langen Abschnitten auch die lockere Fassung (V74.locker);
+    // damit ersetzt das Morgen-Update bei «vorsichtig» das harte Workout des Tages (tools/garmin_senden.py ampel)
+    const locker = (e) => {
+      let a = null; try { a = lo ? lo(e) : null; } catch (err) { a = null; }
+      if (!a) return {};
+      const g = V66.garminWorkout(a, skalen, { date, uid: e.uid, schwimm: sw });
+      return g.fehler ? {} : { ampel: { titel: a.titel, fassung: g.fassung, workout: g.workout } };
+    };
     for (const e of einheiten || []) {
-      if (e.art === "bibliothek") { if (isNum(e.wid)) E.push({ uid: e.uid, quelle: "bibliothek", titel: e.titel, sport: e.sport, wid: e.wid, fassung: "bib-" + e.wid }); else ohne.push({ uid: e.uid, titel: e.titel, grund: "Workout fehlt" }); continue; }
+      if (e.art === "bibliothek") { if (isNum(e.wid)) E.push(Object.assign({ uid: e.uid, quelle: "bibliothek", titel: e.titel, sport: e.sport, wid: e.wid, fassung: "bib-" + e.wid }, locker(e))); else ohne.push({ uid: e.uid, titel: e.titel, grund: "Workout fehlt" }); continue; }
       const g = V66.garminWorkout(e, skalen, { date, uid: e.uid, schwimm: sw });
       if (g.fehler) { ohne.push({ uid: e.uid, titel: e.titel, grund: g.fehler }); continue; }
-      E.push({ uid: e.uid, quelle: e.quelle || "vorschlag", titel: e.titel, sport: e.sport, fassung: g.fassung, workout: g.workout, ohneZiel: g.ohneZiel || 0, offen: !!g.offen });
+      E.push(Object.assign({ uid: e.uid, quelle: e.quelle || "vorschlag", titel: e.titel, sport: e.sport, fassung: g.fassung, workout: g.workout, ohneZiel: g.ohneZiel || 0, offen: !!g.offen }, locker(e)));
     }
     const out = { id: "gs-" + date, date, modus, erstellt: jetzt, v: V66.VERSIONS.garmin, einheiten: modus === "aus" ? [] : E, ohne: modus === "aus" ? [] : ohne };
     // V7.3: «Export» einer einzelnen Einheit – der Auftrag enthält nur die gewählten Einheiten (diese und die schon in Garmin); beim Nachführen

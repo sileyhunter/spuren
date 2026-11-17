@@ -30,6 +30,11 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
 - **V7.3 Etappe 2 (Schwimmen an Garmin):** garmin-senden-1.1 in `js/v66.js` (`V66.garminSchwimm`, `V66.garminPuls`, `V66.metrikVon`), `tools/garmin_senden.py`
   (Prüfung und Rücklese für Schwimmen, Puls, RPE), `V66UI.schwimmEinheit`/`V66UI.swOpt` (dieselbe Schwimm-Einheit für Seite, Auftrag und Stand),
   Export-Blatt in `js/v73-ui.js`; Tests in `tests/test_v73.cjs` und `tests/test_tools.py`
+- **V7.4 (Etappe 6 «Ampel passt das Training an», ampel-plan-1.0):** `js/v74.js` (ohne DOM: Entscheid je Tag `V74.entscheid`, lockere Fassung `V74.locker`,
+  Wochen-Schicht mit Nachholen `V74.woche`, Serie, Eintrag/Prüfung/Zusammenführen), `js/v74-ui.js` (Stand je Tag, Speichern ohne Knopfdruck, Banner auf
+  Heute, im Tagesblatt, auf der Einheit-Seite und im Kalender, «Trotzdem wie geplant», «Woche anpassen?»), `tools/ampel_heute.mjs` (Entscheid im
+  Morgen-Update), `tests/test_v74.cjs`; Schicht angewendet in `js/v64-ui.js` (kontext: `K.w` = was gilt, `K.wPlan` = Mein Plan); eigenplan-1.2
+  (`V66.aendern` Art «erholung»), lockere Fassung im Garmin-Auftrag (`V66.garminAuftrag` opt.ampel, `garmin_senden.py ampel`, Entscheid A7)
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
 - `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)
@@ -238,10 +243,11 @@ aus `get_user_summary`: `bodyBattery` = `bodyBatteryAtWakeTime`, `bbSleep` = `bo
 Gewicht: `weight_kg`, `ts_gmt` = `timestamp_gmt` (alle Messungen; das Skript nimmt pro Tag die Morgenmessung).
 Leere Werte als `null`. Unbekannte Felder weglassen. Werte nie schätzen.
 
-## Morgen-Update (V5.9.2, morgen-1.0, seit 16.11.2026 täglich 07:00 und 11:00, nur lesend auf Garmin)
+## Morgen-Update (V5.9.2, morgen-1.0, seit 16.11.2026 täglich 07:00 und 11:00; lesend auf Garmin bis auf den Schritt «Ampel» seit V7.4)
 Zweck: das Workout des Tages und die Werte der letzten Nacht auf «Heute», bevor Silas trainiert (er exportiert Enduco-Workouts oft erst am
-Morgen nach Garmin). Keine Aktivitäten, keine FIT-Dateien, keine Sekundenreihen – das bleibt beim Nacht-Update. Nach Garmin wird nichts
-geschrieben, Enduco-Workouts werden nie geändert. Jeder Abruf, der fehlschlägt, wird weggelassen: kein Abbruch, keine Nachricht.
+Morgen nach Garmin). Keine Aktivitäten, keine FIT-Dateien, keine Sekundenreihen – das bleibt beim Nacht-Update. Nach Garmin geschrieben wird nur
+im Schritt «Ampel» (V7.4, Entscheid A7 vom 16.11.2026, gebaut am 17.11.2026): die eigene harte Einheit des Tages durch ihre lockere Fassung ersetzen.
+Enduco-Workouts werden nie geändert. Jeder Abruf, der fehlschlägt, wird weggelassen: kein Abbruch, keine Nachricht.
 1. `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json data.json`
 2. Über die Garmin-Verbindung, Zuordnung der Felder wie im Nacht-Update:
    - `get_sleep_summary_range` von gestern bis heute → `days` mit nur `hrv`, `rhr`, `sleepH`, `sleepScore`, `sleepStress` (Nächte ohne Werte weglassen).
@@ -254,6 +260,15 @@ geschrieben, Enduco-Workouts werden nie geändert. Jeder Abruf, der fehlschlägt
      Antwort für die Enduco-Bibliothek merken (V6.5).
 3. `work/new.json` mit `"lauf": "morgen"` und nur diesen Feldern schreiben, `python3 -I tools/merge_daily.py data.json work/new.json` (ohne
    fit.jsonl), dann `python3 -I tools/bibliothek.py liste data.json <pfad der get_workouts-Antwort>` (V6.5; ohne Datei weglassen, kein Nachholen). Danach die Eingaben vom Handy wie im Nacht-Update (Schritt 3 «Eingaben vom Handy», mit Bestätigungen und Prüfung).
+   **Ampel (V7.4, ampel-plan-1.0, Entscheid A7):** als Letztes in Schritt 3. `node tools/ampel_heute.mjs data.json > work/ampel_heute.json` (Entscheid von
+   heute mit den Morgenwerten und dem Check-in, gleiche Regeln wie die Seite), dann `python3 -I tools/merge_daily.py data.json work/ampel_heute.json`
+   (speichert ihn als `ampel_anpassung`, wenn er neu ist oder sich geändert hat; «Trotzdem wie geplant» vom Handy bleibt). Dann
+   `python3 -I tools/garmin_senden.py ampel data.json > work/garmin_plan.json`: nur bei «vorsichtig» oder Krankheitszeichen und ohne «Trotzdem» stehen dort
+   Aktionen – je eigene Einheit von heute in Garmin, deren Auftrag eine lockere Fassung trägt, `hochladen` (lockere Fassung, mit Rücklese) und danach
+   `austragen` (die harte, mit `nach`). Genau diese Aktionen ausführen wie im Abschnitt «An Garmin senden» (sonst nichts), dann
+   `python3 -I tools/garmin_senden.py eintragen data.json work/garmin_plan.json work/garmin_ergebnis.json` (auch ohne Aktionen). Meldet es
+   «GARMIN FEHLER …»: Silas kurz informieren («Auf der Uhr steht noch die harte Fassung – locker fahren bzw. laufen», mit Titel). Nie etwas anderes
+   nach Garmin schreiben, nie für einen anderen Tag als heute, nie die harte Fassung zurücksetzen; Fehler hier brechen das Update nicht ab.
 4. `SPUREN_PW=… node tools/crypt.mjs encrypt data.json data.enc.json`, dann «Eingang aufräumen» wie im Nacht-Update (keine Sekundenreihen).
    Commit «Morgen-Update JJJJ-MM-TT» mit `data.enc.json` (und den Löschungen in `eingang/`), auf `main` pushen. Scheitert der Push: einmal
    `git pull --rebase`, erneut pushen. Gibt es dabei einen Konflikt in `data.enc.json`: `git rebase --abort`, `git reset --hard origin/main`,
@@ -341,7 +356,9 @@ Grund in `garmin_abgelehnt`; dieselbe oder ältere Fassung wird nie nochmals off
 Tage in der Woche, eindeutige Einheiten, Quelle vorschlag/eigen/bibliothek, Dauer 5–600 min, Tage vor der Änderung und gesperrte Tage unverändert
 gegenüber dem Stand davor; gleiche Woche ersetzt mit Audit). V6.2.2: `zonen` (auf der Seite bestätigte Zonenprofile → `zonen_add`, geprüft wie oben). V7.2: `verfuegbarkeit` (Zeit und Sportarten je Tag
 «vf-JJJJ-MM-TT» oder je Wochentag «vf-wt-1…7», `entfernt` = zurücksetzen → `verfuegbarkeit_add` → `plan_verfuegbarkeit`; `merge_daily.verfuegbarkeit_pruefen`;
-gleiche ID ersetzt mit Audit). Mein Plan eigenplan-1.1: vergangene Tage einer Woche dürfen einmal mit `eingefroren: true` festgehalten werden (so, wie sie
+gleiche ID ersetzt mit Audit). V7.4: `ampel` (Entscheid der Ampel je Tag «aa-JJJJ-MM-TT» mit Ampel-Stand, Gründen, Morgenwerte ja/nein, Quelle seite/morgen-update
+und optional `trotzdem` {an, am} → `ampel_add` → `ampel_anpassung`; `merge_daily.ampel_pruefen` wie `V74.pruefen`; je Tag ein Eintrag: Entscheid aus der neueren
+Fassung, «Trotzdem» aus der zuletzt gedrückten, alte Fassung ins Audit). Mein Plan eigenplan-1.1: vergangene Tage einer Woche dürfen einmal mit `eingefroren: true` festgehalten werden (so, wie sie
 gezeigt wurden), danach nie mehr geändert; `ganz: true` = ganze Woche gespeichert. V7.3 einheit-felder-1.0: je Einheit optional `uhrzeit` (hh:mm, 5-min-Schritte),
 `gesperrt`, `metrik` (leistung/pace/puls/rpe), `drinnen`, `ein_min` (5–40, 5er-Schritte), `pausen` (0–100, 10er-Schritte, 50 = Vorlage); geprüft mit
 `merge_daily.einheit_feld_pruefen` (gleiche Regeln wie `V66.feldPruefen`); eine gesperrte Einheit wird nur entsperrt, nie verschoben, geändert oder entfernt. V6.4: `modell` (gewähltes Trainingsmodell
@@ -470,6 +487,27 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - Änderungen nur über `V66UI.aendern` (Mein Plan) bzw. `V66UI.einheitSenden` (Export); vergangene Tage nur lesen, gesperrte Tage und Einheiten wie oben.
 - Farben nur über Variablen bzw. `V6.ZONEN`; neue Symbole in `V6.ICON`.
 
+## Ampel passt das Training an (V7.4, ampel-plan-1.0, Etappe 6 des Auftrags V7.3, freigegeben am 17.11.2026)
+- Entscheid je Tag aus der Ampel (readiness-2.1, `V74.entscheid`): «bereit», «normal», «nicht beurteilbar» = wie geplant; «vorsichtig» = keine harten und
+  keine mittleren Abschnitte (Rad, Laufen, Schwimmen: lockere Einheit derselben Sportart, `V74.locker`; Renntempo fällt weg; Einheiten über 90 min oder
+  der Art «lang» höchstens zwei Drittel; Tests werden locker und im Testkalender verschoben); Krankheitszeichen im Check-in = Ruhetag. Solange für heute
+  weder Schlaf noch HRV der Nacht da sind, zählt nur der Check-in (Befinden «belastet» = vorsichtig). Gesperrte Einheiten und Tage bleiben unverändert
+  (Hinweis), Schwimmkurs, Kraft und Mobility auch. Nie härter, nie länger, nie eine andere Sportart.
+- Nachholen (`V74.woche`): eine Schlüsseleinheit (Rad, Laufen, CSS; harte Bibliothek), die locker wurde, kommt am nächsten passenden Tag derselben Woche
+  an die Stelle einer lockeren Einheit derselben Sportart (Platz und Kennung der ersetzten Einheit, höchstens so lang, sonst die kurze Fassung): nicht
+  neben einer harten Einheit an Land bzw. derselben Sportart, nicht an Test- oder Renntagen und deren Vortag, nicht an gesperrten Tagen, nur mit Zeit
+  laut Verfügbarkeit, nie in Rennwochen und nie nach Krankheitszeichen. Ist der Nachhol-Tag selbst «vorsichtig», gilt dort wieder die lockere Einheit.
+  Passt kein Tag, entfällt sie – gemeldet, nie still.
+- Gespeichert wird nur der Entscheid je Tag (`ampel_anpassung`, von der Seite ohne Knopfdruck, wenn er sich ändert, und vom Morgen-Update); vergangene
+  Tage gelten so, wie entschieden, heute live, kommende Tage ohne Entscheid. Die Schicht wird beim Zeichnen angewendet (`V64UI` kontext → `V74UI.anwenden`):
+  Heute, Kalender, Tagesblatt, Einheit-Seite, TL ≈, Form und Plan-Übersicht rechnen mit dem, was galt; Mein Plan (`plan_woche`) bleibt unverändert,
+  Änderungen gehen weiter über `V66.aendern`. Nachgeholte Einheiten sind auf der Einheit-Seite nur zu lesen.
+- «Trotzdem wie geplant» gilt je Tag (nur heute antippbar). Ab dem dritten Tag «vorsichtig» bzw. krank in Folge zeigt die Seite «Woche anpassen?»: Rest
+  der Woche als Erholungswoche (V64-Vorschlag mit Erholung, 65 % der Stunden, nach der Verfügbarkeit verteilt; Aktion «erholung», eigenplan-1.2) – nur
+  auf Knopfdruck, gesperrte Tage bleiben, nicht in Erholungs-, Taper- oder Rennwochen.
+- Garmin: siehe «An Garmin senden» (lockere Fassung im Auftrag, Morgen-Update Schritt «Ampel»). Regel ändern = Version in `V74.VERSIONS`, Wissen (Kapitel
+  «erholung») und `tests/test_v74.cjs` nachführen.
+
 ## Design V6 (design-1.1; design-1.0 Vorlage «enduco als Vorbild» vom 13.11.2026, 1.1 Planer-Farben aus Variablen, Teil 0b)
 - Übernommen werden Aufbau, Bedienlogik und Farbsprache, nie Texte, Logos, Symbole, Fotos oder Grafiken von enduco; eigene Symbole in `V6.ICON`.
 - Eine Zone, eine Farbe: nur über `--zc-…` (css/v6.css) bzw. `V6.ZONEN`; Sportarten `--sp-…`, Monitoring `--mon-…`, Rennen und heute `--race`.
@@ -506,7 +544,8 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Tests, Schwimmkurs, Aktivierung und eigene Einheiten werden nie verschoben; in Rennwochen wird nichts verschoben. Gekürzt oder weggelassen wird nur
   gemeldet, nie still. Die Gewichte der Verteilung sind eigene Festlegungen (Wissen, Kapitel «modelle»). Nichts davon geht an Garmin oder Enduco. Bearbeitete Wochen: Stunden und Verteilung aus den eigenen Einheiten, «bearbeitet» sichtbar
   (vergleich-1.3, seit 1.4 ohne eigene Garmin-Einträge als Enduco). TL ≈ und Distanz ≈ (tl-plan-1.0) sind Modelle, immer mit «≈»; ohne Bezugswert keine Zahl. Ein Lauf über der Aufbau-Grenze
-  wird gemeldet, nie verhindert. Nach Garmin nur über «An Garmin senden» (Abschnitt «An Garmin senden»); Enduco wird nie geändert.
+  wird gemeldet, nie verhindert. Nach Garmin nur über «An Garmin senden» (Abschnitt «An Garmin senden») und am Morgen die lockere Fassung bei «vorsichtig»
+  (Abschnitt «Ampel passt das Training an»); Enduco wird nie geändert.
 - Die Seite schreibt selbst nie nach Garmin oder Enduco: keine Knöpfe zum Verschieben, Starten oder Löschen von Workouts. Einzige Ausnahme
   (V6.6, Entscheid E3): «An Garmin senden» legt einen Auftrag an, den das Nacht-Update ausführt (Abschnitt «An Garmin senden»).
 
@@ -565,7 +604,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
   Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
   Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
-- **Wissen `wissen-1.12` (`js/wissen.js`; 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.12 = V7.3.2 Übungen aus der Enduco-Liste, 1.11 = V7.3 Etappe 2 Schwimmen,
+- **Wissen `wissen-1.13` (`js/wissen.js`; 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.13 = V7.4 Ampel passt das Training an (Kapitel «erholung», Düking 2021, Manresa-Rocamora 2021), 1.12 = V7.3.2 Übungen aus der Enduco-Liste, 1.11 = V7.3 Etappe 2 Schwimmen,
   Puls und RPE an Garmin im Kapitel «modelle», 1.10 = V7.3 Einheit als
   Schritte, Einfahren und Intervall-Intensität, RPE je Abschnitt im Kapitel «intervalle»; 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
   1.3: Kapitel «Vorschlag und Enduco vergleichen», 1.4: Prüfung der Quellen – Formulierungen nicht stärker als die Studien, eigene Festlegungen
@@ -575,7 +614,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Neue oder geänderte Regel: Kapitel und `WS.REGELN` nachführen; `tests/test_v64.cjs` prüft Verweise, DOI-Form, jede Quelle verwendet,
   Schweizer Schreibweise (kein ß) und keine Wattwerte in den Texten. Nie persönliche Zahlen in die Wissenstexte.
 - Der Vorschlag steht neben dem Enduco-Plan, solange Enduco läuft; Enduco wird nie geändert. Nach Garmin geht nur, was Silas mit «An Garmin senden»
-  auslöst (Abschnitt «An Garmin senden»).
+  auslöst (Abschnitt «An Garmin senden»), und seit V7.4 die lockere Fassung einer solchen Einheit am Morgen bei «vorsichtig» (Entscheid A7).
 
 ## Enduco nur als Vergleichsdatenbank (V7, planvergleich-1.0)
 - Enduco-Workouts (`planned`, `workouts_neu`, `enduco_bib`, `wk`) bleiben vollständig gespeichert, erscheinen aber nicht in Heute, Kalender oder Plan.
@@ -625,8 +664,13 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
     danach `delete_workout(workout_id)` und mit `confirm=true` → `{"nr", "ok": true}`.
   - Fehlschlag eines Aufrufs: `{"nr", "ok": false, "fehler": "<kurz>"}`, weiter mit der nächsten Aktion.
 - Nie: Enduco-Workouts ändern oder löschen, Kalendereinträge ohne eigenen Vermerk austragen, Bibliotheks-Workouts löschen, Zonen oder die CSS
-  nach Garmin schreiben, etwas senden, das nicht in `work/garmin_plan.json` steht. Das Morgen-Update sendet nichts (Entscheid A7 vom 16.11.2026:
-  ab Etappe 6 darf es bei «vorsichtig» die eigene harte Einheit des Tages durch die lockere ersetzen – erst, wenn Etappe 6 gebaut und beschrieben ist).
+  nach Garmin schreiben, etwas senden, das nicht in `work/garmin_plan.json` steht. Das Morgen-Update sendet nur im Schritt «Ampel» (Entscheid A7 vom
+  16.11.2026, seit V7.4): bei «vorsichtig» oder Krankheitszeichen die eigene harte Einheit des Tages durch ihre lockere Fassung ersetzen.
+- **V7.4 lockere Fassung (ampel-plan-1.0):** jede Einheit im Auftrag mit harten, mittleren oder langen Abschnitten trägt `ampel` = { titel, fassung,
+  workout } (aus `V74.locker`, Titel «… (Ampel)», gleiche Uhrzeit und Metrik); `pruefen` prüft sie wie jedes Workout. `garmin_senden.py ampel` ersetzt
+  nur Vermerke von heute, deren Fassung im Auftrag steht; die neue trägt in `plan_garmin` `ampel: true` und wird nie zurückgesetzt («Trotzdem wie
+  geplant» danach: die Seite sagt, dass auf der Uhr die lockere Fassung steht). Klappt das Ersetzen nicht, zeigt die Seite «Auf der Uhr steht noch die
+  harte Fassung – locker fahren bzw. laufen». Ältere Aufträge ohne `ampel` werden nicht ersetzt.
 - V7.3 «Export» einer Einheit (Einheit-Seite): der Auftrag des Tages trägt `teil: true` und enthält nur die gewählten Einheiten – diese und alle, die
   schon in Garmin oder im offenen Auftrag sind (`V66UI.einheitSenden`); was danach in Garmin ist, sind genau die Einheiten des Auftrags (wie bisher).
   Nach einer Änderung bleibt die Auswahl; ohne `teil` gilt der ganze Tag. `pruefen` lehnt ein `teil` ab, das nicht ja/nein ist.
@@ -704,7 +748,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Die exakten Grössen der SPS1-Dateien stehen in der Git-Historie.
 
 ## Prüfen vor jedem Push von Seite oder Werkzeugen
-`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `node --test tests/test_v66.cjs`, `node --test tests/test_v7.cjs`, `node --test tests/test_v72.cjs`, `node --test tests/test_v73.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
+`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `node --test tests/test_v66.cjs`, `node --test tests/test_v7.cjs`, `node --test tests/test_v72.cjs`, `node --test tests/test_v73.cjs`, `node --test tests/test_v74.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
 **Leck-Prüfung (V6.4.4):** `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json work/data.json`, `python3 -I tools/leck_pruefen.py work/data.json`
 («LECK-PRÜFUNG: bestanden»), danach `rm work/data.json`. Gilt für jeden Push von Seite, Werkzeugen, Tests oder Doku (nicht für die reinen Daten-Updates).
 Kein Live-Push, wenn ein Test oder die Leck-Prüfung fehlschlägt. Screenshots mit echten Daten nie ins Repo. **Ein Force-Push entfernt nichts von GitHub:**

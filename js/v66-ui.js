@@ -49,6 +49,8 @@
     } catch (err) { console.error(err); return null; }
   }
   const swOpt = (ds, K) => ({ schwimm: (e) => schwimmEinheit(e, ds, K) });
+  /** V7.4 ampel-plan-1.0: lockere Fassung je Einheit (V74.locker) – der Auftrag trägt sie mit, damit das Morgen-Update bei «vorsichtig» ersetzen kann. */
+  const ampelOpt = (ds, K) => ({ ampel: (e) => (window.V74 ? window.V74.locker(e, (K || kontext(montag(ds)) || {}).ctxE || {}) : null) });
   M.schwimmEinheit = (e, ds, K) => (bereit() ? schwimmEinheit(e, ds, K) : null);
   M.swOpt = (ds, K) => swOpt(ds, K);
   /** Auftrag eines Tages: noch nicht eingespielt (auf dem Gerät) vor dem Stand in den Daten. → { a, lokal } oder null */
@@ -69,7 +71,7 @@
     const I = UI().Inbox; if (!I || !I.data) return "Speicher auf diesem Gerät nicht verfügbar";
     if (!Array.isArray(I.data.garmin_senden)) I.data.garmin_senden = [];
     const U = x.t.rennen ? [] : uids ? x.t.einheiten.filter((e) => uids.has(e.uid)) : x.t.einheiten;
-    await I.upsert("garmin_senden", V66().garminAuftrag(ds, U, skalen(), modus, new Date().toISOString(), Object.assign(swOpt(ds, x.K), uids ? { teil: true } : {})));
+    await I.upsert("garmin_senden", V66().garminAuftrag(ds, U, skalen(), modus, new Date().toISOString(), Object.assign(swOpt(ds, x.K), ampelOpt(ds, x.K), uids ? { teil: true } : {})));
     neuZeichnen();
     return null;
   }
@@ -92,6 +94,20 @@
     }
   }
   M.auftrag = (ds) => (bereit() ? auftrag(ds) : null);
+  /** V7.4 ampel-plan-1.0: offene Aufträge einer Woche erneuern, wenn sich die Einheiten durch die Ampel geändert haben (nachgeholte Einheit an einem
+   *  kommenden Tag, «Trotzdem wie geplant»). Gleicher Modus, gleiche Auswahl; unveränderte Aufträge bleiben, wie sie sind. */
+  M.auftraegeAbgleichen = async function (mo) {
+    if (!bereit()) return;
+    const fp = (L) => (L || []).map((u) => `${u.uid}:${u.fassung}:${(u.ampel && u.ampel.fassung) || ""}`).sort().join("|");
+    for (let i = 0; i < 7; i++) {
+      const d = add(mo, i), A = auftrag(d);
+      if (!(istAktiv(A) && garminFenster(d))) continue;
+      const x = tagVon(d); if (!x) continue;
+      const uids = A.a.teil ? auswahl(A.a) : null, U = x.t.rennen ? [] : uids ? x.t.einheiten.filter((e) => uids.has(e.uid)) : x.t.einheiten;
+      const neu = V66().garminAuftrag(d, U, skalen(), A.a.modus, "", Object.assign(swOpt(d, x.K), ampelOpt(d, x.K)));
+      if (fp(neu.einheiten) !== fp(A.a.einheiten)) await garminAuftragSpeichern(d, A.a.modus, uids);
+    }
+  };
   /** V7.3 «Export» einer Einheit: Auftrag des Tages mit dieser Einheit (weg = austragen) und allen, die schon in Garmin oder im offenen Auftrag sind. */
   M.einheitSenden = async function (ds, uid, modus, weg) {
     if (!bereit()) return "Seite noch nicht bereit";
@@ -112,7 +128,8 @@
     const vorschlag = (d) => ((K.w0 || K.w).tage.find((t) => t.date === d) || { einheiten: [] }).einheiten;
     const roh = (d) => ((K.w0roh || K.w0 || K.w).tage.find((t) => t.date === d) || { einheiten: [] }).einheiten;
     const r = V66().aendern(P().planEintrag(mo), a, { heute: heute(), montag: mo, vorschlag, roh, verf: K.verf || null, verteilt: !!K.verteilt, ctxE: K.ctxE,
-      o: { phase: K.w.phase, css_s: K.css ? K.css.s : null, kurz: !!(K.w.taper || K.w.erholung) }, jetzt: new Date().toISOString() });
+      o: { phase: K.w.phase, css_s: K.css ? K.css.s : null, kurz: !!(K.w.taper || K.w.erholung) }, jetzt: new Date().toISOString(),
+      erholung: K.erh || null, grund: a.art === "erholung" ? "Ampel: mehrere Tage «vorsichtig» (ampel-plan-1.0)" : null });
     if (r.fehler) return r.fehler;
     const I = UI().Inbox; if (!I || !I.data) return "Speicher auf diesem Gerät nicht verfügbar";
     if (!Array.isArray(I.data.planwoche)) I.data.planwoche = [];
@@ -130,7 +147,7 @@
     const W = V6(), S = V66().schaetzung(e, bezug(K)), hk = e.teile && e.teile.length && P().hauptKey ? P().hauptKey(e) : null;
     let st = null; try { const A = ds ? auftrag(ds) : null; st = ds ? V66().garminStand(e, ds, skalen(), gesendet(), A && (A.lokal ? Object.assign({ status: "offen" }, A.a) : A.a), swOpt(ds, K)) : null; } catch (err) { console.error(err); }
     const teile = [W.dauerText(e.dauer * 60), isNum(S.tl) ? `TL ≈ ${S.vollstaendig ? "" : "mind. "}${S.tl}` : "", isNum(S.km) && S.km > 0 ? `≈ ${komma(S.km)} km` : "", st ? STAND_WORT[st] : ""].filter(Boolean);
-    const q = e.quelle === "eigen" ? "eigen" : e.quelle === "bibliothek" ? "Bibliothek" : "Vorschlag";
+    const q = (e.quelle === "eigen" ? "eigen" : e.quelle === "bibliothek" ? "Bibliothek" : "Vorschlag") + (e.ampel ? (e.ampel.von ? " · Ampel" : " · nachgeholt") : "");
     if (e.uhrzeit) teile.unshift(e.uhrzeit);                               // V7.3: Uhrzeit aus «Festlegen»
     return `<button type="button" class="mo-e mp-e${e.quelle === "eigen" ? " eigen" : ""}" data-mpe="${esc(e.uid)}">
       <span class="mo-sp" style="--sp:${spFarbe(e.sport)}">${W.sportIcon(e.sport, 16)}</span>
@@ -153,7 +170,9 @@
       : `<div class="row mp-akt">${t.gesperrt ? "" : `<button type="button" class="btn primary" data-mpadd>${W.icon("plus", 16)} Training hinzufügen</button>`}
          <button type="button" class="btn" data-mplock aria-pressed="${t.gesperrt}">${W.icon("schloss", 15)} ${t.gesperrt ? "Entsperren" : "Tag sperren"}</button></div>
          ${t.gesperrt ? `<p class="hint">Gesperrt: nicht bearbeitbar; «Woche leeren», «Anpassen» und «Neu berechnen» lassen ihn stehen.</p>` : ""}`;
-    return `${woche}${formHTML(ds)}${vfHTML(ds, K)}<h3 class="abschnitt mp-kopf">Mein Plan ${status}</h3><div class="mp-liste">${karten}</div>${aufbau}${akt}${garminHTML(ds, t)}<p class="warn-t" data-mpfehler hidden></p>`;
+    // V7.4 ampel-plan-1.0: Anpassung durch die Ampel (Gründe, ursprüngliche Einheit, «Trotzdem wie geplant») und «Woche anpassen?»
+    let ampel = ""; try { ampel = window.V74UI ? window.V74UI.banner(ds, t) + window.V74UI.erholungKarte(ds, K) : ""; } catch (err) { console.error(err); }
+    return `${woche}${formHTML(ds)}${vfHTML(ds, K)}<h3 class="abschnitt mp-kopf">Mein Plan ${status}</h3>${ampel}<div class="mp-liste">${karten}</div>${aufbau}${akt}${garminHTML(ds, t)}<p class="warn-t" data-mpfehler hidden></p>`;
   };
 
   /* ---------- V7.2: Form zu Tagesbeginn und Verfügbarkeit im Tagesblatt ---------- */
@@ -305,6 +324,7 @@
     ov.querySelectorAll("[data-mpe]").forEach((b) => (b.onclick = () => M.einheit(ds, b.dataset.mpe, { zurueck })));
     ov.querySelectorAll("[data-mpadd]").forEach((b) => (b.onclick = () => M.hinzufuegen(ds, zurueck)));
     ov.querySelectorAll("[data-mpvf]").forEach((b) => (b.onclick = () => M.verfuegbarkeitBlatt(ds, zurueck)));
+    if (window.V74UI) window.V74UI.binden(ov, zurueck);                    // V7.4: «Trotzdem wie geplant», «Woche anpassen?»
     ov.querySelectorAll("[data-mplock]").forEach((b) => (b.onclick = async () => {
       const x = tagVon(ds); if (!x) return;
       const f = await aendern(montag(ds), { art: x.t.gesperrt ? "entsperren" : "sperren", date: ds });
@@ -610,7 +630,7 @@
       const tx = tt.map((x) => `<p class="kw-test"><i class="c-test"></i>${esc(NAME[x.kind] || x.kind)}${x.done ? " ✓" : x.status === "vorschlag" ? " (Vorschlag)" : ""}</p>`).join("");
       return `<li class="kw-tag${t.date === h ? " heute" : ""}${t.gesperrt ? " gesperrt" : ""}${t.date < h ? " vorbei" : ""}">
         <button type="button" class="kw-tk" data-kwtag="${t.date}" aria-label="${esc(tagText(t.date))}${t.gesperrt ? ", gesperrt" : ""}: Tagesblatt öffnen"><b>${wt(t.date)}</b><small>${esc(dkurz(t.date))}</small>${t.gesperrt ? W.icon("schloss", 13) : ""}</button>
-        <div class="kw-inh">${done}${meins}${tx}${!done && !meins && !tx ? `<p class="mp-leer">${t.gesperrt ? "gesperrt" : esc(t.notiz || "frei")}</p>` : ""}${vfZeile(t.date)}</div></li>`;
+        <div class="kw-inh">${window.V74UI && gilt ? window.V74UI.kurz(t) : ""}${done}${meins}${tx}${!done && !meins && !tx ? `<p class="mp-leer">${t.gesperrt ? "gesperrt" : esc(t.notiz || "frei")}</p>` : ""}${vfZeile(t.date)}</div></li>`;
     }).join("");
     return `<div class="wl kw-leiste" role="group" aria-label="Tage der Woche">${leiste}</div>${ausw}${gilt && mo >= montag(h) ? verteilHTML(mo, K) : ""}
       <ol class="kw-tage">${tage}</ol>

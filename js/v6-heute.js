@@ -113,16 +113,20 @@
     const frei = A.map((a) => a.sport);                                           // eine erfasste Aktivität derselben Sportart erledigt eine geplante Einheit
     const karten = E.map((e) => { const k = frei.indexOf(e.sport); if (k >= 0) frei.splice(k, 1); return { e, erledigt: k >= 0 }; });
     const leer = !A.length && !E.length && !rennen;
+    // V7.4 ampel-plan-1.0: Anpassung durch die Ampel (Gründe, ursprüngliche Einheit, «Trotzdem wie geplant») und «Woche anpassen?»
+    let ampel = ""; try { ampel = window.V74UI && X ? window.V74UI.banner(day, X.t) + window.V74UI.erholungKarte(day, X.K) : ""; } catch (e) { console.error(e); }
     box.innerHTML = `<div class="ek-kopfzeile"><div><h2>Heutiges Training</h2>${st ? `<span class="ek-stand">${esc(st.text)}</span>` : ""}</div>
         <button type="button" class="btn" data-v6="optionen">Optionen ${V6().icon("plus", 18)}</button></div>
+      ${ampel}
       ${rennen ? `<div class="card ek-test v7-rennen">${V6().icon("flagge", 18)}<b>${esc(rennen.name)}</b><small>Renntag</small></div>` : ""}
       ${U ? A.map((a) => U.aktKarte(a)).join("") : ""}
       ${U ? karten.map((k) => k.erledigt ? U.einheitKarte(k.e, day, true).replace('class="card ek-karte v7-ek klein"', 'class="card ek-karte v7-ek klein v7-erl"') : U.einheitKarte(k.e, day)).join("") : ""}
-      ${leer ? `<div class="card ek-leer"><p>${X && X.t.gesperrt ? "Heute ist gesperrt – kein Training geplant." : "Für heute ist nichts geplant."}</p>
+      ${leer ? `<div class="card ek-leer"><p>${X && X.t.gesperrt ? "Heute ist gesperrt – kein Training geplant." : X && X.t.ampel && X.t.ampel.status === "krank" && !X.t.ampel.trotzdem ? "Heute Ruhetag (Krankheitszeichen)." : "Für heute ist nichts geplant."}</p>
         ${X && !X.t.gesperrt ? `<button type="button" class="btn" data-v7add>${V6().icon("plus", 16)} Training hinzufügen</button>` : ""}</div>` : ""}
       ${testHinweis(day)}`;
     binden(box);
     if (U) U.binden(box);
+    if (window.V74UI) { window.V74UI.binden(box); window.V74UI.pruefen(); }     // V7.4: Entscheid von heute speichern, wenn er sich geändert hat
     const add = box.querySelector("[data-v7add]");
     if (add) add.onclick = () => { if (window.V66UI && window.V66UI.hinzufuegen) window.V66UI.hinzufuegen(day, () => V59().schliessen()); };
   }

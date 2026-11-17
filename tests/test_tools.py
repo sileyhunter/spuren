@@ -1412,5 +1412,93 @@ for _i in range(750):
 _zr = _zeit.zeit_reihe(_R, 1500, 1500)
 check("zeit-1.1 aus der 2-s-Reihe: 10 min Stehen erkannt (gleiche Regel wie aus der FIT-Datei)", _zr["nstop"] == 1 and 540 <= _zr["stop"] <= 620 and _zr["mov"] == 1500 - _zr["stop"], str(_zr))
 
+# ---------- V7.4 ampel-plan-1.0 (Etappe 6): Entscheid speichern, Morgen-Update ersetzt die harte Fassung (Entscheid A7) – erfundene Werte ----------
+_js_aa = r"""const V66 = require("./js/v66.js"), V74 = require("./js/v74.js");
+const SK = { rad_w: [{ z: "Z1", von: null, bis: 160 }, { z: "Z2", von: 160, bis: 200 }, { z: "Z3", von: 200, bis: 240 }, { z: "Z4", von: 240, bis: 257 }, { z: "Z5", von: 257, bis: null }],
+  lauf_pace: [{ z: "Z1", von: null, bis: 380 }, { z: "Z2", von: 380, bis: 330 }, { z: "Z3", von: 330, bis: 290 }, { z: "Z4", von: 290, bis: 270 }, { z: "Z5", von: 270, bis: null }] };
+const E = (o) => V66.einheit(o, {});
+const L = [E({ uid: "a-vo2", vorlage: "lauf_vo2", dauer: 50, quelle: "vorschlag" }), E({ uid: "a-rad", vorlage: "rad_locker", dauer: 60, quelle: "vorschlag" }),
+  E({ uid: "a-bib", quelle: "bibliothek", wid: 1000000011, sport: "rad", titel: "Beispiel Intervalle", dauer: 70 })];
+L[2].stufe = "alles";
+const out = { auftrag: V66.garminAuftrag("2026-03-05", L, SK, "auto", "2026-03-03T19:00:00Z", { ampel: (e) => V74.locker(e, {}) }) };
+const e = V74.entscheid({ datum: "2026-03-05", status: "vorsichtig", alle_gruende: [{ w: 7, txt: "HRV deutlich unter Referenz", kind: "hrv" }], indikatoren: {} }, { morgenwerte: true });
+out.eintrag = V74.eintrag(e, { quelle: "morgen-update", jetzt: "2026-03-05T06:05:00Z" });
+out.js_pruefen = V74.pruefen(out.eintrag);
+console.log(JSON.stringify(out));"""
+_ra = subprocess.run(["node", "-e", _js_aa], cwd=ROOT, capture_output=True, text=True)
+_AA = json.loads(_ra.stdout or "{}")
+_au = _AA.get("auftrag") or {"einheiten": []}
+check("Ampel (garmin-senden): Auftrag mit lockerer Fassung besteht die Prüfung; lockere Einheit ohne zweite Fassung; Bibliothek mit lockerer eigener",
+      GS.pruefen(_au) is None and _au["einheiten"][0].get("ampel", {}).get("workout", {}).get("workoutName", "").startswith("IN · Lauf locker")
+      and not _au["einheiten"][1].get("ampel") and _au["einheiten"][2]["quelle"] == "bibliothek" and _au["einheiten"][2].get("ampel"), _ra.stderr + str(GS.pruefen(_au)))
+_au2 = copy.deepcopy(_au)
+_au2["einheiten"][0]["ampel"]["workout"]["workoutName"] = "Fremd"
+_au3 = copy.deepcopy(_au)
+_au3["einheiten"][0]["ampel"]["fassung"] = ""
+check("Ampel (garmin-senden): lockere Fassung ohne «IN · » oder ohne Fassung wird abgelehnt",
+      "(locker)" in (GS.pruefen(_au2) or "") and "lockere Fassung ungültig" in (GS.pruefen(_au3) or ""), str([GS.pruefen(_au2), GS.pruefen(_au3)]))
+_ae = _AA.get("eintrag") or {}
+check("Ampel: Eintrag in Python gleich geprüft wie auf der Seite (V74.pruefen)", merge_daily.ampel_pruefen(_ae) is None and _AA.get("js_pruefen") is None, str(merge_daily.ampel_pruefen(_ae)))
+_aa_falsch = {k: merge_daily.ampel_pruefen(dict(_ae, **v)) for k, v in {
+    "ID": {"id": "aa-2026-03-06"}, "Entscheid": {"status": "hart"}, "Ampel": {"ampel": "rot"}, "Gründe": {"gruende": ["x" * 400]},
+    "Quelle": {"quelle": "chat"}, "Zeit": {"geaendert": "2026-03-09T06:00:00Z"}, "Trotzdem": {"trotzdem": {"an": "ja", "am": "2026-03-05T07:00:00Z"}},
+    "Morgenwerte": {"morgenwerte": "ja"}}.items()}
+check("Ampel: ungültige Einträge abgelehnt (ID, Entscheid, Stand, Gründe, Quelle, anderer Tag, Trotzdem, Morgenwerte)", all(_aa_falsch.values()), str(_aa_falsch))
+_tq = tempfile.mkdtemp()
+json.dump({"activities": [], "days": []}, open(os.path.join(_tq, "d.json"), "w"))
+_seite = dict(_ae, quelle="seite", geaendert="2026-03-05T05:30:00Z", trotzdem={"an": True, "am": "2026-03-05T05:31:00Z"})
+for _x in (_seite, _ae, dict(_ae, status="falsch")):
+    json.dump({"ampel_add": [_x]}, open(os.path.join(_tq, "n.json"), "w"))
+    merge_daily.main(os.path.join(_tq, "d.json"), os.path.join(_tq, "n.json"))
+_DQ = json.load(open(os.path.join(_tq, "d.json")))
+check("Ampel (merge_daily): ein Eintrag je Tag – Entscheid aus dem neueren (Morgen-Update), «Trotzdem» vom Handy bleibt, Ungültiges abgelehnt",
+      len(_DQ.get("ampel_anpassung", [])) == 1 and _DQ["ampel_anpassung"][0]["quelle"] == "morgen-update" and _DQ["ampel_anpassung"][0]["trotzdem"]["an"] is True
+      and any(a.get("was") == "Ampel-Entscheid ersetzt" for a in _DQ.get("audit", [])), str(_DQ.get("ampel_anpassung")))
+_u0 = _au["einheiten"][0]
+_DA = {"ampel_anpassung": [_ae], "garmin_auftraege": [dict(_au, status="erledigt")],
+       "plan_garmin": [{"uid": "a-vo2", "date": "2026-03-05", "quelle": "vorschlag", "titel": _u0["titel"], "sport": "lauf", "fassung": _u0["fassung"], "workout_id": 6101, "scheduled_id": 8101},
+                       {"uid": "a-rad", "date": "2026-03-05", "quelle": "vorschlag", "titel": "Rad locker", "sport": "rad", "fassung": _au["einheiten"][1]["fassung"], "workout_id": 6102, "scheduled_id": 8102},
+                       {"uid": "a-vo2", "date": "2026-03-06", "quelle": "vorschlag", "titel": "anderer Tag", "sport": "lauf", "fassung": "x", "workout_id": 6103, "scheduled_id": 8103}]}
+_jt = dt_mod.datetime(2026, 3, 5, 7, 5, tzinfo=zoneinfo_mod.ZoneInfo("Europe/Zurich"))
+_PA = GS.ampel(_DA, _jt)
+check("Ampel (Morgen-Update, A7): nur heute, nur die harte eigene Einheit – lockere Fassung hochladen, danach die harte austragen und löschen",
+      [x["art"] for x in _PA["aktionen"]] == ["hochladen", "austragen"] and _PA["aktionen"][0]["workout"] == _u0["ampel"]["workout"] and _PA["aktionen"][0]["ampel"] is True
+      and _PA["aktionen"][1]["nach"] == 1 and _PA["aktionen"][1]["loeschen"] is True and _PA["aktionen"][1]["workout_id"] == 6101, json.dumps(_PA)[:400])
+_PT = GS.ampel(dict(_DA, ampel_anpassung=[dict(_ae, trotzdem={"an": True, "am": "2026-03-05T06:30:00Z"})]), _jt)
+_PW = GS.ampel(dict(_DA, ampel_anpassung=[dict(_ae, status="wie_geplant")]), _jt)
+_PM = GS.ampel(_DA, dt_mod.datetime(2026, 3, 6, 7, 5, tzinfo=zoneinfo_mod.ZoneInfo("Europe/Zurich")))
+check("Ampel (Morgen-Update): «Trotzdem wie geplant», «wie geplant» oder ein anderer Tag → nichts ersetzen",
+      not _PT["aktionen"] and not _PW["aktionen"] and not _PM["aktionen"], str([_PT["hinweise"], _PW["hinweise"], _PM["hinweise"]]))
+_tg = tempfile.mkdtemp()
+json.dump(_DA, open(os.path.join(_tg, "d.json"), "w"))
+json.dump(_PA, open(os.path.join(_tg, "p.json"), "w"))
+json.dump({"garmin_ergebnis": [{"nr": 1, "ok": True, "workout_id": 6201, "scheduled_id": 8201}, {"nr": 2, "ok": True}]}, open(os.path.join(_tg, "e.json"), "w"))
+_ge = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "tools", "garmin_senden.py"), "eintragen", os.path.join(_tg, "d.json"), os.path.join(_tg, "p.json"), os.path.join(_tg, "e.json")],
+                     capture_output=True, text=True)
+_DG = json.load(open(os.path.join(_tg, "d.json")))
+_neu = [g for g in _DG["plan_garmin"] if g.get("workout_id") == 6201]
+check("Ampel (eintragen): lockere Fassung mit Vermerk «ampel», harte ausgetragen; zweiter Lauf um 11 Uhr ersetzt nichts mehr",
+      _ge.returncode == 0 and len(_neu) == 1 and _neu[0].get("ampel") is True and next(g for g in _DG["plan_garmin"] if g.get("workout_id") == 6101).get("entfernt")
+      and not GS.ampel(_DG, _jt)["aktionen"], _ge.stdout + _ge.stderr)
+# Werkzeug für das Morgen-Update: erfundene Morgenwerte, Check-in «belastet» → «vorsichtig»; nach dem Einspielen nichts Neues
+_tz = tempfile.mkdtemp()
+_days = []
+for _i in range(70, -1, -1):
+    _d = (dt_mod.date(2026, 3, 5) - dt_mod.timedelta(days=_i)).isoformat()
+    _days.append({"date": _d, "hrv": 60 + ((_i * 7) % 9) - 4, "rhr": 50 + (_i % 3) - 1, "sleepH": 7.4 + ((_i % 5) - 2) / 10})
+json.dump({"days": _days, "activities": [], "befinden": [{"date": "2026-03-05", "skala": 7, "v": "befinden-2.0", "schlaf": 2, "muede": 7, "muskel": 3, "stress": 2}]},
+          open(os.path.join(_tz, "d.json"), "w"))
+_ah = subprocess.run(["node", os.path.join(ROOT, "tools", "ampel_heute.mjs"), os.path.join(_tz, "d.json"), "--datum", "2026-03-05", "--jetzt", "2026-03-05T06:05:00Z"],
+                     capture_output=True, text=True)
+_AH = json.loads(_ah.stdout or "{}")
+open(os.path.join(_tz, "a.json"), "w").write(_ah.stdout or "{}")
+merge_daily.main(os.path.join(_tz, "d.json"), os.path.join(_tz, "a.json"))
+_ah2 = subprocess.run(["node", os.path.join(ROOT, "tools", "ampel_heute.mjs"), os.path.join(_tz, "d.json"), "--datum", "2026-03-05", "--jetzt", "2026-03-05T10:05:00Z"],
+                      capture_output=True, text=True)
+check("Ampel (tools/ampel_heute.mjs): Morgenwerte und Check-in «belastet» → «vorsichtig», gespeichert; beim zweiten Lauf (11 Uhr) unverändert",
+      _AH.get("status") == "vorsichtig" and _AH.get("morgenwerte") is True and len(_AH.get("ampel_add", [])) == 1 and _AH["ampel_add"][0]["quelle"] == "morgen-update"
+      and json.load(open(os.path.join(_tz, "d.json")))["ampel_anpassung"][0]["status"] == "vorsichtig" and "ampel_add" not in json.loads(_ah2.stdout or "{}"),
+      _ah.stdout[:300] + _ah.stderr + _ah2.stderr)
+
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)

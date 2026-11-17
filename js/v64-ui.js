@@ -73,7 +73,20 @@
     const teilweise = !!(E && !E.ganz && E.tage && Object.values(E.tage).some((t) => t && Array.isArray(t.einheiten)));
     const basis = teilweise ? w0 : w0v;
     const w = window.V66 ? window.V66.meinPlan(basis, E, ctxE) : basis;
-    return { w, w0: basis, w0roh: w0, verteilt: basis !== w0, verf, ctxE, wahl, S, css, vg, ausSaison, vorbei, offset };
+    // V7.4 ampel-plan-1.0 (js/v74.js): die Ampel-Schicht – was galt bzw. gilt (Heute, Kalender, Tagesblatt, Einheit-Seite, TL ≈, Form);
+    // Mein Plan selbst bleibt in wPlan, Änderungen gehen weiter über den gespeicherten Eintrag (V66.aendern)
+    const wa = window.V74UI && window.V74UI.anwenden ? window.V74UI.anwenden(w, { ctx: ctxE, verf }) : w;
+    // eigenplan-1.2 «Woche anpassen?»: Vorschlag dieser Woche als Erholungswoche (65 % der Stunden wie in saison-1.2), nach der Verfügbarkeit verteilt
+    let wErh = null;
+    const erh = (d) => {
+      if (!wErh) {
+        const w1 = V.woche({ woche: mo, phase, erholung: true, stunden: Math.max(1, Math.round(stunden * 0.65 * 2) / 2), modell, tests, rennen: rennen(), css_s: css ? css.s : null,
+          intensitaet: V.intensitaet(wahlEintrag()), laeufe: V.laeufe(C.D.activities), heute: st.heute, skalen: sk });
+        wErh = window.V66 && window.V66.wocheVerteilt ? window.V66.wocheVerteilt(w1, verf, { css_s: css ? css.s : null }) : w1;
+      }
+      return ((wErh.tage.find((t) => t.date === d) || {}).einheiten) || [];
+    };
+    return { w: wa, wPlan: w, w0: basis, w0roh: w0, verteilt: basis !== w0, verf, ctxE, wahl, S, css, vg, ausSaison, vorbei, offset, erh };
   }
   /** V7.2 verfuegbarkeit-1.0: Verfügbarkeit aus den Daten, darüber die noch nicht eingespielten Eingaben auf diesem Gerät. */
   function verfuegbarkeit() {

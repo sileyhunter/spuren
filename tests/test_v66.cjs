@@ -44,7 +44,7 @@ test("eigenplan-1.0: hinzufügen, Dauer, verschieben, entfernen – vergangene u
   const w = woche(), ctx = ctxFuer(w, "2026-11-18");                     // heute = Mittwoch
   let r = V66.aendern(null, { art: "hinzufuegen", date: "2026-11-19", einheit: { vorlage: "kraft", dauer: 30 } }, ctx);
   assert.ok(!r.fehler, r.fehler); let E = r.eintrag;
-  assert.equal(E.id, "wo-" + MO); assert.equal(E.v, "eigenplan-1.1");
+  assert.equal(E.id, "wo-" + MO); assert.equal(E.v, "eigenplan-1.2");
   const vorDo = w.tage.find((t) => t.date === "2026-11-19").einheiten.length;
   assert.equal(E.tage["2026-11-19"].einheiten.length, vorDo + 1, "Vorschlag des Tages übernommen, eigene dazu");
   assert.ok(E.tage["2026-11-19"].einheiten.slice(0, vorDo).every((s) => s.quelle === "vorschlag"));

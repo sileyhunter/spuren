@@ -1070,3 +1070,19 @@ button.v73-opt { border: 0; padding: 0; background: none; color: var(--fg); font
 .v73-rad-w.an { color: var(--fg); }
 .v73-rad-dp { position: relative; z-index: 1; font: 700 24px/1 var(--f-display); }
 .v73-rad-band { position: absolute; left: 50%; top: 80px; width: 210px; height: 40px; transform: translateX(-50%); border-radius: 12px; background: var(--surface-2); }
+/* V7.4 ampel-plan-1.0: die Ampel passt das Training an – Banner auf Heute, im Tagesblatt und auf der Einheit-Seite, Zeile im Kalender */
+.aa-banner { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-left: 4px solid var(--warn); }
+.aa-banner.aa-krank { border-left-color: var(--bad); }
+.aa-banner.aa-trotzdem, .aa-banner.aa-nach { border-left-color: var(--accent); }
+.aa-banner.aa-erh { border-left-color: var(--strain); }
+.aa-kopf { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.aa-kopf svg { color: var(--warn-text); flex: none; }
+.aa-kopf b { font-size: 15.5px; } .aa-kopf small { margin-left: auto; color: var(--muted); font-size: 12.5px; }
+.aa-gruende, .aa-liste { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.45; }
+.aa-gruende { color: var(--muted); }
+.aa-liste li small { display: block; color: var(--muted); font-size: 12.5px; }
+.aa-text { margin: 0; font-size: 13.5px; line-height: 1.45; }
+.aa-knoepfe { margin-top: 2px; gap: 8px; flex-wrap: wrap; }
+.aa-hinweis { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; }
+.kw-ampel { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--warn-text); }
+.v73-aa { margin: 12px 0 4px; border-radius: 14px; background: var(--surface-2); }

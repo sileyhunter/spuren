@@ -16,6 +16,7 @@ export const LISTEN = {
   planwoche: (e) => e.id,                                                               // V6.6: Mein Plan je Woche (eigenplan-1.0)
   verfuegbarkeit: (e) => e.id,                                                          // V7.2: Verfügbarkeit je Tag oder Wochentag (verfuegbarkeit-1.0)
   garmin_senden: (e) => e.id,                                                           // V6.6: Auftrag «An Garmin senden» je Tag (garmin-senden-1.0)
+  ampel: (e) => e.id,                                                                   // V7.4: Entscheid der Ampel je Tag (ampel-plan-1.0)
 };
 
 /** Entschlüsselte Eingaben (Struktur wie Inbox.data) → Eingabe für merge_daily.py. */
@@ -34,6 +35,7 @@ export function fuerMerge(d, quelle) {
     planwoche_add: clean(d.planwoche),                                                  // V6.6 eigenplan-1.0 (merge_daily prüft Woche, Tage, Sperren)
     verfuegbarkeit_add: clean(d.verfuegbarkeit),                                        // V7.2 verfuegbarkeit-1.0 (merge_daily prüft Tag, Zeit, Sportarten)
     garmin_senden_add: clean(d.garmin_senden),                                          // V6.6 garmin-senden-1.0 (garmin_senden.pruefen: Tag, Modus, Workouts)
+    ampel_add: clean(d.ampel),                                                          // V7.4 ampel-plan-1.0 (merge_daily.ampel_pruefen: Tag, Entscheid, «Trotzdem»)
   };
   if (d.fueling_produkte) out.fueling_produkte = d.fueling_produkte;
   if (Array.isArray(d.startorte)) out.startorte = clean(d.startorte);     // V5.7: ganze Liste (Startorte bleiben verschlüsselt in data.enc.json)

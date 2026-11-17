@@ -11,7 +11,13 @@ Vermerk in plan_garmin hat; Enduco-Workouts werden nie geändert oder gelöscht.
 Übungen, Stil Kraul, Hilfsmittel als equipmentType, Nebenziel swim.css.offset); Rad und Laufen zusätzlich mit Pulsbereich (heart.rate.zone, bpm).
 Die Rücklese vergleicht auch Texte, Bahnlänge, Stil, Hilfsmittel und Nebenziele.
 
+V7.4 ampel-plan-1.0 (Entscheid A7 vom 16.11.2026): Jede Einheit im Auftrag kann ihre lockere Fassung mittragen (`ampel`: Titel, Fassung, Workout).
+«ampel» rechnet im Morgen-Update, was zu tun ist: Ist der Entscheid von heute (ampel_anpassung) «vorsichtig» oder «krank» und nicht «Trotzdem wie
+geplant», wird jedes eigene Workout des Tages mit lockerer Fassung im Auftrag durch diese ersetzt (hochladen mit Rücklese und einplanen, danach das
+harte austragen und löschen; Bibliothek nur austragen). Nur heute, nur eigene Vermerke, nie härter; Enduco bleibt unberührt.
+
   python3 -I tools/garmin_senden.py plan data.json [--jetzt 2026-11-14T23:05] > work/garmin_plan.json
+  python3 -I tools/garmin_senden.py ampel data.json [--jetzt 2026-11-17T07:05] > work/garmin_plan.json      # Morgen-Update (A7)
   python3 -I tools/garmin_senden.py rueck work/garmin_plan.json <nr> <antwort.json>      # nach upload_workout: Rücklese mit get_workout_by_id(raw)
   python3 -I tools/garmin_senden.py eintragen data.json work/garmin_plan.json work/garmin_ergebnis.json
 """
@@ -227,6 +233,14 @@ def pruefen(a):
             return "unbekannte Quelle"
         if not isinstance(u.get("titel", ""), str) or len(u.get("titel", "")) > 120 or not isinstance(u.get("fassung"), str) or not 1 <= len(u["fassung"]) <= 40:
             return "Titel oder Fassung ungültig"
+        alt = u.get("ampel")                                        # V7.4 ampel-plan-1.0: lockere Fassung für das Morgen-Update (A7)
+        if alt is not None:
+            if not isinstance(alt, dict) or not isinstance(alt.get("titel"), str) or len(alt["titel"]) > 120 \
+                    or not isinstance(alt.get("fassung"), str) or not 1 <= len(alt["fassung"]) <= 40:
+                return f"{u.get('titel') or u['uid']}: lockere Fassung ungültig"
+            f = workout_pruefen(alt.get("workout"))
+            if f:
+                return f"{u.get('titel') or u['uid']} (locker): {f}"
         if u["quelle"] == "bibliothek":
             if not isinstance(u.get("wid"), int) or isinstance(u.get("wid"), bool) or u["wid"] <= 0 or "workout" in u:
                 return "Bibliothek ohne Workout-ID"
@@ -328,6 +342,48 @@ def plan(D, jetzt):
     return {"v": V, "jetzt": jetzt.isoformat(timespec="seconds"), "aktionen": aktionen, "abschluesse": abschluesse, "warten_bis": warten}
 
 
+def ampel(D, jetzt):
+    """ampel-plan-1.0 (Entscheid A7): heute bei «vorsichtig» oder Krankheitszeichen (und nicht «Trotzdem wie geplant») die eigenen Workouts des
+    Tages, deren Auftrag eine lockere Fassung trägt, durch diese ersetzen. Gleiche Aktionen wie plan() (hochladen mit Rücklese, einplanen, dann
+    das bisherige austragen; «nach» sorgt dafür, dass das harte bleibt, wenn das lockere nicht ankommt). → {v, jetzt, aktionen, abschluesse, hinweise}"""
+    jetzt = jetzt.astimezone(TZ)
+    heute = jetzt.date().isoformat()
+    out = {"v": V, "jetzt": jetzt.isoformat(timespec="seconds"), "aktionen": [], "abschluesse": [], "warten_bis": None, "hinweise": [], "art": "ampel"}
+    E = next((x for x in D.get("ampel_anpassung") or [] if isinstance(x, dict) and x.get("date") == heute), None)
+    if not E or E.get("status") not in ("vorsichtig", "krank"):
+        out["hinweise"].append("Ampel heute: wie geplant – nichts zu ersetzen")
+        return out
+    if (E.get("trotzdem") or {}).get("an"):
+        out["hinweise"].append("Trotzdem wie geplant – nichts ersetzt")
+        return out
+    A = sorted([a for a in D.get("garmin_auftraege") or [] if isinstance(a, dict) and a.get("date") == heute], key=lambda a: str(a.get("erstellt") or ""), reverse=True)
+    G = [g for g in D.get("plan_garmin") or [] if isinstance(g, dict) and g.get("date") == heute and not g.get("entfernt")]
+    nr = 0
+    for g in G:
+        if g.get("ampel"):
+            continue                                              # schon die lockere Fassung
+        u = next((u for a in A for u in a.get("einheiten") or [] if isinstance(u, dict) and u.get("uid") == g.get("uid") and u.get("fassung") == g.get("fassung")), None)
+        if not u:
+            out["hinweise"].append(f"{g.get('titel') or g.get('uid')}: Auftrag mit dieser Fassung nicht gefunden – bleibt")
+            continue
+        alt = u.get("ampel")
+        if not isinstance(alt, dict) or not alt.get("workout"):
+            continue                                              # schon locker: nichts zu tun
+        nr += 1
+        k = nr
+        out["aktionen"].append({"nr": k, "art": "hochladen", "auftrag": "aa-" + heute, "date": heute, "uid": g["uid"], "titel": alt.get("titel"),
+                                "quelle": "eigen" if g.get("quelle") == "bibliothek" else g.get("quelle"), "sport": g.get("sport"), "fassung": alt.get("fassung"),
+                                "workout": alt["workout"], "ampel": True})
+        nr += 1
+        out["aktionen"].append({"nr": nr, "art": "austragen", "auftrag": "aa-" + heute, "date": heute, "uid": g["uid"], "titel": g.get("titel"),
+                                "scheduled_id": g.get("scheduled_id"), "workout_id": g.get("workout_id"),
+                                "loeschen": g.get("quelle") != "bibliothek" and bool(g.get("workout_id")), "vorhanden": bool(g.get("vorhanden")),
+                                "grund": "Ampel: lockere Fassung", "nach": k})
+    if not out["aktionen"] and not out["hinweise"]:
+        out["hinweise"].append("keine harte eigene Einheit von heute in Garmin")
+    return out
+
+
 def _text(x):
     return " ".join(str(x or "").split())
 
@@ -427,11 +483,14 @@ def eintragen(D, P, ergebnis, jetzt=None):
             g = {"uid": x["uid"], "date": x["date"], "quelle": x.get("quelle"), "titel": x.get("titel"), "sport": x.get("sport"),
                  "fassung": x.get("fassung"), "workout_id": r.get("workout_id") if x["art"] == "hochladen" else x.get("wid"),
                  "scheduled_id": r.get("scheduled_id"), "gesendet": jetzt, "auftrag": x["auftrag"], "v": V}
+            if x.get("ampel"):                                  # V7.4: lockere Fassung vom Morgen-Update (A7) – nie zurück auf die harte
+                g["ampel"] = True
             if x["art"] == "einplanen":
                 g["wid"] = x.get("wid")
                 g["vorhanden"] = bool(r.get("vorhanden"))
             G.append(g)
-            audit.append({"zeit": jetzt, "was": "Garmin: gesendet" if x["art"] == "hochladen" else "Garmin: eingeplant", "id": x["uid"], "date": x["date"]})
+            audit.append({"zeit": jetzt, "was": ("Garmin: lockere Fassung (Ampel)" if x.get("ampel") else "Garmin: gesendet") if x["art"] == "hochladen" else "Garmin: eingeplant",
+                          "id": x["uid"], "date": x["date"]})
             msg.append(f"{'gesendet' if x['art'] == 'hochladen' else 'eingeplant'} {x['date']} {x.get('titel') or x['uid']}")
     betroffen = {x["auftrag"] for x in P.get("aktionen") or []}
     for aid in betroffen:
@@ -451,10 +510,10 @@ def eintragen(D, P, ergebnis, jetzt=None):
 
 
 def main(argv):
-    if len(argv) >= 3 and argv[1] == "plan":
+    if len(argv) >= 3 and argv[1] in ("plan", "ampel"):
         jetzt = _jetzt(argv[argv.index("--jetzt") + 1] if "--jetzt" in argv else None)
         D = json.load(open(argv[2], encoding="utf-8"))
-        print(json.dumps(plan(D, jetzt), ensure_ascii=False, indent=1))
+        print(json.dumps((plan if argv[1] == "plan" else ampel)(D, jetzt), ensure_ascii=False, indent=1))
         return 0
     if len(argv) == 5 and argv[1] == "rueck":
         P = json.load(open(argv[2], encoding="utf-8"))

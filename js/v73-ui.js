@@ -166,13 +166,15 @@
       baum = V73().ausSchwimm(S);
     } else baum = V73().ausTeilen(e);
     const vorbei = Z.ds < heute();
-    return { art: "plan", K, t, e, sport: e.sport, titel: e.titel, ds: Z.ds, uid: Z.uid, baum, S, wo, pr, sk, css, pool, swim, vorbei,
-      darf: !vorbei && !t.gesperrt, lesen: vorbei, metrik: V73().metrik(e), dauer_s: e.dauer * 60 };
+    const nachgeholt = !!(e.ampel && e.ampel.nachgeholt && !e.ampel.von);    // V7.4: nachgeholte Einheit ändert sich mit der Ampel, nicht von Hand
+    return { art: "plan", K, t, e, sport: e.sport, titel: e.titel, ds: Z.ds, uid: Z.uid, baum, S, wo, pr, sk, css, pool, swim, vorbei, nachgeholt,
+      darf: !vorbei && !t.gesperrt && !nachgeholt, lesen: vorbei, metrik: V73().metrik(e), dauer_s: e.dauer * 60 };
   }
   /** Warum eine Änderung nicht geht (oder null). */
   function sperre(nurEntsperren) {
     if (!X || X.art !== "plan") return "Nur lesen";
     if (X.vorbei) return "Vergangene Tage nur lesen.";
+    if (X.nachgeholt) return "Nachgeholt wegen der Ampel – ändern im Tagesblatt des ursprünglichen Tages («Trotzdem wie geplant»).";
     if (X.t.gesperrt) return "Der Tag ist gesperrt – im Tagesblatt entsperren.";
     if (X.e.gesperrt && !nurEntsperren) return "Einheit gesperrt – zuerst entsperren.";
     return null;
@@ -187,12 +189,14 @@
     if (!X) { sc.innerHTML = `<div class="v73-inhalt"><p class="ek-ohne">Diese Einheit gibt es nicht mehr (verschoben oder entfernt).</p></div>`; SEITE.querySelector(".v73-haupt").innerHTML = ""; return; }
     BL = [];
     const offen = new Set([...sc.querySelectorAll("details[data-v73ab]")].filter((d) => !d.open).map((d) => d.dataset.v73ab));
-    sc.innerHTML = kopf() + `<div class="v73-inhalt">${chips()}${kacheln()}${kennzahlen()}${fokus()}${equipment()}${ablauf()}${schritte()}${coach()}${zonen()}${extra()}${fussnote()}</div>`;
+    let aa = ""; try { aa = X.art === "plan" && window.V74UI ? window.V74UI.einheitBanner(X.ds, X.e, X.t) : ""; } catch (err) { console.error(err); }   // V7.4 ampel-plan-1.0
+    sc.innerHTML = kopf() + `<div class="v73-inhalt">${chips()}${aa}${kacheln()}${kennzahlen()}${fokus()}${equipment()}${ablauf()}${schritte()}${coach()}${zonen()}${extra()}${fussnote()}</div>`;
     sc.querySelectorAll("details[data-v73ab]").forEach((d) => { if (offen.has(d.dataset.v73ab)) d.open = false; });
     sc.scrollTop = oben;
     SEITE.querySelector(".v73-mini b").textContent = X.titel;
     SEITE.querySelector(".v73-haupt").innerHTML = X.art === "plan" && !X.vorbei ? `<button type="button" class="btn primary v73-export" data-v73="export">Export ${ic("play", 18)}</button>` : "";
     binden();
+    if (window.V74UI) window.V74UI.binden(sc, () => zeichnen());
     const f = LETZT && SEITE.querySelector(`[data-v73="${LETZT}"]`);
     if (f && document.activeElement === document.body) try { f.focus({ preventScroll: true }); } catch (e) { /* */ }
   }

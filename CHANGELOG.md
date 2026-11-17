@@ -1,5 +1,24 @@
 # Änderungen
 
+## V7.4 · 17.11.2026 · Etappe 6: Die Ampel passt das Training an (ampel-plan-1.0, eigenplan-1.2, wissen-1.13)
+- **Ohne Knopfdruck:** Zeigt die Ampel am Morgen «vorsichtig», werden die Einheiten von heute leichter – harte und mittlere Abschnitte (VO2max,
+  Schwelle, Tempo, Renntempo, CSS) fallen weg, die Einheit wird zur lockeren derselben Sportart; Einheiten über 90 min oder der Art «lang» dauern
+  höchstens zwei Drittel; ein Test wird nicht müde gemessen (locker, im Testkalender verschieben). Mit Krankheitszeichen im Check-in ist Ruhetag.
+  Vor den Morgenwerten der Nacht zählt nur der Check-in. Nie härter, nie länger, nie eine andere Sportart; gesperrte Einheiten bleiben (Hinweis).
+- **Nachholen:** Die ausgefallene Schlüsseleinheit kommt am nächsten passenden Tag derselben Woche an die Stelle einer lockeren Einheit derselben
+  Sportart (höchstens so lang, nicht neben einer harten Einheit an Land, nicht vor Test oder Rennen, nie in Rennwochen); passt kein Tag, entfällt sie –
+  gemeldet. Ob sie stattfindet, entscheidet die Ampel jenes Morgens.
+- **Sichtbar überall:** «Angepasst wegen Ampel» mit Gründen und der ursprünglichen Einheit auf Heute, im Tagesblatt und auf der Einheit-Seite, Zeile
+  im Kalender; «Trotzdem wie geplant» je Tag. Ab dem dritten Tag «vorsichtig» in Folge: «Woche anpassen?» – Rest der Woche als Erholungswoche, nur auf
+  Knopfdruck (eigenplan-1.2). TL ≈, Form, Kalender und Plan-Übersicht rechnen mit dem, was galt; Mein Plan bleibt gespeichert, wie er war.
+- **Gespeichert** wird je Tag nur der Entscheid (Eingabe `ampel` → `ampel_anpassung`, `merge_daily.ampel_pruefen`), von der Seite und vom Morgen-Update.
+- **Garmin (Entscheid A7):** Jeder Auftrag trägt zu harten Einheiten die lockere Fassung mit; das Morgen-Update ersetzt bei «vorsichtig» die eigene harte
+  Einheit von heute auf der Uhr (`tools/ampel_heute.mjs`, `garmin_senden.py ampel`, gleiche Rücklese wie beim Senden). Klappt das nicht, sagt die Seite:
+  «Auf der Uhr steht noch die harte Fassung – locker fahren bzw. laufen». Auf der Uhr noch nicht geprüft.
+- Wissen 1.13: Kapitel «Erholung, HRV und die Ampel» mit den Regeln und zwei Meta-Analysen (Düking et al. 2021, Manresa-Rocamora et al. 2021: mindestens
+  gleich gut wie ein fester Plan, mit weniger Fehlschlägen – nicht «besser»). Tests `tests/test_v74.cjs` (jede Stufe, Krankheit, Nachholen, Rennwoche,
+  gesperrt, «Trotzdem», Woche anpassen, Garmin-Auftrag) und `tests/test_tools.py` (Prüfung, Zusammenführen, Morgen-Update), alles mit erfundenen Werten.
+
 ## V7.3.2 · 17.11.2026 · Technikübungen wie in den Enduco-Einheiten (uebungen-2.1, schwimmeinheit-1.1)
 - **Übungsliste von Silas** (27 Kraul-Übungen aus 34 Enduco-Einheiten, Stand 16.11.2026): alle werden erkannt (`SW.finde`, Namen wie in Enduco); 13 neue
   Übungen mit eigenen Beschreibungen (Scheibenwischer, Kraul mit gespreizten Fingern, Entenpaddeln, Wasserwerfen, Schulterdehnung, Po – Achsel – Kopf,
