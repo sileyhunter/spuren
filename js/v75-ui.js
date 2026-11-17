@@ -2,10 +2,12 @@
    Antipp-Verhalten; Texte, Symbole und Grafiken eigen). Rechenlogik in js/v75.js (planeinstellungen-1.0, basis-1.0, steigerung-1.0, indoor-phase-1.0),
    Schwimm-Einheit in js/schwimmen.js (schwimmeinheit-1.2).
    V7.5.1: ein Blatt als Folge Laufen → Rad → Schwimmen → Trainingsumfang → «Fertig ✓» (unten «‹», auf dem letzten «Fertig ✓»), geöffnet über
-   Plan → Plan verwalten (zuoberst), das Profil und die Wochenstunden (dort direkt beim Trainingsumfang). Je Sportart die Basis-Fitness (Fitness der
-   Sportart im Ring); Rad und Laufen: Indoor-Phase; Schwimmen: Equipment, Standard-Bahnlänge, Anfänger-Modus (Schalter), Stile. Trainingsumfang: ein
-   Regler für alle drei Sportarten mit Wort und Farbe je Bereich, Kurve bis zum Hauptrennen mit dem Bereich 50–150 %, live beim Ziehen.
-   Gespeichert über «Direkt speichern» (Eingabe planeinstellung → plan_einstellungen): jede Auswahl beim Übernehmen, die Steigerung mit «Fertig ✓».
+   Plan → Plan verwalten (zuoberst), das Profil und die Wochenstunden (dort direkt beim Trainingsumfang). Je Sportart die Basis-Fitness (basis-1.1: Fitness
+   der Sportart am Montag im Ring, antippen = eigener Wert mit Regler, «Zurück auf berechnet», Datum der Änderung); Rad und Laufen: Indoor-Phase; Schwimmen:
+   Equipment, Standard-Bahnlänge, Anfänger-Modus (Schalter), Stile. Trainingsumfang: Start des Plans (Basis-Fitness oder «jetzt» mit 20/50/30), ein Regler
+   für alle drei Sportarten mit Wort und Farbe je Bereich, Kurve bis zum Hauptrennen mit dem Bereich 50–150 %, live beim Ziehen.
+   Gespeichert über «Direkt speichern» (Eingabe planeinstellung → plan_einstellungen): jede Auswahl beim Übernehmen, Start und Steigerung mit «Fertig ✓».
+   Start, eigene Basis-Fitness und Steigerung gelten ab der nächsten Woche; die laufende Woche bleibt, wie sie ist.
    Danach rechnen Plan, Kalender und Heute neu (Ereignis «meinplan»), offene Garmin-Aufträge dieser und der nächsten Woche werden nachgeführt.
    Nichts davon geht an Enduco. */
 (function () {
@@ -47,16 +49,37 @@
   M.indoorAm = (sport, datum) => { const E = M.einstellungen(); return !!(E && V75().indoorAm(E, sport, datum)); };
   /** Wert für das Feld drinnen (einheit-felder-1.1): nur ausdrücklich, wenn er von der Indoor-Phase abweicht. */
   M.drinnenFeld = (sport, datum, drinnen) => { const E = M.einstellungen(); return E ? V75().drinnenFeld(E, sport, datum, drinnen) : (drinnen ? true : null); };
-  let FIT = null;
-  /** Fitness je Sportart (basis-1.0), einmal je Datenstand gerechnet. Die Seite hat a.tss schon nach config.load_model gesetzt. */
-  function fitness() {
-    const k = `${heute()}|${(C.D.activities || []).length}|${C.D.updated || ""}`;
-    if (FIT && FIT.k === k) return FIT.f;
-    let f = null; try { f = V75().fitness(C.D.activities, heute()); } catch (e) { console.error(e); }
-    FIT = { k, f }; return f;
-  }
+  let BD = { k: "", m: new Map() };
+  /** Grundlagen der Basis am Montag mo (V75.basisDaten: Fitness bis zum Sonntag davor, Last pro Stunde der 8 Wochen), einmal je Datenstand.
+   *  Die Seite hat a.tss schon nach config.load_model gesetzt. */
+  M.basisDaten = function (mo) {
+    C = C || (UI() && UI().C); if (!C || !V75() || !mo) return null;
+    const k = `${(C.D.activities || []).length}|${C.D.updated || ""}|${(C.D.config && C.D.config.load_model) || ""}`;
+    if (BD.k !== k) BD = { k, m: new Map() };
+    if (!BD.m.has(mo)) { let d = null; try { d = V75().basisDaten(C.D.activities, mo); } catch (e) { console.error(e); } BD.m.set(mo, d); }
+    return BD.m.get(mo);
+  };
   /** Stand der laufenden Woche aus der Woche nach Modell: Saison, Vorgaben («jetzt», Spitze), Basis und Rampe. */
   function kontext() { try { return P() && P().kontextFuer ? P().kontextFuer(V64().montag(heute())) : null; } catch (e) { console.error(e); return null; } }
+  /** Basis, wie sie ab der nächsten Woche gilt: Einstellungen von jetzt, Fitness vom Montag dieser Woche. sel = { start, steigerung, basis } (Vorschau). */
+  function basisAb(K, sel) {
+    const mo = V64().montag(heute()), ab = V64().addDays(mo, 7), E = M.einstellungen({ startBis: ab, montag: ab });
+    if (sel) { if (sel.start) E.start = sel.start; if (isNum(sel.steigerung)) E.steigerung = sel.steigerung; if (sel.basis) Object.assign(E.basis, sel.basis); }
+    const D = M.basisDaten(mo);
+    return { E, ab, mo, D, ba: K && K.vg ? V75().basis(K.vg, E, V64().AUFTEILUNG, D) : null };
+  }
+  /** Plan bis zum Hauptrennen, wie er gilt: die laufende Woche mit ihrem Start, ab der nächsten Woche mit den Einstellungen von jetzt (Start, eigene
+   *  Basis-Fitness, Steigerung); sel wie bei basisAb. → { R (laufende Woche + neue Rampe), Rneu (nur neue Rampe), lo, hi, S, spitze, jetzt, ba0, ba, E, ab } */
+  M.plan = function (sel) {
+    if (!bereit()) return null;
+    const K = kontext(); if (!K || !K.S || !K.vg || !K.basis75) return null;
+    const { E, ab, ba } = basisAb(K, sel); if (!ba) return null;
+    const A = V64().AUFTEILUNG, R1 = (x) => V75().rampe(K.S.wochen, ba, K.vg.spitze, x, A);
+    const R0 = K.rampe && K.rampe.length ? K.rampe[0] : null, mix = (R) => R.map((r, i) => (i === 0 && R0 ? R0 : r));
+    const Rneu = R1(E.steigerung);
+    return { R: mix(Rneu), Rneu, lo: mix(R1(V75().STEIGERUNG.min)), hi: mix(R1(V75().STEIGERUNG.max)), S: K.S, spitze: K.vg.spitze, jetzt: K.vg.jetzt,
+      ba0: K.basis75, ba, E, ab };
+  };
   async function sichern(id, felder) {
     const I = UI().Inbox; if (!I || !I.data) return "Speicher auf diesem Gerät nicht verfügbar";
     if (!Array.isArray(I.data.planeinstellung)) I.data.planeinstellung = [];
@@ -80,19 +103,18 @@
     { bis: 140, wort: "steil", farbe: "--ci4" }, { bis: 150, wort: "maximal", farbe: "--ci5" }];
   M.stufe = (v) => M.STUFEN.find((s) => v <= s.bis) || M.STUFEN[M.STUFEN.length - 1];
   const stufeText = (v) => `${M.stufe(v).wort}${v === V75().STEIGERUNG.standard ? " (Standard)" : ""}`;
-  function rampen(K, wert) {
-    if (!K || !K.S || !K.basis75 || !K.vg) return null;
-    const A = V64().AUFTEILUNG, R = (x) => V75().rampe(K.S.wochen, K.basis75, K.vg.spitze, x, A);
-    return { R: R(wert), lo: R(V75().STEIGERUNG.min), hi: R(V75().STEIGERUNG.max), spitze: K.vg.spitze, S: K.S, start: K.basis75.summe };
-  }
+  const startWort = (ba) => (ba && ba.quelle === "fitness" ? "aus deiner Basis-Fitness" : "mit «jetzt» und 20/50/30");
   function verlaufText(X, wert) {
-    const v = V75().verlauf(X.R, X.spitze); if (!v) return "";
+    const v = V75().verlauf(X.Rneu, X.spitze); if (!v) return "";
     const kw = (mo) => `KW ${V6().isoWoche(mo)} (${tagKurz(mo)})`;
     const plus = v.plus_h > 0.01 ? `Ø +${hm(v.plus_h)} pro Woche${isNum(v.plus_pct) ? ` (≈ +${komma(v.plus_pct)} %)` : ""}` : "kaum Zuwachs";
     let t = v.spitzeAb ? `Spitzenwoche (${komma(X.spitze)} h) ab ${kw(v.spitzeAb)}, bis dahin ${plus}.`
       : `Bis zum Taper ≈ ${komma(v.ende)} h – die Spitzenwoche (${komma(X.spitze)} h) wird nicht erreicht; ${plus}.`;
     if (v.gedeckelt) t += ` In ${v.gedeckelt} ${v.gedeckelt === 1 ? "Woche" : "Wochen"} greift die Grenze: höchstens 10 % mehr als in der Woche davor.`;
-    return t + ` Die laufende Woche bleibt bei deinem Start (${komma(X.start)} h)${wert === 100 ? "; 100 % = gleichmässig bis zur Woche vor dem Taper" : ""}.`;
+    const neu = Math.round(X.ba.summe * 2) / 2, diese = X.ba0 ? Math.round(X.ba0.summe * 2) / 2 : null;
+    t += diese != null && Math.abs(diese - neu) >= 0.25 ? ` Diese Woche bleibt bei ${komma(diese)} h; ab ${kw(X.ab)} beginnt der Plan bei ${komma(neu)} h ${startWort(X.ba)}.`
+      : ` Start ${komma(neu)} h ${startWort(X.ba)}.`;
+    return t + (wert === 100 ? " 100 % = gleichmässig bis zur Woche vor dem Taper." : "");
   }
   /** Kurve bis zum Hauptrennen: Linie = Trainingsumfang mit der gewählten Steigerung (Belastungswochen, ohne die Dellen der Erholungswochen; im Taper
    *  die Taper-Stunden), Fläche = Bereich von 50 bis 150 %, Punkt = Rennwoche. Achse ab 0 h, damit der Anstieg nicht grösser aussieht, als er ist. */
@@ -118,7 +140,7 @@
   /* ---------- Blatt-Folge: Laufen → Rad → Schwimmen → Trainingsumfang ---------- */
   const SEITEN = ["lauf", "rad", "schwimm", "umfang"];
   const TITEL = { lauf: "Laufen", rad: "Rad", schwimm: "Schwimmen", umfang: "Trainingsumfang" };
-  let FLOW = { zurueck: null, entwurf: null };
+  let FLOW = { zurueck: null, entwurf: null, entwurfStart: null };
   const pfeil = () => ic("weiter", 18);
   function zeile(attr, links, titel, satz, wert) {
     return `<li><button type="button" ${attr}>${links}<span><b>${esc(titel)}</b>${satz ? `<small>${esc(satz)}</small>` : ""}</span><em>${esc(wert || "")}</em>${pfeil()}</button></li>`;
@@ -131,7 +153,7 @@
   M.flow = function (opt) {
     opt = opt || {};
     if (!bereit()) return;
-    FLOW = { zurueck: typeof opt.zurueck === "function" ? opt.zurueck : null, entwurf: null };
+    FLOW = { zurueck: typeof opt.zurueck === "function" ? opt.zurueck : null, entwurf: null, entwurfStart: null };
     const i = typeof opt.seite === "string" ? SEITEN.indexOf(opt.seite) : opt.seite;
     seite(isNum(i) && i >= 0 && i < SEITEN.length ? i : 0);
   };
@@ -141,37 +163,49 @@
     return p ? `${tagLang(p.von)} bis ${tagLang(p.bis)} – ${sport === "rad" ? "Rad-Einheiten auf der Rolle" : "Läufe auf dem Laufband"}`
       : `keine – lege eine Zeit fest, in der ${sport === "rad" ? "deine Rad-Einheiten auf der Rolle" : "deine Läufe auf dem Laufband"} geplant werden`;
   }
+  /** Zeile «Basis-Fitness»: Ring = Fitness, die ab der nächsten Woche zählt (eigene oder berechnete vom Montag), darunter der Start der Sportart. */
+  function basisZeile(s, BA) {
+    const b = BA && BA.ba ? BA.ba[s] : null, d = BA && BA.D ? BA.D[s] : null, fit = b ? b.fitness : d ? d.fitness : null;
+    const satz = !b ? `Wie viel Training ${IM_SPORT[s]} dein Körper gewohnt ist`
+      : BA.E.start !== "fitness" ? "zurzeit nicht verwendet – Start mit «jetzt» und 20/50/30"
+      : b.quelle !== "fitness" ? "zu wenig Training für die Last pro Stunde – Start mit «jetzt» × Anteil"
+      : `Start ≈ ${hm(b.h)} pro Woche${b.eigen != null ? " · eigener Wert" : ""}`;
+    return zeile(`data-pe="basis" data-sport="${s}"`, ring(s, fit), "Basis-Fitness", satz);
+  }
   function seite(i, meldung) {
-    const s = SEITEN[i], E = M.einstellungen(), F = fitness() || {};
+    const s = SEITEN[i], E = M.einstellungen(), BA = basisAb(kontext());
     if (!E) return;
     let inhalt;
     if (s === "lauf" || s === "rad") {
       inhalt = `<div class="blatt-titel"><span class="pe-sp gross" style="--sp:var(--sp-${s})">${V6().sportIcon(s, 34)}</span><h2 id="v59-ov-h" tabindex="-1">${esc(TITEL[s])}</h2>
           <p class="sub">Was dein Plan ${esc(IM_SPORT[s])} berücksichtigt.</p></div>${meldungHTML(meldung)}
         <ul class="v6-aktionen pe-liste">
-          ${zeile(`data-pe="basis" data-sport="${s}"`, ring(s, F[s]), "Basis-Fitness", `Wie viel Training ${IM_SPORT[s]} dein Körper gewohnt ist`)}
+          ${basisZeile(s, BA)}
           ${zeile(`data-pe="indoor" data-sport="${s}"`, ic("drinnen", 22), "Indoor-Phase", indoorSatz(E, s))}</ul>`;
     } else if (s === "schwimm") {
       const S = E.schwimm, pool = S.pool || (window.SWUI && window.SWUI.becken ? window.SWUI.becken() : 25);
       inhalt = `<div class="blatt-titel"><span class="pe-sp gross" style="--sp:var(--sp-schwimm)">${V6().sportIcon("schwimm", 34)}</span><h2 id="v59-ov-h" tabindex="-1">Schwimmen</h2>
           <p class="sub">Was dein Plan im Schwimmen berücksichtigt.</p></div>${meldungHTML(meldung)}
         <ul class="v6-aktionen pe-liste">
-          ${zeile(`data-pe="basis" data-sport="schwimm"`, ring("schwimm", F.schwimm), "Basis-Fitness", "Wie viel Schwimmtraining dein Körper gewohnt ist")}
+          ${basisZeile("schwimm", BA)}
           ${zeile(`data-pe="equipment"`, ic("geraet", 22), "Schwimm-Equipment", S.hilfsmittel.length ? S.hilfsmittel.map((k) => HM_NAME[k].replace(" (Kickboard)", "")).join(", ") : "keine Hilfsmittel")}
           ${zeile(`data-pe="pool"`, ic("becken", 22), "Standard-Bahnlänge", S.pool ? "für deine Schwimm-Einheiten; je Einheit änderbar" : "noch nicht festgelegt – bisher wie dein Gerät bzw. deine Enduco-Workouts", `${pool} m`)}
           <li class="pe-schalter-z"><label>${ic("technik", 22)}<span><b>Anfänger-Modus</b><small>Kürzere Wiederholungen, längere Pausen, nur einfache Übungen</small></span>
             <input type="checkbox" role="switch" data-pe-anf${S.anfaenger ? " checked" : ""}><i class="pe-schalter" aria-hidden="true"></i></label></li>
           ${zeile(`data-pe="stile"`, ic("schwimm", 22), "Stile", SW() ? SW().stileText(S.stile) : "Kraul")}</ul>`;
     } else {
-      const st = FLOW.entwurf != null ? FLOW.entwurf : E.steigerung;
+      const st = FLOW.entwurf != null ? FLOW.entwurf : E.steigerung, start = FLOW.entwurfStart || BA.E.start;
       inhalt = `<div class="blatt-titel">${ic("trend", 34)}<h2 id="v59-ov-h" tabindex="-1">Trainingsumfang</h2>
-          <p class="sub">Lege fest, wie schnell dein Umfang bis zur Spitzenwoche steigt – ein Regler für Schwimmen, Rad und Laufen.</p></div>${meldungHTML(meldung)}
+          <p class="sub">Lege fest, womit dein Plan beginnt und wie schnell dein Umfang bis zur Spitzenwoche steigt – für Schwimmen, Rad und Laufen.</p></div>${meldungHTML(meldung)}
+        <div class="pe-start" role="radiogroup" aria-label="Start des Plans">${[["fitness", "Basis-Fitness", "je Sportart aus deinem Training"], ["aufteilung", "«jetzt» 20/50/30", "wie bisher"]].map(([k, t, u]) =>
+          `<button type="button" role="radio" aria-checked="${k === start}" data-pes="${k}"><b>${t}</b><small>${u}</small></button>`).join("")}</div>
         <div class="pe-legende"><span><i class="l"></i>Trainingsumfang</span><span><i class="b"></i>Bereich 50–150 %</span></div>
         <div class="pe-kurve" data-pek></div>
         <div class="pe-wert" data-pewb><b data-pew></b><span><i aria-hidden="true"></i><em data-pel></em></span></div>
         <div class="pe-regler"><input type="range" min="${V75().STEIGERUNG.min}" max="${V75().STEIGERUNG.max}" step="${V75().STEIGERUNG.schritt}" value="${st}" data-per aria-label="Steigerung in Prozent"></div>
         <p class="pe-text" data-pet></p>
-        <p class="hint">${esc(V75().VERSIONS.steigerung)} (eigene Festlegung): Jede Sportart geht von ihrem Start zu ihrem Anteil an der Spitzenwoche (Schwimmen 20, Rad 50, Laufen 30 %).
+        <p class="hint">${esc(V75().VERSIONS.basis)}: Start mit der Basis-Fitness = je Sportart 7 × Fitness ÷ Trainingslast pro Stunde (deine 8 Wochen), der Umfang, bei
+          dem die Fitness gleich bleibt; mit «jetzt» = Median deiner 8 Wochen, aufgeteilt 20/50/30. ${esc(V75().VERSIONS.steigerung)} (eigene Festlegung): Jede Sportart geht von ihrem Start zu ihrem Anteil an der Spitzenwoche (Schwimmen 20, Rad 50, Laufen 30 %).
           100 % = gleichmässig bis zur Woche vor dem Taper (der Vorschlag wie bisher), mehr = früher an der Spitze, weniger = darunter. Die Linie zeigt die Belastungswochen;
           Erholungswochen (65 %), Taper, B-Rennen, deine Verfügbarkeit und der Aufbau-Check Laufen gelten wie bisher. Bei enduco ist der höchste Wert etwa 10 % mehr Umfang pro
           Woche; hier ist das die feste Obergrenze. Die Spitzenwoche stellst du unter Plan → Wochenstunden ein.</p>
@@ -182,7 +216,7 @@
       <div class="blatt-fuss"><button type="button" class="btn-zurueck" data-pe-zur aria-label="${i === 0 ? (FLOW.zurueck ? "Zurück" : "Schliessen") : `Zurück zu ${esc(TITEL[SEITEN[i - 1]])}`}">${ic("zurueck", 22)}</button>
         ${letzte ? `<button type="button" class="btn primary gross" data-pe-fertig>Fertig ${ic("haken", 18)}</button>` : `<button type="button" class="btn primary" data-pe-weiter>Weiter ${ic("weiter", 18)}</button>`}</div>`);
     ov.querySelector("[data-pe-zur]").onclick = () => {
-      if (s === "umfang") FLOW.entwurf = +ov.querySelector("[data-per]").value;
+      if (s === "umfang") { FLOW.entwurf = +ov.querySelector("[data-per]").value; const g = ov.querySelector('[data-pes][aria-checked="true"]'); if (g) FLOW.entwurfStart = g.dataset.pes; }
       if (i > 0) seite(i - 1); else if (FLOW.zurueck) FLOW.zurueck(); else V59().schliessen();
     };
     ov.querySelectorAll("[data-pe]").forEach((b) => (b.onclick = () => unterBlatt(b.dataset.pe, b.dataset.sport, i)));
@@ -193,12 +227,15 @@
       if (f) { anf.checked = !anf.checked; anf.disabled = false; const p = ov.querySelector(".pe-meldung"); if (p) { p.textContent = f; p.hidden = false; } return; }
       seite(i, anf.checked ? "Anfänger-Modus an – gilt für deine Schwimm-Einheiten." : "Anfänger-Modus aus.");
     };
-    if (letzte) umfangBinden(ov, E); else ov.querySelector("[data-pe-weiter]").onclick = () => seite(i + 1);
+    if (letzte) umfangBinden(ov, BA.E); else ov.querySelector("[data-pe-weiter]").onclick = () => seite(i + 1);
   }
+  /** Trainingsumfang: Start und Steigerung live in der Kurve; «Fertig ✓» speichert, was sich geändert hat (gilt ab der nächsten Woche). */
   function umfangBinden(ov, E) {
-    const K = kontext(), inp = ov.querySelector("[data-per]");
+    const inp = ov.querySelector("[data-per]");
+    const g0 = ov.querySelector('[data-pes][aria-checked="true"]');
+    let start = g0 ? g0.dataset.pes : E.start;
     const zeig = () => {
-      const v = +inp.value, X = rampen(K, v), st = M.stufe(v);
+      const v = +inp.value, X = M.plan({ start, steigerung: v }), st = M.stufe(v);
       ov.querySelector("[data-pew]").textContent = `${v} %`;
       ov.querySelector("[data-pel]").textContent = stufeText(v);
       const box = ov.querySelector(".te-box") || ov; box.style.setProperty("--stufe", `var(${st.farbe})`);   // Punkt und Griff in der Farbe des Bereichs
@@ -207,13 +244,23 @@
       ov.querySelector("[data-pet]").textContent = X ? verlaufText(X, v) : "";
     };
     inp.oninput = zeig; zeig();
+    ov.querySelectorAll("[data-pes]").forEach((b) => (b.onclick = () => {
+      start = b.dataset.pes; FLOW.entwurfStart = start;
+      ov.querySelectorAll("[data-pes]").forEach((x) => x.setAttribute("aria-checked", String(x.dataset.pes === start)));
+      zeig();
+    }));
     ov.querySelector("[data-pe-fertig]").onclick = async (ev) => {
-      const v = +inp.value, b = ev.currentTarget;
-      if (v === E.steigerung) { V59().schliessen(); return; }
+      const v = +inp.value, b = ev.currentTarget, L = [];
+      if (start !== E.start) L.push(["pe-start", { art: start }]);
+      if (v !== E.steigerung) L.push(["pe-steigerung", { wert: v }]);
+      if (!L.length) { V59().schliessen(); return; }
       b.disabled = true;
-      const f = await sichern("pe-steigerung", { wert: v });
-      if (f) { b.disabled = false; const p = ov.querySelector("[data-pef]"); p.textContent = f; p.hidden = false; return; }
-      V59().schliessen(); toast(`Steigerung ${v} % (${stufeText(v)}) – gilt ab der nächsten Woche.`);
+      for (const [id, felder] of L) {
+        const f = await sichern(id, felder);
+        if (f) { b.disabled = false; const p = ov.querySelector("[data-pef]"); p.textContent = f; p.hidden = false; return; }
+      }
+      V59().schliessen();
+      toast(`${start === "fitness" ? "Start aus deiner Basis-Fitness" : "Start mit «jetzt» und 20/50/30"}, Steigerung ${v} % (${stufeText(v)}) – gilt ab der nächsten Woche.`);
     };
   }
 
@@ -222,7 +269,7 @@
   const okKnopf = () => `<button type="button" class="btn primary" data-peok>Übernehmen ${ic("haken", 18)}</button>`;
   function unterBlatt(art, sport, i) {
     if (!bereit()) return;
-    const ov = art === "basis" ? basisBlatt(sport) : art === "indoor" ? indoorBlatt(sport, i) : art === "equipment" ? equipmentBlatt(i) : art === "pool" ? poolBlatt(i) : art === "stile" ? stileBlatt(i) : null;
+    const ov = art === "basis" ? basisBlatt(sport, i) : art === "indoor" ? indoorBlatt(sport, i) : art === "equipment" ? equipmentBlatt(i) : art === "pool" ? poolBlatt(i) : art === "stile" ? stileBlatt(i) : null;
     if (!ov) return;
     ov.querySelectorAll("[data-pe-z]").forEach((b) => (b.onclick = () => seite(i)));
   }
@@ -232,19 +279,52 @@
     if (f) { ov.querySelectorAll("button").forEach((b) => (b.disabled = false)); const p = ov.querySelector("[data-pef]"); if (p) { p.textContent = f; p.hidden = false; } return; }
     seite(i, ok);
   }
-  function basisBlatt(sport) {
-    const F = fitness() || {}, K = kontext(), b = K && K.basis75 ? K.basis75[sport] : null, jetzt = K && K.basis75 ? K.basis75.jetzt : null;
-    // Last wie auf der ganzen Seite (config.load_model): last-2.1 ändert nur das Rad (LT2 auf der Rolle, sonst nach Puls)
+  /** Basis-Fitness einer Sportart: berechnet (Stand Montag) oder eigener Wert mit Regler; live der Start daraus (basis-1.1). */
+  function basisBlatt(sport, i) {
+    const K = kontext(), BA = basisAb(K), D = BA.D && BA.D[sport] ? BA.D[sport] : {}, Ejetzt = M.einstellungen();
+    const eigen = isNum(Ejetzt.basis[sport]) ? Ejetzt.basis[sport] : null, ber = isNum(D.fitness) ? D.fitness : null, am = Ejetzt.stand["pe-basis-" + sport];
+    const wert0 = eigen != null ? eigen : ber != null ? Math.round(ber) : 0;
+    const max = Math.min(V75().FIT_MAX, Math.max(50, 10 * Math.ceil((2 * Math.max(ber || 0, eigen || 0, 1)) / 10)));
     const lastText = sport === "rad" && C.D.config && /^last-2/.test(C.D.config.load_model || "") ? "mit deiner LT2 bzw. nach Puls, last-2.1" : "wie von Garmin geliefert";
-    const t1 = `<b>Fitness ${isNum(F[sport]) ? Math.round(F[sport]) : "–"}</b> = 42-Tage-Mittel deiner Trainingslast ${esc(IM_SPORT[sport])} bis gestern (Last ${esc(lastText)}), wie pmc-2.0, nur mit dieser Sportart. `
-      + `Bei enduco heisst das «Base Fitnesslevel»; dort wird die Last etwas anders gerechnet, darum ist die Zahl ähnlich, aber nicht gleich.`;
-    const t2 = `Wie diese Zahl den Start deines Plans bestimmt, ist noch offen. Bis dahin beginnt dein Plan wie bisher bei «jetzt»${isNum(jetzt) ? ` (${hm(jetzt)} pro Woche)` : ""} `
-      + `mit der Aufteilung 20/50/30${b ? `: ${esc(SPORT_NAME[sport])} ${hm(b.h)} pro Woche` : ""}.`;
-    return V59().blatt("pe", `<div class="blatt-titel">${ring(sport, F[sport], true)}<h2 id="v59-ov-h" tabindex="-1">Basis-Fitness ${esc(SPORT_NAME[sport])}</h2>
+    const t1 = `Die Fitness ist das 42-Tage-Mittel deiner Trainingslast ${esc(IM_SPORT[sport])} (Last ${esc(lastText)}), wie pmc-2.0, nur mit dieser Sportart, Stand Montag ${tagKurz(BA.mo)} `
+      + `(bis zum Sonntag davor) – so ändert sich eine Woche unter der Woche nicht. Bei enduco heisst das «Base Fitnesslevel»; dort wird die Last etwas anders gerechnet.`;
+    const t2 = isNum(D.tl_h) ? `Last pro Stunde ${esc(IM_SPORT[sport])}: ${komma(D.tl_h)} (${komma(D.h)} h in den ${D.wochen} Wochen vor dem Montag).`
+      : `Für die Last pro Stunde fehlt Training ${esc(IM_SPORT[sport])} (weniger als 1 h in 52 Wochen): diese Sportart beginnt mit «jetzt» × Anteil.`;
+    const ov = V59().blatt("pe", `<div class="blatt-titel"><span data-pefring>${ring(sport, wert0, true)}</span><h2 id="v59-ov-h" tabindex="-1">Basis-Fitness ${esc(SPORT_NAME[sport])}</h2>
         <p class="sub">Wie viel Training ${esc(IM_SPORT[sport])} dein Körper gewohnt ist.</p></div>
+      <div class="pe-fit"><button type="button" class="btn" data-pefm aria-label="1 weniger">−</button>
+        <input type="range" min="0" max="${max}" step="1" value="${wert0}" data-pefr aria-label="Basis-Fitness ${esc(SPORT_NAME[sport])}">
+        <button type="button" class="btn" data-pefp aria-label="1 mehr">+</button></div>
+      <p class="pe-text" data-pefs role="status" aria-live="polite"></p>
       <p class="ek-text">${t1}</p>
       <p class="ek-text">${t2}</p>
-      <p class="hint">${esc(V75().VERSIONS.basis)}. Einen eigenen Wert (Regler, «zurück auf berechnet», Datum der Änderung) gibt es, sobald die Regel feststeht.</p>${fuss()}`);
+      <p class="hint">${esc(V75().VERSIONS.basis)} (Variante A): Start der Sportart = 7 × Fitness ÷ Last pro Stunde = der Umfang, bei dem die Fitness gleich bleibt (höchstens 30 h).
+        Ein eigener Wert gilt ab der nächsten Woche, bis du ihn zurücksetzt.${BA.E.start !== "fitness" ? " Zurzeit beginnt dein Plan mit «jetzt» und 20/50/30 (Trainingsumfang); dein Wert zählt, sobald dort «Basis-Fitness» gewählt ist." : ""}</p>
+      <p class="warn-t" data-pef hidden></p>${fuss(`${eigen != null ? `<button type="button" class="btn" data-pe-ber>Zurück auf berechnet</button>` : ""}${okKnopf()}`)}`);
+    const inp = ov.querySelector("[data-pefr]");
+    const zeig = () => {
+      // auf dem berechneten Wert mit der ungerundeten Fitness rechnen (wie der Plan), sonst mit dem gewählten Wert
+      const v = +inp.value, fit = eigen == null && ber != null && v === Math.round(ber) ? ber : v;
+      const h = isNum(D.tl_h) ? Math.min(V75().BASIS_MAX, (7 * fit) / D.tl_h) : null;
+      ov.querySelector("[data-pefring]").innerHTML = ring(sport, v, true);
+      inp.setAttribute("aria-valuetext", String(v));
+      const her = eigen != null && v === eigen ? `Eigener Wert${am ? ` seit ${tagLang(String(am).slice(0, 10))}` : ""}${ber != null ? ` (berechnet: ${Math.round(ber)})` : ""}.`
+        : ber != null && v === Math.round(ber) ? `Berechnet aus deinem Training (Stand Montag ${tagKurz(BA.mo)}).` : `Eigener Wert${ber != null ? ` (berechnet: ${Math.round(ber)})` : ""}.`;
+      ov.querySelector("[data-pefs]").textContent = `${her} ${h != null ? `Start ≈ ${hm(h)} pro Woche (7 × ${komma(fit)} ÷ ${komma(D.tl_h)}).` : ""}`;
+    };
+    inp.oninput = zeig;
+    ov.querySelector("[data-pefm]").onclick = () => { inp.value = Math.max(0, +inp.value - 1); zeig(); };
+    ov.querySelector("[data-pefp]").onclick = () => { inp.value = Math.min(max, +inp.value + 1); zeig(); };
+    zeig();
+    const ab = tagLang(BA.ab);
+    ov.querySelector("[data-peok]").onclick = () => {
+      const v = +inp.value;
+      if (eigen != null ? v === eigen : ber != null && v === Math.round(ber)) { seite(i); return; }
+      speichernUnd(ov, i, "pe-basis-" + sport, { wert: v }, `Basis-Fitness ${SPORT_NAME[sport]} ${v} – gilt ab der Woche vom ${ab}.`);
+    };
+    const zur = ov.querySelector("[data-pe-ber]");
+    if (zur) zur.onclick = () => speichernUnd(ov, i, "pe-basis-" + sport, { wert: null }, `Basis-Fitness ${SPORT_NAME[sport]} wieder berechnet – gilt ab der Woche vom ${ab}.`);
+    return ov;
   }
   function indoorBlatt(sport, i) {
     const E = M.einstellungen(), p = E.indoor[sport], rad = sport === "rad";

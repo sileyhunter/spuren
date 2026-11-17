@@ -36,9 +36,9 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   Morgen-Update), `tests/test_v74.cjs`; Schicht angewendet in `js/v64-ui.js` (kontext: `K.w` = was gilt, `K.wPlan` = Mein Plan); eigenplan-1.2
   (`V66.aendern` Art «erholung»), lockere Fassung im Garmin-Auftrag (`V66.garminAuftrag` opt.ampel, `garmin_senden.py ampel`, Entscheid A7)
 - **V7.5 (Etappe 3 «Planeinstellungen», planeinstellungen-1.0):** `js/v75.js` (ohne DOM: Einstellungen prüfen und zusammenführen `V75.pruefen`/`V75.einstellungen`,
-  Basis-Fitness je Sportart basis-1.0 `V75.basis`/`V75.fitness`, Steigerung steigerung-1.0 `V75.rampe`/`V75.verlauf`, Indoor-Phase indoor-phase-1.0
+  Basis-Fitness je Sportart basis-1.1 `V75.basis`/`V75.basisDaten`/`V75.fitness`, Steigerung steigerung-1.0 `V75.rampe`/`V75.verlauf`, Indoor-Phase indoor-phase-1.0
   `V75.indoorAnwenden`), `js/v75-ui.js` (V7.5.1: Blatt-Folge Laufen → Rad → Schwimmen → Trainingsumfang `V75UI.flow`; `V75UI.einstellungen`, `.schwimmOpt`,
-  `.pool`, `.drinnenFeld`), `tests/test_v75.cjs`; Schwimm-Einheit schwimmeinheit-1.2 in `js/schwimmen.js` (Hilfsmittel, Stile als eigener Teil, Anfänger-Modus),
+  `.pool`, `.drinnenFeld`; V7.5.2 `V75UI.basisDaten` (Stand Montag) und `V75UI.plan` (laufende Woche + Rampe ab der nächsten, für Kurve und Wochenstunden)), `tests/test_v75.cjs`; Schwimm-Einheit schwimmeinheit-1.2 in `js/schwimmen.js` (Hilfsmittel, Stile als eigener Teil, Anfänger-Modus),
   Stil je Schritt an Garmin garmin-senden-1.2 (`V66.STIL_GARMIN`, `tools/garmin_senden.py`), Bahnlänge je Einheit und `drinnen` false einheit-felder-1.1
   in `js/v66.js`, Stunden je Sportart im Plan-Kontext `js/v64-ui.js` (`K.basis75`, `K.rampe`), Wochenstunden `js/v56.js`
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
@@ -371,9 +371,10 @@ nur Schwimmen, nicht Bibliothek) und `drinnen: false` bleibt (ausdrücklich drau
 `merge_daily.einheit_feld_pruefen` (gleiche Regeln wie `V66.feldPruefen`); eine gesperrte Einheit wird nur entsperrt, nie verschoben, geändert oder entfernt. V6.4: `modell` (gewähltes Trainingsmodell
 → `modell_add` → `plan_modell`; `merge_daily.modell_pruefen`: bekanntes Modell, Wechsel als Datum; gleiche ID ersetzt mit Audit). V6.5: `planwahl`
 («Ich folge» je Tag → `planwahl_add` → `plan_wahl`; `merge_daily.planwahl_pruefen`: Datum, ID «pw-Datum», Wahl enduco/vorschlag/frei; gleicher Tag ersetzt mit Audit).
-V7.5: `planeinstellung` (je Gruppe «pe-steigerung» {wert}, «pe-indoor-rad»/«pe-indoor-lauf» {von, bis}, «pe-schwimm» {hilfsmittel, pool, stile (ruecken/brust),
-anfaenger (V7.5.1)} → `planeinstellung_add` → `plan_einstellungen`; `merge_daily.planeinstellung_pruefen` wie `V75.pruefen`; gleiche ID ersetzt mit Audit, eine ältere
-Fassung (`geaendert`) nie; «pe-basis» gibt es erst mit Silas' Entscheid zur Regel und wird bis dahin abgelehnt). V6.2.3: `garmin_verlauf` (Datei aus
+V7.5: `planeinstellung` (je Gruppe «pe-start» {art fitness/aufteilung} und «pe-basis-schwimm»/«-rad»/«-lauf» {wert: eigene Fitness 0–200 oder null} (V7.5.2, basis-1.1),
+«pe-steigerung» {wert}, «pe-indoor-rad»/«pe-indoor-lauf» {von, bis}, «pe-schwimm» {hilfsmittel, pool, stile (ruecken/brust), anfaenger (V7.5.1)} → `planeinstellung_add`
+→ `plan_einstellungen`; `merge_daily.planeinstellung_pruefen` wie `V75.pruefen`; gleiche ID ersetzt mit Audit, eine ältere Fassung (`geaendert`) nie; «pe-basis» mit Stunden
+aus V7.5 wird abgelehnt). V6.2.3: `garmin_verlauf` (Datei aus
 `tools/garmin_export.py`, auf der Seite gewählt → `garmin_export.einspielen`, nur fehlende Tageswerte; mehrere Dateien vor einem Update werden seit
 V6.4.4 alle eingespielt, `garmin_verlauf` darf eine Liste sein). V5.9.3: `routen` (im Planer gespeicherte Routen → `routes`, gleiche ID ersetzt mit Audit), `routen_entfernt` (auf der Seite gelöscht → aus
 `routes` entfernt, alte Fassung ins Audit), `laktat_punkte_bestaetigt` («Laktat hier» aus dem Explorer auf der Seite bestätigt → Kurzcheck in
@@ -503,10 +504,13 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   letzten Blatt) und den Link `#plan-einstellungen` (Plan mit dem Blatt). Vorbild die Planeinstellungen von enduco (Aufbau und Antippen; Texte, Symbole und Grafiken
   eigen). Jede Auswahl wird beim «Übernehmen» gespeichert, der Anfänger-Modus beim Umschalten, die Steigerung mit «Fertig ✓» (über «Direkt speichern», Eingabe
   `planeinstellung`); ohne Eintrag gilt der Standard = Verhalten bis V7.4.
-- **Basis-Fitness (basis-1.0):** angezeigt die Fitness je Sportart im Ring (42-Tage-Mittel ihrer Last mit `config.load_model`, Stand zu Tagesbeginn; zum Vergleich
-  mit Enduco). Wie sie den Start des Plans bestimmt, ist offen (Auftrag: «Rechenregel zuerst als Vorschlag»; Vorschlag vom 17.11.2026: 7 × Fitness ÷ Last pro Stunde
-  der Sportart, Alternative Anteil der 8 Wochen × «jetzt»). Bis zu Silas' Entscheid beginnt der Plan wie bis V7.4 bei «jetzt» × 20/50/30; «jetzt» und Spitze
-  stehen wieder in den Wochenstunden. Kein eigener Wert, bis die Regel feststeht.
+- **Basis-Fitness (basis-1.1, Variante A, von Silas gewählt am 17.11.2026, «20/50/30 soll wählbar bleiben»):** im Ring die Fitness je Sportart (42-Tage-Mittel ihrer
+  Last mit `config.load_model`) am Montag der Woche, also bis zum Sonntag davor (`V75.basisDaten`) – damit sich eine Woche unter der Woche nicht ändert. Start je
+  Sportart = 7 × Fitness ÷ Last pro Stunde der Sportart (Last ÷ Bewegungszeit der 8 abgeschlossenen Wochen, unter 1 h die 52 Wochen davor), höchstens 30 h; ohne
+  Last pro Stunde «jetzt» × Anteil. Eigener Wert je Sportart (Regler 0–200, «Zurück auf berechnet», Datum der Änderung). Wahl im Trainingsumfang: «Basis-Fitness»
+  (Standard ab der Woche vom 23.11.2026, `V75.START_AB`) oder «jetzt» × 20/50/30 wie bis V7.5.1. Start und eigene Fitness gelten ab der Woche nach dem Speichern
+  (`V75.einstellungen` opt.startBis): die laufende Woche bleibt, ab der nächsten rechnet die Rampe vom neuen Start (`V75UI.plan` für Kurve und Wochenstunden).
+  «jetzt» steht in den Wochenstunden nur, solange ein Start mit 20/50/30 gilt.
 - **Steigerung (steigerung-1.0):** ein Regler für alle drei Sportarten (Silas' Wunsch), 50–150 % in 5er-Schritten. Jede Sportart von der Basis zu Spitze ×
   aufteilung-1.0; Anteil des Wegs nach i Wochen min(1, Regler · i/(N − 1)), N = Wochen bis zum Taper; 100 % = genau saison-1.2. Höchstens 10 % (mindestens 0,5 h)
   über der Woche davor (eigene Festlegung, wie das Maximum bei enduco). Woche 0 bleibt die Basis; Erholung 65 %, B-Rennen 50 %, Taper 60/40 % unverändert.
@@ -592,7 +596,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   auf der Seite änderbar), ab der Woche des Wechsels rennspezifisch. Die Wahl kommt nur über «Direkt speichern» (`modell` → `plan_modell`).
 - **Woche `wochenplan-1.2` (`V64.woche`, 1.1 = mit Aufbau-Grenze und Intensität je Sportart; 1.2 = Prüfung V6.4, siehe unten):** Mo frei · Di Laufen (Schlüssel) und Schwimmkurs · Mi Rad locker · Do Rad (Schlüssel) und CSS-Schwimmen ·
   Fr Laufen locker · Sa lange Ausfahrt (+ Koppel) · So langer Lauf (+ Schwimmen). Stunden aus saison-1.2 (`AN.saisonStunden`/`AN.saisonVorgaben`),
-  seit V7.5 je Sportart aus basis-1.0 und steigerung-1.0 (`V75.rampe`, Planeinstellungen; `V64.woche` mit `aufteilung` je Woche),
+  seit V7.5 je Sportart aus basis-1.1 und steigerung-1.0 (`V75.rampe`, Planeinstellungen; `V64.woche` mit `aufteilung` je Woche),
   `aufteilung-1.0` Schwimmen 20 %, Rad 50 %, Laufen 30 % (eigene Festlegung, seit V7.5 das Ziel an der Spitze); Anzahl je Sportart nach Stunden (unter 7 h je 2 Rad/Lauf, 1 Schwimmen);
   längste Einheit je Phase begrenzt (`V64.LANG`), Rest wird gemeldet, nie still verteilt; mehr als geplant (Mindestdauern bei wenigen Stunden)
   ebenso. Erholungswoche: nur Rad-Schlüssel gekürzt, Laufen und Schwimmen locker. Taper: Schlüssel mit einem Drittel bis der Hälfte weniger
@@ -640,7 +644,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
   Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
   Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
-- **Wissen `wissen-1.15` (`js/wissen.js`; 1.15 = V7.5.1 Planeinstellungen als Blatt-Folge, Basis-Regel offen, Anfänger-Modus, Stile auf der Uhr; 1.14 = V7.5 Kapitel «planeinstellungen», 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.13 = V7.4 Ampel passt das Training an (Kapitel «erholung», Düking 2021, Manresa-Rocamora 2021), 1.12 = V7.3.2 Übungen aus der Enduco-Liste, 1.11 = V7.3 Etappe 2 Schwimmen,
+- **Wissen `wissen-1.16` (`js/wissen.js`; 1.16 = V7.5.2 Basis-Fitness Variante A; 1.15 = V7.5.1 Planeinstellungen als Blatt-Folge, Basis-Regel offen, Anfänger-Modus, Stile auf der Uhr; 1.14 = V7.5 Kapitel «planeinstellungen», 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.13 = V7.4 Ampel passt das Training an (Kapitel «erholung», Düking 2021, Manresa-Rocamora 2021), 1.12 = V7.3.2 Übungen aus der Enduco-Liste, 1.11 = V7.3 Etappe 2 Schwimmen,
   Puls und RPE an Garmin im Kapitel «modelle», 1.10 = V7.3 Einheit als
   Schritte, Einfahren und Intervall-Intensität, RPE je Abschnitt im Kapitel «intervalle»; 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
   1.3: Kapitel «Vorschlag und Enduco vergleichen», 1.4: Prüfung der Quellen – Formulierungen nicht stärker als die Studien, eigene Festlegungen

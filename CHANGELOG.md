@@ -1,5 +1,16 @@
 # Änderungen
 
+## V7.5.2 · 17.11.2026 · Basis-Fitness Variante A, 20/50/30 wählbar (basis-1.1, wissen-1.16)
+- **Start des Plans aus der Basis-Fitness (Silas' Wahl):** je Sportart 7 × Fitness ÷ Trainingslast pro Stunde (deine 8 Wochen) = der Umfang, bei dem die Fitness
+  gleich bleibt. Fitness mit dem Stand vom Montag (bis zum Sonntag davor), damit sich eine Woche unter der Woche nicht ändert. Ohne Last pro Stunde (weniger
+  als 1 h in 52 Wochen) beginnt die Sportart mit «jetzt» × Anteil.
+- **Eigener Wert je Sportart:** Ring antippen → Regler (mit − und +), live der Start daraus, «Zurück auf berechnet», Datum der Änderung (`pe-basis-schwimm`/`-rad`/`-lauf`).
+- **Wahl im Trainingsumfang:** «Basis-Fitness» oder «jetzt» mit 20/50/30 wie bisher (`pe-start`); die Kurve zeigt die Wahl sofort.
+- Start, eigene Fitness und Steigerung gelten ab der nächsten Woche; die laufende Woche bleibt. Standard «Basis-Fitness» ab der Woche vom 23.11.2026.
+  Wochenstunden zeigen «diese Woche» und den neuen Start; «jetzt» steht dort nur, solange ein Start mit 20/50/30 gilt.
+- Prüfung in `merge_daily.planeinstellung_pruefen` wie `V75.pruefen`, Tests in `tests/test_v75.cjs` und `tests/test_tools.py`, Wissen 1.16 (Kapitel
+  «Planeinstellungen» und «Aufbau»).
+
 ## V7.5.1 · 17.11.2026 · Etappe 3 nach dem Auftrag: Blatt-Folge, Anfänger-Modus, Stile auf der Uhr (garmin-senden-1.2, wissen-1.15)
 - **Planeinstellungen als Folge wie die Vorlage:** Laufen → Rad → Schwimmen → Trainingsumfang, unten «‹» und «Weiter», auf dem letzten «Fertig ✓».
   Geöffnet über Plan → Plan verwalten (zuoberst), das Profil (Training) und die Wochenstunden («Trainingsumfang ändern»); der Link `#plan-einstellungen`

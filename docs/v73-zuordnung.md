@@ -11,7 +11,7 @@ Gebaut wird Etappe für Etappe, jede erst nach Silas' Okay.
 |---|---|---|
 | 1 | Einheit wie Trainingsbriefing, mit allen Schritten (`schritte-1.0`, `einheit-2.0`, `einheit-felder-1.0`, `einheit-anpassen-1.0`, `rpe-zonen-1.0`) | V7.3 |
 | 2 | Schwimm-Einheiten mit Technikübungen an Garmin (`garmin-senden-1.1`); Puls- und RPE-Ziele auf der Uhr | V7.3.1 (auf der Uhr noch nicht geprüft) |
-| 3 | Planeinstellungen: Basis-Fitness je Sportart, Steigerung (ein Regler für alle drei Sportarten), Indoor-Phase, Schwimm-Equipment, Bahnlänge, Anfänger-Modus, Stile | V7.5, V7.5.1 (Regel der Basis-Fitness offen: Vorschlag vom 17.11.2026) |
+| 3 | Planeinstellungen: Basis-Fitness je Sportart, Steigerung (ein Regler für alle drei Sportarten), Indoor-Phase, Schwimm-Equipment, Bahnlänge, Anfänger-Modus, Stile | V7.5, V7.5.1, V7.5.2 (Basis-Fitness Variante A, 20/50/30 wählbar) |
 | 4 | Kalender mit Zwei-Wochen-Raster und durchlaufender Liste, Zyklus, Bearbeiten-Modus, Tagesblatt; Aktivitäten draussen im Voraus planen (`aktivitaet-plan-1.0`) | offen |
 | 5 | Heute, Navigation, Training planen mit Kategorien | offen |
 | 6 | Ampel passt das Training des Tages automatisch an (`ampel-plan-1.0`): bei «vorsichtig» keine harten oder mittleren Abschnitte, Nachholen in der Woche, «Trotzdem wie geplant» | V7.4 (Garmin-Ersatz am Morgen auf der Uhr noch nicht geprüft) |
@@ -57,7 +57,7 @@ Einheit des Tages in Garmin durch die lockere Fassung ersetzen – gilt ab Etapp
 | Vorlage (enduco) | V7.5.1 | Anders, weil |
 |---|---|---|
 | Blätter nacheinander Laufen → Rad → Schwimmen → Trainingsumfang, unten «‹», zuletzt «Fertig ✓» | Blatt «Planeinstellungen» als Folge (`V75UI.flow`) aus Plan → Plan verwalten (zuoberst), dem Profil und den Wochenstunden | jede Auswahl wird schon beim «Übernehmen» gespeichert (nichts geht verloren, wenn das Blatt zugeht) |
-| Je Sportart «Zusätzliche Einstellungen» mit Base Fitnesslevel (Zahl im Kreis) | je Sportart «Basis-Fitness» mit der Fitness der Sportart im Ring (`V75.fitness`, Last wie auf der Seite) | Wirkung auf den Plan offen: Rechenregel als Vorschlag an Silas (17.11.2026), bis dahin Start wie bis V7.4 («jetzt» × 20/50/30), noch kein eigener Wert |
+| Je Sportart «Zusätzliche Einstellungen» mit Base Fitnesslevel (Zahl im Kreis) | je Sportart «Basis-Fitness» im Ring, antippen = eigener Wert mit Regler, «Zurück auf berechnet», Datum (basis-1.1); Start = 7 × Fitness ÷ Last pro Stunde | Fitness mit dem Stand vom Montag statt von heute (die Woche ändert sich nicht unter der Woche); Start wahlweise «jetzt» × 20/50/30 (Silas' Wunsch); Änderungen gelten ab der nächsten Woche |
 | Trainingsumfang: Kurve, Bereich, Regler mit Prozent und Stufe, schraffierte Enden | Blatt «Trainingsumfang»: Kurve bis zum Hauptrennen, Bereich 50–150 %, Regler mit Sperrzonen, Wort und Farbe je Bereich (steigerung-1.0) | ein Regler für alle drei Sportarten (Silas' Wunsch); 100 % = gleichmässig bis zur Woche vor dem Taper (wie bisher), Obergrenze 10 % pro Woche als feste Grenze; eigene Worte (sanft, ausgewogen, zügig, steil, maximal) |
 | Indoor Training Einstellungen (temporäre Phase) für Rad und Laufen | Indoor-Phase von … bis … (indoor-phase-1.0) | Dauer und Inhalt bleiben; einzelne Einheiten auf ihrer Seite umstellbar (nur Abweichungen gespeichert) |
 | Schwimm Equipment | Brett, Pullbuoy, Flossen, Paddles (schwimmeinheit-1.2) | ohne Brett Beine in Seitlage mit Flossen, ohne Pullbuoy kein Pull – die Zeit geht in die Hauptserie |

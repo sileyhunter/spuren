@@ -1,4 +1,4 @@
-// Abnahmetests V7.5 Etappe 3 (js/v75.js, js/schwimmen.js, js/v66.js): Planeinstellungen (planeinstellungen-1.0), Basis je Sportart (basis-1.0),
+// Abnahmetests V7.5 Etappe 3 (js/v75.js, js/schwimmen.js, js/v66.js): Planeinstellungen (planeinstellungen-1.0), Basis je Sportart (basis-1.1, Variante A),
 // Steigerung (steigerung-1.0), Indoor-Phase (indoor-phase-1.0), Schwimm-Einheit mit Equipment, Stilen und Anfänger-Modus (schwimmeinheit-1.2), Bahnlänge
 // je Einheit (einheit-felder-1.1), Stil je Schritt an Garmin (garmin-senden-1.2, V7.5.1). Alle Werte sind erfunden (keine persönlichen Werte im öffentlichen
 // Repository).
@@ -24,7 +24,8 @@ const nah = (a, b, eps) => Math.abs(a - b) <= (eps || 1e-9);
 test("planeinstellungen-1.0: Standard wie bisher, Prüfung je Gruppe", () => {
   assert.equal(V75.VERSIONS.einstellungen, "planeinstellungen-1.0");
   const E = V75.standard();
-  assert.equal(E.steigerung, 100); assert.deepEqual(E.indoor, { rad: null, lauf: null }); assert.equal("basis" in E, false, "kein eigener Start, bis die Regel feststeht");
+  assert.equal(E.steigerung, 100); assert.deepEqual(E.indoor, { rad: null, lauf: null });
+  assert.equal(E.start, "fitness", "Variante A (Silas' Wahl 17.11.2026)"); assert.deepEqual(E.basis, { schwimm: null, rad: null, lauf: null });
   assert.deepEqual(E.schwimm, { hilfsmittel: ["brett", "pullbuoy", "flossen", "paddles"], pool: null, stile: ["ruecken"], anfaenger: false });
   const ok = [{ id: "pe-steigerung", wert: 50 }, { id: "pe-steigerung", wert: 150 }, { id: "pe-indoor-rad", von: "2026-12-01", bis: "2027-02-28" },
     { id: "pe-indoor-lauf", von: null, bis: null }, { id: "pe-schwimm", hilfsmittel: [], pool: 25, stile: ["brust"] },
@@ -36,7 +37,7 @@ test("planeinstellungen-1.0: Standard wie bisher, Prüfung je Gruppe", () => {
     { id: "pe-schwimm", hilfsmittel: [], pool: null, stile: ["kraul"] }, { id: "pe-schwimm", hilfsmittel: [], pool: null, stile: ["delfin"] },
     { id: "pe-schwimm", hilfsmittel: [], pool: null, stile: [], anfaenger: "ja" }, { id: "pe-x" }, null, { id: "pe-steigerung", wert: 100, geaendert: "gestern" }];
   for (const e of falsch) assert.ok(V75.pruefen(e), "abgelehnt: " + JSON.stringify(e));
-  assert.equal(V75.pruefen({ id: "pe-basis", rad: 3 }), "unbekannte Einstellung", "Basis erst mit der Regel");
+  assert.equal(V75.pruefen({ id: "pe-basis", rad: 3 }), "unbekannte Einstellung", "V7.5: Stunden je Sportart gibt es nicht mehr");
 });
 
 test("planeinstellungen-1.0: Daten und Gerät zusammengeführt (neuere Fassung je ID), für vergangene Wochen nur vor ihrem Montag Gespeichertes", () => {
@@ -50,18 +51,62 @@ test("planeinstellungen-1.0: Daten und Gerät zusammengeführt (neuere Fassung j
 });
 
 /* ---------------- Basis je Sportart ---------------- */
-test("basis-1.0: bis zum Entscheid über die Regel beginnt der Plan wie bis V7.4 bei «jetzt», aufgeteilt 20/50/30 – egal, wie die 8 Wochen verteilt waren", () => {
-  assert.equal(V75.VERSIONS.basis, "basis-1.0");
-  for (const a of [ist8(5, 3, 2), ist8(1, 1, 8), new Map()]) {
-    const b = basis(10, a);
-    assert.ok(nah(b.schwimm.h, 2) && nah(b.rad.h, 5) && nah(b.lauf.h, 3), JSON.stringify(b));
-    assert.equal(b.summe, 10); assert.equal(b.jetzt, 10); assert.equal(b.quelle, "aufteilung");
-  }
-  const x = V75.basis({ jetzt: 8 }, null, { schwimm: 0.1, rad: 0.6, lauf: 0.3 });
+test("basis-1.1: Variante A – Start je Sportart = 7 × Fitness ÷ Last pro Stunde, eigener Wert ersetzt, ohne Last pro Stunde «jetzt» × Anteil, wahlweise 20/50/30", () => {
+  assert.equal(V75.VERSIONS.basis, "basis-1.1");
+  const D = { stand: "2026-11-16", schwimm: { fitness: 10, tl_h: 50 }, rad: { fitness: 42, tl_h: 60 }, lauf: { fitness: 30, tl_h: 70 } };
+  const b = V75.basis({ jetzt: 8 }, V75.standard(), null, D);
+  assert.equal(b.quelle, "fitness"); assert.equal(b.stand, "2026-11-16");
+  assert.ok(nah(b.schwimm.h, 1.4) && nah(b.rad.h, 4.9) && nah(b.lauf.h, 3), JSON.stringify(b));
+  assert.ok(nah(b.summe, 9.3)); for (const s of ["schwimm", "rad", "lauf"]) assert.equal(b[s].quelle, "fitness");
+  const E = V75.standard(); E.basis.lauf = 40;
+  const c = V75.basis({ jetzt: 8 }, E, null, D);
+  assert.ok(nah(c.lauf.h, 4)); assert.equal(c.lauf.eigen, 40); assert.equal(c.lauf.fitness, 40); assert.equal(c.lauf.fitness_ber, 30); assert.ok(nah(c.rad.h, 4.9), "andere Sportarten unverändert");
+  const d2 = JSON.parse(JSON.stringify(D)); d2.schwimm.tl_h = null;
+  const e = V75.basis({ jetzt: 10 }, V75.standard(), null, d2);
+  assert.equal(e.schwimm.quelle, "aufteilung"); assert.ok(nah(e.schwimm.h, 2), "ohne Last pro Stunde «jetzt» × 20 %"); assert.equal(e.quelle, "fitness");
+  const A = V75.standard(); A.start = "aufteilung"; A.basis.rad = 99;
+  const f = V75.basis({ jetzt: 10 }, A, null, D);
+  assert.equal(f.quelle, "aufteilung"); assert.ok(nah(f.schwimm.h, 2) && nah(f.rad.h, 5) && nah(f.lauf.h, 3), "20/50/30 wie bis V7.5.1, eigene Fitness ohne Wirkung");
+  const g = V75.basis({ jetzt: 8 }, V75.standard(), null, { rad: { fitness: 200, tl_h: 10 }, schwimm: {}, lauf: {} });
+  assert.equal(g.rad.h, 30, "höchstens 30 h je Sportart"); assert.equal(g.schwimm.quelle, "aufteilung");
+  assert.equal(V75.basis({ jetzt: 10 }, V75.standard(), null, null).quelle, "aufteilung", "ohne Grundlagen wie bisher");
+  const x = V75.basis({ jetzt: 8 }, A, { schwimm: 0.1, rad: 0.6, lauf: 0.3 }, D);
   assert.ok(nah(x.schwimm.h, 0.8) && nah(x.rad.h, 4.8) && nah(x.lauf.h, 2.4), "mit übergebener Aufteilung");
 });
 
-test("basis-1.0: Fitness je Sportart wie pmc-2.0 (42 Tage), Stand am Ende des Vortags, ohne Einheit der Sportart offen", () => {
+test("basis-1.1: Grundlagen am Montag – Fitness bis zum Sonntag, Last pro Stunde der 8 Wochen (sonst 52), der Montag selbst zählt nicht", () => {
+  const acts = [];
+  for (let i = 0; i < 84; i++) acts.push({ date: FK.addDays("2026-08-24", i), sport: "rad", mv: 3600, tss: 60 });
+  acts.push({ date: "2026-11-16", sport: "rad", mv: 7200, tss: 500 });                  // Montag: zählt noch nicht
+  acts.push({ date: "2026-07-01", sport: "lauf", dur: 7200, tss: 140 });                 // nur in den 52 Wochen
+  const D = V75.basisDaten(acts, "2026-11-16");
+  assert.equal(D.stand, "2026-11-16");
+  assert.deepEqual([D.rad.tl_h, D.rad.wochen, D.rad.h], [60, 8, 56]);
+  assert.deepEqual([D.lauf.tl_h, D.lauf.wochen, D.lauf.h], [70, 52, 2]);
+  assert.equal(D.schwimm.tl_h, null); assert.equal(D.schwimm.fitness, null);
+  assert.equal(D.rad.fitness, V75.fitness(acts, "2026-11-16").rad); assert.ok(D.rad.fitness > 50 && D.rad.fitness < 55, String(D.rad.fitness));
+  const b = V75.basis({ jetzt: 8 }, V75.standard(), null, D);
+  assert.ok(nah(b.rad.h, (7 * D.rad.fitness) / 60)); assert.equal(b.schwimm.quelle, "aufteilung");
+});
+
+test("basis-1.1: Start und eigene Basis-Fitness gelten ab der Woche nach dem Speichern; Standard «Basis-Fitness» ab 23.11.2026", () => {
+  const L = [{ id: "pe-start", art: "aufteilung", geaendert: "2026-11-25T09:00:00Z" }, { id: "pe-basis-lauf", wert: 32, geaendert: "2026-11-18T09:00:00Z" },
+    { id: "pe-steigerung", wert: 120, geaendert: "2026-11-25T09:00:00Z" }];
+  const fuer = (mo) => V75.einstellungen(L, [], { startBis: mo, montag: mo });
+  assert.equal(fuer("2026-11-16").start, "aufteilung", "Wochen vor dem 23.11. wie bisher");
+  assert.equal(fuer("2026-11-16").basis.lauf, null, "am 18.11. gespeichert: zählt noch nicht für die Woche vom 16.11.");
+  assert.equal(fuer("2026-11-23").start, "fitness"); assert.equal(fuer("2026-11-23").basis.lauf, 32);
+  assert.equal(fuer("2026-11-23").steigerung, 120, "die Steigerung gilt sofort – die laufende Woche bleibt ohnehin beim Start");
+  assert.equal(fuer("2026-11-30").start, "aufteilung");
+  assert.equal(V75.einstellungen(L, []).start, "aufteilung", "ohne Filter: der neueste Stand");
+  assert.equal(V75.einstellungen(L, [], { bis: "2026-11-23", montag: "2026-11-23" }).basis.lauf, 32, "vergangene Wochen wie V64.stand");
+  for (const e of [{ id: "pe-start", art: "fitness" }, { id: "pe-basis-rad", wert: 0 }, { id: "pe-basis-schwimm", wert: 200 }, { id: "pe-basis-lauf", wert: null }, { id: "pe-basis-lauf" }])
+    assert.equal(V75.pruefen(e), null, JSON.stringify(e));
+  for (const e of [{ id: "pe-start", art: "frei" }, { id: "pe-start" }, { id: "pe-basis-rad", wert: 201 }, { id: "pe-basis-rad", wert: 2.5 }, { id: "pe-basis-rad", wert: "30" }, { id: "pe-basis", rad: 3 }])
+    assert.ok(V75.pruefen(e), JSON.stringify(e));
+});
+
+test("basis-1.1: Fitness je Sportart wie pmc-2.0 (42 Tage), Stand am Ende des Vortags, ohne Einheit der Sportart offen", () => {
   const acts = [];
   for (let i = 0; i < 90; i++) {
     const d = FK.addDays("2026-08-01", i);

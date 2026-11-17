@@ -383,9 +383,10 @@ def _pe_datum(s):
 
 def planeinstellung_pruefen(e):
     """V7.5 planeinstellungen-1.0 (gleiche Regeln wie V75.pruefen): Eintrag je Gruppe → Fehlertext oder None.
+    pe-start {art fitness/aufteilung} und pe-basis-schwimm/-rad/-lauf {wert None oder ganze Zahl 0–200} (basis-1.1, Variante A, Silas' Wahl 17.11.2026);
     pe-steigerung {wert 50–150 in 5er-Schritten}; pe-indoor-rad/-lauf {von, bis als Datum, bis nicht vor von, höchstens 366 Tage; beide None = keine
     Phase}; pe-schwimm {hilfsmittel ⊆ brett/pullbuoy/flossen/paddles, pool None/25/50, stile ⊆ ruecken/brust, je ohne Doppel, anfaenger optional ja/nein}.
-    geaendert optional als Zeitpunkt. (Die Basis je Sportart kommt erst mit Silas' Entscheid zur Regel.)"""
+    geaendert optional als Zeitpunkt."""
     if not isinstance(e, dict):
         return "kein Eintrag"
     g = e.get("geaendert")
@@ -397,6 +398,11 @@ def planeinstellung_pruefen(e):
     zahl = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool)
     teil = lambda x, erlaubt: isinstance(x, list) and all(k in erlaubt for k in x) and len(set(x)) == len(x)
     i = e.get("id")
+    if i == "pe-start":
+        return None if e.get("art") in ("fitness", "aufteilung") else "Start: Basis-Fitness oder Aufteilung"
+    if i in ("pe-basis-schwimm", "pe-basis-rad", "pe-basis-lauf"):
+        w = e.get("wert")
+        return None if w is None or (zahl(w) and float(w).is_integer() and 0 <= w <= 200) else "Basis-Fitness 0–200 als ganze Zahl"
     if i == "pe-steigerung":
         w = e.get("wert")
         return None if zahl(w) and float(w).is_integer() and 50 <= w <= 150 and int(w) % 5 == 0 else "Steigerung 50–150 % in 5er-Schritten"   # 100.0 aus JSON wie in JS gültig

@@ -52,10 +52,13 @@
     // Audit V6.4 B7: vergangene Wochen mit dem Stand vom Montag (V64.stand)
     const st = V.stand(mo, h, C.tests ? C.tests() : [], window.V56 && window.V56.saisonLokal ? window.V56.saisonLokal(C) : {});
     const vg = AN().saisonVorgaben(C.D.activities, vorbei ? mo : h, st.lokal);
-    // V7.5 Planeinstellungen (js/v75.js): Stunden je Sportart von deiner Basis zur Spitze (basis-1.0, steigerung-1.0). Vergangene Wochen mit den
-    // Einstellungen, die vor ihrem Montag gespeichert waren (wie V64.stand); ohne Einstellungen wie bisher (Anteile deiner 8 Wochen, 100 %).
-    const P75 = window.V75, E75 = window.V75UI && window.V75UI.einstellungen ? window.V75UI.einstellungen(vorbei ? { bis: mo } : null) : null;
-    const ba = P75 && E75 ? P75.basis(vg, E75, V.AUFTEILUNG) : null;
+    // V7.5 Planeinstellungen (js/v75.js): Stunden je Sportart von deiner Basis zur Spitze (basis-1.1, steigerung-1.0). Vergangene Wochen mit den
+    // Einstellungen, die vor ihrem Montag gespeichert waren (wie V64.stand); Start und eigene Basis-Fitness gelten ab der Woche nach dem Speichern
+    // (startBis), die Basis-Fitness mit dem Stand vom Montag der laufenden bzw. der vergangenen Woche (V75.basisDaten).
+    const P75 = window.V75, U75 = window.V75UI;
+    const E75 = U75 && U75.einstellungen ? U75.einstellungen(vorbei ? { bis: mo, montag: mo } : { startBis: mo, montag: mo }) : null;
+    const D75 = U75 && U75.basisDaten ? U75.basisDaten(vorbei ? mo : V.montag(h)) : null;
+    const ba = P75 && E75 ? P75.basis(vg, E75, V.AUFTEILUNG, D75) : null;
     const anteile = (b) => (b && b.summe > 0 ? { schwimm: b.schwimm.h / b.summe, rad: b.rad.h / b.summe, lauf: b.lauf.h / b.summe } : null);
     let phase = "Grundlage", erholung = false, stunden = ba ? Math.round(ba.summe * 2) / 2 : vg.jetzt, ausSaison = false, aufteilung = anteile(ba), R = null;
     if (S) {

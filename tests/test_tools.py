@@ -1518,16 +1518,20 @@ _PE_FAELLE = [
     {"id": "pe-schwimm", "hilfsmittel": [], "pool": 25, "stile": ["kraul"]}, {"id": "pe-anderes", "wert": 1}, {"id": "pe-steigerung", "wert": 100, "geaendert": "gestern"},
     {"id": "pe-schwimm", "hilfsmittel": ["brett"], "pool": 50, "stile": ["ruecken", "brust"], "anfaenger": True},          # V7.5.1: Anfänger-Modus
     {"id": "pe-schwimm", "hilfsmittel": [], "pool": None, "stile": [], "anfaenger": "ja"}, {"id": "pe-schwimm", "hilfsmittel": [], "pool": None, "stile": ["delfin"]},
-    {"id": "pe-schwimm", "hilfsmittel": [], "pool": 25, "stile": ["ruecken", "brust"], "anfaenger": False}]
+    {"id": "pe-schwimm", "hilfsmittel": [], "pool": 25, "stile": ["ruecken", "brust"], "anfaenger": False},
+    {"id": "pe-start", "art": "fitness"}, {"id": "pe-start", "art": "aufteilung"}, {"id": "pe-start", "art": "frei"}, {"id": "pe-start"},   # V7.5.2 basis-1.1
+    {"id": "pe-basis-rad", "wert": 35}, {"id": "pe-basis-lauf", "wert": None}, {"id": "pe-basis-schwimm", "wert": 200.0}, {"id": "pe-basis-rad", "wert": 2.5},
+    {"id": "pe-basis-rad", "wert": 201}, {"id": "pe-basis-lauf", "wert": "30"}, {"id": "pe-basis-schwimm", "wert": True}, {"id": "pe-basis-rad"}]
 _rpe = subprocess.run(["node", "-e", "const V75 = require('./js/v75.js'); const F = JSON.parse(process.argv[1]); console.log(JSON.stringify(F.map((e) => V75.pruefen(e))));",
                        json.dumps(_PE_FAELLE)], cwd=ROOT, capture_output=True, text=True)
 _pe_js = json.loads(_rpe.stdout or "[]")
 _pe_py = [merge_daily.planeinstellung_pruefen(e) for e in _PE_FAELLE]
 check("Planeinstellungen: Python prüft wie die Seite (V75.pruefen) – gleiche Entscheide in allen Fällen",
       len(_pe_js) == len(_PE_FAELLE) and [x is None for x in _pe_js] == [x is None for x in _pe_py], _rpe.stderr + str(list(zip(_pe_js, _pe_py))))
-check("Planeinstellungen: gültig nur Steigerung 50–150 in 5er-Schritten, Indoor-Phase höchstens ein Jahr, bekannte Hilfsmittel, Stile Rücken/Brust, Anfänger ja/nein; Basis erst mit der Regel",
+check("Planeinstellungen: gültig nur Start fitness/aufteilung, Basis-Fitness 0–200 ganz, Steigerung 50–150 in 5er-Schritten, Indoor-Phase höchstens ein Jahr, bekannte Hilfsmittel, Stile Rücken/Brust, Anfänger ja/nein; «pe-basis» (Stunden, V7.5) nicht mehr",
       [x is None for x in _pe_py] == [True, False, False, False, True, False, False, False, False, True, True, False, False, False, False, True, True, False, False, False, False, False, False,
-                                      True, False, False, True], str(_pe_py))
+                                      True, False, False, True,
+                                      True, True, False, False, True, True, True, False, False, False, False, True], str(_pe_py))
 _tp = tempfile.mkdtemp()
 json.dump({"activities": [], "days": []}, open(os.path.join(_tp, "d.json"), "w"))
 for _x in ({"id": "pe-steigerung", "v": "planeinstellungen-1.0", "wert": 120, "geaendert": "2026-03-02T08:00:00Z"},
