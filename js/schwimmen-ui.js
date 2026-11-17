@@ -1,4 +1,4 @@
-/* Ironman Notebook V7.2 – Oberfläche Schwimmen (uebungen-2.0, schwimmeinheit-1.0): Schwimm-Einheit wie im Becken (Blöcke mit Metern, Bahnen,
+/* Ironman Notebook V7.2 – Oberfläche Schwimmen (uebungen-2.1, schwimmeinheit-1.1 seit V7.3.2): Schwimm-Einheit wie im Becken (Blöcke mit Metern, Bahnen,
    Pause am Beckenrand, Tempo oder Anstrengung, Hilfsmittel), Technikübungen aufklappbar, jede Übung als Blatt (Zweck, Ablauf, worauf achten,
    Fehler, Hilfsmittel), Übungskatalog mit Filtern. Rechenteile in js/schwimmen.js. */
 (function () {
@@ -24,10 +24,10 @@
     const u = t.uebung ? SW().uebung(t.uebung) : null, L = SW().bahnen(t.m, pool);
     const ziel = t.tempo ? `${esc(t.tempo)}` : t.rpe ? esc(t.rpe) : "";
     return `<li class="sw-t" style="--zc:var(--${ZK[t.zone] || "zc-z2"})">
-      <div class="sw-t-k"><b>${t.wdh > 1 ? `${t.wdh} × ` : ""}${t.m ? `${t.m} m` : ""}</b>${L ? `<small>${esc(L)}</small>` : ""}${isNum(t.schwimm_s) && t.m ? `<small>≈ ${esc(dauer(t.schwimm_s))}</small>` : ""}</div>
+      <div class="sw-t-k"><b>${t.wdh > 1 ? `${t.wdh} × ` : ""}${t.m ? `${String(t.m).replace(".", ",")} m` : ""}</b>${L ? `<small>${esc(L)}</small>` : ""}${isNum(t.schwimm_s) && t.m ? `<small>≈ ${esc(dauer(t.schwimm_s))}</small>` : ""}</div>
       <div class="sw-t-m"><span>${esc(t.text || "")}</span>${ziel ? `<small>${ziel}</small>` : ""}
         ${(t.hilfsmittel || []).length || (t.frei || []).length ? `<span class="sw-hms">${(t.hilfsmittel || []).map((h) => geraet(h)).join("")}${(t.frei || []).map((h) => geraet(h, true)).join("")}</span>` : ""}
-        ${t.zuende_m ? `<small>dann ${t.zuende_m} m locker zu Ende schwimmen</small>` : ""}${t.pause_s ? `<small>${t.pause_s >= 60 ? dauer(t.pause_s) : t.pause_s + " s"} Pause am Beckenrand</small>` : ""}</div>
+        ${t.zuende_m ? `<small>dann ${String(t.zuende_m).replace(".", ",")} m locker zu Ende schwimmen</small>` : ""}${t.pause_s ? `<small>${t.pause_s >= 60 ? dauer(t.pause_s) : t.pause_s + " s"} Pause am Beckenrand</small>` : ""}</div>
       <div class="sw-t-r"><span class="zchip sw-z" style="--zc:var(--${ZK[t.zone] || "zc-z2"})">${esc(ZN[t.zone] || "")}</span>${u ? `<button type="button" class="sw-i" data-swu="${esc(u.id)}" aria-label="Übung erklären: ${esc(u.name)}">i</button>` : ""}</div></li>`;
   }
   /** Schwimm-Einheit als HTML (Blöcke, Technikübungen aufklappbar). */
@@ -43,7 +43,7 @@
       ${S.hilfsmittel.length || S.frei.length ? `<p class="sw-mit">Mitnehmen: ${S.hilfsmittel.map((h) => geraet(h)).join("")}${S.frei.map((h) => geraet(h, true)).join("")}</p>` : ""}
       ${S.bloecke.map(blk).join("")}
       <div class="row sw-becken" role="group" aria-label="Beckenlänge"><span class="hint">Becken</span>${[25, 50].map((p) => `<button type="button" class="chip" data-swpool="${p}" aria-pressed="${S.pool === p}">${p} m</button>`).join("")}</div>
-      <p class="hint">${esc(SW().VERSIONS.einheit)}: ${S.umfang_quelle ? `Umfang ${esc(S.umfang_quelle)}` : "ohne CSS-Test und ohne Becken-Einheiten: Meter als Richtwert, Dauer offen"}. Tempo nur aus dem CSS-Test (locker CSS + 15–20 s, Grundlage CSS + 8–12 s, Annahmen); ohne Test nach Anstrengung (RPE). Die Übungen wechseln jede Woche. «i» erklärt eine Übung.</p>`;
+      <p class="hint">${esc(SW().VERSIONS.einheit)}: ${S.umfang_quelle ? `Umfang ${esc(S.umfang_quelle)}` : "ohne CSS-Test und ohne Becken-Einheiten: Meter als Richtwert, Dauer offen"}. Tempo nur aus dem CSS-Test (locker CSS + 15–20 s, Grundlage CSS + 8–12 s, Annahmen); ohne Test nach Anstrengung (RPE). Jede Woche drei andere Übungen aus deinen Enduco-Einheiten, Strecke und Pause (5 s) wie dort. «i» erklärt eine Übung.</p>`;
   };
   /** Knöpfe binden: Übung erklären, Beckenlänge wechseln (neu = Funktion, die das Blatt neu zeichnet). */
   U.binden = function (ov, neu, zurueck) {
@@ -57,6 +57,7 @@
       <h3 class="abschnitt">Worauf achten</h3><ul class="sw-achten">${u.achten.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
       <h3 class="abschnitt">Typische Fehler</h3><ul class="sw-fehler">${u.fehler.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
       <h3 class="abschnitt">Hilfsmittel</h3><p class="sw-mit">${u.h.noetig.length || u.h.frei.length ? u.h.noetig.map((h) => geraet(h)).join("") + u.h.frei.map((h) => geraet(h, true)).join("") : "keine"}</p>
+      ${S.ENDUCO[u.id] ? `<p class="hint">Aus deinen Enduco-Einheiten: ${String(S.ENDUCO[u.id][0]).replace(".", ",")} m Übung, dann die Bahn locker fertig schwimmen${S.ENDUCO[u.id][1] ? `; in der Abwechslung unter «${esc(S.ROTATION_NAME[S.ROTATION_KEYS.indexOf(S.ENDUCO[u.id][1])])}»` : "; nicht in der wöchentlichen Abwechslung"}.</p>` : ""}
       <p class="hint">Schwerpunkt: ${u.s.map((k) => esc(S.SCHWERPUNKTE[k] || k)).join(", ")} · übliche Dosierung: ${esc(u.dos)} (${esc(S.VERSIONS.uebungen)}, eigene Beschreibung).</p>`;
   }
   /** Eine Übung als Blatt; zurueck() öffnet das vorige Blatt wieder. */

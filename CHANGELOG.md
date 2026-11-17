@@ -1,5 +1,19 @@
 # Änderungen
 
+## V7.3.2 · 17.11.2026 · Technikübungen wie in den Enduco-Einheiten (uebungen-2.1, schwimmeinheit-1.1)
+- **Übungsliste von Silas** (27 Kraul-Übungen aus 34 Enduco-Einheiten, Stand 16.11.2026): alle werden erkannt (`SW.finde`, Namen wie in Enduco); 13 neue
+  Übungen mit eigenen Beschreibungen (Scheibenwischer, Kraul mit gespreizten Fingern, Entenpaddeln, Wasserwerfen, Schulterdehnung, Po – Achsel – Kopf,
+  Zurückspulen, Einarmig mit Brett, 3-3-3, Zwei Züge pro Seite, Balance-Übung, Atmung im Zweierzug, Atempyramide); «Schulter tippen» heisst jetzt
+  «Achsel tippen», «Kopf-hoch-Kraul» «Wasserball-Kraul». Nötige Hilfsmittel wie dort (Flossen bei 9, Brett bei 4 Übungen; Einarmig kraulen mit beidem).
+- **Abwechslung:** je Woche drei Übungen aus drei von fünf Gruppen (Armzug unter Wasser, Rückholung, Einarmig und Timing, Wasserlage und Beinschlag,
+  Atmung und Kopf), jede Gruppe beim nächsten Mal mit der nächsten Übung – in 60 Wochen kommt jede vor, keine zweimal hintereinander. «Schulterdehnung»
+  steht nur im Katalog (die Ausführung ist nicht eindeutig beschrieben).
+- **Schwimm-Einheit 1.1:** immer drei Übungen je 2 ×, Übungsstrecke wie bei Enduco (12,5, 25 oder 50 m), danach die Bahn locker fertig, 5 s Pause am
+  Beckenrand; «¼ L», «¾ L» und «1½ L» in der Anzeige. Im Übungsblatt steht, ob die Übung aus den Enduco-Einheiten kommt.
+- **Garmin:** Test-Upload eines Schwimm-Workouts mit erfundenen Werten (mit Silas' Okay): Garmin speichert Übungen («other»), Brett, Pullbuoy (ID 4 jetzt
+  bestätigt), CSS-Abstände und Texte unverändert; danach gelöscht, nie eingeplant. Wie die Fenix es zeigt, ist weiter offen.
+- Wissen wissen-1.12; Tests `tests/test_v72.cjs` (Liste, Strecken, Hilfsmittel, Abwechslung über 60 Wochen, ganze Bahnen), `tests/test_v73.cjs` nachgeführt.
+
 ## V7.3.1 · 17.11.2026 · Auftrag V7.3, Etappe 2: Schwimmen an Garmin, Puls und RPE auf der Uhr (garmin-senden-1.1)
 - **Schwimmen wie Enduco:** «Export» bzw. «An Garmin senden» schickt eigene Schwimm-Einheiten aus Mein Plan als Garmin-Workout – Format aus den
   Enduco-Workouts gelesen (`get_workout_by_id` raw): Bahnlänge des Geräts (25/50 m), Strecken in ganzen Bahnen, Pausen am Beckenrand (fixed.rest),

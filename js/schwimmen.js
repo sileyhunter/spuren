@@ -11,7 +11,7 @@
   if (root) root.SW = SW;
 })(typeof window !== "undefined" ? window : null, function () {
   "use strict";
-  const SW = { VERSIONS: { uebungen: "uebungen-2.0", einheit: "schwimmeinheit-1.0" } };
+  const SW = { VERSIONS: { uebungen: "uebungen-2.1", einheit: "schwimmeinheit-1.1" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const mmss = (s) => { s = Math.round(s); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
   SW.mmss = mmss;
@@ -23,22 +23,23 @@
   SW.SCHWERPUNKTE = { lage: "Wasserlage", rotation: "Rotation", rueckholung: "Rückholung und Eintauchen", fassen: "Wasserfassung", atmung: "Atmung",
     beine: "Beinschlag", kraft: "Kraft im Zug", rhythmus: "Rhythmus und Tempo", freiwasser: "Freiwasser" };
 
-  /* ---------------- Übungen (uebungen-2.0) ---------------- */
+  /* ---------------- Übungen (uebungen-2.1) ---------------- */
   // h: { noetig: [...], frei: [...] } · s: Schwerpunkte · dos: übliche Dosierung (eigene Festlegung)
+  // 2.1 (V7.3.2): alle Kraul-Übungen aus Silas' Enduco-Einheiten (Liste vom 16.11.2026) – Namen, Strecke und nötige Hilfsmittel wie dort, Texte eigen
   SW.UEBUNGEN = [
     { id: "abschlag", name: "Abschlagschwimmen", syn: ["abschlag", "catch up", "catchup", "abklatschen", "abschlagkraul"], s: ["lage", "rotation", "rhythmus"],
       zweck: "Langer Zug und eine kurze Gleitphase: ein Arm wartet vorne, bis der andere ankommt. Ordnet das Timing der Arme und zeigt, ob du vorne schulterbreit eintauchst.",
       ablauf: ["Beide Arme vorne gestreckt, Blick zum Beckenboden.", "Ein Arm zieht durch und kommt über Wasser zurück nach vorne.", "Erst wenn die Hand die wartende Hand berührt, startet der andere Arm."],
       achten: ["Wartende Hand vor der Schulter, nicht vor dem Kopf (nicht über die Mitte kreuzen)", "Beim Zug über die Hüfte rollen, Kopf bleibt ruhig", "Unter Wasser gleichmässig ausatmen"],
       fehler: ["Vorderer Arm sinkt ab", "Kopf hebt sich beim Atmen", "Beine hören auf zu schlagen"],
-      h: { noetig: [], frei: ["flossen"] }, dos: "4–6 × 25–50 m, 15 s Pause" },
+      h: { noetig: ["flossen"], frei: [] }, dos: "4–6 × 25–50 m, 15 s Pause" },
     { id: "reissverschluss", name: "Reissverschluss", syn: ["reissverschluss", "zipper", "daumen hochziehen", "daumen entlang"], s: ["rueckholung", "rotation"],
       zweck: "Hoher Ellbogen und lockere Rückholung: die Hand gleitet nah am Körper nach vorne statt in einem weiten Bogen. Schont die Schulter und hilft beim geraden Eintauchen.",
       ablauf: ["Nach dem Zug den Daumen an der Körperseite hochziehen, als ob du einen Reissverschluss schliesst.", "Bis zur Achsel ziehen, der Ellbogen zeigt zur Decke.", "Unterarm locker nach vorne schwingen und vor der Schulter eintauchen."],
       achten: ["Ellbogen führt, die Hand hängt entspannt darunter", "Schulter rollt mit aus dem Wasser (Rotation)", "Eintauchen schulterbreit, Fingerspitzen zuerst"],
       fehler: ["Hand weit weg vom Körper", "Arm gestreckt seitlich nach vorne", "Kopf dreht mit der Hand mit"],
       h: { noetig: [], frei: ["flossen"] }, dos: "4–6 × 25 m, 10–15 s Pause" },
-    { id: "fingerspitzen", name: "Fingerspitzen ziehen", syn: ["fingerspitzen", "fingertip", "finger ziehen", "fingertip drag"], s: ["rueckholung"],
+    { id: "fingerspitzen", name: "Fingerspitzen ziehen", syn: ["fingerspitzen", "fingertip", "finger ziehen", "fingertip drag", "fingerspitzen uebers wasser ziehen", "fingerspitzen ueber wasser"], s: ["rueckholung"],
       zweck: "Wie der Reissverschluss, aber die Fingerspitzen streifen über die Wasseroberfläche: kontrolliert, dass der Ellbogen in der Rückholung oben bleibt.",
       ablauf: ["Ellbogen nach dem Zug zuerst aus dem Wasser heben.", "Fingerspitzen locker über die Oberfläche nach vorne ziehen.", "Vor der Schulter eintauchen und lang machen."],
       achten: ["Ellbogen höher als die Hand", "Schultern locker, nicht hochziehen", "Ruhiger Rhythmus, nicht hetzen"],
@@ -53,32 +54,32 @@
       ablauf: ["Normal kraulen.", "Nach jedem Zug 1–2 Sekunden in Seitlage bleiben, vorderer Arm lang.", "Erst dann den nächsten Zug beginnen."],
       achten: ["Hüfte bleibt oben, Bauch leicht anspannen", "Vorderer Arm schulterbreit und lang", "Beinschlag läuft weiter"],
       fehler: ["Gleiten auf dem Bauch statt in Seitlage", "Vorderer Arm drückt nach unten"], h: { noetig: [], frei: ["flossen"] }, dos: "4 × 50 m, 15 s Pause" },
-    { id: "faust", name: "Faustschwimmen", syn: ["faust", "fist", "faustschwimmen", "fist drill"], s: ["fassen", "kraft"],
+    { id: "faust", name: "Faustschwimmen", syn: ["faust", "fist", "faustschwimmen", "fist drill", "kraul mit faeusten", "faeuste"], s: ["fassen", "kraft"],
       zweck: "Mit geschlossener Faust bleibt nur der Unterarm als Paddel: zwingt zu hohem Ellbogen und früher Wasserfassung.",
       ablauf: ["Hände zur Faust schliessen und normal kraulen.", "Unterarm früh senkrecht stellen.", "Die letzte Bahn mit offener Hand: Unterschied spüren."],
       achten: ["Ellbogen über der Hand", "Ruhig bleiben, Tempo nicht erzwingen", "Zug bis zur Hüfte durchziehen"], fehler: ["Ellbogen fällt zuerst", "Zu schnelle Armfrequenz"],
       h: { noetig: [], frei: [] }, dos: "4 × 25–50 m, letzte mit offener Hand" },
-    { id: "seitlage", name: "Seitlage 6-1-6", syn: ["seitlage", "6 1 6", "616", "side kick", "seitliche lage", "6-1-6"], s: ["rotation", "lage", "atmung"],
+    { id: "seitlage", name: "Seitlage 6-1-6", syn: ["seitlage", "6 1 6", "616", "side kick", "seitliche lage", "6-1-6", "6 kick wechsel", "sechs kick wechsel"], s: ["rotation", "lage", "atmung"],
       zweck: "Rotation über die Längsachse und Balance: lange auf der Seite liegen, dann mit einem Zug auf die andere Seite rollen.",
       ablauf: ["Auf der Seite liegen, unterer Arm vorne lang, Gesicht nach unten.", "6 ruhige Beinschläge, zum Atmen nur den Kopf drehen.", "Ein Zug, über die Hüfte auf die andere Seite rollen, wieder 6 Beinschläge."],
       achten: ["Schulter und Hüfte rollen gemeinsam", "Unterer Arm gleitet, drückt nicht nach unten", "Kopf in Verlängerung der Wirbelsäule"],
       fehler: ["Nur der Kopf dreht", "Beine sinken (dann Flossen nehmen)"], h: { noetig: [], frei: ["flossen"] }, dos: "4 × 50 m, 20 s Pause" },
-    { id: "einarmig", name: "Einarmig kraulen", syn: ["einarmig", "single arm", "one arm", "ein arm"], s: ["rotation", "fassen", "atmung"],
-      zweck: "Zug und Rotation je Seite einzeln: zeigt Unterschiede zwischen links und rechts.",
-      ablauf: ["Ein Arm bleibt vorne lang (leichter) oder an der Seite (schwerer).", "Nur der andere Arm zieht; die Hüfte rollt bei jedem Zug mit.", "Nach 25 m Seite wechseln."],
-      achten: ["Zug unter dem Körper bis zur Hüfte", "Rotation auch zur Seite ohne Zug", "Atmen zur Seite des ziehenden Arms"], fehler: ["Flach liegen ohne Rotation", "Kopf hebt sich"],
-      h: { noetig: [], frei: ["flossen"] }, dos: "4 × 25 m je Seite" },
-    { id: "schulter_tippen", name: "Schulter tippen", syn: ["schulter tippen", "shoulder tap", "schultertippen"], s: ["rotation", "rueckholung"],
-      zweck: "Bei der Rückholung kurz mit der Hand die eigene Schulter berühren: lockere, körpernahe Rückholung mit genug Rotation.",
-      ablauf: ["Nach dem Zug die Hand zur gleichen Schulter führen und kurz antippen.", "Dann vor der Schulter eintauchen.", "Gleichmässig weiterkraulen."],
+    { id: "einarmig", name: "Einarmig kraulen", syn: ["einarmig", "single arm", "one arm", "ein arm", "einarmig kraul"], s: ["rotation", "fassen", "atmung"],
+      zweck: "Zug, Rotation und Atmung je Seite einzeln: mit Flossen und Brett bleibt die Lage ruhig, und du atmest zur Seite des ziehenden Arms.",
+      ablauf: ["Mit Flossen; der freie Arm liegt vorne auf dem Brett.", "Nur der andere Arm zieht, die Hüfte rollt bei jedem Zug mit; mit der Rotation zur Zugseite einatmen.", "Nach der Übungsstrecke Seite wechseln."],
+      achten: ["Zug unter dem Körper bis zur Hüfte", "Rotation auch zur Seite ohne Zug", "Kopf drehen, nicht heben"], fehler: ["Flach liegen ohne Rotation", "Kopf hebt sich"],
+      h: { noetig: ["flossen", "brett"], frei: [] }, dos: "2 × 25 m je Seite, 5 s Pause" },
+    { id: "schulter_tippen", name: "Achsel tippen", syn: ["achselhoehle tippen", "achsel tippen", "achselhoehle", "schulter tippen", "shoulder tap", "schultertippen"], s: ["rotation", "rueckholung"],
+      zweck: "Bei der Rückholung kurz mit der Hand die eigene Achsel berühren: hoher Ellbogen, lockere, körpernahe Rückholung mit genug Rotation.",
+      ablauf: ["Nach dem Zug die Hand bei hohem Ellbogen zur Achsel führen und kurz antippen.", "Dann vor der Schulter eintauchen.", "Gleichmässig weiterkraulen."],
       achten: ["Ellbogen hoch, Hand nah am Körper", "Rotation über die Hüfte"], fehler: ["Hektischer Rhythmus", "Eintauchen über der Mitte"],
       h: { noetig: [], frei: ["flossen"] }, dos: "4 × 25 m" },
-    { id: "tarzan", name: "Kopf-hoch-Kraul", syn: ["tarzan", "kopf hoch", "head up", "wasserballkraul", "sighting", "orientieren"], s: ["freiwasser", "beine", "rhythmus"],
+    { id: "tarzan", name: "Wasserball-Kraul", syn: ["wasserball kraul", "wasserballkraul", "tarzan", "kopf hoch", "kopf hoch kraul", "head up", "sighting", "orientieren"], s: ["freiwasser", "beine", "rhythmus"],
       zweck: "Kraulen mit den Augen knapp über Wasser: Orientieren im Freiwasser, kräftiger Beinschlag und schneller Rhythmus.",
       ablauf: ["Kopf so weit heben, dass die Augen über Wasser sind.", "Kürzere, kräftige Züge, Beine schlagen stärker.", "Im Wechsel: 4 Züge Kopf hoch, 8 Züge normal."],
       achten: ["Nur kurz hochschauen, dann wieder normal liegen", "Beim Hochschauen nicht atmen, erst danach seitlich"], fehler: ["Lange Kopf hoch: Beine sinken"],
-      h: { noetig: [], frei: [] }, dos: "4 × 25–50 m, 20 s Pause" },
-    { id: "atmung3", name: "Atmung im Dreierzug", syn: ["3er atmung", "dreier atmung", "atmung 3", "3er zug", "bilateral", "kontrollierte 3er atmung", "beidseitig atmen"], s: ["atmung", "lage"],
+      h: { noetig: [], frei: [] }, dos: "2 × 12,5 m, Rest der Bahn locker; im Freiwasser-Block 4 × 25 m" },
+    { id: "atmung3", name: "Atmung im Dreierzug", syn: ["3er atmung", "dreier atmung", "atmung 3", "3er zug", "bilateral", "kontrollierte 3er atmung", "beidseitig atmen", "atmung bei jedem dritten zug"], s: ["atmung", "lage"],
       zweck: "Abwechselnd links und rechts atmen: symmetrische Lage und Rotation, im Freiwasser auf beide Seiten orientieren.",
       ablauf: ["Unter Wasser durch Mund und Nase gleichmässig ausatmen.", "Mit der Rotation den Kopf drehen, ein Auge bleibt im Wasser.", "Alle drei Züge einatmen, abwechselnd links und rechts."],
       achten: ["Kopf drehen, nicht heben", "Ausatmen nie anhalten"], fehler: ["Luft anhalten und dann hektisch atmen", "Zur schwachen Seite zu weit drehen"],
@@ -92,7 +93,7 @@
       ablauf: ["In Bauchlage, Arme vorne schulterbreit, Ellbogen leicht über den Händen.", "Hände in kleinen Achten nach aussen und innen bewegen.", "Langsam vorwärts kommen, Beine ruhig oder mit Pullbuoy."],
       achten: ["Bewegung aus dem Unterarm, nicht aus der Schulter", "Handflächen leicht angestellt"], fehler: ["Grosse Bewegungen", "Kopf hoch"],
       h: { noetig: [], frei: ["pullbuoy"] }, dos: "4 × 25 m, 20 s Pause" },
-    { id: "beine_brett", name: "Kraulbeine mit Brett", syn: ["beine brett", "brett beine", "kick brett", "kickboard", "kraulbeine", "beinschlag brett", "beine mit brett"], s: ["beine", "lage"],
+    { id: "beine_brett", name: "Kraulbeine mit Brett", syn: ["beine brett", "brett beine", "kick brett", "kickboard", "kraulbeine", "beinschlag brett", "beine mit brett", "kraulbeinschlag", "kraulbeinschlag mit kickboard"], s: ["beine", "lage"],
       zweck: "Beinschlag aus der Hüfte üben: lockere Knöchel, kleine schnelle Schläge – trägt die Wasserlage.",
       ablauf: ["Brett vorne mit gestreckten Armen halten.", "Aus der Hüfte schlagen, Knie nur leicht beugen.", "Gesicht im Wasser und ausatmen, zum Atmen kurz vorne heben."],
       achten: ["Füsse locker, Zehen gestreckt", "Kleine Ausschläge, Füsse brechen gerade die Oberfläche"], fehler: ["Velofahren mit den Knien", "Steife Fussgelenke"],
@@ -100,11 +101,11 @@
     { id: "beine_seitlage", name: "Beine in Seitlage", syn: ["beine seitlage", "seitlage beine", "seitenlage beine", "beine auf der seite", "kraulbeine auf der seite", "kraulbeine seitlage", "beinschlag auf der seite"], s: ["beine", "rotation", "lage"],
       zweck: "Beinschlag auf der Seite: Balance über die Längsachse und Beinschlag in alle Richtungen.",
       ablauf: ["Auf der Seite, unterer Arm vorne lang, oberer an der Hüfte.", "Kleine Beinschläge, zum Atmen Kopf drehen.", "Nach 25 m Seite wechseln."], achten: ["Hüfte bleibt seitlich, kippt nicht", "Kopf liegt auf dem unteren Arm, nur zum Atmen drehen", "Beinschlag klein und schnell, nicht nur nach vorne"],
-      fehler: ["Auf den Bauch kippen"], h: { noetig: [], frei: ["flossen"] }, dos: "4 × 25 m je Seite" },
-    { id: "rueckenbeine", name: "Rückenbeine", syn: ["rueckenbeine", "rucken beine", "ruecken beine", "back kick", "beine ruecken"], s: ["beine", "lage"],
+      fehler: ["Auf den Bauch kippen"], h: { noetig: ["flossen"], frei: [] }, dos: "2 × 50 m, Seite nach 25 m wechseln" },
+    { id: "rueckenbeine", name: "Rückenbeine", syn: ["rueckenbeine", "rucken beine", "ruecken beine", "back kick", "beine ruecken", "ruecken kraulbeine", "kraulbeine auf dem ruecken"], s: ["beine", "lage"],
       zweck: "Beinschlag in Rückenlage mit langen Armen: gerade Lage und Beinschlag ohne Brett.",
       ablauf: ["Rückenlage, Arme über dem Kopf lang oder an der Seite.", "Kleine Beinschläge aus der Hüfte.", "Knie bleiben unter der Oberfläche."], achten: ["Hüfte oben, Bauch leicht angespannt", "Kinn leicht zur Brust, Blick nach oben", "Zehen locker, kein Fahrradfahren mit den Knien"],
-      fehler: ["Sitzen im Wasser", "Knie stechen aus dem Wasser"], h: { noetig: [], frei: ["flossen"] }, dos: "4 × 50 m" },
+      fehler: ["Sitzen im Wasser", "Knie stechen aus dem Wasser"], h: { noetig: ["flossen"], frei: [] }, dos: "2–4 × 25–50 m" },
     { id: "delfinbeine", name: "Delfinbeine", syn: ["delfin", "delphin", "dolphin kick", "delfinbeine", "delphinbeine"], s: ["beine", "lage"],
       zweck: "Wellenbewegung aus dem Rumpf: Rumpfspannung und kräftiger Abstoss von der Wand.",
       ablauf: ["Arme vorne lang oder mit Brett.", "Welle aus Brust und Hüfte bis in die Füsse.", "Beide Beine gleichzeitig."], achten: ["Bewegung beginnt im Rumpf, nicht in den Knien", "Kleine Welle, Kopf bleibt ruhig zwischen den Armen", "Mit Flossen leichter; ohne nur kurze Strecken"],
@@ -131,8 +132,86 @@
       zweck: "Jede Bahn von locker bis zügig: Tempo aufbauen, ohne die Technik zu verlieren – gut vor schnellen Serien.",
       ablauf: ["Locker beginnen.", "Alle 10 m etwas zügiger.", "Die letzten Meter zügig, aber sauber."], achten: ["Zugzahl bleibt fast gleich", "Schneller durch den kräftigeren Zug, nicht durch hektische Arme", "Atmung bleibt im Rhythmus"], fehler: ["Am Anfang zu schnell"],
       h: { noetig: [], frei: [] }, dos: "4 × 25–50 m, 20 s Pause" },
+    // 2.1: weitere Übungen aus der Enduco-Liste (Namen und Hilfsmittel wie dort, Beschreibung eigen)
+    { id: "scheibenwischer", name: "Scheibenwischer", syn: ["scheibenwischer", "windshield wiper", "scheibenwischerbewegung"], s: ["fassen"],
+      zweck: "Wriggen mit senkrechten Unterarmen unter dem Körper: Gefühl für den Druck in der Mitte des Zugs, dort, wo der Unterarm am meisten Wasser bewegt.",
+      ablauf: ["Bauchlage, Kopf ruhig, Oberarme nahe an der Oberfläche.", "Unterarme zeigen senkrecht nach unten; die Hände bewegen sich in kleinen Bögen nach aussen und innen.", "Langsam vorwärts kommen, Beine schlagen locker mit."],
+      achten: ["Ellbogen bleiben oben und fast still", "Bewegung aus dem Unterarm, Handflächen leicht angestellt"], fehler: ["Ellbogen sinken nach unten", "Grosse Bewegungen aus der Schulter"],
+      h: { noetig: [], frei: [] }, dos: "2 × 25 m, Rest der Bahn locker, 5 s Pause" },
+    { id: "finger_gespreizt", name: "Kraul mit gespreizten Fingern", syn: ["gespreizte finger", "kraul gespreizte finger", "finger gespreizt", "open fingers"], s: ["fassen"],
+      zweck: "Mit gespreizten Fingern hält die Hand weniger Wasser: Unterarm und Ellbogen müssen mehr arbeiten. Danach mit geschlossener Hand den Unterschied spüren.",
+      ablauf: ["Finger weit spreizen und normal kraulen.", "Unterarm früh senkrecht stellen und ruhig bis zur Hüfte durchziehen.", "Den Rest der Bahn mit normaler Hand fertig schwimmen."],
+      achten: ["Ruhiger Rhythmus, keine hektischen Arme", "Ellbogen über der Hand"], fehler: ["Mehr Armfrequenz statt besserer Wasserfassung"],
+      h: { noetig: [], frei: [] }, dos: "2 × 25 m, Rest der Bahn locker, 5 s Pause" },
+    { id: "entenpaddeln", name: "Entenpaddeln", syn: ["enten paddeln", "entenpaddel", "ente paddeln"], s: ["kraft", "fassen"],
+      zweck: "Nur das Ende des Zugs: kurze Schübe von der Taille bis zum Oberschenkel. Übt das Strecken im Ellbogen und den Druck nach hinten.",
+      ablauf: ["Mit Flossen in Bauchlage, die Arme liegen seitlich am Körper.", "Abwechselnd die Hand von der Taille kräftig bis zum Oberschenkel nach hinten drücken.", "Unter Wasser locker zurück zur Taille."],
+      achten: ["Ellbogen ganz strecken, Handfläche zeigt nach hinten", "Kopf ruhig, Blick nach unten, Beine schlagen gleichmässig"], fehler: ["Hand dreht und schöpft das Wasser nach oben"],
+      h: { noetig: ["flossen"], frei: [] }, dos: "2 × 25 m, Rest der Bahn locker, 5 s Pause" },
+    { id: "wasserwerfen", name: "Wasserwerfen", syn: ["wasser werfen", "wasserwerfen kraul"], s: ["kraft"],
+      zweck: "Bewusster Abdruck am Ende jedes Zugs: das Wasser nach hinten an der Hüfte vorbei schieben, damit der Zug nicht zu früh endet.",
+      ablauf: ["Normal kraulen.", "Am Ende jedes Zugs das Wasser mit Nachdruck nach hinten wegschieben.", "Dann locker über Wasser zurückholen."],
+      achten: ["Druck nach hinten, nicht nach oben", "Rhythmus bleibt ruhig"], fehler: ["Wasser nach oben spritzen", "Zug vor der Hüfte abbrechen"],
+      h: { noetig: [], frei: [] }, dos: "2 × 50 m, 5 s Pause" },
+    { id: "schulterdehnung", name: "Schulterdehnung", syn: ["schulterdehnung", "schulter dehnung"], s: ["rotation"],
+      zweck: "Lange Zugphase mit viel Rotation: am Ende des Zugs lang machen und bewusst über die Hüfte rollen. Steht in der Enduco-Liste; nicht in der eigenen Abwechslung, weil die Ausführung dort nicht eindeutig beschrieben ist.",
+      ablauf: ["Normal kraulen.", "Am Ende jedes Zugs den Arm lang nach hinten strecken und kurz halten.", "Dann über Wasser zurückholen."],
+      achten: ["Nur so weit, wie es ohne Zug in der Schulter geht", "Hand nicht unter dem Körper zur anderen Seite führen"], fehler: ["Hand kreuzt unter dem Körper"],
+      h: { noetig: [], frei: [] }, dos: "2 × 50 m, 5 s Pause" },
+    { id: "po_achsel_kopf", name: "Po – Achsel – Kopf", syn: ["po achselhoehle kopf", "po achsel kopf", "hueft achsel kopf"], s: ["rueckholung", "rotation"],
+      zweck: "Rückholung in drei Stationen: die Hand tippt nacheinander Hüfte, Achsel und Kopf an. Hält den Ellbogen hoch und die Hand nah am Körper.",
+      ablauf: ["Nach dem Zug mit der Hand kurz die Hüfte antippen.", "Bei hohem Ellbogen die Achsel, kurz vor dem Eintauchen den Kopf antippen.", "Vor der Schulter eintauchen, dann der andere Arm."],
+      achten: ["Ellbogen führt, die Hand hängt locker", "Rotation über die Hüfte, Kopf bleibt ruhig"], fehler: ["Kopf dreht beim Antippen mit"],
+      h: { noetig: [], frei: [] }, dos: "2 × 25 m, Rest der Bahn locker, 5 s Pause" },
+    { id: "zurueckspulen", name: "Zurückspulen", syn: ["zurueckspulen", "zurueck spulen", "rewind"], s: ["rueckholung", "rotation"],
+      zweck: "Die Rückholung zweimal: Arm vorne eintauchen, über Wasser wieder nach hinten führen und erneut eintauchen. Übt einen kontrollierten, hohen Ellbogen.",
+      ablauf: ["Normal kraulen und den Arm vorne eintauchen.", "Den Arm über Wasser zurück bis zur Hüfte führen.", "Erneut nach vorne holen und eintauchen, dann die Seite wechseln."],
+      achten: ["Ellbogen bleibt in beiden Richtungen oben", "Der andere Arm und der Beinschlag halten die Lage"], fehler: ["Arm gestreckt seitlich führen"],
+      h: { noetig: [], frei: [] }, dos: "2 × 25 m, Rest der Bahn locker, 5 s Pause" },
+    { id: "einarmig_brett", name: "Einarmig mit Brett", syn: ["einarmig mit kickboard", "einarmig mit brett", "einarmig kickboard"], s: ["rotation", "fassen"],
+      zweck: "Ein Arm hält vorne das Brett, der andere zieht: Zug und Rotation je Seite, ohne dass der vordere Arm absinkt.",
+      ablauf: ["Ein Arm hält das Brett vorne, gestreckt.", "Der andere Arm zieht bis zur Hüfte durch und kommt über Wasser zurück.", "Nach der Übungsstrecke Seite wechseln."],
+      achten: ["Bei jedem Zug über die Hüfte rollen", "Brett ruhig halten, nicht hinunterdrücken"], fehler: ["Flach liegen ohne Rotation"],
+      h: { noetig: ["brett"], frei: [] }, dos: "2 × 25 m, Rest der Bahn locker, 5 s Pause" },
+    { id: "dreidreidrei", name: "3-3-3", syn: ["3 3 3 drill", "3 3 3", "drei drei drei"], s: ["rotation", "rhythmus"],
+      zweck: "Drei Züge nur rechts, drei nur links, drei ganz normal: verbindet einarmiges Üben mit dem normalen Rhythmus.",
+      ablauf: ["Drei Züge mit dem rechten Arm, der linke bleibt vorne lang.", "Drei Züge mit dem linken Arm.", "Drei normale Kraulzüge, dann wieder von vorne."],
+      achten: ["Rotation bei jedem Zug, auch einarmig", "Gleichmässiger Beinschlag"], fehler: ["Beim Wechsel stocken"],
+      h: { noetig: ["flossen"], frei: [] }, dos: "2 × 25 m, Rest der Bahn locker, 5 s Pause" },
+    { id: "zwei_pro_seite", name: "Zwei Züge pro Seite", syn: ["kraul zwei zuege pro seite", "zwei zuege pro seite", "2 zuege pro seite"], s: ["rotation", "rhythmus"],
+      zweck: "Je zwei Züge mit demselben Arm, dann wechseln: zeigt, ob beide Seiten gleich rollen und gleich viel Wasser fassen.",
+      ablauf: ["Zwei Züge mit dem rechten Arm, der linke wartet vorne.", "Zwei Züge mit dem linken Arm.", "Im Wechsel weiter."],
+      achten: ["Der wartende Arm liegt lang vor der Schulter", "Kopf ruhig, Atmung zur ziehenden Seite"], fehler: ["Vorderer Arm sinkt ab"],
+      h: { noetig: ["flossen"], frei: [] }, dos: "2 × 25 m, Rest der Bahn locker, 5 s Pause" },
+    { id: "balance", name: "Balance-Übung", syn: ["balance drill", "balance", "balance uebung"], s: ["lage", "rotation"],
+      zweck: "Seitenlage mit einem Arm vorne und einem am Körper: Gleichgewicht über die Längsachse halten, der Beinschlag trägt.",
+      ablauf: ["Auf der Seite liegen, der vordere Arm lang auf dem Brett, der hintere an der Hüfte.", "Ruhige Beinschläge, Gesicht im Wasser, zum Atmen nur den Kopf drehen.", "Nach der Übungsstrecke Seite wechseln."],
+      achten: ["Hüfte und Schulter bleiben seitlich", "Brett nicht hinunterdrücken"], fehler: ["Auf den Bauch zurückkippen"],
+      h: { noetig: ["brett"], frei: [] }, dos: "2 × 25 m, Rest der Bahn locker, 5 s Pause" },
+    { id: "atmung2", name: "Atmung im Zweierzug", syn: ["2er atmung", "zweier atmung", "atmung 2", "atmung bei jedem zweiten zug"], s: ["atmung", "rhythmus"],
+      zweck: "Bei jedem zweiten Zug atmen, immer zur gleichen Seite: ruhiger, regelmässiger Rhythmus, wie bei zügigem Tempo.",
+      ablauf: ["Unter Wasser gleichmässig ausatmen.", "Bei jedem zweiten Zug mit der Rotation einatmen.", "In der nächsten Wiederholung zur anderen Seite atmen."],
+      achten: ["Kopf drehen, nicht heben", "Ein Auge bleibt im Wasser"], fehler: ["Luft anhalten und dann hektisch atmen"],
+      h: { noetig: [], frei: [] }, dos: "2 × 25 m, Rest der Bahn locker, 5 s Pause" },
+    { id: "atempyramide", name: "Atempyramide", syn: ["atempyramide", "atem pyramide", "atmungspyramide"], s: ["atmung", "rhythmus"],
+      zweck: "Den Atemrhythmus Schritt für Schritt verlängern und wieder verkürzen: Kontrolle über das Ausatmen und einen gleichmässigen Rhythmus.",
+      ablauf: ["Bei jedem Zug atmen, dann bei jedem zweiten, dritten, vierten und fünften.", "Danach wieder zurück bis zu jedem Zug.", "Nur locker schwimmen."],
+      achten: ["Gleichmässig ins Wasser ausatmen, nie pressen", "Bei Unwohlsein sofort normal atmen; nie allein üben"], fehler: ["Zu schnell schwimmen", "Luft anhalten"],
+      h: { noetig: ["flossen"], frei: [] }, dos: "2 × 50 m locker, 5 s Pause" },
   ];
   const BY = new Map(SW.UEBUNGEN.map((u) => [u.id, u]));
+  /** Die Kraul-Übungen aus Silas' Enduco-Einheiten (Liste vom 16.11.2026): id → [Übungsstrecke in m, Gruppe für die Abwechslung].
+   *  Strecke wie dort (12,5, 25 oder 50 m), danach die Bahn locker fertig schwimmen; Gruppe null = nur erkannt, nicht in der Abwechslung. */
+  SW.ENDUCO = { hundepaddeln: [25, "zug"], scheibenwischer: [25, "zug"], finger_gespreizt: [25, "zug"], faust: [25, "zug"], entenpaddeln: [25, "zug"],
+    wasserwerfen: [50, "zug"], schulterdehnung: [50, null],
+    reissverschluss: [25, "rueck"], schulter_tippen: [25, "rueck"], po_achsel_kopf: [25, "rueck"], fingerspitzen: [25, "rueck"], zurueckspulen: [25, "rueck"],
+    einarmig_brett: [25, "timing"], einarmig: [25, "timing"], dreidreidrei: [25, "timing"], zwei_pro_seite: [25, "timing"], abschlag: [25, "timing"], gleiten: [25, "timing"],
+    beine_brett: [25, "lage"], rueckenbeine: [25, "lage"], beine_seitlage: [50, "lage"], balance: [25, "lage"], seitlage: [25, "lage"],
+    atmung2: [25, "atmung"], atmung3: [25, "atmung"], atempyramide: [50, "atmung"], tarzan: [12.5, "atmung"] };
+  /** Gruppen der Abwechslung (eigene Einteilung nach Schwerpunkt). */
+  SW.ROTATION_KEYS = ["zug", "rueck", "timing", "lage", "atmung"];
+  SW.ROTATION = SW.ROTATION_KEYS.map((g) => Object.keys(SW.ENDUCO).filter((id) => SW.ENDUCO[id][1] === g));
+  SW.ROTATION_NAME = ["Armzug unter Wasser", "Rückholung über Wasser", "Einarmig und Timing", "Wasserlage und Beinschlag", "Atmung und Kopf"];
   SW.uebung = (id) => BY.get(id) || null;
   /** Name normalisieren: Kleinbuchstaben, ß → ss, Umlaute → ae/oe/ue, alles ausser Buchstaben und Ziffern → Leerzeichen. */
   SW.norm = (t) => String(t || "").toLowerCase().replace(/ß/g, "ss").replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/₂/g, "2")
@@ -154,14 +233,15 @@
   };
 
   /* ---------------- Eigene Schwimm-Einheiten (schwimmeinheit-1.0) ---------------- */
-  // Wechselnde Übungen je Woche: aus drei Gruppen je eine (Rotation/Lage, Rückholung oder Wasserfassung, Atmung/Rhythmus)
-  const GRUPPEN = [["seitlage", "abschlag", "gleiten", "einarmig", "schulter_tippen"], ["reissverschluss", "hundepaddeln", "fingerspitzen", "faust", "wriggen"],
-    ["atmung3", "tarzan", "abschlag", "einarmig", "faust"]];
-  SW.uebungenDerWoche = function (nr, anzahl) {
-    const k = Math.abs(Math.round(nr || 0)), out = [];
-    for (let g = 0; out.length < (anzahl || 3) && g < 6; g++) {
-      const L = GRUPPEN[g % 3], id = L[(k + g) % L.length];
-      if (!out.includes(id)) out.push(id);
+  // Wechselnde Übungen je Woche (uebungen-2.1): drei Übungen aus drei der fünf Gruppen, Woche für Woche um eine Gruppe und eine Übung weiter,
+  // damit alle Übungen der Enduco-Liste regelmässig vorkommen. ohne = Übungen, die in der Einheit schon als eigener Block stehen.
+  SW.uebungenDerWoche = function (nr, anzahl, ohne) {
+    const k = Math.abs(Math.round(nr || 0)), G = SW.ROTATION, n = G.length, out = [], weg = ohne || [];
+    // wie oft die Gruppe g bis zu dieser Woche drankam (je 5 Wochen dreimal) → jedes Mal die nächste Übung der Gruppe
+    const mal = (g) => { let c = 0; for (let w = k - (k % n); w <= k; w++) if ((((g - w) % n) + n) % n < 3) c++; return Math.floor(k / n) * 3 + c; };
+    for (let i = 0; out.length < (anzahl || 3) && i < n * 2; i++) {
+      const g = (k + i) % n, L = G[g].filter((id) => !weg.includes(id) && !out.includes(id));
+      if (L.length) out.push(L[mal(g) % L.length]);
     }
     return out;
   };
@@ -195,8 +275,9 @@
     o = o || {};
     const pool = o.pool === 50 ? 50 : 25, min = isNum(o.min) && o.min > 0 ? o.min : 45, css = isNum(o.css_s) ? o.css_s : null;
     const ref = css ? css + 12 : isNum(o.ref_s) ? o.ref_s : null, pace = { css, ref };
-    const T = min * 60, drill = (id, wdh) => { const u = SW.uebung(id);
-      return { wdh, m: 25, zuende_m: pool === 50 ? 25 : 0, zone: "tech", pause_s: 15, text: u.name, uebung: id, hilfsmittel: u.h.noetig.slice(), frei: u.h.frei.slice() }; };
+    // schwimmeinheit-1.1: Übungsstrecke wie in der Enduco-Liste (12,5/25/50 m), dann die Bahn locker fertig; 5 s Pause am Beckenrand wie dort
+    const T = min * 60, drill = (id, wdh) => { const u = SW.uebung(id), m = (SW.ENDUCO[id] || [25])[0], ganz = Math.ceil(m / pool - 1e-9) * pool;
+      return { wdh, m, zuende_m: ganz - m, zone: "tech", pause_s: 5, text: u.name, uebung: id, hilfsmittel: u.h.noetig.slice(), frei: u.h.frei.slice() }; };
     const B = [];
     const add = (id, titel, teile) => B.push({ id, titel, teile: teile.map((t) => teil(t, pace)) });
     if (art === "kurs") {
@@ -209,7 +290,7 @@
       add("aus", "Ausschwimmen", [{ wdh: 1, m: 300, zone: "z1", pause_s: 0, text: "Locker ausschwimmen; beide Zeiten auf der Seite eintragen" }]);
     } else {
       const lang = T >= 55 * 60, kurz = T < 35 * 60;
-      const ids = SW.uebungenDerWoche(o.woche, art === "css" || kurz ? 2 : 3);
+      const ids = SW.uebungenDerWoche(o.woche, 3, art !== "css" && !kurz ? ["beine_brett"] : []);    // drei Übungen wie bei Enduco; Brett-Beine stehen sonst doppelt
       add("ein", "Einschwimmen", [{ wdh: 1, m: kurz ? 200 : lang ? 400 : 300, zone: "z1", pause_s: 30, text: "Locker einschwimmen, Kraul und Rücken gemischt" }]);
       add("technik", "Technikübungen", ids.map((id) => drill(id, 2)));
       if (art === "css") add("steig", "Steigerungen", [{ wdh: 4, m: 50, zone: "z3", pause_s: 20, text: "Steigerungen von locker bis zügig", uebung: "steigerung" }]);
@@ -242,8 +323,12 @@
   };
   /** Baustein-ID des Wochenvorschlags → Art der Schwimm-Einheit. */
   SW.artVon = (id) => ({ schwimm_locker: "locker", schwimm_css: "css", test_css: "test", schwimm_kurs: "kurs" }[id] || "locker");
-  /** Bahnen-Text: 25 m im 50-m-Becken = ½ L, 100 m = 2 L. */
-  SW.bahnen = (m, pool) => { if (!isNum(m) || !m) return ""; const L = m / (pool || 25); return `${L === 0.5 ? "½" : Number.isInteger(L) ? L : L.toFixed(1)} L`; };
+  /** Bahnen-Text: 25 m im 50-m-Becken = ½ L, 12,5 m = ¼ L, 100 m = 2 L. */
+  SW.bahnen = (m, pool) => {
+    if (!isNum(m) || !m) return "";
+    const L = m / (pool || 25), g = Math.floor(L + 1e-9), r = Math.round((L - g) * 100) / 100, B = { 0.25: "¼", 0.5: "½", 0.75: "¾" };
+    return r ? (B[r] ? `${g || ""}${B[r]} L` : `${String(Math.round(L * 10) / 10).replace(".", ",")} L`) : `${g} L`;
+  };
   /** Referenz-Tempo aus Becken-Einheiten (Bewegungszeit ÷ Strecke), Median der letzten 10 mit Strecke; unter 3 Einheiten null. */
   SW.refTempo = function (acts) {
     const L = (acts || []).filter((a) => a && a.sport === "schwimm" && !/freiwasser|open/i.test(a.typ || "") && a.km > 0.3 && (a.mv || a.dur))

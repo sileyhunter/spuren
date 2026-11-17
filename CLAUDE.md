@@ -565,7 +565,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
   Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
   Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
-- **Wissen `wissen-1.11` (`js/wissen.js`; 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.11 = V7.3 Etappe 2 Schwimmen,
+- **Wissen `wissen-1.12` (`js/wissen.js`; 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.12 = V7.3.2 Übungen aus der Enduco-Liste, 1.11 = V7.3 Etappe 2 Schwimmen,
   Puls und RPE an Garmin im Kapitel «modelle», 1.10 = V7.3 Einheit als
   Schritte, Einfahren und Intervall-Intensität, RPE je Abschnitt im Kapitel «intervalle»; 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
   1.3: Kapitel «Vorschlag und Enduco vergleichen», 1.4: Prüfung der Quellen – Formulierungen nicht stärker als die Studien, eigene Festlegungen
@@ -601,7 +601,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   raw gelesen): sportType 4 «swimming», `poolLength` 25/50 mit `poolLengthUnit` meter (Bahnlänge des Geräts, `SWUI.becken`), Strecken in ganzen
   Bahnen (distance), Pausen am Beckenrand als rest/fixed.rest, Übungen als «other» über die ganze Bahn («½ L | Name | Technik | RPE … | Bahn locker
   beenden»), Wiederholungen mit `skipLastRestStep` false, Stil free, nötige Hilfsmittel als `equipmentType` (fins 1, kickboard 2, paddles 3 aus
-  Enduco-Workouts; pull_buoy 4 nach dem FIT-Profil, beim ersten Senden mit der Rücklese prüfen), freiwillige im Text; mit CSS-Test Nebenziel
+  Enduco-Workouts; pull_buoy 4 am 17.11.2026 mit einem Test-Upload bestätigt), freiwillige im Text; mit CSS-Test Nebenziel
   swim.css.offset (17) = CSS-Geschwindigkeit − Zielgeschwindigkeit (m/s) und Tempo im Text, ohne Test bzw. Metrik RPE nur RPE im Text. Die Uhr
   rechnet die Tempo-Ziele mit ihrer eigenen CSS; Garmin liefert sie nicht (get_user_profile geprüft am 16.11.2026), die Seite sagt es im
   Export-Blatt. Die CSS nie nach Garmin schreiben. Die Schwimm-Einheit kommt immer aus `V66UI.schwimmEinheit` (dieselbe wie auf der Einheit-Seite,
@@ -634,6 +634,9 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   `V64.enducoAusUhr`, `tools/bibliothek.py` (bib-1.1, kein Enduco-Termin).
 - Die Seite zeigt je Einheit «in Garmin», «in Garmin, geändert» oder «wird gesendet» (`V66.garminStand`), je Tag den Auftrag (offen, gesendet,
   verpasst, Fehler mit Grund, abgelehnt). Rücklese geprüft am ersten echten Senden; bis dahin nie behaupten, das Format sei an Silas' Geräten geprüft.
+  **Test-Upload 17.11.2026 (mit Silas' Okay):** ein Schwimm-Workout mit erfundenen Werten (50-m-Becken, Übungen «other», Brett, Pullbuoy, CSS-Abstand,
+  Texte mit «½» und «–») hochgeladen, zurückgelesen («RÜCKLESEN: gleich», Garmin speichert es unverändert) und gleich wieder gelöscht, nie eingeplant.
+  Damit nimmt Garmin das Format an; wie die Fenix es zeigt, ist weiter offen.
   1.1: `rueck` vergleicht zusätzlich die Texte der Schritte (gekürzt oder anders = abweichend), Bahnlänge, Stil, Hilfsmittel und Nebenziel (CSS-Abstand);
   «ohne Ziel» darf als null oder no.target zurückkommen. Erstes echtes Senden einer Schwimm-Einheit: Rücklese im Chat zeigen und Silas bitten, auf der
   Fenix zu prüfen (Übungsname sichtbar, Hilfsmittel, Pausen, Bahnen); bis dahin nie behaupten, Schwimmen sei auf dem Gerät geprüft.
@@ -775,9 +778,14 @@ Termine (`kind` «css», «geplant») stehen nur verschlüsselt im Testkalender 
 Abwesenheiten nie in Doku, Code oder Tests). Eintrag auf der Seite mit zwei Zeiten (Rest
 optional), über «Direkt speichern» → `css_tests`. Rohpace aus Garmin, Videovergleich und Fehlerboard sind ausgeblendet (Daten bleiben);
 Technik wertet Claude im Chat aus (Videos Bild für Bild), nie auf der Seite.
-**Schwimm-Einheiten (V7.2, schwimmeinheit-1.0, uebungen-2.0):** eigene Schwimm-Einheiten werden als Serien wie im Becken gezeigt (Meter, Bahnen,
+**Schwimm-Einheiten (V7.2, schwimmeinheit-1.0, uebungen-2.0; seit V7.3.2 schwimmeinheit-1.1, uebungen-2.1):** eigene Schwimm-Einheiten werden als Serien wie im Becken gezeigt (Meter, Bahnen,
 Pausen, Hilfsmittel); Tempo nur aus dem CSS-Test (locker CSS + 15–20 s, Grundlage CSS + 8–12 s, Annahmen), ohne Test nach Anstrengung. Übungstexte
 sind eigene Beschreibungen (nie aus Enduco oder Webseiten übernehmen); Hilfsmittel nur Brett, Pullbuoy, Flossen, Paddles (Schnorchel nur als Garmin-Feld).
+**uebungen-2.1 (V7.3.2):** `SW.ENDUCO` = die 27 Kraul-Übungen aus Silas' Enduco-Einheiten (seine Liste vom 16.11.2026, PDF nie ins Repository): Name als
+Name oder Synonym, Übungsstrecke 12,5/25/50 m und nötige Hilfsmittel wie dort, Texte eigen. Abwechslung `SW.uebungenDerWoche`: je Woche drei Übungen
+aus drei von fünf Gruppen (`SW.ROTATION`, eigene Einteilung), jede Gruppe beim nächsten Mal mit der nächsten Übung; «Schulterdehnung» nur im Katalog
+(Ausführung unklar). schwimmeinheit-1.1: immer drei Übungen je 2 ×, Strecke laut Liste, dann die Bahn locker fertig, 5 s Pause (wie Enduco); keine
+Brett-Beine als Übung, wenn die Einheit einen Beine-Block hat.
 Protokoll-Vorlagen: `protokolle` (Liste mit `id name sport ablauf blut ende rahmen status`), ändern über `"protokolle": [ … ]` in `work/new.json`.
 **Testplan (V6.2, testplan-1.0, `js/v62.js`):** Die Seite schlägt Tests nach festen Regeln selbst vor (Status «vorschlag», Regel sichtbar), in
 Testkalender, Kalender und auf Heute (heute/morgen): CSS alle 6–8 Wochen am gleichen Wochentag wie zuletzt; Rad-Stufentest alle 8 Wochen am Samstag

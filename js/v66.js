@@ -799,8 +799,8 @@
   }
 
   /* ----- Schwimmen (1.1) ----- */
-  /** Hilfsmittel → Garmin equipmentType. IDs wie in Enduco-Workouts gelesen (fins 1, kickboard 2, paddles 3); pull_buoy 4 nach dem FIT-Profil,
-   *  wird beim ersten Senden mit der Rücklese geprüft. Schnorchel geht nur in den Text. */
+  /** Hilfsmittel → Garmin equipmentType. IDs wie in Enduco-Workouts gelesen (fins 1, kickboard 2, paddles 3); pull_buoy 4 am 17.11.2026 mit einem
+   *  Test-Upload bestätigt (hochladen, zurücklesen, gelöscht). Schnorchel geht nur in den Text. */
   V66.GARMIN_GERAET = { flossen: { id: 1, key: "fins", name: "Flossen" }, brett: { id: 2, key: "kickboard", name: "Brett" }, paddles: { id: 3, key: "paddles", name: "Paddles" },
     pullbuoy: { id: 4, key: "pull_buoy", name: "Pullbuoy" }, schnorchel: { id: null, key: null, name: "Schnorchel" } };
   const SW_WORT = { z1: "locker", z2: "Grundlage", z3: "zügig", css: "CSS", tech: "Technik", max: "maximal" };

@@ -221,9 +221,11 @@ test("garmin-senden-1.1: Schwimmen wie Enduco – Bahnlänge, ganze Bahnen, Übu
     const ueb = F.filter((s) => s.stepType && s.stepType.stepTypeKey === "other");
     assert.ok(ueb.length >= 2, "Übungen als «other»");
     for (const u of ueb) {
-      assert.equal(u.endConditionValue, pool, "Übung über die ganze Bahn");
-      if (pool === 50) assert.match(u.description, /^½ L \| .* \| Bahn locker beenden$/); else { assert.match(u.description, /^1 L \| /); assert.doesNotMatch(u.description, /Bahn locker beenden/); }
+      // Übungsstrecke wie in der Enduco-Liste (12,5/25/50 m): ein Bruchteil der Bahn → ganze Bahn mit «Bahn locker beenden», sonst ganze Bahnen
+      if (/Bahn locker beenden$/.test(u.description)) { assert.equal(u.endConditionValue, pool, "Übung über die ganze Bahn"); assert.match(u.description, /^[¼½¾] L \| /); }
+      else { const L = +/^(\d+) L \| /.exec(u.description)[1]; assert.equal(u.endConditionValue, L * pool, "ganze Bahnen"); }
     }
+    if (pool === 50) assert.ok(ueb.some((u) => /^½ L \| .* \| Bahn locker beenden$/.test(u.description)), "im 50-m-Becken «½ L … Bahn locker beenden»");
     assert.match(W.description, new RegExp(`${S.meter} m im ${pool}-m-Becken`)); assert.match(W.description, /ohne CSS-Test/);
   }
   // Hilfsmittel: nötige als equipmentType (Brett = kickboard, Pullbuoy = pull_buoy), freiwillige nur im Text

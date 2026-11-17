@@ -166,7 +166,7 @@
   const SW_KEY = { z1: "z1", z2: "z2", z3: "z3", css: "css", tech: "z2", max: "test" };
   function swSchritte(t, pool, stil) {
     const L = [];
-    const bahnen = (m) => { const x = m / (pool || 25); return x === 0.5 ? "½ L" : Number.isInteger(x) ? `${x} L` : `${x.toFixed(1)} L`; };
+    const bahnen = (m) => V73.bahnenText(m / (pool || 25));                    // «¼ L», «½ L», «1½ L», «6 L»
     // Schwimmzeit einer Wiederholung (inkl. Bahn beenden) nach Strecke auf Übung und Beenden aufgeteilt
     const je = isNum(t.schwimm_s) && t.wdh ? t.schwimm_s / t.wdh : null, ganz = (t.m || 0) + (t.zuende_m || 0);
     L.push({ typ: "s", art: t.zone === "tech" ? "technik" : "belastung", key: SW_KEY[t.zone] || "z2", m: t.m, bahnen: bahnen(t.m), s: isNum(je) && ganz ? Math.round(je * t.m / ganz) : null,
