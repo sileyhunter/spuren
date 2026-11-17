@@ -268,7 +268,8 @@
     const fenster = (f) => { const t = zeit(f.t.value), ab = f.fe.value === "auto" ? AN.laktatAbschnitt(S, t, ST.ints.liste) : AN.laktatFenster(S, t, +f.fe.value); return { t, ab, st: AN.stats(S, ab.i0, ab.i1) }; };
     const zeigen = () => {                                                 // V7.6.2: Puls im gewählten Fenster schon vor dem Speichern sehen
       const f = $("ex-lf"), o = $("ex-lf-hf"); if (!f || !o) return;
-      const { ab, st } = fenster(f), an = AN.pulsAnstieg(S, ab.i0, ab.i1);
+      const { t, ab, st } = fenster(f), an = AN.pulsAnstieg(S, ab.i0, ab.i1), h = f.querySelector("h3");
+      if (h) h.textContent = `Laktat bei ${hms(t)}`;
       o.textContent = st ? `${hms(S.t[ab.i0])}–${hms(S.t[ab.i1] + S.dt)}: Ø Puls ${f0(st.hr)}, max ${f0(st.hrmax)}${isNum(an) ? `, Anstieg ${f1(an)} %` : ""}${isNum(st.w) && st.w > 0 ? ` · Ø ${f0(st.w)} W` : ""}.` : "";
     };
     $("ex-lf").fe.onchange = zeigen; $("ex-lf").t.oninput = zeigen; zeigen();
