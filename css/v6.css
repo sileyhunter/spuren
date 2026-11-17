@@ -1160,3 +1160,25 @@ button.v73-opt { border: 0; padding: 0; background: none; color: var(--fg); font
 .pe-fit { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 10px; align-items: center; margin: 4px 0 8px; }
 .pe-fit .btn { min-height: 44px; padding: 0; font-size: 22px; line-height: 1; }
 .pe-fit input[type="range"] { width: 100%; height: 44px; margin: 0; padding: 0; border: 0; background: transparent; accent-color: var(--accent); }
+/* V7.6 kraft-plan-1.0: Krafttraining in den Planeinstellungen (Termin, Wochentag, Uhrzeit, Dauer, Notiz) und auf der Seite der Einheit */
+.pe-schalter-z.einzeln label { grid-template-columns: 0 minmax(0, 1fr) auto; margin: 4px 0 12px; }
+.pe-feld-t { margin: 12px 0 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.pe-tage { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.pe-tage button { min-height: 44px; padding: 0; border-radius: 12px; border: 1.5px solid var(--line-2); background: var(--surface); color: var(--fg); font: 600 14px/1 var(--f-body); cursor: pointer; }
+.pe-tage button[aria-checked="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-fg); }
+.pe-tage button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.pe-zeit { display: flex; align-items: center; gap: 8px; }
+.pe-zeit select { min-height: 44px; min-width: 86px; padding: 8px 10px; border-radius: 12px; border: 1.5px solid var(--line-2); background: var(--surface); color: var(--fg); font: inherit; }
+.pe-zeit select:disabled { color: var(--muted); }
+.pe-zeit span { font-weight: 700; }
+.pe-notiz { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.pe-notiz textarea { min-height: 76px; padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--line-2); background: var(--surface); color: var(--fg); font: 400 15px/1.4 var(--f-body); resize: vertical; }
+.pe-notiz textarea:focus-visible, .pe-zeit select:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.v76-kraft { display: flex; flex-direction: column; gap: 10px; }
+.v76-notiz { margin: 0; padding: 12px 14px; border-radius: 14px; background: var(--surface); font-size: 15px; line-height: 1.45; white-space: pre-line; }
+.v76-rpe { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; }
+.v76-rpe button { min-height: 44px; padding: 0; border-radius: 10px; border: 1.5px solid var(--line-2); background: var(--surface); color: var(--fg); font: 600 15px/1 var(--f-body); cursor: pointer; }
+.v76-rpe button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-fg); }
+.v76-rpe button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.pe-schalter-z.einzeln label > span:nth-child(2) { display: flex; flex-direction: column; gap: 2px; }
+.pe-schalter-z.einzeln label small { color: var(--muted); font-size: 13px; line-height: 1.35; }

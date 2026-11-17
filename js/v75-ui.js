@@ -1,5 +1,5 @@
 /* Ironman Notebook V7.5 – Etappe 3 · Oberfläche «Planeinstellungen», Vorbild: die Planeinstellungen von enduco (Blätter nacheinander, Aufbau,
-   Antipp-Verhalten; Texte, Symbole und Grafiken eigen). Rechenlogik in js/v75.js (planeinstellungen-1.0, basis-1.0, steigerung-1.0, indoor-phase-1.0),
+   Antipp-Verhalten; Texte, Symbole und Grafiken eigen). Rechenlogik in js/v75.js (planeinstellungen-1.0, basis-1.1, steigerung-1.0, indoor-phase-1.0, V7.6 kraft-plan-1.0 mit js/v76.js),
    Schwimm-Einheit in js/schwimmen.js (schwimmeinheit-1.2).
    V7.5.1: ein Blatt als Folge Laufen → Rad → Schwimmen → Trainingsumfang → «Fertig ✓» (unten «‹», auf dem letzten «Fertig ✓»), geöffnet über
    Plan → Plan verwalten (zuoberst), das Profil und die Wochenstunden (dort direkt beim Trainingsumfang). Je Sportart die Basis-Fitness (basis-1.1: Fitness
@@ -8,12 +8,14 @@
    für alle drei Sportarten mit Wort und Farbe je Bereich, Kurve bis zum Hauptrennen mit dem Bereich 50–150 %, live beim Ziehen.
    Gespeichert über «Direkt speichern» (Eingabe planeinstellung → plan_einstellungen): jede Auswahl beim Übernehmen, Start und Steigerung mit «Fertig ✓».
    Start, eigene Basis-Fitness und Steigerung gelten ab der nächsten Woche; die laufende Woche bleibt, wie sie ist.
+   V7.6 (kraft-plan-1.0, js/v76.js): Seite «Krafttraining» zwischen Schwimmen und Trainingsumfang – fester Termin (Wochentag, Uhrzeit, Dauer, Notiz für die
+   Übungen) ab der nächsten Woche, Ausnahmen kommender Wochen zurück zur Regel; auch aus dem Tagesblatt (V75UI.flow({ seite: "kraft" })).
    Danach rechnen Plan, Kalender und Heute neu (Ereignis «meinplan»), offene Garmin-Aufträge dieser und der nächsten Woche werden nachgeführt.
    Nichts davon geht an Enduco. */
 (function () {
   "use strict";
   const M = (window.V75UI = window.V75UI || {});
-  const V75 = () => window.V75, V64 = () => window.V64, V6 = () => window.V6, V59 = () => window.V59, UI = () => window.V5UI, SW = () => window.SW;
+  const V75 = () => window.V75, V64 = () => window.V64, V6 = () => window.V6, V59 = () => window.V59, UI = () => window.V5UI, SW = () => window.SW, V76 = () => window.V76;
   const P = () => window.V64UI, U66 = () => window.V66UI;
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -30,6 +32,7 @@
   const heute = () => C.iso(C.today);
   const tagKurz = (iso) => { const [, m, d] = iso.split("-"); return `${+d}.${+m}.`; };
   const tagLang = (iso) => { const [y, m, d] = iso.split("-"); return `${+d}.${+m}.${y}`; };
+  const wtVon = (iso) => ((new Date(iso + "T12:00:00Z").getUTCDay() + 6) % 7) + 1;
 
   /* ---------- Daten ---------- */
   /** Einstellungen aus den Daten, darüber die noch nicht eingespielten Eingaben dieses Geräts (V75.einstellungen; opt.bis wie dort). */
@@ -83,13 +86,17 @@
   async function sichern(id, felder) {
     const I = UI().Inbox; if (!I || !I.data) return "Speicher auf diesem Gerät nicht verfügbar";
     if (!Array.isArray(I.data.planeinstellung)) I.data.planeinstellung = [];
-    const x = V75().eintrag(id, felder), f = V75().pruefen(x); if (f) return f;
+    // V7.6: Gruppen ab der nächsten Woche tragen die Fassung mit, die diese Woche noch gilt (V75.eintrag mit der bisher neuesten)
+    const alt = V75().aktuell(C.D.plan_einstellungen || [], I.data.planeinstellung, id);
+    const x = V75().eintrag(id, felder, undefined, alt), f = V75().pruefen(x); if (f) return f;
     await I.upsert("planeinstellung", x);
     try { document.dispatchEvent(new CustomEvent("meinplan")); } catch (e) { console.error(e); }
     // offene Garmin-Aufträge (morgen bis eine Woche voraus) mit dem neuen Stand abgleichen – nur geänderte werden neu gespeichert
     try { if (U66() && U66().auftraegeAbgleichen) { const mo = V64().montag(heute()); await U66().auftraegeAbgleichen(mo); await U66().auftraegeAbgleichen(V64().addDays(mo, 7)); } } catch (e) { console.error(e); }
     return null;
   }
+  /** V7.6: speichern von aussen (Einheit-Seite: Ausnahme einer Woche fürs Krafttraining); → Fehlertext oder null. */
+  M.speichern = (id, felder) => (bereit() ? sichern(id, felder) : Promise.resolve("Seite noch nicht bereit"));
   /** Kurze Bestätigung unten am Bildschirm (nach «Fertig ✓», wenn das Blatt schon zu ist). */
   function toast(t) {
     let el = document.getElementById("pe-toast");
@@ -137,9 +144,9 @@
       <text x="${x0}" y="${h - 4}" class="pe-ax">jetzt</text><text x="${xr}" y="${h - 4}" text-anchor="end" class="pe-ax">${esc(haupt ? `${haupt.name || "Rennen"} ${haupt.date ? tagKurz(haupt.date) : ""}` : "Rennen")}</text></svg>`;
   }
 
-  /* ---------- Blatt-Folge: Laufen → Rad → Schwimmen → Trainingsumfang ---------- */
-  const SEITEN = ["lauf", "rad", "schwimm", "umfang"];
-  const TITEL = { lauf: "Laufen", rad: "Rad", schwimm: "Schwimmen", umfang: "Trainingsumfang" };
+  /* ---------- Blatt-Folge: Laufen → Rad → Schwimmen → Krafttraining → Trainingsumfang ---------- */
+  const SEITEN = ["lauf", "rad", "schwimm", "kraft", "umfang"];
+  const TITEL = { lauf: "Laufen", rad: "Rad", schwimm: "Schwimmen", kraft: "Krafttraining", umfang: "Trainingsumfang" };
   let FLOW = { zurueck: null, entwurf: null, entwurfStart: null };
   const pfeil = () => ic("weiter", 18);
   function zeile(attr, links, titel, satz, wert) {
@@ -193,6 +200,17 @@
           <li class="pe-schalter-z"><label>${ic("technik", 22)}<span><b>Anfänger-Modus</b><small>Kürzere Wiederholungen, längere Pausen, nur einfache Übungen</small></span>
             <input type="checkbox" role="switch" data-pe-anf${S.anfaenger ? " checked" : ""}><i class="pe-schalter" aria-hidden="true"></i></label></li>
           ${zeile(`data-pe="stile"`, ic("schwimm", 22), "Stile", SW() ? SW().stileText(S.stile) : "Kraul")}</ul>`;
+    } else if (s === "kraft") {
+      const K = E.kraft, D = V76(), ab = V64().addDays(V64().montag(heute()), 7), AUS = D ? D.ausnahmen(E, ab) : [];
+      const ausText = (a) => (a.aus ? "ausgelassen" : `am ${D.TAGE[wtVon(a.tag) - 1]}${a.uhrzeit ? " " + a.uhrzeit : ""}`);
+      inhalt = `<div class="blatt-titel"><span class="pe-sp gross" style="--sp:var(--fg)">${ic("kraft", 34)}</span><h2 id="v59-ov-h" tabindex="-1">Krafttraining</h2>
+          <p class="sub">Ein fester Termin pro Woche – zusätzlich zu Schwimmen, Rad und Laufen.</p></div>${meldungHTML(meldung)}
+        <ul class="v6-aktionen pe-liste">
+          ${zeile(`data-pe="kraft"`, ic("kalender", 22), "Termin", K.aktiv ? "jede Woche" : "kein festes Krafttraining", D ? D.text(K) : "")}
+          ${K.aktiv ? zeile(`data-pe="kraft"`, ic("notiz", 22), "Übungen", K.notiz ? K.notiz : "noch keine Notiz – für dich, die Seite plant keine Übungen", "") : ""}
+          ${AUS.map((a) => zeile(`data-pe="kraftwoche" data-mo="${a.mo}"`, ic("ausnahme", 22), `Woche vom ${tagLang(a.mo)}`, `nur diese Woche: ${ausText(a)}`, "")).join("")}</ul>
+        <p class="hint">${esc(D ? D.VERSIONS.kraft : "kraft-plan")}: zählt nicht zu den Wochenstunden Schwimmen, Rad, Laufen und nicht in TL ≈ und Form, belegt aber seine Zeit am Tag
+          (beim Verteilen nach deiner Verfügbarkeit bleibt es an seinem Tag). Nach Garmin geht es nicht. Eine einzelne Woche verschiebst oder lässt du auf der Seite der Einheit aus.</p>`;
     } else {
       const st = FLOW.entwurf != null ? FLOW.entwurf : E.steigerung, start = FLOW.entwurfStart || BA.E.start;
       inhalt = `<div class="blatt-titel">${ic("trend", 34)}<h2 id="v59-ov-h" tabindex="-1">Trainingsumfang</h2>
@@ -219,7 +237,7 @@
       if (s === "umfang") { FLOW.entwurf = +ov.querySelector("[data-per]").value; const g = ov.querySelector('[data-pes][aria-checked="true"]'); if (g) FLOW.entwurfStart = g.dataset.pes; }
       if (i > 0) seite(i - 1); else if (FLOW.zurueck) FLOW.zurueck(); else V59().schliessen();
     };
-    ov.querySelectorAll("[data-pe]").forEach((b) => (b.onclick = () => unterBlatt(b.dataset.pe, b.dataset.sport, i)));
+    ov.querySelectorAll("[data-pe]").forEach((b) => (b.onclick = () => unterBlatt(b.dataset.pe, b.dataset.sport || b.dataset.mo, i)));
     const anf = ov.querySelector("[data-pe-anf]");
     if (anf) anf.onchange = async () => {
       anf.disabled = true;
@@ -269,15 +287,17 @@
   const okKnopf = () => `<button type="button" class="btn primary" data-peok>Übernehmen ${ic("haken", 18)}</button>`;
   function unterBlatt(art, sport, i) {
     if (!bereit()) return;
-    const ov = art === "basis" ? basisBlatt(sport, i) : art === "indoor" ? indoorBlatt(sport, i) : art === "equipment" ? equipmentBlatt(i) : art === "pool" ? poolBlatt(i) : art === "stile" ? stileBlatt(i) : null;
+    const ov = art === "basis" ? basisBlatt(sport, i) : art === "indoor" ? indoorBlatt(sport, i) : art === "equipment" ? equipmentBlatt(i) : art === "pool" ? poolBlatt(i) : art === "stile" ? stileBlatt(i)
+      : art === "kraft" ? kraftBlatt(i) : art === "kraftwoche" ? kraftWocheBlatt(sport, i) : null;
     if (!ov) return;
     ov.querySelectorAll("[data-pe-z]").forEach((b) => (b.onclick = () => seite(i)));
   }
-  async function speichernUnd(ov, i, id, felder, ok) {
+  /** Speichern und zurück auf die Seite der Folge – oder, mit zur (Blatt direkt geöffnet, z. B. aus dem Tagesblatt), Meldung unten und zur(). */
+  async function speichernUnd(ov, i, id, felder, ok, zur) {
     ov.querySelectorAll("button").forEach((b) => (b.disabled = true));
     const f = await sichern(id, felder);
     if (f) { ov.querySelectorAll("button").forEach((b) => (b.disabled = false)); const p = ov.querySelector("[data-pef]"); if (p) { p.textContent = f; p.hidden = false; } return; }
-    seite(i, ok);
+    if (zur) { toast(ok); zur(); } else seite(i, ok);
   }
   /** Basis-Fitness einer Sportart: berechnet (Stand Montag) oder eigener Wert mit Regler; live der Start daraus (basis-1.1). */
   function basisBlatt(sport, i) {
@@ -395,6 +415,72 @@
       if (JSON.stringify(neu) === JSON.stringify(L)) { seite(i); return; }
       schwimmUnd(ov, i, E, { stile: neu }, `Stile: ${S ? S.stileText(neu) : neu.join(", ")}.`);
     };
+    return ov;
+  }
+  /** V7.6: das Blatt «Krafttraining» direkt (Tagesblatt, Seite der Einheit); opt.zurueck = was «Zurück» und das Speichern danach tun. */
+  M.kraft = function (opt) {
+    if (!bereit()) return;
+    const zur = (opt && opt.zurueck) || (() => V59().schliessen());
+    const ov = kraftBlatt(null, zur); if (!ov) return;
+    ov.querySelectorAll("[data-pe-z]").forEach((b) => (b.onclick = () => zur()));
+  };
+  /** V7.6 kraft-plan-1.0: fester Termin – an/aus, Wochentag, Uhrzeit (Stunde und Minute in 5er-Schritten oder ohne), Dauer 15–180 min, Notiz. */
+  function kraftBlatt(i, zur) {
+    const E = M.einstellungen(), K = E.kraft, D = V76(); if (!D) return null;
+    const ab = tagLang(V64().addDays(V64().montag(heute()), 7));
+    let wt = K.wt || 3, an = !!K.aktiv;
+    const [h0, m0] = K.uhrzeit ? K.uhrzeit.split(":") : ["", "00"];
+    const opt = (n, w, f) => Array.from({ length: n }, (_, k) => { const v = String(k * f).padStart(2, "0"); return `<option value="${v}"${v === w ? " selected" : ""}>${v}</option>`; }).join("");
+    const ov = V59().blatt("pe", `<div class="blatt-titel">${ic("kraft", 34)}<h2 id="v59-ov-h" tabindex="-1">Krafttraining</h2><p class="sub">Dein fester Termin pro Woche.</p></div>
+      <div class="pe-schalter-z einzeln"><label><span></span><span><b>Jede Woche einplanen</b><small>als eigene Einheit in Mein Plan, im Kalender und auf Heute</small></span>
+        <input type="checkbox" role="switch" data-pek-an${an ? " checked" : ""}><i class="pe-schalter" aria-hidden="true"></i></label></div>
+      <div class="pe-kraft" data-pek-felder${an ? "" : " hidden"}>
+        <p class="pe-feld-t" id="pek-wt">Wochentag</p>
+        <div class="pe-tage" role="radiogroup" aria-labelledby="pek-wt">${D.TAGE_KURZ.map((t, k) => `<button type="button" role="radio" aria-checked="${k + 1 === wt}" aria-label="${D.TAGE[k]}" data-pekt="${k + 1}">${t}</button>`).join("")}</div>
+        <p class="pe-feld-t" id="pek-zeit">Uhrzeit</p>
+        <div class="pe-zeit" role="group" aria-labelledby="pek-zeit"><select data-pekh aria-label="Stunde"><option value=""${h0 ? "" : " selected"}>ohne</option>${opt(24, h0, 1)}</select>
+          <span aria-hidden="true">:</span><select data-pekm aria-label="Minute"${h0 ? "" : " disabled"}>${opt(12, m0, 5)}</select></div>
+        <p class="pe-feld-t" id="pek-d">Dauer</p>
+        <div class="pe-fit"><button type="button" class="btn" data-pekdm aria-label="5 min weniger">−</button>
+          <input type="range" min="${V75().KRAFT.min}" max="${V75().KRAFT.max}" step="5" value="${K.dauer || V75().KRAFT.dauer}" data-pekd aria-labelledby="pek-d">
+          <button type="button" class="btn" data-pekdp aria-label="5 min mehr">+</button></div>
+        <p class="pe-text" data-peks role="status" aria-live="polite"></p>
+        <label class="pe-notiz"><span>Notiz für die Übungen</span><textarea data-pekn rows="3" maxlength="${V75().KRAFT.notiz}" placeholder="z. B. Kniebeugen, Kreuzheben, Rumpf">${esc(K.notiz || "")}</textarea></label></div>
+      <p class="hint">${esc(D.VERSIONS.kraft)}: gilt ab der Woche vom ${ab}; die laufende Woche bleibt, wie sie ist (dort änderst du die Einheit auf ihrer Seite).
+        Standard 1:30 h. Das Krafttraining zählt nicht zu den Wochenstunden und nicht in TL ≈ und Form; seine Zeit fehlt am Tag für Schwimmen, Rad und Laufen.</p>
+      <p class="warn-t" data-pef hidden></p>${fuss(okKnopf())}`);
+    const sw = ov.querySelector("[data-pek-an]"), felderEl = ov.querySelector("[data-pek-felder]"), dEl = ov.querySelector("[data-pekd]");
+    const hEl = ov.querySelector("[data-pekh]"), mEl = ov.querySelector("[data-pekm]");
+    const zeig = () => {
+      const d = +dEl.value, h = hEl.value;
+      dEl.setAttribute("aria-valuetext", D.dauerText(d));
+      ov.querySelector("[data-peks]").textContent = `${D.TAGE[wt - 1]}${h ? ` ${h}:${mEl.value}` : ""} · ${D.dauerText(d)}`;
+    };
+    sw.onchange = () => { an = sw.checked; felderEl.hidden = !an; };
+    ov.querySelectorAll("[data-pekt]").forEach((b) => (b.onclick = () => {
+      wt = +b.dataset.pekt; ov.querySelectorAll("[data-pekt]").forEach((x) => x.setAttribute("aria-checked", String(+x.dataset.pekt === wt))); zeig();
+    }));
+    hEl.onchange = () => { mEl.disabled = !hEl.value; zeig(); };
+    mEl.onchange = zeig; dEl.oninput = zeig;
+    ov.querySelector("[data-pekdm]").onclick = () => { dEl.value = Math.max(V75().KRAFT.min, +dEl.value - 5); zeig(); };
+    ov.querySelector("[data-pekdp]").onclick = () => { dEl.value = Math.min(V75().KRAFT.max, +dEl.value + 5); zeig(); };
+    zeig();
+    ov.querySelector("[data-peok]").onclick = () => {
+      const uhrzeit = hEl.value ? `${hEl.value}:${mEl.value}` : null, notiz = ov.querySelector("[data-pekn]").value.trim() || null, dauer = +dEl.value;
+      const neu = an ? { aktiv: true, wt, uhrzeit, dauer, notiz } : { aktiv: false, wt: K.wt || null, uhrzeit: K.uhrzeit || null, dauer: K.dauer || V75().KRAFT.dauer, notiz: K.notiz || null };
+      if (JSON.stringify(neu) === JSON.stringify({ aktiv: !!K.aktiv, wt: K.wt || null, uhrzeit: K.uhrzeit || null, dauer: K.dauer || V75().KRAFT.dauer, notiz: K.notiz || null })) { if (zur) zur(); else seite(i); return; }
+      speichernUnd(ov, i, "pe-kraft", neu, an ? `Krafttraining ${D.text(neu)} – gilt ab der Woche vom ${ab}.` : `Kein festes Krafttraining mehr – ab der Woche vom ${ab}.`, zur);
+    };
+    return ov;
+  }
+  /** Ausnahme einer kommenden Woche anzeigen und auf die Regel zurücksetzen (entfernt). */
+  function kraftWocheBlatt(mo, i) {
+    const E = M.einstellungen(), D = V76(), x = (E.kraftWochen || {})[mo]; if (!D || !x) return null;
+    const ov = V59().blatt("pe", `<div class="blatt-titel">${ic("ausnahme", 34)}<h2 id="v59-ov-h" tabindex="-1">Woche vom ${tagLang(mo)}</h2>
+        <p class="sub">${x.aus ? "Krafttraining in dieser Woche ausgelassen." : `Krafttraining in dieser Woche am ${esc(D.TAGE[wtVon(x.tag) - 1])}${x.uhrzeit ? " um " + esc(x.uhrzeit) : ""}.`}</p></div>
+      <p class="ek-text">Regel: ${esc(D.text(E.kraft))}.</p>
+      <p class="warn-t" data-pef hidden></p>${fuss(`<button type="button" class="btn primary" data-pekw>Wieder nach der Regel ${ic("haken", 18)}</button>`)}`);
+    ov.querySelector("[data-pekw]").onclick = () => speichernUnd(ov, i, "pe-kraft-" + mo, { entfernt: true }, `Woche vom ${tagLang(mo)}: wieder nach der Regel.`);
     return ov;
   }
 })();

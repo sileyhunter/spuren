@@ -5,12 +5,15 @@
      Intensitätszonen; Blätter von unten (V59.blatt) für Datum, Uhrzeit, Indoor, Metrik, Workout bearbeiten, Bahnlänge, Block, Zone, Export.
    - Bibliothek (Workout aus Garmin): dieselbe Seite, nur lesen.
    Gespeichert wird über «Direkt speichern» (V66UI.aendern → planwoche); vergangene und gesperrte Tage bleiben unverändert. «Export» legt einen
-   Auftrag «An Garmin senden» für diese Einheit an (garmin-senden-1.0 mit Auswahl, V66UI.einheitSenden); gesendet wird im Nacht-Update. */
+   Auftrag «An Garmin senden» für diese Einheit an (garmin-senden-1.0 mit Auswahl, V66UI.einheitSenden); gesendet wird im Nacht-Update.
+   V7.6 kraft-plan-1.0 (js/v76.js): Krafttraining mit Dauer, Uhrzeit, der Notiz für die Übungen, RPE nach der Einheit (sRPE als eigene Zahl), «Nur diese Woche»
+   (anderer Tag, auslassen) und dem Weg zum Termin in den Planeinstellungen; ohne Ablauf, Zonen und Export (geht nicht an Garmin). */
 (function () {
   "use strict";
   const M = (window.V73UI = window.V73UI || {});
   const UI = () => window.V5UI, V6 = () => window.V6, V64 = () => window.V64, V66 = () => window.V66, V73 = () => window.V73, V59 = () => window.V59;
   const P = () => window.V64UI, U66 = () => window.V66UI, TR = () => window.TR, SW = () => window.SW, SWUI = () => window.SWUI, WS = () => window.WS;
+  const V76 = () => window.V76, U75 = () => window.V75UI;
   const $ = (id) => document.getElementById(id);
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -190,12 +193,14 @@
     BL = [];
     const offen = new Set([...sc.querySelectorAll("details[data-v73ab]")].filter((d) => !d.open).map((d) => d.dataset.v73ab));
     let aa = ""; try { aa = X.art === "plan" && window.V74UI ? window.V74UI.einheitBanner(X.ds, X.e, X.t) : ""; } catch (err) { console.error(err); }   // V7.4 ampel-plan-1.0
-    sc.innerHTML = kopf() + `<div class="v73-inhalt">${chips()}${aa}${kacheln()}${kennzahlen()}${fokus()}${equipment()}${ablauf()}${schritte()}${coach()}${zonen()}${extra()}${fussnote()}</div>`;
+    const kraft = X.art === "plan" && X.sport === "kraft" && !!V76();      // V7.6 kraft-plan-1.0: ohne Ablauf, Schritte und Zonen
+    sc.innerHTML = kopf() + `<div class="v73-inhalt">${chips()}${aa}${kacheln()}${kennzahlen()}${kraft ? kraftAbschnitt() + coach() : fokus() + equipment() + ablauf() + schritte() + coach() + zonen()}${extra()}${fussnote()}</div>`;
     sc.querySelectorAll("details[data-v73ab]").forEach((d) => { if (offen.has(d.dataset.v73ab)) d.open = false; });
     sc.scrollTop = oben;
     SEITE.querySelector(".v73-mini b").textContent = X.titel;
-    SEITE.querySelector(".v73-haupt").innerHTML = X.art === "plan" && !X.vorbei ? `<button type="button" class="btn primary v73-export" data-v73="export">Export ${ic("play", 18)}</button>` : "";
+    SEITE.querySelector(".v73-haupt").innerHTML = X.art === "plan" && !X.vorbei && !kraft ? `<button type="button" class="btn primary v73-export" data-v73="export">Export ${ic("play", 18)}</button>` : "";
     binden();
+    if (kraft) kraftBinden(sc);
     if (window.V74UI) window.V74UI.binden(sc, () => zeichnen());
     const f = LETZT && SEITE.querySelector(`[data-v73="${LETZT}"]`);
     if (f && document.activeElement === document.body) try { f.focus({ preventScroll: true }); } catch (e) { /* */ }
@@ -203,7 +208,7 @@
   function kopf() {
     const W = V6(), gesperrt = X.art === "plan" && (X.e.gesperrt || X.t.gesperrt);
     const unter = X.art === "workout" ? `${SPORT_WORT[X.sport] || ""} · ${X.quelle}`
-      : X.e.quelle === "bibliothek" ? "aus deiner Enduco-Bibliothek" : X.e.quelle === "eigen" ? "eigene Einheit · Mein Plan" : `Vorschlag «${X.K.w.modellName || "Modell"}» · Mein Plan`;
+      : X.e.kraft_plan ? "fester Termin · Planeinstellungen" : X.e.quelle === "bibliothek" ? "aus deiner Enduco-Bibliothek" : X.e.quelle === "eigen" ? "eigene Einheit · Mein Plan" : `Vorschlag «${X.K.w.modellName || "Modell"}» · Mein Plan`;
     return `<div class="v73-hero" style="--sp:${spVar(X.sport)}"><span class="v73-hero-sym" aria-hidden="true">${W.sportIcon(X.sport, 150)}</span>
       <div class="v73-hero-text"><p class="v73-ueber">${W.sportIcon(X.sport, 16)}${gesperrt ? `<span class="v73-schloss" title="gesperrt">${ic("schloss", 15)}</span>` : ""}<span>Trainingsbriefing</span></p>
         <h1 id="v73-titel" tabindex="-1">${esc(X.titel)}</h1><p class="v73-unter">${esc(unter)}</p></div></div>`;
@@ -224,8 +229,9 @@
     const L = [];
     if (X.sport === "schwimm") L.push(kachel("becken", "becken", `${X.pool || (SWUI() ? SWUI().becken() : 25)} m`, "Bahnlänge", X.art !== "plan" || !!X.wo));
     else if (X.sport === "rad" || X.sport === "lauf") L.push(kachel("indoor", X.art === "plan" && X.e.drinnen ? "drinnen" : "draussen", X.art === "plan" && X.e.drinnen ? "Indoor" : "Outdoor", X.sport === "rad" ? (X.art === "plan" && X.e.drinnen ? "Rolle" : "Strasse") : X.art === "plan" && X.e.drinnen ? "Laufband" : "draussen", X.art !== "plan" || X.e.quelle === "bibliothek"));
-    else L.push(kachel("sport", "andere", SPORT_WORT[X.sport] || "Training", "Sportart", true));
-    if (X.art === "plan" && X.e.quelle !== "bibliothek" && V73().METRIKEN[X.sport]) L.push(kachel("metrik", metIcon(X.metrik), V73().METRIK_KURZ[X.metrik], "Metrik", false));
+    else L.push(kachel("sport", V6().ICON[X.sport] ? X.sport : "andere", SPORT_WORT[X.sport] || "Training", "Sportart", true));
+    if (X.sport === "kraft") { /* V7.6: Krafttraining ohne Metrik */ }
+    else if (X.art === "plan" && X.e.quelle !== "bibliothek" && V73().METRIKEN[X.sport]) L.push(kachel("metrik", metIcon(X.metrik), V73().METRIK_KURZ[X.metrik], "Metrik", false));
     else { const m = metrikWorkout(); L.push(kachel("metrik", { PWR: "energie", PACE: "tacho", HF: "herz" }[m] || "tacho", m, "Metrik", true)); }
     L.push(kachel("optionen", "regler", "Optionen", X.art === "plan" ? "Bearbeiten" : "nur lesen", X.art !== "plan"));
     return `<div class="v73-kacheln">${L.join("")}</div>`;
@@ -240,6 +246,7 @@
     try { return V66().schaetzung(X.e, V66().bezug(X.sk, X.css)); } catch (e) { console.error(e); return { tl: null, km: null }; }
   }
   function kennzahlen() {
+    if (X.art === "plan" && X.sport === "kraft" && V76()) return kraftZahlen();
     const W = V6(), S = schaetzung(), kv = [];
     const d = X.art === "plan" ? (X.S && X.e.art !== "kurs" ? X.S.dauer_s : null) : null;
     kv.push([X.dauer_s ? (X.art === "workout" && X.pr && X.pr.geschaetzt ? "≈ " : "") + W.dauerText(X.dauer_s) : "offen", "Dauer"]);
@@ -384,7 +391,108 @@
   function fussnote() {
     const D = V73();
     if (X.art === "workout") return `<p class="ek-quelle">${esc(D.VERSIONS.einheit)}, ${esc(D.VERSIONS.schritte)}: Schritte und Ziele wie im Workout; Zonen und Farben aus deinem aktiven Zonenprofil. Nur lesen – geändert wird in Enduco bzw. Garmin.</p>`;
+    if (X.sport === "kraft" && V76()) return `<p class="ek-quelle">${esc(D.VERSIONS.einheit)}, ${esc(V76().VERSIONS.kraft)}: ${X.e.kraft_plan ? "Termin aus den Planeinstellungen" : "eigene Einheit in Mein Plan"}; Übungen nach deiner Notiz. Änderungen gehen verschlüsselt über «Direkt speichern»; nach Garmin geht Krafttraining nicht.</p>`;
     return `<p class="ek-quelle">${esc(D.VERSIONS.einheit)}, ${esc(D.VERSIONS.schritte)}: Schritte aus dem Ablauf der Einheit (gleiche Zeiten wie TL ≈ und Profil), Ziele aus deinem aktiven Zonenprofil${X.metrik === "rpe" ? `, RPE nach ${esc(D.VERSIONS.rpe)} (eigene Festlegung)` : ""}${X.swim ? `; Schwimmen nach ${esc(SW() ? SW().VERSIONS.einheit : "schwimmeinheit")} (Hilfsmittel, Bahnlänge und Stile aus den Planeinstellungen)` : ""}. Änderungen gehen verschlüsselt über «Direkt speichern»; nach Garmin nur über «Export».</p>`;
+  }
+
+  /* ---------- V7.6 Krafttraining (kraft-plan-1.0, js/v76.js) ---------- */
+  const kraftEinst = () => (U75() && U75().einstellungen ? U75().einstellungen() : null);
+  /** RPE dieses Krafttrainings (Eingabe «rpe», ID «kraft-<Datum>»). */
+  function rpeKraft() { try { return (UI().merged("rpe", "rpe") || []).find((r) => r && r.id === "kraft-" + X.ds) || null; } catch (e) { console.error(e); return null; } }
+  /** Minuten für sRPE: Dauer der Garmin-Aktivität «Krafttraining» an diesem Tag, sonst die geplante Dauer. */
+  function kraftMinuten() {
+    const a = V76().aktivitaet(C.D.activities, X.ds);
+    return a && (a.mv || a.dur) ? { min: Math.max(1, Math.round((a.mv || a.dur) / 60)), a } : { min: X.e.dauer, a: null };
+  }
+  function kraftZahlen() {
+    const r = rpeKraft(), kv = [[V6().dauerText(X.e.dauer * 60), "Dauer"], [X.e.uhrzeit || "–", "Uhrzeit"], [r && isNum(r.srpe) ? String(r.srpe) : "–", "sRPE"]];
+    return `<div class="v73-kv">${kv.map(([w, l]) => `<div><b>${esc(w)}</b><span>${esc(l)}</span></div>`).join("")}</div>
+      <p class="hint">${esc(V76().VERSIONS.kraft)}: Krafttraining zählt nicht zu den Wochenstunden und nicht in TL ≈ und Form, belegt aber seine Zeit am Tag. sRPE = RPE × Minuten als eigene Zahl.</p>`;
+  }
+  /** Übungen (Notiz aus den Planeinstellungen), RPE nach der Einheit, «Nur diese Woche» und der Termin. */
+  function kraftAbschnitt() {
+    const E = kraftEinst(), K = E ? E.kraft : null, D = V76(), h = heute(), out = [];
+    out.push(`<section class="v73-ab v76-kraft"><h2 class="abschnitt">${ic("notiz", 15)}Übungen</h2>
+      <p class="v76-notiz">${K && K.notiz ? esc(K.notiz) : "Noch keine Notiz – du kannst sie beim Termin in den Planeinstellungen eintragen. Die Seite plant keine Übungen."}</p></section>`);
+    if (X.ds <= h) {
+      const r = rpeKraft(), w = r && isNum(r.rpe) ? r.rpe : null, m = kraftMinuten();
+      const satz = w ? `RPE ${w} × ${r.min} min = sRPE ${r.srpe}${r.quelle === "garmin" ? " (Dauer laut Garmin)" : " (geplante Dauer)"}. Antippen zum Ändern.`
+        : `1 = sehr leicht, 10 = maximal (CR-10 nach Foster). sRPE = RPE × ${m.min} min${m.a ? " (Dauer laut Garmin)" : " (geplante Dauer)"}.`;
+      out.push(`<section class="v73-ab v76-kraft"><h2 class="abschnitt">${ic("kopf", 15)}Wie anstrengend war es?</h2>
+        <div class="v76-rpe" role="group" aria-label="RPE von 1 bis 10">${Array.from({ length: 10 }, (_, k) => `<button type="button" data-v76r="${k + 1}" aria-pressed="${w === k + 1}">${k + 1}</button>`).join("")}</div>
+        <p class="hint">${esc(satz)}</p></section>`);
+    }
+    if (!X.vorbei) {
+      const zu = sperre(false);
+      out.push(`<section class="v73-ab"><h2 class="abschnitt">${ic("ausnahme", 15)}Nur diese Woche</h2>
+        <ul class="v6-aktionen v73-zeilen">
+          <li><button type="button" class="v6-zeile v73-zeile" data-v76="tag"${zu ? " disabled" : ""}><span><b>Anderer Tag</b><small>${esc(zu || "innerhalb dieser Woche, ab heute – die Regel bleibt")}</small></span>${ic("weiter", 18)}</button></li>
+          <li><button type="button" class="v6-zeile v73-zeile" data-v76="aus"${zu ? " disabled" : ""}><span><b>Auslassen</b><small>${esc(zu || "kein Krafttraining in dieser Woche")}</small></span>${ic("weiter", 18)}</button></li></ul></section>`);
+    }
+    out.push(`<ul class="v6-aktionen v73-zeilen v76-termin"><li><button type="button" class="v6-zeile v73-zeile" data-v76="termin"><span><b>Termin jede Woche</b>
+      <small>${esc(K && D ? D.text(K) : "nicht eingeplant")} – Planeinstellungen</small></span>${ic("weiter", 18)}</button></li></ul>`);
+    return out.join("");
+  }
+  function kraftBinden(sc) {
+    sc.querySelectorAll("[data-v76r]").forEach((b) => (b.onclick = () => kraftRpe(+b.dataset.v76r)));
+    sc.querySelectorAll("[data-v76]").forEach((b) => (b.onclick = () => {
+      const k = b.dataset.v76;
+      if (k === "termin") { if (U75() && U75().kraft) U75().kraft({ zurueck: () => { V59().schliessen(); zeichnen(); } }); return; }
+      const f = sperre(false); if (f) { melden(f); return; }
+      if (k === "tag") { kraftDatumBlatt(); return; }
+      if (k === "aus") {
+        if (b.dataset.sicher !== "1") { b.dataset.sicher = "1"; b.querySelector("b").textContent = "Wirklich auslassen?"; b.querySelector("small").textContent = "Nochmals tippen"; return; }
+        kraftAus();
+      }
+    }));
+  }
+  async function kraftRpe(n) {
+    const I = UI() && UI().Inbox; if (!I || !I.data) { melden("Speicher auf diesem Gerät nicht verfügbar."); return; }
+    if (!Array.isArray(I.data.rpe)) I.data.rpe = [];
+    const m = kraftMinuten(), sr = V76().srpe(n, m.min);
+    await I.upsert("rpe", { id: "kraft-" + X.ds, act: m.a ? m.a.id : null, datum: X.ds, sport: "kraft", rpe: n, min: m.min, quelle: m.a ? "garmin" : "plan", srpe: sr,
+      v: (window.AN && window.AN.VERSIONS && window.AN.VERSIONS.rpe) || "rpe-1.0", kraft: V76().VERSIONS.kraft, erfasst: new Date().toISOString() });
+    zeichnen(); melden(`RPE ${n} gespeichert – sRPE ${sr}.`, true);
+  }
+  /** Eine Ausnahme über die Planeinstellungen (pe-kraft-<Montag>) nur in kommenden Wochen und nur für das Krafttraining aus dem Termin, wenn beide Tage
+   *  dem Vorschlag folgen – dann rechnet die Woche mit dem neuen Tag. Sonst (laufende Woche, gespeicherte Tage) über Mein Plan wie jede Einheit. */
+  function ueberEinstellung(nach) {
+    const mo = V64().montag(X.ds);
+    if (mo <= V64().montag(heute()) || !X.e.kraft_plan || !U75() || !U75().speichern) return false;
+    const W = X.K.wPlan || X.K.w; if (!W || W.festgehalten) return false;
+    const frei = (d) => { const t = W.tage.find((x) => x.date === d); return !!t && !t.bearbeitet && !t.gesperrt; };
+    return frei(X.ds) && (!nach || frei(nach));
+  }
+  function kraftSuchen(ds) {
+    try { const K = P().kontextFuer(V64().montag(ds)), t = K.w.tage.find((x) => x.date === ds); return t ? t.einheiten.find((e) => e.kraft_plan) || null : null; }
+    catch (e) { console.error(e); return null; }
+  }
+  async function kraftVerschieben(nach) {
+    if (!ueberEinstellung(nach)) return speichern({ art: "verschieben", nach }, `Verschoben auf ${datumKurz(nach)} – nur diese Woche.`);
+    const mo = V64().montag(X.ds), E = kraftEinst(), t = E && V76() ? V76().termin(E, mo) : null;
+    const f = await U75().speichern("pe-kraft-" + mo, t && nach === t.regel ? { entfernt: true } : { tag: nach, uhrzeit: X.e.uhrzeit || null });
+    if (f) { melden(f); return f; }
+    if (V59()._ovArt) V59().schliessen();
+    Z.ds = nach; const y = kraftSuchen(nach); if (y) Z.uid = y.uid;
+    zeichnen(); melden(`Nur diese Woche: ${datumKurz(nach)}`, true);
+    return null;
+  }
+  async function kraftAus() {
+    if (!ueberEinstellung(null)) { await speichern({ art: "entfernen" }); return; }
+    const f = await U75().speichern("pe-kraft-" + V64().montag(X.ds), { aus: true });
+    if (f) { melden(f); return; }
+    M.schliessen();
+  }
+  function kraftDatumBlatt() {
+    const mo = V64().montag(X.ds), h = heute(), L = [], E = kraftEinst();
+    for (let i = 0; i < 7; i++) {
+      const d = V64().addDays(mo, i); if (d < h) continue;
+      const t = X.K.w.tage.find((x) => x.date === d), zu = t && t.gesperrt;
+      L.push(`<li><button type="button" class="mp-zeile v73-tag${d === X.ds ? " an" : ""}" data-v73d="${d}" ${d === X.ds || zu ? "disabled" : ""}><span class="mp-vt"><b>${esc(tagText(d))}</b><small>${d === X.ds ? "jetzt" : zu ? "gesperrt" : t && t.einheiten.length ? t.einheiten.map((e) => e.titel).join(", ") : "frei"}</small></span>${d === X.ds ? ic("haken", 18) : ic("weiter", 18)}</button></li>`);
+    }
+    const ov = blatt("v73-datum", `<h2 id="v59-ov-h" tabindex="-1">Nur diese Woche</h2><p class="sub">Krafttraining an einem anderen Tag der KW ${V6().isoWoche(mo)}, ab heute. Die Regel${E && V76() ? ` (${esc(V76().text(E.kraft))})` : ""} bleibt für die anderen Wochen.</p>
+      <ul class="mp-wahl">${L.join("")}</ul><p class="warn-t" data-v73f hidden></p>${fuss()}`);
+    ov.querySelectorAll("[data-v73d]").forEach((b) => (b.onclick = async () => { const f = await kraftVerschieben(b.dataset.v73d); if (f) fehlerIn(ov, f); }));
   }
 
   /* ---------- Antippen ---------- */
@@ -404,7 +512,7 @@
     if (X.art !== "plan") return melden("Nur lesen – geändert wird in Enduco bzw. Garmin.");
     if (a === "sperren") { const f = sperre(true); if (f) return melden(f); return speichern({ art: "einheit", felder: { gesperrt: !X.e.gesperrt } }, X.e.gesperrt ? "Entsperrt." : "Gesperrt – bleibt beim Anpassen und Neu berechnen."); }
     const f = sperre(false); if (f) return melden(f);
-    if (a === "datum") return datumBlatt();
+    if (a === "datum") return X.sport === "kraft" && V76() ? kraftDatumBlatt() : datumBlatt();
     if (a === "zeit") return zeitBlatt();
     if (a === "indoor") return X.e.quelle === "bibliothek" ? melden("Wie im Enduco-Workout.") : indoorBlatt();
     if (a === "metrik") return metrikBlatt();

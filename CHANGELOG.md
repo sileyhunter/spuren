@@ -1,5 +1,23 @@
 # Änderungen
 
+## V7.6 · 17.11.2026 · Etappe 7, Teil 1: Krafttraining als fester Termin (kraft-plan-1.0, wissen-1.17)
+- **Planeinstellungen → Krafttraining** (neue Seite zwischen Schwimmen und Trainingsumfang, auch aus dem Tagesblatt und der Einheit-Seite): an/aus, Wochentag,
+  Uhrzeit (Stunde und Minute in 5er-Schritten oder ohne), Dauer 15–180 min (Standard 1:30 h), Notiz für die Übungen. Gilt ab der Woche nach dem Speichern.
+- **Im Plan:** die Einheit «Krafttraining» (fester Termin) mit Kraft-Symbol und Uhrzeit in Mein Plan, im Kalender, im Tagesblatt und auf Heute. Sie zählt nicht zu den
+  Wochenstunden Schwimmen, Rad, Laufen, hat keine TL ≈ und geht nicht in die Form-Prognose und nicht an Garmin; beim Verteilen nach der Verfügbarkeit bleibt sie an
+  ihrem Tag und belegt dort ihre Zeit (V66.verteilen: wie ein Test). Aufgezeichnete Garmin-Krafteinheiten zählen wie bisher in Fitness und Form (pmc-2.0).
+- **Einheit-Seite:** Dauer, Uhrzeit und sRPE, die Übungen (Notiz), RPE 1–10 nach der Einheit → sRPE = RPE × Minuten (Foster 2001; Dauer aus Garmin, wenn aufgezeichnet,
+  sonst geplant), «Nur diese Woche» (anderer Tag, auslassen) und der Termin; ohne Ablauf, Zonen und Export. In kommenden Wochen wird «Nur diese Woche» als Ausnahme
+  «pe-kraft-<Montag>» gespeichert (die Woche rechnet mit dem neuen Tag), in der laufenden Woche und an gespeicherten Tagen über Mein Plan.
+- **Planeinstellungen `vorher`:** Start, Basis-Fitness und Krafttraining gelten ab der nächsten Woche. Da die Daten je ID nur die neueste Fassung behalten, trägt ein
+  Eintrag nun die Fassung mit, die in der Woche des Speicherns noch gilt – sonst fiele die laufende Woche nach dem nächsten Update auf den Standard (betraf auch
+  Start und Basis-Fitness aus V7.5.2). Prüfung gleich in `V75.pruefen` und `merge_daily.planeinstellung_pruefen`.
+- **Offen:** die Abstimmung der Woche (Tag danach, Krafttag, Tests, Taper, Rennwochen, Erholungswoche, Ampel) – Vorschlag an Silas vom 17.11.2026, gebaut wird erst
+  nach seinem Okay.
+- Wissen 1.17: Kapitel «Krafttraining» (Rønnestad & Mujika 2014, Rønnestad et al. 2010, Doma et al. 2017, Lauersen et al. 2014, Foster et al. 2001), «Was nicht drin ist»
+  im Kapitel «Modelle» und «Kraft» im Kapitel «Langdistanz» nachgeführt. Neue Symbole «notiz» und «ausnahme» (eigene). Tests: `tests/test_v76.cjs`, `tests/test_tools.py`.
+- Nebenbei: `chart()` zeichnet ohne Chart.js beim zweiten Mal nicht mehr ins Leere (Fehler nur ohne Netz); RPE der Krafttrainings zählt nicht in der Kalibrierung rpe-1.0.
+
 ## V7.5.2 · 17.11.2026 · Basis-Fitness Variante A, 20/50/30 wählbar (basis-1.1, wissen-1.16)
 - **Start des Plans aus der Basis-Fitness (Silas' Wahl):** je Sportart 7 × Fitness ÷ Trainingslast pro Stunde (deine 8 Wochen) = der Umfang, bei dem die Fitness
   gleich bleibt. Fitness mit dem Stand vom Montag (bis zum Sonntag davor), damit sich eine Woche unter der Woche nicht ändert. Ohne Last pro Stunde (weniger

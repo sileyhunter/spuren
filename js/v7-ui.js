@@ -20,7 +20,7 @@
   const std = (s) => { const m = Math.round((s || 0) / 60); return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")} h`; };
   const vz = (n) => (n > 0 ? "+" : n < 0 ? "−" : "±");
   const dkurz = (iso) => { const [, m, d] = iso.split("-"); return `${+d}.${+m}.`; };
-  const SPW = { schwimm: "Schwimmen", rad: "Rad", lauf: "Laufen", andere: "Andere" };
+  const SPW = { schwimm: "Schwimmen", rad: "Rad", lauf: "Laufen", kraft: "Kraft", mobility: "Mobility", andere: "Andere" };
   const spVar = (k) => `var(--sp-${["rad", "lauf", "schwimm", "wandern", "ski"].includes(k) ? k : "andere"})`;
   const ZW = ["Z1", "Z2", "Z3", "Z4", "Z5"], ZVAR = ["--zc-z1", "--zc-z2", "--zc-z3", "--zc-z4", "--zc-z5"];
   const DREI = [["unter LT1", "--zc-z2"], ["LT1–LT2", "--zc-z3"], ["über LT2", "--zc-z5"]];
@@ -60,7 +60,7 @@
   M.einheitKarte = function (e, ds, klein) {
     const W = V6(), pr = M.profil(e), hk = e.teile && e.teile.length && P() && P().hauptKey ? P().hauptKey(e) : null;
     let S = null; try { const x = M.meinTag(ds); S = x ? V66().schaetzung(e, V66().bezug(window.TR ? window.TR.zonen(C.D.zonen).skalen : null, x.K && x.K.css ? x.K.css.s : null)) : null; } catch (err) { console.error(err); }
-    const q = (e.quelle === "eigen" ? "eigen" : e.quelle === "bibliothek" ? "Bibliothek" : "Vorschlag") + (e.ampel ? (e.ampel.von ? " · Ampel" : " · nachgeholt") : "");   // V7.4 ampel-plan-1.0
+    const q = (e.kraft_plan ? "fester Termin" : e.quelle === "eigen" ? "eigen" : e.quelle === "bibliothek" ? "Bibliothek" : "Vorschlag") + (e.ampel ? (e.ampel.von ? " · Ampel" : " · nachgeholt") : "");   // V7.4 ampel-plan-1.0; V7.6 Krafttraining aus den Planeinstellungen
     const zahlen = [[dt((e.dauer || 0) * 60), "Dauer"]];
     if (S && isNum(S.km) && S.km > 0) zahlen.push([`≈ ${String(S.km).replace(".", ",")} km`, "Distanz"]);
     if (S && isNum(S.tl)) zahlen.push([`${S.vollstaendig ? "≈ " : "mind. "}${S.tl}`, "TL"]);

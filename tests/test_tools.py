@@ -1546,6 +1546,48 @@ _pe = {x["id"]: x for x in _DP.get("plan_einstellungen", [])}
 check("Planeinstellungen (merge_daily): je ID ein Eintrag, neuere Fassung ersetzt mit Audit, ältere und ungültige nie",
       len(_DP.get("plan_einstellungen", [])) == 2 and _pe["pe-steigerung"]["wert"] == 135 and _pe["pe-schwimm"]["pool"] == 50 and "pe-basis" not in _pe
       and sum(1 for a in _DP.get("audit", []) if a.get("was") == "Planeinstellung ersetzt") == 1, json.dumps(_DP.get("plan_einstellungen")))
+# V7.6 kraft-plan-1.0: Termin (pe-kraft), Ausnahme je Woche (pe-kraft-<Montag>) und die mitgetragene Fassung (vorher) – gleich wie V75.pruefen
+_KR_FAELLE = [
+    {"id": "pe-kraft", "aktiv": True, "wt": 3, "uhrzeit": "18:00", "dauer": 90, "notiz": "Kniebeugen, Rumpf"},
+    {"id": "pe-kraft", "aktiv": False, "wt": None, "uhrzeit": None, "dauer": 90, "notiz": None},
+    {"id": "pe-kraft", "aktiv": True, "wt": None}, {"id": "pe-kraft", "aktiv": True, "wt": 8}, {"id": "pe-kraft", "aktiv": True, "wt": 2.5},
+    {"id": "pe-kraft", "aktiv": True, "wt": 1, "uhrzeit": "18:03"}, {"id": "pe-kraft", "aktiv": True, "wt": 1, "uhrzeit": "24:00"},
+    {"id": "pe-kraft", "aktiv": True, "wt": 7, "dauer": 10}, {"id": "pe-kraft", "aktiv": True, "wt": 7, "dauer": 185}, {"id": "pe-kraft", "aktiv": True, "wt": 7, "dauer": 92},
+    {"id": "pe-kraft", "aktiv": True, "wt": 7, "dauer": 180.0}, {"id": "pe-kraft", "aktiv": "ja", "wt": 7}, {"id": "pe-kraft", "aktiv": True, "wt": 5, "notiz": "x" * 501},
+    {"id": "pe-kraft-2026-11-30", "aus": True}, {"id": "pe-kraft-2026-11-30", "tag": "2026-12-03", "uhrzeit": "07:30"},
+    {"id": "pe-kraft-2026-11-30", "tag": "2026-12-07"}, {"id": "pe-kraft-2026-12-01", "aus": True}, {"id": "pe-kraft-2026-11-30"},
+    {"id": "pe-kraft-2026-11-30", "entfernt": True}, {"id": "pe-kraft-2026-11-30", "aus": "ja"}, {"id": "pe-kraft-2026-11-30", "tag": "2026-12-01", "uhrzeit": "7:30"},
+    {"id": "pe-kraft", "aktiv": True, "wt": 4, "dauer": 60, "geaendert": "2026-11-18T10:00:00Z",
+     "vorher": {"aktiv": True, "wt": 3, "uhrzeit": "18:00", "dauer": 90, "notiz": None, "geaendert": "2026-11-10T10:00:00Z"}},
+    {"id": "pe-kraft", "aktiv": True, "wt": 4, "vorher": {"aktiv": True, "wt": 9, "geaendert": "2026-11-10T10:00:00Z"}},
+    {"id": "pe-kraft", "aktiv": True, "wt": 4, "vorher": {"aktiv": True, "wt": 3}},
+    {"id": "pe-kraft", "aktiv": True, "wt": 4, "vorher": {"aktiv": True, "wt": 3, "geaendert": "2026-11-10T10:00:00Z", "vorher": {"aktiv": False}}},
+    {"id": "pe-steigerung", "wert": 100, "vorher": {"wert": 90, "geaendert": "2026-11-10T10:00:00Z"}},
+    {"id": "pe-start", "art": "fitness", "vorher": {"art": "aufteilung", "geaendert": "2026-11-10T10:00:00Z"}},
+    {"id": "pe-basis-rad", "wert": 40, "vorher": {"wert": None, "geaendert": "2026-11-10T10:00:00Z"}}, {"id": "pe-basis-rad", "wert": 40, "vorher": [1]},
+]
+_krj = subprocess.run(["node", "-e", "const V75 = require('./js/v75.js'); const F = JSON.parse(process.argv[1]); console.log(JSON.stringify(F.map((e) => V75.pruefen(e))));",
+                       json.dumps(_KR_FAELLE)], cwd=ROOT, capture_output=True, text=True)
+_kr_js = json.loads(_krj.stdout or "[]")
+_kr_py = [merge_daily.planeinstellung_pruefen(e) for e in _KR_FAELLE]
+check("kraft-plan-1.0: Python prüft Krafttraining, Ausnahmen je Woche und die mitgetragene Fassung wie die Seite (gleiche Entscheide)",
+      len(_kr_js) == len(_KR_FAELLE) and [x is None for x in _kr_js] == [x is None for x in _kr_py], _krj.stderr + str(list(zip(_kr_js, _kr_py))))
+check("kraft-plan-1.0: gültig Termin mit Wochentag 1–7, Uhrzeit in 5-min-Schritten, Dauer 15–180 in 5er-Schritten, Notiz ≤ 500; Ausnahme nur am Montag, Tag in der Woche, "
+      "auslassen oder Tag; vorher nur bei Start, Basis-Fitness und Kraft, mit Zeitpunkt, ohne eigenes vorher",
+      [x is None for x in _kr_py] == [True, True, False, False, False, False, False, False, False, False, True, False, False,
+                                      True, True, False, False, False, True, False, False,
+                                      True, False, False, False, False, True, True, False], str(_kr_py))
+_tk = tempfile.mkdtemp()
+json.dump({"activities": [], "days": []}, open(os.path.join(_tk, "d.json"), "w"))
+for _x in ({"id": "pe-kraft", "v": "planeinstellungen-1.0", "aktiv": True, "wt": 3, "uhrzeit": "18:00", "dauer": 90, "notiz": None, "geaendert": "2026-11-10T10:00:00Z"},
+           {"id": "pe-kraft", "v": "planeinstellungen-1.0", "aktiv": True, "wt": 4, "uhrzeit": "18:00", "dauer": 60, "notiz": None, "geaendert": "2026-11-18T10:00:00Z",
+            "vorher": {"v": "planeinstellungen-1.0", "aktiv": True, "wt": 3, "uhrzeit": "18:00", "dauer": 90, "notiz": None, "geaendert": "2026-11-10T10:00:00Z"}},
+           {"id": "pe-kraft-2026-11-30", "v": "planeinstellungen-1.0", "aus": True, "geaendert": "2026-11-18T10:05:00Z"}):
+    json.dump({"planeinstellung_add": [_x]}, open(os.path.join(_tk, "n.json"), "w"))
+    merge_daily.main(os.path.join(_tk, "d.json"), os.path.join(_tk, "n.json"))
+_DK = {x["id"]: x for x in json.load(open(os.path.join(_tk, "d.json"))).get("plan_einstellungen", [])}
+check("kraft-plan-1.0 (merge_daily): neueste Fassung mit der mitgetragenen (vorher) gespeichert, Ausnahme je Woche als eigene ID",
+      _DK["pe-kraft"]["wt"] == 4 and _DK["pe-kraft"]["vorher"]["wt"] == 3 and _DK["pe-kraft-2026-11-30"]["aus"] is True, json.dumps(_DK))
 check("einheit-felder-1.1: Bahnlänge 25 oder 50 m je Einheit, drinnen false erlaubt (ausdrücklich draussen)",
       merge_daily.einheit_feld_pruefen("pool", 50) is None and merge_daily.einheit_feld_pruefen("pool", 33) and merge_daily.einheit_feld_pruefen("pool", True)
       and merge_daily.einheit_feld_pruefen("drinnen", False) is None and "pool" in merge_daily.EINHEIT_FELDER)

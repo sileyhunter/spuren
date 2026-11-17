@@ -1696,6 +1696,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <script src="js/v74-ui.js"></script>
 <script src="js/v75.js"></script>
 <script src="js/v75-ui.js"></script>
+<script src="js/v76.js"></script>
 <script>
 (() => {
   const b64d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
@@ -3438,7 +3439,7 @@ if (window.Chart) {
 document.addEventListener("toggle", (e) => { if (e.target.open) e.target.querySelectorAll("canvas").forEach((c) => charts[c.id] && charts[c.id].resize()); }, true);
 function chart(id, cfg) {
   const el = document.getElementById(id);
-  if (!window.Chart) { el.closest(".chart").innerHTML = `<p class="hint">Diagramme konnten nicht geladen werden. Prüfe die Internetverbindung.</p>`; return; }
+  if (!window.Chart) { const box = el && el.closest(".chart"); if (box) box.innerHTML = `<p class="hint">Diagramme konnten nicht geladen werden. Prüfe die Internetverbindung.</p>`; return; }   // V7.6: beim Neuzeichnen ist die Fläche schon ersetzt
   charts[id]?.destroy();
   cfg.options = Object.assign({ maintainAspectRatio: false, animation: matchMedia("(prefers-reduced-motion: reduce)").matches ? false : { duration: 450 } }, cfg.options || {});
   if (innerWidth < 560 && ["line", "bar", "scatter"].includes(cfg.type)) {           // iPhone: höchstens 6 Beschriftungen auf der x-Achse

@@ -148,7 +148,7 @@
     const W = V6(), S = V66().schaetzung(e, bezug(K)), hk = e.teile && e.teile.length && P().hauptKey ? P().hauptKey(e) : null;
     let st = null; try { const A = ds ? auftrag(ds) : null; st = ds ? V66().garminStand(e, ds, skalen(), gesendet(), A && (A.lokal ? Object.assign({ status: "offen" }, A.a) : A.a), swOpt(ds, K)) : null; } catch (err) { console.error(err); }
     const teile = [W.dauerText(e.dauer * 60), isNum(S.tl) ? `TL ≈ ${S.vollstaendig ? "" : "mind. "}${S.tl}` : "", isNum(S.km) && S.km > 0 ? `≈ ${komma(S.km)} km` : "", st ? STAND_WORT[st] : ""].filter(Boolean);
-    const q = (e.quelle === "eigen" ? "eigen" : e.quelle === "bibliothek" ? "Bibliothek" : "Vorschlag") + (e.ampel ? (e.ampel.von ? " · Ampel" : " · nachgeholt") : "");
+    const q = (e.kraft_plan ? "fester Termin" : e.quelle === "eigen" ? "eigen" : e.quelle === "bibliothek" ? "Bibliothek" : "Vorschlag") + (e.ampel ? (e.ampel.von ? " · Ampel" : " · nachgeholt") : "");   // V7.6
     if (e.uhrzeit) teile.unshift(e.uhrzeit);                               // V7.3: Uhrzeit aus «Festlegen»
     return `<button type="button" class="mo-e mp-e${e.quelle === "eigen" ? " eigen" : ""}" data-mpe="${esc(e.uid)}">
       <span class="mo-sp" style="--sp:${spFarbe(e.sport)}">${W.sportIcon(e.sport, 16)}</span>
@@ -173,7 +173,7 @@
          ${t.gesperrt ? `<p class="hint">Gesperrt: nicht bearbeitbar; «Woche leeren», «Anpassen» und «Neu berechnen» lassen ihn stehen.</p>` : ""}`;
     // V7.4 ampel-plan-1.0: Anpassung durch die Ampel (Gründe, ursprüngliche Einheit, «Trotzdem wie geplant») und «Woche anpassen?»
     let ampel = ""; try { ampel = window.V74UI ? window.V74UI.banner(ds, t) + window.V74UI.erholungKarte(ds, K) : ""; } catch (err) { console.error(err); }
-    return `${woche}${formHTML(ds)}${vfHTML(ds, K)}<h3 class="abschnitt mp-kopf">Mein Plan ${status}</h3>${ampel}<div class="mp-liste">${karten}</div>${aufbau}${akt}${garminHTML(ds, t)}<p class="warn-t" data-mpfehler hidden></p>`;
+    return `${woche}${formHTML(ds)}${vfHTML(ds, K)}${kraftHTML(ds)}<h3 class="abschnitt mp-kopf">Mein Plan ${status}</h3>${ampel}<div class="mp-liste">${karten}</div>${aufbau}${akt}${garminHTML(ds, t)}<p class="warn-t" data-mpfehler hidden></p>`;
   };
 
   /* ---------- V7.2: Form zu Tagesbeginn und Verfügbarkeit im Tagesblatt ---------- */
@@ -214,6 +214,15 @@
     return `<div class="mp-vf"><div class="mp-vf-t"><span class="abschnitt">${W.icon("kalender", 14)}Verfügbarkeit</span><b>${esc(v ? V66().vfText(v) : "–")}</b><small>${esc(quelle)}</small></div>
       ${v && sp && sp.length ? `<span class="mp-vf-sp">${sp.map((x) => `<i style="--sp:${spFarbe(x)}">${W.sportIcon(x, 14)}</i>`).join("")}</span>` : ""}
       ${ds >= heute() ? `<button type="button" class="btn" data-mpvf>Ändern</button>` : ""}</div>`;
+  }
+  /** V7.6 kraft-plan-1.0: der feste Termin fürs Krafttraining (Planeinstellungen), änderbar aus dem Tagesblatt. */
+  function kraftHTML(ds) {
+    if (!window.V76 || !window.V75UI || !window.V75UI.kraft) return "";
+    const E = window.V75UI.einstellungen(); if (!E) return "";
+    const W = V6(), K = E.kraft;
+    return `<div class="mp-vf mp-kraft"><div class="mp-vf-t"><span class="abschnitt">${W.icon("kraft", 14)}Krafttraining</span><b>${esc(window.V76.text(K))}</b>
+        <small>${K.aktiv ? "fester Termin pro Woche · Planeinstellungen" : "kein fester Termin – in den Planeinstellungen festlegen"}</small></div>
+      ${ds >= heute() ? `<button type="button" class="btn" data-mpkraft>${K.aktiv ? "Ändern" : "Festlegen"}</button>` : ""}</div>`;
   }
   /** Verfügbarkeit eines Tages oder Wochentags ändern (Zeit, Sportarten); danach «Anpassen» oder «Neu berechnen». */
   M.verfuegbarkeitBlatt = function (ds, zurueck) {
@@ -325,6 +334,7 @@
     ov.querySelectorAll("[data-mpe]").forEach((b) => (b.onclick = () => M.einheit(ds, b.dataset.mpe, { zurueck })));
     ov.querySelectorAll("[data-mpadd]").forEach((b) => (b.onclick = () => M.hinzufuegen(ds, zurueck)));
     ov.querySelectorAll("[data-mpvf]").forEach((b) => (b.onclick = () => M.verfuegbarkeitBlatt(ds, zurueck)));
+    ov.querySelectorAll("[data-mpkraft]").forEach((b) => (b.onclick = () => window.V75UI.kraft({ zurueck: zurueck || (() => V59().schliessen()) })));   // V7.6
     if (window.V74UI) window.V74UI.binden(ov, zurueck);                    // V7.4: «Trotzdem wie geplant», «Woche anpassen?»
     ov.querySelectorAll("[data-mplock]").forEach((b) => (b.onclick = async () => {
       const x = tagVon(ds); if (!x) return;

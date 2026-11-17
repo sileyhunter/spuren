@@ -164,7 +164,7 @@ test("steigerung-1.0: die Woche nach Modell verteilt die Stunden je Sportart wie
   const w0 = V64.woche({ woche: "2026-11-16", phase: "Grundlage", stunden: 10, modell: "polarisiert" });
   assert.deepEqual(w.aufteilung, { schwimm: 0.1, rad: 0.6, lauf: 0.3 }); assert.deepEqual(w0.aufteilung, V64.AUFTEILUNG);
   assert.ok(w.minuten.rad > w0.minuten.rad && w.minuten.schwimm <= w0.minuten.schwimm, JSON.stringify([w.minuten, w0.minuten]));
-  assert.match(w.regel, /basis-1\.0, steigerung-1\.0/); assert.doesNotMatch(w0.regel, /steigerung/);
+  assert.match(w.regel, /basis-1\.1, steigerung-1\.0/); assert.doesNotMatch(w0.regel, /steigerung/);
 });
 
 /* ---------------- Indoor-Phase und Felder je Einheit ---------------- */

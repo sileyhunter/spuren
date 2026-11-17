@@ -49,7 +49,7 @@ test("eigenplan-1.0: hinzufügen, Dauer, verschieben, entfernen – vergangene u
   assert.equal(E.tage["2026-11-19"].einheiten.length, vorDo + 1, "Vorschlag des Tages übernommen, eigene dazu");
   assert.ok(E.tage["2026-11-19"].einheiten.slice(0, vorDo).every((s) => s.quelle === "vorschlag"));
   assert.match(V66.aendern(E, { art: "hinzufuegen", date: "2026-11-17", einheit: { vorlage: "kraft", dauer: 30 } }, ctx).fehler, /vergangen/);
-  assert.match(V66.aendern(E, { art: "hinzufuegen", date: "2026-11-19", einheit: { vorlage: "kraft", dauer: 300 } }, ctx).fehler, /15–90/);
+  assert.match(V66.aendern(E, { art: "hinzufuegen", date: "2026-11-19", einheit: { vorlage: "kraft", dauer: 300 } }, ctx).fehler, /15–180/);
   assert.match(V66.aendern(E, { art: "hinzufuegen", date: "2026-11-24", einheit: { vorlage: "kraft", dauer: 30 } }, ctx).fehler, /nicht in dieser Woche/);
   // sperren → nichts mehr ändern, entsperren → wieder
   E = V66.aendern(E, { art: "sperren", date: "2026-11-19" }, ctx).eintrag;

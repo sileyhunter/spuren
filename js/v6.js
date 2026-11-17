@@ -343,6 +343,9 @@
     geraet: '<rect x="7" y="3.5" width="10" height="17" rx="5"/><path d="M10 8h4"/>',
     becken: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9.7h18M3 14.3h18"/>',
     haken: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+    // V7.6 kraft-plan-1.0: eigene Symbole für die Notiz der Übungen und eine Ausnahme in einer Woche
+    notiz: '<path d="M6 3.5h8.5L18.5 7.5v13H6z"/><path d="M14.5 3.5v4h4M9 11.5h6M9 14.5h6M9 17.5h3.5"/>',
+    ausnahme: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4M10 13l4 4M14 13l-4 4"/>',
   };
   V6.icon = (k, w) => svg(V6.ICON[k] || V6.ICON.andere, w);
   V6.sportIcon = (sport, w) => V6.icon(V6.ICON[sport] ? sport : "andere", w);

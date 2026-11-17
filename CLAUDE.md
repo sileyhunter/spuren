@@ -41,6 +41,12 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   `.pool`, `.drinnenFeld`; V7.5.2 `V75UI.basisDaten` (Stand Montag) und `V75UI.plan` (laufende Woche + Rampe ab der nächsten, für Kurve und Wochenstunden)), `tests/test_v75.cjs`; Schwimm-Einheit schwimmeinheit-1.2 in `js/schwimmen.js` (Hilfsmittel, Stile als eigener Teil, Anfänger-Modus),
   Stil je Schritt an Garmin garmin-senden-1.2 (`V66.STIL_GARMIN`, `tools/garmin_senden.py`), Bahnlänge je Einheit und `drinnen` false einheit-felder-1.1
   in `js/v66.js`, Stunden je Sportart im Plan-Kontext `js/v64-ui.js` (`K.basis75`, `K.rampe`), Wochenstunden `js/v56.js`
+- **V7.6 (Etappe 7 «Krafttraining», kraft-plan-1.0; Teil 1 Termin, Anzeige, RPE – die Abstimmung der Woche wartet auf Silas' Okay zum Vorschlag vom 17.11.2026):**
+  `js/v76.js` (ohne DOM: Termin je Woche `V76.termin`, Einheit `V76.einheit`, in die Woche `V76.einplanen` (im Plan-Kontext `js/v64-ui.js` vor dem Verteilen),
+  Ausnahmen `V76.ausnahmen`, Garmin-Aktivität «Krafttraining» des Tages `V76.aktivitaet`, sRPE `V76.srpe`), Seite «Krafttraining» in der Blatt-Folge und Blatt
+  `V75UI.kraft` (`js/v75-ui.js`, auch aus dem Tagesblatt `js/v66-ui.js` und der Einheit-Seite), Abschnitt auf der Einheit-Seite `js/v73-ui.js` (Übungen, RPE,
+  «Nur diese Woche», Termin), `tests/test_v76.cjs`; Krafttraining bleibt beim Verteilen an seinem Tag (`V66.verteilen`), Dauer 15–180 min (Standard 1:30 h);
+  `vorher` in den Planeinstellungen (`V75.eintrag`, `V75.aktuell`, `merge_daily.planeinstellung_pruefen`)
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
 - `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)
@@ -374,7 +380,10 @@ nur Schwimmen, nicht Bibliothek) und `drinnen: false` bleibt (ausdrücklich drau
 V7.5: `planeinstellung` (je Gruppe «pe-start» {art fitness/aufteilung} und «pe-basis-schwimm»/«-rad»/«-lauf» {wert: eigene Fitness 0–200 oder null} (V7.5.2, basis-1.1),
 «pe-steigerung» {wert}, «pe-indoor-rad»/«pe-indoor-lauf» {von, bis}, «pe-schwimm» {hilfsmittel, pool, stile (ruecken/brust), anfaenger (V7.5.1)} → `planeinstellung_add`
 → `plan_einstellungen`; `merge_daily.planeinstellung_pruefen` wie `V75.pruefen`; gleiche ID ersetzt mit Audit, eine ältere Fassung (`geaendert`) nie; «pe-basis» mit Stunden
-aus V7.5 wird abgelehnt). V6.2.3: `garmin_verlauf` (Datei aus
+aus V7.5 wird abgelehnt). V7.6 kraft-plan-1.0: «pe-kraft» {aktiv, wt 1–7, uhrzeit, dauer 15–180 in 5er-Schritten, notiz ≤ 500} und «pe-kraft-<Montag>» {aus und/oder
+tag dieser Woche, uhrzeit; entfernt = wieder die Regel}; «pe-start», «pe-basis-…» und «pe-kraft» tragen optional `vorher` = die Fassung, die in der Woche des Speicherns
+noch gilt (gleiche Regeln, mit `geaendert`, ohne eigenes `vorher`) – sie gelten ab der nächsten Woche, und `plan_einstellungen` behält je ID nur die neueste Fassung.
+`rpe` mit ID «kraft-<Datum>» (sport «kraft», min, srpe, quelle garmin/plan) wie jedes RPE; die Kalibrierung rpe-1.0 lässt es aus. V6.2.3: `garmin_verlauf` (Datei aus
 `tools/garmin_export.py`, auf der Seite gewählt → `garmin_export.einspielen`, nur fehlende Tageswerte; mehrere Dateien vor einem Update werden seit
 V6.4.4 alle eingespielt, `garmin_verlauf` darf eine Liste sein). V5.9.3: `routen` (im Planer gespeicherte Routen → `routes`, gleiche ID ersetzt mit Audit), `routen_entfernt` (auf der Seite gelöscht → aus
 `routes` entfernt, alte Fassung ins Audit), `laktat_punkte_bestaetigt` («Laktat hier» aus dem Explorer auf der Seite bestätigt → Kurzcheck in
@@ -525,6 +534,15 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   der Einheit-Seite (einheit-felder-1.1 `pool`). Vorbelegt am 17.11.2026 aus Silas' Enduco-Einstellungen (Bildschirmfoto): 50 m, Kraul und Brust, alle vier Hilfsmittel.
 - Nach dem Speichern rechnen Plan, Kalender und Heute neu (Ereignis «meinplan»); offene Garmin-Aufträge dieser und der nächsten Woche werden abgeglichen
   (`V66UI.auftraegeAbgleichen`). Nichts davon geht an Enduco. Regel ändern = Version in `V75.VERSIONS`, Wissen (Kapitel «planeinstellungen») und `tests/test_v75.cjs`.
+- **Krafttraining (V7.6, kraft-plan-1.0, Etappe 7):** Seite zwischen Schwimmen und Trainingsumfang (die Folge hat fünf Blätter), Blatt `V75UI.kraft` (auch aus dem Tagesblatt
+  und der Einheit-Seite): an/aus, Wochentag, Uhrzeit (oder ohne), Dauer 15–180 min (Standard 1:30 h), Notiz für die Übungen (die Seite plant keine Übungen). Der Termin gilt
+  ab der Woche nach dem Speichern (`vorher` hält die laufende Woche fest). Er steht als Einheit «Krafttraining» («fester Termin», `kraft_plan`) im Wochenvorschlag:
+  nicht in den Wochenstunden, nicht in TL ≈ und Form-Prognose, nicht an Garmin; beim Verteilen nach der Verfügbarkeit bleibt er wie ein Test an seinem Tag und belegt
+  dort seine Zeit. Aufgezeichnete Garmin-Krafteinheiten zählen wie bisher mit ihrer Last in pmc-2.0. «Nur diese Woche» auf der Einheit-Seite: in kommenden Wochen, deren
+  Tage dem Vorschlag folgen, als Ausnahme «pe-kraft-<Montag>» (die Woche rechnet mit dem neuen Tag); in der laufenden Woche und an gespeicherten Tagen über Mein Plan
+  (verschieben, entfernen). RPE 1–10 nach der Einheit → sRPE = RPE × Minuten (Garmin-Dauer «Krafttraining» des Tages, sonst geplant), eigene Zahl.
+  **Abstimmung der Woche** (Tag danach, Krafttag, Tests, Taper, Rennwochen, Erholungswoche, Ampel): als Vorschlag an Silas am 17.11.2026 – erst nach seinem Okay bauen,
+  dann Version, Wissen (Kapitel «kraft») und `tests/test_v76.cjs` nachführen.
 
 ## Ampel passt das Training an (V7.4, ampel-plan-1.0, Etappe 6 des Auftrags V7.3, freigegeben am 17.11.2026)
 - Entscheid je Tag aus der Ampel (readiness-2.1, `V74.entscheid`): «bereit», «normal», «nicht beurteilbar» = wie geplant; «vorsichtig» = keine harten und
@@ -644,7 +662,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
   Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
   Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
-- **Wissen `wissen-1.16` (`js/wissen.js`; 1.16 = V7.5.2 Basis-Fitness Variante A; 1.15 = V7.5.1 Planeinstellungen als Blatt-Folge, Basis-Regel offen, Anfänger-Modus, Stile auf der Uhr; 1.14 = V7.5 Kapitel «planeinstellungen», 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.13 = V7.4 Ampel passt das Training an (Kapitel «erholung», Düking 2021, Manresa-Rocamora 2021), 1.12 = V7.3.2 Übungen aus der Enduco-Liste, 1.11 = V7.3 Etappe 2 Schwimmen,
+- **Wissen `wissen-1.17` (`js/wissen.js`; 1.17 = V7.6 Kapitel «kraft» (Rønnestad & Mujika 2014, Rønnestad et al. 2010, Doma et al. 2017, Lauersen et al. 2014, Foster et al. 2001); 1.16 = V7.5.2 Basis-Fitness Variante A; 1.15 = V7.5.1 Planeinstellungen als Blatt-Folge, Basis-Regel offen, Anfänger-Modus, Stile auf der Uhr; 1.14 = V7.5 Kapitel «planeinstellungen», 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.13 = V7.4 Ampel passt das Training an (Kapitel «erholung», Düking 2021, Manresa-Rocamora 2021), 1.12 = V7.3.2 Übungen aus der Enduco-Liste, 1.11 = V7.3 Etappe 2 Schwimmen,
   Puls und RPE an Garmin im Kapitel «modelle», 1.10 = V7.3 Einheit als
   Schritte, Einfahren und Intervall-Intensität, RPE je Abschnitt im Kapitel «intervalle»; 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
   1.3: Kapitel «Vorschlag und Enduco vergleichen», 1.4: Prüfung der Quellen – Formulierungen nicht stärker als die Studien, eigene Festlegungen
@@ -789,7 +807,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Die exakten Grössen der SPS1-Dateien stehen in der Git-Historie.
 
 ## Prüfen vor jedem Push von Seite oder Werkzeugen
-`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `node --test tests/test_v66.cjs`, `node --test tests/test_v7.cjs`, `node --test tests/test_v72.cjs`, `node --test tests/test_v73.cjs`, `node --test tests/test_v74.cjs`, `node --test tests/test_v75.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
+`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `node --test tests/test_v66.cjs`, `node --test tests/test_v7.cjs`, `node --test tests/test_v72.cjs`, `node --test tests/test_v73.cjs`, `node --test tests/test_v74.cjs`, `node --test tests/test_v75.cjs`, `node --test tests/test_v76.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`.
 **Leck-Prüfung (V6.4.4):** `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json work/data.json`, `python3 -I tools/leck_pruefen.py work/data.json`
 («LECK-PRÜFUNG: bestanden»), danach `rm work/data.json`. Gilt für jeden Push von Seite, Werkzeugen, Tests oder Doku (nicht für die reinen Daten-Updates).
 Kein Live-Push, wenn ein Test oder die Leck-Prüfung fehlschlägt. Screenshots mit echten Daten nie ins Repo. **Ein Force-Push entfernt nichts von GitHub:**

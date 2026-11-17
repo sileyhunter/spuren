@@ -1,7 +1,8 @@
 /* Ironman Notebook V7.5 – Etappe 3 «Planeinstellungen» (Auftrag V7.3 «wie enduco», Vorbild: die Planeinstellungen von enduco), Rechenlogik ohne DOM.
    - planeinstellungen-1.0: Einstellungen des Plans je Gruppe (Eingabe «planeinstellung» → plan_einstellungen, «Direkt speichern», gleiche ID ersetzt
      mit Audit; gleiche Prüfung wie merge_daily.planeinstellung_pruefen): Start des Plans, eigene Basis-Fitness je Sportart, Steigerung, Indoor-Phase Rad
-     und Laufen, Schwimmen (Hilfsmittel, Standard-Bahnlänge, Stile, Anfänger-Modus). Ohne Eintrag gilt der Standard.
+     und Laufen, Schwimmen (Hilfsmittel, Standard-Bahnlänge, Stile, Anfänger-Modus), V7.6 Krafttraining (kraft-plan-1.0: fester Termin je Woche und
+     Ausnahmen je Woche, Plan-Logik in js/v76.js). Ohne Eintrag gilt der Standard.
    - basis-1.1 (Variante A, von Silas gewählt am 17.11.2026): Basis-Fitness je Sportart = Fitness der Sportart (42-Tage-Mittel ihrer Trainingslast wie
      pmc-2.0) am Montag der Woche, also bis zum Sonntag davor – so ändert sich eine Woche unter der Woche nicht. Start je Sportart = 7 × Fitness ÷
      Trainingslast pro Stunde dieser Sportart (Last ÷ Bewegungszeit der 8 abgeschlossenen Wochen, mit weniger als einer Stunde die 52 Wochen davor) =
@@ -39,19 +40,54 @@
   V75.START = ["fitness", "aufteilung"];                                 // basis-1.1: Start aus der Basis-Fitness oder «jetzt» × 20/50/30
   V75.START_AB = "2026-11-23";                                           // Standard «fitness» ab dieser Woche; Wochen davor wie bis V7.5.1
   V75.FIT_MAX = 200; V75.BASIS_MAX = 30;                                 // eigene Fitness 0–200; Start höchstens 30 h je Sportart
+  V75.KRAFT = { dauer: 90, min: 15, max: 180, notiz: 500 };             // V7.6 kraft-plan-1.0: Standard 1:30 h
   V75.IDS = { start: "pe-start", basis_schwimm: "pe-basis-schwimm", basis_rad: "pe-basis-rad", basis_lauf: "pe-basis-lauf", steigerung: "pe-steigerung",
-    indoor_rad: "pe-indoor-rad", indoor_lauf: "pe-indoor-lauf", schwimm: "pe-schwimm" };
-  const START_IDS = ["pe-start", "pe-basis-schwimm", "pe-basis-rad", "pe-basis-lauf"];
+    indoor_rad: "pe-indoor-rad", indoor_lauf: "pe-indoor-lauf", schwimm: "pe-schwimm", kraft: "pe-kraft" };
+  // Gruppen, die den Aufbau des Plans ändern – sie gelten ab der Woche nach dem Speichern (opt.startBis), damit sich eine Woche nicht unter der Woche ändert.
+  // V7.6: ein solcher Eintrag trägt die Fassung, die in der Woche des Speicherns noch gilt (vorher) – merge_daily behält je ID nur die neueste Fassung,
+  // ohne vorher würde die laufende Woche nach dem nächsten Update auf den Standard fallen.
+  const START_IDS = ["pe-start", "pe-basis-schwimm", "pe-basis-rad", "pe-basis-lauf", "pe-kraft"];
+  V75.START_IDS = START_IDS;
+  const KRAFT_WOCHE = /^pe-kraft-(\d{4}-\d{2}-\d{2})$/;                  // Ausnahme je Woche (Montag): auslassen oder verschieben
+  const UHR = /^([01]\d|2[0-3]):[0-5][05]$/;
+  const wtNr = (iso) => ((new Date(T(iso)).getUTCDay() + 6) % 7) + 1;
+  const montagVon = (iso) => add(iso, 1 - wtNr(iso));
   /** Standard: Start aus der Basis-Fitness (ab START_AB), keine eigene Fitness, 100 %, keine Indoor-Phase, alle Hilfsmittel, Bahnlänge wie bisher (Gerät
    *  bzw. Enduco), Kraul und Rücken, kein Anfänger-Modus. */
   V75.standard = () => ({ start: "fitness", basis: { schwimm: null, rad: null, lauf: null }, steigerung: V75.STEIGERUNG.standard, indoor: { rad: null, lauf: null },
-    schwimm: { hilfsmittel: V75.HILFSMITTEL.slice(), pool: null, stile: ["ruecken"], anfaenger: false }, stand: {} });
+    schwimm: { hilfsmittel: V75.HILFSMITTEL.slice(), pool: null, stile: ["ruecken"], anfaenger: false },
+    kraft: { aktiv: false, wt: null, uhrzeit: null, dauer: V75.KRAFT.dauer, notiz: null }, kraftWochen: {}, stand: {} });
   const teilmenge = (x, erlaubt) => Array.isArray(x) && x.every((k) => erlaubt.includes(k)) && new Set(x).size === x.length;
   /** Prüft einen Eintrag → Fehlertext oder null (gleiche Regeln wie merge_daily.planeinstellung_pruefen). */
   V75.pruefen = function (e) {
     if (!e || typeof e !== "object" || Array.isArray(e)) return "kein Eintrag";
     if (e.geaendert != null && (typeof e.geaendert !== "string" || isNaN(Date.parse(e.geaendert)))) return "Zeitpunkt der Änderung ungültig";
+    if (e.vorher != null) {                                             // V7.6: Fassung, die in der Woche des Speicherns noch gilt (nur Gruppen ab nächster Woche)
+      const v = e.vorher;
+      if (!START_IDS.includes(e.id)) return "vorherige Fassung nur bei Start, Basis-Fitness und Krafttraining";
+      if (typeof v !== "object" || Array.isArray(v) || v.vorher != null || typeof v.geaendert !== "string" || isNaN(Date.parse(v.geaendert))) return "vorherige Fassung ungültig";
+      const f = V75.pruefen(Object.assign({}, v, { id: e.id }));
+      if (f) return "vorherige Fassung: " + f;
+    }
+    const kw = typeof e.id === "string" ? KRAFT_WOCHE.exec(e.id) : null;
+    if (kw) {                                                           // V7.6 kraft-plan-1.0: diese Woche auslassen oder auf einen Tag verschieben
+      const mo = kw[1];
+      if (!istDatum(mo) || wtNr(mo) !== 1) return "Woche: Montag als Datum";
+      if (e.entfernt === true) return null;
+      if (e.aus != null && typeof e.aus !== "boolean") return "Auslassen ja oder nein";
+      if (e.tag != null && !(istDatum(e.tag) && e.tag >= mo && e.tag <= add(mo, 6))) return "Tag in dieser Woche";
+      if (e.uhrzeit != null && !UHR.test(String(e.uhrzeit))) return "Uhrzeit hh:mm in 5-min-Schritten";
+      return e.aus === true || e.tag != null ? null : "auslassen oder einen Tag wählen";
+    }
     switch (e.id) {
+      case "pe-kraft":
+        if (typeof e.aktiv !== "boolean") return "Krafttraining an oder aus";
+        if (e.wt != null && !(Number.isInteger(e.wt) && e.wt >= 1 && e.wt <= 7)) return "Wochentag 1–7";
+        if (e.aktiv && e.wt == null) return "Wochentag fehlt";
+        if (e.uhrzeit != null && !UHR.test(String(e.uhrzeit))) return "Uhrzeit hh:mm in 5-min-Schritten";
+        if (e.dauer != null && !(Number.isInteger(e.dauer) && e.dauer >= V75.KRAFT.min && e.dauer <= V75.KRAFT.max && e.dauer % 5 === 0)) return "Dauer 15–180 min in 5-min-Schritten";
+        if (e.notiz != null && !(typeof e.notiz === "string" && e.notiz.length <= V75.KRAFT.notiz)) return "Notiz höchstens 500 Zeichen";
+        return null;
       case "pe-start":
         return V75.START.includes(e.art) ? null : "Start: Basis-Fitness oder Aufteilung";
       case "pe-basis-schwimm": case "pe-basis-rad": case "pe-basis-lauf":
@@ -73,8 +109,28 @@
       default: return "unbekannte Einstellung";
     }
   };
-  /** Neuer Eintrag (für «Direkt speichern»). felder je ID wie in V75.pruefen. */
-  V75.eintrag = (id, felder, jetzt) => Object.assign({ id, v: V75.VERSIONS.einstellungen }, felder || {}, { geaendert: jetzt || new Date().toISOString() });
+  /** Neuer Eintrag (für «Direkt speichern»). felder je ID wie in V75.pruefen. alt = bisher neueste Fassung derselben ID (V75.aktuell): bei Gruppen, die ab der
+   *  nächsten Woche gelten, kommt die Fassung mit, die in der Woche des Speicherns gilt – alt selbst, wenn es vor dem Montag dieser Woche gespeichert wurde,
+   *  sonst das, was alt schon mittrug. */
+  V75.eintrag = (id, felder, jetzt, alt) => {
+    const x = Object.assign({ id, v: V75.VERSIONS.einstellungen }, felder || {}, { geaendert: jetzt || new Date().toISOString() });
+    delete x.vorher;
+    if (START_IDS.includes(id) && alt && alt.id === id && typeof alt.geaendert === "string") {
+      const mo = montagVon(x.geaendert.slice(0, 10));
+      const v = alt.geaendert.slice(0, 10) < mo ? Object.assign({}, alt) : alt.vorher ? Object.assign({}, alt.vorher) : null;
+      if (v) { delete v.id; delete v.vorher; x.vorher = v; }
+    }
+    return x;
+  };
+  /** Neueste gültige Fassung einer ID aus den Daten und den Eingaben dieses Geräts (oder null). */
+  V75.aktuell = function (daten, geraet, id) {
+    let best = null;
+    for (const L of [daten || [], geraet || []]) for (const x of L) {
+      if (!x || x.id !== id || V75.pruefen(x)) continue;
+      if (!best || String(x.geaendert || "") >= String(best.geaendert || "")) best = x;
+    }
+    return best;
+  };
   /** Einstellungen aus den Daten (plan_einstellungen) und den noch nicht eingespielten Eingaben dieses Geräts; je ID gilt die neuere Fassung.
    *  opt.bis (Montag, für nachgerechnete vergangene Wochen wie V64.stand): nur Einträge, die vor diesem Tag gespeichert wurden.
    *  opt.startBis (Montag der geplanten Woche, basis-1.1): Start und eigene Basis-Fitness nur, wenn vor diesem Tag gespeichert – sie gelten ab der Woche
@@ -83,10 +139,14 @@
     opt = opt || {};
     const E = V75.standard(), M = new Map(), vor = (x, tag) => !!(x.geaendert && String(x.geaendert).slice(0, 10) < tag);
     if (opt.montag && opt.montag < V75.START_AB) E.start = "aufteilung";
-    for (const L of [daten || [], geraet || []]) for (const x of L) {
-      if (!x || V75.pruefen(x)) continue;
-      if (opt.bis && !vor(x, opt.bis)) continue;
-      if (opt.startBis && START_IDS.includes(x.id) && !vor(x, opt.startBis)) continue;
+    // zu neu für die Woche → die Fassung, die der Eintrag als vorher mitträgt, wenn sie früh genug gespeichert war (V7.6), sonst nichts
+    const frueher = (x, tag) => (vor(x, tag) ? x : x.vorher && vor(x.vorher, tag) ? Object.assign({}, x.vorher, { id: x.id }) : null);
+    for (const L of [daten || [], geraet || []]) for (const x0 of L) {
+      if (!x0 || V75.pruefen(x0)) continue;
+      let x = x0;
+      if (opt.bis) x = frueher(x, opt.bis);
+      if (x && opt.startBis && START_IDS.includes(x.id)) x = frueher(x, opt.startBis);
+      if (!x) continue;
       const alt = M.get(x.id); if (!alt || String(x.geaendert || "") >= String(alt.geaendert || "")) M.set(x.id, x);
     }
     for (const [id, x] of M) {
@@ -95,6 +155,8 @@
       else if (id === "pe-steigerung") E.steigerung = x.wert;
       else if (id === "pe-indoor-rad" || id === "pe-indoor-lauf") E.indoor[id === "pe-indoor-rad" ? "rad" : "lauf"] = x.von && x.bis ? { von: x.von, bis: x.bis } : null;
       else if (id === "pe-schwimm") E.schwimm = { hilfsmittel: x.hilfsmittel.slice(), pool: x.pool === 25 || x.pool === 50 ? x.pool : null, stile: x.stile.slice(), anfaenger: x.anfaenger === true };
+      else if (id === "pe-kraft") E.kraft = { aktiv: x.aktiv, wt: x.wt == null ? null : x.wt, uhrzeit: x.uhrzeit || null, dauer: x.dauer || V75.KRAFT.dauer, notiz: x.notiz || null };
+      else if (KRAFT_WOCHE.test(id)) { const mo = KRAFT_WOCHE.exec(id)[1]; if (x.entfernt !== true) E.kraftWochen[mo] = { aus: x.aus === true, tag: x.tag || null, uhrzeit: x.uhrzeit || null }; }
       E.stand[id] = x.geaendert || null;
     }
     return E;

@@ -55,7 +55,7 @@
    *  derselben Tages-Einheiten bei ähnlicher Last. Erst ab 20 Paaren; nur Rangkorrelation mit n, keine Prozentwerte. */
   function kalibrierung(C) {
     const el = $("v56-kal"); if (!el) return;
-    const R = rpeListe(C).filter((r) => isNum(r.rpe));
+    const R = rpeListe(C).filter((r) => isNum(r.rpe) && r.sport !== "kraft");        // V7.6: RPE der Krafttrainings (kraft-plan-1.0) zählt hier nicht
     const days = new Map((C.D.days || []).map((d) => [d.date, d])), byDate = [...days.keys()].sort();
     const ref = (date, k) => { const i = byDate.indexOf(date); const v = byDate.slice(Math.max(0, i - 60), i).map((d) => days.get(d)[k]).filter(isNum); return v.length >= 20 ? median(v) : null; };
     const pairs = R.map((r) => { const d = days.get(r.datum); if (!d) return null; const h = ref(r.datum, "hrv"), rh = ref(r.datum, "rhr");

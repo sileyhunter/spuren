@@ -370,6 +370,7 @@ def v5_merge(D, N):
 
 PE_HILFSMITTEL = ("brett", "pullbuoy", "flossen", "paddles")
 PE_STILE = ("ruecken", "brust")                        # Kraul immer dabei, Delfin plant die Seite nicht
+PE_START_IDS = ("pe-start", "pe-basis-schwimm", "pe-basis-rad", "pe-basis-lauf", "pe-kraft")   # V7.6: gelten ab der Woche nach dem Speichern (vorher)
 
 
 def _pe_datum(s):
@@ -385,19 +386,69 @@ def planeinstellung_pruefen(e):
     """V7.5 planeinstellungen-1.0 (gleiche Regeln wie V75.pruefen): Eintrag je Gruppe → Fehlertext oder None.
     pe-start {art fitness/aufteilung} und pe-basis-schwimm/-rad/-lauf {wert None oder ganze Zahl 0–200} (basis-1.1, Variante A, Silas' Wahl 17.11.2026);
     pe-steigerung {wert 50–150 in 5er-Schritten}; pe-indoor-rad/-lauf {von, bis als Datum, bis nicht vor von, höchstens 366 Tage; beide None = keine
-    Phase}; pe-schwimm {hilfsmittel ⊆ brett/pullbuoy/flossen/paddles, pool None/25/50, stile ⊆ ruecken/brust, je ohne Doppel, anfaenger optional ja/nein}.
-    geaendert optional als Zeitpunkt."""
+    Phase}; pe-schwimm {hilfsmittel ⊆ brett/pullbuoy/flossen/paddles, pool None/25/50, stile ⊆ ruecken/brust, je ohne Doppel, anfaenger optional ja/nein};
+    V7.6 kraft-plan-1.0: pe-kraft {aktiv ja/nein, wt 1–7 (nötig, wenn aktiv), uhrzeit hh:mm in 5-min-Schritten, dauer 15–180 in 5er-Schritten, notiz ≤ 500
+    Zeichen} und pe-kraft-<Montag> {aus ja/nein und/oder tag in dieser Woche, uhrzeit; entfernt = zurück zur Regel}. geaendert optional als Zeitpunkt.
+    V7.6: Start, Basis-Fitness und Krafttraining gelten ab der Woche nach dem Speichern und tragen optional vorher = die Fassung, die in der Woche des
+    Speicherns noch gilt (mit geaendert, ohne eigenes vorher, gleiche Regeln) – sonst fiele die laufende Woche nach dem Ersetzen auf den Standard."""
     if not isinstance(e, dict):
         return "kein Eintrag"
-    g = e.get("geaendert")
-    if g is not None:
+    def zeit_ok(g):
         try:
             dt.datetime.fromisoformat(str(g).replace("Z", "+00:00"))
+            return True
         except ValueError:
-            return "Zeitpunkt der Änderung ungültig"
+            return False
+    g = e.get("geaendert")
+    if g is not None and not (isinstance(g, str) and zeit_ok(g)):
+        return "Zeitpunkt der Änderung ungültig"
+    v = e.get("vorher")
+    if v is not None:
+        if e.get("id") not in PE_START_IDS:
+            return "vorherige Fassung nur bei Start, Basis-Fitness und Krafttraining"
+        if not isinstance(v, dict) or v.get("vorher") is not None or not isinstance(v.get("geaendert"), str) or not zeit_ok(v.get("geaendert")):
+            return "vorherige Fassung ungültig"
+        f = planeinstellung_pruefen({**v, "id": e.get("id")})
+        if f:
+            return "vorherige Fassung: " + f
     zahl = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool)
     teil = lambda x, erlaubt: isinstance(x, list) and all(k in erlaubt for k in x) and len(set(x)) == len(x)
     i = e.get("id")
+    uhr = lambda u: isinstance(u, str) and re.fullmatch(r"([01]\d|2[0-3]):[0-5][05]", u) is not None
+    ganz = lambda v: zahl(v) and float(v).is_integer()
+    kw = re.fullmatch(r"pe-kraft-(\d{4}-\d{2}-\d{2})", i) if isinstance(i, str) else None
+    if kw:
+        mo = _pe_datum(kw.group(1))
+        if not mo or mo.weekday() != 0:
+            return "Woche: Montag als Datum"
+        if e.get("entfernt") is True:
+            return None
+        if e.get("aus") is not None and not isinstance(e.get("aus"), bool):
+            return "Auslassen ja oder nein"
+        if e.get("tag") is not None:
+            t = _pe_datum(e.get("tag"))
+            if not t or not (mo <= t <= mo + dt.timedelta(days=6)):
+                return "Tag in dieser Woche"
+        if e.get("uhrzeit") is not None and not uhr(e.get("uhrzeit")):
+            return "Uhrzeit hh:mm in 5-min-Schritten"
+        return None if e.get("aus") is True or e.get("tag") is not None else "auslassen oder einen Tag wählen"
+    if i == "pe-kraft":
+        if not isinstance(e.get("aktiv"), bool):
+            return "Krafttraining an oder aus"
+        w = e.get("wt")
+        if w is not None and not (ganz(w) and 1 <= w <= 7):
+            return "Wochentag 1–7"
+        if e.get("aktiv") and w is None:
+            return "Wochentag fehlt"
+        if e.get("uhrzeit") is not None and not uhr(e.get("uhrzeit")):
+            return "Uhrzeit hh:mm in 5-min-Schritten"
+        d = e.get("dauer")
+        if d is not None and not (ganz(d) and 15 <= d <= 180 and int(d) % 5 == 0):
+            return "Dauer 15–180 min in 5-min-Schritten"
+        n = e.get("notiz")
+        if n is not None and not (isinstance(n, str) and len(n) <= 500):
+            return "Notiz höchstens 500 Zeichen"
+        return None
     if i == "pe-start":
         return None if e.get("art") in ("fitness", "aufteilung") else "Start: Basis-Fitness oder Aufteilung"
     if i in ("pe-basis-schwimm", "pe-basis-rad", "pe-basis-lauf"):
