@@ -99,9 +99,9 @@ test("Übungen der Woche wechseln und wiederholen sich in einer Einheit nicht", 
   assert.ok(!SW.uebungenDerWoche(5, 3, ["beine_brett"]).includes("beine_brett") && SW.uebungenDerWoche(5, 3, ["beine_brett"]).length === 3);
 });
 
-test("schwimmeinheit-1.1: lockere Einheit mit Technik, Beinen, Hauptserie; Meter und Dauer passen", () => {
+test("schwimmeinheit-1.1/1.2: lockere Einheit mit Technik, Beinen, Hauptserie; Meter und Dauer passen", () => {
   const e = SW.einheit("locker", { min: 50, pool: 50, ref_s: 160, woche: 3 });
-  assert.equal(e.v, "schwimmeinheit-1.1");
+  assert.equal(e.v, "schwimmeinheit-1.2");
   assert.deepEqual(e.bloecke.map((b) => b.id), ["ein", "technik", "beine", "haupt", "aus"]);
   assert.equal(e.bloecke[1].teile.length, 3);
   assert.ok(e.bloecke[1].teile.every((t) => t.uebung && t.zone === "tech" && t.wdh === 2 && t.pause_s === 5), "Übung 2 × mit 5 s Pause wie bei Enduco");

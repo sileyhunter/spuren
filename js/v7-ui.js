@@ -325,7 +325,8 @@
   }
   function planWerkzeugeZeichnen() {
     const box = $("v7-plan-werkzeuge"); if (!box || !bereit()) return;
-    const W = V6(), L = [["plan-rennen", "flagge", "Rennen", "Haupt- und Vorbereitungsrennen mit Strecken"],
+    const W = V6(), L = [["plan-einstellungen", "regler", "Planeinstellungen", "Steigerung, Basis je Sportart, Indoor-Phase, Schwimmen"],
+      ["plan-rennen", "flagge", "Rennen", "Haupt- und Vorbereitungsrennen mit Strecken"],
       ["plan-modell", "intervall", "Trainingsmodell", "Polarisiert, pyramidal, rennspezifisch – Intensität je Sportart"],
       ["plan-stunden", "status", "Wochenstunden", "Vorschlag je Woche aus deinen Wochen, Erholung und Taper"],
       ["plan-aufbau", "lauf", "Aufbau-Check", "Laufumfang ohne Sprünge steigern"],
@@ -357,7 +358,8 @@
   window.addEventListener("resize", kopfHoehe); setTimeout(kopfHoehe, 50);
 
   /* ---------------- Ansicht gezeigt / neu zeichnen ---------------- */
-  const ZEICHNER = { analyse: analyseZeichnen, planvergleich: planvergleichZeichnen, plan: () => { planKopfZeichnen(); planWerkzeugeZeichnen(); }, labor: laborZeichnen };
+  const ZEICHNER = { analyse: analyseZeichnen, planvergleich: planvergleichZeichnen, plan: () => { planKopfZeichnen(); planWerkzeugeZeichnen(); }, labor: laborZeichnen,
+    "plan-einstellungen": () => { if (window.V75UI) window.V75UI.zeichnen(); } };                // V7.5 Etappe 3 (js/v75-ui.js)
   M.gezeigt = function (name) {
     kopfHoehe();
     const f = ZEICHNER[name]; if (!f) return;

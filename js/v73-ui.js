@@ -159,10 +159,10 @@
       const b = bibWorkout(e.wid);
       if (b && b.wo) { wo = b.wo; pr = b.pr; baum = V73().ausWorkout(wo, (s) => { const z = V6().schrittZone(s, wo, sk); return z ? z.key : null; }, (s) => V6().zielText(s, wo)); }
     } else if (swim && SW() && SWUI()) {
-      pool = SWUI().becken();
+      pool = e.pool || SWUI().becken();                                     // V7.5 einheit-felder-1.1: Bahnlänge dieser Einheit, sonst der Standard
       // dieselbe Schwimm-Einheit wie beim Senden an Garmin (garmin-senden-1.1)
       if (U66() && U66().schwimmEinheit) S = U66().schwimmEinheit(e, Z.ds, K);
-      else try { S = SW().einheit(SW().artVon(e.id), { min: e.dauer, css_s: css, pool, ref_s: SW().refTempo(C.D.activities), woche: SWUI().woche(Z.ds) }); } catch (err) { console.error(err); }
+      else try { S = SW().einheit(SW().artVon(e.id), Object.assign({ min: e.dauer, css_s: css, pool, ref_s: SW().refTempo(C.D.activities), woche: SWUI().woche(Z.ds) }, window.V75UI ? window.V75UI.schwimmOpt() : {})); } catch (err) { console.error(err); }
       baum = V73().ausSchwimm(S);
     } else baum = V73().ausTeilen(e);
     const vorbei = Z.ds < heute();
@@ -384,7 +384,7 @@
   function fussnote() {
     const D = V73();
     if (X.art === "workout") return `<p class="ek-quelle">${esc(D.VERSIONS.einheit)}, ${esc(D.VERSIONS.schritte)}: Schritte und Ziele wie im Workout; Zonen und Farben aus deinem aktiven Zonenprofil. Nur lesen – geändert wird in Enduco bzw. Garmin.</p>`;
-    return `<p class="ek-quelle">${esc(D.VERSIONS.einheit)}, ${esc(D.VERSIONS.schritte)}: Schritte aus dem Ablauf der Einheit (gleiche Zeiten wie TL ≈ und Profil), Ziele aus deinem aktiven Zonenprofil${X.metrik === "rpe" ? `, RPE nach ${esc(D.VERSIONS.rpe)} (eigene Festlegung)` : ""}${X.swim ? "; Schwimmen nach schwimmeinheit-1.0" : ""}. Änderungen gehen verschlüsselt über «Direkt speichern»; nach Garmin nur über «Export».</p>`;
+    return `<p class="ek-quelle">${esc(D.VERSIONS.einheit)}, ${esc(D.VERSIONS.schritte)}: Schritte aus dem Ablauf der Einheit (gleiche Zeiten wie TL ≈ und Profil), Ziele aus deinem aktiven Zonenprofil${X.metrik === "rpe" ? `, RPE nach ${esc(D.VERSIONS.rpe)} (eigene Festlegung)` : ""}${X.swim ? `; Schwimmen nach ${esc(SW() ? SW().VERSIONS.einheit : "schwimmeinheit")} (Hilfsmittel, Bahnlänge und Stile aus den Planeinstellungen)` : ""}. Änderungen gehen verschlüsselt über «Direkt speichern»; nach Garmin nur über «Export».</p>`;
   }
 
   /* ---------- Antippen ---------- */
@@ -471,11 +471,15 @@
   function indoorBlatt() {
     const nach = !X.e.drinnen, rad = X.sport === "rad";
     const was = nach ? (rad ? "auf der Rolle (Indoor)" : "auf dem Laufband (Indoor)") : rad ? "draussen auf der Strasse" : "draussen";
+    // V7.5 indoor-phase-1.0: liegt der Tag in deiner Indoor-Phase, gilt «drinnen» von selbst; gespeichert wird nur, was davon abweicht (einheit-felder-1.1)
+    const phase = window.V75UI && window.V75UI.indoorAm(X.sport, X.ds), E = window.V75UI ? window.V75UI.einstellungen() : null, p = E && E.indoor[X.sport];
     const ov = blatt("v73-indoor", `<div class="blatt-titel">${ic(nach ? "drinnen" : "draussen", 34)}<h2 id="v59-ov-h" tabindex="-1">Zu ${nach ? "Indoor" : "Outdoor"} ändern?</h2></div>
       <p class="ek-text">${esc(X.titel)} findet dann ${esc(was)} statt. Die Ziele bleiben aus deinem aktiven Zonenprofil – ein eigenes Profil für ${rad ? "die Rolle" : "das Laufband"} gibt es nicht${rad ? "; die Last rechnet weiter mit der LT2 aus dem Zonenprofil" : ""}.</p>
+      ${phase && p ? `<p class="hint">Der Tag liegt in deiner Indoor-Phase (${esc(datumKurz(p.von))} bis ${esc(datumKurz(p.bis))}, Planeinstellungen)${nach ? "" : " – diese Einheit bleibt dann draussen, auch wenn du die Phase änderst"}.</p>` : ""}
       <p class="warn-t" data-v73f hidden></p>
       <div class="blatt-fuss"><button type="button" class="btn gross" data-x>Abbrechen</button><button type="button" class="btn primary gross" data-v73ok>Ändern</button></div>`);
-    ov.querySelector("[data-v73ok]").onclick = async () => { const f = await speichern({ art: "einheit", felder: { drinnen: nach ? true : null } }, nach ? "Indoor." : "Outdoor."); if (f) fehlerIn(ov, f); };
+    const wert = window.V75UI ? window.V75UI.drinnenFeld(X.sport, X.ds, nach) : (nach ? true : null);
+    ov.querySelector("[data-v73ok]").onclick = async () => { const f = await speichern({ art: "einheit", felder: { drinnen: wert } }, nach ? "Indoor." : "Outdoor."); if (f) fehlerIn(ov, f); };
   }
   function metrikBlatt() {
     const D = V73(), L = D.METRIKEN[X.sport] || [], jetzt = X.metrik;
@@ -490,12 +494,17 @@
       const f = await speichern({ art: "einheit", felder: { metrik: v === L[0] ? null : v } }, `Metrik: ${D.METRIK_NAME[v]}.`); if (f) fehlerIn(ov, f);
     };
   }
+  /** V7.5 einheit-felder-1.1: Bahnlänge dieser Einheit; den Standard stellst du in den Planeinstellungen ein. Gleich wie der Standard = Feld entfernt. */
   function beckenBlatt() {
     if (!SWUI()) return;
-    const p = X.pool || SWUI().becken();
-    const ov = blatt("v73-becken", `<div class="blatt-titel">${ic("becken", 34)}<h2 id="v59-ov-h" tabindex="-1">Bahnlänge</h2><p class="sub">Gilt auf diesem Gerät für deine Schwimm-Einheiten.</p></div>
-      <div class="v73-wahl">${[25, 50].map((m) => `<button type="button" class="v73-opt knopf${m === p ? " an" : ""}" data-swpool="${m}" aria-pressed="${m === p}"><span>${ic("becken", 20)}<b>${m} m</b><small>${m === 50 ? "Langbahn: Übungen über eine halbe Bahn, dann die Bahn locker beenden" : "Kurzbahn: Übungen über eine ganze Bahn"}</small></span></button>`).join("")}</div>${fuss()}`);
-    SWUI().binden(ov, () => { V59().schliessen(); zeichnen(); }, null);
+    const std = SWUI().becken(), p = X.pool || std;
+    const ov = blatt("v73-becken", `<div class="blatt-titel">${ic("becken", 34)}<h2 id="v59-ov-h" tabindex="-1">Bahnlänge</h2><p class="sub">Für ${esc(X.titel)} am ${esc(tagText(X.ds))}. Standard: ${std} m (Planeinstellungen).</p></div>
+      <div class="v73-wahl">${[25, 50].map((m) => `<button type="button" class="v73-opt knopf${m === p ? " an" : ""}" data-v73pool="${m}" aria-pressed="${m === p}"><span>${ic("becken", 20)}<b>${m} m${m === std ? " · Standard" : ""}</b><small>${m === 50 ? "Langbahn: Übungen über eine halbe Bahn, dann die Bahn locker beenden" : "Kurzbahn: Übungen über eine ganze Bahn"}</small></span></button>`).join("")}</div>
+      <p class="warn-t" data-v73f hidden></p>${fuss()}`);
+    ov.querySelectorAll("[data-v73pool]").forEach((b) => (b.onclick = async () => {
+      const m = +b.dataset.v73pool; if (m === p) { V59().schliessen(); return; }
+      const f = await speichern({ art: "einheit", felder: { pool: m === std ? null : m } }, `Bahnlänge ${m} m.`); if (f) fehlerIn(ov, f);
+    }));
   }
 
   /* ---------- Workout bearbeiten (Optionen) ---------- */

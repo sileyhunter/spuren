@@ -1,4 +1,4 @@
-/* Ironman Notebook V7.2 – Oberfläche Schwimmen (uebungen-2.1, schwimmeinheit-1.1 seit V7.3.2): Schwimm-Einheit wie im Becken (Blöcke mit Metern, Bahnen,
+/* Ironman Notebook V7.2 – Oberfläche Schwimmen (uebungen-2.1, schwimmeinheit-1.1 seit V7.3.2, 1.2 seit V7.5 mit den Planeinstellungen): Schwimm-Einheit wie im Becken (Blöcke mit Metern, Bahnen,
    Pause am Beckenrand, Tempo oder Anstrengung, Hilfsmittel), Technikübungen aufklappbar, jede Übung als Blatt (Zweck, Ablauf, worauf achten,
    Fehler, Hilfsmittel), Übungskatalog mit Filtern. Rechenteile in js/schwimmen.js. */
 (function () {
@@ -12,8 +12,10 @@
   const ZN = { z1: "Z1 · locker", z2: "Z2 · Grundlage", z3: "Z3 · zügig", css: "CSS", tech: "Technik", max: "Test" };
   const store = { get(k) { try { return localStorage.getItem((window.SPUREN_DEMO ? "demo." : "") + k); } catch (e) { return null; } },
     set(k, v) { try { localStorage.setItem((window.SPUREN_DEMO ? "demo." : "") + k, v); } catch (e) { /* */ } } };
-  /** Beckenlänge: Wahl auf diesem Gerät, sonst die häufigste in deinen Enduco-Schwimm-Workouts, sonst 25 m. */
+  /** Standard-Bahnlänge: aus den Planeinstellungen (V7.5, planeinstellungen-1.0), sonst die frühere Wahl auf diesem Gerät, sonst die häufigste in deinen
+   *  Enduco-Schwimm-Workouts, sonst 25 m. Je Einheit ändert sie die Einheit-Seite (einheit-felder-1.1). */
   U.becken = function () {
+    const e = window.V75UI && window.V75UI.pool ? window.V75UI.pool() : null; if (e === 25 || e === 50) return e;
     const w = +store.get("sf.sw.becken"); if (w === 25 || w === 50) return w;
     const C = UI() && UI().C, B = C && C.D && C.D.enduco_bib && C.D.enduco_bib.workouts, n = { 25: 0, 50: 0 };
     if (B) for (const k in B) for (const v of (B[k].versionen || [])) if (v && (v.pool_m === 25 || v.pool_m === 50)) n[v.pool_m]++;
@@ -42,13 +44,12 @@
     return `<div class="kv ek-kv">${kv.map(([w, l]) => `<div><b>${esc(w)}</b><span>${esc(l)}</span></div>`).join("")}</div>
       ${S.hilfsmittel.length || S.frei.length ? `<p class="sw-mit">Mitnehmen: ${S.hilfsmittel.map((h) => geraet(h)).join("")}${S.frei.map((h) => geraet(h, true)).join("")}</p>` : ""}
       ${S.bloecke.map(blk).join("")}
-      <div class="row sw-becken" role="group" aria-label="Beckenlänge"><span class="hint">Becken</span>${[25, 50].map((p) => `<button type="button" class="chip" data-swpool="${p}" aria-pressed="${S.pool === p}">${p} m</button>`).join("")}</div>
-      <p class="hint">${esc(SW().VERSIONS.einheit)}: ${S.umfang_quelle ? `Umfang ${esc(S.umfang_quelle)}` : "ohne CSS-Test und ohne Becken-Einheiten: Meter als Richtwert, Dauer offen"}. Tempo nur aus dem CSS-Test (locker CSS + 15–20 s, Grundlage CSS + 8–12 s, Annahmen); ohne Test nach Anstrengung (RPE). Jede Woche drei andere Übungen aus deinen Enduco-Einheiten, Strecke und Pause (5 s) wie dort. «i» erklärt eine Übung.</p>`;
+      <p class="hint">${esc(SW().VERSIONS.einheit)}: Becken ${S.pool} m (Standard in den Planeinstellungen, je Einheit auf ihrer Seite). ${S.umfang_quelle ? `Umfang ${esc(S.umfang_quelle)}` : "ohne CSS-Test und ohne Becken-Einheiten: Meter als Richtwert, Dauer offen"}. Tempo nur aus dem CSS-Test (locker CSS + 15–20 s, Grundlage CSS + 8–12 s, Annahmen); ohne Test nach Anstrengung (RPE). Jede Woche drei andere Übungen aus deinen Enduco-Einheiten, Strecke und Pause (5 s) wie dort. «i» erklärt eine Übung.</p>`;
   };
-  /** Knöpfe binden: Übung erklären, Beckenlänge wechseln (neu = Funktion, die das Blatt neu zeichnet). */
+  /** Knöpfe binden: Übung erklären (zurueck = Funktion, die das vorige Blatt wieder öffnet). Die Bahnlänge wählst du seit V7.5 in den Planeinstellungen bzw.
+   *  auf der Einheit-Seite (neu bleibt als Parameter für ältere Aufrufe). */
   U.binden = function (ov, neu, zurueck) {
     ov.querySelectorAll("[data-swu]").forEach((b) => (b.onclick = () => U.uebungBlatt(b.dataset.swu, zurueck)));
-    ov.querySelectorAll("[data-swpool]").forEach((b) => (b.onclick = () => { store.set("sf.sw.becken", b.dataset.swpool); if (neu) neu(); }));
   };
   function uebungInhalt(u) {
     const S = SW();

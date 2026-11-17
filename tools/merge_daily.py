@@ -353,8 +353,81 @@ def v5_merge(D, N):
         else:
             continue
         msg.append(f"Ampel {x['date']}: {neu['status']}" + (" (trotzdem wie geplant)" if (neu.get("trotzdem") or {}).get("an") else ""))
+    for x in N.get("planeinstellung_add") or []:         # V7.5 planeinstellungen-1.0: Einstellungen je Gruppe (gleiche ID ersetzt mit Audit, ältere Fassung nie)
+        fehler = planeinstellung_pruefen(x)
+        if fehler:
+            msg.append(f"Planeinstellung nicht übernommen: {fehler}")
+            continue
+        alt = next((y for y in D.get("plan_einstellungen") or [] if isinstance(y, dict) and y.get("id") == x["id"]), None)
+        if alt and str(alt.get("geaendert") or "") > str(x.get("geaendert") or ""):
+            continue                                     # die Daten haben schon eine neuere Fassung (anderes Gerät)
+        a, b = _upsert(D, "plan_einstellungen", [x], what="Planeinstellung")
+        if a or b:
+            msg.append(f"Planeinstellung {x['id']}")
     if msg:
         print("V5:", "; ".join(msg))
+
+
+PE_SPORT = ("schwimm", "rad", "lauf")
+PE_HILFSMITTEL = ("brett", "pullbuoy", "flossen", "paddles")
+PE_STILE = ("ruecken", "brust", "delfin")
+
+
+def _pe_datum(s):
+    if not isinstance(s, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", s):
+        return None
+    try:
+        return dt.date.fromisoformat(s)
+    except ValueError:
+        return None
+
+
+def planeinstellung_pruefen(e):
+    """V7.5 planeinstellungen-1.0 (gleiche Regeln wie V75.pruefen): Eintrag je Gruppe → Fehlertext oder None.
+    pe-steigerung {wert 50–150 in 5er-Schritten}; pe-basis {schwimm, rad, lauf: None oder 0–30 h in halben Stunden}; pe-indoor-rad/-lauf {von, bis
+    als Datum, bis nicht vor von, höchstens 366 Tage; beide None = keine Phase}; pe-schwimm {hilfsmittel ⊆ brett/pullbuoy/flossen/paddles, pool None/25/50,
+    stile ⊆ ruecken/brust/delfin, je ohne Doppel}. geaendert optional als Zeitpunkt."""
+    if not isinstance(e, dict):
+        return "kein Eintrag"
+    g = e.get("geaendert")
+    if g is not None:
+        try:
+            dt.datetime.fromisoformat(str(g).replace("Z", "+00:00"))
+        except ValueError:
+            return "Zeitpunkt der Änderung ungültig"
+    zahl = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool)
+    teil = lambda x, erlaubt: isinstance(x, list) and all(k in erlaubt for k in x) and len(set(x)) == len(x)
+    i = e.get("id")
+    if i == "pe-steigerung":
+        w = e.get("wert")
+        return None if zahl(w) and float(w).is_integer() and 50 <= w <= 150 and int(w) % 5 == 0 else "Steigerung 50–150 % in 5er-Schritten"   # 100.0 aus JSON wie in JS gültig
+    if i == "pe-basis":
+        for s in PE_SPORT:
+            v = e.get(s)
+            if v is not None and not (zahl(v) and 0 <= v <= 30 and float(v * 2).is_integer()):
+                return "Basis 0–30 h pro Woche in halben Stunden"
+        return None
+    if i in ("pe-indoor-rad", "pe-indoor-lauf"):
+        if e.get("von") is None and e.get("bis") is None:
+            return None
+        von, bis = _pe_datum(e.get("von")), _pe_datum(e.get("bis"))
+        if not von or not bis:
+            return "Indoor-Phase: von und bis als Datum"
+        if bis < von:
+            return "Indoor-Phase: «bis» liegt vor «von»"
+        if (bis - von).days + 1 > 366:
+            return "Indoor-Phase höchstens ein Jahr"
+        return None
+    if i == "pe-schwimm":
+        if not teil(e.get("hilfsmittel"), PE_HILFSMITTEL):
+            return "unbekanntes Hilfsmittel"
+        p = e.get("pool")
+        if p is not None and not (zahl(p) and p in (25, 50)):
+            return "Bahnlänge 25 oder 50 m"
+        if not teil(e.get("stile"), PE_STILE):
+            return "unbekannter Stil"
+        return None
+    return "unbekannte Einstellung"
 
 
 AMPEL_STATUS = ("wie_geplant", "vorsichtig", "krank")
@@ -476,12 +549,13 @@ def verfuegbarkeit_pruefen(v):
 
 
 PLANWOCHE_QUELLEN = ("vorschlag", "eigen", "bibliothek")
-EINHEIT_FELDER = ("uhrzeit", "gesperrt", "metrik", "drinnen", "ein_min", "pausen")
+EINHEIT_FELDER = ("uhrzeit", "gesperrt", "metrik", "drinnen", "ein_min", "pausen", "pool")   # V7.5 einheit-felder-1.1: pool
 EINHEIT_METRIKEN = ("leistung", "pace", "puls", "rpe")
 
 
 def einheit_feld_pruefen(k, v):
-    """V7.3 einheit-felder-1.0 (gleiche Regeln wie V66.feldPruefen): Feld einer Einheit in Mein Plan → Fehlertext oder None. None = nicht gesetzt."""
+    """V7.3 einheit-felder-1.0, V7.5 1.1 (gleiche Regeln wie V66.feldPruefen): Feld einer Einheit in Mein Plan → Fehlertext oder None. None = nicht gesetzt.
+    1.1: pool (Bahnlänge 25 oder 50 m je Schwimm-Einheit); drinnen false = ausdrücklich draussen (Indoor-Phase)."""
     if v is None:
         return None
     if k == "uhrzeit":
@@ -494,6 +568,8 @@ def einheit_feld_pruefen(k, v):
         return None if isinstance(v, int) and not isinstance(v, bool) and 5 <= v <= 40 and v % 5 == 0 else "Einfahren 5–40 min"
     if k == "pausen":
         return None if isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 100 and v % 10 == 0 else "Intervall-Intensität 0–100 % in 10er-Schritten"
+    if k == "pool":
+        return None if isinstance(v, (int, float)) and not isinstance(v, bool) and v in (25, 50) else "Bahnlänge 25 oder 50 m"
     return "unbekanntes Feld"
 
 

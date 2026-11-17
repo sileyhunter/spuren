@@ -44,8 +44,9 @@
     if (!e || e.sport !== "schwimm" || !window.SW || !window.SWUI || !(C || bereit())) return null;
     const k = K || kontext(montag(ds));
     try {
-      return window.SW.einheit(window.SW.artVon(e.id), { min: e.dauer, css_s: k && k.css ? k.css.s : null, pool: window.SWUI.becken(), ref_s: window.SW.refTempo(C.D.activities),
-        woche: window.SWUI.woche(ds) });
+      // V7.5: Bahnlänge der Einheit (einheit-felder-1.1), sonst der Standard; Hilfsmittel und Stile aus den Planeinstellungen (schwimmeinheit-1.2)
+      return window.SW.einheit(window.SW.artVon(e.id), Object.assign({ min: e.dauer, css_s: k && k.css ? k.css.s : null, pool: e.pool || window.SWUI.becken(), ref_s: window.SW.refTempo(C.D.activities),
+        woche: window.SWUI.woche(ds) }, window.V75UI ? window.V75UI.schwimmOpt() : {}));
     } catch (err) { console.error(err); return null; }
   }
   const swOpt = (ds, K) => ({ schwimm: (e) => schwimmEinheit(e, ds, K) });
@@ -421,8 +422,11 @@
   M.hinzufuegen = function (ds, zurueck) {
     if (!bereit()) return;
     const W = V6();
+    // V7.5 indoor-phase-1.0: liegt der Tag in einer Indoor-Phase, heisst die Wahl ohne «drinnen» ausdrücklich «draussen»
+    const phase = (sp) => !!(window.V75UI && window.V75UI.indoorAm(sp, ds));
+    const name = (k, n) => ((k === "rad" || k === "lauf") && phase(k) ? `${n} draussen` : n);
     const html = `<h2 id="v59-ov-h" tabindex="-1">Training hinzufügen</h2><p class="sub">${esc(tagText(ds))} · Sportart wählen</p>
-      <ul class="mp-wahl">${V66().SPORTARTEN.map(([k, name]) => `<li><button type="button" class="mp-zeile" data-mpsp="${k}">
+      <ul class="mp-wahl">${V66().SPORTARTEN.map(([k, n]) => [k, name(k, n)]).map(([k, name]) => `<li><button type="button" class="mp-zeile" data-mpsp="${k}">
         <span class="mo-sp" style="--sp:${spFarbe(k.replace("_drinnen", ""))}">${W.sportIcon(k.replace("_drinnen", ""), 18)}</span><b>${esc(name)}</b>${W.icon("weiter", 18)}</button></li>`).join("")}</ul>
       ${fuss("data-mpz")}`;
     const ov = V59().blatt("mp-neu", html);
@@ -481,7 +485,9 @@
     if (sl) sl.oninput = zeig; zeig();
     ov.querySelector("[data-mpz]").onclick = () => vorlagenBlatt(ds, sp, zurueck);
     ov.querySelector("[data-mpok]").onclick = async () => {
-      const f = await aendern(montag(ds), { art: "hinzufuegen", date: ds, einheit: { vorlage: id, dauer: sl ? +sl.value : B.std, drinnen: drinnen || undefined } });
+      // V7.5 einheit-felder-1.1: «drinnen» nur gespeichert, wenn es von der Indoor-Phase abweicht (draussen in der Phase = false)
+      const sport = sp.replace("_drinnen", ""), dw = (sport === "rad" || sport === "lauf") && window.V75UI ? window.V75UI.drinnenFeld(sport, ds, drinnen) : (drinnen || null);
+      const f = await aendern(montag(ds), { art: "hinzufuegen", date: ds, einheit: Object.assign({ vorlage: id, dauer: sl ? +sl.value : B.std }, dw != null ? { drinnen: dw } : {}) });
       if (f) { const p = ov.querySelector("[data-mpfehler]"); p.textContent = f; p.hidden = false; return; }
       if (zurueck) zurueck(); else V59().schliessen();
     };

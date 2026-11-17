@@ -94,7 +94,7 @@
     const B = V66.bereich(id);
     if (B && !B.fest && d < B.min) id = LOCKER[e.sport];                // lange Vorlage unter ihrer kürzesten Dauer: lockere Einheit
     const spec = { uid: e.uid, vorlage: id, dauer: d, quelle: e.quelle === "bibliothek" ? "eigen" : e.quelle || "vorschlag" };
-    for (const k of ["uhrzeit", "metrik", "drinnen"]) if (e[k] != null && e[k] !== false) spec[k] = e[k];
+    for (const k of ["uhrzeit", "metrik", "drinnen", "pool"]) if (e[k] != null && e[k] !== false) spec[k] = e[k];   // V7.5: auch die Bahnlänge der Einheit
     const n = V66.einheit(spec, ctx || {});
     if (!n) return null;
     n.titel += " (Ampel)";                                              // auch auf der Uhr sichtbar: «IN · Rad locker (Ampel)»

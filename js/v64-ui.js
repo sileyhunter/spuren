@@ -52,15 +52,24 @@
     // Audit V6.4 B7: vergangene Wochen mit dem Stand vom Montag (V64.stand)
     const st = V.stand(mo, h, C.tests ? C.tests() : [], window.V56 && window.V56.saisonLokal ? window.V56.saisonLokal(C) : {});
     const vg = AN().saisonVorgaben(C.D.activities, vorbei ? mo : h, st.lokal);
-    let phase = "Grundlage", erholung = false, stunden = vg.jetzt, ausSaison = false;
+    // V7.5 Planeinstellungen (js/v75.js): Stunden je Sportart von deiner Basis zur Spitze (basis-1.0, steigerung-1.0). Vergangene Wochen mit den
+    // Einstellungen, die vor ihrem Montag gespeichert waren (wie V64.stand); ohne Einstellungen wie bisher (Anteile deiner 8 Wochen, 100 %).
+    const P75 = window.V75, E75 = window.V75UI && window.V75UI.einstellungen ? window.V75UI.einstellungen(vorbei ? { bis: mo } : null) : null;
+    const ba = P75 && E75 ? P75.basis(vg, E75, V.AUFTEILUNG) : null;
+    const anteile = (b) => (b && b.summe > 0 ? { schwimm: b.schwimm.h / b.summe, rad: b.rad.h / b.summe, lauf: b.lauf.h / b.summe } : null);
+    let phase = "Grundlage", erholung = false, stunden = ba ? Math.round(ba.summe * 2) / 2 : vg.jetzt, ausSaison = false, aufteilung = anteile(ba), R = null;
     if (S) {
       const i = S.wochen.findIndex((w) => w.woche === mo);
-      if (i >= 0) { phase = S.wochen[i].phase; erholung = !!S.wochen[i].erholung; stunden = AN().saisonStunden(S.wochen, vg.jetzt, vg.spitze)[i]; ausSaison = true; }
+      if (i >= 0) {
+        phase = S.wochen[i].phase; erholung = !!S.wochen[i].erholung; ausSaison = true;
+        if (ba) { R = P75.rampe(S.wochen, ba, vg.spitze, E75.steigerung, V.AUFTEILUNG); stunden = R[i].summe; aufteilung = R[i].aufteilung; }
+        else stunden = AN().saisonStunden(S.wochen, vg.jetzt, vg.spitze)[i];
+      }
     }
     const wahl = V.wahl(wahlEintrag(), S && S.haupt ? S.haupt.date : null, mo), modell = V.modellFuer(wahl, mo);
     const tests = st.tests;
     const css = cssAktuell(vorbei ? V.addDays(mo, -1) : null), sk = TR() ? TR().zonen(C.D.zonen).skalen : null;
-    const w0 = V.woche({ woche: mo, phase, erholung, stunden, modell, tests, rennen: rennen(), css_s: css ? css.s : null,
+    const w0 = V.woche({ woche: mo, phase, erholung, stunden, aufteilung, modell, tests, rennen: rennen(), css_s: css ? css.s : null,
       intensitaet: V.intensitaet(wahlEintrag()), laeufe: V.laeufe(C.D.activities), heute: st.heute, skalen: sk });
     // V6.6 eigenplan-1.0: «Mein Plan» = Vorschlag mit deinen Änderungen (hinzugefügt, verschoben, gesperrt)
     const ctxE = { phase, css_s: css ? css.s : null, bibStufe: (wid) => (window.V65UI && window.V65UI.stufeWid ? window.V65UI.stufeWid(wid) : null) };
@@ -72,7 +81,10 @@
     if (!vorbei && window.V66 && window.V66.wocheVerteilt) { try { w0v = window.V66.wocheVerteilt(w0, verf, { css_s: css ? css.s : null }); } catch (e) { console.error(e); } }
     const teilweise = !!(E && !E.ganz && E.tage && Object.values(E.tage).some((t) => t && Array.isArray(t.einheiten)));
     const basis = teilweise ? w0 : w0v;
-    const w = window.V66 ? window.V66.meinPlan(basis, E, ctxE) : basis;
+    const wM = window.V66 ? window.V66.meinPlan(basis, E, ctxE) : basis;
+    // V7.5 indoor-phase-1.0: Rad und Laufen in der Indoor-Phase drinnen (ausser ausdrücklich anders gewählt) – vor der Ampel, damit die lockere
+    // Fassung und der Garmin-Auftrag drinnen bleiben
+    const w = P75 && E75 ? P75.indoorAnwenden(wM, E75) : wM;
     // V7.4 ampel-plan-1.0 (js/v74.js): die Ampel-Schicht – was galt bzw. gilt (Heute, Kalender, Tagesblatt, Einheit-Seite, TL ≈, Form);
     // Mein Plan selbst bleibt in wPlan, Änderungen gehen weiter über den gespeicherten Eintrag (V66.aendern)
     const wa = window.V74UI && window.V74UI.anwenden ? window.V74UI.anwenden(w, { ctx: ctxE, verf }) : w;
@@ -80,13 +92,13 @@
     let wErh = null;
     const erh = (d) => {
       if (!wErh) {
-        const w1 = V.woche({ woche: mo, phase, erholung: true, stunden: Math.max(1, Math.round(stunden * 0.65 * 2) / 2), modell, tests, rennen: rennen(), css_s: css ? css.s : null,
+        const w1 = V.woche({ woche: mo, phase, erholung: true, stunden: Math.max(1, Math.round(stunden * 0.65 * 2) / 2), aufteilung, modell, tests, rennen: rennen(), css_s: css ? css.s : null,
           intensitaet: V.intensitaet(wahlEintrag()), laeufe: V.laeufe(C.D.activities), heute: st.heute, skalen: sk });
         wErh = window.V66 && window.V66.wocheVerteilt ? window.V66.wocheVerteilt(w1, verf, { css_s: css ? css.s : null }) : w1;
       }
       return ((wErh.tage.find((t) => t.date === d) || {}).einheiten) || [];
     };
-    return { w: wa, wPlan: w, w0: basis, w0roh: w0, verteilt: basis !== w0, verf, ctxE, wahl, S, css, vg, ausSaison, vorbei, offset, erh };
+    return { w: wa, wPlan: w, w0: basis, w0roh: w0, verteilt: basis !== w0, verf, ctxE, wahl, S, css, vg, ausSaison, vorbei, offset, erh, E75, basis75: ba, rampe: R };
   }
   /** V7.2 verfuegbarkeit-1.0: Verfügbarkeit aus den Daten, darüber die noch nicht eingespielten Eingaben auf diesem Gerät. */
   function verfuegbarkeit() {
@@ -309,7 +321,11 @@
     const fehlt = e.sport === "schwimm" ? "noch kein CSS-Test: nach Gefühl" : "kein aktives Zonenprofil: nach Gefühl";
     // V7.2 schwimmeinheit-1.0: Schwimm-Einheiten als Serien wie im Becken (Übungen, Hilfsmittel, Pausen), nicht nur als Text
     let swim = null;
-    try { if (e.sport === "schwimm" && window.SW && window.SWUI && e.art !== "bibliothek") swim = window.SW.einheit(window.SW.artVon(e.id), { min: e.dauer, css_s: css, pool: window.SWUI.becken(), ref_s: window.SW.refTempo(C.D.activities), woche: window.SWUI.woche(date) }); } catch (err) { console.error(err); }
+    try {
+      if (e.sport === "schwimm" && window.SW && window.SWUI && e.art !== "bibliothek")
+        swim = window.V66UI && window.V66UI.schwimmEinheit ? window.V66UI.schwimmEinheit(e, date, K)     // V7.5: dieselbe Einheit wie Einheit-Seite und Export
+          : window.SW.einheit(window.SW.artVon(e.id), { min: e.dauer, css_s: css, pool: e.pool || window.SWUI.becken(), ref_s: window.SW.refTempo(C.D.activities), woche: window.SWUI.woche(date) });
+    } catch (err) { console.error(err); }
     const html = `<div class="ek-blatt-kopf"><span class="ek-sport gross" style="--sp:${spFarbe(e.sport)}">${W.sportIcon(e.sport, 28)}</span>
         <div><h2 id="v59-ov-h" tabindex="-1">${esc(e.titel)}</h2><p class="sub">${esc(tagText(t.date))} · ${e.quelle === "eigen" ? "eigene Einheit (Mein Plan)" : `Vorschlag «${esc(K.w.modellName)}»`}</p></div></div>
       <div class="kv ek-kv"><div><b>${hm(e.dauer)} h</b><span>Dauer</span></div>${(e.sport === "rad" || e.sport === "lauf") && e.art !== "test" ? `<div><b>${ueber} min</b><span>über LT1</span></div>` : ""}${e.check ? `<div><b>Laktat</b><span>Kurzcheck</span></div>` : ""}</div>

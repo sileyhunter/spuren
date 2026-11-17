@@ -11,14 +11,14 @@ Gebaut wird Etappe für Etappe, jede erst nach Silas' Okay.
 |---|---|---|
 | 1 | Einheit wie Trainingsbriefing, mit allen Schritten (`schritte-1.0`, `einheit-2.0`, `einheit-felder-1.0`, `einheit-anpassen-1.0`, `rpe-zonen-1.0`) | V7.3 |
 | 2 | Schwimm-Einheiten mit Technikübungen an Garmin (`garmin-senden-1.1`); Puls- und RPE-Ziele auf der Uhr | V7.3.1 (auf der Uhr noch nicht geprüft) |
-| 3 | Planeinstellungen: Basis-Fitness je Sportart, Steigerung (ein Regler für alle drei Sportarten), Indoor-Phase, Schwimm-Equipment, Bahnlänge, Stile | offen |
+| 3 | Planeinstellungen: Basis-Fitness je Sportart, Steigerung (ein Regler für alle drei Sportarten), Indoor-Phase, Schwimm-Equipment, Bahnlänge, Stile | V7.5 |
 | 4 | Kalender mit Zwei-Wochen-Raster und durchlaufender Liste, Zyklus, Bearbeiten-Modus, Tagesblatt; Aktivitäten draussen im Voraus planen (`aktivitaet-plan-1.0`) | offen |
 | 5 | Heute, Navigation, Training planen mit Kategorien | offen |
 | 6 | Ampel passt das Training des Tages automatisch an (`ampel-plan-1.0`): bei «vorsichtig» keine harten oder mittleren Abschnitte, Nachholen in der Woche, «Trotzdem wie geplant» | V7.4 (Garmin-Ersatz am Morgen auf der Uhr noch nicht geprüft) |
 | 7 | Krafttraining als feste Zusatzeinheit je Woche (`kraft-plan-1.0`), Woche darauf abgestimmt | offen |
 
 Reihenfolge (von Silas bestätigt am 16.11.2026): 1 → 2 → 6 → 3 → 7 → 4 → 5; jede Etappe erst nach seinem Okay (Etappe 2 freigegeben am
-16.11.2026, Etappe 6 am 17.11.2026). Der Laufaufbau bleibt je Einzellauf (aufbau-1.1). Entscheid A7 (16.11.2026): Das Morgen-Update darf bei «vorsichtig» die eigene harte
+16.11.2026, Etappe 6 und Etappe 3 am 17.11.2026). Der Laufaufbau bleibt je Einzellauf (aufbau-1.1). Entscheid A7 (16.11.2026): Das Morgen-Update darf bei «vorsichtig» die eigene harte
 Einheit des Tages in Garmin durch die lockere Fassung ersetzen – gilt ab Etappe 6; Enduco-Workouts bleiben unberührt.
 
 ## Etappe 1 – Vorlage → Ironman Notebook
@@ -51,3 +51,15 @@ Einheit des Tages in Garmin durch die lockere Fassung ersetzen – gilt ab Etapp
 | eigene Schicht je Tag (`ampel_anpassung`, «Direkt speichern», Prüffunktion) | Eingabe `ampel`, `merge_daily.ampel_pruefen`, Seite speichert ohne Knopfdruck | gespeichert wird der Entscheid, die Einheiten rechnet die Seite daraus (Mein Plan bleibt) |
 | Morgen-Update ersetzt die harte Einheit auf der Uhr (A7) | `tools/ampel_heute.mjs`, `garmin_senden.py ampel`, lockere Fassung im Auftrag | nur für Aufträge ab V7.4 (die tragen die lockere Fassung); auf der Uhr noch nicht geprüft |
 
+
+## Etappe 3 – Planeinstellungen (V7.5, planeinstellungen-1.0)
+
+| Vorlage (enduco) | V7.5 | Anders, weil |
+|---|---|---|
+| Je Sportart «Zusätzliche Einstellungen» mit Base Fitnesslevel (Zahl im Kreis) | Plan → Planeinstellungen, je Sportart «Basis-Fitness» mit der Fitness der Sportart (`V75.fitness`) | der Plan rechnet in Stunden: der Start je Sportart (basis-1.0) ist der gewohnte Umfang aus den 8 Wochen oder dein Wert; die Fitness steht nur zum Vergleich |
+| Trainingsumfang: Kurve, Bereich, Regler mit Prozent und Stufe, schraffierte Enden | Karte und Blatt «Trainingsumfang» (Linie, Bereich 50–150 %, Regler, Stufe), steigerung-1.0 | ein Regler für alle drei Sportarten (Silas' Wunsch); 100 % = gleichmässig bis zur Woche vor dem Taper (wie bisher), Obergrenze 10 % pro Woche als feste Grenze |
+| Indoor Training Einstellungen (temporäre Phase) für Rad und Laufen | Indoor-Phase von … bis … (indoor-phase-1.0) | Dauer und Inhalt bleiben; einzelne Einheiten auf ihrer Seite umstellbar (nur Abweichungen gespeichert) |
+| Schwimm Equipment | Brett, Pullbuoy, Flossen, Paddles (schwimmeinheit-1.2) | ohne Brett Beine in Seitlage mit Flossen, ohne Pullbuoy kein Pull – die Zeit geht in die Hauptserie |
+| Standard Bahnlänge | Standard-Bahnlänge 25/50 m; je Einheit auf der Einheit-Seite (einheit-felder-1.1) | vorher je Gerät |
+| Stile | Kraul immer, dazu Rücken, Brust, Delfin im Ein- und Ausschwimmen | Technik und Hauptserien bleiben Kraul (Triathlon); auf der Uhr «Freistil», die Stile im Text |
+| Beginner Modus | – | nicht Teil von Etappe 3 |

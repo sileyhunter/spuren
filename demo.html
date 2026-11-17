@@ -1093,6 +1093,14 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
   </section>
 
   <!-- ================= PLAN: Unteransichten (V7) ================= -->
+  <section class="view" id="view-plan-einstellungen" role="region" aria-label="Planeinstellungen" hidden>
+    <div class="dash">
+      <div class="card w12 pe-karte" id="pe-card">
+        <div id="pe-inhalt"></div>
+      </div>
+    </div>
+  </section>
+
   <section class="view" id="view-plan-rennen" role="region" aria-label="Rennen" hidden>
     <div class="dash">
       <div class="card w12" id="pl-rennen-card">
@@ -1693,6 +1701,8 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <script src="js/v73-ui.js"></script>
 <script src="js/v74.js"></script>
 <script src="js/v74-ui.js"></script>
+<script src="js/v75.js"></script>
+<script src="js/v75-ui.js"></script>
 <script>window.SPUREN_DEMO = true;</script>
 <script>
 (() => {
@@ -2150,24 +2160,24 @@ document.getElementById("banner").hidden = !D.demo;
 document.getElementById("countdowns").innerHTML = RACES.map((r) => `<div>${esc(r.short)} <b>${daysTo(r.date)}</b> Tage</div>`).join("");
 document.getElementById("stand").textContent = !D.demo && D.updated ? "Stand " + D.updated : "";
 
-const TAB_NAMES = ["karte", "heute", "kalender", "plan", "plan-rennen", "plan-modell", "plan-aufbau", "plan-stunden", "plan-tests",
+const TAB_NAMES = ["karte", "heute", "kalender", "plan", "plan-einstellungen", "plan-rennen", "plan-modell", "plan-aufbau", "plan-stunden", "plan-tests",
   "analyse", "umfang", "intensitaet", "erholung", "leistung", "laktat", "planvergleich", "ausdauer", "tagebuch", "schwimmen", "koerper",
   "labor", "wissen", "bibliothek"];
 /* V7 navigation-7.0 (Vorlage enduco, Auftrag V7 vom 14.11.2026): fünf Bereiche in der Leiste (unten, ab 1024 px als Seitenleiste links).
    Erste Ebene einfach (Heute, Kalender, Plan, Analyse-Start mit Karten, Outdoor); Einzelheiten öffnen als eigene Ansicht mit «Zurück» oben
    links statt Unterleisten. Das Labor (Expertenbereich mit Wissen und Enduco-Datenbestand) öffnet über das Profil oben rechts.
    Karten wurden zwischen Ansichten verschoben, ihre IDs blieben: QUELLEN nennt die Ansicht, deren Zeichnen sie füllt. */
-const GRUPPEN = { heute: ["heute"], kalender: ["kalender"], plan: ["plan", "plan-rennen", "plan-modell", "plan-aufbau", "plan-stunden", "plan-tests"],
+const GRUPPEN = { heute: ["heute"], kalender: ["kalender"], plan: ["plan", "plan-einstellungen", "plan-rennen", "plan-modell", "plan-aufbau", "plan-stunden", "plan-tests"],
   analyse: ["analyse", "umfang", "intensitaet", "erholung", "leistung", "laktat", "planvergleich", "ausdauer", "tagebuch", "schwimmen", "koerper"],
   karte: ["karte"], profil: ["labor", "wissen", "bibliothek"] };
-const ELTERN = { "plan-rennen": ["plan", "Rennen"], "plan-modell": ["plan", "Trainingsmodell"], "plan-aufbau": ["plan", "Aufbau-Check"],
+const ELTERN = { "plan-einstellungen": ["plan", "Planeinstellungen"], "plan-rennen": ["plan", "Rennen"], "plan-modell": ["plan", "Trainingsmodell"], "plan-aufbau": ["plan", "Aufbau-Check"],
   "plan-stunden": ["plan", "Wochenstunden"], "plan-tests": ["plan", "Testkalender"],
   umfang: ["analyse", "Trainingsumfang"], intensitaet: ["analyse", "Intensitätsverteilung"], erholung: ["analyse", "Belastung und Erholung"],
   leistung: ["analyse", "Leistungsentwicklung"], laktat: ["analyse", "Laktat und Schwellen"], planvergleich: ["analyse", "Planvergleich"],
   ausdauer: ["analyse", "Ausdauer und Verpflegung"], tagebuch: ["analyse", "Aktivitäten"], schwimmen: ["analyse", "Schwimmen"],
   koerper: ["analyse", "Körper und Energie"], labor: [null, "Labor"], wissen: ["labor", "Wissen"], bibliothek: ["labor", "Enduco-Datenbestand"] };
 const QUELLEN = { umfang: ["training"], intensitaet: ["training"], erholung: ["heute", "training"], leistung: ["training"], tagebuch: ["training"],
-  labor: ["training", "kalender", "plan"], "plan-rennen": ["plan"], "plan-modell": ["plan"], "plan-aufbau": ["plan"], "plan-stunden": ["plan"], "plan-tests": ["plan"] };
+  labor: ["training", "kalender", "plan"], "plan-einstellungen": ["plan"], "plan-rennen": ["plan"], "plan-modell": ["plan"], "plan-aufbau": ["plan"], "plan-stunden": ["plan"], "plan-tests": ["plan"] };
 const ALIAS = { training: "umfang", fortschritt: "umfang", zonen: "laktat", outdoor: "karte" };   // alte Links (z. B. aus dem Morgen-Briefing) bleiben gültig
 const TOP_TITEL = { plan: "Plan", analyse: "Analyse" };
 const gruppeVon = (name) => Object.keys(GRUPPEN).find((g) => GRUPPEN[g].includes(name)) || "heute";

@@ -1,5 +1,28 @@
 # Änderungen
 
+## V7.5 · 17.11.2026 · Etappe 3: Planeinstellungen wie bei enduco (planeinstellungen-1.0, basis-1.0, steigerung-1.0, indoor-phase-1.0, wissen-1.14)
+- **Neue Ansicht Plan → Planeinstellungen** (erste Zeile unter «Plan verwalten»): Trainingsumfang mit Kurve, je Sportart Basis-Fitness, für Rad und Laufen
+  die Indoor-Phase, fürs Schwimmen Equipment, Standard-Bahnlänge und Stile. Gespeichert mit «Direkt speichern» (Eingabe `planeinstellung` →
+  `plan_einstellungen`, `merge_daily.planeinstellung_pruefen`, gleiche ID ersetzt mit Audit, ältere Fassung nie). Ohne Einstellung rechnet alles wie bisher.
+- **Basis-Fitness je Sportart (basis-1.0):** im Kreis die Fitness der Sportart (42-Tage-Mittel ihrer Trainingslast, Stand zu Tagesbeginn) zum Vergleich mit
+  Enduco; der Plan beginnt beim gewohnten Umfang je Sportart = Anteil der Sportart an den 8 abgeschlossenen Wochen × «jetzt» (zusammen genau «jetzt»), oder
+  bei deinem Wert je Sportart. Neu beginnt die laufende Woche damit nicht mehr mit 20/50/30, sondern mit deinem Verhältnis; vergangene Wochen im Vergleich
+  werden mit dieser Regel nachgerechnet.
+- **Steigerung (steigerung-1.0), ein Regler für alle drei Sportarten** (50–150 %): jede Sportart von ihrem Start zu ihrem Anteil an der Spitzenwoche;
+  100 % = gleichmässig bis zur Woche vor dem Taper (genau wie bisher saison-1.2), mehr = früher an der Spitze, weniger = darunter. Neu höchstens 10 %
+  (mindestens eine halbe Stunde) mehr als in der Woche davor. Die Wochenstunden-Ansicht zeigt den Start aus den Planeinstellungen und speichert nur noch
+  die Spitzenwoche («jetzt» kommt aus der Basis; ein früher gespeichertes «jetzt» gilt weiter, bis du die Spitzenwoche neu speicherst).
+- **Indoor-Phase (indoor-phase-1.0):** Rad- bzw. Laufeinheiten von … bis … gelten als drinnen (Rolle, Laufband) – in Mein Plan, Kalender, Ampel-Fassung und
+  Export; Dauer und Inhalt bleiben. Eine einzelne Einheit stellst du auf ihrer Seite um; gespeichert wird nur, was von der Phase abweicht
+  (einheit-felder-1.1: `drinnen` false = ausdrücklich draussen). «Training hinzufügen» heisst in der Phase «Rad draussen» bzw. «Laufen draussen».
+- **Schwimmen (schwimmeinheit-1.2):** Übungen nur mit vorhandenen Hilfsmitteln; ohne Brett Beine in Seitlage mit Flossen, ohne beides kein Beine-Block,
+  ohne Pullbuoy kein Pull (die Zeit geht in die Hauptserie); Ein- und Ausschwimmen gemischt mit deinen Stilen (Kraul immer, Standard wie bisher Kraul und
+  Rücken). Die Technikübungen stehen weiter direkt nach dem Einschwimmen (Test für alle Arten, Dauern, Bahnlängen und Ausrüstungen). Standard-Bahnlänge in
+  den Planeinstellungen (vorher je Gerät); je Einheit auf der Einheit-Seite (`pool`, einheit-felder-1.1). Auf der Uhr bleibt der Stil «Freistil».
+- Nachtrag zu V7.4: Ampel-Entscheide und Planeinstellungen werden auf dem Gerät aufgeräumt, sobald sie eingespielt sind.
+- Wissen 1.14: Kapitel «Planeinstellungen» (Basis, Steigerung mit Buist 2008, Nielsen 2014, Frandsen 2025, Gabbett 2016 – eine sichere Rate gibt es nicht;
+  Indoor, Schwimmen). Tests `tests/test_v75.cjs` und `tests/test_tools.py` (gleiche Prüfung in JS und Python), alles mit erfundenen Werten.
+
 ## V7.4 · 17.11.2026 · Etappe 6: Die Ampel passt das Training an (ampel-plan-1.0, eigenplan-1.2, wissen-1.13)
 - **Ohne Knopfdruck:** Zeigt die Ampel am Morgen «vorsichtig», werden die Einheiten von heute leichter – harte und mittlere Abschnitte (VO2max,
   Schwelle, Tempo, Renntempo, CSS) fallen weg, die Einheit wird zur lockeren derselben Sportart; Einheiten über 90 min oder der Art «lang» dauern

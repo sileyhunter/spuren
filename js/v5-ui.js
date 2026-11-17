@@ -40,6 +40,7 @@
       verfuegbarkeit: [],                                             // V7.2: Verfügbarkeit je Tag oder Wochentag (verfuegbarkeit-1.0) → plan_verfuegbarkeit
       garmin_senden: [],                                              // V6.6: Auftrag «An Garmin senden» je Tag (garmin-senden-1.0) → garmin_auftraege
       ampel: [],                                                      // V7.4: Entscheid der Ampel je Tag, «Trotzdem wie geplant» (ampel-plan-1.0) → ampel_anpassung
+      planeinstellung: [],                                            // V7.5: Planeinstellungen je Gruppe (planeinstellungen-1.0) → plan_einstellungen
       eg: { gesendet: {}, dateien: [] } }; },                          // V5.9.3 eingang-1.0: was schon direkt gesendet ist (js/eingang.js)
     async ensureVault() {
       if (this.vault) return this.vault;
@@ -73,7 +74,7 @@
         ["pb", "pb_offiziell", (e) => e.id], ["css", "css_tests", (e) => e.id], ["fehler", "fehlerboard", (e) => e.id],
         ["rpe", "rpe", (e) => e.id], ["intervalle", "intervall_korr", (e) => e.id], ["laktat_punkte", "laktat_punkte", (e) => e.id], ["saison", "saison_plan", (e) => e.id],
         ["trainingsrouten", "trainingsrouten", (e) => e.id], ["routen", "routes", (e) => e.id], ["modell", "plan_modell", (e) => e.id], ["planwahl", "plan_wahl", (e) => e.id], ["planwoche", "plan_woche", (e) => e.id],
-        ["verfuegbarkeit", "plan_verfuegbarkeit", (e) => e.id]];
+        ["verfuegbarkeit", "plan_verfuegbarkeit", (e) => e.id], ["planeinstellung", "plan_einstellungen", (e) => e.id]];
       for (const [loc, key, idf] of pairs) { const m = srv(key, idf); this.data[loc] = (this.data[loc] || []).filter((e) => !(m.has(idf(e)) && same(m.get(idf(e)), stripLocal(e)))); }
       if (Array.isArray(this.data.startorte) && same(this.data.startorte, D.startorte || [])) this.data.startorte = null;
       const conf = new Set((D.lactate || []).map((l) => l.id));
@@ -90,11 +91,15 @@
       this.data.garmin_senden = (this.data.garmin_senden || []).filter((e) => { const s = gsD.get(e.id); return !(s && String(s.erstellt || "") >= String(e.erstellt || "")) && !gsAb.has(e.id + "|" + e.erstellt); });
       const gv = this.data.garmin_verlauf;                                                          // V6.2.3: eingespielt → gilt aus den Daten
       if (gv && (D.garmin_export || []).some((x) => x.id === gv.id)) this.data.garmin_verlauf = null;
+      // V7.5 (Nachtrag zu V7.4): ein Ampel-Entscheid gilt aus den Daten, sobald er dort nichts mehr ergänzt (V74.zusammen ergibt den Stand der Daten)
+      if (window.V74 && window.V74.zusammen) { const aD = new Map((D.ampel_anpassung || []).map((x) => [x.id, x]));
+        const gleich = (x, y) => (window.EG && window.EG.stabil ? window.EG.stabil(x) === window.EG.stabil(y) : same(x, y));     // Schlüsselreihenfolge egal
+        this.data.ampel = (this.data.ampel || []).filter((e) => { const s = aD.get(e.id); return !(s && gleich(window.V74.zusammen(s, stripLocal(e)), s)); }); }
       if (this.data.eg && window.EG) this.data.eg.gesendet = window.EG.aufraeumen(this.data, this.data.eg.gesendet);
     },
     upsert(list, item, idf) { idf = idf || ((e) => e.id); const L = this.data[list]; const i = L.findIndex((e) => idf(e) === idf(item)); if (i >= 0) L[i] = item; else L.push(item); return this.save(); },
     remove(list, id, idf) { idf = idf || ((e) => e.id); this.data[list] = this.data[list].filter((e) => idf(e) !== id); return this.save(); },
-    count() { const d = this.data || {}; return ["fueling", "befinden", "test_entwuerfe", "koppel", "langfahrt", "coach", "pb", "css", "fehler", "rpe", "intervalle", "laktat_punkte", "saison", "trainingsrouten", "routen", "routen_entfernt", "laktat_punkte_bestaetigt", "modell", "planwahl", "planwoche", "verfuegbarkeit", "garmin_senden"].reduce((s, k) => s + (d[k] || []).length, 0) + (d.laktat_bestaetigt || []).length + (d.fueling_produkte ? 1 : 0) + (Array.isArray(d.startorte) ? 1 : 0); },
+    count() { const d = this.data || {}; return ["fueling", "befinden", "test_entwuerfe", "koppel", "langfahrt", "coach", "pb", "css", "fehler", "rpe", "intervalle", "laktat_punkte", "saison", "trainingsrouten", "routen", "routen_entfernt", "laktat_punkte_bestaetigt", "modell", "planwahl", "planwoche", "verfuegbarkeit", "garmin_senden", "ampel", "planeinstellung"].reduce((s, k) => s + (d[k] || []).length, 0) + (d.laktat_bestaetigt || []).length + (d.fueling_produkte ? 1 : 0) + (Array.isArray(d.startorte) ? 1 : 0); },
     async exportFile() {
       await this.ensureVault();
       const out = { format: "spuren-eingaben-1", erstellt: new Date().toISOString(), demo: !!C.IS_DEMO, salt: this.vault.salt || null, iter: this.vault.iter || null,
@@ -111,7 +116,7 @@
         for (const o of d.startorte) if (o && !L.some((x) => x.id === o.id || x.name === o.name)) L.push(o);
         this.data.startorte = L;
       }
-      for (const k of ["fueling", "befinden", "test_entwuerfe", "koppel", "langfahrt", "coach", "pb", "css", "fehler", "rpe", "intervalle", "laktat_punkte", "saison", "trainingsrouten", "routen", "modell", "planwahl", "planwoche", "verfuegbarkeit", "garmin_senden"]) for (const e of d[k] || []) { const L = (this.data[k] = this.data[k] || []); const idf = k === "befinden" ? (x) => x.date : k === "koppel" ? (x) => x.bike + "|" + x.run : (x) => x.id; if (!L.some((x) => idf(x) === idf(e))) L.push(e); }
+      for (const k of ["fueling", "befinden", "test_entwuerfe", "koppel", "langfahrt", "coach", "pb", "css", "fehler", "rpe", "intervalle", "laktat_punkte", "saison", "trainingsrouten", "routen", "modell", "planwahl", "planwoche", "verfuegbarkeit", "garmin_senden", "ampel", "planeinstellung"]) for (const e of d[k] || []) { const L = (this.data[k] = this.data[k] || []); const idf = k === "befinden" ? (x) => x.date : k === "koppel" ? (x) => x.bike + "|" + x.run : (x) => x.id; if (!L.some((x) => idf(x) === idf(e))) L.push(e); }
       for (const k of ["laktat_bestaetigt", "laktat_punkte_bestaetigt", "routen_entfernt"]) for (const id of d[k] || []) if (!(this.data[k] = this.data[k] || []).includes(id)) this.data[k].push(id);
       if (d.fueling_produkte && !this.data.fueling_produkte) this.data.fueling_produkte = d.fueling_produkte;
       await this.save();

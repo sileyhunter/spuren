@@ -11,7 +11,9 @@
      bearbeitet, wird sie als Ganzes festgehalten (vergangene Tage «eingefroren»), damit nichts zurückspringt. «Anpassen» verteilt den Rest der
      Woche neu (Gesperrtes und Eigenes bleibt), «Neu berechnen» setzt Wochen auf den Vorschlag zurück (gesperrte Tage bleiben).
    - V7.4 eigenplan-1.2 (ampel-plan-1.0, js/v74.js): «Woche anpassen?» rechnet auf deinen Knopfdruck den Rest der Woche wie eine Erholungswoche
-     (Aktion «erholung»); die Ampel-Schicht selbst ändert Mein Plan nie. Zu jeder Einheit trägt der Garmin-Auftrag die lockere Fassung mit. */
+     (Aktion «erholung»); die Ampel-Schicht selbst ändert Mein Plan nie. Zu jeder Einheit trägt der Garmin-Auftrag die lockere Fassung mit.
+   - V7.5 einheit-felder-1.1 (Planeinstellungen, js/v75.js): Bahnlänge je Schwimm-Einheit (pool 25/50, sonst der Standard); drinnen = false bleibt
+     gespeichert (ausdrücklich draussen in einer Indoor-Phase), true = ausdrücklich drinnen; ohne Feld gilt die Indoor-Phase. */
 (function (root, factory) {
   const node = typeof module === "object" && module.exports;
   const V66 = factory(node ? require("./v64.js") : root && root.V64);
@@ -20,7 +22,7 @@
 })(typeof window !== "undefined" ? window : null, function (V64) {
   "use strict";
   const V66 = { VERSIONS: { eigenplan: "eigenplan-1.2", vorlagen: "vorlagen-1.0", tl: "tl-plan-1.0", wochenblatt: "wochenblatt-1.0", kalender: "kalender-2.0",
-    verfuegbarkeit: "verfuegbarkeit-1.0", felder: "einheit-felder-1.0", anpassen: "einheit-anpassen-1.0" } };
+    verfuegbarkeit: "verfuegbarkeit-1.0", felder: "einheit-felder-1.1", anpassen: "einheit-anpassen-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const add = (iso, n) => V64.addDays(iso, n);
 
@@ -73,8 +75,9 @@
     ctx = ctx || {};
     if (!s) return null;
     const mehr = { uid: s.uid, quelle: s.quelle || "eigen", vorlage: s.vorlage || null, drinnen: !!s.drinnen };
-    // V7.3 einheit-felder-1.0: Uhrzeit, Sperre und Metrik je Einheit (nur übernommen, wenn gültig)
-    for (const k of ["uhrzeit", "gesperrt", "metrik"]) if (s[k] != null && s[k] !== false && !V66.feldPruefen(k, s[k])) mehr[k] = s[k];
+    if (typeof s.drinnen === "boolean") mehr.drinnen_fest = true;      // V7.5: ausdrücklich gewählt – die Indoor-Phase (indoor-phase-1.0) ändert nichts
+    // V7.3 einheit-felder-1.0: Uhrzeit, Sperre und Metrik je Einheit (nur übernommen, wenn gültig); 1.1: Bahnlänge je Schwimm-Einheit
+    for (const k of ["uhrzeit", "gesperrt", "metrik", "pool"]) if (s[k] != null && s[k] !== false && !V66.feldPruefen(k, s[k])) mehr[k] = s[k];
     if (s.quelle === "bibliothek") {
       // Stufe aus den Zielen der Schritte (ctx.bibStufe, js/v65-ui.js), sonst laut Titel (V64.planStufe), sonst offen – nie geraten
       const st = (ctx.bibStufe && ctx.bibStufe(s.wid)) || ((V64.planStufe(null, s.titel) || {}).stufe) || "offen";
@@ -111,8 +114,8 @@
     if (s.drinnen) e.titel += " (drinnen)";
     return Object.assign(e, mehr);
   };
-  /* V7.3 einheit-felder-1.0: Felder je Einheit in Mein Plan (Uhrzeit, Sperre, Metrik, drinnen, Einfahren, Intervall-Intensität). */
-  V66.FELDER = { uhrzeit: 1, gesperrt: 1, metrik: 1, drinnen: 1, ein_min: 1, pausen: 1 };
+  /* V7.3 einheit-felder-1.0: Felder je Einheit in Mein Plan (Uhrzeit, Sperre, Metrik, drinnen, Einfahren, Intervall-Intensität); 1.1 (V7.5): Bahnlänge. */
+  V66.FELDER = { uhrzeit: 1, gesperrt: 1, metrik: 1, drinnen: 1, ein_min: 1, pausen: 1, pool: 1 };
   V66.METRIKEN = ["leistung", "pace", "puls", "rpe"];
   /** Prüft ein Feld einer Einheit → Fehlertext oder null (null-Wert = Feld entfernen, immer erlaubt). Gleiche Regeln wie merge_daily.einheit_feld_pruefen. */
   V66.feldPruefen = function (k, v) {
@@ -123,11 +126,14 @@
       case "metrik": return V66.METRIKEN.includes(v) ? null : "unbekannte Metrik";
       case "ein_min": return Number.isInteger(v) && v >= 5 && v <= 40 && v % 5 === 0 ? null : "Einfahren 5–40 min";
       case "pausen": return Number.isInteger(v) && v >= 0 && v <= 100 && v % 10 === 0 ? null : "Intervall-Intensität 0–100 % in 10er-Schritten";
+      case "pool": return v === 25 || v === 50 ? null : "Bahnlänge 25 oder 50 m";
       default: return "unbekanntes Feld";
     }
   };
   const ARBEIT_K = new Set(["z3", "z3o", "vo2", "css", "renntempo"]);
   const GESPERRT_E = "Einheit gesperrt – zuerst entsperren";
+  /** Sportart einer gespeicherten Einheit (Vorlage bzw. Bibliothek). */
+  const sportVon = (s) => (s && s.quelle === "bibliothek" ? s.sport : ((EXTRA[s && s.vorlage] || V64.BAUSTEINE[s && s.vorlage] || {}).sport || null));
   /** einheit-anpassen-1.0 (eigene Festlegung): Abschnitte [key, min] anpassen. ein_min = Dauer vor dem ersten Belastungsabschnitt (zuerst Z1 wie
    *  bisher, höchstens ein_min, Rest Z2); pausen = Intervall-Intensität 0–100 % (50 = wie die Vorlage): Erholungen zwischen dem ersten und dem
    *  letzten Belastungsabschnitt und jede kurze Pause nach dem ersten (auch die der letzten Wiederholung) × (1,5 − pausen/100), unter 1 min
@@ -278,10 +284,12 @@
         for (const [k, v] of Object.entries(F)) {
           if (!V66.FELDER[k]) { f = "unbekanntes Feld"; break; }
           const g = V66.feldPruefen(k, v); if (g) { f = g; break; }
-          if (v == null || v === false || (k === "pausen" && v === 50)) delete neu[k]; else neu[k] = v;
+          // drinnen = false bleibt (einheit-felder-1.1: ausdrücklich draussen, auch in einer Indoor-Phase); sonst entfernt false/null das Feld
+          if (v == null || (v === false && k !== "drinnen") || (k === "pausen" && v === 50)) delete neu[k]; else neu[k] = v;
         }
         if (f) break;
-        if ((neu.ein_min != null || neu.pausen != null || neu.drinnen) && neu.quelle === "bibliothek") { f = "Bibliothek: Ablauf wie im Enduco-Workout"; break; }
+        if ((neu.ein_min != null || neu.pausen != null || neu.drinnen || neu.pool != null) && neu.quelle === "bibliothek") { f = "Bibliothek: Ablauf wie im Enduco-Workout"; break; }
+        if (neu.pool != null && sportVon(neu) !== "schwimm") { f = "Bahnlänge nur beim Schwimmen"; break; }
         // Inhalt geändert (Einfahren, Pausen, drinnen) = eigene Einheit wie beim Ändern der Dauer; Uhrzeit, Sperre und Metrik lassen die Quelle
         if (neu.quelle === "vorschlag" && ["ein_min", "pausen", "drinnen"].some((k) => neu[k] !== alt[k])) neu.quelle = "eigen";
         L[i] = neu;

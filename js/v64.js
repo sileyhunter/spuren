@@ -436,8 +436,8 @@
     else if (H * 60 - minuten.total - gemeldet > 5) wenig(`Vorschlag ${hmin(minuten.total)} h statt ${hmin(H * 60)} h: ${Math.round(H * 60 - minuten.total - gemeldet)} min${gemeldet ? " mehr" : ""} nicht verteilt (jede Einheit auf 5 bzw. 15 min gerundet)`);
     const tid = V64.tid(z), pruefung = V64.pruefen(modell, tid, { erholung: erh, taper, rennwoche: !!R.length, gekappt: gekappt.length > 0 });
     return { v: V64.VERSIONS.woche, woche, modell, modellName: M.name, phase, erholung: erh, taper, stunden: H, tage, minuten, zonen: z, tid, pruefung, hinweise,
-      intensitaet: I, gekappt,
-      regel: `${V64.VERSIONS.woche}: Mo frei · Di Laufen (Schlüssel) und Kurs · Mi Rad locker · Do Rad (Schlüssel) und Schwimmen · Fr Laufen locker · Sa lang Rad · So lang Laufen; ${V64.VERSIONS.aufteilung}: Schwimmen 20 %, Rad 50 %, Laufen 30 % (eigene Festlegung)` };
+      intensitaet: I, gekappt, aufteilung: { schwimm: A.schwimm, rad: A.rad, lauf: A.lauf },
+      regel: `${V64.VERSIONS.woche}: Mo frei · Di Laufen (Schlüssel) und Kurs · Mi Rad locker · Do Rad (Schlüssel) und Schwimmen · Fr Laufen locker · Sa lang Rad · So lang Laufen; ${c.aufteilung ? `Stunden je Sportart von deiner Basis zur Spitze (basis-1.0, steigerung-1.0, Planeinstellungen), diese Woche Schwimmen ${Math.round(A.schwimm * 100)} %, Rad ${Math.round(A.rad * 100)} %, Laufen ${Math.round(A.lauf * 100)} %; Ziel ` : ""}${V64.VERSIONS.aufteilung}: Schwimmen 20 %, Rad 50 %, Laufen 30 % (eigene Festlegung)` };
   };
 
   /* ---------------- Intensitätsverteilung (tid-1.0) ---------------- */

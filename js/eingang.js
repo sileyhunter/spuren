@@ -26,7 +26,8 @@
     planwoche: id,                                                   // V6.6: Mein Plan einer Woche (eigenplan-1.0) → plan_woche
     verfuegbarkeit: id,                                              // V7.2: Verfügbarkeit je Tag oder Wochentag (verfuegbarkeit-1.0) → plan_verfuegbarkeit
     garmin_senden: id,                                               // V6.6: Auftrag «An Garmin senden» je Tag (garmin-senden-1.0) → garmin_auftraege
-    ampel: id };                                                     // V7.4: Entscheid der Ampel je Tag (ampel-plan-1.0) → ampel_anpassung
+    ampel: id,                                                       // V7.4: Entscheid der Ampel je Tag (ampel-plan-1.0) → ampel_anpassung
+    planeinstellung: id };                                           // V7.5: Planeinstellungen je Gruppe (planeinstellungen-1.0) → plan_einstellungen
   EG.MENGEN = ["archiv", "routen_entfernt"];                       // ID-Listen, gehen mit den übrigen Eingaben
   EG.BESTAETIGUNG = ["laktat_bestaetigt", "laktat_punkte_bestaetigt"];  // eigene Datei: bleibt liegen, wenn die Prüfung im Update scheitert
   EG.NAME_RE = /^\d{8}T\d{6}Z-[0-9a-f]{8}\.bin$/;

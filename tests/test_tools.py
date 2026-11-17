@@ -1500,5 +1500,43 @@ check("Ampel (tools/ampel_heute.mjs): Morgenwerte und Check-in «belastet» → 
       and json.load(open(os.path.join(_tz, "d.json")))["ampel_anpassung"][0]["status"] == "vorsichtig" and "ampel_add" not in json.loads(_ah2.stdout or "{}"),
       _ah.stdout[:300] + _ah.stderr + _ah2.stderr)
 
+# ---------- V7.5 planeinstellungen-1.0 (Etappe 3): Planeinstellungen prüfen und einspielen, Bahnlänge je Einheit – erfundene Werte ----------
+_PE_FAELLE = [
+    {"id": "pe-steigerung", "wert": 125, "geaendert": "2026-03-02T08:00:00.000Z"}, {"id": "pe-steigerung", "wert": 127}, {"id": "pe-steigerung", "wert": 155},
+    {"id": "pe-steigerung", "wert": True}, {"id": "pe-steigerung", "wert": 100.0}, {"id": "pe-basis", "schwimm": 1.5, "rad": None, "lauf": 2},
+    {"id": "pe-basis", "schwimm": 1.2}, {"id": "pe-basis", "rad": 31}, {"id": "pe-basis", "lauf": -0.5},
+    {"id": "pe-indoor-rad", "von": "2026-12-01", "bis": "2027-02-28"}, {"id": "pe-indoor-lauf", "von": None, "bis": None},
+    {"id": "pe-indoor-rad", "von": "2026-12-01", "bis": None}, {"id": "pe-indoor-rad", "von": "2027-03-01", "bis": "2027-02-01"},
+    {"id": "pe-indoor-lauf", "von": "2026-01-01", "bis": "2027-01-02"}, {"id": "pe-indoor-rad", "von": "2026-02-30", "bis": "2026-03-10"},
+    {"id": "pe-schwimm", "hilfsmittel": ["brett", "pullbuoy", "flossen", "paddles"], "pool": 50, "stile": ["brust"]},
+    {"id": "pe-schwimm", "hilfsmittel": [], "pool": None, "stile": []}, {"id": "pe-schwimm", "hilfsmittel": ["brett", "brett"], "pool": 25, "stile": []},
+    {"id": "pe-schwimm", "hilfsmittel": ["schnorchel"], "pool": 25, "stile": []}, {"id": "pe-schwimm", "hilfsmittel": [], "pool": 33, "stile": []},
+    {"id": "pe-schwimm", "hilfsmittel": [], "pool": 25, "stile": ["kraul"]}, {"id": "pe-anderes", "wert": 1}, {"id": "pe-steigerung", "wert": 100, "geaendert": "gestern"}]
+_rpe = subprocess.run(["node", "-e", "const V75 = require('./js/v75.js'); const F = JSON.parse(process.argv[1]); console.log(JSON.stringify(F.map((e) => V75.pruefen(e))));",
+                       json.dumps(_PE_FAELLE)], cwd=ROOT, capture_output=True, text=True)
+_pe_js = json.loads(_rpe.stdout or "[]")
+_pe_py = [merge_daily.planeinstellung_pruefen(e) for e in _PE_FAELLE]
+check("Planeinstellungen: Python prüft wie die Seite (V75.pruefen) – gleiche Entscheide in allen Fällen",
+      len(_pe_js) == len(_PE_FAELLE) and [x is None for x in _pe_js] == [x is None for x in _pe_py], _rpe.stderr + str(list(zip(_pe_js, _pe_py))))
+check("Planeinstellungen: gültig nur Steigerung 50–150 in 5er-Schritten, Basis in halben Stunden 0–30, Indoor-Phase höchstens ein Jahr, bekannte Hilfsmittel und Stile",
+      [x is None for x in _pe_py] == [True, False, False, False, True, True, False, False, False, True, True, False, False, False, False, True, True, False, False, False, False, False, False], str(_pe_py))
+_tp = tempfile.mkdtemp()
+json.dump({"activities": [], "days": []}, open(os.path.join(_tp, "d.json"), "w"))
+for _x in ({"id": "pe-steigerung", "v": "planeinstellungen-1.0", "wert": 120, "geaendert": "2026-03-02T08:00:00Z"},
+           {"id": "pe-steigerung", "v": "planeinstellungen-1.0", "wert": 90, "geaendert": "2026-03-01T08:00:00Z"},      # ältere Fassung (anderes Gerät) – bleibt aussen vor
+           {"id": "pe-steigerung", "v": "planeinstellungen-1.0", "wert": 135, "geaendert": "2026-03-03T08:00:00Z"},
+           {"id": "pe-schwimm", "v": "planeinstellungen-1.0", "hilfsmittel": ["flossen"], "pool": 50, "stile": ["brust"], "geaendert": "2026-03-03T09:00:00Z"},
+           {"id": "pe-basis", "v": "planeinstellungen-1.0", "lauf": 1.2, "geaendert": "2026-03-03T09:00:00Z"}):
+    json.dump({"planeinstellung_add": [_x]}, open(os.path.join(_tp, "n.json"), "w"))
+    merge_daily.main(os.path.join(_tp, "d.json"), os.path.join(_tp, "n.json"))
+_DP = json.load(open(os.path.join(_tp, "d.json")))
+_pe = {x["id"]: x for x in _DP.get("plan_einstellungen", [])}
+check("Planeinstellungen (merge_daily): je ID ein Eintrag, neuere Fassung ersetzt mit Audit, ältere und ungültige nie",
+      len(_DP.get("plan_einstellungen", [])) == 2 and _pe["pe-steigerung"]["wert"] == 135 and _pe["pe-schwimm"]["pool"] == 50 and "pe-basis" not in _pe
+      and sum(1 for a in _DP.get("audit", []) if a.get("was") == "Planeinstellung ersetzt") == 1, json.dumps(_DP.get("plan_einstellungen")))
+check("einheit-felder-1.1: Bahnlänge 25 oder 50 m je Einheit, drinnen false erlaubt (ausdrücklich draussen)",
+      merge_daily.einheit_feld_pruefen("pool", 50) is None and merge_daily.einheit_feld_pruefen("pool", 33) and merge_daily.einheit_feld_pruefen("pool", True)
+      and merge_daily.einheit_feld_pruefen("drinnen", False) is None and "pool" in merge_daily.EINHEIT_FELDER)
+
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)
