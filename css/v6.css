@@ -825,7 +825,7 @@ table.t.v7-zt td small { display: block; color: var(--muted); font-size: 11px; }
   nav.leiste button { flex-direction: row; justify-content: flex-start; gap: 12px; min-height: 46px; padding: 0 14px; border-radius: 12px; font-size: 15px; }
   nav.leiste button span { font-size: 15px; }
   nav.leiste button[aria-current="page"] { background: var(--surface-2); color: var(--fg); }
-  body.plan-aktiv main { margin-left: 0; }
+  body.plan-aktiv main, body.k4-edit main { margin-left: 0; }
   .v7-kopf { padding-left: 24px; }
   .v7-kopf.top { padding: 22px 24px 4px; }
 }
@@ -1276,3 +1276,90 @@ div.k4-r-kw { height: auto; }
 .mp-dl { font-size: 11px; font-weight: 500; color: var(--muted); }
 .mp-skala { position: relative; display: block; height: 4px; margin-top: 6px; border-radius: 2px; background: linear-gradient(90deg, var(--mon-fit) 0 40%, var(--good) 40% 65%, var(--mon-erm) 65% 75%, var(--bad) 75% 100%); }
 .mp-skala i { position: absolute; top: -3px; width: 4px; height: 10px; margin-left: -2px; border-radius: 2px; background: var(--fg); }
+/* V7.9 zyklus-1.0: Zyklus mit Raster je Woche und vier Karten (Vorlage «Zyklus») */
+.k4-zw-liste { display: flex; flex-direction: column; gap: 4px; }
+.k4-zw { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 40px; padding: 6px 10px; background: var(--surface);
+  border: 1px solid transparent; border-radius: 12px; color: var(--fg); text-align: left; font: inherit; cursor: pointer; }
+.k4-zw b { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.k4-zw small { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.k4-zw-kw { display: flex; flex-direction: column; align-items: center; color: var(--muted); font-size: 14px; font-weight: 700; line-height: 1.1; }
+.k4-zw-kw small { font-size: 9px; font-weight: 700; letter-spacing: .04em; }
+.k4-zw.jetzt .k4-zw-kw { color: var(--race); }
+.k4-zw.sel { border-color: var(--fg); background: var(--surface-2); }
+.k4-zw:focus-visible { outline: 2px solid var(--accent-text, var(--accent)); outline-offset: 2px; }
+.k4-z { display: flex; flex-direction: column; gap: 10px; }
+.k4-z .abschnitt { display: flex; align-items: center; gap: 6px; margin: 0; }
+.k4-z-zahl { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.k4-z-zahl b { font-size: 28px; font-weight: 800; line-height: 1.1; }
+.k4-z-zahl span { color: var(--muted); font-size: 13px; }
+.k4-z-zahl small { color: var(--muted); font-size: 12px; margin-left: auto; }
+.k4-bal-z { display: grid; grid-template-columns: 76px minmax(0, 1fr) 40px; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.k4-bal-z b { color: var(--fg); text-align: right; font-size: 13px; }
+.k4-bal { position: relative; display: block; height: 12px; border-radius: 6px; background: var(--surface-2); overflow: hidden; }
+.k4-bal-ber { position: absolute; top: 0; bottom: 0; background: var(--good); opacity: .28; border-left: 2px solid var(--good); border-right: 2px solid var(--good); }
+.k4-bal-w { position: relative; display: block; height: 100%; border-radius: 6px; }
+.k4-bal-w.plan { background: var(--mon-fit); }
+.k4-bal-w.ist { background: var(--fg); height: 6px; margin-top: 3px; }
+.k4-vf { min-height: 44px; }
+.k4-vf > span { flex: 1; display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.k4-vf > b { flex: none; font-weight: 600; color: var(--muted); }
+.k4-punkt { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); display: inline-block; }
+.k4-fit { width: 100%; height: auto; display: block; }
+.kw-leg .k4-pkt { width: 8px; height: 8px; }
+.k4-stapel { flex: none; height: 14px; }
+.k4-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.k4-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); font-size: 12px; }
+.k4-z-ab { margin: 8px 0 0; }
+.k4-inliste { align-self: flex-start; margin-top: 4px; }
+#kal-woche.k4z { display: flex; flex-direction: column; gap: 12px; }
+/* V7.9 bearbeiten-1.0: Bearbeiten als Modus (Vorlage «Bearbeiten») */
+.k4-bearb { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+.kal-v7.k4e .card-head, .kal-v7.k4e .kal-leiste { display: none; }
+.k4-ebar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 0 4px; }
+.k4-ebar .rp-ib { width: 42px; height: 42px; min-height: 42px; padding: 0; display: grid; place-items: center; }
+.k4-fab .rp-ib { width: 44px; height: 44px; padding: 0; display: grid; place-items: center; }
+.k4-eb-t { display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; }
+.k4-eb-t b { font-size: 16px; }
+.k4-eb-t small { color: var(--muted); font-size: 12px; }
+.k4-eb-ok { background: var(--good); color: var(--bg); }
+.k4-wkarte { background: var(--surface); border-radius: var(--r-card); padding: 8px 12px; margin: 2px 0 4px; }
+.k4-wkk { display: flex; flex-direction: column; gap: 4px; }
+.k4-wkk-t { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.k4-wkk-t b { font-size: 14px; }
+.k4-wkk-t small { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.k4-wkk-z { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 18px; font-size: 12px; color: var(--muted); }
+.k4-wkk-z .k4-stapel { height: 10px; }
+.k4-wkk-z .k4-bal { height: 10px; }
+.k4-wkk-z b { color: var(--fg); font-size: 12px; white-space: nowrap; }
+.k4-wkk-z b small { color: var(--muted); font-weight: 500; }
+.k4-wkk-v { position: relative; display: block; height: 10px; border-radius: 5px; background: linear-gradient(90deg, var(--zc-z2), var(--zc-z3) 70%, var(--zc-z5)); }
+.k4-wkk-v i { position: absolute; top: -3px; width: 4px; height: 16px; margin-left: -2px; border-radius: 2px; background: var(--fg); }
+.k4-meldung { margin: 4px 0 0; padding: 8px 12px; border-radius: 12px; background: var(--surface-2); font-size: 13px; color: var(--fg); border-left: 3px solid var(--warn); }
+.k4-meldung.gut { border-left-color: var(--good); }
+.kal-v7.k4e .k4-liste { padding-bottom: 96px; }
+.k4-trenner { display: flex; align-items: center; gap: 10px; margin: 2px 0; color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.k4-trenner::before, .k4-trenner::after { content: ""; flex: 1; border-top: 1px dashed var(--line); }
+.k4-st { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: 12px; font-weight: 700; color: var(--fg); min-width: 44px; }
+.k4-st-b { display: block; width: 40px; height: 4px; border-radius: 2px; background: var(--surface-2); overflow: hidden; }
+.k4-st-b i { display: block; height: 100%; background: var(--good); }
+.k4-st-b.k4-st-wenig i { background: var(--mon-fit); }
+.k4-st-b.k4-st-hoch i { background: var(--warn); }
+.k4-st-b.k4-st-sehr i { background: var(--bad); }
+.k4-tlock[aria-pressed="true"], .k4-e-lock[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.k4-tag.gesperrt { background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
+.k4-e-ed { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 6px; padding: 2px 0; cursor: default; }
+.k4-e-auf { display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: center; gap: 8px; width: 100%; padding: 6px 0; background: none; border: 0; color: var(--fg); text-align: left; font: inherit; cursor: pointer; }
+.k4-e-lock { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border-radius: 50%; border: 0; background: var(--surface-2); color: var(--muted); cursor: pointer; }
+.k4-e-lock svg { width: 15px; height: 15px; }
+.k4-zieh { display: grid; place-items: center; width: 40px; height: 44px; padding: 0; background: none; border: 0; color: var(--muted); cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; }
+.k4-zieh.leer { cursor: default; }
+.k4-zieh:focus-visible, .k4-e-auf:focus-visible { outline: 2px solid var(--accent-text, var(--accent)); outline-offset: 2px; }
+.k4-e.k4-zieht { visibility: hidden; }
+.k4-geist { position: fixed; z-index: 60; pointer-events: none; background: var(--surface-2); border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, .45); padding: 0 8px; }
+.k4-tag.ziel { outline: 2px dashed var(--good); outline-offset: 2px; border-radius: 10px; }
+.k4-fab { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 30; display: flex; gap: 8px; align-items: center;
+  padding: 8px; border-radius: 999px; background: var(--surface); box-shadow: 0 8px 28px rgba(0, 0, 0, .4); }
+.k4-fab .k4-fab-a { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.k4-fab .btn[disabled] { color: var(--faint); }
+.k4-vs { display: flex; flex-direction: column; gap: 8px; }
+.kal-v7.k4e .k4-r-t { min-height: 46px; }

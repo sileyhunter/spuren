@@ -65,6 +65,12 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   aufziehbar, durchlaufende Tagesliste mit Wochenköpfen «Phase | Wochenart», Einheiten mit Mini-Profil und «Dauer · ≈ km · TL ≈», Absolviertes mit Haken, Ruhetag/Kein Training;
   Titel, Raster und gewählter Tag folgen dem Scrollen der Ansicht), `tests/test_v78.cjs`; Status im Tagesblatt (`formHTML` in `js/v66-ui.js`); Ansichten Liste · Zyklus
   (bisher «Woche») · Monat (`sf.kal.ansicht4`, Standard Liste)
+- **V7.9 (Etappe 4, Teil 2, zyklus-1.0, fitness-prognose-1.0, bearbeiten-1.0):** `js/v78.js` (Bereich `V78.bereich`/`V78.lage`, Verteilung `V78.drei`, Fokus `V78.fokus`,
+  Wochenlast der Steigerung `V78.wochenLast`, Fitness Tag für Tag `V78.prognose`, Entwurf mit Verlauf `V78.entwurf`), `js/v78-ui.js` (Zyklus `V78UI.zyklus`: Raster je Woche und vier
+  Karten, darunter «Plan und absolviert» aus `V66UI.wocheHTML(mo, { nurAuswertung })`; Bearbeiten `V78UI.bearbeiten`: Leiste ✕/✓, Wochenkarte, Status je Tag, Schloss, Griff zum
+  Ziehen, ✨ «Woche anpassen?», ↶/↷); Entwurf in `js/v64-ui.js` (`V64UI.entwurf`, `planEintrag` liefert im Bearbeiten-Modus den Entwurf), `V66UI.aendern` schreibt dann nur in den
+  Entwurf, `V66UI.entwurfSpeichern` (✓), `V66UI.entwurfSperre` (Draussen planen, Planeinstellungen und Verfügbarkeit der Woche warten), Garmin gesperrt; geplante Last für Fitness,
+  Ermüdung und Form ≈ `V66UI.lastGeplant` (ohne TL ≈ Dauer × Last pro Stunde der Sportart), Status je Tag `V66UI.formReihe`
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
 - `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)
@@ -665,6 +671,12 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Kopf kleben oben in der Ansicht (die View scrollt, nicht das Dokument), Liste von einer Woche vor bis sieben Wochen nach heute, «Frühere/Weitere Wochen» erweitern um vier.
   Daten nur aus `V64UI.kontextFuer`, `V66UI.istWoche`/`wochenKopf`, `V66.schaetzung` – keine eigene Rechnung. Trainingsstatus (trainingsstatus-1.0) = Ermüdung ÷ Fitness im Tagesblatt,
   Stufen unter 0,8/bis 1,3/bis 1,5/darüber als Orientierung (Wissen, Kapitel «last»).
+  **V7.9 Zyklus (zyklus-1.0):** Raster mit einer Zeile je Woche «Phase | Wochenart · Stunden · TL» (Griff = Monat), vier Karten der gewählten Woche: Gesamtumfang (TL ≈ Mein Plan und
+  absolviert gegen den Bereich = TL ≈ des Wochenvorschlags ± 7,5 %, eigene Festlegung; Verfügbarkeit mit Punkt, wenn Mein Plan über 90 % der Zeit braucht), Fitness-Entwicklung
+  (fitness-prognose-1.0: gemessen bis heute, dann bis drei Wochen Mein Plan, danach Steigerung × Last pro Stunde je Sportart bis zum Hauptrennen, Band ± 7,5 %), Intensitätsverteilung
+  (tid-1.0) und Fokus (Minuten je Zone). **Bearbeiten (bearbeiten-1.0):** Modus statt Aktionsblatt, Leiste unten aus; jede Änderung (auch aus Tagesblatt und Einheit-Seite) geht in den
+  Entwurf je Woche, ↶/↷, ✕ verwirft (mit Rückfrage), ✓ speichert alle geänderten Wochen und führt offene Garmin-Aufträge nach. Ziehen nur innerhalb der Woche (sonst Griff antippen:
+  Tag wählen); Tests, Kurs, Aktivitäten draussen und nachgeholte Einheiten bleiben. Solange der Entwurf offen ist: nichts an Garmin, kein Draussen planen, keine Planeinstellungen.
 - **Kalender und Mein Plan (V7 kalender-3.0, eigenplan-1.0):** «Woche · Monat» (Standard Woche, `sf.kal.ansicht`); Titel = Monat und Jahr (antippen:
   Monat wählen), «Heute» rechts. Woche = Tagesleiste, Wochenauswertung (Mein Plan gegenüber absolviert, je Sportart, Zeit in Zonen nach Puls, TL) und
   die Tage mit erledigten Garmin-Aktivitäten und Mein Plan; im Monat öffnet «KW» die Woche (`TABS.kalender.zurWoche`, auch `APP.kalenderWoche`).
@@ -743,7 +755,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
   Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
   Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
-- **Wissen `wissen-1.21` (`js/wissen.js`; 1.21 = V7.8 Trainingsstatus im Kapitel «last»; 1.20 = V7.7 Kapitel «draussen»; 1.19 = V7.6.2 Schwimmkurs, aufbau-1.2, Kurzcheck nach Puls; 1.18 = V7.6.1 Abstimmung ums Krafttraining, Tag automatisch, Tage für lange Einheiten, Form ohne Krafttraining; 1.17 = V7.6 Kapitel «kraft» (Rønnestad & Mujika 2014, Rønnestad et al. 2010, Doma et al. 2017, Lauersen et al. 2014, Foster et al. 2001); 1.16 = V7.5.2 Basis-Fitness Variante A; 1.15 = V7.5.1 Planeinstellungen als Blatt-Folge, Basis-Regel offen, Anfänger-Modus, Stile auf der Uhr; 1.14 = V7.5 Kapitel «planeinstellungen», 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.13 = V7.4 Ampel passt das Training an (Kapitel «erholung», Düking 2021, Manresa-Rocamora 2021), 1.12 = V7.3.2 Übungen aus der Enduco-Liste, 1.11 = V7.3 Etappe 2 Schwimmen,
+- **Wissen `wissen-1.22` (`js/wissen.js`; 1.22 = V7.9 Fitness voraus im Kapitel «last», Zyklus und Bearbeiten im Kapitel «modelle»; 1.21 = V7.8 Trainingsstatus im Kapitel «last»; 1.20 = V7.7 Kapitel «draussen»; 1.19 = V7.6.2 Schwimmkurs, aufbau-1.2, Kurzcheck nach Puls; 1.18 = V7.6.1 Abstimmung ums Krafttraining, Tag automatisch, Tage für lange Einheiten, Form ohne Krafttraining; 1.17 = V7.6 Kapitel «kraft» (Rønnestad & Mujika 2014, Rønnestad et al. 2010, Doma et al. 2017, Lauersen et al. 2014, Foster et al. 2001); 1.16 = V7.5.2 Basis-Fitness Variante A; 1.15 = V7.5.1 Planeinstellungen als Blatt-Folge, Basis-Regel offen, Anfänger-Modus, Stile auf der Uhr; 1.14 = V7.5 Kapitel «planeinstellungen», 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.13 = V7.4 Ampel passt das Training an (Kapitel «erholung», Düking 2021, Manresa-Rocamora 2021), 1.12 = V7.3.2 Übungen aus der Enduco-Liste, 1.11 = V7.3 Etappe 2 Schwimmen,
   Puls und RPE an Garmin im Kapitel «modelle», 1.10 = V7.3 Einheit als
   Schritte, Einfahren und Intervall-Intensität, RPE je Abschnitt im Kapitel «intervalle»; 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
   1.3: Kapitel «Vorschlag und Enduco vergleichen», 1.4: Prüfung der Quellen – Formulierungen nicht stärker als die Studien, eigene Festlegungen

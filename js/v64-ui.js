@@ -161,10 +161,17 @@
   }
   M.verfuegbarkeit = () => { C = C || (UI() && UI().C); return C ? verfuegbarkeit() : null; };
   /** V6.6 eigenplan-1.0: Mein Plan einer Woche (Daten, darüber die noch nicht eingespielte Fassung auf diesem Gerät). */
-  function planEintrag(mo) {
+  function gespeichert(mo) {
     const id = "wo-" + mo, f = (L) => (L || []).find((e) => e && e.id === id) || null;
     return f(((UI() && UI().Inbox && UI().Inbox.data) || {}).planwoche) || f(C.D.plan_woche);
   }
+  /* V7.9 bearbeiten-1.0 (Vorlage «Bearbeiten»): im Bearbeiten-Modus gilt für jede geänderte Woche der Entwurf; gespeichert wird erst mit ✓
+     (V66UI.entwurfSpeichern), ✕ verwirft ihn. Jeder Schritt (V66.aendern) bleibt im Verlauf für ↶ und ↷. */
+  let ENT = null;
+  const ent = () => { if (!ENT && window.V78 && window.V78.entwurf) ENT = window.V78.entwurf((mo) => (C ? gespeichert(mo) : null), () => { PROJ = null; }); return ENT; };
+  function planEintrag(mo) { const e = ent(); return e && e.hat(mo) ? e.eintrag(mo) : gespeichert(mo); }
+  /** V78.entwurf (js/v78.js): aktiv, starten, beenden, neu, zurueck, vor, kannZurueck, kannVor, aenderungen, schritte */
+  Object.defineProperty(M, "entwurf", { get: ent, enumerable: true });
   /** V6.6: Woche nach Modell (Mein Plan) für einen beliebigen Montag – für Kalender, Tagesblatt und Wochenblatt (js/v66-ui.js). */
   M.kontextFuer = function (mo) {
     C = C || (UI() && UI().C); if (!C || !V64() || !AN()) return null;

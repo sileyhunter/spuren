@@ -1,5 +1,17 @@
 # Änderungen
 
+## V7.9 · 18.11.2026 · Zyklus (zyklus-1.0), Fitness voraus (fitness-prognose-1.0), Bearbeiten als Modus (bearbeiten-1.0), wissen-1.22
+- **Zyklus** (Etappe 4, Teil 2): oben je Woche eine Zeile «Phase | Wochenart · Stunden · TL» (Griff zieht den Monat auf), darunter vier Karten der gewählten Woche –
+  Gesamtumfang (TL ≈ von Mein Plan und absolviert gegen den Bereich des Wochenvorschlags ± 7,5 %, Trainingsverfügbarkeit mit Hinweis, wenn die Zeit knapp wird),
+  Fitness-Entwicklung bis zum Hauptrennen (gemessen, dann mit Mein Plan und der Steigerung fortgeschrieben, mit Band), Intensitätsverteilung und Fokus der Woche;
+  darunter «Plan und absolviert» wie bisher. «Tage dieser Woche in der Liste» springt zur Liste.
+- **Bearbeiten** wie die Vorlage: Knopf «Bearbeiten» in Liste und Zyklus. Oben ✕ und ✓, die Wochenkarte (locker gegen Z3–Z5, Zonen, TL ≈ mit Bereich) und die Woche als Zeile;
+  je Tag der Trainingsstatus und ein Schloss, je Einheit ein Schloss und ein Griff zum Ziehen auf einen anderen Tag (antippen = Tag wählen). Unten ✨ «Woche anpassen?», ↶ und ↷.
+  Alles bleibt ein Entwurf, bis ✓ speichert; ✕ verwirft. Währenddessen geht nichts an Garmin.
+- Fitness, Ermüdung und Form ≈ im Tagesblatt rechnen Einheiten ohne TL ≈ (Tests, Schwimmen ohne CSS-Test) jetzt mit ihrer Dauer × deiner Last pro Stunde der Sportart
+  statt mit 0. «absolviert» im Wochenkopf zählt Aktivitäten draussen mit (wie die Fitness).
+- «Im Kalender öffnen» im Wochenblatt öffnet die Liste bei dieser Woche.
+
 ## V7.8 · 18.11.2026 · Kalender als Liste mit Raster (kalender-4.0), Trainingsstatus (trainingsstatus-1.0), wissen-1.21
 - **Kalender wie die Vorlage** (Etappe 4, Teil 1): oben ein Raster mit zwei Wochen (Griff ziehen bzw. antippen = ganzer Monat), je Tag Sportsymbole und je Einheit ein Punkt
   in der Zonenfarbe ihres Schwerpunkts; darunter alle Tage als durchlaufende Liste mit Wochenköpfen «Phase | Wochenart», Plan- und Ist-Stunden und TL ≈. Einheiten mit

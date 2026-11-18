@@ -871,7 +871,7 @@ nav.leiste { flex: none; display: grid; grid-template-columns: repeat(5, minmax(
 nav.leiste button { background: none; border: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px; padding: 6px 2px 5px;
   color: var(--muted); font: 600 11px/1.15 var(--f-body); cursor: pointer; text-align: center; -webkit-tap-highlight-color: transparent; }
 nav.leiste button[aria-current="page"] { color: var(--accent); } nav.leiste button[aria-current="page"] svg { stroke-width: 2.3; }
-body.plan-aktiv nav.leiste { display: none; }
+body.plan-aktiv nav.leiste, body.k4-edit nav.leiste { display: none; }
 nav.unter { position: sticky; top: 0; z-index: 8; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; background: var(--bg); border-bottom: 1px solid var(--line);
   padding: 8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); }
 @media (min-width: 900px) { nav.unter { grid-auto-columns: max-content; } }
@@ -1064,17 +1064,22 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
     <div class="dash">
       <div class="v6-voll kal-v7">
         <div class="k4-kopf" id="kal-kopf">
+        <div class="k4-ebar" id="kal-ebar" hidden></div>
         <div class="card-head">
           <div><h2 id="cal-title">Kalender</h2><div class="sub" id="cal-sub">Mein Plan, Absolviertes aus Garmin, Tests und Rennen.</div></div>
           <button class="btn kal-heute" id="cal-today">Heute</button>
         </div>
         <div class="kal-leiste"><div class="seg kal-ans" role="group" aria-label="Ansicht"><button type="button" data-kalans="liste">Liste</button><button type="button" data-kalans="woche">Zyklus</button><button type="button" data-kalans="monat">Monat</button></div>
-          <div class="row" id="cal-pfeile"><button class="btn rp-ib" id="cal-prev" aria-label="Zurück">‹</button><button class="btn rp-ib" id="cal-next" aria-label="Weiter">›</button></div></div>
+          <div class="row" id="cal-pfeile"><button class="btn rp-ib" id="cal-prev" aria-label="Zurück">‹</button><button class="btn rp-ib" id="cal-next" aria-label="Weiter">›</button></div>
+          <button type="button" class="btn k4-bearb" id="kal-bearb" hidden>Bearbeiten</button></div>
+        <div class="k4-wkarte" id="kal-wkarte" hidden></div>
         <div class="k4-raster" id="kal-raster" hidden></div>
+        <p class="k4-meldung" id="kal-meldung" role="status" aria-live="polite" hidden></p>
         </div>
         <div class="tablewrap" id="cal-wrap"><div class="cal" id="cal"></div></div>
         <div class="kal-woche" id="kal-woche" hidden></div>
         <div class="k4-liste" id="kal-liste" hidden></div>
+        <div class="k4-fab" id="kal-fab" hidden></div>
         <div class="cal-legend" id="cal-legend"></div>
       </div>
     </div>
@@ -2219,6 +2224,7 @@ function showTab(name) {
   const sec = document.getElementById("view-" + name);
   if (sec && war !== sec && name in ELTERN && sec.dataset.v7offen !== "1") { sec.scrollTop = 0; sec.dataset.v7offen = "1"; }   // Detailansicht beim ersten Öffnen oben
   document.body.classList.toggle("plan-aktiv", name === "karte" && !!(window.RTUI && window.RTUI.active && window.RTUI.active()));
+  document.body.classList.toggle("k4-edit", name === "kalender" && !!(window.V78UI && V78UI.imBearbeiten && V78UI.imBearbeiten()));   // V7.9: im Bearbeiten-Modus keine Leiste
   document.body.dataset.ansicht = name;
   if (name === "karte") { map?.resize(); }
   const Q = (QUELLEN[name] || []).concat([name]);
@@ -3199,7 +3205,8 @@ function planLoad(id) {
 }
 function initPlanner() {
   window.APP = { showTab, setPlanActive, tagBlatt: (ds) => TABS.kalender.blatt(ds),
-    kalenderWoche: (mo) => { showTab("kalender"); TABS.kalender.zurWoche(mo); } };   // V6.6     // V5.7: Trainingskalender öffnet Karte und Planer; V6.6: Tagesblatt
+    kalenderWoche: (mo) => { showTab("kalender"); TABS.kalender.zurWoche(mo); },
+    kalenderListe: (ds) => { showTab("kalender"); TABS.kalender.zurListe(ds); } };   // V7.9   // V6.6     // V5.7: Trainingskalender öffnet Karte und Planer; V6.6: Tagesblatt
   document.getElementById("btn-plan").addEventListener("click", () => setPlanActive(!plan.active));
   if (!window.RTUI || !window.RT) {
     document.getElementById("btn-plan").title = "Routenplaner konnte nicht geladen werden";
@@ -3604,6 +3611,9 @@ const TABS = {
           if (!(w >= mondayOf(m0) && w <= m1)) this.woche = iso(today >= mondayOf(m0) && today <= m1 ? mondayOf(today) : mondayOf(m0));
         }
         this.ansicht = b.dataset.kalans; store.set("sf.kal.ansicht4", this.ansicht); this.draw(); }));
+      { const b = document.getElementById("kal-bearb");                                      // V7.9 bearbeiten-1.0: «Bearbeiten» wie die Vorlage (Liste und Zyklus)
+        if (window.V6) b.innerHTML = `${V6.icon("stift", 16)} Bearbeiten`;
+        b.onclick = () => { if (!window.V78UI) return; if (this.ansicht !== "liste") { const mo = this.woche; this.ansicht = "liste"; store.set("sf.kal.ansicht4", "liste"); this.sel = mo; this.draw(); V78UI.bearbeiten(mo); } else V78UI.bearbeiten(); }; }
       const go = (n) => {
         if (this.ansicht === "woche" && window.V66UI) { this.woche = n == null ? iso(mondayOf(today)) : iso(addDays(pd(this.woche), 7 * n)); this.month = new Date(pd(this.woche).getFullYear(), pd(this.woche).getMonth(), 1); this.draw(); return; }
         this.month = n == null ? new Date(today.getFullYear(), today.getMonth(), 1) : new Date(this.month.getFullYear(), this.month.getMonth() + n, 1); this.draw(); };
@@ -3633,8 +3643,11 @@ const TABS = {
     draw() {
       document.querySelectorAll("[data-kalans]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.kalans === (window.V66UI ? this.ansicht : "monat"))));
       const liste = this.ansicht === "liste" && window.V78UI && window.V5UI && V5UI.C;            // V7.8 kalender-4.0
-      document.getElementById("kal-liste").hidden = !liste; document.getElementById("kal-raster").hidden = !liste;
-      document.getElementById("cal-pfeile").hidden = !!liste; document.querySelector(".kal-v7").classList.toggle("k4", !!liste);
+      const zyklus = this.ansicht === "woche" && window.V78UI && window.V66UI && window.V5UI && V5UI.C;   // V7.9 zyklus-1.0: Raster je Woche und vier Karten
+      document.getElementById("kal-liste").hidden = !liste; document.getElementById("kal-raster").hidden = !(liste || zyklus);
+      document.getElementById("cal-pfeile").hidden = !!liste; document.querySelector(".kal-v7").classList.toggle("k4", !!(liste || zyklus));
+      document.getElementById("kal-bearb").hidden = !(liste || zyklus);
+      if (!zyklus) this._zykWo = null;
       if (liste) {
         document.getElementById("cal-wrap").hidden = true; document.getElementById("cal-legend").hidden = true; document.getElementById("kal-woche").hidden = true;
         const box = document.getElementById("kal-liste"), erst = !box.dataset.k4;
@@ -3648,7 +3661,12 @@ const TABS = {
         document.getElementById("cal-title").textContent = pd(mo).toLocaleDateString("de-CH", { month: "long", year: "numeric" });   // V7 kalender-3.0
         document.getElementById("cal-sub").textContent = `KW ${isoWeek(pd(mo))} · ${pd(mo).getDate()}.${pd(mo).getMonth() + 1}.–${so.getDate()}.${so.getMonth() + 1}.${so.getFullYear()}`;
         document.getElementById("cal-wrap").hidden = true; document.getElementById("cal-legend").hidden = true; box.hidden = false;
-        try { box.innerHTML = V66UI.wocheHTML(mo); V66UI.wocheBinden(box, mo, () => this.draw()); } catch (e) { console.error(e); box.innerHTML = `<p class="warn-t">Woche nicht darstellbar.</p>`; }
+        box.classList.toggle("k4z", !!zyklus);
+        const neuWo = this._zykWo !== mo; this._zykWo = mo;                                // V7.9: andere Woche oder Ansicht → oben beginnen
+        try { if (zyklus) V78UI.zyklus(box, document.getElementById("kal-raster"), document.getElementById("cal-title"), document.getElementById("cal-sub"), mo, () => this.draw());
+          else { box.innerHTML = V66UI.wocheHTML(mo); V66UI.wocheBinden(box, mo, () => this.draw()); }
+          if (neuWo) { const v = document.getElementById("view-kalender"); if (v) v.scrollTop = 0; } }
+        catch (e) { console.error(e); box.innerHTML = `<p class="warn-t">Woche nicht darstellbar.</p>`; }
         drawTests();
         return;
       }
@@ -3693,6 +3711,8 @@ const TABS = {
     },
     /** V6.6 kalender-2.0: Wochenansicht einer Woche (Montag ISO) – aus dem Monat (KW antippen) und aus dem Wochenblatt im Plan. */
     zurWoche(mo) { this.ansicht = "woche"; store.set("sf.kal.ansicht4", "woche"); this.woche = mo; this.month = new Date(pd(mo).getFullYear(), pd(mo).getMonth(), 1); this.draw(); },
+    /** V7.9: Liste ab dem Tag ds (z. B. «Tage dieser Woche in der Liste» im Zyklus, «Im Kalender» im Wochenblatt). */
+    zurListe(ds) { if (!window.V78UI) { this.zurWoche(ds); return; } this.ansicht = "liste"; store.set("sf.kal.ansicht4", "liste"); this.sel = ds; this.draw(); try { V78UI.zu(ds, true); } catch (e) { console.error(e); } },
     /** V6.6 (Teil 0, kalender-2.0): Tag antippen markiert ihn und öffnet das Tagesblatt (vorher erschien die Liste unter dem Monat,
         auf dem iPhone ausserhalb des Bildschirms). */
     day(ds) {

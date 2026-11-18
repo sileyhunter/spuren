@@ -247,8 +247,8 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 100. **Zonen-Prüfung für Einheiten nach Puls** (laktat-hf-1.0 erfasst Puls und Laktat; die Prüfung «passt / Z2 zu hoch / unklar» ist nur vorgeschlagen, Etappe 4 mit
     aktivitaet-plan-1.0 für Skitour, Wandern, Langlauf und Traillauf – erst nach Silas' Okay).
      **Erledigt in V7.7 (zonenpruefung-hf-1.0, Karte «Zonen nach Puls prüfen»)**, mit der Planung von Skitour, Wandern, Langlauf und Traillauf (aktivitaet-plan-1.0).
-101. **Etappe 4** (Okay am 18.11.2026): Teil 1 erledigt in V7.8 (Liste mit Raster, Trainingsstatus). Offen: Teil 2 Zyklus mit vier Karten und Bearbeiten-Modus
-     (✕/✓, ↶/↷, ✨ «Woche anpassen?», Status je Tag, Einheiten ziehen), Teil 3 Tagesblatt (Verfügbarkeit im Blatt mit Chips und Regler, «Eigene Aktivität planen» mit
-     Wiederholen und RPE).
+101. **Etappe 4** (Okay am 18.11.2026): Teil 1 erledigt in V7.8 (Liste mit Raster, Trainingsstatus), Teil 2 in V7.9 (Zyklus mit vier Karten, Bearbeiten als Modus).
+     Offen: Teil 3 Tagesblatt (Verfügbarkeit im Blatt mit Chips und Regler, «Eigene Aktivität planen» mit Wiederholen und RPE). Einheiten in eine andere Woche ziehen geht
+     nicht (Mein Plan ist je Woche gespeichert): dafür entfernen und dort hinzufügen.
 98. **Krafttraining:** der automatische Tag wird an der schon verteilten Woche gewählt; eine Woche mit Tests am Wochenende lässt oft nur den Tag des langen Laufs
     (Hinweis). Die Übungen plant die Seite nicht; Kraft geht nicht an Garmin.

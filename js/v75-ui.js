@@ -162,7 +162,7 @@
   /** Öffnet die Planeinstellungen. opt.seite = Index oder Name («umfang»), opt.zurueck = was «‹» auf dem ersten Blatt tut (sonst schliessen). */
   M.flow = function (opt) {
     opt = opt || {};
-    if (!bereit()) return;
+    if (!bereit() || (U66() && U66().entwurfSperre && U66().entwurfSperre())) return;   // V7.9: Planeinstellungen nicht im Bearbeiten-Modus
     FLOW = { zurueck: typeof opt.zurueck === "function" ? opt.zurueck : null, entwurf: null, entwurfStart: null };
     const i = typeof opt.seite === "string" ? SEITEN.indexOf(opt.seite) : opt.seite;
     seite(isNum(i) && i >= 0 && i < SEITEN.length ? i : 0);
@@ -458,7 +458,7 @@
   }
   /** V7.6: das Blatt «Krafttraining» direkt (Tagesblatt, Seite der Einheit); opt.zurueck = was «Zurück» und das Speichern danach tun. */
   M.kraft = function (opt) {
-    if (!bereit()) return;
+    if (!bereit() || (U66() && U66().entwurfSperre && U66().entwurfSperre())) return;
     const zur = (opt && opt.zurueck) || (() => V59().schliessen());
     const ov = kraftBlatt(null, zur); if (!ov) return;
     ov.querySelectorAll("[data-pe-z]").forEach((b) => (b.onclick = () => zur()));

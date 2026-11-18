@@ -68,6 +68,7 @@
   /** Auftrag für einen Tag neu anlegen (Momentaufnahme der Einheiten von Mein Plan). uids (V7.3, «Export» einer Einheit): nur diese Einheiten
    *  (Auftrag mit «teil»); ohne uids alle Einheiten des Tages. */
   async function garminAuftragSpeichern(ds, modus, uids) {
+    if (P().entwurf && P().entwurf.aktiv()) return IM_ENTWURF;              // V7.9: nie einen Entwurf an Garmin
     const x = tagVon(ds); if (!x) return "Tag nicht berechenbar";
     const I = UI().Inbox; if (!I || !I.data) return "Speicher auf diesem Gerät nicht verfügbar";
     if (!Array.isArray(I.data.garmin_senden)) I.data.garmin_senden = [];
@@ -112,6 +113,7 @@
   /** V7.3 «Export» einer Einheit: Auftrag des Tages mit dieser Einheit (weg = austragen) und allen, die schon in Garmin oder im offenen Auftrag sind. */
   M.einheitSenden = async function (ds, uid, modus, weg) {
     if (!bereit()) return "Seite noch nicht bereit";
+    if (P().entwurf && P().entwurf.aktiv()) return IM_ENTWURF;
     const A = auftrag(ds), uids = new Set(gesendet().filter((g) => g && g.date === ds && !g.entfernt).map((g) => g.uid));
     if (!weg && istAktiv(A) && !A.a.teil) return garminAuftragSpeichern(ds, modus);       // ganzer Tag schon im Auftrag: bleibt ganz (neuer Modus)
     if (istAktiv(A)) for (const u of A.a.teil ? auswahl(A.a) : (tagVon(ds) || { t: { einheiten: [] } }).t.einheiten.map((e) => e.uid)) uids.add(u);
@@ -133,6 +135,8 @@
       erholung: K.erh || null, grund: a.art === "erholung" ? "Ampel: mehrere Tage «vorsichtig» (ampel-plan-1.0)" : null,
       ersetzen: window.V77 ? (E, x) => window.V77.ersetzenGespeichert(E, x.akt, heute(), K.ctxE, x.schon) : null });   // V7.7 aktivitaet-plan-1.0
     if (r.fehler) return r.fehler;
+    const EN = P().entwurf;
+    if (EN && EN.aktiv()) { EN.neu(mo, r.eintrag, a); neuZeichnen(); return null; }   // V7.9 bearbeiten-1.0: im Bearbeiten-Modus erst mit ✓ gespeichert
     const I = UI().Inbox; if (!I || !I.data) return "Speicher auf diesem Gerät nicht verfügbar";
     if (!Array.isArray(I.data.planwoche)) I.data.planwoche = [];
     await I.upsert("planwoche", r.eintrag);
@@ -142,6 +146,36 @@
     return null;
   }
   M.aendern = aendern;
+  /** V7.9 bearbeiten-1.0: Entwurf speichern (✓) – jede geänderte Woche über «Direkt speichern», danach die offenen Garmin-Aufträge der betroffenen Tage
+   *  wie nach jeder einzelnen Änderung (verschobene Einheiten behalten ihre Auswahl). → Fehlertext oder null */
+  M.entwurfSpeichern = async function () {
+    if (!bereit()) return "Seite noch nicht bereit";
+    const EN = P().entwurf; if (!EN || !EN.aktiv()) return null;
+    const L = EN.aenderungen(), S = EN.schritte(), I = UI().Inbox;
+    if (L.length && (!I || !I.data)) return "Speicher auf diesem Gerät nicht verfügbar";
+    if (L.length && !Array.isArray(I.data.planwoche)) I.data.planwoche = [];
+    for (const x of L) if (x.E) await I.upsert("planwoche", x.E);
+    EN.beenden();
+    const h = heute(), tage = new Set(), geaendert = new Set(L.map((x) => x.mo));
+    for (const x of S) {
+      if (!geaendert.has(x.mo)) continue;
+      const a = x.a || {};
+      if (a.art === "verschieben") { try { await auftraegeNachfuehren([a.date, a.nach].filter((d) => d && d >= h), a); } catch (e) { console.error(e); } continue; }
+      (a.date ? [a.date] : Array.from({ length: 7 }, (_, i) => add(x.mo, i))).forEach((d) => tage.add(d));
+    }
+    try { await auftraegeNachfuehren([...tage].filter((d) => d >= h).sort(), { art: "entwurf" }); } catch (e) { console.error(e); }
+    neuZeichnen();
+    return null;
+  };
+  const IM_ENTWURF = "Im Bearbeiten-Modus nicht möglich – zuerst mit ✓ speichern oder mit ✕ verwerfen.";
+  M.imEntwurf = () => !!(bereit() && P().entwurf && P().entwurf.aktiv());
+  /** Im Bearbeiten-Modus: Hinweis als Blatt und true (für Werkzeuge, die direkt speichern: Draussen planen, Planeinstellungen, Verfügbarkeit der Woche). */
+  M.entwurfSperre = function () {
+    if (!M.imEntwurf()) return false;
+    V59().blatt("k4-ent", `<div class="blatt-titel"><h2 id="v59-ov-h" tabindex="-1">Bearbeiten läuft</h2><p class="sub">${esc(IM_ENTWURF)}</p></div>
+      <div class="blatt-fuss"><span></span><button type="button" class="btn primary" data-x>OK</button></div>`);
+    return true;
+  };
 
   /* ---------- Karten ---------- */
   const STAND_WORT = { gesendet: "in Garmin", geaendert: "in Garmin, geändert", wartet: "wird gesendet" };
@@ -179,6 +213,17 @@
 
   /* ---------- V7.2: Form zu Tagesbeginn und Verfügbarkeit im Tagesblatt ---------- */
   /** Form zu Tagesbeginn (status-1.1): bis heute aus deinen Daten, für kommende Tage ≈ mit der geplanten Last von Mein Plan (TL ≈, Modell). */
+  /** V7.9 fitness-prognose-1.0: geplante Last einer Einheit für Fitness, Ermüdung und Form ≈ – TL ≈ (tl-plan-1.0), sonst Dauer × deine Last pro Stunde
+   *  der Sportart (basis-1.1: 8 abgeschlossene Wochen bis zum Montag dieser Woche). Nur Schwimmen, Rad, Laufen und Aktivitäten draussen (pmc-2.1: kein
+   *  Krafttraining). → { tl (null = keine Schätzung), aus: "tl" | "stunde" | null } */
+  function lastGeplant(e, BZ) {
+    if (!e || (!["rad", "lauf", "schwimm"].includes(e.sport) && e.art !== "draussen")) return { tl: 0, aus: null };
+    const S = V66().schaetzung(e, BZ); if (isNum(S.tl)) return { tl: S.tl, aus: "tl" };
+    let D = null; try { D = window.V75UI && window.V75UI.basisDaten ? window.V75UI.basisDaten(montag(heute())) : null; } catch (err) { D = null; }
+    const q = D && D[e.sport] && isNum(D[e.sport].tl_h) && D[e.sport].tl_h > 0 ? D[e.sport].tl_h : null;
+    return q != null && isNum(e.dauer) && e.dauer > 0 ? { tl: Math.round((e.dauer / 60) * q), aus: "stunde" } : { tl: null, aus: null };
+  }
+  M.lastGeplant = (e, BZ) => (bereit() ? lastGeplant(e, BZ) : { tl: null, aus: null });
   function formTag(ds) {
     const PM = C.pmc ? C.pmc() : null, FK = window.FK; if (!PM || !PM.length || !FK) return null;
     const h = heute();
@@ -187,18 +232,40 @@
     let st = null; for (let i = PM.length - 1; i >= 0; i--) if (PM[i] && PM[i].date < h) { st = PM[i]; break; }
     if (!st) return null;
     const KM = new Map(), K = (d) => { const mo = montag(d); if (!KM.has(mo)) KM.set(mo, kontext(mo)); return KM.get(mo); };
-    const ohne = new Set();                                             // Einheiten ohne Schätzung (z. B. Schwimmen ohne CSS-Test): nicht gezählt
+    const ohne = new Set(), stunde = new Set();                         // ohne Schätzung: nicht gezählt; V7.9: ohne TL ≈ mit der Last pro Stunde der Sportart
     const lastAm = (d) => {
       const ist = (C.D.activities || []).filter((a) => a && a.date === d && (!window.FK || window.FK.zaehlt(a)));   // pmc-2.1: Krafttraining zählt nicht
       if (ist.length) return ist.reduce((s2, a) => s2 + (isNum(a.tss) ? a.tss : 0), 0);
       const k = K(d), t = k && k.w.tage.find((x) => x.date === d); if (!t) return 0; if (t.rennen) return null;
       let sum = 0;
-      for (const e of t.einheiten) { if (!["rad", "lauf", "schwimm"].includes(e.sport) && e.art !== "draussen") continue; const S = V66().schaetzung(e, bezug(k)); if (isNum(S.tl)) sum += S.tl; else ohne.add(e.titel); }   // V7.7: Aktivitäten draussen zählen
+      for (const e of t.einheiten) { if (!["rad", "lauf", "schwimm"].includes(e.sport) && e.art !== "draussen") continue; const x = lastGeplant(e, bezug(k)); if (isNum(x.tl)) { sum += x.tl; if (x.aus === "stunde") stunde.add(e.titel); } else ohne.add(e.titel); }   // V7.7: Aktivitäten draussen zählen
       return sum;
     };
     const r = V66().formPrognose({ ctl: st.ctl, atl: st.atl }, h, ds, lastAm);
-    return r ? { fitness: Math.round(r.ctl), ermuedung: Math.round(r.atl), form: r.form, prognose: true, offen: r.offen, ohne: [...ohne] } : null;
+    return r ? { fitness: Math.round(r.ctl), ermuedung: Math.round(r.atl), form: r.form, prognose: true, offen: r.offen, ohne: [...ohne], stunde: [...stunde] } : null;
   }
+  /** V7.9 bearbeiten-1.0: Fitness, Ermüdung und Form zu Tagesbeginn für alle Tage von «von» bis «bis» in einem Durchgang (gleiche Regeln wie formTag;
+   *  kommende Tage höchstens drei Wochen voraus). → Map Datum → { fitness, ermuedung, form, prognose } */
+  M.formReihe = function (von, bis) {
+    const out = new Map(); if (!bereit()) return out;
+    const PM = C.pmc ? C.pmc() : null, FK = window.FK; if (!PM || !PM.length || !FK) return out;
+    const h = heute(), ende = bis > add(h, 21) ? add(h, 21) : bis;
+    for (let d = von; d <= ende && d <= h; d = add(d, 1)) { const A = FK.pmcMorgen(PM, d); if (A) out.set(d, { fitness: A.fitness, ermuedung: A.ermuedung, form: A.form, prognose: false }); }
+    if (ende <= h) return out;
+    let st = null; for (let i = PM.length - 1; i >= 0; i--) if (PM[i] && PM[i].date < h) { st = PM[i]; break; }
+    if (!st) return out;
+    const KM = new Map(), K = (d) => { const mo = montag(d); if (!KM.has(mo)) KM.set(mo, kontext(mo)); return KM.get(mo); };
+    let ctl = st.ctl, atl = st.atl;
+    for (let d = h; d < ende; d = add(d, 1)) {
+      const ist = (C.D.activities || []).filter((a) => a && a.date === d && FK.zaehlt(a));
+      let l = 0;
+      if (ist.length) l = ist.reduce((s2, a) => s2 + (isNum(a.tss) ? a.tss : 0), 0);
+      else { const k = K(d), t = k && k.w.tage.find((x) => x.date === d); if (t && !t.rennen) for (const e of t.einheiten) { const x = lastGeplant(e, bezug(k)); if (isNum(x.tl)) l += x.tl; } }
+      ctl += (l - ctl) / 42; atl += (l - atl) / 7;
+      const n = add(d, 1); if (n >= von) out.set(n, { fitness: Math.round(ctl), ermuedung: Math.round(atl), form: Math.round(ctl) - Math.round(atl), prognose: true });
+    }
+    return out;
+  };
   function formHTML(ds) {
     let f = null; try { f = formTag(ds); } catch (e) { console.error(e); }
     if (!f) return "";
@@ -211,7 +278,7 @@
       ${ts != null ? `<div><b>${pre}${String(ts).replace(".", ",")}${dl(ts, tv, 2)}</b><span>Status · ${esc(stu.text)}</span><i class="mp-skala" aria-hidden="true"><i style="left:${(stu.anteil * 100).toFixed(0)}%"></i></i></div>` : ""}
       <div><b>${pre}${f.form > 0 ? "+" : ""}${f.form}</b><span>Form${st ? ` · <i class="st-farbe" style="--stc:${st.farbe}">${esc(st.name)}</i>` : ""}</span></div></div>
       ${ts != null ? `<p class="hint">Status = Ermüdung ÷ Fitness (${esc(D8.VERSIONS.status)}): unter 0,8 wenig Last, bis 1,3 üblich, darüber hoch – eine Orientierung, kein Grenzwert; in Klammern die Veränderung zum Vortag.</p>` : ""}
-      ${f.prognose ? `<p class="hint">Zu Tagesbeginn, fortgeschrieben mit der geplanten Last von Mein Plan (TL ≈ aus deinem Zonenprofil)${f.ohne && f.ohne.length ? `; ohne Schätzung nicht gezählt: ${esc(f.ohne.slice(0, 3).join(", "))}` : ""}${f.offen ? `; ${f.offen} Renntag${f.offen === 1 ? "" : "e"} als 0` : ""}; Krafttraining zählt nicht – ein Modell, keine Messung (${window.FK ? window.FK.VERSIONS.pmc : "pmc"}).</p>` : ""}`;
+      ${f.prognose ? `<p class="hint">Zu Tagesbeginn, fortgeschrieben mit der geplanten Last von Mein Plan (TL ≈ aus deinem Zonenprofil)${f.stunde && f.stunde.length ? `; ohne TL ≈ mit deiner Last pro Stunde der Sportart: ${esc(f.stunde.slice(0, 3).join(", "))}${f.stunde.length > 3 ? " …" : ""}` : ""}${f.ohne && f.ohne.length ? `; ohne Schätzung nicht gezählt: ${esc(f.ohne.slice(0, 3).join(", "))}` : ""}${f.offen ? `; ${f.offen} Renntag${f.offen === 1 ? "" : "e"} als 0` : ""}; Krafttraining zählt nicht – ein Modell, keine Messung (${window.FK ? window.FK.VERSIONS.pmc : "pmc"}).</p>` : ""}`;
   }
   const WT_LANG = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
   function vfHTML(ds, K) {
@@ -288,7 +355,7 @@
    *  vf-wt-N (offen mit allen Sportarten = Eintrag entfernt); die laufende Woche wird vorher einmal festgehalten. Danach «Anpassen», «Neu berechnen» oder «Nur speichern». */
   const VW_MAX = 600, VW_OFFEN = VW_MAX + 15, VW_SPW = { schwimm: "Schwimmen", rad: "Rad", lauf: "Laufen" };
   M.verfuegbarkeitWoche = function (zurueck) {
-    if (!bereit()) return;
+    if (!bereit() || M.entwurfSperre()) return;
     const W = V6(), SP = V66().VF_SPORT, mo = montag(heute()), K = kontext(mo), verf = (K && K.verf) || (P().verfuegbarkeit ? P().verfuegbarkeit() : null);
     const alt = (n) => { const e = verf && verf.eintrag ? verf.eintrag("vf-wt-" + n) : null; return e && !e.entfernt ? e : null; };
     const aus = (v) => !!v && (v.min === 0 || (Array.isArray(v.sport) && !v.sport.length));
@@ -404,6 +471,7 @@
   /** Abschnitt «Garmin» im Tagesblatt: Stand des Auftrags, «An Garmin senden», «am Vortag um 23 Uhr automatisch». */
   function garminHTML(ds, t) {
     if (ds < heute()) return "";
+    if (P().entwurf && P().entwurf.aktiv()) return `<p class="hint mp-garmin-ent">${V6().icon("geraet", 14)} An Garmin senden geht erst nach dem Speichern (✓).</p>`;   // V7.9 bearbeiten-1.0
     const W = V6(), A = auftrag(ds), a = A && A.a, G = gesendet().filter((g) => g && g.date === ds && !g.entfernt);
     const U = t.rennen ? [] : t.einheiten, sendbar = U.filter((e) => !V66().garminGrund(e));
     const ohne = U.filter((e) => V66().garminGrund(e)).map((e) => `${esc(e.titel)} (${esc(V66().garminGrund(e))})`);
@@ -688,8 +756,9 @@
   function istWoche(mo) { const bis = add(mo, 6); return (C.D.activities || []).filter((a) => a && a.date >= mo && a.date <= bis); }
   M.istWoche = (mo) => (bereit() ? istWoche(mo) : []);                                  // V7.8 kalender-4.0 (js/v78-ui.js)
   function wochenKopf(mo, K) {
-    const art = M.wochenart(mo), ist = istWoche(mo).filter((a) => ["rad", "lauf", "schwimm"].includes(a.sport));
-    const istMin = ist.reduce((s, a) => s + (a.dur || a.dauer_s || 0) / 60, 0), istTl = ist.reduce((s, a) => s + (isNum(a.tss) ? a.tss : 0), 0);
+    const art = M.wochenart(mo), alle = istWoche(mo), ist = alle.filter((a) => ["rad", "lauf", "schwimm"].includes(a.sport));
+    // Stunden nur Schwimmen, Rad, Laufen; TL wie Fitness (pmc-2.1: alles ausser Krafttraining) – so vergleichbar mit der Plan-TL, die Aktivitäten draussen enthält (V7.9)
+    const istMin = ist.reduce((s, a) => s + (a.dur || a.dauer_s || 0) / 60, 0), istTl = alle.filter((a) => !window.FK || !window.FK.zaehlt || window.FK.zaehlt(a)).reduce((s, a) => s + (isNum(a.tss) ? a.tss : 0), 0);
     let planMin = 0, planTl = 0, tlOffen = false; const BZ = bezug(K);
     for (const t of K.w.tage) for (const e of t.einheiten) if (["rad", "lauf", "schwimm"].includes(e.sport) || e.art === "draussen") { if (e.art !== "draussen") planMin += e.dauer; const S = V66().schaetzung(e, BZ); if (isNum(S.tl)) planTl += S.tl; else tlOffen = true; }
     return { art, istMin, istTl, planMin, planTl: Math.round(planTl), tlOffen };
@@ -702,7 +771,7 @@
   /** V7 kalender-3.0 (Vorlage enduco): Woche = Tagesleiste, Wochenauswertung (Mein Plan gegenüber absolviert, je Sportart, Zeit in Zonen,
       Trainingslast) und die Tage als Liste mit erledigten Garmin-Aktivitäten und den Einheiten von Mein Plan. Enduco erscheint hier nicht
       (es bleibt gespeichert und zählt unter Analyse → Planvergleich). */
-  M.wocheHTML = function (mo) {
+  M.wocheHTML = function (mo, opt) {
     if (!bereit()) return "";
     const K = kontext(mo); if (!K) return `<p class="warn-t">Plan dieser Woche nicht berechenbar.</p>`;
     const W = V6(), X = window.V7, h = heute(), ist = istWoche(mo);
@@ -759,6 +828,7 @@
         <button type="button" class="kw-tk" data-kwtag="${t.date}" aria-label="${esc(tagText(t.date))}${t.gesperrt ? ", gesperrt" : ""}: Tagesblatt öffnen"><b>${wt(t.date)}</b><small>${esc(dkurz(t.date))}</small>${t.gesperrt ? W.icon("schloss", 13) : ""}</button>
         <div class="kw-inh">${window.V74UI && gilt ? window.V74UI.kurz(t) : ""}${done}${meins}${tx}${!done && !meins && !tx ? `<p class="mp-leer">${t.gesperrt ? "gesperrt" : esc(t.notiz || "frei")}</p>` : ""}${vfZeile(t.date)}</div></li>`;
     }).join("");
+    if (opt && opt.nurAuswertung) return `${ausw}${gilt && mo >= montag(h) ? verteilHTML(mo, K) : ""}`;      // V7.9 zyklus-1.0: Auswertung unter den vier Karten
     return `<div class="wl kw-leiste" role="group" aria-label="Tage der Woche">${leiste}</div>${ausw}${gilt && mo >= montag(h) ? verteilHTML(mo, K) : ""}
       <ol class="kw-tage">${tage}</ol>
       <p class="hint">Mein Plan = Wochenvorschlag mit deinen Änderungen (${esc(V66().VERSIONS.eigenplan)}); Tag antippen für Training hinzufügen, sperren oder ändern. Absolviert = Bewegungszeit laut Garmin, TL ≈ aus deinem Zonenprofil (${esc(window.V7 ? window.V7.VERSIONS.kalender : "")}).</p>`;
@@ -785,6 +855,6 @@
       <p class="hint">Wochenart aus der Saisonplanung (3:1-Rhythmus, ${esc(V66().VERSIONS.wochenblatt)}); TL ≈ aus deinem Zonenprofil (${esc(V66().VERSIONS.tl)}), absolviert = Trainingslast laut Garmin.</p>
       ${fuss("data-x", `<button type="button" class="btn primary gross" data-mpkal>${W.icon("kalender", 18)} Im Kalender öffnen</button>`)}`;
     const ov = V59().blatt("mp-wochenblatt", html);
-    ov.querySelector("[data-mpkal]").onclick = () => { V59().schliessen(); if (window.APP && window.APP.kalenderWoche) window.APP.kalenderWoche(mo); };
+    ov.querySelector("[data-mpkal]").onclick = () => { V59().schliessen(); if (window.APP && window.APP.kalenderListe) window.APP.kalenderListe(mo); else if (window.APP && window.APP.kalenderWoche) window.APP.kalenderWoche(mo); };   // V7.9: Tage in der Liste
   };
 })();

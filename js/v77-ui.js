@@ -52,7 +52,7 @@
   /* ---------------- Blatt «Draussen planen» ---------------- */
   /** Blatt für Tag ds; art = vorgewählte Aktivität (ohne: die schon geplante oder Skitour); zurueck() führt zurück (z. B. «Training hinzufügen»). */
   N.blatt = function (ds, art, zurueck) {
-    if (!bereit()) return;
+    if (!bereit() || (window.V66UI && window.V66UI.entwurfSperre && window.V66UI.entwurfSperre())) return;   // V7.9: speichert direkt – nicht im Bearbeiten-Modus
     const W = V6(), D = V77(), alt = N.am(ds);
     const w = { art: art || (alt && alt.art) || "skitour", min: alt ? alt.min : D.ARTEN[art || "skitour"].std, zone: alt ? alt.zone : "z2", uhrzeit: alt && alt.uhrzeit ? alt.uhrzeit : "", notiz: alt && alt.notiz ? alt.notiz : "" };
     if (alt && art && art !== alt.art) w.min = D.ARTEN[art].std;

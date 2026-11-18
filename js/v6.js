@@ -349,6 +349,12 @@
     // V7.6 kraft-plan-1.0: eigene Symbole für die Notiz der Übungen und eine Ausnahme in einer Woche
     notiz: '<path d="M6 3.5h8.5L18.5 7.5v13H6z"/><path d="M14.5 3.5v4h4M9 11.5h6M9 14.5h6M9 17.5h3.5"/>',
     ausnahme: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4M10 13l4 4M14 13l-4 4"/>',
+    // V7.9 bearbeiten-1.0: Griff zum Ziehen, Stift, Funken (Woche anpassen), wieder vor, schliessen
+    griff: '<path d="M5 8.5h14M5 12h14M5 15.5h14"/>',
+    stift: '<path d="M4.5 19.5h4l10.5-10.5-4-4L4.5 15.5z"/><path d="m13 7 4 4"/>',
+    funken: '<path d="M11 3.5l1.7 4.6 4.6 1.7-4.6 1.7L11 16.1l-1.7-4.6L4.7 9.8l4.6-1.7z"/><path d="M18.2 14.2l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
+    vor: '<path d="m15 7 4 4-4 4"/><path d="M19 11h-9a5 5 0 0 0 0 10h3"/>',
+    schliessen: '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>',
   };
   V6.icon = (k, w) => svg(V6.ICON[k] || V6.ICON.andere, w);
   V6.sportIcon = (sport, w) => V6.icon(V6.ICON[sport] ? sport : "andere", w);
