@@ -82,6 +82,11 @@ Simulator über mehrere Wochen (erfundene Daten). Fehler ohne Regeländerung sin
 - Befund 14: Gefühl-Kalibrierung ohne Krafttraining. Befund 15: Hinweis auf Heute, solange Eingaben nur auf dem Gerät liegen.
 - Offen: Befund 16 (Wochenstunden an mehreren Stellen), offene Punkte 105–108.
 
+## Stand nach V8.5 (19.11.2026)
+- Test C über mehrere Wochen mit dem Modell «Automatisch» (`tests/test_v80.cjs`, C3 und C4): vier Wochen sehr gut erholt → derselbe Plan wie «kombiniert», höchstens zwei harte Einheiten
+  an Land; nach drei schlechten Morgen in der Woche danach eine harte Einheit an Land (Lauf locker, Rad bleibt), danach wieder zwei.
+- «Verteilung und Entwicklung» kann mit wenigen Blöcken von den Blockgrenzen abhängen (mit echten Daten geprüft, Ergebnis nur im Chat) → verteilung-1.1 verlangt drei von vier Einteilungen.
+
 ## Nicht geprüft
 
 - Wie die Fenix Schwimm-Workouts und die lockere Fassung der Ampel zeigt (V8.7, mit Silas).

@@ -23,7 +23,7 @@
   if (root) root.V64 = V64;
 })(typeof window !== "undefined" ? window : null, function (V62) {
   "use strict";
-  const V64 = { VERSIONS: { modell: "modell-1.0", woche: "wochenplan-1.2", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.1", aufbau: "aufbau-1.2", vergleich: "vergleich-1.4", abwechslung: "abwechslung-1.0", abc: "lauf-abc-1.0", sportart: "sportart-1.0" } };
+  const V64 = { VERSIONS: { modell: "modell-1.0", woche: "wochenplan-1.2", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.1", aufbau: "aufbau-1.2", vergleich: "vergleich-1.4", abwechslung: "abwechslung-1.0", abc: "lauf-abc-1.0", sportart: "sportart-1.0", automatisch: "automatisch-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const T = (iso) => Date.parse(iso + "T12:00:00Z");
   const add = (iso, n) => new Date(T(iso) + n * 864e5).toISOString().slice(0, 10);
@@ -62,8 +62,11 @@
       quellen: ["laursen2005", "munoz2014a", "neal2011", "millet2000", "maunder2021"] },
     kombiniert: { name: "Winter polarisiert, ab Februar rennspezifisch", kurz: "Bis zum Wechsel polarisiert (Grundlage und VO2max), danach rennspezifisch.",
       standard: true, teile: ["polarisiert", "rennspezifisch"], quellen: ["oliveira2024", "filipas2022", "laursen2005", "munoz2014a"] },
+    // V8.5 automatisch-1.0 (js/v85.js): startet wie «kombiniert»; je Woche Verteilung und Zahl harter Einheiten an Land aus Phase, Zeit, Verträglichkeit und Ermüdung
+    automatisch: { name: "Automatisch (individuell)", kurz: "Startet wie «kombiniert». Je Woche Verteilung und Zahl harter Einheiten aus Phase, Zeit, deiner Verträglichkeit und Ermüdung – jede Wahl mit Grund, nie mehr als die Vorlage.",
+      auto: true, teile: ["polarisiert", "pyramidal", "rennspezifisch"], quellen: ["rosenblat2025", "oliveira2024", "hecksteden2015", "kiviniemi2007", "dueking2021", "seiler2006", "andersen2013"] },
   };
-  V64.REIHE = ["kombiniert", "polarisiert", "pyramidal", "schwelle", "rennspezifisch"];
+  V64.REIHE = ["kombiniert", "automatisch", "polarisiert", "pyramidal", "schwelle", "rennspezifisch"];
   /** Wechseldatum «kombiniert»: 1. Februar im Jahr des Hauptrennens (Rennen im Januar oder Februar, auch am 29.2.: im Jahr davor).
    *  Ohne Hauptrennen (Audit V6.4 B15): der nächste 1. Februar nach dem Bezugsdatum (Montag der Woche) – ohne Rennen also polarisiert,
    *  nie abhängig von der Uhr des Geräts. */
@@ -78,10 +81,11 @@
     const w = /^\d{4}-\d{2}-\d{2}$/.test(String(e.wechsel || "")) ? e.wechsel : V64.wechselStandard(hauptDatum, bezug);
     return { modell: m, wechsel: w };
   };
-  /** Modell, das in der Woche ab montagISO gilt: «kombiniert» ab der Woche, in der der Wechsel liegt, rennspezifisch. */
+  /** Modell, das in der Woche ab montagISO gilt: «kombiniert» ab der Woche, in der der Wechsel liegt, rennspezifisch. «Automatisch» (V8.5) startet
+   *  ebenso – was es je Woche daraus macht, entscheidet js/v85.js im Plan-Kontext. */
   V64.modellFuer = function (wahl, montagISO) {
     const w = wahl || {};
-    if (w.modell && w.modell !== "kombiniert" && V64.MODELLE[w.modell]) return w.modell;
+    if (w.modell && V64.MODELLE[w.modell] && !V64.MODELLE[w.modell].teile) return w.modell;
     return montagISO >= montag(w.wechsel || V64.wechselStandard(null, montagISO)) ? "rennspezifisch" : "polarisiert";
   };
 
@@ -492,7 +496,9 @@
       const EZ = V64.EINZEL[SA], total = H * 60, lockerId = SA + "_locker", n = EZ.n(H);
       const K1 = SA === "lauf" && erh ? V64.einheit(lockerId, o(Math.min(45, Math.max(30, r5(0.15 * total))))) : gewaehlt(SA, M.schluessel[SA], null);
       let zweiter = null;
-      if (!erh && H >= EZ.zweiter_h) {
+      const autoEine = !erh && isNum(c.harte) && c.harte < 2;                  // V8.5 automatisch-1.0: diese Woche eine harte Einheit
+      if (autoEine && H >= EZ.zweiter_h) hinweise.push(`Automatisch: keine zweite Schlüsseleinheit – diese Woche eine harte Einheit${c.autoGrund ? ` (${c.autoGrund})` : ""}`);
+      if (!erh && H >= EZ.zweiter_h && !autoEine) {
         let id = (V64.SCHLUESSEL2[modell] || V64.SCHLUESSEL2.polarisiert)[SA];
         const f1 = V64.familieVon(K1.id), f2 = V64.familieVon(id);
         if (f1 && f1 === f2) { const F = V64.FAMILIEN[f1]; id = F[(F.indexOf(K1.id) + 1) % F.length]; }       // andere Form desselben Reizes als am Dienstag
@@ -531,7 +537,12 @@
     if (rest >= 15 && radL) { const plus = Math.min(rest, 120 - radL); radL = r5(radL + plus); rest -= plus; }
     if (rest >= 15) { gemeldet += r5(rest); wenig(`Rad: ${r5(rest)} min nicht verteilt (längste Ausfahrt in dieser Phase höchstens ${LANG.rad} min)`); }
     // Laufen: Schlüssel (Di; Erholungswoche: locker), lang (So), locker (Fr), Koppel (Sa, rennspezifisch, nicht in Erholungswochen)
-    const laufK = erh ? V64.einheit("lauf_locker", o(Math.min(45, Math.max(30, r5(0.3 * min.lauf))))) : gewaehlt("lauf", M.schluessel.lauf, null);
+    let laufK = erh ? V64.einheit("lauf_locker", o(Math.min(45, Math.max(30, r5(0.3 * min.lauf))))) : gewaehlt("lauf", M.schluessel.lauf, null);
+    // V8.5 automatisch-1.0: eine harte Einheit an Land – der harte Lauf wird locker (gleiche Dauer), das Rad bleibt
+    if (!erh && isNum(c.harte) && c.harte < 2 && laufK.schluessel) {
+      const alt = laufK; laufK = V64.einheit("lauf_locker", o(alt.dauer)); laufK.auto = { statt: alt.titel, grund: c.autoGrund || null };
+      hinweise.push(`Automatisch: Laufen locker statt «${alt.titel}» – diese Woche eine harte Einheit an Land${c.autoGrund ? ` (${c.autoGrund})` : ""}`);
+    }
     const koppel = M.koppel && !erh ? (taper ? 15 : phase === "Wettkampfspezifisch" ? 30 : 20) : 0;
     let laufL = N.lauf === 3 ? clamp(r5(0.25 * min.lauf), 30, 60) : 0;
     let laufLang = min.lauf - laufK.dauer - laufL - koppel;
@@ -627,7 +638,7 @@
     const tid = V64.tid(z), pruefung = V64.pruefen(modell, tid, { erholung: erh, taper, rennwoche: !!R.length, gekappt: gekappt.length > 0 });
     return { v: V64.VERSIONS.woche, woche, modell, modellName: M.name, phase, erholung: erh, taper, stunden: H, tage, minuten, zonen: z, tid, pruefung, hinweise,
       intensitaet: I, gekappt, aufteilung: { schwimm: A.schwimm, rad: A.rad, lauf: A.lauf },
-      sportart: SA || "triathlon",
+      sportart: SA || "triathlon", harte: isNum(c.harte) ? c.harte : null,
       regel: SA ? `${V64.VERSIONS.sportart}: nur ${SA === "rad" ? "Rad" : "Laufen"} – Mo frei · Di Schlüssel · Do zweite Schlüsseleinheit ab ${String(V64.EINZEL[SA].zweiter_h).replace(".", ",")} h · ${V64.EINZEL[SA].lang_tag} lang · übrige Tage locker (${V64.EINZEL[SA].n(H)} Einheiten bei ${String(H).replace(".", ",")} h)` : `${V64.VERSIONS.woche}: Mo frei · Di Laufen (Schlüssel) und Kurs · Mi Rad locker · Do Rad (Schlüssel) und Schwimmen · Fr Laufen locker · Sa lang Rad · So lang Laufen; ${c.aufteilung ? `Stunden je Sportart von deiner Basis zur Spitze (basis-1.1, steigerung-1.0, Planeinstellungen), diese Woche Schwimmen ${Math.round(A.schwimm * 100)} %, Rad ${Math.round(A.rad * 100)} %, Laufen ${Math.round(A.lauf * 100)} %; Ziel ` : ""}${V64.VERSIONS.aufteilung}: Schwimmen 20 %, Rad 50 %, Laufen 30 % (eigene Festlegung)` };
   };
 

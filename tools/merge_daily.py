@@ -194,7 +194,7 @@ def laktatpunkt_uebernehmen(D, pid):
     return True
 
 
-MODELLE = ("kombiniert", "polarisiert", "pyramidal", "schwelle", "rennspezifisch")   # wie V64.MODELLE in js/v64.js
+MODELLE = ("kombiniert", "automatisch", "polarisiert", "pyramidal", "schwelle", "rennspezifisch")   # wie V64.MODELLE in js/v64.js (V8.5: automatisch-1.0)
 
 
 INTENSITAET_STUFEN = ("locker", "schwelle", "alles")

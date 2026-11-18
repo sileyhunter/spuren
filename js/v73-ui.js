@@ -425,6 +425,8 @@
       text = [text, vl === F[0] ? "Vergleichseinheit: Diese Form kommt jede dritte Woche gleich wieder – so siehst du, ob du dieselben Intervalle mit weniger Puls oder mehr Leistung schaffst."
         : `Gleicher Reiz in anderer Form (Abwechslung); die Vergleichseinheit «${erste}» kommt jede dritte Woche wieder.`].filter(Boolean).join(" ");
     }
+    // V8.5 automatisch-1.0: «Automatisch» hat diese Woche eine harte Einheit an Land gewählt
+    if (X.art === "plan" && X.e && X.e.auto && X.e.auto.statt) text = [text, `«Automatisch»: diese Woche locker statt «${X.e.auto.statt}»${X.e.auto.grund ? ` (${X.e.auto.grund})` : ""} – eine harte Einheit an Land, danach wieder wie geplant.`].filter(Boolean).join(" ");
     if (!text) return "";
     const warum = X.art === "plan" && (X.e.quellen && X.e.quellen.length || X.e.wissen);
     return `<section class="v73-coach"><span class="v73-coach-ic">${ic("coach", 22)}</span><div><b>Coach</b><p>${esc(text)}</p></div>

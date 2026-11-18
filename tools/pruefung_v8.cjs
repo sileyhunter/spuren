@@ -236,3 +236,23 @@ zeile(`V8.0 Prüfung mit echten Daten · Stand ${BIS} · Fenster ${TAGE} Tage (a
     zeile(`  letzte 28 Tage: Morgen deutlich daneben an ${morgen} Tagen; Rad/Lauf mit Last ≥ ${W.V83.LAST.hart_tl_h} je Stunde: ${haerter} (ohne Vergleich mit dem Plan)`);
   }
 }
+
+/* 11 V8.5 Modell «Automatisch» (nur Zusammenfassung; Zahlen nur im Chat): was es diese und die nächsten Wochen entscheiden würde und wie oft es im letzten
+   halben Jahr weniger harte Einheiten bzw. pyramidal gewählt hätte (mit dem Stand jener Montage; Modellwahl, Intensität und Zonen von heute) */
+{
+  zeile("\n11 Modell «Automatisch» (V8.5)");
+  const gewaehlt = ((D.plan_modell || []).find((x) => x && x.id === "modell") || {}).modell || "kombiniert";
+  zeile(`  gewählt: ${gewaehlt}`);
+  try {
+    const mo0 = V64.montag(BIS), zaehl = { wochen: 0, weniger: 0, pyramidal: 0, gruende: {} };
+    for (let k = -26; k <= 4; k++) {
+      const mo = V64.addDays(mo0, 7 * k), K = W.V64UI.kontextFuer(mo), e = K && (K.auto || W.V85UI.entscheid(K.autoIn));
+      if (!e) continue;
+      if (k >= 0) zeile(`  ${mo} ${(K.w.phase || "").padEnd(19)} ${K.w.erholung ? "E" : " "} ${e.kurz}${e.grund ? " – " + e.grund : ""}`);
+      else { zaehl.wochen++; if (e.harte < e.vorlage) { zaehl.weniger++; zaehl.gruende[e.grund] = (zaehl.gruende[e.grund] || 0) + 1; } if (e.modell === "pyramidal") zaehl.pyramidal++; }
+    }
+    zeile(`  letzte 26 Wochen: weniger harte Einheiten in ${zaehl.weniger} von ${zaehl.wochen} ${JSON.stringify(zaehl.gruende)}; pyramidal in ${zaehl.pyramidal}`);
+    const e0 = W.V85UI.entscheid(W.V64UI.kontextFuer(mo0).autoIn);
+    if (e0) for (const g of e0.gruende) zeile(`  diese Woche · ${g.titel}: ${g.text}`);
+  } catch (err) { zeile("  Fehler: " + err.message); }
+}

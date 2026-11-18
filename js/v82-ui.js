@@ -1,5 +1,5 @@
 /* V8.2 Oberfläche zu js/v82.js: Ansicht «Deine Reaktionen» unter Analyse – Erholung nach harten Einheiten (erholung-nach-1.0), was du bisher verträgst
-   (vertraeglich-1.0), Verteilung und Entwicklung (verteilung-1.0) und Blockbilanz (blockbilanz-1.0). Nur beschreibend, mit Intervall und Mindestzahl;
+   (vertraeglich-1.0), Verteilung und Entwicklung (verteilung-1.1) und Blockbilanz (blockbilanz-1.0). Nur beschreibend, mit Intervall und Mindestzahl;
    nichts davon ändert den Plan. */
 (function () {
   "use strict";
@@ -81,7 +81,8 @@
       </tbody></table></div>
       <p class="hint">Je 4-Wochen-Block die Verteilung nach Puls (L/M/H = locker, mittel, hart in %; Rad und Laufen) und die Effizienz: Rad = normierte Leistung je Pulsschlag in gleichmässigen Fahrten
         (ab 40 min, kaum hart, je System drinnen und draussen), Laufen = Meter je Pulsschlag in vergleichbaren Läufen; 100 % = dein Median, ab ${V82().MIN.block} Messungen je Block.
-        Verglichen wird die Verteilung eines Blocks mit der Veränderung der Effizienz zum nächsten (Rangkorrelation, 90-%-Intervall, ab ${V82().MIN.paare} Block-Paaren).
+        Verglichen wird die Verteilung eines Blocks mit der Veränderung der Effizienz zum nächsten (Rangkorrelation, 90-%-Intervall, ab ${V82().MIN.paare} Block-Paaren);
+        klar erst, wenn mindestens ${V82().EINTEILUNGEN.klar} der ${V82().EINTEILUNGEN.von} Einteilungen der Blöcke (Beginn um je eine Woche verschoben) dasselbe zeigen.
         Ein Zusammenhang ist keine Ursache: Hitze, Leistungsmesser, Rennen oder Krankheit können beides beeinflussen (${esc(V.v)}).</p>`;
   }
 

@@ -1505,3 +1505,14 @@ table.t.v82-t td small { display: block; font-size: 11px; }
 /* V8.4.1 lauf-abc-1.0: Übungen der Lauf-ABC auf der Einheit-Seite */
 .v73-abc-l { margin: 6px 0 4px; padding-left: 20px; display: grid; gap: 6px; font-size: 13px; }
 .v73-abc-l small { display: block; color: var(--muted); }
+
+/* ======================= V8.5 Modell «Automatisch» (automatisch-1.0): Entscheid je Woche im Trainingsmodell ======================= */
+.v85-box { margin-top: 14px; }
+.v85-w { margin: 10px 0 16px; }
+.v85-w .mini-h { margin: 0 0 4px; }
+.v85-kurz { margin: 2px 0 8px; overflow-wrap: anywhere; }
+.v85-ab { font: 600 11px/1.4 var(--f-body); font-style: normal; color: var(--accent-text); margin-left: 6px; white-space: nowrap; }
+.v85-gr { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.v85-g { display: grid; grid-template-columns: 16px 1fr; gap: 6px; font-size: 13px; line-height: 1.4; color: var(--fg); overflow-wrap: anywhere; }
+.v85-s { font-weight: 700; text-align: center; color: var(--muted); }
+.v85-weniger .v85-s, .v85-pyramidal .v85-s { color: var(--accent-text); }

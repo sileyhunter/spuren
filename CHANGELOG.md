@@ -1,5 +1,13 @@
 # Änderungen
 
+## V8.5 · 19.11.2026 · Modell «Automatisch» (automatisch-1.0), verteilung-1.1, wissen-1.33
+- **Neues Modell «Automatisch (individuell)»** unter Plan → Trainingsmodell: startet wie «kombiniert» und entscheidet je Woche Verteilung und Zahl harter Einheiten an Land aus Phase,
+  Zeit, deiner Verträglichkeit und Ermüdung – jede Wahl mit Grund. Solange ein anderes Modell gewählt ist, zeigt die Seite, was «Automatisch» entscheiden würde.
+- Weniger harte Einheiten (der harte Lauf wird locker, das Rad bleibt) nach einer Woche mit mindestens 3 Tagen «vorsichtig», bei sehr hohem Trainingsstatus, wenn deine Daten zeigen,
+  dass so viele harte Einheiten schlechter vertragen wurden, oder unter 5 Stunden. Pyramidal statt polarisiert nur, wenn deine Daten das klar und unabhängig von den Blockgrenzen zeigen.
+  Nie mehr als die Vorlage: gute Erholung allein macht nichts härter (Test C über mehrere Wochen).
+- **verteilung-1.1** («Deine Reaktionen»): ein Zusammenhang zwischen Verteilung und Effizienz gilt erst als klar, wenn ihn mindestens 3 der 4 Einteilungen der 4-Wochen-Blöcke zeigen.
+
 ## V8.4.1 Teil 3 · 18.11.2026 · Nur Rad oder nur Laufen (sportart-1.0), wissen-1.32
 - **Sportart wählbar:** Planeinstellungen → Allgemein → Sportart: Triathlon (wie bisher), «Nur Rad» oder «Nur Laufen». Gilt ab der nächsten Woche.
 - Mit nur einer Sportart: Wochenstunden aus deinem Training in dieser Sportart, eigene Wochenvorlage (Mo frei, Di Schlüssel, Do zweite Schlüsseleinheit ab 6 h Rad bzw. 4,5 h Laufen,

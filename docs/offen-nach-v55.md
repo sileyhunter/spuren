@@ -282,8 +282,8 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 113. **Zuordnung Aktivität ↔ Einheit** für «geplant gegen genommen»: dieselbe Sportart am selben Tag, die Dauer am nächsten (wie last-abweichung-1.0).
 
 ## Nach V8.2 (18.11.2026, Persönliche Reaktionen)
-114. **Reaktionen fliessen noch nicht in den Plan:** «Deine Reaktionen» ist nur Anzeige. Ob der Coach (V8.3) und die Steigerung (V8.5) sie lesen – z. B. «verträglich bis …»
-     als Obergrenze –, entscheidet Silas; bis dahin gelten die allgemeinen Regeln.
+114. (Stand V8.5) **Reaktionen im Plan:** Das Modell «Automatisch» liest «Was du bisher verträgst» (harte Einheiten pro Woche) und «Verteilung und Entwicklung» – nur nach unten
+     bzw. zwischen polarisiert und pyramidal, nie für mehr. Wochenstunden und Lauf-km aus «Was du bisher verträgst» wirken nicht auf die Steigerung (nur mit Silas' Okay).
 115. **Lauf-Effizienz je Block** braucht mindestens 3 vergleichbare Läufe je 4 Wochen; im Winter und nach Laufpausen fehlen sie, dann bleibt der Zusammenhang
      «noch zu wenig Daten». Ein lockereres Kriterium wäre möglich, aber weniger sauber.
 116. **Stunden ohne «andere» Sportarten:** Wanderungen, Skitouren und Langlauf zählen in der Fitness, nicht in den Wochenstunden (wie in den Wochenstunden des Plans).
@@ -311,3 +311,11 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 125. **Abwechslung:** Die Form folgt einer festen Reihe (nicht dem Erfolg der letzten Einheit). Eine Auswertung «Vergleichseinheit über die Wochen» (Puls bzw. Leistung in denselben
      Intervallen) fehlt noch – Kandidat für V8.5/V8.6.
 126. **Verpflegung 2.0:** Die Produktwahl ist aus der Oberfläche genommen; gespeicherte Listen (`pe-verpflegung`) bleiben und wirken nur noch im Hintergrund.
+
+## Nach V8.5 (19.11.2026, Modell «Automatisch»)
+127. **«Automatisch» ist nicht gewählt:** Silas' Wahl bleibt «kombiniert»; die Seite zeigt unter Plan → Trainingsmodell, was «Automatisch» entscheiden würde.
+128. **Grenzen** (3 Tage «vorsichtig», Trainingsstatus 1,5, 5 h, 3 von 4 Einteilungen) sind eigene Festlegungen. Nach einem halben Jahr mit «Automatisch» prüfen, wie oft sie
+     griffen und ob die Wochen danach (Ampel, Puls bei gleicher Leistung) davon profitierten (Ergebnis nur im Chat).
+129. **verteilung-1.1:** Mit wenigen Blöcken kann schon die Wahl der Blockgrenzen einen Zusammenhang erzeugen; seit V8.5 zählt er erst, wenn ihn mindestens 3 der 4 Einteilungen
+     zeigen. Was «Deine Reaktionen» vorher als klar zeigte, kann darum jetzt «kein klarer» heissen. Laufen bleibt mangels vergleichbarer Läufe je Block offen (Punkt 115).
+130. **Mehr als zwei harte Einheiten an Land** plant «Automatisch» nie; eine dritte (z. B. Renntempo-Block in der langen Ausfahrt zählt als locker) wäre eine neue Regel mit Silas' Okay.

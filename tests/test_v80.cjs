@@ -179,6 +179,58 @@ test("C · Mehrere Tage aussergewöhnlich gut erholt", async (t) => {
   });
 });
 
+test("C (V8.5) · Modell «Automatisch» über mehrere Wochen", async (t) => {
+  // automatisch-1.0: startet wie «kombiniert»; gute Erholung macht nichts härter, eine klar belastete Vorwoche (Ampel an 3 Tagen «vorsichtig») eine harte Einheit weniger
+  const mitAuto = async (seed) => {
+    const sim = simulator({ start: START, seed });
+    sim.D.plan_modell = [{ id: "modell", modell: "automatisch", wechsel: "2027-02-01", v: "modell-1.0", geaendert: "2026-11-01T08:00:00.000Z" }];
+    sim.S.neu();
+    await sim.tage(START, 14);
+    return sim;
+  };
+  const hartLand = (L) => (L || []).filter((e) => (e.sport === "rad" || e.sport === "lauf") && e.stufe === "hart").length;
+  const woche = (sim, mo, feld) => { let n = 0; for (let i = 0; i < 7; i++) n += hartLand(sim.log.get(tag(mo, i))[feld || "plan"]); return n; };
+  await t.test("C3 vier Wochen sehr gut erholt: «Automatisch» plant wie «kombiniert» – dieselben Einheiten, höchstens zwei harte an Land, jede Woche mit Gründen", async () => {
+    const gut = (d, m) => (d >= W3 ? Object.assign({}, m, { hrv: Math.round(m.hrv * 1.18), rhr: m.rhr - 4, sleepH: 8.2, sleepScore: 90 }) : m);
+    const checkin = (d) => (d >= W3 ? { schlaf: 1, muede: 2, muskel: 1, stress: 2 } : null);
+    const sim = await mitAuto(11), kontrolle = await vorlauf({ seed: 11 });
+    await sim.tage(W3, 28, { morgen: gut, checkin });
+    await kontrolle.tage(W3, 28, { morgen: gut, checkin });
+    for (let k = 0; k < 4; k++) {
+      const mo = addDays(W3, 7 * k), K = sim.plan(mo).K;
+      assert.ok(K.auto, `${mo}: kein Entscheid`);
+      assert.equal(K.auto.abweichung, false, `${mo}: ${K.auto.kurz}`);
+      assert.ok(K.auto.harte <= 2 && K.auto.harte === K.auto.vorlage, `${mo}: ${K.auto.kurz}`);
+      for (const a of ["phase", "verteilung"].concat(K.w.erholung ? ["harte"] : ["zeit", "vertraeglich", "ermuedung"])) {
+        assert.ok(K.auto.gruende.some((g) => g.art === a), `${mo}: Grund ${a} fehlt`);
+      }
+      for (let i = 0; i < 7; i++) assert.equal(kurz(sim.log.get(tag(mo, i)).plan), kurz(kontrolle.log.get(tag(mo, i)).plan), tag(mo, i));
+      assert.ok(woche(sim, mo) <= 2, `${mo}: ${woche(sim, mo)} harte Einheiten an Land`);
+    }
+    nieHaerter(sim, W3);
+  });
+  await t.test("C4 drei schlechte Morgen: in der Woche danach eine harte Einheit an Land (der Lauf wird locker, das Rad bleibt), danach wieder zwei", async () => {
+    const sim = await mitAuto(13);
+    // erste Belastungswoche ab W3, auf die zwei weitere Belastungswochen folgen (Erholungswochen hat die Vorlage ohnehin mit einer harten Einheit)
+    const last = (mo) => !sim.plan(mo).K.w.erholung;
+    let L = W3; while (!(last(L) && last(addDays(L, 7)) && last(addDays(L, 14)))) L = addDays(L, 7);
+    const schlecht = morgenMit({ [tag(L, 0)]: { hrv: 0.66, rhr: 9, score: 58 }, [tag(L, 1)]: { hrv: 0.68, rhr: 9, score: 60 }, [tag(L, 2)]: { hrv: 0.7, rhr: 8, score: 62 } });
+    const n = Math.round((Date.parse(L) - Date.parse(W3)) / 864e5) + 21;
+    await sim.tage(W3, n, { morgen: schlecht });
+    const vors = (mo) => { let k = 0; for (let i = 0; i < 7; i++) if (["vorsichtig", "krank"].includes(sim.log.get(tag(mo, i)).ampel.status)) k++; return k; };
+    assert.ok(vors(L) >= 3, `«vorsichtig» an ${vors(L)} Tagen`);
+    const W4 = addDays(L, 7), W5 = addDays(L, 14), K4 = sim.plan(W4).K, K5 = sim.plan(W5).K;
+    assert.equal(K4.auto.harte, 1, K4.auto.kurz); assert.equal(K4.auto.grund, "Ermüdung der Vorwoche");
+    assert.equal(woche(sim, W4), 1, "eine harte Einheit an Land");
+    const di = sim.log.get(tag(W4, 1)).plan.find((e) => e.sport === "lauf"), doR = sim.log.get(tag(W4, 3)).plan.find((e) => e.sport === "rad");
+    assert.ok(di && di.stufe === "locker" && doR && doR.stufe === "hart", `Di ${di && di.titel}, Do ${doR && doR.titel}`);
+    assert.ok(vors(W4) < 3, `auch danach «vorsichtig» an ${vors(W4)} Tagen`);
+    assert.equal(K5.auto.harte, 2, `${K5.auto.kurz}: nach einer ruhigen Woche wieder zwei`);
+    assert.equal(woche(sim, W5), 2);
+    nieHaerter(sim, W3);
+  });
+});
+
 test("D · Einheit deutlich intensiver als geplant", async (t) => {
   // Mittwoch: lockere Ausfahrt (Z2) als Schwellenfahrt gefahren (Last etwa 1,7 × geplant)
   const hart = (d, E, info) => (d === tag(W3, 2) ? E.map((e) => ({ sport: e.sport, min: e.dauer, tss: Math.round((e.dauer / 60) * 0.9 * 0.9 * 100), uid: e.uid })) : null);

@@ -4,8 +4,9 @@
      gegen deinen Schnitt der 7 Morgen davor; zum Vergleich nach Tagen ohne harte oder lange Einheit.
    - vertraeglich-1.0 (V82.vertraeglich): Wochen nach Zahl harter Einheiten, Wochenstunden und Lauf-km – Erholung (HRV, Ruhepuls) an den ersten drei Morgen
      der Woche danach gegen die vier Wochen davor; «bisher verträglich bis …» nur, wo genug Wochen sind.
-   - verteilung-1.0 (V82.verteilung): Intensitätsverteilung je 4-Wochen-Block gegen die Effizienz im Block danach (Rad: Leistung je Pulsschlag in gleichmässigen
-     Fahrten je System, Laufen: Meter je Pulsschlag in vergleichbaren Läufen) – ein Zusammenhang, keine Ursache.
+   - verteilung-1.1 (V82.verteilung): Intensitätsverteilung je 4-Wochen-Block gegen die Effizienz im Block danach (Rad: Leistung je Pulsschlag in gleichmässigen
+     Fahrten je System, Laufen: Meter je Pulsschlag in vergleichbaren Läufen) – ein Zusammenhang, keine Ursache. 1.1 (V8.5): klar nur, wenn mindestens 3 der 4
+     möglichen Einteilungen der Blöcke (Beginn um je eine Woche verschoben) denselben klaren Zusammenhang zeigen – sonst hängt er davon ab, wo die Blöcke beginnen.
    - blockbilanz-1.0 (V82.bloecke): je 4-Wochen-Block Umfang, harte Einheiten, Verteilung, Fitness, Erholung, Effizienz und Tests, mit einem Satz.
    Alles nur mit Mindestzahl und 90-%-Intervall (Bootstrap des Medians, fester Startwert), sonst «noch zu wenig Daten». Grenzen und Mindestzahlen sind eigene
    Festlegungen (Wissen, Kapitel «reaktionen»). Nichts davon ändert den Plan; V8.3 und V8.5 lesen es später. */
@@ -14,11 +15,12 @@
   else root.V82 = factory(root.FK, root.V81);
 })(typeof self !== "undefined" ? self : this, function (FK, V81) {
   "use strict";
-  const V82 = { VERSIONS: { erholung: "erholung-nach-1.0", vertraeglich: "vertraeglich-1.0", verteilung: "verteilung-1.0", bloecke: "blockbilanz-1.0" } };
+  const V82 = { VERSIONS: { erholung: "erholung-nach-1.0", vertraeglich: "vertraeglich-1.0", verteilung: "verteilung-1.1", bloecke: "blockbilanz-1.0" } };
   V82.MIN = { faelle: 6, wochen: 4, paare: 8, block: 3 };   // Mindestzahlen: Fälle je Tag nach einer Einheit, Wochen je Gruppe, Block-Paare, Messungen je Block
   V82.HART_S = 300;                                         // ab 5 min über dem Puls an LT2 zählt eine Rad- oder Laufeinheit als hart
   V82.MITTEL_S = 1200;                                      // ab 20 min über dem Puls an LT1 (Schwelle, Tempo) als intensiv («mittel»)
   V82.SEED = 20261118;
+  V82.EINTEILUNGEN = { von: 4, klar: 3 };                   // verteilung-1.1: so viele der 4 Einteilungen der Blöcke müssen denselben klaren Zusammenhang zeigen
 
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const tagNr = (iso) => Math.floor(Date.parse(String(iso).slice(0, 10) + "T12:00:00Z") / 864e5);
@@ -445,12 +447,9 @@
    * Verteilung gegen Entwicklung: je Paar aufeinanderfolgender Blöcke der Anteil hart bzw. mittel im ersten gegen die Veränderung der Effizienz zum zweiten.
    * opt = { heute, zonen, bloecke (Standard 26), anker }. → { v, n, paare: [...], zusammenhang: [{x, marker, n, rho, ki, status, text}], text[] }
    */
-  V82.verteilung = function (D, opt, ctx0) {
-    opt = Object.assign({ heute: null, bloecke: 26, anker: null }, opt || {});
-    const zonen = opt.zonen !== undefined ? opt.zonen : D && D.zonen;
-    const ende = opt.heute || letzterTag(D); if (!ende) return null;
-    const ctx = ctx0 || kontext(D, zonen, ende);
-    const B = bloeckeRoh(ende, opt.bloecke, opt.anker).map((b) => blockWerte(D, b, zonen, ctx));
+  /** Zusammenhänge einer Einteilung der Blöcke (Anker anker). */
+  function verteilungEin(D, opt, ctx, zonen, ende, anker) {
+    const B = bloeckeRoh(ende, opt.bloecke, anker).map((b) => blockWerte(D, b, zonen, ctx));
     const paare = [];
     for (let i = 0; i + 1 < B.length; i++) {
       const a = B[i], b = B[i + 1]; if (!a.tid) continue;
@@ -461,16 +460,41 @@
     for (const [x, xn] of [["hart", "Anteil hart"], ["mittel", "Anteil mittel"]]) for (const [m, mn] of [["dRad", "Rad-Effizienz"], ["dLauf", "Lauf-Effizienz"]]) {
       const P = paare.filter((p) => isNum(p[m]));
       const r = { x, marker: m, n: P.length, name: `${xn} im Block → ${mn} im Block danach` };
-      if (P.length < V82.MIN.paare) { r.status = "zu wenig"; r.text = `${r.name}: noch zu wenig Daten (${P.length} von ${V82.MIN.paare} Block-Paaren).`; Z.push(r); continue; }
-      const s = spearman(P.map((p) => p[x]), P.map((p) => p[m]), V82.SEED + Z.length);
-      Object.assign(r, s ? { rho: Math.round(s.rho * 100) / 100, ki: s.ki ? [Math.round(s.ki[0] * 100) / 100, Math.round(s.ki[1] * 100) / 100] : null } : {});
-      r.status = !s || !s.ki ? "unklar" : s.ki[0] > 0 ? "positiv" : s.ki[1] < 0 ? "negativ" : "kein klarer";
-      const kz = (v) => v.toFixed(2).replace(".", ",").replace("-", "−");
-      r.text = `${r.name}: ${r.status === "positiv" ? "mehr ging eher mit besserer Effizienz einher" : r.status === "negativ" ? "mehr ging eher mit schlechterer Effizienz einher" : "kein klarer Zusammenhang"}` +
-        (s ? ` (Rangkorrelation ${kz(r.rho)}${s.ki ? `, 90-%-Intervall ${kz(r.ki[0])} bis ${kz(r.ki[1])}` : ""}, n = ${P.length}).` : ".");
+      if (P.length < V82.MIN.paare) { r.status = "zu wenig"; Z.push(r); continue; }
+      const sp = spearman(P.map((p) => p[x]), P.map((p) => p[m]), V82.SEED + Z.length);
+      Object.assign(r, sp ? { rho: Math.round(sp.rho * 100) / 100, ki: sp.ki ? [Math.round(sp.ki[0] * 100) / 100, Math.round(sp.ki[1] * 100) / 100] : null } : {});
+      r.status = !sp || !sp.ki ? "unklar" : sp.ki[0] > 0 ? "positiv" : sp.ki[1] < 0 ? "negativ" : "kein klarer";
       Z.push(r);
     }
-    return { v: V82.VERSIONS.verteilung, n: paare.length, bloecke: B, paare, zusammenhang: Z, text: Z.map((z) => z.text) };
+    return { B, paare, Z };
+  }
+  /** Verteilung je Block gegen die Effizienz im Block danach. opt = { heute, zonen, bloecke (26), anker (Erholungswoche), einteilungen (4; 1 = nur diese) }.
+   *  verteilung-1.1: der Zusammenhang zählt als klar, wenn mindestens V82.EINTEILUNGEN.klar der Einteilungen (Anker um 0–3 Wochen verschoben) denselben klaren
+   *  Zusammenhang zeigen; Rangkorrelation und Intervall gezeigt aus der Einteilung am Anker, dazu die Spanne über alle. */
+  V82.verteilung = function (D, opt, ctx0) {
+    opt = Object.assign({ heute: null, bloecke: 26, anker: null, einteilungen: V82.EINTEILUNGEN.von }, opt || {});
+    const zonen = opt.zonen !== undefined ? opt.zonen : D && D.zonen;
+    const ende = opt.heute || letzterTag(D); if (!ende) return null;
+    const ctx = ctx0 || kontext(D, zonen, ende);
+    const a0 = opt.anker || montag(ende), E = Math.max(1, Math.min(4, opt.einteilungen | 0));
+    const alle = []; for (let k = 0; k < E; k++) alle.push(verteilungEin(D, opt, ctx, zonen, ende, k ? addDays(a0, 7 * k) : opt.anker));
+    const H = alle[0], kz = (v) => v.toFixed(2).replace(".", ",").replace("-", "−");
+    for (const r of H.Z) {
+      const V = alle.map((x) => x.Z.find((z) => z.x === r.x && z.marker === r.marker)).filter(Boolean), ok = V.filter((z) => z.status !== "zu wenig" && isNum(z.rho));
+      const neg = ok.filter((z) => z.status === "negativ").length, pos = ok.filter((z) => z.status === "positiv").length;
+      const noetig = E >= 4 ? V82.EINTEILUNGEN.klar : E;
+      r.einteilungen = { von: V.length, negativ: neg, positiv: pos, rho: ok.length ? [Math.min(...ok.map((z) => z.rho)), Math.max(...ok.map((z) => z.rho))] : null,
+        n: V.length ? [Math.min(...V.map((z) => z.n)), Math.max(...V.map((z) => z.n))] : null };
+      if (r.status === "zu wenig") { r.text = `${r.name}: noch zu wenig Daten (${r.n} von ${V82.MIN.paare} Block-Paaren).`; continue; }
+      const robust = neg >= noetig ? "negativ" : pos >= noetig ? "positiv" : null, inDieser = r.status;
+      r.status = robust || (r.status === "unklar" ? "unklar" : "kein klarer");
+      r.instabil = !robust && (neg > 0 || pos > 0);
+      const zahlen = isNum(r.rho) ? ` (Rangkorrelation ${kz(r.rho)}${r.ki ? `, 90-%-Intervall ${kz(r.ki[0])} bis ${kz(r.ki[1])}` : ""}, n = ${r.n}` +
+        (E > 1 && r.einteilungen.rho ? `; je nach Einteilung der Blöcke ${kz(r.einteilungen.rho[0])} bis ${kz(r.einteilungen.rho[1])}, klar in ${Math.max(neg, pos)} von ${E}` : "") + ")" : "";
+      r.text = `${r.name}: ${r.status === "positiv" ? "mehr ging eher mit besserer Effizienz einher" : r.status === "negativ" ? "mehr ging eher mit schlechterer Effizienz einher"
+        : r.instabil ? `kein klarer Zusammenhang – ${inDieser === "negativ" || inDieser === "positiv" ? "in dieser Einteilung klar, aber " : ""}er hängt davon ab, wo die Blöcke beginnen` : "kein klarer Zusammenhang"}${zahlen}.`;
+    }
+    return { v: V82.VERSIONS.verteilung, n: H.paare.length, bloecke: H.B, paare: H.paare, zusammenhang: H.Z, text: H.Z.map((z) => z.text), einteilungen: E };
   };
   /** Blockbilanz der letzten n Blöcke (Standard 6) mit einem Satz je Block. → { v, bloecke: [{…, bilanz, satz}] } */
   V82.bloecke = function (D, opt, ctx0) {

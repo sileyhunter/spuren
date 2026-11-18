@@ -72,7 +72,13 @@
         else stunden = AN().saisonStunden(S.wochen, vg.jetzt, vg.spitze)[i];
       }
     }
-    const wahl = V.wahl(wahlEintrag(), S && S.haupt ? S.haupt.date : null, mo), modell = V.modellFuer(wahl, mo);
+    const wahl = V.wahl(wahlEintrag(), S && S.haupt ? S.haupt.date : null, mo), basisModell = V.modellFuer(wahl, mo);
+    // V8.5 automatisch-1.0 (js/v85.js, js/v85-ui.js): mit «Automatisch» je Woche Verteilung und Zahl harter Einheiten an Land aus Phase, Zeit, Verträglichkeit
+    // und Ermüdung (startet wie «kombiniert»); autoIn bleibt für die Vorschau im Trainingsmodell, auch wenn ein anderes Modell gewählt ist
+    const autoIn = { woche: mo, basis: basisModell, wechsel: wahl.wechsel, phase, erholung, taper: phase === "Taper" || String(phase).startsWith("B-Rennen"),
+      rennwoche: rennen().some((r) => r && r.date >= mo && r.date <= V.addDays(mo, 6)), stunden, sportart: SA, wochen: S ? (S.alle || []).concat(S.wochen || []) : [] };
+    const auto = wahl.modell === "automatisch" && window.V85UI && window.V85UI.entscheid ? window.V85UI.entscheid(autoIn) : null;
+    const modell = auto ? auto.modell : basisModell, harte = auto ? auto.harte : null, autoGrund = auto && auto.grund ? auto.grund : null;
     const tests = st.tests;
     const css = cssAktuell(vorbei ? V.addDays(mo, -1) : null), sk = TR() ? TR().zonen(C.D.zonen).skalen : null;
     // V6.6 eigenplan-1.0: «Mein Plan» = Vorschlag mit deinen Änderungen (hinzugefügt, verschoben, gesperrt)
@@ -108,7 +114,7 @@
     // aufbau-1.2 (V7.6.2): für Wochen nach der laufenden zählen die geplanten Läufe der Wochen dazwischen mit (V64.laufGrenze, r.geplant)
     const laeufe = V.laeufe(C.D.activities).concat(offset > 0 ? geplanteLaeufe(offset) : []);
     const X0 = mitKraft(mitAkt(V.woche({ woche: mo, phase, erholung, stunden, aufteilung, modell, tests, rennen: rennen(), css_s: css ? css.s : null,
-      intensitaet: V.intensitaet(wahlEintrag()), laeufe, heute: st.heute, skalen: sk, kurs_bis: KS ? KS.kurs_bis : null, abwechslung: true, sportart: SA }))), w0 = X0.roh;
+      intensitaet: V.intensitaet(wahlEintrag()), laeufe, heute: st.heute, skalen: sk, kurs_bis: KS ? KS.kurs_bis : null, abwechslung: true, sportart: SA, harte, autoGrund }))), w0 = X0.roh;
     // V7.2 verfuegbarkeit-1.0 / eigenplan-1.1: ab der laufenden Woche nach deiner Verfügbarkeit verteilt (ganze Woche, unabhängig vom heutigen Tag).
     // Wochen ohne eigene Änderungen folgen ihr von selbst; ganz festgehaltene Wochen zeigen das Gespeicherte; ältere, nur teilweise gespeicherte
     // Wochen (eigenplan-1.0) bleiben beim unverteilten Vorschlag, bis du «Anpassen» wählst. w0 = Vorschlag, auf dem Mein Plan aufbaut; w0roh = unverteilt.
@@ -133,7 +139,7 @@
       return ((wErh.tage.find((t) => t.date === d) || {}).einheiten) || [];
     };
     return { w: wa, wPlan: w, w0: basis, w0roh: w0, verteilt: !teilweise && !!(w0v && w0v.verteilung), verf, lang, ctxE, wahl, S, css, vg, ausSaison, vorbei, offset, erh, E75, basis75: ba, rampe: R, skalen: sk,
-      sportart: SA, aufteilung75: AUF };
+      sportart: SA, aufteilung75: AUF, auto, autoIn, modell };
   }
   /** aufbau-1.2 (V7.6.2): geplante Läufe ab heute aus den Wochen vor der Woche «offset» (was dort gilt: Mein Plan mit Verteilung und Ampel), Distanz
    *  aus dem Zonenprofil wie der Vorschlag (V64.kmSchaetzung). Nur die Wochen, die ins 30-Tage-Fenster reichen; jede Woche einmal je Durchgang
@@ -420,27 +426,30 @@
   function modellZeichnen() {
     const box = $("mo-wahl"); if (!box) return;
     const V = V64(), S = saison(), e = wahlEintrag(), wahl = V.wahl(e, S && S.haupt ? S.haupt.date : null, V.montag(heuteISO()));
-    const jetzt = V.modellFuer(wahl, V.montag(heuteISO())), I = V.intensitaet(e);
+    const jetzt = V.modellFuer(wahl, V.montag(heuteISO())), I = V.intensitaet(e), autoGew = wahl.modell === "automatisch";
+    const mitWechsel = (m) => m === "kombiniert" || m === "automatisch";
     const zeile = (sp, name) => `<div class="mo-int-z"><span class="mo-int-n">${name}</span><div class="mo-int-seg" role="radiogroup" aria-label="${name}: höchste Intensität">${
       V.STUFEN.map((st) => `<label><input type="radio" name="i_${sp}" value="${st}"${I[sp] === st ? " checked" : ""}><span>${esc({ locker: "locker", schwelle: "Schwelle", alles: "alles" }[st])}</span></label>`).join("")}</div></div>`;
     const iText = [["schwimm", "Schwimmen"], ["rad", "Rad"], ["lauf", "Laufen"]].map(([sp, n]) => `${n} ${V.STUFE_TEXT[I[sp]]}`).join(" · ");
     const opts = V.REIHE.map((id) => { const Mo = V.MODELLE[id];
       return `<label class="mo-opt"><input type="radio" name="m" value="${id}"${id === wahl.modell ? " checked" : ""}><span><b>${esc(Mo.name)}${Mo.standard ? ` <em class="mo-std">Standard</em>` : ""}</b><small>${esc(Mo.kurz)}</small></span></label>`; }).join("");
     box.innerHTML = `<form id="mo-form" class="mo-form"><fieldset class="mo-liste"><legend class="mini-h">Modell</legend>${opts}</fieldset>
-        <label class="mo-wechsel"${wahl.modell !== "kombiniert" ? " hidden" : ""}>Rennspezifisch ab<input type="date" name="w" value="${esc(wahl.wechsel)}" required></label>
+        <label class="mo-wechsel"${!mitWechsel(wahl.modell) ? " hidden" : ""}>Rennspezifisch ab<input type="date" name="w" value="${esc(wahl.wechsel)}" required></label>
         <fieldset class="mo-int"><legend class="mini-h">Intensität je Sportart</legend>${zeile("schwimm", "Schwimmen")}${zeile("rad", "Rad")}${zeile("lauf", "Laufen")}
           <small class="mo-int-h">Höchste Intensität je Sportart. «Schwelle» = bis Tempo und knapp unter LT2, im Schwimmen CSS – keine VO2max-Intervalle. «locker» = nur Grundlage (Renntempo zählt dazu). Im Schwimmen plant der Vorschlag ohnehin höchstens CSS.</small></fieldset>
         <div class="row mo-knoepfe"><button class="btn primary" type="submit">Übernehmen</button><button type="button" class="btn" data-wissen="modelle">Modelle erklärt</button></div></form>
-      <p class="mo-jetzt keep" role="status">Diese Woche gilt <b>${esc(V.MODELLE[jetzt].name)}</b>${wahl.modell === "kombiniert" ? (jetzt === "polarisiert" ? `, ab ${esc(dch(wahl.wechsel))} rennspezifisch` : ` (seit ${esc(dch(wahl.wechsel))})`) : ""}.${e ? "" : " Standard – noch nicht gespeichert."}<br><span class="mo-int-jetzt">Intensität: ${esc(iText)}</span></p>
+      <p class="mo-jetzt keep" role="status">${autoGew ? `Diese Woche entscheidet <b>«Automatisch»</b> (Gründe unten)` : `Diese Woche gilt <b>${esc(V.MODELLE[jetzt].name)}</b>${wahl.modell === "kombiniert" ? (jetzt === "polarisiert" ? `, ab ${esc(dch(wahl.wechsel))} rennspezifisch` : ` (seit ${esc(dch(wahl.wechsel))})`) : ""}`}.${e ? "" : " Standard – noch nicht gespeichert."}<br><span class="mo-int-jetzt">Intensität: ${esc(iText)}</span></p>
+      <div id="mo-auto" class="v85-box"></div>
       <p class="hint">Gespeichert wird verschlüsselt mit «Direkt speichern» (${esc(V.VERSIONS.modell)}, ${esc(V.VERSIONS.intensitaet)}). Das Modell bestimmt die Schlüsseleinheiten im Wochenvorschlag; liegt eine über deiner Intensität je Sportart, nimmt der Vorschlag die nächst leichtere derselben Sportart und verschiebt nichts. Phase und Stunden bleiben wie im Wochenstunden-Vorschlag. Enduco und Garmin bleiben unverändert.</p>`;
     const f = $("mo-form");
-    f.addEventListener("change", (ev) => { if (ev.target.name === "m") f.querySelector(".mo-wechsel").hidden = ev.target.value !== "kombiniert"; });
+    f.addEventListener("change", (ev) => { if (ev.target.name === "m") f.querySelector(".mo-wechsel").hidden = !mitWechsel(ev.target.value); });
+    if (window.V85UI && window.V85UI.zeichnen) window.V85UI.zeichnen($("mo-auto"), autoGew);
     f.onsubmit = async (ev) => {
       ev.preventDefault();
       const m = f.elements.m.value, w = f.elements.w.value;
-      if (!V.MODELLE[m] || (m === "kombiniert" && !/^\d{4}-\d{2}-\d{2}$/.test(w))) return;
+      if (!V.MODELLE[m] || (mitWechsel(m) && !/^\d{4}-\d{2}-\d{2}$/.test(w))) return;
       const intensitaet = {}; for (const sp of ["schwimm", "rad", "lauf"]) { const x = f.elements["i_" + sp].value; intensitaet[sp] = V.STUFEN.includes(x) ? x : "alles"; }
-      await UI().Inbox.upsert("modell", { id: "modell", modell: m, wechsel: m === "kombiniert" ? w : wahl.wechsel, intensitaet, v: V.VERSIONS.modell, vi: V.VERSIONS.intensitaet, geaendert: new Date().toISOString() });
+      await UI().Inbox.upsert("modell", { id: "modell", modell: m, wechsel: mitWechsel(m) ? w : wahl.wechsel, intensitaet, v: V.VERSIONS.modell, vi: V.VERSIONS.intensitaet, geaendert: new Date().toISOString() });
       M.zeichnen();
     };
   }

@@ -6,6 +6,7 @@ import copy
 import datetime as dt_mod
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -126,6 +127,10 @@ check("V6.4.2 Intensität je Sportart übernommen", D["plan_modell"][0].get("int
 merge_daily.v5_merge(D, {"modell_add": [dict(_m2, intensitaet={"rad": "maximal"}), dict(_m2, intensitaet={"kraft": "alles"}), dict(_m2, intensitaet="alles")]})
 check("V6.4.2 Intensität: unbekannte Stufe, Sportart oder Form abgelehnt", D["plan_modell"][0].get("intensitaet", {}).get("lauf") == "locker" and len(D["plan_modell"]) == 1)
 check("V6.4.2 Intensität: Prüfung nennt den Grund", merge_daily.modell_pruefen(dict(_m2, intensitaet={"rad": "maximal"})) == "unbekannte Intensität 'maximal' (rad)")
+# V8.5 automatisch-1.0: «Automatisch» ist ein gültiges Modell (mit Wechsel wie «kombiniert»); Liste wie V64.MODELLE in js/v64.js
+_js_modelle = re.findall(r"^    ([a-z]+): \{ name: ", open(os.path.join(ROOT, "js", "v64.js"), encoding="utf-8").read(), re.M)
+check("V8.5 Modell «Automatisch» angenommen; Modelle wie in js/v64.js", merge_daily.modell_pruefen(dict(_m1, modell="automatisch")) is None
+      and sorted(_js_modelle) == sorted(merge_daily.MODELLE), json.dumps(_js_modelle))
 check("Trainingsmodell (Audit V6.4 B22): Wechsel nur als JJJJ-MM-TT – andere ISO-Formen abgelehnt",
       [merge_daily.modell_pruefen(dict(_m1, wechsel=w)) for w in ("20270315", "2027-W11-1", "2027-02-01")] == ["Wechsel ist kein Datum", "Wechsel ist kein Datum", None])
 merge_daily.v5_merge(D, {"laktat_bestaetigt": ["demo-test"]})

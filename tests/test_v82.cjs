@@ -1,4 +1,4 @@
-// Abnahmetests V8.2 «Persönliche Reaktionen» (js/v82.js): erholung-nach-1.0, vertraeglich-1.0, verteilung-1.0, blockbilanz-1.0. Alle Werte erfunden.
+// Abnahmetests V8.2 «Persönliche Reaktionen» (js/v82.js): erholung-nach-1.0, vertraeglich-1.0, verteilung-1.1 (V8.5), blockbilanz-1.0. Alle Werte erfunden.
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const FK = require("../js/formkurve.js");
@@ -40,7 +40,7 @@ function welt(start, harteJeWoche, opt) {
 }
 
 test("Versionen und Mindestzahlen", () => {
-  assert.deepEqual(V82.VERSIONS, { erholung: "erholung-nach-1.0", vertraeglich: "vertraeglich-1.0", verteilung: "verteilung-1.0", bloecke: "blockbilanz-1.0" });
+  assert.deepEqual(V82.VERSIONS, { erholung: "erholung-nach-1.0", vertraeglich: "vertraeglich-1.0", verteilung: "verteilung-1.1", bloecke: "blockbilanz-1.0" });
   assert.deepEqual(V82.MIN, { faelle: 6, wochen: 4, paare: 8, block: 3 });
 });
 
@@ -120,7 +120,7 @@ test("vertraeglich-1.0: Wochen ohne Aufzeichnung zählen nicht; zu wenig Wochen 
   assert.match(T.dim.harte.text, /noch zu wenig/);
 });
 
-test("verteilung-1.0: Rangkorrelation mit Intervall; unter 8 Block-Paaren kein Urteil", () => {
+test("verteilung: Rangkorrelation mit Intervall; unter 8 Block-Paaren kein Urteil", () => {
   const x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], y = x.map((v) => 3 * v + 1);
   const s = spearman(x, y, 1); assert.equal(Math.round(s.rho * 100) / 100, 1); assert.ok(s.ki[0] > 0.8);
   const s2 = spearman(x, y.slice().reverse(), 1); assert.equal(Math.round(s2.rho * 100) / 100, -1);
@@ -130,6 +130,23 @@ test("verteilung-1.0: Rangkorrelation mit Intervall; unter 8 Block-Paaren kein U
   assert.match(V.text[0], /noch zu wenig Daten \(\d+ von 8 Block-Paaren\)/);
   const b = V.bloecke[V.bloecke.length - 1];
   assert.ok(b.tid && b.tid[0] > 70, "vor allem locker");
+});
+
+test("verteilung-1.1 (V8.5): klar nur, wenn mindestens 3 der 4 Einteilungen der Blöcke denselben klaren Zusammenhang zeigen", () => {
+  const plan = Array.from({ length: 60 }, (_, i) => [0, 1, 2, 3, 2, 1][i % 6]);
+  const D = welt("2025-06-30", plan);
+  const V = V82.verteilung(D, { heute: HEUTE, zonen: ZONEN }), V1 = V82.verteilung(D, { heute: HEUTE, zonen: ZONEN, einteilungen: 1 });
+  assert.equal(V.einteilungen, 4); assert.equal(V1.einteilungen, 1);
+  const rad = V.zusammenhang.filter((z) => z.marker === "dRad" && z.status !== "zu wenig");
+  assert.ok(rad.length >= 1, "genug Block-Paare: " + V.text.join(" | "));
+  for (const z of rad) {
+    assert.equal(z.einteilungen.von, 4);
+    const k = Math.max(z.einteilungen.negativ, z.einteilungen.positiv);
+    if (z.status === "negativ" || z.status === "positiv") assert.ok(z.einteilungen[z.status] >= 3, z.text);
+    else assert.ok(k < 3 && z.instabil === (k > 0), z.text);
+    if (z.status !== "unklar") assert.match(z.text, /je nach Einteilung der Blöcke −?\d,\d\d bis −?\d,\d\d, klar in \d von 4\)\.$/);
+  }
+  for (const z of V1.zusammenhang.filter((x) => x.status !== "zu wenig")) assert.equal(z.einteilungen.von, 1);
 });
 
 test("blockbilanz-1.0: Blöcke enden mit der Erholungswoche (anker), Satz je Block, Fitness steigt mit mehr Training", () => {

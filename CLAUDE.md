@@ -77,7 +77,7 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
 - **V8.0 (Masterprompt V8, Etappe V8.0 «Prüfung und Szenario-Test», von Silas am 18.11.2026 freigegeben; Bericht `docs/AUDIT_V8.md`):** `tests/sim/` (Simulator ohne Browser:
   `umgebung.cjs` leeres DOM und eigene Uhr, `seite.cjs` Kontext C und V5UI wie index.html, `athlet.cjs` erfundener Athlet, `lauf.cjs` Tag für Tag mit Haken für Morgenwerte,
   Check-in, Änderungen und Ausführung), `tests/test_v80.cjs` (Abnahmetests A–H und acht Wochen Zusammenwirken; was eine spätere Etappe bringt, steht als `todo` mit der Etappe –
-  kommt sie, wird daraus ein normaler Test), `tools/pruefung_v8.cjs` (Prüfung der Modelle mit echten Daten: `node tools/pruefung_v8.cjs work/data.json`, seit V8.2 mit Abschnitt 9 «Reaktionen», seit V8.3 mit Abschnitt 10 «Tagescoach», nur Zusammenfassungen,
+  kommt sie, wird daraus ein normaler Test), `tools/pruefung_v8.cjs` (Prüfung der Modelle mit echten Daten: `node tools/pruefung_v8.cjs work/data.json`, seit V8.2 mit Abschnitt 9 «Reaktionen», seit V8.3 mit Abschnitt 10 «Tagescoach», seit V8.5 mit Abschnitt 11 «Modell Automatisch», nur Zusammenfassungen,
   Zahlen nur in den Chat, nie ins Repository). Neue Module, die Planen, Ampel oder Last betreffen, in `MODULE` von `tests/sim/umgebung.cjs` aufnehmen.
 - **V8.1 (Masterprompt V8, Etappe V8.1 «Daten zusammenführen», von Silas am 18.11.2026 freigegeben):** `js/v81.js` (ohne DOM: Nach dem Training nachher-1.0
   `V81.nachher`/`V81.eintrag`/`V81.garminSelbst`, Puls zur Leistung hf-leistung-1.0 `V81.pulsZurLeistung`, Satz zur Einheit `V81.hinweis`, Abweichung von der geplanten
@@ -94,7 +94,7 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   anpassen»), `tools/verpflegung.py` (eigene Lebensmittel aus Garmin einlesen, Prüfungen wie die Seite), `tests/test_verpflegung.cjs`; «Nach dem Training» nachher-1.1
   (Magen und Energie ab 60 min, `V81.mitVerpflegung`); Regeln im Abschnitt «Verpflegung je Einheit»
 - **V8.2 (Masterprompt V8, Etappe V8.2 «Persönliche Reaktionen», von Silas am 18.11.2026 freigegeben):** `js/v82.js` (ohne DOM: Erholung nach harten Einheiten
-  erholung-nach-1.0 `V82.erholung`, was du bisher verträgst vertraeglich-1.0 `V82.vertraeglich`, Verteilung gegen Effizienz verteilung-1.0 `V82.verteilung`, Blockbilanz
+  erholung-nach-1.0 `V82.erholung`, was du bisher verträgst vertraeglich-1.0 `V82.vertraeglich`, Verteilung gegen Effizienz verteilung-1.1 `V82.verteilung` (V8.5: klar nur in mindestens 3 der 4 Einteilungen der Blöcke, `V82.EINTEILUNGEN`), Blockbilanz
   blockbilanz-1.0 `V82.bloecke`, `V82.alles`; Einteilung `V82.art` mit den Pulsgrenzen des Profils vom Stichtag für die ganze Historie; Bootstrap mit festem Startwert),
   `js/v82-ui.js` (Ansicht `#reaktionen` unter Analyse, vier Karten, nacheinander gezeichnet), `tests/test_v82.cjs`. Nur Anzeige: nichts davon ändert den Plan (V8.3/V8.5 erst
   mit Silas' Okay). Mindestzahlen `V82.MIN`; ohne sie «noch zu wenig Daten». Ergebnisse mit echten Daten nur im Chat, nie in Doku oder Tests. Regel ändern = Version in
@@ -130,6 +130,13 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   einzelnen Nacht wie der Ring, `FK.ERHOLUNG` 34/50 %, `FK.NACHT` Atemfrequenz und Hauttemperatur als mögliche Krankheitszeichen ab 14 Nächten; Anzeige in `js/v5-ui.js`,
   `js/v55.js`, Kachel auf Heute `js/v6-heute.js`); Nachtwerte nacht-1.0 (`tools/wellness.py nacht`, Nacht- und Morgen-Update); Verpflegung verpflegung-2.0 (`VP.knapp`, `VP.kurz`:
   nur g/h und Menge, je eine Zeile vorher/nachher; Produktwahl aus der Oberfläche genommen, Blatt «Anpassen» mit g/h, «Diesmal ohne» und Stufe ab 2,5 h)
+- **V8.5 (Masterprompt V8, Etappe V8.5 «Modell Automatisch», automatisch-1.0; von Silas am 18.11.2026 freigegeben):** `js/v85.js` (ohne DOM: Entscheid je Woche `V85.entscheid` –
+  Verteilung polarisiert/pyramidal/rennspezifisch und Zahl harter Einheiten an Land (Vorlage `V85.vorlage`, höchstens zwei) aus Phase, Zeit, Verträglichkeit und Ermüdung, jede Wahl mit
+  Grund; Block `V85.blockStart`/`V85.stichtag`/`V85.anker`, Ermüdung `V85.ermuedung`, Grenzen `V85.GRENZEN`), `js/v85-ui.js` (`V85UI.entscheid` mit den Daten der Seite: V82 bis zum
+  Sonntag vor dem Block, Ampel der 7 Tage davor, Trainingsstatus am Montag; Box `#mo-auto` unter Plan → Trainingsmodell, auch als Vorschau), `tests/test_v85.cjs`; Modell «automatisch» in
+  `V64.MODELLE`/`V64.REIHE` und `merge_daily.MODELLE`, `V64.woche` opt.`harte` (1 = harter Lauf locker, gleiche Dauer; nur Rad/Laufen ohne zweite Schlüsseleinheit) und `autoGrund`, im
+  Plan-Kontext `K.auto`, `K.autoIn` (`js/v64-ui.js`), Hinweis auf der Einheit-Seite (`e.auto`); verteilung-1.1 in `js/v82.js` (klar nur in mindestens 3 der 4 Einteilungen der Blöcke);
+  Test C über mehrere Wochen in `tests/test_v80.cjs` (C3, C4)
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
 - `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)
@@ -489,7 +496,7 @@ gezeigt wurden), danach nie mehr geändert; `ganz: true` = ganze Woche gespeiche
 `gesperrt`, `metrik` (leistung/pace/puls/rpe), `drinnen`, `ein_min` (5–40, 5er-Schritte), `pausen` (0–100, 10er-Schritte, 50 = Vorlage); 1.1 (V7.5): `pool` (25/50,
 nur Schwimmen, nicht Bibliothek) und `drinnen: false` bleibt (ausdrücklich draussen in einer Indoor-Phase; gespeichert wird nur, was von der Phase abweicht); geprüft mit
 `merge_daily.einheit_feld_pruefen` (gleiche Regeln wie `V66.feldPruefen`); eine gesperrte Einheit wird nur entsperrt, nie verschoben, geändert oder entfernt. V6.4: `modell` (gewähltes Trainingsmodell
-→ `modell_add` → `plan_modell`; `merge_daily.modell_pruefen`: bekanntes Modell, Wechsel als Datum; gleiche ID ersetzt mit Audit). V6.5: `planwahl`
+→ `modell_add` → `plan_modell`; `merge_daily.modell_pruefen`: bekanntes Modell (seit V8.5 auch «automatisch»), Wechsel als Datum; gleiche ID ersetzt mit Audit). V6.5: `planwahl`
 («Ich folge» je Tag → `planwahl_add` → `plan_wahl`; `merge_daily.planwahl_pruefen`: Datum, ID «pw-Datum», Wahl enduco/vorschlag/frei; gleicher Tag ersetzt mit Audit).
 V7.5: `planeinstellung` (je Gruppe «pe-start» {art fitness/aufteilung} und «pe-basis-schwimm»/«-rad»/«-lauf» {wert: eigene Fitness 0–200 oder null} (V7.5.2, basis-1.1),
 «pe-steigerung» {wert}, «pe-sportart» {art triathlon/rad/lauf} (V8.4.1 sportart-1.0, mit `vorher`), «pe-indoor-rad»/«pe-indoor-lauf» {von, bis}, «pe-schwimm» {hilfsmittel, pool, stile (ruecken/brust), anfaenger (V7.5.1), kurs_bis (letzter Kurstag oder null), kurs_nur (V7.6.2 kurs-1.0)} → `planeinstellung_add`
@@ -730,6 +737,20 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   letzten 5 Tage die ganze Woche mit Rat zur Abklärung). Tauschen und Nachholen auch in die nächste Woche (`entfernen` + `hinzufuegen` statt `verschieben`); die Seite prüft
   erst alle betroffenen Wochen (`V66UI.aendernFolge(mo, aktionen, { trocken: true })`) und speichert dann je Woche (`V83UI` `anwenden`), Rückgängig ebenso.
 
+## Modell «Automatisch» (V8.5, automatisch-1.0, Masterprompt V8 Abschnitt 6; von Silas am 18.11.2026 freigegeben)
+- Sechstes Modell unter Plan → Trainingsmodell; der Standard bleibt «kombiniert» (Silas' Wahl), «Automatisch» gilt erst, wenn er es übernimmt. Startet wie «kombiniert» (polarisiert bis
+  zum Wechsel, danach rennspezifisch; der Wechsel ist wählbar wie dort) und entscheidet je Woche, jede Wahl mit Grund (Box `#mo-auto`, auch als Vorschau bei anderem Modell):
+  **Verteilung** (nur in polarisierten Wochen): pyramidal (Rad Schwelle statt VO2max, Laufen bleibt), wenn «Verteilung und Entwicklung» klar zeigt, dass mehr Anteil hart mit schlechterer
+  oder mehr Anteil mittel mit besserer Rad-Effizienz im Block danach einherging (verteilung-1.1: mindestens 3 der 4 Einteilungen der Blöcke); gewechselt wird nur zu Beginn eines Blocks
+  (Daten bis zum Sonntag davor, `V85.stichtag`). **Harte Einheiten an Land:** höchstens die Vorlage (Triathlon zwei, Erholungswoche eine, Rennwoche keine; nur Rad/Laufen wie
+  sportart-1.0); eine weniger, wenn an mindestens 3 der 7 Tage vor dem Montag die Ampel «vorsichtig» oder krank zeigte, der Trainingsstatus am Montag ab 1,5 liegt, Wochen mit so vielen
+  harten Einheiten bei ihm mit schlechterer Erholung einhergingen («Was du bisher verträgst», `dim.harte.ab`) oder die Woche (Triathlon) unter 5 h hat. Dann wird der harte Lauf locker
+  (gleiche Dauer), das Rad bleibt; nur Rad/Laufen: keine zweite Schlüsseleinheit. Erholungswoche, Taper und Rennwoche wie die Vorlage. Kommende Wochen: Ermüdung «zeigt sich am Montag».
+- Nie mehr als die Vorlage, nie mehr Stunden: gute Erholung macht nichts härter (Test C3). Intensität je Sportart und Mein Plan gelten weiter; gespeicherte Wochen behalten ihre Einheiten.
+  Vergangene Wochen (Vergleich) mit ihrem eigenen Stichtag. Grenzen und Reihenfolge sind eigene Festlegungen (Wissen, Kapitel «modelle»). Nichts davon geht an Garmin oder Enduco,
+  ausser über die gewohnten Aufträge. Am 19.11.2026 mit echten Daten geprüft (Ergebnis nur im Chat). Regel ändern = Version in `V85.VERSIONS`, Wissen und
+  `tests/test_v85.cjs`, `tests/test_v80.cjs`.
+
 ## Verpflegung je Einheit (V8.1.1, verpflegung-1.0, Silas' Wunsch vom 18.11.2026; 1.1 = V8.1.2 nur seine Produktgruppen; 2.0 = V8.4 kurz und bündig)
 - **verpflegung-2.0 (Silas am 18.11.2026: «zu kompliziert, so füll ich das nie aus – Vorschlag g/h, ich entscheide, wie ich sie aufnehme; kurz und bündig»):** auf der Einheit-Seite
   nur noch g/h gross, Menge für die Einheit, «ab Minute 20, dann alle 20–30 min», je eine Zeile «Vorher» (lange oder harte Einheit) und «Nachher» (nur rasch auffüllen vor der
@@ -931,7 +952,7 @@ Laufen nach Puls, Schwimmen Last pro Bewegungsstunde der letzten acht Wochen) si
 - **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
   Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
   Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
-- **Wissen `wissen-1.32` (`js/wissen.js`; 1.32 = V8.4.1 nur Rad oder nur Laufen im Kapitel «planeinstellungen»; 1.31 = V8.4.1 Lauf-ABC im Kapitel «intervalle»; 1.30 = V8.4 Abwechslung im Kapitel «intervalle»; 1.29 = V8.4 Ampel readiness-3.0, Verpflegung kurz, Coach 1.1; 1.28 = V8.3 Kapitel «coach», ampel-plan-1.2 und basis-1.2; 1.27 = V8.2 Kapitel «reaktionen»; 1.26 = V8.1.1 Kapitel «verpflegung»; 1.25 = V8.1 TL ≈ mit den Bezugsgrössen, Abweichung, Anstieg,
+- **Wissen `wissen-1.33` (`js/wissen.js`; 1.33 = V8.5 Modell «Automatisch» im Kapitel «modelle», verteilung-1.1 im Kapitel «reaktionen»; 1.32 = V8.4.1 nur Rad oder nur Laufen im Kapitel «planeinstellungen»; 1.31 = V8.4.1 Lauf-ABC im Kapitel «intervalle»; 1.30 = V8.4 Abwechslung im Kapitel «intervalle»; 1.29 = V8.4 Ampel readiness-3.0, Verpflegung kurz, Coach 1.1; 1.28 = V8.3 Kapitel «coach», ampel-plan-1.2 und basis-1.2; 1.27 = V8.2 Kapitel «reaktionen»; 1.26 = V8.1.1 Kapitel «verpflegung»; 1.25 = V8.1 TL ≈ mit den Bezugsgrössen, Abweichung, Anstieg,
   Nach dem Training, Puls zur Leistung; 1.24 = V8.1 harte Einheiten an Land nie an zwei Tagen hintereinander; 1.23 = V7.10 Tagesblatt und eigene Aktivität nach RPE im Kapitel «modelle»; 1.22 = V7.9 Fitness voraus im Kapitel «last», Zyklus und Bearbeiten im Kapitel «modelle»; 1.21 = V7.8 Trainingsstatus im Kapitel «last»; 1.20 = V7.7 Kapitel «draussen»; 1.19 = V7.6.2 Schwimmkurs, aufbau-1.2, Kurzcheck nach Puls; 1.18 = V7.6.1 Abstimmung ums Krafttraining, Tag automatisch, Tage für lange Einheiten, Form ohne Krafttraining; 1.17 = V7.6 Kapitel «kraft» (Rønnestad & Mujika 2014, Rønnestad et al. 2010, Doma et al. 2017, Lauersen et al. 2014, Foster et al. 2001); 1.16 = V7.5.2 Basis-Fitness Variante A; 1.15 = V7.5.1 Planeinstellungen als Blatt-Folge, Basis-Regel offen, Anfänger-Modus, Stile auf der Uhr; 1.14 = V7.5 Kapitel «planeinstellungen», 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.13 = V7.4 Ampel passt das Training an (Kapitel «erholung», Düking 2021, Manresa-Rocamora 2021), 1.12 = V7.3.2 Übungen aus der Enduco-Liste, 1.11 = V7.3 Etappe 2 Schwimmen,
   Puls und RPE an Garmin im Kapitel «modelle», 1.10 = V7.3 Einheit als
   Schritte, Einfahren und Intervall-Intensität, RPE je Abschnitt im Kapitel «intervalle»; 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
@@ -1077,7 +1098,7 @@ Laufen nach Puls, Schwimmen Last pro Bewegungsstunde der letzten acht Wochen) si
   Die exakten Grössen der SPS1-Dateien stehen in der Git-Historie.
 
 ## Prüfen vor jedem Push von Seite oder Werkzeugen
-`node --test tests/test_archiv.cjs`, `node --test tests/test_kompat.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `node --test tests/test_v66.cjs`, `node --test tests/test_v7.cjs`, `node --test tests/test_v72.cjs`, `node --test tests/test_v73.cjs`, `node --test tests/test_v74.cjs`, `node --test tests/test_v75.cjs`, `node --test tests/test_v76.cjs`, `node --test tests/test_v77.cjs`, `node --test tests/test_v78.cjs`, `node --test tests/test_v80.cjs`, `node --test tests/test_v81.cjs`, `node --test tests/test_v82.cjs`, `node --test tests/test_v83.cjs`, `node --test tests/test_verpflegung.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`,
+`node --test tests/test_archiv.cjs`, `node --test tests/test_kompat.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `node --test tests/test_v66.cjs`, `node --test tests/test_v7.cjs`, `node --test tests/test_v72.cjs`, `node --test tests/test_v73.cjs`, `node --test tests/test_v74.cjs`, `node --test tests/test_v75.cjs`, `node --test tests/test_v76.cjs`, `node --test tests/test_v77.cjs`, `node --test tests/test_v78.cjs`, `node --test tests/test_v80.cjs`, `node --test tests/test_v81.cjs`, `node --test tests/test_v82.cjs`, `node --test tests/test_v83.cjs`, `node --test tests/test_v85.cjs`, `node --test tests/test_verpflegung.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`,
 bei Änderungen an `bilder/` oder `config.bilder` `SPUREN_PW=… node tools/bilder_crypt.mjs pruefen` («PRÜFUNG BILDER: bestanden»).
 **Leck-Prüfung (V6.4.4):** `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json work/data.json`, `python3 -I tools/leck_pruefen.py work/data.json`
 («LECK-PRÜFUNG: bestanden»), danach `rm work/data.json`. Gilt für jeden Push von Seite, Werkzeugen, Tests oder Doku (nicht für die reinen Daten-Updates).
