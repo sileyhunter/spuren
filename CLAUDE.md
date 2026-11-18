@@ -649,11 +649,19 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Wochenauswertung als eigene Zeile. «Nur diese Woche» auf der Einheit-Seite: in kommenden Wochen, deren Tage dem Vorschlag folgen, als Ausnahme «pe-kraft-<Montag>»; in der
   laufenden Woche und an gespeicherten Tagen über Mein Plan (verschieben, entfernen). Regel ändern = Version in `V76.VERSIONS`, Wissen (Kapitel «kraft») und `tests/test_v76.cjs`.
 
-## Verpflegung je Einheit (V8.1.1, verpflegung-1.0, Silas' Wunsch vom 18.11.2026)
+## Verpflegung je Einheit (V8.1.1, verpflegung-1.0, Silas' Wunsch vom 18.11.2026; 1.1 = V8.1.2 nur seine Produktgruppen)
 - Je Einheit aus Mein Plan eine Empfehlung vorher · während · nachher (`VP.plan`), nur mit Silas' eigenen Produkten: eigene Lebensmittel aus Garmin Connect
   (`garmin_lebensmittel`, Nacht-Update) und die Fueling-Vorlagen. Nährwerte nur wie dort eingetragen, nie geschätzt oder ergänzt; ohne passende Produkte nur Gramm
   Kohlenhydrate. Welche Produkte wofür (unterwegs, vorher, nachher) und welche aus Glukose und Fruktose sind, wählt Silas auf der Seite («Produkte für die Verpflegung»);
-  ohne Wahl gelten Gel, Getränk und Frucht unterwegs, Frucht und Riegel vorher (Banane zuerst), Protein nachher, was im Fueling-Protokoll vorkommt zuerst.
+  **verpflegung-1.1 (Silas am 18.11.2026: «nicht zu viele Lebensmittel»):** ohne Wahl nur seine Gruppen (`VP.GRUPPEN`, `VP.imSet`): unterwegs Gels, Fruchtgummi
+  (Art «gummi», z. B. Haribo), Kohlenhydrat-Getränke und Bananen; vorher Banane, Hafer-Riegel und Hafer-Getränk (Art «hafer», z. B. Instant Oats, als Beispiel für die
+  Mahlzeit); nachher Whey und Hafer (Beispiel zum Auffüllen); andere eigene Lebensmittel (Apfel, Honig …) nur mit eigener Auswahl; was im Fueling-Protokoll vorkommt zuerst.
+  Während höchstens zwei Produktarten je Einheit, Frucht nach Gewicht höchstens 200 g; Wanderung, Skitour, Langlauf (Sport «wandern»/«ski», nicht Traillauf) zuerst
+  Riegel, dann Fruchtgummi bzw. Gel, und höchstens 30 g/h in Z1 bzw. 45 g/h in Z2 (eigene Festlegungen, niedrige Intensität).
+- **Was er genommen hat:** Silas trägt es nach der Einheit über Claude ins Garmin-Ernährungsprotokoll ein – im Chat mit `log_custom_food` (food_id und serving_id
+  aus `get_custom_foods`, `meal_time` = Uhrzeit der Einnahme während der Aktivität); das Nacht-Update ordnet es zu (fueling-garmin-1.0, «fg-…»). Oder als Notiz an der
+  Garmin-Aktivität (notizen-1.0, Vorschau «fn-…», auf der Seite einmal bestätigen). Ein neues Produkt (z. B. Haribo) nur mit den Werten vom Etikett als eigenes
+  Lebensmittel anlegen und nur mit seinem Okay; nie Nährwerte schätzen.
 - Während (Richtwerte Jeukendrup 2014, Thomas et al. 2016): unter 75 min nichts (hart ab 45 min: eine kleine Portion in der ersten Pause ab Minute 20, «oder nichts»),
   75 bis unter 120 min 30 g/h (hart 45 g/h), 120 bis unter 150 min 60 g/h, ab 150 min seine Stufe (Standard 60, 30–120 einstellbar; über 60 nur mit Produkten aus Glukose und Fruktose);
   Schwimmen, Krafttraining, Mobility nichts; Tests «wie beim letzten Test». Zeitpunkte ab Minute 20 gleichmässig bis 10 min vor Schluss, nie in harten Abschnitten.

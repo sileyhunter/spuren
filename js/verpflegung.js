@@ -13,13 +13,13 @@
   else root.VP = factory();
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
-  const VP = { VERSIONS: { verpflegung: "verpflegung-1.0" } };
+  const VP = { VERSIONS: { verpflegung: "verpflegung-1.1" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const r5 = (x) => Math.round(x / 5) * 5;
   const runden = (x, n) => { const f = Math.pow(10, n || 0); return Math.round(x * f) / f; };
   const komma = (x) => String(x).replace(".", ",");
 
-  VP.ART_WORT = { gel: "Gel", getraenk: "Getränk", riegel: "Riegel", frucht: "Frucht", protein: "Protein", anderes: "anderes" };
+  VP.ART_WORT = { gel: "Gel", gummi: "Fruchtgummi", getraenk: "Getränk", riegel: "Riegel", hafer: "Hafer", frucht: "Frucht", protein: "Protein", anderes: "anderes" };
   VP.MIX = ["auto", "gel", "getraenk", "fest"];
   VP.MIX_WORT = { auto: "automatisch", gel: "nur Gels", getraenk: "Getränk zuerst", fest: "feste Nahrung zuerst" };
   VP.STANDARD_MAX = 60;                      // g/h ab 2,5 h, solange keine eigene Stufe gesetzt ist (Darmtraining erst erproben)
@@ -27,7 +27,12 @@
   VP.RASCH_STD = 8;                          // rasch auffüllen nur, wenn die nächste harte oder lange Einheit weniger als 8 h später kommt (Thomas et al. 2016)
   // Abschnitte, in denen nichts gegessen wird (hart); Renntempo und Tempo gelten als mittel (dort essen ist möglich, aber nicht ideal)
   const HART = new Set(["vo2", "z3o", "z4", "z5", "css", "test", "sprint", "schwelle"]);
-  const DRAUSSEN_SPORT = new Set(["wandern", "skitour", "langlauf", "trail"]);
+  const DRAUSSEN_SPORT = new Set(["wandern", "ski", "skitour", "langlauf"]);
+  /** Wanderung, Skitour, Langlauf (auch als Aktivität draussen aus Mein Plan); Traillauf zählt als Laufen. */
+  const istDraussen = (e) => !!e && e.sport !== "lauf" && (DRAUSSEN_SPORT.has(e.sport) || e.art === "draussen");
+  /** Zone einer Aktivität draussen (z1/z2) aus dem Eintrag oder den Abschnitten. */
+  const zoneVon = (e) => (e.spec && e.spec.zone) || e.zone || ((Array.isArray(e.teile) ? e.teile : []).every(([k]) => k === "z1") ? "z1" : "z2");
+  VP.FRUCHT_MAX_G = 200;                     // unterwegs höchstens etwa eine grosse Frucht nach Gewicht je Einheit (eigene Festlegung)
 
   /* ---------------- Produkte ---------------- */
   /** Art eines Produkts aus Name, Marke und Nährwerten je Portion (eigene Einteilung). */
@@ -35,11 +40,17 @@
     const t = `${p.name || ""} ${p.marke || ""}`.toLowerCase(), kh = isNum(p.kh) ? p.kh : 0, pr = isNum(p.protein) ? p.protein : 0;
     if (pr >= 10 && pr >= 2 * kh) return "protein";
     if (/\bgel\b|\bgels\b/.test(t)) return "gel";
+    if (/haribo|gummi|goldb[äa]r/.test(t) && kh >= 10) return "gummi";                       // verpflegung-1.1: Fruchtgummi
     if (/getr[äa]nk|drink|electrofuel|elektrolyt|isotoni|competition|\biso\b/.test(t) && kh >= 10) return "getraenk";
     if (/riegel|\bbar\b|oat bakes/.test(t)) return "riegel";
+    if (/\boats?\b|hafer|porridge/.test(t) && kh >= 10) return "hafer";                      // verpflegung-1.1: Hafer-Getränk (z. B. Instant Oats), nicht unterwegs
     if (/banane|apfel|orange|mandarine|birne|dattel|feige|rosine|traube/.test(t)) return "frucht";
     return "anderes";
   };
+  /** verpflegung-1.1 (Silas, 18.11.2026: «nicht zu viele Lebensmittel»): deine Produktgruppen – Gels, Fruchtgummi, Kohlenhydrat-Getränke, Hafer-Riegel,
+   *  Hafer-Getränk, Whey und Bananen. Andere eigene Lebensmittel (z. B. Apfel, Honig) nur, wenn du sie selbst auswählst. */
+  VP.GRUPPEN = ["gel", "gummi", "getraenk", "riegel", "hafer", "protein"];
+  VP.imSet = (p) => !!p && (VP.GRUPPEN.includes(p.art) || (p.art === "frucht" && /banan/i.test(`${p.name || ""} ${(p.namen || []).join(" ")}`)));
   /** Portion eines Garmin-Eintrags: ein Stück (SERVING/PIECE), eine feste Menge (z. B. 70 g = 1 Flasche) oder nach Gewicht (pro 100 g/ml). */
   function portionGarmin(x, art) {
     const ein = String(x.einheit || "").toUpperCase(), g = ein === "G" || ein === "ML", m = x.menge, name = x.name || "";
@@ -104,10 +115,13 @@
     };
     const eig = !!(e && (e.unterwegs || e.davor || e.danach));      // gespeichert als davor/danach («vorher» trägt in den Planeinstellungen schon die Fassung der laufenden Woche)
     return {
-      unterwegs: nach(e && e.unterwegs, (p) => ["gel", "getraenk", "frucht"].includes(p.art) && isNum(p.kh) && p.kh > 0),
-      // vorher ohne eigene Auswahl: Banane zuerst (übliche Praxis), dann Riegel, dann andere Früchte (eigene Festlegung)
-      vorher: nach(e && e.davor, (p) => ["frucht", "riegel"].includes(p.art) && isNum(p.kh) && p.kh > 0, (p) => (/banane/i.test(p.name) ? 2 : p.art === "riegel" ? 1 : 0)),
-      nachher: nach(e && e.danach, (p) => p.art === "protein" && isNum(p.protein)),
+      // ohne eigene Auswahl nur deine Produktgruppen (VP.imSet): unterwegs Gel, Fruchtgummi, Getränk, Banane, Riegel (Riegel vor allem draussen)
+      unterwegs: nach(e && e.unterwegs, (p) => VP.imSet(p) && ["gel", "gummi", "getraenk", "frucht", "riegel"].includes(p.art) && isNum(p.kh) && p.kh > 0),
+      // vorher: Banane zuerst (übliche Praxis), dann Riegel, dann Hafer (Beispiel für die Mahlzeit; eigene Festlegung)
+      vorher: nach(e && e.davor, (p) => VP.imSet(p) && ["frucht", "riegel", "hafer"].includes(p.art) && isNum(p.kh) && p.kh > 0,
+        (p) => (/banane/i.test(p.name) ? 3 : p.art === "riegel" ? 2 : p.art === "hafer" ? 1 : 0)),
+      // nachher: Protein (Whey) und Hafer zum Auffüllen
+      nachher: nach(e && e.danach, (p) => VP.imSet(p) && ((p.art === "protein" && isNum(p.protein)) || (p.art === "hafer" && isNum(p.kh) && p.kh > 0))),
       fruktose: new Set((e && e.fruktose) || []),
       max_g_h: e && isNum(e.max_g_h) ? e.max_g_h : VP.STANDARD_MAX, eigen: eig,
     };
@@ -142,6 +156,10 @@
     else if (d < 120) { g = hart ? 45 : 30; out.gruende.push(hart ? "1–2 h mit harten Abschnitten: 45 g/h (Richtwert 30–60)" : "1–2 h: etwa 30 g/h"); }
     else if (d < 150) { g = 60; out.gruende.push("2–2,5 h: 60 g/h"); }
     else { g = Math.min(W ? W.max_g_h : VP.STANDARD_MAX, 120); out.gruende.push(`ab 2,5 h: deine Stufe ${g} g/h (Richtwert bis 90 g/h, mit Übung)`); }
+    if (istDraussen(e) && g > 0) {                                        // verpflegung-1.1: draussen im Grundlagenbereich weniger (eigene Festlegung)
+      const z = zoneVon(e), cap = z === "z1" ? 30 : 45;
+      if (g > cap) { g = cap; out.gruende.push(`draussen in ${z.toUpperCase()}: höchstens ${cap} g/h (niedrige Intensität)`); }
+    }
     if (a && isNum(a.g_h)) { g = a.g_h; out.gruende.push(`von dir angepasst: ${g} g/h`); }
     const fruk = W && W.unterwegs.some((p) => W.fruktose.has(p.id));
     if (g > 60 && !fruk) { g = 60; out.gruende.push("über 60 g/h nur mit Produkten aus Glukose und Fruktose – markiere sie in der Auswahl"); }
@@ -152,11 +170,11 @@
   /* ---------------- Produkte verteilen ---------------- */
   function bevorzugt(sp, mix) {
     if (mix === "gel") return ["gel"];
-    if (mix === "getraenk") return ["getraenk", "gel", "frucht"];
-    if (mix === "fest") return ["riegel", "frucht", "gel", "getraenk"];
+    if (mix === "getraenk") return ["getraenk", "gel", "gummi", "frucht"];
+    if (mix === "fest") return ["riegel", "gummi", "frucht", "gel", "getraenk"];
     if (sp === "lauf") return ["gel"];
-    if (DRAUSSEN_SPORT.has(sp)) return ["riegel", "frucht", "gel", "getraenk"];
-    return ["getraenk", "gel", "frucht", "riegel"];
+    if (sp === "draussen") return ["riegel", "gummi", "gel", "frucht", "getraenk"];
+    return ["getraenk", "gel", "gummi", "frucht", "riegel"];
   }
   /** Bestes Produkt einer Art: zuerst die Rangfolge der Auswahl (VP.wahl), dann feste Portion vor «nach Gewicht», bekannte Natriumwerte, mehr KH je Portion. */
   function bestes(L, art) {
@@ -167,15 +185,17 @@
   }
   /** G g Kohlenhydrate auf ganze Portionen bzw. Gramm verteilen. → [{p, n (Portionen) oder gramm, kh, natrium}] */
   function verteilen(G, sp, mix, L) {
-    const arten = bevorzugt(sp, mix).filter((a) => bestes(L, a));
+    const arten = bevorzugt(sp, mix).filter((a) => bestes(L, a)).slice(0, 2);       // verpflegung-1.1: höchstens zwei Produktarten je Einheit
     const out = []; let rest = G;
-    // lange Ausfahrten: das Getränk deckt höchstens zwei Drittel, den Rest Gels – Abwechslung und weniger Flaschen (eigene Festlegung)
-    const deckel = (art) => (art === "getraenk" && sp === "rad" && (!mix || mix === "auto") && G >= 120 && arten.includes("gel") ? G * 0.65 : Infinity);
+    // lange Einheiten: die erste Art deckt höchstens zwei Drittel (Rad: das Getränk, draussen: der Riegel), den Rest die zweite – Abwechslung, weniger
+    // Flaschen bzw. Riegel (eigene Festlegung)
+    const deckel = (art) => ((!mix || mix === "auto") && G >= 120 && arten.length > 1 && ((art === "getraenk" && sp === "rad") || (art === "riegel" && sp === "draussen")) ? G * 0.65 : Infinity);
     arten.forEach((art, i) => {
       if (rest < 15) return;
       const p = bestes(L, art), letzte = i === arten.length - 1, dk = deckel(art);
       if (p.portion.nachGewicht) {
-        const g = r5(((letzte ? rest : rest * 0.6) / p.kh) * 100);
+        let g = r5(((letzte ? rest : rest * 0.6) / p.kh) * 100);
+        if (art === "frucht") g = Math.min(g, VP.FRUCHT_MAX_G);
         if (g <= 0) return;
         const kh = (g / 100) * p.kh; rest -= kh;
         out.push({ p, gramm: g, n: null, kh: runden(kh, 0), natrium: p.natrium != null ? runden((g / 100) * p.natrium, 0) : null });
@@ -216,7 +236,7 @@
     const L = W.unterwegs;
     if (Z.stufe === "ja" || (Z.stufe === "klein" && L.length)) {
       const G = Z.stufe === "klein" ? 25 : (Z.g_h * d) / 60;
-      const V = L.length ? verteilen(G, e.sport, a && a.mix, L) : [];
+      const V = L.length ? verteilen(G, istDraussen(e) ? "draussen" : e.sport, a && a.mix, L) : [];
       if (!V.length) R.waehrend.gramm = Math.round(G);
       R.waehrend.produkte = V;
       R.waehrend.kh = V.length ? V.reduce((s, x) => s + x.kh, 0) : Math.round(G);
@@ -259,7 +279,8 @@
     const lang = d >= 90 || e.art === "lang";
     if (e.sport === "schwimm" || e.sport === "kraft" || e.sport === "mobility") R.vorher.push({ text: "normale Mahlzeit, nicht direkt davor gross essen" });
     else if (Z.hart || lang) {
-      R.vorher.push({ text: `Mahlzeit mit Kohlenhydraten 1–4 h vorher: etwa 1 g pro kg und Stunde Abstand${kg ? ` (bei dir ≈ ${Math.round(kg)} g je Stunde)` : ""}`, regel: "Thomas et al. 2016" });
+      const M = bestes(W.vorher, "hafer");
+      R.vorher.push({ text: `Mahlzeit mit Kohlenhydraten 1–4 h vorher${M ? ` (z. B. ${M.anzeige || M.name})` : ""}: etwa 1 g pro kg und Stunde Abstand${kg ? ` (bei dir ≈ ${Math.round(kg)} g je Stunde)` : ""}`, regel: "Thomas et al. 2016" });
       const S = bestes(W.vorher, "frucht") || bestes(W.vorher, "riegel") || bestes(W.vorher, "gel");
       if (S) {
         const g = S.portion.nachGewicht ? r5((25 / S.kh) * 100) : null, n = S.portion.nachGewicht ? null : Math.max(1, Math.round(25 / S.kh));
@@ -276,7 +297,12 @@
         const n = Math.max(1, Math.round(((ziel || 25) / P.protein) * 2) / 2);
         R.nachher.push({ text: `innert 2 h: ${komma(n)} × ${P.anzeige || P.name} (${P.portion.text}; ≈ ${Math.round(n * P.protein)} g Protein${ziel ? `, Ziel ≈ ${ziel} g` : ""})`, produkt: P.id });
       } else R.nachher.push({ text: `innert 2 h ${ziel ? `≈ ${ziel} g` : "20–40 g"} Protein` });
-      if (isNum(ctx.naechsteStd) && ctx.naechsteStd < VP.RASCH_STD && (Z.hart || lang)) R.nachher.push({ text: `rasch Kohlenhydrate auffüllen: 1–1,2 g pro kg in der ersten Stunde${kg ? ` (≈ ${Math.round(kg)}–${Math.round(1.2 * kg)} g)` : ""} – die nächste harte oder lange Einheit kommt in ${Math.round(ctx.naechsteStd)} h` });
+      if (isNum(ctx.naechsteStd) && ctx.naechsteStd < VP.RASCH_STD && (Z.hart || lang)) {
+        // verpflegung-1.1: mit deinem Hafer-Getränk als Beispiel (Menge für 1 g/kg)
+        const H = bestes(W.nachher, "hafer"), hg = H && kg ? (H.portion.nachGewicht ? `≈ ${r5((kg / H.kh) * 100)} ${H.portion.einheit || "g"} ${H.anzeige || H.name}`
+          : `${Math.max(1, Math.round(kg / H.kh))} × ${H.anzeige || H.name} (${H.portion.text})`) : null;
+        R.nachher.push({ text: `rasch Kohlenhydrate auffüllen: 1–1,2 g pro kg in der ersten Stunde${kg ? ` (≈ ${Math.round(kg)}–${Math.round(1.2 * kg)} g)` : ""}${hg ? `, z. B. ${hg}` : ""} – die nächste harte oder lange Einheit kommt in ${Math.round(ctx.naechsteStd)} h`, produkt: H ? H.id : undefined });
+      }
       else R.nachher.push({ text: "danach eine normale Mahlzeit; kein extra Auffüllen nötig" });
     }
 

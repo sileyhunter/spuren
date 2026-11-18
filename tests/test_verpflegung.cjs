@@ -20,7 +20,7 @@ const W = VP.wahl(P, null);
 const einheit = (sport, art, dauer, teile, mehr) => Object.assign({ uid: "u1", sport, art, dauer, teile: teile || [["z1", 10], ["z2", dauer - 10]] }, mehr || {});
 const vo2 = (n) => Array(n).fill(0).flatMap(() => [["vo2", 0.5], ["pause", 0.25]]);
 
-test("Version", () => assert.equal(VP.VERSIONS.verpflegung, "verpflegung-1.0"));
+test("Version", () => assert.equal(VP.VERSIONS.verpflegung, "verpflegung-1.1"));
 
 test("Produkte: Art aus Name und Nährwerten, Portionen, Doppel einmal (mit beiden Namen), Mahlzeiten nicht unterwegs", () => {
   const art = Object.fromEntries(P.map((p) => [p.id, p.art]));
@@ -159,4 +159,48 @@ test("Kurzfassung für Heute: vorher, während mit g/h und Produkten", () => {
   assert.match(VP.kurz(R), /^vorher Banane.* · während ≈ \d+ g\/h: \d+ × (Flasche Getränk|Gel)/);
   const k = VP.plan(einheit("rad", "schluessel", 60, [["z1", 15]].concat(vo2(30), [["z1", 22.5]])), { W, kg: 70 });
   assert.equal(k.ziel.stufe, "klein"); assert.doesNotMatch(VP.kurz(k), /g\/h/, "kleine Menge ohne g/h");
+});
+
+test("verpflegung-1.1: nur deine Gruppen (Gels, Fruchtgummi, Getränke, Hafer-Riegel, Hafer-Getränk, Whey, Banane) – andere nur mit eigener Auswahl", () => {
+  const L2 = LM.concat([
+    { id: "f1", name: "Fruchtgummi Bären (pro 100 g)", marke: "Beispiel", menge: 100, einheit: "G", kcal: 340, kh: 77, zucker: 46, protein: 7, fett: 0, natrium: 30, kalium: null },
+    { id: "o1", name: "Instant Oats Vanille", marke: "Beispiel", menge: 100, einheit: "G", kcal: 380, kh: 60, zucker: 2, protein: 12, fett: 7, natrium: 10, kalium: null },
+    { id: "a1", name: "Apfel mittelgross", marke: null, menge: 1, einheit: "PIECE", kcal: 90, kh: 21, zucker: 18, protein: 0, fett: 0, natrium: 1, kalium: null },
+    { id: "h1", name: "Honig (1 TL)", marke: null, menge: 1, einheit: "SERVING", kcal: 22, kh: 6, zucker: 6, protein: 0, fett: 0, natrium: 0, kalium: null },
+  ]);
+  const P2 = VP.produkte({ garmin_lebensmittel: L2 }), art = (id) => P2.find((p) => p.id === id).art;
+  assert.equal(art("f1"), "gummi"); assert.equal(art("o1"), "hafer"); assert.equal(art("r1"), "riegel", "Hafer-Riegel bleibt Riegel");
+  assert.deepEqual(P2.filter((p) => !VP.imSet(p)).map((p) => p.id).sort(), ["a1", "h1", "m1"], "Apfel, Honig, Reis nicht in der Auswahl");
+  const W2 = VP.wahl(P2, null);
+  assert.ok(!W2.unterwegs.some((p) => ["a1", "h1", "o1"].includes(p.id)), "unterwegs ohne Apfel, Honig, Hafer");
+  assert.ok(W2.unterwegs.some((p) => p.id === "f1"), "Fruchtgummi unterwegs");
+  assert.deepEqual(W2.vorher.map((p) => p.id), ["b1", "r1", "o1"], "vorher Banane, Riegel, Hafer");
+  assert.deepEqual(W2.nachher.map((p) => p.id).sort(), ["o1", "p1"], "nachher Whey und Hafer");
+  // eigene Auswahl darf auch anderes enthalten
+  assert.deepEqual(VP.wahl(P2, { unterwegs: ["a1"] }).unterwegs.map((p) => p.id), ["a1"]);
+  // Mahlzeit mit Beispiel, Auffüllen mit Menge, Fruchtgummi auf der Wanderung
+  const R = VP.plan(einheit("rad", "schluessel", 100, [["z1", 20]].concat(vo2(40), [["z1", 50]])), { W: W2, kg: 70, naechsteStd: 5 });
+  assert.match(R.vorher[0].text, /z\. B\. Beispiel Instant Oats Vanille/);
+  assert.match(R.nachher[1].text, /rasch Kohlenhydrate auffüllen.*z\. B\. ≈ 115 g Beispiel Instant Oats Vanille/);
+  const Wd = VP.plan(einheit("wandern", "lang", 240), { W: W2, kg: 70 });
+  assert.ok(Wd.waehrend.produkte.some((x) => x.p.art === "riegel" || x.p.art === "gummi"));
+  const Lauf = VP.plan(einheit("lauf", "lang", 120), { W: W2, kg: 70 });
+  assert.ok(Lauf.waehrend.produkte.every((x) => x.p.art === "gel"), "beim Laufen nur Gels");
+});
+
+test("verpflegung-1.1: höchstens zwei Produktarten, Frucht höchstens 200 g, draussen nach Zone weniger (Skitour = «ski»)", () => {
+  for (const d of [100, 120, 150, 180, 240, 300]) {
+    const R = VP.plan(einheit("rad", "lang", d), { W, kg: 70 });
+    assert.ok(new Set(R.waehrend.produkte.map((x) => x.p.art)).size <= 2, `Rad ${d} min: höchstens zwei Arten`);
+    for (const x of R.waehrend.produkte) if (x.p.art === "frucht") assert.ok(x.gramm <= VP.FRUCHT_MAX_G);
+  }
+  const ski = Object.assign(einheit("ski", "draussen", 240, [["z1", 240]]), { spec: { zone: "z1" } });
+  const Z1 = VP.ziel(ski, W, null);
+  assert.equal(Z1.g_h, 30); assert.ok(Z1.gruende.some((g) => /draussen in Z1: höchstens 30 g\/h/.test(g)));
+  const wan = Object.assign(einheit("wandern", "draussen", 240, [["z2", 240]]), { spec: { zone: "z2" } });
+  assert.equal(VP.ziel(wan, W, null).g_h, 45);
+  const R = VP.plan(ski, { W, kg: 70 });
+  assert.equal(R.waehrend.produkte[0].p.art, "riegel", "draussen zuerst der Riegel");
+  assert.equal(VP.ziel(Object.assign(einheit("lauf", "draussen", 150), { spec: { zone: "z2" } }), W, null).g_h, 60, "Traillauf zählt als Laufen");
+  assert.equal(VP.ziel(ski, W, { g_h: 50 }).g_h, 50, "deine Anpassung gilt");
 });

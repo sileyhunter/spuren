@@ -136,8 +136,8 @@
         <button type="button" class="chip" data-vpz="fruktose" data-vpid="${esc(p.id)}" aria-pressed="${sel.fruktose.has(p.id)}" title="laut Etikett aus Glukose und Fruktose">Glukose + Fruktose</button></div></li>`;
     const html = () => `<div class="blatt-titel">${ic("flasche", 34)}<h2 id="v59-ov-h" tabindex="-1">Produkte für die Verpflegung</h2><p class="sub">aus deinen eigenen Lebensmitteln in Garmin Connect${C.D.garmin_lebensmittel_stand ? ` (Stand ${esc(new Date(C.D.garmin_lebensmittel_stand + "T12:00:00").toLocaleDateString("de-CH"))})` : ""}${P0.some((p) => p.quelle === "vorlage") ? " und deinen Fueling-Vorlagen" : ""}</p></div>
       ${P0.length ? "" : `<p class="warn-t">Noch keine Produkte: das Nacht-Update holt deine eigenen Lebensmittel aus Garmin Connect (Ernährung → eigene Lebensmittel).</p>`}
-      <p class="hint">Wähle je Produkt, wofür du es nimmst; die Reihenfolge der Wahl gilt als Vorrang. «Glukose + Fruktose» nur, wenn es so auf dem Etikett steht – erst dann empfiehlt die Seite mehr als 60 g pro Stunde.</p>
-      <ul class="vp-produkte">${P0.filter((p) => alle || p.art !== "anderes" || ZWECK.some(([k]) => sel[k].has(p.id))).map(zeile).join("")}</ul>
+      <p class="hint">Gezeigt werden deine Gruppen: Gels, Fruchtgummi, Kohlenhydrat-Getränke, Hafer-Riegel, Hafer-Getränk, Whey und Bananen. Wähle je Produkt, wofür du es nimmst; die Reihenfolge der Wahl gilt als Vorrang. «Glukose + Fruktose» nur, wenn es so auf dem Etikett steht – erst dann empfiehlt die Seite mehr als 60 g pro Stunde.</p>
+      <ul class="vp-produkte">${P0.filter((p) => alle || VP().imSet(p) || ZWECK.some(([k]) => sel[k].has(p.id))).map(zeile).join("")}</ul>
       <button type="button" class="lnk" data-vpalle>${alle ? "Nur passende zeigen" : "Alle Lebensmittel zeigen"}</button>
       <h3 class="abschnitt">Deine Stufe ab 2,5 h</h3>
       <div class="vp-stufe"><button type="button" class="btn" data-vpm="-10" aria-label="weniger">−</button><b data-vpmw>${max} g/h</b><button type="button" class="btn" data-vpm="10" aria-label="mehr">+</button></div>
@@ -154,7 +154,7 @@
         b.setAttribute("aria-pressed", String(s.has(id)));
       }));
       ov.querySelectorAll("[data-vpm]").forEach((b) => (b.onclick = () => { max = Math.max(30, Math.min(120, max + +b.dataset.vpm)); ov.querySelector("[data-vpmw]").textContent = `${max} g/h`; }));
-      ov.querySelector("[data-vpalle]").onclick = () => { alle = !alle; const box = ov.querySelector(".v59-inhalt") || ov; const y = box.scrollTop; ov.querySelector(".vp-produkte").outerHTML = `<ul class="vp-produkte">${P0.filter((p) => alle || p.art !== "anderes" || ZWECK.some(([k]) => sel[k].has(p.id))).map(zeile).join("")}</ul>`; ov.querySelector("[data-vpalle]").textContent = alle ? "Nur passende zeigen" : "Alle Lebensmittel zeigen"; binden(); box.scrollTop = y; };
+      ov.querySelector("[data-vpalle]").onclick = () => { alle = !alle; const box = ov.querySelector(".v59-inhalt") || ov; const y = box.scrollTop; ov.querySelector(".vp-produkte").outerHTML = `<ul class="vp-produkte">${P0.filter((p) => alle || VP().imSet(p) || ZWECK.some(([k]) => sel[k].has(p.id))).map(zeile).join("")}</ul>`; ov.querySelector("[data-vpalle]").textContent = alle ? "Nur passende zeigen" : "Alle Lebensmittel zeigen"; binden(); box.scrollTop = y; };
       ov.querySelector("[data-vpzu]").onclick = () => { V59().schliessen(); if (zurueck) zurueck(); };
       ov.querySelector("[data-vpok]").onclick = async () => {
         const f = ov.querySelector("[data-vpf]"), Inb = UI().Inbox;

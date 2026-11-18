@@ -1,5 +1,14 @@
 # Änderungen
 
+## V8.1.2 · 18.11.2026 · Verpflegung nur mit deinen Produktgruppen (verpflegung-1.1), wissen-1.26
+- Ohne eigene Auswahl nimmt die Empfehlung nur deine Gruppen: Gels, Fruchtgummi (neu, z. B. Haribo), Kohlenhydrat-Getränke, Hafer-Riegel, Hafer-Getränk (neu, z. B.
+  Instant Oats), Whey und Bananen. Apfel, Honig und andere eigene Lebensmittel nur, wenn du sie selbst auswählst; das Blatt zeigt sie erst unter «Alle Lebensmittel».
+- Hafer-Getränk als Beispiel für die Mahlzeit vorher und mit Menge beim raschen Auffüllen (nur wenn die nächste harte oder lange Einheit in weniger als 8 h kommt).
+- Fruchtgummi unterwegs nach Getränk und Gel, auf Wanderung, Skitour und Langlauf nach dem Riegel; beim Laufen weiter nur Gels.
+- Einfacher: höchstens zwei Produktarten je Einheit, Banane unterwegs höchstens 200 g. Draussen (Wanderung, Skitour, Langlauf) zuerst Riegel, höchstens 30 g/h in Z1
+  und 45 g/h in Z2; Skitour und Langlauf werden jetzt als draussen erkannt (vorher wie Rad behandelt).
+- Wissen «verpflegung»: was du genommen hast, trägst du über Claude ins Garmin-Ernährungsprotokoll ein (Uhrzeit während der Einheit) oder als Notiz an der Aktivität.
+
 ## V8.1.1 · 18.11.2026 · Verpflegung je Einheit (verpflegung-1.0), nachher-1.1, wissen-1.26
 - **Verpflegung je Einheit** (verpflegung-1.0, Silas' Wunsch vom 18.11.2026): auf der Einheit-Seite ein Abschnitt «Verpflegung» mit vorher · während · nachher –
   Zeitplan entlang der Schritte (nie in harten Abschnitten), Kohlenhydrate pro Stunde, Natrium, Packliste; auf Heute eine Zeile unter der Einheit des Tages. Grundlage sind
