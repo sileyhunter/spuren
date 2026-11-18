@@ -277,8 +277,11 @@
   /** Offizielle Streckenlängen nach Rennformat (70.3 bzw. Halbdistanz, Ironman bzw. Langdistanz); sonst null – nie geraten. */
   V6.distanzen = function (name) {
     const n = String(name || "");
-    if (/70\.3|halbdistanz|half/i.test(n)) return [{ sport: "schwimm", km: 1.9 }, { sport: "rad", km: 90 }, { sport: "lauf", km: 21.1 }];
+    if (/70\.3|halbdistanz|half(?![- ]?marathon)/i.test(n)) return [{ sport: "schwimm", km: 1.9 }, { sport: "rad", km: 90 }, { sport: "lauf", km: 21.1 }];
     if (/ironman|langdistanz/i.test(n)) return [{ sport: "schwimm", km: 3.8 }, { sport: "rad", km: 180 }, { sport: "lauf", km: 42.2 }];
+    // V8.4.1 sportart-1.0: Laufrennen mit festem Format (Radrennen haben keine feste Strecke – nie geraten)
+    if (/halbmarathon|half[- ]?marathon/i.test(n)) return [{ sport: "lauf", km: 21.1 }];
+    if (/(^|[^a-zäöü])marathon/i.test(n) && !/rad|velo|bike/i.test(n)) return [{ sport: "lauf", km: 42.2 }];
     return null;
   };
   /** Wochen aus AN.saison zu Phasen zusammenfassen: [{ phase, von, bis, wochen, aktiv }]. */

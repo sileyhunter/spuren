@@ -1,5 +1,11 @@
 # Änderungen
 
+## V8.4.1 Teil 3 · 18.11.2026 · Nur Rad oder nur Laufen (sportart-1.0), wissen-1.32
+- **Sportart wählbar:** Planeinstellungen → Allgemein → Sportart: Triathlon (wie bisher), «Nur Rad» oder «Nur Laufen». Gilt ab der nächsten Woche.
+- Mit nur einer Sportart: Wochenstunden aus deinem Training in dieser Sportart, eigene Wochenvorlage (Mo frei, Di Schlüssel, Do zweite Schlüsseleinheit ab 6 h Rad bzw. 4,5 h Laufen,
+  lange Einheit am Samstag bzw. Sonntag, sonst locker), Tests nur für diese Sportart, kein Schwimmkurs; die Planeinstellungen zeigen nur ihre Seiten.
+- Rennen: Marathon und Halbmarathon haben ihre Streckenlänge.
+
 ## V8.4.1 Teil 2 · 18.11.2026 · Lauf-ABC statt Mobility (lauf-abc-1.0), wissen-1.31
 - **Lauf-ABC in jedem harten Lauf:** nach 10 min Einlaufen die Lauf-ABC aus deinen Enduco-Einheiten – vor VO2max-Läufen die Koordination (Hohe Knie, A-Skip, Anfersen …),
   vor Tempo- und Schwellenläufen die Beweglichkeit. Auf der Einheit-Seite als eigener Schritt mit allen Übungen, auf der Uhr als Einlauf-Schritt mit den Übungen im Text.

@@ -414,7 +414,8 @@ def v5_merge(D, N):
 
 PE_HILFSMITTEL = ("brett", "pullbuoy", "flossen", "paddles")
 PE_STILE = ("ruecken", "brust")                        # Kraul immer dabei, Delfin plant die Seite nicht
-PE_START_IDS = ("pe-start", "pe-basis-schwimm", "pe-basis-rad", "pe-basis-lauf", "pe-kraft", "pe-lang")   # V7.6: gelten ab der Woche nach dem Speichern (vorher); V7.6.1 pe-lang
+PE_START_IDS = ("pe-start", "pe-basis-schwimm", "pe-basis-rad", "pe-basis-lauf", "pe-kraft", "pe-lang", "pe-sportart")   # V7.6: gelten ab der Woche nach dem Speichern (vorher); V7.6.1 pe-lang; V8.4.1 pe-sportart
+PE_SPORTARTEN = ("triathlon", "rad", "lauf")            # V8.4.1 sportart-1.0 (wie V75.SPORTARTEN)
 
 
 def _pe_datum(s):
@@ -449,7 +450,7 @@ def planeinstellung_pruefen(e):
     v = e.get("vorher")
     if v is not None:
         if e.get("id") not in PE_START_IDS:
-            return "vorherige Fassung nur bei Start, Basis-Fitness, Krafttraining und langen Einheiten"
+            return "vorherige Fassung nur bei Start, Basis-Fitness, Krafttraining, langen Einheiten und Sportart"
         if not isinstance(v, dict) or v.get("vorher") is not None or not isinstance(v.get("geaendert"), str) or not zeit_ok(v.get("geaendert")):
             return "vorherige Fassung ungültig"
         f = planeinstellung_pruefen({**v, "id": e.get("id")})
@@ -501,6 +502,8 @@ def planeinstellung_pruefen(e):
         if n is not None and not (isinstance(n, str) and len(n) <= 500):
             return "Notiz höchstens 500 Zeichen"
         return None
+    if i == "pe-sportart":                               # V8.4.1 sportart-1.0
+        return None if e.get("art") in PE_SPORTARTEN else "Sportart: Triathlon, Rad oder Laufen"
     if i == "pe-start":
         return None if e.get("art") in ("fitness", "aufteilung") else "Start: Basis-Fitness oder Aufteilung"
     if i == "pe-lang":                                   # verfuegbarkeit-1.1: bevorzugte Tage für lange Einheiten

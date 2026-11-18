@@ -343,3 +343,24 @@ test("kurs-1.0: nach dem letzten Kurstag lockeres Schwimmen statt Kurs; an Kurst
   const w = V64.woche({ woche: "2026-11-30", stunden: 9, kurs_bis: "2026-12-15" }), r = V66.wocheVerteilt(w, k, {});
   assert.ok(r.tage[1].einheiten.every((e) => e.sport === "schwimm"), r.tage[1].einheiten.map((e) => e.id).join(","));
 });
+
+test("sportart-1.0 (V8.4.1): Triathlon, nur Rad oder nur Laufen – Prüfung, ab der nächsten Woche, Aufteilung und Basis nur der Sportart", () => {
+  assert.deepEqual(V75.SPORTARTEN, ["triathlon", "rad", "lauf"]);
+  assert.equal(V75.pruefen({ id: "pe-sportart", art: "rad" }), null); assert.ok(V75.pruefen({ id: "pe-sportart", art: "duathlon" }));
+  assert.equal(V75.standard().sportart, "triathlon");
+  assert.ok(V75.START_IDS.includes("pe-sportart"), "gilt ab der nächsten Woche");
+  const x = V75.eintrag("pe-sportart", { art: "lauf" }, "2026-11-18T22:00:00Z", { id: "pe-sportart", art: "triathlon", geaendert: "2026-11-01T08:00:00Z" });
+  assert.equal(x.vorher.art, "triathlon"); assert.equal(V75.pruefen(x), null);
+  const E1 = V75.einstellungen([x], [], { startBis: "2026-11-16", montag: "2026-11-16" }), E2 = V75.einstellungen([x], [], { startBis: "2026-11-23", montag: "2026-11-23" });
+  assert.equal(E1.sportart, "triathlon", "laufende Woche bleibt"); assert.equal(E2.sportart, "lauf", "ab der nächsten Woche");
+  assert.deepEqual(V75.aufteilungFuer("rad"), { schwimm: 0, rad: 1, lauf: 0 }); assert.deepEqual(V75.aufteilungFuer("lauf"), { schwimm: 0, rad: 0, lauf: 1 });
+  assert.deepEqual(V75.sportenVon("lauf"), ["lauf"]); assert.deepEqual(V75.sportenVon("triathlon"), ["schwimm", "rad", "lauf"]);
+  const D = { schwimm: { fitness: 10, tl_h: 40 }, rad: { fitness: 40, tl_h: 50 }, lauf: { fitness: 30, tl_h: 60 }, stand: "2026-11-23" };
+  const b = V75.basis({ jetzt: 8 }, Object.assign(V75.standard(), { start: "fitness" }), V75.aufteilungFuer("lauf"), D);
+  assert.equal(b.schwimm.h, 0); assert.equal(b.rad.h, 0); assert.ok(b.lauf.h > 0); assert.equal(b.summe, Math.round(b.lauf.h * 100) / 100);
+  // «jetzt» und Spitze nur aus den Stunden der Sportart (AN.saisonVorgaben)
+  const acts = []; for (let i = 0; i < 60; i++) { const d = new Date(Date.UTC(2026, 8, 1 + i)).toISOString().slice(0, 10); acts.push({ date: d, sport: "rad", dur: 3600 }); if (i % 2) acts.push({ date: d, sport: "lauf", dur: 1800 }); }
+  const alle = AN.saisonVorgaben(acts, "2026-11-02", {}), lauf = AN.saisonVorgaben(acts, "2026-11-02", {}, ["lauf"]);
+  assert.ok(lauf.spitze < alle.spitze && lauf.top4 < alle.top4, `${lauf.spitze} gegen ${alle.spitze}`);
+});
+

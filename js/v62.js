@@ -82,6 +82,8 @@
     const fest = (ctx.fest || []).filter((f) => f && f.date && f.kind);
     const festSport = (f) => V62.testSporten(f);
     const vorschlaege = [], konflikte = [];
+    // V8.4.1 sportart-1.0: nur Tests der Sportarten des Plans (ctx.sportarten; Standard alle drei) – nur Rad ohne Lauf- und CSS-Test, nur Laufen ohne Rad-Tests
+    const SP = Array.isArray(ctx.sportarten) && ctx.sportarten.length ? ctx.sportarten : ["schwimm", "rad", "lauf"];
 
     /* ----- Stufentests Rad und Lauf: Samstag einer Erholungswoche ----- */
     const erh = wochen.filter((w) => w.erholung).map((w) => add(w.woche, 5)).filter((d) => d >= add(heute, R.stufen.frueh_t) && d <= bis);
@@ -90,7 +92,7 @@
     // Audit V6.4 B5: eingetragene Stufentests der anderen Sportart sperren ihre Woche (nie Rad und Laufen in derselben Woche)
     const festWochen = (sp) => new Set(fest.filter((f) => f.kind === "stufentest" && festSport(f).includes(sp)).map((f) => montagVon(f.date)));
     const andereWoche = { rad: festWochen("lauf"), lauf: festWochen("rad") };
-    for (const sport of ["rad", "lauf"]) {
+    for (const sport of ["rad", "lauf"].filter((x) => SP.includes(x))) {
       const done = ((ctx.erledigt || {})[sport] || []).filter((x) => x && x.date && x.date <= heute).sort((a, b) => a.date.localeCompare(b.date));
       const fix = fest.filter((f) => f.kind === "stufentest" && festSport(f).includes(sport) && f.date >= heute).map((f) => f.date).sort();
       let ref = done.length ? done[done.length - 1] : null, nichtAus = !!(ref && ref.ausbelastet === false && sport === "rad");
@@ -111,6 +113,7 @@
       }
     }
 
+    if (SP.includes("schwimm")) {
     /* ----- CSS-Test: alle 6–8 Wochen am selben Wochentag ----- */
     const okCss = (d) => d >= heute && !sperre(d, ctx.sperren) && !rennenNah(d, ctx.rennen, R.css.vor_rennen_t, R.css.nach_rennen_t);
     const cssDone = ((ctx.erledigt || {}).css || []).filter((d) => d && d <= heute).sort();
@@ -146,6 +149,8 @@
       if (a) ref = a;
     }
 
+    }
+    if (SP.includes("rad")) {
     /* ----- Kurzcheck: alle 2 Wochen in einer Grundlagenfahrt, rollend 8 Wochen ----- */
     const stufenTage = [...vorschlaege.filter((v) => v.kind === "stufentest").map((v) => v.date), ...fest.filter((f) => f.kind === "stufentest").map((f) => f.date)];
     const checkFix = fest.filter((f) => f.kind === "check" && f.date >= heute).map((f) => f.date);
@@ -171,6 +176,7 @@
       due = add(d, R.check.abstand_t);
     }
     vorschlaege.sort((a, b) => a.date.localeCompare(b.date) || a.kind.localeCompare(b.kind));
+    }
     return { vorschlaege, konflikte, regel: V62.VERSIONS.testplan };
   };
   V62.NAME = NAME;

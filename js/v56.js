@@ -123,7 +123,8 @@
     PH_COL = Object.fromEntries(Object.entries(PH_VAR).map(([k, v]) => [k, C.css(v) || PH_COL_HELL[k]]));   // V6.4.4 (Audit D18): auch hell die Phasenfarben des Plans
     const F_VOR = dunkel ? C.css("--surface-2") : "#d7e6f2", F_ERH = dunkel ? C.css("--sheet") : "#e9eef2", F_IST = dunkel ? C.css("--good") : "#148a7e", F_LIN = dunkel ? "rgba(255,255,255,.08)" : "rgba(31,51,71,.1)";
     const lokal = V.saisonLokal(C);
-    const { jetzt, spitze, h8, h52, top4, ist8 } = AN.saisonVorgaben(C.D.activities, heute, lokal);   // V6.4: Regel in js/analyse.js (auch für die Woche nach Modell)
+    const SA56 = window.V75 && window.V75UI && window.V75UI.einstellungen ? (window.V75UI.einstellungen() || {}).sportart : null;   // V8.4.1 sportart-1.0
+    const { jetzt, spitze, h8, h52, top4, ist8 } = AN.saisonVorgaben(C.D.activities, heute, lokal, SA56 ? window.V75.sportenVon(SA56) : null);   // V6.4: Regel in js/analyse.js (auch für die Woche nach Modell)
     // V7.5 Planeinstellungen (js/v75.js): Start je Sportart (basis-1.1, Variante A, oder «jetzt» × 20/50/30) und Steigerung (steigerung-1.0) – dieselbe
     // Rechnung wie die Woche nach Modell: die laufende Woche, wie sie gilt, ab der nächsten Woche mit den Einstellungen von jetzt (V75UI.plan)
     const P75 = window.V75, PL = window.V75UI && window.V75UI.plan ? window.V75UI.plan() : null;
@@ -151,7 +152,7 @@
     const naechste = W.filter((x) => x.woche >= F.addDays(heute, -6)).slice(0, 4);
     const eigen = (() => { const r = { rad: 0, lauf: 0, schwimm: 0 }; for (const v of ist8.values()) { r.rad += v.rad; r.lauf += v.lauf; r.schwimm += v.schwimm; } const s = r.rad + r.lauf + r.schwimm || 1; return { rad: r.rad / s, lauf: r.lauf / s, schwimm: r.schwimm / s }; })();
     // V6.4.4 (D5): Aufteilung wie die Woche nach Modell (aufteilung-1.0), dein Verhältnis der letzten 8 Wochen nur zum Vergleich
-    const AUF = window.V64 && window.V64.AUFTEILUNG, ant = AUF ? { rad: AUF.rad, lauf: AUF.lauf, schwimm: AUF.schwimm } : eigen;
+    const AUF = SA56 ? window.V75.aufteilungFuer(SA56) : window.V64 && window.V64.AUFTEILUNG, ant = AUF ? { rad: AUF.rad, lauf: AUF.lauf, schwimm: AUF.schwimm } : eigen;
     el.innerHTML = `<div class="v56-legend">${Object.entries(PH_COL).map(([k, c]) => `<span><i style="background:${c}"></i>${k}</span>`).join("")}<span><i class="dot" style="background:${F_IST}"></i>absolviert</span><span><i style="background:${F_VOR}"></i>Vorschlag</span></div>
       <div class="v56-svgwrap">${svg}</div>
       <p class="hint">Deine Referenzen (Schwimmen, Rad, Laufen): letzte 8 Wochen Median ${h8.length ? C.fmt(median(h8), 1) : "–"} h; grösste Woche der letzten 52 Wochen ${h52.length ? C.fmt(h52[0], 1) : "–"} h; Ø der 4 grössten ${top4 ? C.fmt(top4, 1) : "–"} h.</p>

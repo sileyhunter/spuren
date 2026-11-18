@@ -23,7 +23,7 @@
   if (root) root.V64 = V64;
 })(typeof window !== "undefined" ? window : null, function (V62) {
   "use strict";
-  const V64 = { VERSIONS: { modell: "modell-1.0", woche: "wochenplan-1.2", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.1", aufbau: "aufbau-1.2", vergleich: "vergleich-1.4", abwechslung: "abwechslung-1.0", abc: "lauf-abc-1.0" } };
+  const V64 = { VERSIONS: { modell: "modell-1.0", woche: "wochenplan-1.2", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.1", aufbau: "aufbau-1.2", vergleich: "vergleich-1.4", abwechslung: "abwechslung-1.0", abc: "lauf-abc-1.0", sportart: "sportart-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const T = (iso) => Date.parse(iso + "T12:00:00Z");
   const add = (iso, n) => new Date(T(iso) + n * 864e5).toISOString().slice(0, 10);
@@ -297,6 +297,16 @@
     return null;
   };
 
+  /* ---------------- Nur Rad oder nur Laufen (sportart-1.0, V8.4.1) ----------------
+     Zweite Schlüsseleinheit der Woche je Modell (eigene Festlegung): polarisiert eine zweite VO2max-Form (zwei harte Einheiten wie in polarisierten
+     Programmen üblich), pyramidal Tempo; Schwelle mit Laktat Rad Schwelle, Laufen Tempo; rennspezifisch VO2max als Gegenstück zum Renntempo. */
+  V64.SCHLUESSEL2 = { polarisiert: { rad: "rad_vo2", lauf: "lauf_vo2" }, pyramidal: { rad: "rad_tempo", lauf: "lauf_tempo" },
+    schwelle: { rad: "rad_schwelle", lauf: "lauf_tempo" }, rennspezifisch: { rad: "rad_vo2", lauf: "lauf_vo2" } };
+  /** Wie viele Einheiten je Woche (eigene Festlegung): Rad 3 bis 6 Ausfahrten, Laufen 3 bis 6 Läufe; ab 6 h Rad bzw. 4,5 h Laufen eine zweite Schlüsseleinheit. */
+  // lang_f: die lange Einheit bekommt lang_f-mal den Anteil einer lockeren an der Zeit ohne Schlüsseleinheiten (höchstens V64.LANG der Phase); lockere höchstens so lang wie die lange
+  V64.EINZEL = { rad: { n: (H) => (H < 4 ? 3 : H < 7 ? 4 : H < 10 ? 5 : 6), zweiter_h: 6, lang_f: 1.6, lang_min: 60, locker: [45, 150], tage: ["Mi", "So", "Fr", "Do"], lang_tag: "Sa" },
+    lauf: { n: (H) => (H < 3.5 ? 3 : H < 5 ? 4 : H < 7 ? 5 : 6), zweiter_h: 4.5, lang_f: 1.4, lang_min: 40, locker: [30, 75], tage: ["Mi", "Sa", "Fr", "Do"], lang_tag: "So" } };
+
   /* ---------------- Lauf-ABC (lauf-abc-1.0, V8.4.1) ----------------
      Silas' Wunsch vom 18.11.2026: die Lauf-ABC aus Enduco auch bei den harten Läufen. Namen, Sätze und Zeiten wie in seinen Enduco-Einheiten
      (Bildschirmfotos, nie im Repository), die Ausführung in eigenen Worten. Vor VO2max-Läufen die Koordination (schnelle, dynamische Übungen),
@@ -475,6 +485,42 @@
       return m;
     };
 
+    // sportart-1.0 (V8.4.1): nur Rad oder nur Laufen – eigene Wochenvorlage; sonst Triathlon (wochenplan-1.2)
+    const SA = c.sportart === "rad" || c.sportart === "lauf" ? c.sportart : null, SPs = SA ? [SA] : ["schwimm", "rad", "lauf"];
+    let gemeldet = 0;
+    if (SA) {
+      const EZ = V64.EINZEL[SA], total = H * 60, lockerId = SA + "_locker", n = EZ.n(H);
+      const K1 = SA === "lauf" && erh ? V64.einheit(lockerId, o(Math.min(45, Math.max(30, r5(0.15 * total))))) : gewaehlt(SA, M.schluessel[SA], null);
+      let zweiter = null;
+      if (!erh && H >= EZ.zweiter_h) {
+        let id = (V64.SCHLUESSEL2[modell] || V64.SCHLUESSEL2.polarisiert)[SA];
+        const f1 = V64.familieVon(K1.id), f2 = V64.familieVon(id);
+        if (f1 && f1 === f2) { const F = V64.FAMILIEN[f1]; id = F[(F.indexOf(K1.id) + 1) % F.length]; }       // andere Form desselben Reizes als am Dienstag
+        const neu = V64.kappen(id, I[SA]);
+        zweiter = V64.einheit(neu, o(B[neu].art === "locker" ? 45 : null));
+        if (neu !== id) { const alt = V64.einheit(id, o(null)); zweiter.gekappt = alt.titel; gekappt.push({ sport: SA, alt: alt.titel, neu: zweiter.titel, stufe: I[SA] }); }
+      }
+      const langId = M.renntempo && !erh ? SA + "_lang_rt" : SA + "_lang";
+      const nL = Math.max(0, n - 2 - (zweiter ? 1 : 0)), lt = EZ.tage.filter((t) => !(t === "Do" && zweiter)).slice(0, nL);
+      const pool = total - K1.dauer - (zweiter ? zweiter.dauer : 0), roh = Math.min(LANG[SA], Math.max(EZ.lang_min, (pool * EZ.lang_f) / (nL + 1)));
+      let langD = SA === "rad" ? r15(roh) : r5(roh);
+      if (nL && pool - langD < nL * EZ.locker[0]) langD = Math.max(EZ.lang_min, (SA === "rad" ? r15 : r5)(pool - nL * EZ.locker[0]));   // wenig Zeit: die lockeren nicht unter ihr Minimum
+      if (SA === "lauf") langD = laufMax(add(woche, 6), langId, langD);
+      const rest = total - K1.dauer - (zweiter ? zweiter.dauer : 0) - langD, je = lt.length ? rest / lt.length : 0;
+      tag("Mo").ruhetag = true;
+      tag("Di").einheiten.push(K1);
+      if (zweiter) tag("Do").einheiten.push(zweiter);
+      tag(EZ.lang_tag).einheiten.push(V64.einheit(SA === "lauf" && pauseVor(add(woche, 6)) ? lockerId : langId, o(langD)));
+      let verteilt = 0;
+      for (const t of lt) {
+        let d = clamp(r5(je), EZ.locker[0], Math.max(EZ.locker[0], Math.min(EZ.locker[1], langD)));
+        if (SA === "lauf") d = laufMax(add(woche, TAG.indexOf(t)), lockerId, d);
+        tag(t).einheiten.push(V64.einheit(lockerId, o(d))); verteilt += d;
+      }
+      const uebrig = rest - verteilt;
+      if (uebrig >= 15) { gemeldet += r5(uebrig); wenig(`${SA === "rad" ? "Rad" : "Laufen"}: ${r5(uebrig)} min nicht verteilt (lockere Einheiten höchstens ${EZ.locker[1]} min, längste Einheit in dieser Phase höchstens ${LANG[SA]} min${aufbauGekappt ? "; Aufbau-Grenze" : ""})`); }
+      if (erh) hinweise.push(SA === "rad" ? "Erholungswoche: eine Schlüsseleinheit (gekürzt), sonst locker" : "Erholungswoche: alle Läufe locker");
+    } else {
     // Rad: Schlüssel (Do), lang (Sa), locker (Mi bei 3 Einheiten)
     const radK = gewaehlt("rad", M.schluessel.rad, null);
     let radL = N.rad === 3 ? clamp(r5(0.25 * min.rad), 45, 90) : 0;
@@ -483,7 +529,6 @@
     radLang = r15(Math.min(radLang, LANG.rad));
     let rest = min.rad - radK.dauer - radL - radLang;
     if (rest >= 15 && radL) { const plus = Math.min(rest, 120 - radL); radL = r5(radL + plus); rest -= plus; }
-    let gemeldet = 0;
     if (rest >= 15) { gemeldet += r5(rest); wenig(`Rad: ${r5(rest)} min nicht verteilt (längste Ausfahrt in dieser Phase höchstens ${LANG.rad} min)`); }
     // Laufen: Schlüssel (Di; Erholungswoche: locker), lang (So), locker (Fr), Koppel (Sa, rennspezifisch, nicht in Erholungswochen)
     const laufK = erh ? V64.einheit("lauf_locker", o(Math.min(45, Math.max(30, r5(0.3 * min.lauf))))) : gewaehlt("lauf", M.schluessel.lauf, null);
@@ -515,6 +560,7 @@
     tag("So").einheiten.push(V64.einheit(pauseVor(add(woche, 6)) ? "lauf_locker" : langId, o(laufLang)));
     if (N.schwimm >= 3) tag("So").einheiten.push(V64.einheit("schwimm_locker", o(sw)));
     if (erh) hinweise.push("Erholungswoche: nur eine Schlüsseleinheit (Rad, gekürzt); Laufen und Schwimmen locker");
+    }
     const SPW = { schwimm: "Schwimmen", rad: "Rad", lauf: "Laufen" };
     for (const g of gekappt) hinweise.push(`${SPW[g.sport]}: «${g.neu}» statt «${g.alt}» (Intensität je Sportart: ${V64.STUFE_TEXT[g.stufe]})`);
     if (gekappt.some((g) => g.sport !== "schwimm")) hinweise.push("Was du begrenzt, wird nicht auf eine andere Sportart verschoben.");
@@ -538,6 +584,7 @@
     for (const t of tests) {
       const tg = tage.find((x) => x.date === t.date); if (!tg || tg.rennen) continue;
       if (t.kind === "check") {
+        if (!SPs.includes("rad")) continue;                                     // sportart-1.0: Kurzcheck auf dem Rad
         const nah = tage.filter((x) => Math.abs((T(x.date) - T(t.date)) / 864e5) <= 2).sort((a, b) => Math.abs(T(a.date) - T(t.date)) - Math.abs(T(b.date) - T(t.date)));
         const e = nah.map((x) => x.einheiten.find((y) => y.sport === "rad" && !y.schluessel && y.art !== "test" && y.art !== "aktivierung")).find(Boolean);
         if (e) { e.check = t.date; e.ablauf = e.ablauf.concat(["Laktat-Kurzcheck: 10 min gleichmässig bei deiner Check-Leistung, Laktat am Ende des Blocks"]); }
@@ -545,8 +592,9 @@
         continue;
       }
       // B6: Sportart auch ohne Feld sport (V62.testSporten); ein gemeinsamer Rad- und Lauf-Stufentest setzt beide Tests ein
-      const sporten = t.kind === "css" ? ["schwimm"] : V62 ? V62.testSporten(t).filter((x) => x === "rad" || x === "lauf") : [t.sport === "lauf" ? "lauf" : "rad"];
-      for (const sport of sporten.length ? sporten : ["rad"]) {
+      const sporten0 = t.kind === "css" ? ["schwimm"] : V62 ? V62.testSporten(t).filter((x) => x === "rad" || x === "lauf") : [t.sport === "lauf" ? "lauf" : "rad"];
+      const sporten = (sporten0.length ? sporten0 : ["rad"]).filter((x) => SPs.includes(x));    // sportart-1.0: nur Tests der Sportarten des Plans
+      for (const sport of sporten) {
         const neu = V64.einheit(t.kind === "css" ? "test_css" : sport === "lauf" ? "test_lauf" : "test_rad", o(null));
         neu.test = t.kind; neu.testStatus = t.status || null; if (t.erledigt) neu.erledigt = true;
         const i = tg.einheiten.findIndex((e) => e.sport === sport);
@@ -579,7 +627,8 @@
     const tid = V64.tid(z), pruefung = V64.pruefen(modell, tid, { erholung: erh, taper, rennwoche: !!R.length, gekappt: gekappt.length > 0 });
     return { v: V64.VERSIONS.woche, woche, modell, modellName: M.name, phase, erholung: erh, taper, stunden: H, tage, minuten, zonen: z, tid, pruefung, hinweise,
       intensitaet: I, gekappt, aufteilung: { schwimm: A.schwimm, rad: A.rad, lauf: A.lauf },
-      regel: `${V64.VERSIONS.woche}: Mo frei · Di Laufen (Schlüssel) und Kurs · Mi Rad locker · Do Rad (Schlüssel) und Schwimmen · Fr Laufen locker · Sa lang Rad · So lang Laufen; ${c.aufteilung ? `Stunden je Sportart von deiner Basis zur Spitze (basis-1.1, steigerung-1.0, Planeinstellungen), diese Woche Schwimmen ${Math.round(A.schwimm * 100)} %, Rad ${Math.round(A.rad * 100)} %, Laufen ${Math.round(A.lauf * 100)} %; Ziel ` : ""}${V64.VERSIONS.aufteilung}: Schwimmen 20 %, Rad 50 %, Laufen 30 % (eigene Festlegung)` };
+      sportart: SA || "triathlon",
+      regel: SA ? `${V64.VERSIONS.sportart}: nur ${SA === "rad" ? "Rad" : "Laufen"} – Mo frei · Di Schlüssel · Do zweite Schlüsseleinheit ab ${String(V64.EINZEL[SA].zweiter_h).replace(".", ",")} h · ${V64.EINZEL[SA].lang_tag} lang · übrige Tage locker (${V64.EINZEL[SA].n(H)} Einheiten bei ${String(H).replace(".", ",")} h)` : `${V64.VERSIONS.woche}: Mo frei · Di Laufen (Schlüssel) und Kurs · Mi Rad locker · Do Rad (Schlüssel) und Schwimmen · Fr Laufen locker · Sa lang Rad · So lang Laufen; ${c.aufteilung ? `Stunden je Sportart von deiner Basis zur Spitze (basis-1.1, steigerung-1.0, Planeinstellungen), diese Woche Schwimmen ${Math.round(A.schwimm * 100)} %, Rad ${Math.round(A.rad * 100)} %, Laufen ${Math.round(A.lauf * 100)} %; Ziel ` : ""}${V64.VERSIONS.aufteilung}: Schwimmen 20 %, Rad 50 %, Laufen 30 % (eigene Festlegung)` };
   };
 
   /* ---------------- Intensitätsverteilung (tid-1.0) ---------------- */

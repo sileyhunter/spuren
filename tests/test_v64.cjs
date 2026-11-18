@@ -244,7 +244,7 @@ test("Wissen: Regel-Liste verweist auf vorhandene Versionen und Kapitel", () => 
 
 test("Wissen 1.2/1.3: Kapitel «aufbau» und «vergleich» mit Quellen und Regeln", () => {
   const WS = require("../js/wissen.js");
-  assert.equal(WS.VERSION, "wissen-1.31");
+  assert.equal(WS.VERSION, "wissen-1.32");
   const k = WS.kapitel("aufbau");
   assert.ok(k, "Kapitel aufbau fehlt");
   const v = WS.verweise(k.text.join(" ") + " " + k.kurz);
@@ -621,3 +621,33 @@ test("lauf-abc-1.0 (V8.4.1): Lauf-ABC nach dem Einlaufen jedes harten Laufs, gle
   assert.ok(st, "Schritt Lauf-ABC"); assert.equal(st.stepType.stepTypeKey, "warmup"); assert.equal(st.targetType.workoutTargetTypeKey, "no.target"); assert.equal(st.endConditionValue, 450);
   assert.equal(g.ohneZiel, 0);
 });
+
+test("sportart-1.0 (V8.4.1): nur Rad bzw. nur Laufen – eigene Woche, zweite Schlüsseleinheit, lange Einheit, nur Tests dieser Sportart", () => {
+  assert.equal(V64.VERSIONS.sportart, "sportart-1.0");
+  const W = (sa, H, x) => V64.woche(Object.assign({ woche: "2026-11-30", phase: "Aufbau", stunden: H, modell: "polarisiert", sportart: sa, abwechslung: true }, x || {}));
+  for (const [sa, H] of [["rad", 3], ["rad", 5], ["rad", 8], ["rad", 12], ["lauf", 3], ["lauf", 4], ["lauf", 6], ["lauf", 8]]) {
+    const w = W(sa, H), alle = w.tage.flatMap((t) => t.einheiten);
+    assert.equal(w.sportart, sa); assert.ok(alle.every((e) => e.sport === sa), `${sa} ${H} h: nur ${sa}`);
+    assert.equal(w.tage[0].einheiten.length, 0, "Montag frei");
+    assert.ok(alle.length >= 3 && alle.length <= V64.EINZEL[sa].n(H), `${sa} ${H} h: ${alle.length} Einheiten`);
+    const k = alle.filter((e) => e.schluessel), lang = alle.find((e) => e.art === "lang");
+    assert.equal(k.length, H >= V64.EINZEL[sa].zweiter_h ? 2 : 1, `${sa} ${H} h: Schlüssel`);
+    if (k.length === 2) assert.notEqual(k[0].id, k[1].id, "zwei verschiedene Formen");
+    assert.ok(lang && w.tage.find((t) => t.einheiten.includes(lang)).wt === V64.EINZEL[sa].lang_tag, `${sa}: lange Einheit am ${V64.EINZEL[sa].lang_tag}`);
+    for (const e of alle) if (e.art === "locker") assert.ok(e.dauer <= lang.dauer, `${sa} ${H} h: locker ${e.dauer} > lang ${lang.dauer}`);
+    assert.ok(Math.abs(w.minuten.total - H * 60) <= 20 || w.hinweise.some((h) => /nicht verteilt/.test(h)), `${sa} ${H} h: ${w.minuten.total} min`);
+  }
+  // Erholungswoche Laufen: alle locker; Rad: eine Schlüsseleinheit
+  assert.ok(W("lauf", 5, { erholung: true }).tage.flatMap((t) => t.einheiten).every((e) => !e.schluessel));
+  assert.equal(W("rad", 8, { erholung: true }).tage.flatMap((t) => t.einheiten).filter((e) => e.schluessel).length, 1);
+  // Tests: nur die der Sportart (kein CSS, kein Kurzcheck beim Laufen, kein Lauf-Test beim Rad)
+  const tests = [{ date: "2026-12-01", kind: "css" }, { date: "2026-12-05", kind: "stufentest", sport: "lauf" }, { date: "2026-12-03", kind: "check" }];
+  const wl = W("lauf", 5, { tests }), wr = W("rad", 6, { tests });
+  assert.deepEqual(wl.tage.flatMap((t) => t.einheiten).filter((e) => e.art === "test").map((e) => e.id), ["test_lauf"]);
+  assert.ok(!wr.tage.flatMap((t) => t.einheiten).some((e) => e.art === "test"), "Rad: kein CSS- und kein Lauf-Test");
+  assert.ok(wr.tage.flatMap((t) => t.einheiten).some((e) => e.check === "2026-12-03"), "Kurzcheck in einer lockeren Ausfahrt");
+  // ohne Wahl wie bisher Triathlon
+  const tri = V64.woche({ woche: "2026-11-30", phase: "Aufbau", stunden: 10, modell: "polarisiert" });
+  assert.equal(tri.sportart, "triathlon"); assert.ok(["schwimm", "rad", "lauf"].every((s) => tri.tage.some((t) => t.einheiten.some((e) => e.sport === s))));
+});
+

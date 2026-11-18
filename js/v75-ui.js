@@ -72,7 +72,7 @@
     const mo = V64().montag(heute()), ab = V64().addDays(mo, 7), E = M.einstellungen({ startBis: ab, montag: ab });
     if (sel) { if (sel.start) E.start = sel.start; if (isNum(sel.steigerung)) E.steigerung = sel.steigerung; if (sel.basis) Object.assign(E.basis, sel.basis); }
     const D = M.basisDaten(mo);
-    return { E, ab, mo, D, ba: K && K.vg ? V75().basis(K.vg, E, V64().AUFTEILUNG, D) : null };
+    return { E, ab, mo, D, ba: K && K.vg ? V75().basis(K.vg, E, V75().aufteilungFuer(E.sportart), D) : null };   // V8.4.1 sportart-1.0
   }
   /** Plan bis zum Hauptrennen, wie er gilt: die laufende Woche mit ihrem Start, ab der nächsten Woche mit den Einstellungen von jetzt (Start, eigene
    *  Basis-Fitness, Steigerung); sel wie bei basisAb. → { R (laufende Woche + neue Rampe), Rneu (nur neue Rampe), lo, hi, S, spitze, jetzt, ba0, ba, E, ab } */
@@ -80,7 +80,7 @@
     if (!bereit()) return null;
     const K = kontext(); if (!K || !K.S || !K.vg || !K.basis75) return null;
     const { E, ab, ba } = basisAb(K, sel); if (!ba) return null;
-    const A = V64().AUFTEILUNG, R1 = (x) => V75().rampe(K.S.wochen, ba, K.vg.spitze, x, A);
+    const A = V75().aufteilungFuer(E.sportart), R1 = (x) => V75().rampe(K.S.wochen, ba, K.vg.spitze, x, A);
     const R0 = K.rampe && K.rampe.length ? K.rampe[0] : null, mix = (R) => R.map((r, i) => (i === 0 && R0 ? R0 : r));
     const Rneu = R1(E.steigerung);
     return { R: mix(Rneu), Rneu, lo: mix(R1(V75().STEIGERUNG.min)), hi: mix(R1(V75().STEIGERUNG.max)), S: K.S, spitze: K.vg.spitze, jetzt: K.vg.jetzt,
@@ -148,7 +148,11 @@
   }
 
   /* ---------- Blatt-Folge: Laufen → Rad → Schwimmen → Krafttraining → Trainingsumfang ---------- */
-  const SEITEN = ["allgemein", "lauf", "rad", "schwimm", "kraft", "umfang"];
+  const SEITEN_ALLE = ["allgemein", "lauf", "rad", "schwimm", "kraft", "umfang"];
+  // V8.4.1 sportart-1.0: nur die Seiten der Sportarten im Plan (zuletzt gewählte Sportart, auch wenn sie erst ab der nächsten Woche gilt)
+  let SEITEN = SEITEN_ALLE.slice();
+  const seitenNeu = () => { const E = M.einstellungen ? M.einstellungen() : null, sp = V75().sportenVon(E && E.sportart);
+    SEITEN = SEITEN_ALLE.filter((x) => !["lauf", "rad", "schwimm"].includes(x) || sp.includes(x)); return SEITEN; };
   const TITEL = { allgemein: "Allgemein", lauf: "Laufen", rad: "Rad", schwimm: "Schwimmen", kraft: "Krafttraining", umfang: "Trainingsumfang" };
   let FLOW = { zurueck: null, entwurf: null, entwurfStart: null };
   const pfeil = () => ic("weiter", 18);
@@ -164,7 +168,8 @@
     opt = opt || {};
     if (!bereit() || (U66() && U66().entwurfSperre && U66().entwurfSperre())) return;   // V7.9: Planeinstellungen nicht im Bearbeiten-Modus
     FLOW = { zurueck: typeof opt.zurueck === "function" ? opt.zurueck : null, entwurf: null, entwurfStart: null };
-    const i = typeof opt.seite === "string" ? SEITEN.indexOf(opt.seite) : opt.seite;
+    seitenNeu();
+    const i = typeof opt.seite === "string" ? Math.max(0, SEITEN.indexOf(opt.seite)) : opt.seite;
     seite(isNum(i) && i >= 0 && i < SEITEN.length ? i : 0);
   };
   M.oeffnen = M.flow;
@@ -183,14 +188,16 @@
     return zeile(`data-pe="basis" data-sport="${s}"`, ring(s, fit), "Basis-Fitness", satz);
   }
   function seite(i, meldung) {
+    seitenNeu(); i = Math.min(i, SEITEN.length - 1);
     const s = SEITEN[i], E = M.einstellungen(), BA = basisAb(kontext());
     if (!E) return;
     let inhalt;
     if (s === "allgemein") {                                              // V7.6.1: wie «Allgemeine Planeinstellungen» bei enduco (Texte eigen)
       const vt = U66() && U66().verfuegbarkeitText ? U66().verfuegbarkeitText() : "";
       inhalt = `<div class="blatt-titel">${ic("regler", 34)}<h2 id="v59-ov-h" tabindex="-1">Allgemein</h2>
-          <p class="sub">Wann du trainieren kannst – für Schwimmen, Rad und Laufen.</p></div>${meldungHTML(meldung)}
+          <p class="sub">Wofür du trainierst und wann du trainieren kannst.</p></div>${meldungHTML(meldung)}
         <ul class="v6-aktionen pe-liste">
+          ${zeile(`data-pe="sportart"`, ic("flagge", 22), "Sportart", sportartText(E))}
           ${zeile(`data-pe="verf"`, ic("kalender", 22), "Trainingsverfügbarkeit", vt || "Höchstens so viel Zeit je Wochentag")}
           ${zeile(`data-pe="lang"`, ic("uhr", 22), "Tage für lange Einheiten", langText(E.lang))}
           ${zeile(`data-pe="tests"`, ic("tacho", 22), "Leistungstests", "Testkalender – die Seite schlägt die Termine vor")}</ul>
@@ -229,8 +236,9 @@
     } else {
       const st = FLOW.entwurf != null ? FLOW.entwurf : E.steigerung, start = FLOW.entwurfStart || BA.E.start;
       inhalt = `<div class="blatt-titel">${ic("trend", 34)}<h2 id="v59-ov-h" tabindex="-1">Trainingsumfang</h2>
-          <p class="sub">Lege fest, womit dein Plan beginnt und wie schnell dein Umfang bis zur Spitzenwoche steigt – für Schwimmen, Rad und Laufen.</p></div>${meldungHTML(meldung)}
-        <div class="pe-start" role="radiogroup" aria-label="Start des Plans">${[["fitness", "Basis-Fitness", "je Sportart aus deinem Training"], ["aufteilung", "«jetzt» 20/50/30", "wie bisher"]].map(([k, t, u]) =>
+          <p class="sub">Lege fest, womit dein Plan beginnt und wie schnell dein Umfang bis zur Spitzenwoche steigt – ${E.sportart === "rad" ? "nur Rad" : E.sportart === "lauf" ? "nur Laufen" : "für Schwimmen, Rad und Laufen"}.</p></div>${meldungHTML(meldung)}
+        <div class="pe-start" role="radiogroup" aria-label="Start des Plans">${[["fitness", "Basis-Fitness", E.sportart === "triathlon" ? "je Sportart aus deinem Training" : "aus deinem Training"],
+          ["aufteilung", E.sportart === "triathlon" ? "«jetzt» 20/50/30" : "«jetzt»", E.sportart === "triathlon" ? "wie bisher" : "Median deiner 8 Wochen"]].map(([k, t, u]) =>
           `<button type="button" role="radio" aria-checked="${k === start}" data-pes="${k}"><b>${t}</b><small>${u}</small></button>`).join("")}</div>
         <div class="pe-legende"><span><i class="l"></i>Trainingsumfang</span><span><i class="b"></i>Bereich 50–150 %</span></div>
         <div class="pe-kurve" data-pek></div>
@@ -305,7 +313,8 @@
     if (art === "verf") { if (U66() && U66().verfuegbarkeitWoche) U66().verfuegbarkeitWoche(() => seite(i)); return; }   // V7.6.1 verfuegbarkeit-1.1
     if (art === "tests") { V59().schliessen(); if (window.APP && window.APP.showTab) window.APP.showTab("plan-tests"); else location.hash = "#plan-tests"; return; }
     const ov = art === "basis" ? basisBlatt(sport, i) : art === "indoor" ? indoorBlatt(sport, i) : art === "equipment" ? equipmentBlatt(i) : art === "pool" ? poolBlatt(i) : art === "stile" ? stileBlatt(i)
-      : art === "kraft" ? kraftBlatt(i) : art === "kraftwoche" ? kraftWocheBlatt(sport, i) : art === "lang" ? langBlatt(i) : art === "kurs" ? kursBlatt(i) : null;
+      : art === "kraft" ? kraftBlatt(i) : art === "kraftwoche" ? kraftWocheBlatt(sport, i) : art === "lang" ? langBlatt(i) : art === "kurs" ? kursBlatt(i)
+      : art === "sportart" ? sportartBlatt(i) : null;
     if (!ov) return;
     ov.querySelectorAll("[data-pe-z]").forEach((b) => (b.onclick = () => seite(i)));
   }
@@ -560,6 +569,35 @@
       const neu = { rad: W.rad.slice().sort(), lauf: W.lauf.slice().sort() };
       if (JSON.stringify(neu) === JSON.stringify({ rad: (E.lang.rad || []).slice().sort(), lauf: (E.lang.lauf || []).slice().sort() })) { if (zur) zur(); else seite(i); return; }
       speichernUnd(ov, i, "pe-lang", neu, `Tage für lange Einheiten: ${langText(neu)} – gilt ab der Woche vom ${ab}.`, zur);
+    };
+    return ov;
+  }
+  /** V8.4.1 sportart-1.0: Triathlon, nur Rad oder nur Laufen. */
+  function sportartText(E) {
+    const a = E && E.sportart ? E.sportart : "triathlon", B = { triathlon: "Triathlon – Schwimmen, Rad und Laufen", rad: "Nur Rad – Radrennen und das Training dafür", lauf: "Nur Laufen – Laufrennen und das Training dafür" };
+    const jetzt = M.einstellungen({ startBis: V64().addDays(V64().montag(heute()), 1), montag: V64().montag(heute()) });
+    return B[a] + (jetzt && jetzt.sportart !== a ? ` – ab der Woche vom ${tagLang(V64().addDays(V64().montag(heute()), 7))}` : "");
+  }
+  function sportartBlatt(i, zur) {
+    const E = M.einstellungen(), ab = tagLang(V64().addDays(V64().montag(heute()), 7));
+    let wahl = E.sportart || "triathlon";
+    const OPT = [["triathlon", "Triathlon", "Schwimmen, Rad und Laufen wie bisher (Aufteilung 20/50/30 an der Spitze)"],
+      ["rad", "Nur Rad", "für Radrennen: zwei Schlüsseleinheiten ab 6 h, lange Ausfahrt am Samstag, sonst locker"],
+      ["lauf", "Nur Laufen", "für Laufrennen: zweite Schlüsseleinheit ab 4,5 h, langer Lauf am Sonntag, Aufbau-Check wie bisher"]];
+    const ov = V59().blatt("pe", `<div class="blatt-titel">${ic("flagge", 34)}<h2 id="v59-ov-h" tabindex="-1">Sportart</h2>
+        <p class="sub">Wofür der Plan gedacht ist.</p></div>
+      <div class="pe-start pe-modus" role="radiogroup" aria-label="Sportart">${OPT.map(([k, t, u]) =>
+        `<button type="button" role="radio" aria-checked="${k === wahl}" data-pesa="${k}"><b>${t}</b><small>${u}</small></button>`).join("")}</div>
+      <p class="pe-info">${ic("info", 16)}<span>Mit «Nur Rad» bzw. «Nur Laufen» plant die Seite nur diese Sportart: die Wochenstunden kommen aus deinem Training in dieser Sportart,
+        Tests nur für sie (ohne CSS-Test), der Schwimmkurs fällt weg. Deine Daten bleiben alle erhalten; zurück auf Triathlon geht jederzeit.</span></p>
+      <p class="hint">${esc(V64().VERSIONS.sportart)}: gilt ab der Woche vom ${ab}; die laufende Woche bleibt, wie sie ist (eigene Festlegungen, Wissen Kapitel «planeinstellungen»).</p>
+      <p class="warn-t" data-pef hidden></p>${fuss(okKnopf())}`);
+    ov.querySelectorAll("[data-pesa]").forEach((b) => (b.onclick = () => {
+      wahl = b.dataset.pesa; ov.querySelectorAll("[data-pesa]").forEach((x) => x.setAttribute("aria-checked", String(x.dataset.pesa === wahl)));
+    }));
+    ov.querySelector("[data-peok]").onclick = () => {
+      if (wahl === (E.sportart || "triathlon")) { if (zur) zur(); else seite(i); return; }
+      speichernUnd(ov, i, "pe-sportart", { art: wahl }, `Sportart: ${OPT.find((o) => o[0] === wahl)[1]} – gilt ab der Woche vom ${ab}.`, zur);
     };
     return ov;
   }

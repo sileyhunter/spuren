@@ -172,3 +172,14 @@ test("Testplan (Audit V6.4 B21): CSS-Vorschlag 6–8 Wochen nach dem letzten, au
   const weg = V62.testplan(ctx([{ von: "2026-12-26", bis: "2027-01-10", grund: "weg" }])).vorschlaege.filter((v) => v.kind === "css");
   assert.ok(tage("2026-11-14", weg[0].date) > 56 && /kein Termin frei/.test(weg[0].note), weg[0].date + " " + weg[0].note);
 });
+
+test("sportart-1.0 (V8.4.1): Testplan nur für die Sportarten des Plans", () => {
+  const S = AN.saison("2026-11-02", [{ name: "Testrennen", short: "T", date: "2027-06-06", prio: "A" }]);
+  const ctx = { heute: "2026-11-02", bis: "2027-06-06", wochen: S.wochen, rennen: [], fest: [], planned: [], sperren: [], erledigt: { css: ["2026-10-01"], rad: [], lauf: [], check: [] } };
+  const arten = (sp) => new Set(V62.testplan(Object.assign({}, ctx, sp ? { sportarten: sp } : {})).vorschlaege.map((v) => v.kind + (v.sport ? ":" + v.sport : "")));
+  const alle = arten(null), rad = arten(["rad"]), lauf = arten(["lauf"]);
+  assert.ok(alle.has("css:schwimm") && alle.has("stufentest:rad") && alle.has("stufentest:lauf") && alle.has("check:rad"), [...alle].join(","));
+  assert.ok(!rad.has("css:schwimm") && !rad.has("stufentest:lauf") && rad.has("stufentest:rad") && rad.has("check:rad"), [...rad].join(","));
+  assert.ok(!lauf.has("css:schwimm") && !lauf.has("stufentest:rad") && !lauf.has("check:rad") && lauf.has("stufentest:lauf"), [...lauf].join(","));
+});
+

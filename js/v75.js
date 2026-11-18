@@ -45,11 +45,18 @@
   V75.KRAFT_MODUS = ["auto", "fest"];                                    // kraft-plan-1.1: Tag automatisch (aus den möglichen Tagen) oder fest
   const tageOk = (L) => Array.isArray(L) && L.every((x) => Number.isInteger(x) && x >= 1 && x <= 7) && new Set(L).size === L.length;
   V75.IDS = { start: "pe-start", basis_schwimm: "pe-basis-schwimm", basis_rad: "pe-basis-rad", basis_lauf: "pe-basis-lauf", steigerung: "pe-steigerung",
-    indoor_rad: "pe-indoor-rad", indoor_lauf: "pe-indoor-lauf", schwimm: "pe-schwimm", kraft: "pe-kraft", lang: "pe-lang" };
+    indoor_rad: "pe-indoor-rad", indoor_lauf: "pe-indoor-lauf", schwimm: "pe-schwimm", kraft: "pe-kraft", lang: "pe-lang", sportart: "pe-sportart" };
+  /** V8.4.1 sportart-1.0 (Silas' Wunsch vom 18.11.2026): die Seite auch nur für Radrennen oder Laufrennen und das Training dafür. */
+  V75.SPORTARTEN = ["triathlon", "rad", "lauf"];
+  V75.SPORTART_NAME = { triathlon: "Triathlon", rad: "Rad", lauf: "Laufen" };
+  /** Sportarten des Plans je Wahl. */
+  V75.sportenVon = (art) => (art === "rad" ? ["rad"] : art === "lauf" ? ["lauf"] : ["schwimm", "rad", "lauf"]);
+  /** Aufteilung je Wahl: Triathlon wie aufteilung-1.0 (20/50/30), sonst alles für die eine Sportart. */
+  V75.aufteilungFuer = (art) => (art === "rad" ? { schwimm: 0, rad: 1, lauf: 0 } : art === "lauf" ? { schwimm: 0, rad: 0, lauf: 1 } : Object.assign({}, aufteilung()));
   // Gruppen, die den Aufbau des Plans ändern – sie gelten ab der Woche nach dem Speichern (opt.startBis), damit sich eine Woche nicht unter der Woche ändert.
   // V7.6: ein solcher Eintrag trägt die Fassung, die in der Woche des Speicherns noch gilt (vorher) – merge_daily behält je ID nur die neueste Fassung,
   // ohne vorher würde die laufende Woche nach dem nächsten Update auf den Standard fallen.
-  const START_IDS = ["pe-start", "pe-basis-schwimm", "pe-basis-rad", "pe-basis-lauf", "pe-kraft", "pe-lang"];   // V7.6.1: auch die Tage für lange Einheiten
+  const START_IDS = ["pe-start", "pe-basis-schwimm", "pe-basis-rad", "pe-basis-lauf", "pe-kraft", "pe-lang", "pe-sportart"];   // V7.6.1: auch die Tage für lange Einheiten; V8.4.1 Sportart
   V75.START_IDS = START_IDS;
   const KRAFT_WOCHE = /^pe-kraft-(\d{4}-\d{2}-\d{2})$/;                  // Ausnahme je Woche (Montag): auslassen oder verschieben
   const UHR = /^([01]\d|2[0-3]):[0-5][05]$/;
@@ -60,7 +67,7 @@
   V75.standard = () => ({ start: "fitness", basis: { schwimm: null, rad: null, lauf: null }, steigerung: V75.STEIGERUNG.standard, indoor: { rad: null, lauf: null },
     schwimm: { hilfsmittel: V75.HILFSMITTEL.slice(), pool: null, stile: ["ruecken"], anfaenger: false, kurs_bis: null, kurs_nur: false },   // V7.6.2 kurs-1.0
     kraft: { aktiv: false, modus: "auto", tage: [1, 2, 3, 4, 5, 6, 7], wt: null, uhrzeit: null, dauer: V75.KRAFT.dauer, notiz: null }, kraftWochen: {},
-    lang: { rad: [], lauf: [] }, stand: {} });
+    lang: { rad: [], lauf: [] }, sportart: "triathlon", stand: {} });
   const teilmenge = (x, erlaubt) => Array.isArray(x) && x.every((k) => erlaubt.includes(k)) && new Set(x).size === x.length;
   /** Prüft einen Eintrag → Fehlertext oder null (gleiche Regeln wie merge_daily.planeinstellung_pruefen). */
   V75.pruefen = function (e) {
@@ -68,7 +75,7 @@
     if (e.geaendert != null && (typeof e.geaendert !== "string" || isNaN(Date.parse(e.geaendert)))) return "Zeitpunkt der Änderung ungültig";
     if (e.vorher != null) {                                             // V7.6: Fassung, die in der Woche des Speicherns noch gilt (nur Gruppen ab nächster Woche)
       const v = e.vorher;
-      if (!START_IDS.includes(e.id)) return "vorherige Fassung nur bei Start, Basis-Fitness, Krafttraining und langen Einheiten";
+      if (!START_IDS.includes(e.id)) return "vorherige Fassung nur bei Start, Basis-Fitness, Krafttraining, langen Einheiten und Sportart";
       if (typeof v !== "object" || Array.isArray(v) || v.vorher != null || typeof v.geaendert !== "string" || isNaN(Date.parse(v.geaendert))) return "vorherige Fassung ungültig";
       const f = V75.pruefen(Object.assign({}, v, { id: e.id }));
       if (f) return "vorherige Fassung: " + f;
@@ -97,6 +104,8 @@
         return null;
       case "pe-start":
         return V75.START.includes(e.art) ? null : "Start: Basis-Fitness oder Aufteilung";
+      case "pe-sportart":                                                  // sportart-1.0
+        return V75.SPORTARTEN.includes(e.art) ? null : "Sportart: Triathlon, Rad oder Laufen";
       case "pe-lang":                                                      // verfuegbarkeit-1.1: bevorzugte Tage für lange Einheiten
         for (const k of ["rad", "lauf"]) if (e[k] != null && !tageOk(e[k])) return "Tage für lange Einheiten 1–7, jeder einmal";
         return null;
@@ -169,6 +178,7 @@
     }
     for (const [id, x] of M) {
       if (id === "pe-start") E.start = x.art;
+      else if (id === "pe-sportart") E.sportart = x.art;
       else if (id.startsWith("pe-basis-")) E.basis[id.slice(9)] = isNum(x.wert) ? x.wert : null;
       else if (id === "pe-steigerung") E.steigerung = x.wert;
       else if (id === "pe-indoor-rad" || id === "pe-indoor-lauf") E.indoor[id === "pe-indoor-rad" ? "rad" : "lauf"] = x.von && x.bis ? { von: x.von, bis: x.bis } : null;
@@ -196,7 +206,7 @@
       const d = D && D[s] ? D[s] : {}, ber = isNum(d.fitness) ? d.fitness : null, eigen = E.basis && isNum(E.basis[s]) ? E.basis[s] : null;
       const fit = eigen != null ? eigen : ber, tlh = isNum(d.tl_h) && d.tl_h > 0 ? d.tl_h : null;
       const mitFit = modus === "fitness" && fit != null && tlh != null;
-      const h = mitFit ? Math.min(V75.BASIS_MAX, (7 * fit) / tlh) : jetzt * A[s];
+      const h = !(A[s] > 0) ? 0 : mitFit ? Math.min(V75.BASIS_MAX, (7 * fit) / tlh) : jetzt * A[s];   // sportart-1.0: ohne Anteil nicht im Plan
       out[s] = { h, anteil: A[s], fitness: fit, fitness_ber: ber, eigen, tl_h: tlh, quelle: mitFit ? "fitness" : "aufteilung" };
       out.summe += h;
     }

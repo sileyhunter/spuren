@@ -1546,6 +1546,16 @@ check("Planeinstellungen: gültig nur Start fitness/aufteilung, Basis-Fitness 0�
       [x is None for x in _pe_py] == [True, False, False, False, True, False, False, False, False, True, True, False, False, False, False, True, True, False, False, False, False, False, False,
                                       True, False, False, True,
                                       True, True, False, False, True, True, True, False, False, False, False, True], str(_pe_py))
+# V8.4.1 sportart-1.0: pe-sportart wie V75.pruefen (Triathlon, Rad, Laufen; mit vorher, weil ab der nächsten Woche)
+_SA_FAELLE = [{"id": "pe-sportart", "art": "triathlon"}, {"id": "pe-sportart", "art": "rad"}, {"id": "pe-sportart", "art": "lauf"}, {"id": "pe-sportart", "art": "schwimm"},
+              {"id": "pe-sportart"}, {"id": "pe-sportart", "art": "lauf", "geaendert": "2026-11-18T22:00:00Z", "vorher": {"art": "triathlon", "geaendert": "2026-11-01T08:00:00Z"}},
+              {"id": "pe-sportart", "art": "rad", "vorher": {"art": "duathlon", "geaendert": "2026-11-01T08:00:00Z"}}]
+_rsa = subprocess.run(["node", "-e", "const V75 = require('./js/v75.js'); const F = JSON.parse(process.argv[1]); console.log(JSON.stringify(F.map((e) => V75.pruefen(e))));",
+                       json.dumps(_SA_FAELLE)], cwd=ROOT, capture_output=True, text=True)
+_sa_js = json.loads(_rsa.stdout or "[]")
+_sa_py = [merge_daily.planeinstellung_pruefen(e) for e in _SA_FAELLE]
+check("sportart-1.0: pe-sportart in Python wie auf der Seite (Triathlon, Rad, Laufen; vorher erlaubt)",
+      [x is None for x in _sa_py] == [True, True, True, False, False, True, False] and [x is None for x in _sa_js] == [x is None for x in _sa_py], _rsa.stderr + str(list(zip(_sa_js, _sa_py))))
 _tp = tempfile.mkdtemp()
 json.dump({"activities": [], "days": []}, open(os.path.join(_tp, "d.json"), "w"))
 for _x in ({"id": "pe-steigerung", "v": "planeinstellungen-1.0", "wert": 120, "geaendert": "2026-03-02T08:00:00Z"},

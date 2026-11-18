@@ -51,21 +51,24 @@
     if (vorbei) { try { S = AN().saison(mo, rennen()); } catch (e) { console.error(e); S = null; } }
     // Audit V6.4 B7: vergangene Wochen mit dem Stand vom Montag (V64.stand)
     const st = V.stand(mo, h, C.tests ? C.tests() : [], window.V56 && window.V56.saisonLokal ? window.V56.saisonLokal(C) : {});
-    const vg = AN().saisonVorgaben(C.D.activities, vorbei ? mo : h, st.lokal);
     // V7.5 Planeinstellungen (js/v75.js): Stunden je Sportart von deiner Basis zur Spitze (basis-1.1, steigerung-1.0). Vergangene Wochen mit den
     // Einstellungen, die vor ihrem Montag gespeichert waren (wie V64.stand); Start und eigene Basis-Fitness gelten ab der Woche nach dem Speichern
     // (startBis), die Basis-Fitness mit dem Stand vom Montag der laufenden bzw. der vergangenen Woche (V75.basisDaten).
     const P75 = window.V75, U75 = window.V75UI;
     const E75 = U75 && U75.einstellungen ? U75.einstellungen(vorbei ? { bis: mo, montag: mo } : { startBis: mo, montag: mo }) : null;
+    // V8.4.1 sportart-1.0: Triathlon, nur Rad oder nur Laufen – «jetzt» und «Spitze» nur aus den Stunden dieser Sportarten, Aufteilung entsprechend
+    const SA = E75 && E75.sportart ? E75.sportart : "triathlon", tri = SA === "triathlon";
+    const vg = AN().saisonVorgaben(C.D.activities, vorbei ? mo : h, st.lokal, P75 && P75.sportenVon ? P75.sportenVon(SA) : null);
+    const AUF = P75 && P75.aufteilungFuer ? P75.aufteilungFuer(SA) : V.AUFTEILUNG;
     const D75 = U75 && U75.basisDaten ? U75.basisDaten(vorbei ? mo : V.montag(h)) : null;
-    const ba = P75 && E75 ? P75.basis(vg, E75, V.AUFTEILUNG, D75) : null;
+    const ba = P75 && E75 ? P75.basis(vg, E75, AUF, D75) : null;
     const anteile = (b) => (b && b.summe > 0 ? { schwimm: b.schwimm.h / b.summe, rad: b.rad.h / b.summe, lauf: b.lauf.h / b.summe } : null);
     let phase = "Grundlage", erholung = false, stunden = ba ? Math.round(ba.summe * 2) / 2 : vg.jetzt, ausSaison = false, aufteilung = anteile(ba), R = null;
     if (S) {
       const i = S.wochen.findIndex((w) => w.woche === mo);
       if (i >= 0) {
         phase = S.wochen[i].phase; erholung = !!S.wochen[i].erholung; ausSaison = true;
-        if (ba) { R = P75.rampe(S.wochen, ba, vg.spitze, E75.steigerung, V.AUFTEILUNG); stunden = R[i].summe; aufteilung = R[i].aufteilung; }
+        if (ba) { R = P75.rampe(S.wochen, ba, vg.spitze, E75.steigerung, AUF); stunden = R[i].summe; aufteilung = R[i].aufteilung; }
         else stunden = AN().saisonStunden(S.wochen, vg.jetzt, vg.spitze)[i];
       }
     }
@@ -75,7 +78,7 @@
     // V6.6 eigenplan-1.0: «Mein Plan» = Vorschlag mit deinen Änderungen (hinzugefügt, verschoben, gesperrt)
     const ctxE = { phase, css_s: css ? css.s : null, bibStufe: (wid) => (window.V65UI && window.V65UI.stufeWid ? window.V65UI.stufeWid(wid) : null) };
     // V7.6.2 kurs-1.0: an Kurstagen nur Schwimmen (Planeinstellungen → Schwimmen → Schwimmkurs)
-    const KS = E75 && E75.schwimm ? E75.schwimm : null;
+    const KS = tri && E75 && E75.schwimm ? E75.schwimm : null;                       // sportart-1.0: Schwimmkurs nur im Triathlon
     const verf = window.V66 && window.V66.mitKurs && KS ? window.V66.mitKurs(verfuegbarkeit(), { nur: KS.kurs_nur, bis: KS.kurs_bis }) : verfuegbarkeit(), lang = E75 ? E75.lang : null;
     // V7.6 kraft-plan-1.1 (js/v76.js): das Krafttraining aus den Planeinstellungen am passenden Tag. Den Tag wählt es an der schon verteilten Woche
     // (so steht jede Einheit an ihrem Tag); passt es dort (V76.passt), bleibt diese Woche, sonst wird mit dem Krafttraining neu verteilt (es belegt seine
@@ -105,7 +108,7 @@
     // aufbau-1.2 (V7.6.2): für Wochen nach der laufenden zählen die geplanten Läufe der Wochen dazwischen mit (V64.laufGrenze, r.geplant)
     const laeufe = V.laeufe(C.D.activities).concat(offset > 0 ? geplanteLaeufe(offset) : []);
     const X0 = mitKraft(mitAkt(V.woche({ woche: mo, phase, erholung, stunden, aufteilung, modell, tests, rennen: rennen(), css_s: css ? css.s : null,
-      intensitaet: V.intensitaet(wahlEintrag()), laeufe, heute: st.heute, skalen: sk, kurs_bis: KS ? KS.kurs_bis : null, abwechslung: true }))), w0 = X0.roh;
+      intensitaet: V.intensitaet(wahlEintrag()), laeufe, heute: st.heute, skalen: sk, kurs_bis: KS ? KS.kurs_bis : null, abwechslung: true, sportart: SA }))), w0 = X0.roh;
     // V7.2 verfuegbarkeit-1.0 / eigenplan-1.1: ab der laufenden Woche nach deiner Verfügbarkeit verteilt (ganze Woche, unabhängig vom heutigen Tag).
     // Wochen ohne eigene Änderungen folgen ihr von selbst; ganz festgehaltene Wochen zeigen das Gespeicherte; ältere, nur teilweise gespeicherte
     // Wochen (eigenplan-1.0) bleiben beim unverteilten Vorschlag, bis du «Anpassen» wählst. w0 = Vorschlag, auf dem Mein Plan aufbaut; w0roh = unverteilt.
@@ -125,11 +128,12 @@
     const erh = (d) => {
       if (!wErh) {
         wErh = abgestimmt(mitKraft(mitAkt(V.woche({ woche: mo, phase, erholung: true, stunden: Math.max(1, Math.round(stunden * 0.65 * 2) / 2), aufteilung, modell, tests, rennen: rennen(), css_s: css ? css.s : null,
-          intensitaet: V.intensitaet(wahlEintrag()), laeufe, heute: st.heute, skalen: sk, kurs_bis: KS ? KS.kurs_bis : null, abwechslung: true }))).v);
+          intensitaet: V.intensitaet(wahlEintrag()), laeufe, heute: st.heute, skalen: sk, kurs_bis: KS ? KS.kurs_bis : null, abwechslung: true, sportart: SA }))).v);
       }
       return ((wErh.tage.find((t) => t.date === d) || {}).einheiten) || [];
     };
-    return { w: wa, wPlan: w, w0: basis, w0roh: w0, verteilt: !teilweise && !!(w0v && w0v.verteilung), verf, lang, ctxE, wahl, S, css, vg, ausSaison, vorbei, offset, erh, E75, basis75: ba, rampe: R, skalen: sk };
+    return { w: wa, wPlan: w, w0: basis, w0roh: w0, verteilt: !teilweise && !!(w0v && w0v.verteilung), verf, lang, ctxE, wahl, S, css, vg, ausSaison, vorbei, offset, erh, E75, basis75: ba, rampe: R, skalen: sk,
+      sportart: SA, aufteilung75: AUF };
   }
   /** aufbau-1.2 (V7.6.2): geplante Läufe ab heute aus den Wochen vor der Woche «offset» (was dort gilt: Mein Plan mit Verteilung und Ampel), Distanz
    *  aus dem Zonenprofil wie der Vorschlag (V64.kmSchaetzung). Nur die Wochen, die ins 30-Tage-Fenster reichen; jede Woche einmal je Durchgang

@@ -280,15 +280,17 @@
    *  Vorschlag die ganze Woche gleich und lässt sich für vergangene Wochen genau so nachrechnen (vergleich-1.1). 1.2 (Audit V6.4 B16): jede der
    *  8 Wochen zählt, auch ohne Schwimmen, Rad und Laufen (0 h, z. B. Pause oder nur Skitouren) – nach einer Pause beginnt der Vorschlag tiefer;
    *  Wochen vor der ersten Aktivität in den Daten zählen nicht (keine Daten ist keine Pause). */
-  AN.saisonVorgaben = function (acts, heute, lokal) {
+  /** V8.4.1 sportart-1.0: sportarten = Sportarten des Plans (Standard Schwimmen, Rad, Laufen); «jetzt» und «Spitze» nur aus ihren Stunden. */
+  AN.saisonVorgaben = function (acts, heute, lokal, sportarten) {
     lokal = lokal || {};
+    const SP = Array.isArray(sportarten) && sportarten.length ? sportarten : ["rad", "lauf", "schwimm"], sum = (r) => SP.reduce((x, k) => x + (r[k] || 0), 0);
     const wkM = (d) => FK.addDays(d, -((new Date(d + "T12:00:00Z").getUTCDay() + 6) % 7));
     const mo = wkM(heute), bis = FK.addDays(mo, -1);
     const erste = (acts || []).reduce((m, a) => (a && a.date && (!m || a.date < m) ? a.date : m), null);
     const von8 = erste ? [FK.addDays(mo, -56), wkM(erste)].sort()[1] : mo;
     const ist8 = AN.wochenIst(acts, von8, bis), h8 = [];
-    for (let d = von8; d < mo; d = FK.addDays(d, 7)) { const r = ist8.get(d); h8.push(r ? r.rad + r.lauf + r.schwimm : 0); }
-    const j52 = AN.wochenIst(acts, FK.addDays(mo, -364), bis), h52 = [...j52.values()].map((r) => r.rad + r.lauf + r.schwimm).sort((a, b) => b - a);
+    for (let d = von8; d < mo; d = FK.addDays(d, 7)) { const r = ist8.get(d); h8.push(r ? sum(r) : 0); }
+    const j52 = AN.wochenIst(acts, FK.addDays(mo, -364), bis), h52 = [...j52.values()].map(sum).sort((a, b) => b - a);
     const top4 = h52.length >= 4 ? (h52[0] + h52[1] + h52[2] + h52[3]) / 4 : null;
     const jetzt = isNum(lokal.jetzt) ? lokal.jetzt : h8.length ? Math.round(median(h8) * 2) / 2 : 8;
     const spitze = isNum(lokal.spitze) ? lokal.spitze : Math.round(Math.max(jetzt * 1.35, top4 || 0) * 2) / 2;

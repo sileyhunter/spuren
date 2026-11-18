@@ -184,6 +184,11 @@ test("Plan: Kalenderwoche, Rennen mit Priorität, Streckenlängen, Phasen als Ze
   assert.deepEqual(V6.distanzen("Ironman 70.3 Testort").map((d) => d.km), [1.9, 90, 21.1]);
   assert.deepEqual(V6.distanzen("Ironman Testort").map((d) => d.km), [3.8, 180, 42.2]);
   assert.equal(V6.distanzen("Stadtlauf"), null, "unbekanntes Format: keine Strecken geraten");
+  // V8.4.1 sportart-1.0: Laufrennen
+  assert.deepEqual(V6.distanzen("Testort Marathon"), [{ sport: "lauf", km: 42.2 }]);
+  assert.deepEqual(V6.distanzen("Halbmarathon Testort"), [{ sport: "lauf", km: 21.1 }]);
+  assert.deepEqual(V6.distanzen("Testort Half Marathon"), [{ sport: "lauf", km: 21.1 }]);
+  assert.equal(V6.distanzen("Radmarathon Testort"), null, "Radrennen ohne feste Strecke");
   const wochen = [{ woche: "2026-11-09", phase: "Grundlage" }, { woche: "2026-11-16", phase: "Grundlage" }, { woche: "2026-11-23", phase: "Aufbau" }, { woche: "2026-11-30", phase: "Taper" }];
   const seg = V6.phasenSegmente(wochen, "2026-11-18");
   assert.deepEqual(seg.map((x) => [x.phase, x.von, x.bis, x.wochen.length, x.aktiv]),
