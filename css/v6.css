@@ -1224,3 +1224,55 @@ button.v73-opt { border: 0; padding: 0; background: none; color: var(--fg); font
 .vw-regler { margin: 6px 0 0; }
 .kw-kraft { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .mp-vf-t b { text-wrap: balance; }
+
+/* ---------- V7.8 kalender-4.0 (Etappe 4, Teil 1): Raster über durchlaufender Tagesliste, Vorlage enduco (Aufbau eigen) ---------- */
+.kal-v7.k4 .k4-kopf { position: sticky; top: 0; z-index: 7; background: var(--bg); padding-bottom: 6px; margin: 0 -4px; padding-inline: 4px; }
+.k4-raster { padding: 6px 2px 0; }
+.k4-r-gitter { display: grid; grid-template-columns: 26px repeat(7, minmax(0, 1fr)); gap: 2px 2px; align-items: start; }
+.k4-r-wt { text-align: center; font-size: 12px; font-weight: 700; color: var(--muted); padding-bottom: 2px; }
+.k4-r-kw { display: grid; place-items: center; height: 46px; background: none; border: 0; color: var(--muted); padding: 0; cursor: pointer; }
+div.k4-r-kw { height: auto; }
+.k4-r-t { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 52px; padding: 2px 0; background: none; border: 0; color: var(--fg); cursor: pointer; border-radius: 12px; }
+.k4-r-d { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-size: 14px; font-weight: 600; line-height: 1; }
+.k4-r-t.heute .k4-r-d { color: var(--race); font-weight: 800; }
+.k4-r-t.sel .k4-r-d { background: var(--fg); color: var(--bg); }
+.k4-r-t.heute.sel .k4-r-d { background: var(--race); color: var(--accent-fg); }
+.k4-r-t.aus .k4-r-d { color: var(--faint); }
+.k4-r-p { display: inline-flex; align-items: center; gap: 1px; min-height: 17px; padding: 1px 5px; border-radius: 999px; background: var(--surface-2, var(--btn-2)); }
+.k4-r-p i { display: inline-grid; color: var(--sp); }
+.k4-r-p.leer { background: none; color: var(--faint); font-size: 14px; line-height: 1; }
+.k4-r-p.renn { color: var(--race); }
+.k4-r-z { display: flex; gap: 2px; min-height: 6px; }
+.k4-r-z i { width: 6px; height: 6px; border-radius: 50%; display: block; }
+.k4-r-z i.test { background: none; border: 1.5px solid var(--muted); width: 4px; height: 4px; }
+.k4-griff { display: block; margin: 4px auto 0; width: 64px; height: 18px; padding: 6px 0; background: none; border: 0; cursor: pointer; }
+.k4-griff span { display: block; width: 40px; height: 5px; margin: 0 auto; border-radius: 3px; background: var(--line-2, var(--line)); }
+.k4-liste { display: flex; flex-direction: column; gap: 12px; }
+.k4-woche { background: var(--surface); border-radius: var(--r-card); padding: 2px 14px 6px; }
+.k4-wk { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 0 8px; }
+.k4-wk > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.k4-wk b { font-size: 15px; }
+.k4-wk span, .k4-wk small { color: var(--muted); font-size: 12px; }
+.k4-tag { padding: 8px 0 6px; border-top: 1px solid var(--line); scroll-margin-top: var(--k4-oben, 230px); }
+.k4-tk { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 32px; }
+.k4-tk b { font-size: 14px; }
+.k4-tk > span { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.k4-tag.heute .k4-tk b { color: var(--race); }
+.k4-heute { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.k4-tag.vorbei .k4-tk b { color: var(--muted); }
+.k4-e { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 8px; width: 100%; padding: 6px 0; background: none; border: 0; color: var(--fg); text-align: left; cursor: pointer; font: inherit; }
+.k4-et { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.k4-et b { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.k4-et small { color: var(--muted); font-size: 12px; }
+.k4-q { color: var(--faint); }
+.k4-prof { width: 86px; display: block; }
+.k4-prof svg { width: 100%; height: auto; display: block; }
+.k4-haken { color: var(--good); display: inline-grid; vertical-align: -2px; }
+.k4-e.verpasst .k4-et b { color: var(--muted); }
+.k4-zeile { margin: 4px 0; font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.k4-zeile.renn { color: var(--race); font-weight: 700; }
+.k4-mehr-w { align-self: center; }
+.mp-form4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.mp-dl { font-size: 11px; font-weight: 500; color: var(--muted); }
+.mp-skala { position: relative; display: block; height: 4px; margin-top: 6px; border-radius: 2px; background: linear-gradient(90deg, var(--mon-fit) 0 40%, var(--good) 40% 65%, var(--mon-erm) 65% 75%, var(--bad) 75% 100%); }
+.mp-skala i { position: absolute; top: -3px; width: 4px; height: 10px; margin-left: -2px; border-radius: 2px; background: var(--fg); }

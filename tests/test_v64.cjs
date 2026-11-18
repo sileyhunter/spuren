@@ -234,7 +234,7 @@ test("Wissen: Schweizer Schreibweise (ss), keine Platzhalter, keine persönliche
 });
 
 test("Wissen: Regel-Liste verweist auf vorhandene Versionen und Kapitel", () => {
-  const M = { AN, FK, V62, V64, V59L: L, V66: require("../js/v66.js"), SW: require("../js/schwimmen.js"), V73: require("../js/v73.js"), V74: require("../js/v74.js"), V75: require("../js/v75.js"), V76: require("../js/v76.js"), V77: require("../js/v77.js") };
+  const M = { AN, FK, V62, V64, V59L: L, V66: require("../js/v66.js"), SW: require("../js/schwimmen.js"), V73: require("../js/v73.js"), V74: require("../js/v74.js"), V75: require("../js/v75.js"), V76: require("../js/v76.js"), V77: require("../js/v77.js"), V78: require("../js/v78.js") };
   for (const [mod, key, text, kap] of WS.REGELN) {
     assert.ok(M[mod] && M[mod].VERSIONS && M[mod].VERSIONS[key], `${mod}.${key}`);
     assert.ok(text && WS.kapitel(kap), `${mod}.${key}: Kapitel ${kap}`);
@@ -244,7 +244,7 @@ test("Wissen: Regel-Liste verweist auf vorhandene Versionen und Kapitel", () => 
 
 test("Wissen 1.2/1.3: Kapitel «aufbau» und «vergleich» mit Quellen und Regeln", () => {
   const WS = require("../js/wissen.js");
-  assert.equal(WS.VERSION, "wissen-1.20");
+  assert.equal(WS.VERSION, "wissen-1.21");
   const k = WS.kapitel("aufbau");
   assert.ok(k, "Kapitel aufbau fehlt");
   const v = WS.verweise(k.text.join(" ") + " " + k.kurz);

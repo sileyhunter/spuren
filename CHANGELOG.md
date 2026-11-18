@@ -1,5 +1,13 @@
 # Änderungen
 
+## V7.8 · 18.11.2026 · Kalender als Liste mit Raster (kalender-4.0), Trainingsstatus (trainingsstatus-1.0), wissen-1.21
+- **Kalender wie die Vorlage** (Etappe 4, Teil 1): oben ein Raster mit zwei Wochen (Griff ziehen bzw. antippen = ganzer Monat), je Tag Sportsymbole und je Einheit ein Punkt
+  in der Zonenfarbe ihres Schwerpunkts; darunter alle Tage als durchlaufende Liste mit Wochenköpfen «Phase | Wochenart», Plan- und Ist-Stunden und TL ≈. Einheiten mit
+  Mini-Profil und «Dauer · ≈ km · TL ≈», Absolviertes mit Haken, Ruhetag und «Kein Training». Monatstitel und gewählter Tag folgen dem Scrollen; Tag im Raster antippen
+  scrollt dorthin, «Heute» springt zurück. «⋯» am Tag öffnet das Tagesblatt, «⋯» am Wochenkopf «Woche bearbeiten». Ansichten: Liste · Zyklus (bisher «Woche») · Monat.
+- **Trainingsstatus** im Tagesblatt: Ermüdung ÷ Fitness mit kleiner Skala, dazu bei Fitness, Ermüdung und Status die Veränderung zum Vortag.
+- Aktivitäten draussen zählen jetzt auch in der Form-Vorschau und im TL ≈ der Woche.
+
 ## V7.7 · 18.11.2026 · Draussen planen: Skitour, Wandern, Langlauf, Traillauf (aktivitaet-plan-1.0), Zonen nach Puls prüfen (zonenpruefung-hf-1.0), wissen-1.20
 - **Draussen planen** (Etappe 4, erster Teil; Regeln am 17.11. vorgeschlagen, am 18.11. bestätigt): im Tagesblatt unter «Training hinzufügen» → «Draussen – blockiert den Tag».
   Dauer 1–10 h, Z1 oder Z2 nach Puls (Pulszonen vom Laufen), Uhrzeit und Notiz. Der Tag gehört der Aktivität; ab 2 h am Vortag und am Tag danach keine harte Rad- oder

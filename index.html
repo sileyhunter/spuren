@@ -1063,14 +1063,18 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
   <section class="view" id="view-kalender" role="region" aria-label="Kalender" hidden>
     <div class="dash">
       <div class="v6-voll kal-v7">
+        <div class="k4-kopf" id="kal-kopf">
         <div class="card-head">
           <div><h2 id="cal-title">Kalender</h2><div class="sub" id="cal-sub">Mein Plan, Absolviertes aus Garmin, Tests und Rennen.</div></div>
           <button class="btn kal-heute" id="cal-today">Heute</button>
         </div>
-        <div class="kal-leiste"><div class="seg kal-ans" role="group" aria-label="Ansicht"><button type="button" data-kalans="woche">Woche</button><button type="button" data-kalans="monat">Monat</button></div>
-          <div class="row"><button class="btn rp-ib" id="cal-prev" aria-label="Zurück">‹</button><button class="btn rp-ib" id="cal-next" aria-label="Weiter">›</button></div></div>
+        <div class="kal-leiste"><div class="seg kal-ans" role="group" aria-label="Ansicht"><button type="button" data-kalans="liste">Liste</button><button type="button" data-kalans="woche">Zyklus</button><button type="button" data-kalans="monat">Monat</button></div>
+          <div class="row" id="cal-pfeile"><button class="btn rp-ib" id="cal-prev" aria-label="Zurück">‹</button><button class="btn rp-ib" id="cal-next" aria-label="Weiter">›</button></div></div>
+        <div class="k4-raster" id="kal-raster" hidden></div>
+        </div>
         <div class="tablewrap" id="cal-wrap"><div class="cal" id="cal"></div></div>
         <div class="kal-woche" id="kal-woche" hidden></div>
+        <div class="k4-liste" id="kal-liste" hidden></div>
         <div class="cal-legend" id="cal-legend"></div>
       </div>
     </div>
@@ -1703,6 +1707,8 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <script src="js/v76.js"></script>
 <script src="js/v77.js"></script>
 <script src="js/v77-ui.js"></script>
+<script src="js/v78.js"></script>
+<script src="js/v78-ui.js"></script>
 <script>
 (() => {
   const b64d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
@@ -3588,20 +3594,21 @@ const TABS = {
   kalender: {
     init() {
       this.month = new Date(today.getFullYear(), today.getMonth(), 1);
-      this.ansicht = store.get("sf.kal.ansicht", "woche") === "monat" ? "monat" : "woche";       // V6.6 kalender-2.0: Woche (Standard) oder Monat
+      // V7.8 kalender-4.0: Liste mit Raster (Standard), Zyklus (bisher «Woche») oder Monat
+      { const a = store.get("sf.kal.ansicht4", "liste"); this.ansicht = ["liste", "woche", "monat"].includes(a) && (a !== "liste" || window.V78UI) ? a : window.V78UI ? "liste" : "woche"; }
       this.woche = iso(mondayOf(today));
       document.querySelectorAll("[data-kalans]").forEach((b) => (b.onclick = () => {
         if (b.dataset.kalans === "woche" && this.ansicht !== "woche") {          // vom Monat zur Woche: die gewählte Woche, wenn sie im Monat liegt, sonst heute bzw. die erste
           const m0 = this.month, m1 = new Date(m0.getFullYear(), m0.getMonth() + 1, 0), w = pd(this.woche);
           if (!(w >= mondayOf(m0) && w <= m1)) this.woche = iso(today >= mondayOf(m0) && today <= m1 ? mondayOf(today) : mondayOf(m0));
         }
-        this.ansicht = b.dataset.kalans; store.set("sf.kal.ansicht", this.ansicht); this.draw(); }));
+        this.ansicht = b.dataset.kalans; store.set("sf.kal.ansicht4", this.ansicht); this.draw(); }));
       const go = (n) => {
         if (this.ansicht === "woche" && window.V66UI) { this.woche = n == null ? iso(mondayOf(today)) : iso(addDays(pd(this.woche), 7 * n)); this.month = new Date(pd(this.woche).getFullYear(), pd(this.woche).getMonth(), 1); this.draw(); return; }
         this.month = n == null ? new Date(today.getFullYear(), today.getMonth(), 1) : new Date(this.month.getFullYear(), this.month.getMonth() + n, 1); this.draw(); };
       document.getElementById("cal-prev").addEventListener("click", () => go(-1));
       document.getElementById("cal-next").addEventListener("click", () => go(1));
-      document.getElementById("cal-today").addEventListener("click", () => { this.sel = iso(today); go(null); });
+      document.getElementById("cal-today").addEventListener("click", () => { this.sel = iso(today); if (this.ansicht === "liste" && window.V78UI) { V78UI.heute(); return; } go(null); });
       { const tit = document.getElementById("cal-title"), mp = document.createElement("input");   // V7 kalender-3.0: Monat und Jahr direkt wählen
         mp.type = "month"; mp.className = "kal-monat"; mp.setAttribute("aria-label", "Monat und Jahr wählen"); mp.tabIndex = -1; tit.after(mp);
         tit.setAttribute("role", "button"); tit.tabIndex = 0; tit.title = "Monat und Jahr wählen";
@@ -3624,6 +3631,17 @@ const TABS = {
         Punkte der Fokus-Intensitäten, Test und Rennen; antippen zeigt die Tagesliste mit Mini-Profilen. */
     draw() {
       document.querySelectorAll("[data-kalans]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.kalans === (window.V66UI ? this.ansicht : "monat"))));
+      const liste = this.ansicht === "liste" && window.V78UI && window.V5UI && V5UI.C;            // V7.8 kalender-4.0
+      document.getElementById("kal-liste").hidden = !liste; document.getElementById("kal-raster").hidden = !liste;
+      document.getElementById("cal-pfeile").hidden = !!liste; document.querySelector(".kal-v7").classList.toggle("k4", !!liste);
+      if (liste) {
+        document.getElementById("cal-wrap").hidden = true; document.getElementById("cal-legend").hidden = true; document.getElementById("kal-woche").hidden = true;
+        const box = document.getElementById("kal-liste"), erst = !box.dataset.k4;
+        try { if (erst) { box.dataset.k4 = "1"; V78UI.zeichnen(box, document.getElementById("kal-raster"), document.getElementById("cal-title"), document.getElementById("cal-sub"), { ziel: this.sel || iso(today) }); } else V78UI.neu(); }
+        catch (e) { console.error(e); box.innerHTML = `<p class="warn-t">Kalender nicht darstellbar.</p>`; }
+        drawTests();
+        return;
+      }
       if (this.ansicht === "woche" && window.V66UI && window.V5UI && V5UI.C) {          // V6.6 kalender-2.0: Wochenansicht mit Mein Plan
         const mo = this.woche, so = addDays(pd(mo), 6), box = document.getElementById("kal-woche");
         document.getElementById("cal-title").textContent = pd(mo).toLocaleDateString("de-CH", { month: "long", year: "numeric" });   // V7 kalender-3.0
@@ -3673,7 +3691,7 @@ const TABS = {
       drawTests();
     },
     /** V6.6 kalender-2.0: Wochenansicht einer Woche (Montag ISO) – aus dem Monat (KW antippen) und aus dem Wochenblatt im Plan. */
-    zurWoche(mo) { this.ansicht = "woche"; store.set("sf.kal.ansicht", "woche"); this.woche = mo; this.month = new Date(pd(mo).getFullYear(), pd(mo).getMonth(), 1); this.draw(); },
+    zurWoche(mo) { this.ansicht = "woche"; store.set("sf.kal.ansicht4", "woche"); this.woche = mo; this.month = new Date(pd(mo).getFullYear(), pd(mo).getMonth(), 1); this.draw(); },
     /** V6.6 (Teil 0, kalender-2.0): Tag antippen markiert ihn und öffnet das Tagesblatt (vorher erschien die Liste unter dem Monat,
         auf dem iPhone ausserhalb des Bildschirms). */
     day(ds) {

@@ -193,7 +193,7 @@
       if (ist.length) return ist.reduce((s2, a) => s2 + (isNum(a.tss) ? a.tss : 0), 0);
       const k = K(d), t = k && k.w.tage.find((x) => x.date === d); if (!t) return 0; if (t.rennen) return null;
       let sum = 0;
-      for (const e of t.einheiten) { if (!["rad", "lauf", "schwimm"].includes(e.sport)) continue; const S = V66().schaetzung(e, bezug(k)); if (isNum(S.tl)) sum += S.tl; else ohne.add(e.titel); }
+      for (const e of t.einheiten) { if (!["rad", "lauf", "schwimm"].includes(e.sport) && e.art !== "draussen") continue; const S = V66().schaetzung(e, bezug(k)); if (isNum(S.tl)) sum += S.tl; else ohne.add(e.titel); }   // V7.7: Aktivitäten draussen zählen
       return sum;
     };
     const r = V66().formPrognose({ ctl: st.ctl, atl: st.atl }, h, ds, lastAm);
@@ -203,8 +203,14 @@
     let f = null; try { f = formTag(ds); } catch (e) { console.error(e); }
     if (!f) return "";
     const st = V6().status(f.form), pre = f.prognose ? "≈ " : "";
-    return `<div class="kv ek-kv mp-form"><div><b>${pre}${f.fitness}</b><span>Fitness</span></div><div><b>${pre}${f.ermuedung}</b><span>Ermüdung</span></div>
+    // V7.8 trainingsstatus-1.0 (Vorlage enduco): Ermüdung ÷ Fitness, dazu die Veränderung zum Vortag
+    let v = null; try { v = formTag(add(ds, -1)); } catch (e) { v = null; }
+    const D8 = window.V78, ts = D8 ? D8.status(f.fitness, f.ermuedung) : null, tv = D8 && v ? D8.status(v.fitness, v.ermuedung) : null, stu = D8 ? D8.stufe(ts) : null;
+    const dl = (a, b2, n) => { const x = D8 && v ? D8.delta(a, b2, n) : null; return x ? ` <small class="mp-dl">(${x.text})</small>` : ""; };
+    return `<div class="kv ek-kv mp-form mp-form4"><div><b>${pre}${f.fitness}${dl(f.fitness, v && v.fitness)}</b><span>Fitness</span></div><div><b>${pre}${f.ermuedung}${dl(f.ermuedung, v && v.ermuedung)}</b><span>Ermüdung</span></div>
+      ${ts != null ? `<div><b>${pre}${String(ts).replace(".", ",")}${dl(ts, tv, 2)}</b><span>Status · ${esc(stu.text)}</span><i class="mp-skala" aria-hidden="true"><i style="left:${(stu.anteil * 100).toFixed(0)}%"></i></i></div>` : ""}
       <div><b>${pre}${f.form > 0 ? "+" : ""}${f.form}</b><span>Form${st ? ` · <i class="st-farbe" style="--stc:${st.farbe}">${esc(st.name)}</i>` : ""}</span></div></div>
+      ${ts != null ? `<p class="hint">Status = Ermüdung ÷ Fitness (${esc(D8.VERSIONS.status)}): unter 0,8 wenig Last, bis 1,3 üblich, darüber hoch – eine Orientierung, kein Grenzwert; in Klammern die Veränderung zum Vortag.</p>` : ""}
       ${f.prognose ? `<p class="hint">Zu Tagesbeginn, fortgeschrieben mit der geplanten Last von Mein Plan (TL ≈ aus deinem Zonenprofil)${f.ohne && f.ohne.length ? `; ohne Schätzung nicht gezählt: ${esc(f.ohne.slice(0, 3).join(", "))}` : ""}${f.offen ? `; ${f.offen} Renntag${f.offen === 1 ? "" : "e"} als 0` : ""}; Krafttraining zählt nicht – ein Modell, keine Messung (${window.FK ? window.FK.VERSIONS.pmc : "pmc"}).</p>` : ""}`;
   }
   const WT_LANG = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
@@ -680,13 +686,15 @@
 
   /* ---------- Kalender: Wochenansicht (kalender-2.0) ---------- */
   function istWoche(mo) { const bis = add(mo, 6); return (C.D.activities || []).filter((a) => a && a.date >= mo && a.date <= bis); }
+  M.istWoche = (mo) => (bereit() ? istWoche(mo) : []);                                  // V7.8 kalender-4.0 (js/v78-ui.js)
   function wochenKopf(mo, K) {
     const art = M.wochenart(mo), ist = istWoche(mo).filter((a) => ["rad", "lauf", "schwimm"].includes(a.sport));
     const istMin = ist.reduce((s, a) => s + (a.dur || a.dauer_s || 0) / 60, 0), istTl = ist.reduce((s, a) => s + (isNum(a.tss) ? a.tss : 0), 0);
     let planMin = 0, planTl = 0, tlOffen = false; const BZ = bezug(K);
-    for (const t of K.w.tage) for (const e of t.einheiten) if (["rad", "lauf", "schwimm"].includes(e.sport)) { planMin += e.dauer; const S = V66().schaetzung(e, BZ); if (isNum(S.tl)) planTl += S.tl; else tlOffen = true; }
+    for (const t of K.w.tage) for (const e of t.einheiten) if (["rad", "lauf", "schwimm"].includes(e.sport) || e.art === "draussen") { if (e.art !== "draussen") planMin += e.dauer; const S = V66().schaetzung(e, BZ); if (isNum(S.tl)) planTl += S.tl; else tlOffen = true; }
     return { art, istMin, istTl, planMin, planTl: Math.round(planTl), tlOffen };
   }
+  M.wochenKopf = (mo, K) => wochenKopf(mo, K);                                          // V7.8 kalender-4.0
   M.wochenart = function (mo) {
     try { const S = AN().saison(heute(), V6().rennenPrio(C.races ? C.races() : [])); if (!S) return null; return V66().wochenart(S.alle || S.wochen).get(mo) || null; }
     catch (e) { return null; }
