@@ -163,7 +163,8 @@
         <div class="v7-k-zahlen"><div><b>${std(lw.soll.s)}</b><span>geplant</span></div><div><b>${std(lw.ist.netto)}</b><span>absolviert</span></div><div><b>${lw.diff_pct != null ? vz(lw.diff_pct) + Math.abs(lw.diff_pct) + " %" : "–"}</b><span>Abweichung</span></div></div>`
         : `<span class="v7-k-unter">Enduco geplant gegenüber absolviert</span><p class="v7-k-text">${pv && pv.wochen.some((w) => w.soll.n) ? "Noch keine abgeschlossene Woche mit vollständigem Enduco-Plan im Garmin-Kalender – die bisherigen Wochen sind als unvollständig sichtbar." : "Noch keine Woche mit Enduco-Plan im Garmin-Kalender."}</p>`),
     ].join("");
-    const weitere = [["ausdauer", "energie", "Ausdauer und Verpflegung", "Ermüdungsresistenz, lange Ausfahrt, Koppelläufe, Train your Gut"],
+    const weitere = [["reaktionen", "status", "Deine Reaktionen", "Erholung nach harten Einheiten, was du bisher verträgst, Blockbilanz"],
+      ["ausdauer", "energie", "Ausdauer und Verpflegung", "Ermüdungsresistenz, lange Ausfahrt, Koppelläufe, Train your Gut"],
       ["tagebuch", "ablauf", "Aktivitäten", "Serie und Trainingstagebuch – jede Einheit im Explorer"],
       ["leistung#bests-card", "flagge", "Bestleistungen", "Lauf-Bestzeiten aus den Sekundenwerten"],
       ["umfang#year-card", "kalender", "Jahresstatistik", "Jahre im Vergleich"],

@@ -280,3 +280,14 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 111. **Trinkmenge:** Garmins Schweissverlust wird erst ab 5 Tagen mit mindestens 45 min Training verwendet; Hitze und Höhe sind nicht eingerechnet (nur Hinweis).
 112. **Koffein** wird nicht geplant (nicht unter den übernommenen Nährwerten); Renn-Verpflegung (Jesolo, Hamburg) kommt mit dem Rennplan, nicht je Einheit.
 113. **Zuordnung Aktivität ↔ Einheit** für «geplant gegen genommen»: dieselbe Sportart am selben Tag, die Dauer am nächsten (wie last-abweichung-1.0).
+
+## Nach V8.2 (18.11.2026, Persönliche Reaktionen)
+114. **Reaktionen fliessen noch nicht in den Plan:** «Deine Reaktionen» ist nur Anzeige. Ob der Coach (V8.3) und die Steigerung (V8.5) sie lesen – z. B. «verträglich bis …»
+     als Obergrenze –, entscheidet Silas; bis dahin gelten die allgemeinen Regeln.
+115. **Lauf-Effizienz je Block** braucht mindestens 3 vergleichbare Läufe je 4 Wochen; im Winter und nach Laufpausen fehlen sie, dann bleibt der Zusammenhang
+     «noch zu wenig Daten». Ein lockereres Kriterium wäre möglich, aber weniger sauber.
+116. **Stunden ohne «andere» Sportarten:** Wanderungen, Skitouren und Langlauf zählen in der Fitness, nicht in den Wochenstunden (wie in den Wochenstunden des Plans).
+     Die Blockbilanz zeigt sie getrennt («andere»); «Was du bisher verträgst» gruppiert nur nach Schwimmen, Rad und Laufen.
+117. **Grenzen und Mindestzahlen** (6 Fälle, 4 Wochen, 8 Block-Paare, Blockbilanz Fitness 3, Ruhepuls 1,5, HRV 5 %, Effizienz 2 %) sind eigene Festlegungen; nach einem
+     halben Jahr mit mehr Daten prüfen.
+

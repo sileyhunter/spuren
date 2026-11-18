@@ -1438,3 +1438,16 @@ div.k4-r-kw { height: auto; }
 .vp-stufe { display: flex; align-items: center; gap: 14px; margin: 6px 0; }
 .vp-stufe b { min-width: 9ch; text-align: center; font-variant-numeric: tabular-nums; }
 .vp-aus { display: flex; align-items: center; gap: 8px; margin: 14px 0 4px; }
+
+/* V8.2 «Deine Reaktionen» (js/v82-ui.js) */
+.v82-chips { margin: 4px 0 10px; }
+.v82-chips .chip small { margin-left: 4px; color: inherit; opacity: 1; font-variant-numeric: tabular-nums; }
+.v82-satz { margin: 8px 0; overflow-wrap: anywhere; }
+#view-reaktionen table.t td small { color: var(--muted); }
+.v82-bloecke { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.v82-block { margin: 0; padding: 12px 14px; background: var(--surface-2); border-radius: 14px; }
+.v82-bk { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.v82-bk small { color: var(--muted); }
+table.t.v82-t th:first-child, table.t.v82-t td:first-child { white-space: normal; }
+table.t.v82-t th { letter-spacing: .04em; }
+table.t.v82-t td small { display: block; font-size: 11px; }

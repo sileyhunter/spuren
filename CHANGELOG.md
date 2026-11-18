@@ -1,5 +1,21 @@
 # Änderungen
 
+## V8.2 · 18.11.2026 · Persönliche Reaktionen (Masterprompt V8, Etappe V8.2), wissen-1.27
+- **Neue Ansicht «Deine Reaktionen»** unter Analyse (Karte auf dem Analyse-Start, Link `#reaktionen`). Nur beschreibend; der Plan ändert sich dadurch nicht.
+- **Erholung nach harten Einheiten** (erholung-nach-1.0): HRV und Ruhepuls an den drei Morgen nach harten Rad- und Laufeinheiten (ab 5 min über LT2 oder 20 min über LT1)
+  gegen den Schnitt der 7 Morgen davor, dazu Puls bei gleicher Leistung – verglichen mit derselben Rechnung nach ruhigen Tagen. Gruppen: alle harten, Rad, Laufen, lange
+  Einheiten. Deutlich erst mit 90-%-Intervall ohne 0 und mindestens der täglichen Schwankung (halbe Standardabweichung); je Gruppe und Vergleich mindestens 6 Fälle.
+  Eingeteilt mit den Pulsgrenzen des aktuellen Zonenprofils für die ganzen zwei Jahre (Garmins Pulszonen zählten zu viel lockeres Training als mittel).
+- **Was du bisher verträgst** (vertraeglich-1.0): Wochen nach Zahl harter Einheiten, Wochenstunden und Lauf-km gegen Ruhepuls und HRV an den ersten drei Morgen der Woche
+  danach. Bezug sind die üblichen Wochen (Median); weniger als üblich wird nicht beurteilt (oft Ferien oder Krankheit). Je Gruppe mindestens 4 Wochen.
+- **Verteilung und Entwicklung** (verteilung-1.0): locker/mittel/hart je 4-Wochen-Block gegen die Effizienz im Block danach (Rad: Leistung je Pulsschlag in gleichmässigen
+  Fahrten je System, Laufen: Meter je Pulsschlag in vergleichbaren Läufen); Rangkorrelation mit Intervall ab 8 Block-Paaren, «Zusammenhang, keine Ursache».
+- **Blockbilanz** (blockbilanz-1.0): je vier Wochen, endend mit den Erholungswochen der Saison – Stunden, harte Einheiten, Verteilung, Fitness, Ruhepuls und HRV, Effizienz,
+  Tests und ein Satz gegenüber dem Block davor.
+- Bootstrap ohne Sortieren je Ziehung (gleiche Daten, gleiches Ergebnis); die Karten erscheinen nacheinander, die Seite bleibt bedienbar.
+- Wissen «reaktionen» (wissen-1.27): Hecksteden et al. 2015, Stanley et al. 2013, Plews et al. 2013; Grenzen und Mindestzahlen als eigene Festlegungen gekennzeichnet.
+- Tests: `tests/test_v82.cjs` (10, erfundene Wochen mit bekannter Reaktion).
+
 ## V8.1.2 · 18.11.2026 · Verpflegung nur mit deinen Produktgruppen (verpflegung-1.1), wissen-1.26
 - Ohne eigene Auswahl nimmt die Empfehlung nur deine Gruppen: Gels, Fruchtgummi (neu, z. B. Haribo), Kohlenhydrat-Getränke, Hafer-Riegel, Hafer-Getränk (neu, z. B.
   Instant Oats), Whey und Bananen. Apfel, Honig und andere eigene Lebensmittel nur, wenn du sie selbst auswählst; das Blatt zeigt sie erst unter «Alle Lebensmittel».

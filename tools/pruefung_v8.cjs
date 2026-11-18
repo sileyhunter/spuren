@@ -198,3 +198,20 @@ zeile(`V8.0 Prüfung mit echten Daten · Stand ${BIS} · Fenster ${TAGE} Tage (a
   zeile(`  hart und lang an Land am selben Tag: ${F.hartLang.length}; harte Einheiten an Land an zwei Tagen hintereinander: ${F.zweiHart.length}${F.zweiHart.length ? " (ab " + F.zweiHart.join(", ") + ")" : ""}`);
   zeile(`  Einheiten Schwimmen/Rad/Laufen ohne TL ≈: ${F.ohneTl} von ${F.einheiten}; Hinweise der Wochen (verschoben, gekürzt, gemeldet): ${F.hinweise}`);
 }
+
+/* 9 V8.2 Persönliche Reaktionen (nur Zusammenfassung; Zahlen nur im Chat) */
+{
+  const V82 = require(path.join(__dirname, "..", "js", "v82.js"));
+  const t0 = Date.now(), R = V82.alles(D, { heute: BIS, zonen: D.zonen });
+  zeile("\n9 Persönliche Reaktionen (V8.2)");
+  if (!R) zeile("  keine Daten");
+  else {
+    const E = R.erholung, g = E.gruppen;
+    zeile(`  Rechenzeit ${Date.now() - t0} ms; Erholung: harte Tage ${g.intensiv.n} (Rad ${g.rad.n}, Laufen ${g.lauf.n}), lange ${g.lang.n}, ruhige ${g.ruhig.n}; Abstand laut Daten: ${E.erholtTag ? "Tag " + E.erholtTag : "offen"}`);
+    for (const m of ["hrv", "rhr", "puls"]) { const x = g.intensiv.marker[m], t = x.tage[0]; zeile(`    ${m}: Tag 1 ${r1(t.diff)} (Intervall ${t.kiDiff ? r1(t.kiDiff[0]) + " bis " + r1(t.kiDiff[1]) : "–"}, n ${t.n}), Grenze ±${r1(E.swc[m])} → ${x.status}`); }
+    const T = R.vertraeglich;
+    for (const [k, d] of Object.entries(T.dim)) zeile(`  verträglich ${k}: Bezug ${d.bezug || "–"}, bis ${d.bis || "–"}, deutlich schlechter ab ${d.ab || "–"} (${d.gruppen.map((q) => q.label + ":" + q.n).join(", ")})`);
+    for (const z of R.verteilung.zusammenhang) zeile(`  Verteilung ${z.x} → ${z.marker}: ${z.status}${isNum(z.rho) ? " (ρ " + z.rho + ", n " + z.n + ")" : " (n " + z.n + ")"}`);
+    zeile(`  Blockbilanz: ${R.bloecke.bloecke.length} Blöcke; letzter: ${R.bloecke.bloecke.length ? R.bloecke.bloecke[R.bloecke.bloecke.length - 1].satz : "–"}`);
+  }
+}

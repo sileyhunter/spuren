@@ -1320,6 +1320,28 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
     </div>
   </section>
 
+  <!-- V8.2 «Deine Reaktionen» (js/v82.js, js/v82-ui.js): was deine Historie über dich sagt, mit Intervall und Mindestzahl -->
+  <section class="view" id="view-reaktionen" role="region" aria-label="Deine Reaktionen" hidden>
+    <div class="dash">
+      <div class="card w12" id="v82-erholung-card">
+        <div class="card-head"><div><h2>Erholung nach harten Einheiten</h2><div class="sub">HRV, Ruhepuls und Puls bei gleicher Leistung an den Tagen danach – gegenüber Tagen ohne harte Einheit</div></div></div>
+        <div id="v82-erholung"><p class="hint">Wird berechnet …</p></div>
+      </div>
+      <div class="card w12" id="v82-vertraeglich-card">
+        <div class="card-head"><div><h2>Was du bisher verträgst</h2><div class="sub">Harte Einheiten, Wochenstunden und Lauf-km gegen deine Erholung in der Woche danach</div></div></div>
+        <div id="v82-vertraeglich"><p class="hint">Wird berechnet …</p></div>
+      </div>
+      <div class="card w12" id="v82-verteilung-card">
+        <div class="card-head"><div><h2>Verteilung und Entwicklung</h2><div class="sub">Locker, mittel und hart je Block gegen deine Effizienz im Block danach</div></div></div>
+        <div id="v82-verteilung"><p class="hint">Wird berechnet …</p></div>
+      </div>
+      <div class="card w12" id="v82-bloecke-card">
+        <div class="card-head"><div><h2>Blockbilanz</h2><div class="sub">Je vier Wochen: Umfang, harte Einheiten, Verteilung, Fitness, Erholung, Effizienz und Tests</div></div></div>
+        <div id="v82-bloecke"><p class="hint">Wird berechnet …</p></div>
+      </div>
+    </div>
+  </section>
+
   <section class="view" id="view-tagebuch" role="region" aria-label="Aktivitäten" hidden>
     <div class="dash">
         <div class="card w12">
@@ -1722,6 +1744,8 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <script src="js/v81-ui.js"></script>
 <script src="js/verpflegung.js"></script>
 <script src="js/verpflegung-ui.js"></script>
+<script src="js/v82.js"></script>
+<script src="js/v82-ui.js"></script>
 <script>
 (() => {
   const b64d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
@@ -2188,21 +2212,21 @@ document.getElementById("countdowns").innerHTML = RACES.map((r) => `<div>${esc(r
 document.getElementById("stand").textContent = !D.demo && D.updated ? "Stand " + D.updated : "";
 
 const TAB_NAMES = ["karte", "heute", "kalender", "plan", "plan-rennen", "plan-modell", "plan-aufbau", "plan-stunden", "plan-tests",
-  "analyse", "umfang", "intensitaet", "erholung", "leistung", "laktat", "planvergleich", "ausdauer", "tagebuch", "schwimmen", "koerper",
+  "analyse", "umfang", "intensitaet", "erholung", "leistung", "laktat", "planvergleich", "ausdauer", "tagebuch", "schwimmen", "koerper", "reaktionen",
   "labor", "wissen", "bibliothek"];
 /* V7 navigation-7.0 (Vorlage enduco, Auftrag V7 vom 14.11.2026): fünf Bereiche in der Leiste (unten, ab 1024 px als Seitenleiste links).
    Erste Ebene einfach (Heute, Kalender, Plan, Analyse-Start mit Karten, Outdoor); Einzelheiten öffnen als eigene Ansicht mit «Zurück» oben
    links statt Unterleisten. Das Labor (Expertenbereich mit Wissen und Enduco-Datenbestand) öffnet über das Profil oben rechts.
    Karten wurden zwischen Ansichten verschoben, ihre IDs blieben: QUELLEN nennt die Ansicht, deren Zeichnen sie füllt. */
 const GRUPPEN = { heute: ["heute"], kalender: ["kalender"], plan: ["plan", "plan-rennen", "plan-modell", "plan-aufbau", "plan-stunden", "plan-tests"],
-  analyse: ["analyse", "umfang", "intensitaet", "erholung", "leistung", "laktat", "planvergleich", "ausdauer", "tagebuch", "schwimmen", "koerper"],
+  analyse: ["analyse", "umfang", "intensitaet", "erholung", "leistung", "laktat", "planvergleich", "ausdauer", "tagebuch", "schwimmen", "koerper", "reaktionen"],
   karte: ["karte"], profil: ["labor", "wissen", "bibliothek"] };
 const ELTERN = { "plan-rennen": ["plan", "Rennen"], "plan-modell": ["plan", "Trainingsmodell"], "plan-aufbau": ["plan", "Aufbau-Check"],
   "plan-stunden": ["plan", "Wochenstunden"], "plan-tests": ["plan", "Testkalender"],
   umfang: ["analyse", "Trainingsumfang"], intensitaet: ["analyse", "Intensitätsverteilung"], erholung: ["analyse", "Belastung und Erholung"],
   leistung: ["analyse", "Leistungsentwicklung"], laktat: ["analyse", "Laktat und Schwellen"], planvergleich: ["analyse", "Planvergleich"],
   ausdauer: ["analyse", "Ausdauer und Verpflegung"], tagebuch: ["analyse", "Aktivitäten"], schwimmen: ["analyse", "Schwimmen"],
-  koerper: ["analyse", "Körper und Energie"], labor: [null, "Labor"], wissen: ["labor", "Wissen"], bibliothek: ["labor", "Enduco-Datenbestand"] };
+  koerper: ["analyse", "Körper und Energie"], reaktionen: ["analyse", "Deine Reaktionen"], labor: [null, "Labor"], wissen: ["labor", "Wissen"], bibliothek: ["labor", "Enduco-Datenbestand"] };
 const QUELLEN = { umfang: ["training"], intensitaet: ["training"], erholung: ["heute", "training"], leistung: ["training"], tagebuch: ["training"],
   labor: ["training", "kalender", "plan"], "plan-rennen": ["plan"], "plan-modell": ["plan"], "plan-aufbau": ["plan"], "plan-stunden": ["plan"], "plan-tests": ["plan"] };
 const ALIAS = { training: "umfang", fortschritt: "umfang", zonen: "laktat", outdoor: "karte" };   // alte Links (z. B. aus dem Morgen-Briefing) bleiben gültig
@@ -2251,6 +2275,7 @@ function showTab(name) {
   if (window.V59 && window.V59.ansicht) requestAnimationFrame(() => window.V59.ansicht(name));   // Info-Knopf, Tabellen als Liste
   if (window.V7UI && V7UI.gezeigt) requestAnimationFrame(() => { try { V7UI.gezeigt(name); } catch (e) { console.error(e); } });
   if (window.V81UI && V81UI.gezeigt) requestAnimationFrame(() => { try { V81UI.gezeigt(name); } catch (e) { console.error(e); } });   // V8.1 anstieg-1.0
+  if (window.V82UI && V82UI.gezeigt && typeof V5_READY !== "undefined") V5_READY.then(() => { try { V82UI.gezeigt(name); } catch (e) { console.error(e); } });   // V8.2 reaktionen
 }
 document.querySelectorAll("#leiste [data-gruppe]").forEach((b) => b.addEventListener("click", () => {
   const g = b.dataset.gruppe, akt = location.hash.slice(1), wurzel = GRUPPEN[g][0];
