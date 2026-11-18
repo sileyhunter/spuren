@@ -60,7 +60,7 @@ nav.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: v
 .demo-banner b { color: #ffc56b; }
 
 main { flex: 1; min-height: 0; position: relative; }
-section.view { position: absolute; inset: 0; overflow: auto; }
+section.view { position: absolute; top: 0; right: 0; bottom: 0; left: 0; overflow: auto; }
 
 /* ---------- Karte ---------- */
 #view-karte { display: grid; grid-template-columns: 340px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); overflow: hidden; }
@@ -96,7 +96,7 @@ input[type=number], input[type=date], input[type=text], input[type=search], sele
 .hint { font-size: 12.5px; color: var(--muted); margin: 0; }
 
 .map-wrap { position: relative; min-width: 0; min-height: 0; background: #0a0c0d; }
-#map { position: absolute; inset: 0; }
+#map { position: absolute; top: 0; right: 0; bottom: 0; left: 0; }
 .map-ctrl { position: absolute; top: 10px; left: 10px; z-index: 3; display: flex; flex-direction: column; gap: 6px; max-width: calc(100% - 70px); }
 .seg { display: flex; flex-wrap: wrap; background: rgba(20,24,27,.92); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.4); width: max-content; max-width: 100%; }
 .seg button { border: 0; background: none; padding: 6px 10px; cursor: pointer; font-size: 12.5px; color: var(--muted); }
@@ -106,7 +106,7 @@ input[type=number], input[type=date], input[type=text], input[type=search], sele
 .legend .bar { height: 6px; border-radius: 3px; margin: 5px 0 3px; background: linear-gradient(90deg, #5e0b18, #9a1a1c, #d8401c, #f78a1d, #fcd34d, #fffdf0); }
 .legend .ends { display: flex; justify-content: space-between; }
 .status { position: absolute; left: 50%; bottom: 34px; transform: translateX(-50%); z-index: 3; background: rgba(20,24,27,.95); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font: 12px var(--f-mono); color: var(--fg); white-space: nowrap; }
-.mapmsg { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
+.mapmsg { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
 .mobile-filter { display: none; }
 .maplibregl-popup-content { background: var(--surface); color: var(--fg); font-family: var(--f-body); border-radius: 8px; border: 1px solid var(--line); }
 .maplibregl-popup-tip { border-top-color: var(--surface) !important; border-bottom-color: var(--surface) !important; }
@@ -277,7 +277,7 @@ html, body { touch-action: manipulation; }
 .badge.ok { background: rgba(63,209,127,.15); color: var(--good); }
 .badge.next { background: rgba(242,193,78,.15); color: var(--warn); }
 /* Passwort */
-.lock { position: fixed; inset: 0; z-index: 50; background: var(--bg); display: grid; place-items: center; padding-block: 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.lock { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 50; background: var(--bg); display: grid; place-items: center; padding-block: 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 .lock-box { width: min(380px, 100%); display: flex; flex-direction: column; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
 .lock-box .brand { padding: 0 0 4px; }
 .lock-box p { margin: 0; }
@@ -456,7 +456,7 @@ fieldset.checks { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wr
 fieldset.checks label { flex-direction: row !important; align-items: center; color: var(--fg) !important; }
 details > summary { cursor: pointer; font-weight: 600; padding: 6px 0; } details > summary::marker { color: var(--accent); }
 /* Test erfassen (Handy) */
-.v5-overlay { position: fixed; inset: 0; z-index: 70; background: rgba(31,51,71,.38); display: grid; place-items: start center; overflow-y: auto;
+.v5-overlay { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 70; background: rgba(31,51,71,.38); display: grid; place-items: start center; overflow-y: auto;
   padding: max(12px, env(safe-area-inset-top, 0px)) 12px calc(40px + env(safe-area-inset-bottom, 0px)); }
 .te-box { background: var(--surface); width: min(760px, 100%); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 12px 32px rgba(31,51,71,.22); }
 .te-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; } .te-head h2 { margin: 0; font: 700 19px var(--f-body); }
@@ -493,7 +493,7 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
 @media (max-width: 760px) { .sw-grid { grid-template-columns: minmax(0, 1fr); } }
 .sw-pane { display: flex; flex-direction: column; gap: 6px; min-width: 0; } .sw-lab { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-weight: 600; }
 .sw-lab input[type=number] { width: 76px; } .sw-v { position: relative; background: #0f1a24; border-radius: 10px; aspect-ratio: 16 / 9; overflow: hidden; }
-.sw-v video { width: 100%; height: 100%; object-fit: contain; display: block; } .sw-v canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.sw-v video { width: 100%; height: 100%; object-fit: contain; display: block; } .sw-v canvas { position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
 .sw-ctl .btn { min-height: 40px; } .sw-rate { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
 .sw-rate label { display: flex; flex-direction: column; font-size: 12.5px; color: var(--muted); gap: 3px; }
 
@@ -1701,6 +1701,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <div class="v5-overlay" id="v5-test" hidden></div>
 <div class="v5-overlay" id="v59-ov" hidden></div>
 
+<script src="js/kompat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="js/formkurve.js"></script>
@@ -1831,7 +1832,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 function boot() {
 "use strict";
 if (window.V59) V59.ausblenden();          // V5.9: ausgeblendete Karten bleiben verborgen, ausser auf diesem Gerät wieder eingeblendet
-if (!Array.prototype.at) Array.prototype.at = function (i) { i = Math.trunc(i) || 0; if (i < 0) i += this.length; return this[i]; };
+// V8.4.1: Array.prototype.at u. a. ersetzt js/kompat.js (kompat-1.0), vor allen anderen Skripten geladen
 /* =====================================================================
    Grundlagen
    ===================================================================== */
@@ -3556,15 +3557,15 @@ function hrPoints(kind, from, to) {        // Punkte {x, y} je System im Zeitrau
     if (kind === "rad") {
       const s = bikeSys(a), w = a.np || a.watt;
       if (!s || !w || w < 60 || a.dur < 1200) continue;
-      (out[s] ||= []).push({ x: w, y: a.hr, n: a.name, d: a.date, t: a.dur });
+      (out[s] = out[s] || []).push({ x: w, y: a.hr, n: a.name, d: a.date, t: a.dur });
     } else {
       const s = runSys(a);
       if (!s || !(a.km >= 2) || a.dur < 900) continue;
       // V7.1 laufvergleich-1.0: nur Läufe unter ähnlichen Bedingungen (flach, gleichmässig, ohne Intervalle, kein Trail/Laufband/Koppellauf)
       const lv = window.FK && FK.laufVergleichbar ? FK.laufVergleichbar(a, { acts: D.activities }) : { ok: true, gruende: [] };
-      if (!lv.ok) { (out._aus ||= []).push({ a, gruende: lv.gruende }); continue; }
+      if (!lv.ok) { (out._aus = out._aus || []).push({ a, gruende: lv.gruende }); continue; }
       const t = Number.isFinite(a.mv) ? a.mv : a.dur, pc = t / a.km; if (pc < 170 || pc > 560) continue;   // Pace aus der Bewegungszeit
-      (out[s] ||= []).push({ x: Math.round(pc), y: a.hr, n: a.name, d: a.date, t });
+      (out[s] = out[s] || []).push({ x: Math.round(pc), y: a.hr, n: a.name, d: a.date, t });
     }
   }
   return out;
@@ -4231,7 +4232,7 @@ function renderChecks() {
     (list.length ? list.slice().reverse().map((l) => `<tr><td>${dateCH(l.date)}</td><td>${esc(l.block || "")}</td><td>${l.np ? l.np + " W" : "–"}</td><td>${l.hr_avg ?? "–"}</td><td>${l.hr_max ?? "–"}</td><td>${l.drift != null ? (l.drift > 0 ? "+" : "") + fmt(l.drift, 1) + " %" : "–"}</td><td><b>${fmt(l.lactate, 1)}</b> mmol/l</td><td>${esc(l.note || "")}</td></tr>`).join("")
       : pvRows ? "" : `<tr><td colspan="8">Noch keine Kurzchecks. In dieser Demo sind keine weiteren Checks hinterlegt.</td></tr>`);
   if (!list.length) { const c = document.getElementById("c-checks"); c.closest(".chart").hidden = true; return; }
-  const groups = {}; list.forEach((l) => { const k = l.w ? l.w + " W" : (l.block || "Block"); (groups[k] ||= []).push(l); });
+  const groups = {}; list.forEach((l) => { const k = l.w ? l.w + " W" : (l.block || "Block"); (groups[k] = groups[k] || []).push(l); });
   const pal = [css("--accent"), SPORTS.schwimm.color, SPORTS.wandern.color, SPORTS.andere.color];
   const ds = [];
   Object.entries(groups).forEach(([k, arr], i) => {

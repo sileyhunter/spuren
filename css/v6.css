@@ -161,7 +161,7 @@ nav.unter button[aria-pressed="true"] { background: var(--fg); border: 0; color:
 .blatt-titel h2 { margin: 0; font: 650 22px/1.2 var(--f-body); }
 @media (max-width: 700px) {
   .v5-overlay { place-items: end center; padding: 0; overflow: hidden; }
-  .v5-overlay > .te-box { width: 100%; max-height: calc(100dvh - 28px); overflow-y: auto; overscroll-behavior: contain; border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  .v5-overlay > .te-box { width: 100%; max-height: calc(100vh - 28px); max-height: calc(100dvh - 28px); overflow-y: auto; overscroll-behavior: contain; border-radius: var(--r-sheet) var(--r-sheet) 0 0;
     padding: 12px 18px calc(16px + env(safe-area-inset-bottom, 0px)); }
   .v5-overlay > .te-box::before { content: ""; display: block; flex: none; width: 42px; height: 5px; border-radius: 3px; background: var(--btn-back); margin: 0 auto 4px; }
   /* Fuss bis ganz unten (sticky gilt innerhalb des Innenabstands): nichts scheint unter den Knöpfen durch */
@@ -222,7 +222,7 @@ nav.unter button[aria-pressed="true"] { background: var(--fg); border: 0; color:
 .ek-kopfzeile h2 { margin: 0; font: 650 20px/1.2 var(--f-body); }
 .ek-stand { display: block; margin-top: 2px; font-size: 12px; color: var(--faint); }
 .ek-karte { position: relative; gap: 12px; }
-.ek-karte .ek-auf { position: absolute; inset: 0; width: 100%; border: 0; background: transparent; border-radius: inherit; cursor: pointer; padding: 0; }
+.ek-karte .ek-auf { position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; border: 0; background: transparent; border-radius: inherit; cursor: pointer; padding: 0; }
 .ek-karte .ek-auf:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ek-karte:active { transform: scale(.99); }
 .ek-oben { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: start; }
@@ -532,7 +532,7 @@ nav.unter { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14
 .mo-int-n { font-size: 14px; font-weight: 600; }
 .mo-int-seg { display: flex; background: var(--surface-2); border-radius: 12px; padding: 3px; gap: 2px; }
 .mo-int-seg label { flex: 1 1 0; position: relative; display: block; cursor: pointer; }
-.mo-int-seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.mo-int-seg input { position: absolute; opacity: 0; top: 0; right: 0; bottom: 0; left: 0; margin: 0; cursor: pointer; }
 .mo-int-seg span { display: flex; align-items: center; justify-content: center; text-align: center; min-height: 38px; padding: 4px 6px; border-radius: 9px; font-size: 12.5px; color: var(--muted); line-height: 1.2; }
 .mo-int-seg input:checked + span { background: var(--btn-2); color: var(--fg); font-weight: 650; }
 .mo-int-seg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -885,12 +885,12 @@ table.t.v7-zt td small { display: block; color: var(--muted); font-size: 11px; }
    Bergausschnitt aus logo.jpg, getönt in der Sportfarbe), unten schwebend «Zurück» und «Export». Aufbau nach enduco, eigene Gestaltung.
    ====================================================================================================================== */
 html.v73-offen, html.v73-offen body { overflow: hidden; }
-.v73-seite { position: fixed; inset: 0; z-index: 64; background: var(--bg); color: var(--fg); display: block;
+.v73-seite { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 64; background: var(--bg); color: var(--fg); display: block;
   transform: translateX(100%); transition: transform .26s cubic-bezier(.2, .8, .2, 1); will-change: transform; }
 .v73-seite.auf { transform: none; }
 .v73-seite[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { .v73-seite { transition: none; } }
-.v73-scroll { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+.v73-scroll { position: absolute; top: 0; right: 0; bottom: 0; left: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
   padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 .v73-mini { position: absolute; top: 0; left: 0; right: 0; z-index: 3; display: flex; align-items: center; justify-content: center; gap: 8px;
   min-height: 46px; padding: env(safe-area-inset-top, 0px) 64px 0; background: var(--panel-glass); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
@@ -902,10 +902,10 @@ html.v73-offen, html.v73-offen body { overflow: hidden; }
 /* Kopf */
 .v73-hero { position: relative; min-height: 238px; display: flex; align-items: flex-end; overflow: hidden; isolation: isolate;
   padding: calc(56px + env(safe-area-inset-top, 0px)) 20px 14px; background: var(--surface-2); }
-.v73-hero::before { content: ""; position: absolute; inset: 0; z-index: -2; background: url("../logo-einheit.jpg") 58% 30% / cover no-repeat;
+.v73-hero::before { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: -2; background: url("../logo-einheit.jpg") 58% 30% / cover no-repeat;
   filter: grayscale(1) brightness(.5) contrast(1.15); }
 :root[data-theme="light"] .v73-hero::before { filter: grayscale(1) brightness(1.02) contrast(.92); opacity: .75; }
-.v73-hero::after { content: ""; position: absolute; inset: 0; z-index: -1;
+.v73-hero::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: -1;
   background: linear-gradient(180deg, rgba(0, 0, 0, .1) 0%, transparent 42%, var(--bg) 100%);
   background: linear-gradient(180deg, color-mix(in srgb, var(--sp) 46%, transparent) 0%, color-mix(in srgb, var(--sp) 10%, transparent) 46%, var(--bg) 100%); }
 /* V7.6.2 bilder-1.0: eigenes Foto je Sportart (in Farbe, abgedunkelt; unten in den Hintergrund auslaufend wie die Vorlage) */
@@ -930,7 +930,7 @@ html.v73-offen, html.v73-offen body { overflow: hidden; }
 /* Inhalt */
 .v73-inhalt { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 760px; margin: 0 auto; padding: 4px 16px 0; box-sizing: border-box; }
 .v73-ph { display: block; background: var(--surface); border-radius: 8px; position: relative; overflow: hidden; }
-.v73-ph::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .06), transparent); animation: v73-glanz 1.1s infinite; }
+.v73-ph::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .06), transparent); animation: v73-glanz 1.1s infinite; }
 :root[data-theme="light"] .v73-ph { background: var(--tint); }
 @keyframes v73-glanz { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 @media (prefers-reduced-motion: reduce) { .v73-ph::after { animation: none; } }

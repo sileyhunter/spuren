@@ -94,7 +94,12 @@
 
   async function strom(u8, s) { return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(s)).arrayBuffer()); }
   const gzip = async (u8) => (typeof CompressionStream === "function" ? strom(u8, new CompressionStream("gzip")) : null);
-  const gunzip = async (u8) => { if (typeof DecompressionStream !== "function") throw new Error("gzip nicht lesbar"); return strom(u8, new DecompressionStream("gzip")); };
+  // V8.4.1 kompat-1.0: ohne DecompressionStream (Safari vor 16.4) der eigene Dekoder aus js/kompat.js
+  const gunzip = async (u8) => {
+    if (typeof DecompressionStream === "function") return strom(u8, new DecompressionStream("gzip"));
+    if (typeof window !== "undefined" && window.KOMPAT && window.KOMPAT.gunzip) return window.KOMPAT.gunzip(u8);
+    throw new Error("gzip nicht lesbar");
+  };
   /** Objekt → EGS1-Datei (Uint8Array). key: AES-GCM-CryptoKey (Seitenschlüssel). */
   EG.schliessen = async function (key, obj) {
     const json = new TextEncoder().encode(JSON.stringify(obj));

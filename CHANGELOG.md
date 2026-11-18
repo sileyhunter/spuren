@@ -1,5 +1,11 @@
 # Änderungen
 
+## V8.4.1 · 18.11.2026 · Ältere Browser (kompat-1.0)
+- **Älterer Mac:** Die Seite lief in älteren Safari-Versionen nicht mehr (logische Zuweisung «||=» erst ab Safari 14, «inset» erst ab 14.1, gzip-Entpacken erst ab 16.4).
+  Neu lädt `js/kompat.js` vor allem anderen: Ersatz für `at`, `Object.hasOwn` und `Blob.arrayBuffer`, ein eigener gzip-Dekoder für Explorer und Eingang
+  (geprüft gegen zlib und an echten Reihen) und ein klarer Hinweis, wenn der Browser zu alt ist oder beim Start ein Fehler auftritt.
+- Seite und Module nutzen nur noch Syntax bis ES2020 (Safari 13.1); CSS ohne «inset», «dvh» mit «vh» davor. `tests/test_kompat.cjs` prüft das bei jedem Push.
+
 ## V8.4 Teil 4 · 18.11.2026 · Abwechslung (abwechslung-1.0), wissen-1.30
 - **Gleicher Reiz, andere Form:** Die Schlüsseleinheiten wechseln von Woche zu Woche die Form – Rad VO2max 30/15 · 4 × 5 min · 40/20, Laufen 4 × 4 · 5 × 3 min · 30/30,
   Schwelle 3 × 15 · 4 × 10 · 3 × 12 min, Tempo 2 × 20 · 3 × 15 min bzw. 3 × 10 · 2 × 15 · 4 × 8 min, Schwimmen CSS über 100 · 200 · 300 m (`V64.FAMILIEN`, `V64.formFuer`).

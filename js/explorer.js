@@ -18,7 +18,10 @@
 
   /* ---------------- Laden ---------------- */
   async function gunzip(u8) {
-    if (typeof DecompressionStream === "undefined") throw new Error("Dieser Browser kann die Sekundenwerte nicht entpacken (Safari ab iOS 16.4 nötig).");
+    if (typeof DecompressionStream === "undefined") {                      // V8.4.1 kompat-1.0: Safari vor 16.4 – eigener Dekoder aus js/kompat.js
+      if (window.KOMPAT && window.KOMPAT.gunzip) return window.KOMPAT.gunzip(u8);
+      throw new Error("Dieser Browser kann die Sekundenwerte nicht entpacken (Safari ab 16.4 nötig).");
+    }
     const ds = new Blob([u8]).stream().pipeThrough(new DecompressionStream("gzip"));
     return new Uint8Array(await new Response(ds).arrayBuffer());
   }
