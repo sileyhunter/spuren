@@ -1,4 +1,4 @@
-"""V8.3 Tagescoach (tagescoach-1.0): Entscheide zu Vorschlägen des Coaches prüfen – gleiche Regeln wie V83.eintragPruefen in js/v83.js.
+"""V8.3 Tagescoach (tagescoach-1.0, seit V8.4 tagescoach-1.1 mit «ausgefallen», «schmerz», «umfang»): Entscheide zu Vorschlägen des Coaches prüfen – gleiche Regeln wie V83.eintragPruefen in js/v83.js.
 
 Ein Entscheid kommt von der Seite (Eingabe «tagescoach» → tagescoach_add → coach_entscheide): angenommen (mit Rückweg und Markierung),
 abgelehnt oder zurückgeholt. Die Änderung an Mein Plan selbst kommt getrennt als «planwoche» und wird dort geprüft (planwoche_pruefen);
@@ -6,10 +6,10 @@ hier wird nur die Form des Entscheids geprüft (die Einheiten im Rückweg prüft
 import datetime as dt
 import re
 
-ID_RE = re.compile(r"^co-(\d{4}-\d{2}-\d{2})-(morgen|last|zeit|nachholen)-([A-Za-z0-9_.:-]{1,80})$")
+ID_RE = re.compile(r"^co-(\d{4}-\d{2}-\d{2})-(morgen|last|zeit|nachholen|ausgefallen|schmerz|umfang)-([A-Za-z0-9_.:-]{1,80})$")
 UID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,80}$")
 STATUS = ("angenommen", "abgelehnt", "zurueck")
-ARTEN = ("tauschen", "locker", "kurz", "nachholen")
+ARTEN = ("tauschen", "locker", "kurz", "nachholen", "verlaengern", "weglassen", "rad")
 AKTIONEN = ("verschieben", "ersetzen", "dauer", "entfernen", "hinzufuegen")
 QUELLEN = ("vorschlag", "eigen", "bibliothek")
 

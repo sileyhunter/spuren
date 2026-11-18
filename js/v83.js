@@ -8,7 +8,17 @@
      (zwei harte Tage an Land hintereinander vermeiden, wie verfuegbarkeit-1.2).
    - zeit: an einem Tag weniger Zeit als geplant → Kurzfassung derselben Sportart statt Verschieben (keine zwei langen Einheiten an einem Tag).
    - nachholen: eine von der Ampel gelockerte Schlüsseleinheit (V74, ampel-plan-1.2) nur als Vorschlag für einen passenden Tag derselben Woche.
-   Nie: gesperrte Tage und Einheiten, Tests, Rennen, der Schwimmkurs, vergangene Tage; nie härter oder länger als Mein Plan an diesem Tag vorsah. */
+   Nie: gesperrte Tage und Einheiten, Tests, Rennen, der Schwimmkurs, vergangene Tage; nie härter oder länger als Mein Plan an diesem Tag vorsah.
+   tagescoach-1.1 (V8.4, Silas am 18.11.2026: «lange Einheiten, wenn die Verfügbarkeit reicht – mit der Laufentwicklung aufpassen», «eine Verletzung, die die
+   Laufkilometer bremst», «Folgewochen dürfen angepasst werden»):
+   - ausgefallen: eine Schlüsseleinheit von gestern ohne Aktivität derselben Sportart → an einem der nächsten Tage an Stelle einer lockeren nachholen
+     (auch in der nächsten Woche).
+   - umfang: fehlen in der laufenden Woche bisher mindestens 20 min einer Sportart gegenüber Mein Plan → eine kommende lockere oder lange Einheit derselben
+     Sportart verlängern, höchstens um das Fehlende, die Hälfte ihrer Dauer, die Zeit laut Verfügbarkeit, die längste Einheit der Phase und beim Laufen die
+     Aufbau-Grenze (10 % über dem längsten Lauf der 30 Tage) – die Woche wird nie länger als Mein Plan.
+   - schmerz: Schmerzen an Beinen oder Füssen im Check-in von heute → Laufkilometer bremsen (leicht: Läufe der nächsten 3 Tage locker und 30 % kürzer;
+     deutlich: Läufe heute und morgen weglassen oder locker Rad statt Laufen; an 3 der letzten 5 Tage: die ganze Woche, mit dem Rat zur Abklärung).
+   - Tauschen geht seither auch in die nächste Woche (entfernen und hinzufügen statt verschieben). */
 (function (root, factory) {
   const node = typeof module === "object" && module.exports;
   const V83 = factory(node ? require("./v64.js") : root && root.V64, node ? require("./v66.js") : root && root.V66, node ? require("./v74.js") : root && root.V74);
@@ -16,7 +26,7 @@
   if (root) root.V83 = V83;
 })(typeof window !== "undefined" ? window : null, function (V64, V66, V74) {
   "use strict";
-  const V83 = { VERSIONS: { coach: "tagescoach-1.0" } };
+  const V83 = { VERSIONS: { coach: "tagescoach-1.1" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const ISO = /^\d{4}-\d{2}-\d{2}$/;
   const add = (iso, n) => new Date(Date.parse(iso + "T12:00:00Z") + n * 864e5).toISOString().slice(0, 10);
@@ -40,9 +50,13 @@
   V83.TOLERANZ = 5;                                                      // Minuten über der Verfügbarkeit, die noch passen
   const LOCKER = { rad: "rad_locker", lauf: "lauf_locker", schwimm: "schwimm_locker" };
   V83.LOCKER = LOCKER;
-  const ANLASS = ["morgen", "last", "zeit", "nachholen"];
+  const ANLASS = ["schmerz", "morgen", "last", "ausgefallen", "zeit", "nachholen", "umfang"];
   V83.ANLASS = ANLASS;
-  const ARTEN = ["tauschen", "locker", "kurz", "nachholen"];
+  const ARTEN = ["tauschen", "locker", "kurz", "nachholen", "verlaengern", "weglassen", "rad"];
+  // tagescoach-1.1 (eigene Festlegungen): Umfang nachholen ab 20 fehlenden Minuten, mindestens 15 und höchstens die Hälfte der Einheit mehr;
+  // Schmerzen an diesen Orten bremsen das Laufen (leicht: 70 % der Dauer, 3 Tage; deutlich: 2 Tage ohne Laufen; anhaltend = 3 der letzten 5 Check-ins)
+  V83.UMFANG = { min_defizit: 20, min_plus: 15, max_anteil: 0.5 };
+  V83.SCHMERZ = { orte: ["Fuss", "Achilles/Wade", "Schienbein", "Knie", "Hüfte/Leiste", "Oberschenkel"], leicht: 0.7, tage_leicht: 3, tage_deutlich: 2, anhaltend: 3, fenster: 5 };
   V83.ARTEN = ARTEN;
   const AKTIONEN = ["verschieben", "ersetzen", "dauer", "entfernen", "hinzufuegen"];
 
@@ -126,10 +140,20 @@
   /* ---------------- Optionen ---------------- */
   /** Tausch der harten Einheit U (Tag i) mit der lockeren derselben Sportart an einem späteren Tag j der Woche: dort keine harte Einheit an Land
    *  daneben, kein Test, kein Rennen, kein Krafttraining am Vortag (Rad, Laufen), keine Aktivität draussen, genug Zeit an beiden Tagen. → Option oder null */
+  /** Einheit U von Tag t auf Tag z: in derselben Woche verschieben, sonst entfernen und dort hinzufügen (gleiche Kennung, tagescoach-1.1). */
+  function bewegen(t, z, U) {
+    if (t.mo === z.mo) return { hin: [{ art: "verschieben", date: t.date, uid: U.uid, nach: z.date }], rueck: [{ art: "verschieben", date: z.date, uid: U.uid, nach: t.date }] };
+    const sp = V83.spec(imPlan(t, U));
+    return { hin: [{ art: "entfernen", date: t.date, uid: U.uid }, { art: "hinzufuegen", date: z.date, uid: U.uid, einheit: sp }],
+      rueck: [{ art: "entfernen", date: z.date, uid: U.uid }, { art: "hinzufuegen", date: t.date, uid: U.uid, einheit: sp }] };
+  }
+  /** Gleiche Sportart hart innert zwei Tagen um Tag j (ohne die Einheit selbst) – über die Wochengrenze gezählt. */
+  const hartNahe = (T, j, U, ohne) => [j - 2, j - 1, j + 1, j + 2].some((k) => { const y = T[k]; return !!y && y.einheiten.some((x) => x !== U && x !== ohne && x.sport === U.sport && V83.hart(x)); });
   function tauschen(T, i, U, heute) {
     const t = T[i];
     for (let j = i + 1; j < T.length; j++) {
-      const z = T[j]; if (!z || z.mo !== t.mo || z.date <= heute) continue;
+      const z = T[j]; if (!z || z.date <= heute) continue;
+      if (z.mo !== t.mo && (z.schonung || hartNahe(T, j, U, null))) continue;                      // nächste Woche: nicht in eine Erholungs-, Taper- oder Rennwoche, keine harte derselben Sportart daneben
       if (z.gesperrt || z.rennen || z.vorbei || z.einheiten.some(istTest) || z.einheiten.some((x) => x.art === "draussen")) continue;
       const n = T[j + 1], v = T[j - 1];
       if (n && (n.rennen || n.einheiten.some(istTest))) continue;                                   // nicht am Tag vor einem Test oder Rennen
@@ -144,9 +168,9 @@
       if (vj && Array.isArray(vj.sport) && !vj.sport.includes(U.sport)) continue;
       if (vj && isNum(vj.min) && summe(z.einheiten) - X.dauer + U.dauer > vj.min + V83.TOLERANZ) continue;
       if (vi && isNum(vi.min) && summe(t.einheiten) - U.dauer + X.dauer > vi.min + V83.TOLERANZ) continue;
-      return { art: "tauschen", titel: `«${U.titel}» auf ${V83.wt(z.date)} – dafür «${X.titel}» (${dauerT(X.dauer)}) ${t.date === heute ? "heute" : "am " + V83.wt(t.date)}`,
-        aktionen: [{ art: "verschieben", date: t.date, uid: U.uid, nach: z.date }, { art: "verschieben", date: z.date, uid: X.uid, nach: t.date }],
-        rueck: [{ art: "verschieben", date: z.date, uid: U.uid, nach: t.date }, { art: "verschieben", date: t.date, uid: X.uid, nach: z.date }],
+      const a = bewegen(t, z, U), b = bewegen(z, t, X), naechste = z.mo !== t.mo ? " (nächste Woche)" : "";
+      return { art: "tauschen", titel: `«${U.titel}» auf ${V83.wt(z.date)}${naechste} – dafür «${X.titel}» (${dauerT(X.dauer)}) ${t.date === heute ? "heute" : "am " + V83.wt(t.date)}`,
+        aktionen: a.hin.concat(b.hin), rueck: a.rueck.concat(b.rueck),
         markiert: [{ date: z.date, uid: U.uid, vorher: `vom ${V83.wt(t.date)}` }, { date: t.date, uid: X.uid, vorher: `vom ${V83.wt(z.date)}` }] };
     }
     return null;
@@ -202,6 +226,81 @@
     return { art: "kurz", titel, aktionen: akt, rueck, markiert: mark };
   }
 
+  /* ---------------- tagescoach-1.1: nachholen, verlängern, Schmerzen ---------------- */
+  /** Ausgefallene Schlüsseleinheit U (gestern) an einem der nächsten Tage an Stelle einer lockeren derselben Sportart (auch nächste Woche): wie beim Tauschen
+   *  keine harte Einheit an Land daneben, nicht vor Test oder Rennen, nicht nach dem Krafttraining, keine harte derselben Sportart innert 2 Tagen, Zeit laut
+   *  Verfügbarkeit. → Option oder null */
+  function nachholen(T, U0, tU, heute) {
+    const U = imPlan(tU, U0);
+    for (let j = 0; j < T.length; j++) {
+      const z = T[j]; if (!z || z.date < heute || z.gesperrt || z.rennen || z.vorbei) continue;
+      if (z.mo !== tU.mo && z.schonung) continue;                                                     // nicht in eine Erholungs-, Taper- oder Rennwoche nachholen
+      if (z.date === heute && (z.erledigt || []).includes(U.sport)) continue;
+      if (z.einheiten.some(istTest) || z.einheiten.some((x) => x.art === "draussen")) continue;
+      const n = T[j + 1], v = T[j - 1];
+      if (n && (n.rennen || n.einheiten.some(istTest))) continue;
+      if (land(U) && v && v.einheiten.some((x) => x.sport === "kraft")) continue;
+      const X = z.einheiten.find((x) => x.sport === U.sport && x.id === LOCKER[U.sport] && !x.gesperrt && x.quelle !== "bibliothek" && !x.ampel);
+      if (!X) continue;
+      if (z.einheiten.some((x) => x !== X && V83.hart(x) && (x.sport === U.sport || (land(x) && land(U))))) continue;
+      if (land(U) && [j - 1, j + 1].some((k) => { const y = T[k]; return !!y && y.einheiten.some((x) => V83.hart(x) && land(x)); })) continue;
+      if (hartNahe(T, j, U, X)) continue;
+      const vz = z.verf;
+      if (vz && Array.isArray(vz.sport) && !vz.sport.includes(U.sport)) continue;
+      if (vz && isNum(vz.min) && summe(z.einheiten) - X.dauer + U.dauer > vz.min + V83.TOLERANZ) continue;
+      const sp = Object.assign(V83.spec(U), { uid: X.uid });
+      if (X.uhrzeit && !sp.uhrzeit) sp.uhrzeit = X.uhrzeit;
+      if (V66.einheitPruefen(sp)) continue;
+      return { z, X, o: { art: "nachholen", titel: `«${U.titel}» ${dauerT(U.dauer)} am ${V83.wt(z.date)}${z.mo !== tU.mo ? " (nächste Woche)" : ""} statt «${X.titel}»`,
+        aktionen: [{ art: "ersetzen", date: z.date, uid: X.uid, einheit: sp }], rueck: [{ art: "ersetzen", date: z.date, uid: X.uid, einheit: V83.spec(imPlan(z, X)) }],
+        markiert: [{ date: z.date, uid: X.uid, vorher: `nachgeholt vom ${V83.wt(tU.date)} statt «${X.titel}»` }] } };
+    }
+    return null;
+  }
+  /** Längste Einheit der Phase (V64.LANG, Erholungswoche 70 %) für Rad und Laufen, sonst null. */
+  const langGrenze = (t, sport) => {
+    if (!V64 || !V64.LANG || (sport !== "rad" && sport !== "lauf")) return null;
+    const L = V64.LANG[t.phase] || (String(t.phase || "").startsWith("B-Rennen") ? V64.LANG.Taper : V64.LANG.Grundlage);
+    return t.erholung ? Math.round(L[sport] * 0.7) : L[sport];
+  };
+  /** Verlängern (umfang): kommende lockere oder lange Einheit derselben Sportart in der laufenden Woche um höchstens das Fehlende. → { t, U, plus, km } oder null */
+  function verlaengern(T, h, sport, defizit, L) {
+    let best = null;
+    for (const t of T) {
+      if (t.date < h || t.mo !== montag(h) || t.gesperrt || t.rennen || t.vorbei) continue;
+      if (t.date === h && (t.erledigt || []).includes(sport)) continue;
+      const v = t.verf, frei = v && isNum(v.min) ? v.min - summe(t.einheiten) : null;
+      if (frei != null && frei < V83.UMFANG.min_plus) continue;
+      if (v && Array.isArray(v.sport) && !v.sport.includes(sport)) continue;
+      for (const U0 of t.einheiten) {
+        if (U0.sport !== sport || fest(U0) || V83.hart(U0) || U0.quelle === "bibliothek" || U0.gesperrt || U0.ampel || U0.kraft_plan) continue;
+        const U = imPlan(t, U0), B = V66.bereich(U.vorlage || U.id); if (!B || B.fest || !isNum(U.dauer)) continue;
+        const lg = langGrenze(t, sport);
+        let plus = Math.min(defizit, frei == null ? defizit : frei, Math.floor(U.dauer * V83.UMFANG.max_anteil), B.max - U.dauer, lg != null ? lg - U.dauer : Infinity);
+        let km = null;
+        if (sport === "lauf") {                                                    // Laufen nur mit Distanz ≈ und Aufbau-Grenze (aufbau-1.2)
+          const k0 = L.laufKm ? L.laufKm(U) : null, g = t.laufGrenze;
+          if (!isNum(k0) || k0 <= 0 || !g || !isNum(g.km)) continue;
+          plus = Math.min(plus, Math.floor((U.dauer * g.km) / k0) - U.dauer);
+          km = { vorher: k0, grenze: g.km };
+        }
+        plus = r5(plus);
+        if (plus < V83.UMFANG.min_plus) continue;
+        if (!best || plus > best.plus || (plus === best.plus && U.art === "lang")) best = { t, U, plus, km };
+      }
+    }
+    return best;
+  }
+  /** Schmerzen an Beinen oder Füssen im Check-in von heute → { stufe, orte, anhaltend } oder null. */
+  V83.schmerz = function (befinden, h) {
+    const S = V83.SCHMERZ, von = add(h, -(S.fenster - 1));
+    const B = (befinden || []).filter((b) => b && typeof b.date === "string" && b.date >= von && b.date <= h);
+    const lauf = (b) => !!b.schmerz && ["leicht", "deutlich"].includes(b.schmerz.stufe) && (b.schmerz.ort || []).some((o) => S.orte.includes(o));
+    const heute = B.find((b) => b.date === h);
+    if (!heute || !lauf(heute)) return null;
+    return { stufe: heute.schmerz.stufe, orte: heute.schmerz.ort.filter((o) => S.orte.includes(o)), anhaltend: B.filter(lauf).length >= S.anhaltend };
+  };
+
   /* ---------------- Prüfung ---------------- */
   /**
    * Prüft heute und die nächsten Tage. lage = {
@@ -226,6 +325,35 @@
     };
     const offen = (t, e) => t && !t.vorbei && t.date >= h && !t.gesperrt && !t.rennen && !e.gesperrt && !(t.date === h && (t.erledigt || []).includes(e.sport));
     const hartHeuteMorgen = (t) => (t ? t.einheiten.filter((e) => V83.hart(e) && land(e) && offen(t, e)) : []);
+
+    // 0) Schmerzen an Beinen oder Füssen (tagescoach-1.1): Laufkilometer bremsen
+    const SZ = V83.schmerz(L.befinden, h);
+    if (SZ) {
+      const S = V83.SCHMERZ, n = SZ.anhaltend ? 7 : SZ.stufe === "deutlich" ? S.tage_deutlich : S.tage_leicht;
+      const gr0 = `Schmerzen ${SZ.stufe}: ${SZ.orte.join(", ")} (Check-in heute) – Laufkilometer bremsen, bis es weg ist.`;
+      for (let k = 0; k < n; k++) {
+        const t = T[idx.get(add(h, k))]; if (!t) continue;
+        for (const U0 of t.einheiten.filter((e) => e.sport === "lauf" && !fest(e) && offen(t, e))) {
+          const U = imPlan(t, U0), opts = [];
+          if (SZ.stufe === "deutlich" || SZ.anhaltend) {
+            opts.push({ art: "weglassen", titel: `«${U.titel}» weglassen`, aktionen: [{ art: "entfernen", date: t.date, uid: U.uid }],
+              rueck: [{ art: "hinzufuegen", date: t.date, uid: U.uid, einheit: V83.spec(U) }], markiert: [] });
+            const vr = t.verf, d = Math.max(20, r5(U.dauer)), sp = neueSpec(U, "rad_locker", d);
+            if ((!vr || !Array.isArray(vr.sport) || vr.sport.includes("rad")) && !V66.einheitPruefen(sp) && V66.bereich("rad_locker") && d >= V66.bereich("rad_locker").min)
+              opts.push({ art: "rad", titel: `Rad locker ${dauerT(d)} statt «${U.titel}»`, aktionen: [{ art: "ersetzen", date: t.date, uid: U.uid, einheit: sp }],
+                rueck: [{ art: "ersetzen", date: t.date, uid: U.uid, einheit: V83.spec(U) }], markiert: [{ date: t.date, uid: U.uid, vorher: `statt «${U.titel}» (Schmerzen)` }] });
+          } else {
+            const d = Math.max(V83.KURZ_MIN, r5(U.dauer * S.leicht)), BL = V66.bereich(LOCKER.lauf), sp = neueSpec(U, LOCKER.lauf, Math.max(d, BL ? BL.min : d));
+            if (!V66.einheitPruefen(sp) && (sp.dauer < U.dauer || V83.hart(U)))
+              opts.push({ art: "kurz", titel: `Lauf locker ${dauerT(sp.dauer)} statt «${U.titel}» ${dauerT(U.dauer)}`, aktionen: [{ art: "ersetzen", date: t.date, uid: U.uid, einheit: sp }],
+                rueck: [{ art: "ersetzen", date: t.date, uid: U.uid, einheit: V83.spec(U) }], markiert: [{ date: t.date, uid: U.uid, vorher: `statt «${U.titel}» (Schmerzen)` }] });
+          }
+          const gr = [gr0]; if (SZ.anhaltend) gr.push("Seit mehreren Tagen – bitte ärztlich abklären lassen.");
+          vorschlag("schmerz", t, U, `${t.date === h ? "Heute" : V83.wt(t.date)}: «${U.titel}» bei Schmerzen`, gr, opts);
+        }
+      }
+    }
+    out.geprueft.push(SZ ? `Schmerzen ${SZ.stufe} (${SZ.orte.join(", ")}): Laufen gebremst` : "keine Schmerzen an Beinen oder Füssen angegeben");
 
     // 1) Morgen: ein einzelner Morgen deutlich daneben, die Ampel noch nicht «vorsichtig»
     const M = (out.morgen = V83.morgen(L.days, h));
@@ -257,6 +385,42 @@
       }
     }
     out.geprueft.push(akt ? `${akt} ${akt === 1 ? "Einheit" : "Einheiten"} von gestern und heute gegen den Plan` : "keine neue Einheit seit gestern");
+
+    // 2b) Ausgefallen (tagescoach-1.1): Schlüsseleinheit von gestern ohne Aktivität derselben Sportart → nachholen (auch in der nächsten Woche)
+    const g = T[idx.get(add(h, -1))];
+    let aus = 0;
+    const nachgeholt = {};                                                    // Minuten, die als Schlüsseleinheit nachgeholt werden (zählen nicht nochmals ins Umfang-Defizit)
+    if (g && !g.rennen) {
+      const frei = (g.erledigt || []).slice();
+      for (const U of g.einheiten) {
+        if (!["rad", "lauf", "schwimm"].includes(U.sport) || fest(U)) continue;
+        const k = frei.indexOf(U.sport); if (k >= 0) { frei.splice(k, 1); continue; }
+        if (!V83.hart(U)) continue;
+        aus++;
+        const r = nachholen(T, U, g, h); if (!r) { out.hinweise.push(`Gestern ausgefallen: «${U.titel}» – in den nächsten Tagen passt kein Platz an Stelle einer lockeren Einheit.`); continue; }
+        nachgeholt[U.sport] = (nachgeholt[U.sport] || 0) + (U.dauer || 0);
+        vorschlag("ausgefallen", g, U, `Gestern ausgefallen: «${U.titel}» – am ${V83.wt(r.z.date)}${r.z.mo !== g.mo ? " (nächste Woche)" : ""} nachholen?`,
+          [`Am ${V83.wt(r.z.date)} passt sie an die Stelle von «${r.X.titel}» (${dauerT(r.X.dauer)}): keine harte Einheit daneben, genug Zeit.`,
+            "Nur wenn du dich frisch fühlst – an jenem Morgen entscheidet wieder die Ampel."], [r.o]);
+        const p = out.vorschlaege.find((x) => x.anlass === "ausgefallen" && x.uid === U.uid && x.date === g.date); if (p) p.mo = r.z.mo;
+      }
+    }
+
+    // 2c) Umfang (tagescoach-1.1): fehlen in der laufenden Woche bisher Minuten gegenüber Mein Plan → eine kommende lockere oder lange Einheit verlängern
+    const WB = L.woche && L.woche.mo === montag(h) && h !== L.woche.mo ? L.woche : null;
+    if (WB) for (const sp of ["rad", "lauf", "schwimm"]) {
+      const def = Math.round((WB.plan[sp] || 0) - (WB.ist[sp] || 0) - (nachgeholt[sp] || 0));
+      if (def < V83.UMFANG.min_defizit) continue;
+      const b = verlaengern(T, h, sp, def, L); if (!b) continue;
+      const neu = b.U.dauer + b.plus, wort = { rad: "Rad", lauf: "Laufen", schwimm: "Schwimmen" }[sp];
+      const gr = [`Diese Woche bisher ${dauerT(WB.ist[sp] || 0)} ${wort} absolviert, ${dauerT(WB.plan[sp] || 0)} geplant – es fehlen ≈ ${dauerT(def)}.`,
+        `Am ${V83.wt(b.t.date)} reicht die Zeit für ${dauerT(neu)}${b.t.verf && isNum(b.t.verf.min) ? ` (Verfügbarkeit ${dauerT(b.t.verf.min)})` : ""}; die Woche bleibt bei Mein Plan.`];
+      if (b.km) gr.push(`Laufen: ≈ ${zahl((b.km.vorher * neu) / b.U.dauer, 1)} km, unter deiner Aufbau-Grenze von ${zahl(b.km.grenze, 1)} km.`);
+      vorschlag("umfang", b.t, b.U, `${b.t.date === h ? "Heute" : V83.wt(b.t.date)}: «${b.U.titel}» auf ${dauerT(neu)} verlängern?`, gr,
+        [{ art: "verlaengern", titel: `«${b.U.titel}» ${dauerT(neu)} statt ${dauerT(b.U.dauer)}`, aktionen: [{ art: "dauer", date: b.t.date, uid: b.U.uid, dauer: neu }],
+          rueck: [{ art: "dauer", date: b.t.date, uid: b.U.uid, dauer: b.U.dauer }], markiert: [{ date: b.t.date, uid: b.U.uid, vorher: `verlängert, statt ${dauerT(b.U.dauer)}` }] }]);
+    }
+    if (aus || WB) out.geprueft.push(aus ? `gestern ${aus} Schlüsseleinheit${aus === 1 ? "" : "en"} ausgefallen` : "Woche bisher wie geplant oder nichts zu verlängern");
 
     // 3) Zeit: an einem Tag weniger Zeit als geplant (gilt für festgehaltene Wochen; eine automatisch verteilte Woche passt sich selbst an)
     let knapp = 0;
@@ -297,7 +461,7 @@
 
   /* ---------------- Entscheid (Eingabe «tagescoach» → coach_entscheide) ---------------- */
   const UID = /^[A-Za-z0-9_.:-]{1,80}$/;
-  const ID = /^co-(\d{4}-\d{2}-\d{2})-(morgen|last|zeit|nachholen)-([A-Za-z0-9_.:-]{1,80})$/;
+  const ID = /^co-(\d{4}-\d{2}-\d{2})-(morgen|last|zeit|nachholen|ausgefallen|schmerz|umfang)-([A-Za-z0-9_.:-]{1,80})$/;
   V83.STATUS = ["angenommen", "abgelehnt", "zurueck"];
   /** Entscheid zu einem Vorschlag. p = Vorschlag, o = { status, option (Index), jetzt } → Eintrag */
   V83.eintrag = function (p, o) {

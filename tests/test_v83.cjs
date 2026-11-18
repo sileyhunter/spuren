@@ -38,10 +38,145 @@ function anwenden(R, aktionen, heute, eintrag) {
 const kern = (w) => w.tage.map((t) => `${t.date}:${t.einheiten.map((e) => `${e.id}/${e.dauer}`).sort().join(",")}`).join(" ");
 
 test("Versionen und Festlegungen", () => {
-  assert.equal(V83.VERSIONS.coach, "tagescoach-1.0");
+  assert.equal(V83.VERSIONS.coach, "tagescoach-1.1");
   assert.equal(V74.VERSIONS.ampelplan, "ampel-plan-1.2");
   assert.deepEqual(V83.EINZEL, { hrv: 10, rhr: 5, faktor: 2, hrv_stark: 20, rhr_stark: 8, stark: 3 });
-  assert.deepEqual(V83.ANLASS, ["morgen", "last", "zeit", "nachholen"]);
+  assert.deepEqual(V83.ANLASS, ["schmerz", "morgen", "last", "ausgefallen", "zeit", "nachholen", "umfang"]);
+  assert.deepEqual(V83.UMFANG, { min_defizit: 20, min_plus: 15, max_anteil: 0.5 });
+  assert.deepEqual(V83.SCHMERZ.orte, ["Fuss", "Achilles/Wade", "Schienbein", "Knie", "Hüfte/Leiste", "Oberschenkel"]);
+});
+
+/* ---------- tagescoach-1.1 (V8.4): eigene Wochen aus Bausteinen (Kennungen wie ungespeicherte Wochen «v-<Datum>-<i>») ---------- */
+const MO2 = add(MO, 7);
+/** Tage einer Woche aus Bausteinen: { Datum: [Baustein-ID …] } → Lage-Tage (einheiten = plan). */
+const D0 = { rad_lang: 135, lauf_lang: 70, rad_locker: 70, lauf_locker: 40 };      // Dauer wie in der Beispielwoche oben
+function eigeneWoche(mo, plan, verf) {
+  const T = [];
+  for (let i = 0; i < 7; i++) {
+    const d = add(mo, i), E = (plan[d] || []).map((id, k) => Object.assign(V64.einheit(id, D0[id] ? { d: D0[id] } : {}), { uid: `v-${d}-${k}`, quelle: "vorschlag", vorlage: id }));
+    T.push({ date: d, mo, einheiten: E, plan: E, gesperrt: false, rennen: false, vorbei: false, verf: (verf && verf[d]) || null, ampel: null, ctx: {}, erledigt: [],
+      phase: "Grundlage", erholung: false, laufGrenze: null });
+  }
+  return T;
+}
+function lage11(heute, tage, extra) {
+  for (const t of tage) t.vorbei = t.date < heute;
+  return Object.assign({ heute, tage, days: [], ampelHeute: null, aktivitaeten: [], entscheide: [], befinden: [] }, extra || {});
+}
+/** Aktionen nach Woche gruppiert anwenden (wie V83UI) – ungespeicherte Wochen mit ihren Bausteinen. */
+function anwendenWochen(tage, aktionen, heute, start) {
+  const W = new Map();
+  for (const a of aktionen) { const mo = V64.montag(a.date); if (!W.has(mo)) W.set(mo, []); W.get(mo).push(a); }
+  const out = new Map(start || []);
+  for (const [mo, L] of W) {
+    const ctx = { heute, montag: mo, vorschlag: (d) => (tage.find((t) => t.date === d) || { einheiten: [] }).einheiten.map((e) => ({ id: e.vorlage, dauer: e.dauer })) };
+    let E = out.get(mo) || null;
+    for (const a of L) { const r = V66.aendern(E, a, ctx); assert.equal(r.fehler, undefined, `${mo} ${a.art}: ${r.fehler}`); E = r.eintrag; }
+    out.set(mo, E);
+  }
+  return out;
+}
+
+test("tagescoach-1.1 ausgefallen: Schlüsseleinheit von gestern ohne Aktivität → an Stelle einer lockeren nachholen, auch in der nächsten Woche", () => {
+  const w1 = { [DI]: ["lauf_vo2"], [MI]: ["rad_locker"], [FR]: ["lauf_locker"], [SA]: ["rad_lang"], [SO]: ["lauf_lang"] };
+  const T = eigeneWoche(MO, w1).concat(eigeneWoche(MO2, { [add(MO2, 2)]: ["lauf_locker"], [add(MO2, 5)]: ["rad_lang"] }));
+  const r = V83.pruefen(lage11(MI, T.slice(0, 13)));
+  const p = r.vorschlaege.find((x) => x.anlass === "ausgefallen");
+  assert.ok(p, JSON.stringify(r.vorschlaege.map((x) => x.titel)));
+  assert.equal(p.id, `co-${DI}-ausgefallen-v-${DI}-0`);
+  assert.match(p.titel, /^Gestern ausgefallen: «.+» – am Fr nachholen\?$/);
+  assert.deepEqual(p.optionen[0].aktionen.map((a) => [a.art, a.date, a.uid]), [["ersetzen", FR, `v-${FR}-0`]]);
+  assert.equal(p.optionen[0].aktionen[0].einheit.vorlage, "lauf_vo2");
+  // mit Aktivität derselben Sportart gestern: nichts
+  const T2 = eigeneWoche(MO, w1); T2[1].erledigt = ["lauf"];
+  assert.ok(!V83.pruefen(lage11(MI, T2)).vorschlaege.some((x) => x.anlass === "ausgefallen"));
+  // Freitag gesperrt → nächste Woche (Mittwoch), Vorschlag gehört zu jener Woche
+  const T3 = T.map((t) => (t.date === FR ? Object.assign({}, t, { gesperrt: true }) : t));
+  const q = V83.pruefen(lage11(MI, T3.slice(0, 13))).vorschlaege.find((x) => x.anlass === "ausgefallen");
+  assert.ok(q && /nächste Woche/.test(q.optionen[0].titel), JSON.stringify(q && q.optionen[0].titel));
+  assert.equal(q.mo, MO2);
+  assert.equal(q.optionen[0].aktionen[0].date, add(MO2, 2));
+  // angewendet: Mein Plan der nächsten Woche hat die Schlüsseleinheit am Mittwoch, Rückweg holt den lockeren Lauf zurück
+  const E = anwendenWochen(T3, q.optionen[0].aktionen, MI).get(MO2);
+  assert.ok(E.tage[add(MO2, 2)].einheiten.some((e) => e.vorlage === "lauf_vo2"));
+  assert.equal(V83.eintragPruefen(V83.eintrag(q, { status: "angenommen", jetzt: "2026-11-18T07:00:00Z" })), null);
+});
+
+test("tagescoach-1.1 umfang: fehlende Minuten der Woche → kommende lockere oder lange Einheit verlängern, nie über Verfügbarkeit, Phase oder Aufbau-Grenze", () => {
+  const plan = { [MO]: [], [DI]: ["rad_locker"], [MI]: ["rad_locker"], [DO]: [], [FR]: ["lauf_locker"], [SA]: ["rad_lang"], [SO]: ["lauf_lang"] };
+  const verf = { [SA]: { min: 300, sport: null }, [MI]: { min: 70, sport: null } };
+  const T = eigeneWoche(MO, plan, verf);
+  // Rad: 60 min fehlen (Dienstag ausgelassen) → Samstag lange Ausfahrt + 60? Grenze der Phase Grundlage 210 min → höchstens 210
+  const L = lage11(MI, T, { woche: { mo: MO, plan: { rad: 70 }, ist: { rad: 10 } } });
+  const p = V83.pruefen(L).vorschlaege.find((x) => x.anlass === "umfang");
+  assert.ok(p, JSON.stringify(V83.pruefen(L)));
+  assert.equal(p.date, SA);
+  const neu = p.optionen[0].aktionen[0].dauer;
+  assert.equal(p.optionen[0].aktionen[0].art, "dauer");
+  assert.ok(neu > 135 && neu <= 135 + 60 && neu <= 210, String(neu));
+  assert.deepEqual(p.optionen[0].rueck, [{ art: "dauer", date: SA, uid: `v-${SA}-0`, dauer: 135 }]);
+  assert.ok(p.grund.some((g) => /es fehlen ≈ 1:00 h/.test(g)) && p.grund.some((g) => /die Woche bleibt bei Mein Plan/.test(g)), p.grund.join(" | "));
+  // zu wenig Zeit am Samstag → kein Vorschlag dort
+  const T2 = eigeneWoche(MO, plan, { [SA]: { min: 140, sport: null }, [MI]: { min: 70, sport: null } });
+  assert.ok(!V83.pruefen(lage11(MI, T2, { woche: { mo: MO, plan: { rad: 70 }, ist: { rad: 10 } } })).vorschlaege.some((x) => x.anlass === "umfang" && x.date === SA));
+  // Laufen nur mit Distanz ≈ unter der Aufbau-Grenze
+  const T3 = eigeneWoche(MO, plan, { [SO]: { min: 200, sport: null } });
+  for (const t of T3) t.laufGrenze = { km: 12 };
+  const km = (e) => e.dauer / 6;                                         // 10 km/h, erfunden
+  const knapp = V83.pruefen(lage11(MI, T3, { woche: { mo: MO, plan: { lauf: 60 }, ist: { lauf: 0 } }, laufKm: km })).vorschlaege.filter((x) => x.anlass === "umfang");
+  assert.ok(!knapp.some((x) => x.date === SO), "langer Lauf 70 min ≈ 11,7 km, Grenze 12 km: kein Platz für 15 min mehr");
+  const fr = knapp.find((x) => x.date === FR);
+  assert.ok(fr && fr.optionen[0].aktionen[0].dauer <= 60 && fr.optionen[0].aktionen[0].dauer / 6 <= 12, "der kürzere Lauf am Freitag: höchstens die Hälfte mehr und unter 12 km");
+  for (const t of T3) t.laufGrenze = { km: 16 };
+  const ok = V83.pruefen(lage11(MI, T3, { woche: { mo: MO, plan: { lauf: 60 }, ist: { lauf: 0 } }, laufKm: km })).vorschlaege.find((x) => x.anlass === "umfang" && x.date === SO);
+  assert.ok(ok && ok.optionen[0].aktionen[0].dauer <= 96 && ok.grund.some((g) => /unter deiner Aufbau-Grenze von 16 km/.test(g)), JSON.stringify(ok));
+  for (const t of T3) t.laufGrenze = null;
+  assert.equal(V83.pruefen(lage11(MI, T3, { woche: { mo: MO, plan: { lauf: 60 }, ist: { lauf: 0 } }, laufKm: km })).vorschlaege.filter((x) => x.anlass === "umfang").length, 0, "ohne Grenze kein längerer Lauf");
+  // am Montag (Woche beginnt) nichts nachholen
+  assert.equal(V83.pruefen(lage11(MO, T, { woche: { mo: MO, plan: { rad: 70 }, ist: { rad: 0 } } })).vorschlaege.filter((x) => x.anlass === "umfang").length, 0);
+});
+
+test("tagescoach-1.1 schmerz: leicht → Läufe 3 Tage locker und kürzer; deutlich → weglassen oder Rad; anhaltend → ganze Woche mit Rat zur Abklärung", () => {
+  const plan = { [MI]: ["lauf_locker"], [DO]: ["lauf_vo2"], [FR]: ["lauf_locker"], [SA]: ["rad_lang"], [SO]: ["lauf_lang"] };
+  const bef = (d, stufe, ort) => ({ date: d, schmerz: { stufe, ort } });
+  const leicht = V83.pruefen(lage11(MI, eigeneWoche(MO, plan), { befinden: [bef(MI, "leicht", ["Knie"])] })).vorschlaege.filter((x) => x.anlass === "schmerz");
+  assert.deepEqual(leicht.map((x) => x.date), [MI, DO, FR], "3 Tage, nicht der Sonntag");
+  const doV = leicht.find((x) => x.date === DO);
+  assert.equal(doV.optionen[0].art, "kurz"); assert.equal(doV.optionen[0].aktionen[0].einheit.vorlage, "lauf_locker");
+  assert.ok(doV.grund[0].startsWith("Schmerzen leicht: Knie (Check-in heute)"));
+  const deutlich = V83.pruefen(lage11(MI, eigeneWoche(MO, plan), { befinden: [bef(MI, "deutlich", ["Achilles/Wade"])] })).vorschlaege.filter((x) => x.anlass === "schmerz");
+  assert.deepEqual(deutlich.map((x) => x.date), [MI, DO]);
+  assert.deepEqual(deutlich[0].optionen.map((o) => o.art), ["weglassen", "rad"]);
+  assert.equal(deutlich[0].optionen[1].aktionen[0].einheit.vorlage, "rad_locker");
+  // Schulter: kein Grund, das Laufen zu bremsen
+  assert.equal(V83.pruefen(lage11(MI, eigeneWoche(MO, plan), { befinden: [bef(MI, "deutlich", ["Schulter"])] })).vorschlaege.filter((x) => x.anlass === "schmerz").length, 0);
+  // anhaltend (3 der letzten 5 Tage): bis Sonntag, mit Rat zur Abklärung
+  const lang = V83.pruefen(lage11(MI, eigeneWoche(MO, plan), { befinden: [bef(add(MI, -2), "leicht", ["Knie"]), bef(DI, "leicht", ["Knie"]), bef(MI, "leicht", ["Knie"])] })).vorschlaege.filter((x) => x.anlass === "schmerz");
+  assert.ok(lang.some((x) => x.date === SO) && lang[0].grund.some((g) => /ärztlich abklären/.test(g)), JSON.stringify(lang.map((x) => x.date)));
+  // angewendet: weglassen entfernt den Lauf, der Rückweg bringt ihn zurück
+  const T = eigeneWoche(MO, plan), E = anwendenWochen(T, deutlich[0].optionen[0].aktionen, MI).get(MO);
+  assert.equal(E.tage[MI].einheiten.length, 0);
+  assert.equal(V83.eintragPruefen(V83.eintrag(deutlich[0], { status: "angenommen", option: 1, jetzt: "2026-11-18T07:00:00Z" })), null);
+});
+
+test("tagescoach-1.1 tauschen in die nächste Woche: entfernen und hinzufügen, nicht neben einer harten Einheit derselben Sportart", () => {
+  const T = eigeneWoche(MO, { [SA]: ["rad_vo2"], [SO]: ["lauf_lang"] }).concat(eigeneWoche(MO2, { [add(MO2, 1)]: ["rad_locker"], [add(MO2, 3)]: ["lauf_locker"] }));
+  const r = V83.pruefen(lage11(SA, T.slice(0, 14), { days: morgen(SA, 41, 58) }));
+  const p = r.vorschlaege.find((x) => x.anlass === "morgen" && x.date === SA);
+  assert.ok(p, JSON.stringify(r.vorschlaege.map((x) => x.titel)));
+  const o = p.optionen.find((x) => x.art === "tauschen");
+  assert.ok(o && /nächste Woche/.test(o.titel), JSON.stringify(p.optionen.map((x) => x.titel)));
+  assert.deepEqual(o.aktionen.map((a) => [a.art, a.date]), [["entfernen", SA], ["hinzufuegen", add(MO2, 1)], ["entfernen", add(MO2, 1)], ["hinzufuegen", SA]]);
+  const E = anwendenWochen(T, o.aktionen, SA);
+  assert.ok(E.get(MO2).tage[add(MO2, 1)].einheiten.some((e) => e.vorlage === "rad_vo2") && E.get(MO).tage[SA].einheiten.some((e) => e.vorlage === "rad_locker"));
+  // Rückweg auf den angenommenen Stand: beide Wochen wieder wie vorher
+  const R2 = anwendenWochen(T, o.rueck, SA, E);
+  const vl = (M, mo, d) => M.get(mo).tage[d].einheiten.map((e) => e.vorlage).join(",");
+  assert.equal(vl(R2, MO, SA), "rad_vo2"); assert.equal(vl(R2, MO2, add(MO2, 1)), "rad_locker");
+  // nächste Woche mit harter Radeinheit zwei Tage daneben: kein Tausch dorthin
+  const T2 = eigeneWoche(MO, { [SA]: ["rad_vo2"] }).concat(eigeneWoche(MO2, { [add(MO2, 1)]: ["rad_locker"], [add(MO2, 3)]: ["rad_vo2"] }));
+  const p2 = V83.pruefen(lage11(SA, T2.slice(0, 14), { days: morgen(SA, 41, 58) })).vorschlaege.find((x) => x.anlass === "morgen" && x.date === SA);
+  assert.ok(!p2 || !p2.optionen.some((x) => x.art === "tauschen"), JSON.stringify(p2 && p2.optionen.map((x) => x.titel)));
 });
 
 test("Morgen: ein einzelner Morgen deutlich daneben – HRV und Ruhepuls zusammen, oder einer stark", () => {

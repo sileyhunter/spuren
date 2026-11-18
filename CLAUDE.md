@@ -694,6 +694,15 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   solange kein betroffener Tag vorbei ist. Geänderte Einheiten tragen «Coach» (Tagesblatt, Heute, Kalender).
 - Probelauf bis `config.enduco_bis` (2026-11-30, Silas trainiert bis Ende November mit Enduco): Hinweis auf der Karte; danach gilt nur noch Mein Plan. Selbst handelt der Coach
   nicht – Automatik erst nach Silas' Okay und nur in Grenzen, die er setzt. Regel ändern = Version in `V83.VERSIONS`, Wissen (Kapitel «coach») und `tests/test_v83.cjs`.
+- **tagescoach-1.1 (V8.4, Silas am 18.11.2026: «lange Einheiten, wenn die Verfügbarkeit reicht – mit der Laufentwicklung aufpassen», «eine Verletzung, die die Laufkilometer
+  bremst», «Folgewochen dürfen angepasst werden»):** drei neue Anlässe (`V83.ANLASS`): **ausgefallen** (Schlüsseleinheit von gestern ohne Aktivität derselben Sportart →
+  an Stelle einer lockeren an einem der nächsten Tage, auch nächste Woche, nie in Erholungs-, Taper- oder Rennwoche, keine harte derselben Sportart innert 2 Tagen);
+  **umfang** (`V83.UMFANG`: ab 20 fehlenden Minuten einer Sportart in der laufenden Woche eine kommende lockere oder lange Einheit verlängern, höchstens um das Fehlende, die
+  Hälfte ihrer Dauer, die Verfügbarkeit, `V64.LANG` der Phase und beim Laufen die Aufbau-Grenze mit Distanz ≈ aus `V64.kmSchaetzung`; ohne Distanz kein längerer Lauf;
+  Nachgeholtes zählt nicht doppelt) – damit ist «nie länger als Mein Plan» je Einheit aufgehoben, die Woche bleibt bei Mein Plan; **schmerz** (`V83.SCHMERZ`: Schmerzen an
+  Beinen oder Füssen im Check-in von heute → leicht: Läufe der nächsten 3 Tage locker und 70 %; deutlich: heute und morgen weglassen oder Rad locker statt Laufen; an 3 der
+  letzten 5 Tage die ganze Woche mit Rat zur Abklärung). Tauschen und Nachholen auch in die nächste Woche (`entfernen` + `hinzufuegen` statt `verschieben`); die Seite prüft
+  erst alle betroffenen Wochen (`V66UI.aendernFolge(mo, aktionen, { trocken: true })`) und speichert dann je Woche (`V83UI` `anwenden`), Rückgängig ebenso.
 
 ## Verpflegung je Einheit (V8.1.1, verpflegung-1.0, Silas' Wunsch vom 18.11.2026; 1.1 = V8.1.2 nur seine Produktgruppen; 2.0 = V8.4 kurz und bündig)
 - **verpflegung-2.0 (Silas am 18.11.2026: «zu kompliziert, so füll ich das nie aus – Vorschlag g/h, ich entscheide, wie ich sie aufnehme; kurz und bündig»):** auf der Einheit-Seite

@@ -14,7 +14,7 @@
   const bereit = () => { C = UI() && UI().C; return !!(C && C.D && V83() && V64() && P() && P().kontextFuer); };
   const heute = () => C.iso(C.today);
   const lokal = () => ((UI() && UI().Inbox && UI().Inbox.data) || {}).tagescoach || [];
-  const ANLASS_WORT = { morgen: "Morgenwerte", last: "Belastung", zeit: "Zeit", nachholen: "Ampel" };
+  const ANLASS_WORT = { morgen: "Morgenwerte", last: "Belastung", zeit: "Zeit", nachholen: "Ampel", ausgefallen: "Ausgefallen", schmerz: "Schmerzen", umfang: "Umfang" };
   const neuZeichnen = () => { try { document.dispatchEvent(new CustomEvent("meinplan")); } catch (e) { console.error(e); } };
 
   /** Entscheide (Daten, darüber das Gerät) → Map id → Eintrag. */
@@ -47,21 +47,35 @@
     const K = (mo) => { if (!KW.has(mo)) { let k = null; try { k = P().kontextFuer(mo); } catch (e) { console.error(e); } KW.set(mo, k); } return KW.get(mo); };
     const zaehlt = (a) => !FK() || !FK().zaehlt || FK().zaehlt(a);
     const tage = [], akt = [];
+    const laeufe = V64().laeufe ? V64().laeufe(C.D.activities) : [];
     for (let i = -1; i <= 6; i++) {
       const d = V64().addDays(h, i), mo = V64().montag(d), k = K(mo);
       if (!k || !k.w || !k.wPlan) continue;
       const t = (k.w.tage || []).find((x) => x.date === d), tp = (k.wPlan.tage || []).find((x) => x.date === d);
       if (!t) continue;
       const ist = (C.D.activities || []).filter((a) => a && a.date === d && zaehlt(a));
+      // tagescoach-1.1: Phase und Erholungswoche (längste Einheit, V64.LANG), Aufbau-Grenze fürs Laufen (aufbau-1.2); erledigt je Aktivität (für ausgefallen)
+      let lg = null; try { lg = V64().laufGrenze ? V64().laufGrenze(laeufe, d, h) : null; } catch (e) { console.error(e); }
       tage.push({ date: d, mo, einheiten: t.einheiten || [], plan: (tp && tp.einheiten) || [], gesperrt: !!t.gesperrt, rennen: !!t.rennen, vorbei: d < h,
-        verf: typeof k.verf === "function" ? k.verf(d) : null, ampel: t.ampel || null, ctx: k.ctxE || {}, erledigt: [...new Set(ist.map((a) => a.sport))] });
+        verf: typeof k.verf === "function" ? k.verf(d) : null, ampel: t.ampel || null, ctx: k.ctxE || {}, erledigt: ist.map((a) => a.sport),
+        phase: k.w.phase || null, erholung: !!k.w.erholung, schonung: !!(k.w.erholung || k.w.taper || (k.w.tage || []).some((x) => x.rennen)), laufGrenze: lg });
       if (i <= 0) for (const a of ist) {
         const hart = V82() && V82().art && Array.isArray(a.hh) ? (() => { try { return V82().art(a, C.D.zonen, h) === "hart"; } catch (e) { return null; } })() : null;
         akt.push({ id: a.id, date: a.date, sport: a.sport, tss: a.tss, dur_s: isNum(a.mv) ? a.mv : a.dur, hart, plan: geplantVon(a, k, t) });
       }
     }
+    // tagescoach-1.1: Woche bisher (Montag bis gestern) – Mein Plan, wie er galt, gegen absolviert, je Sportart in Minuten
+    const mo0 = V64().montag(h), k0 = K(mo0), woche = { mo: mo0, plan: {}, ist: {} };
+    if (k0 && k0.w) for (let d = mo0; d < h; d = V64().addDays(d, 1)) {
+      const t = (k0.w.tage || []).find((x) => x.date === d);
+      for (const e of (t && !t.rennen ? t.einheiten : []) || []) if (["rad", "lauf", "schwimm"].includes(e.sport) && isNum(e.dauer)) woche.plan[e.sport] = (woche.plan[e.sport] || 0) + e.dauer;
+      for (const a of (C.D.activities || []).filter((x) => x && x.date === d && zaehlt(x))) if (["rad", "lauf", "schwimm"].includes(a.sport)) woche.ist[a.sport] = (woche.ist[a.sport] || 0) + (isNum(a.mv) ? a.mv : a.dur || 0) / 60;
+    }
+    const sk = k0 ? k0.skalen : null;
     const L = { heute: h, tage, days: C.D.days || [], ampelHeute: V74UI() && V74UI().live ? V74UI().live() : null, aktivitaeten: akt,
-      entscheide: [...U.entscheide().values()], enduco_bis: (C.D.config && C.D.config.enduco_bis) || null, reaktion: null };
+      entscheide: [...U.entscheide().values()], enduco_bis: (C.D.config && C.D.config.enduco_bis) || null, reaktion: null, woche,
+      befinden: UI().befinden ? UI().befinden().filter((b) => b && b.date >= V64().addDays(h, -6) && b.date <= h) : [],
+      laufKm: (e) => { try { return V64().kmSchaetzung ? V64().kmSchaetzung(e, sk) : null; } catch (err) { return null; } } };
     if (akt.some((a) => V83().haerter(a).urteil === "haerter")) L.reaktion = reaktion();
     return L;
   };
@@ -89,12 +103,20 @@
     return null;
   }
   const finde = (id) => { const R = U.pruefen(); return R ? R.vorschlaege.find((p) => p.id === id) || null : null; };
+  /** tagescoach-1.1: Änderungen je Woche anwenden (Tauschen und Nachholen können die nächste Woche betreffen) – erst alle Wochen prüfen, dann speichern. */
+  async function anwenden(aktionen) {
+    const W = new Map();
+    for (const a of aktionen || []) { const mo = V64().montag(a.date); if (!W.has(mo)) W.set(mo, []); W.get(mo).push(a); }
+    for (const [mo, L] of W) { const f = await U66().aendernFolge(mo, L, { trocken: true }); if (f) return f; }
+    for (const [mo, L] of W) { const f = await U66().aendernFolge(mo, L); if (f) return f; }
+    return null;
+  }
   /** Vorschlag annehmen (Option o): Mein Plan ändern, dann den Entscheid speichern. → Fehlertext oder null */
   U.annehmen = async function (id, o) {
     if (!bereit()) return "Seite noch nicht bereit";
     const p = finde(id); if (!p) return "Vorschlag nicht mehr aktuell";
     const opt = p.optionen[o || 0]; if (!opt) return "Option nicht gefunden";
-    const f = await U66().aendernFolge(p.mo, opt.aktionen); if (f) return f;
+    const f = await anwenden(opt.aktionen); if (f) return f;
     const g = await sichern(V83().eintrag(p, { status: "angenommen", option: o || 0, jetzt: new Date().toISOString() }));
     neuZeichnen();
     return g;
@@ -111,7 +133,7 @@
     if (!bereit()) return "Seite noch nicht bereit";
     const e = U.entscheide().get(id); if (!e || e.status !== "angenommen") return "nichts zurückzuholen";
     if ((e.rueck || []).some((a) => a.date < heute() || (a.nach && a.nach < heute()))) return "Ein betroffener Tag ist schon vorbei – ändern im Tagesblatt.";
-    const f = await U66().aendernFolge(e.woche, e.rueck); if (f) return `Zurückholen ging nicht (${f}) – seither geändert? Ändern im Tagesblatt.`;
+    const f = await anwenden(e.rueck); if (f) return `Zurückholen ging nicht (${f}) – seither geändert? Ändern im Tagesblatt.`;
     const g = await sichern(Object.assign({}, e, { status: "zurueck", am: new Date().toISOString() }));
     neuZeichnen();
     return g;
@@ -126,7 +148,7 @@
       <ul class="co-gruende">${p.grund.map((g) => `<li>${esc(g)}</li>`).join("")}</ul>
       <p class="co-opt"><span>Vorschlag:</span> ${esc(p.optionen[0].titel)}</p>
       <div class="row co-knoepfe"><button type="button" class="btn primary" data-co="an" data-id="${esc(p.id)}" data-o="0">Annehmen</button>
-        ${o2 ? `<button type="button" class="btn" data-co="an" data-id="${esc(p.id)}" data-o="1" title="${esc(o2.titel)}">Lieber ${o2.art === "locker" ? "locker" : "so"}</button>` : ""}
+        ${o2 ? `<button type="button" class="btn" data-co="an" data-id="${esc(p.id)}" data-o="1" title="${esc(o2.titel)}">${o2.art === "locker" ? "Lieber locker" : o2.art === "rad" ? "Rad statt Laufen" : "Lieber so"}</button>` : ""}
         <button type="button" class="btn" data-co="ab" data-id="${esc(p.id)}">Ablehnen</button></div>
       <p class="co-fehler warn-t" role="status" hidden></p></div>`;
   }

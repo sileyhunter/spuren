@@ -437,3 +437,38 @@ test("Harte Einheiten an Land nie an zwei Tagen hintereinander (verfuegbarkeit-1
       (w.hinweise || []).join(" / "));
   });
 });
+
+test("I · Ausgefallen, Schmerzen, Umfang (tagescoach-1.1, V8.4)", async (t) => {
+  const di = tag(W3, 1), mi = tag(W3, 2), fr = tag(W3, 4);
+  await t.test("I1 Dienstag ausgelassen: die Schlüsseleinheit kommt nicht in die Erholungswoche; den fehlenden Lauf-Umfang holt eine längere lockere Einheit nach – nie mehr als Mein Plan", async () => {
+    const sim = await vorlauf();
+    let vorher = null;
+    await sim.tage(W3, 7, {
+      ausfuehren: (d) => (d === di ? [] : null),
+      vorher: async (d) => { if (d === mi) vorher = sim.wochenMinuten(W3, "plan"); },
+      coach: (d, V) => (d === mi ? V.filter((p) => p.anlass === "umfang" && p.date === fr).map((p) => p.id) : []),
+    });
+    const x = sim.log.get(mi);
+    assert.ok(!x.coach.some((p) => p.anlass === "ausgefallen" && /nächste Woche/.test(p.titel)), "nicht in die Erholungswoche nachholen");
+    const p = x.coach.find((v) => v.anlass === "umfang" && v.date === fr);
+    assert.ok(p && p.grund.some((g) => /es fehlen ≈/.test(g)), JSON.stringify(x.coach));
+    const f = sim.log.get(fr), lauf = f.einheiten.find((e) => e.sport === "lauf");
+    assert.ok(lauf && lauf.stufe === "locker" && lauf.dauer > 45, kurz(f.einheiten));
+    // absolviert wird in der Woche nie mehr als Mein Plan vor dem Ausfall vorsah (verlängert wird höchstens um das Fehlende)
+    let ist = 0; for (let i = 0; i < 7; i++) for (const a of sim.log.get(tag(W3, i)).absolviert) if (["rad", "lauf", "schwimm"].includes(a.sport)) ist += a.min;
+    assert.ok(ist <= vorher, `${ist} > ${vorher}`);
+  });
+  await t.test("I2 Schmerzen am Knie im Check-in: der Coach bremst die Läufe der nächsten Tage – angenommen locker und kürzer", async () => {
+    const sim = await vorlauf();
+    let vorher = null;
+    await sim.tage(W3, 5, {
+      checkin: (d) => (d === mi ? { wahl: { schlaf: 2, muede: 3, muskel: 3, stress: 2, motivation: 2 }, extra: { schmerz: { stufe: "leicht", ort: ["Knie"] } } } : null),
+      vorher: async (d) => { if (d === mi) vorher = sim.plan(fr).einheiten.find((e) => e.sport === "lauf"); },
+      coach: (d, V) => (d === mi ? V.filter((p) => p.anlass === "schmerz").map((p) => p.id) : []),
+    });
+    const x = sim.log.get(mi), p = x.coach.find((v) => v.anlass === "schmerz" && v.date === fr);
+    assert.ok(p && p.grund[0].startsWith("Schmerzen leicht: Knie"), JSON.stringify(x.coach));
+    const lauf = sim.log.get(fr).einheiten.find((e) => e.sport === "lauf");
+    assert.ok(vorher && lauf && lauf.dauer <= Math.ceil(vorher.dauer * 0.7 / 5) * 5 && lauf.stufe === "locker", `${vorher && vorher.dauer} → ${lauf && lauf.dauer}`);
+  });
+});

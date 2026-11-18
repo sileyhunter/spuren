@@ -1,5 +1,14 @@
 # Änderungen
 
+## V8.4 Teil 3 · 18.11.2026 · Coach 1.1 (tagescoach-1.1)
+- **Ausgefallen:** Eine Schlüsseleinheit von gestern ohne Aktivität schlägt der Coach an Stelle einer lockeren an einem der nächsten Tage vor – auch in der nächsten Woche,
+  nie in eine Erholungs-, Taper- oder Rennwoche.
+- **Verlängern:** Fehlen in der Woche bisher Minuten, darf eine lockere oder lange Einheit länger werden – nie über deine Zeit an jenem Tag, die längste Einheit der Phase
+  und beim Laufen die Aufbau-Grenze. Die Woche bleibt bei Mein Plan.
+- **Schmerzen an Beinen oder Füssen** im Check-in bremsen die Laufkilometer (leicht: locker und kürzer, deutlich: weglassen oder Rad statt Laufen).
+- **Über die Woche hinaus:** Tauschen und Nachholen dürfen die nächste Woche ändern; gespeichert wird erst, wenn es in beiden Wochen geht.
+- Tests: `tests/test_v83.cjs` (+4), Szenarien I1 und I2 in `tests/test_v80.cjs`; Wissen Kapitel «coach».
+
 ## V8.4 Teil 1 · 18.11.2026 · Strengere Ampel (readiness-3.0), Nachtwerte (nacht-1.0), Verpflegung kurz (verpflegung-2.0), wissen-1.29
 - **Ampel zählt die einzelne Nacht:** Erholung der Nacht (HRV und Ruhepuls dieser Nacht gegen deine 60 Tage) unter 34 % ist ein Warnzeichen, «bereit» gibt es erst ab 50 %.
   Mit deinen Daten geprüft: an Tagen, die bisher «ok» waren, deren Nacht aber tief lag, kostete die gleiche Leistung mehr Puls. Die Kachel auf Heute zeigt die Erholung in %.

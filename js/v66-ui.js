@@ -158,7 +158,7 @@
   M.aendern = aendern;
   /** V8.3 tagescoach-1.0: mehrere Änderungen einer Woche nacheinander (V66.aendern) und einmal speichern – für angenommene Vorschläge des Coaches
    *  und ihr Zurückholen. Schlägt eine fehl, wird nichts gespeichert. Nicht im Bearbeiten-Modus. → Fehlertext oder null */
-  M.aendernFolge = async function (mo, aktionen) {
+  M.aendernFolge = async function (mo, aktionen, opt) {
     if (!bereit()) return "Seite noch nicht bereit";
     if (P().entwurf && P().entwurf.aktiv()) return IM_ENTWURF;
     const K = kontext(mo); if (!K) return "Plan dieser Woche nicht berechenbar";
@@ -168,6 +168,7 @@
       if (r.fehler) return r.fehler;
       E = r.eintrag;
     }
+    if (opt && opt.trocken) return null;                                  // V8.4 tagescoach-1.1: nur prüfen (mehrere Wochen erst speichern, wenn alle gehen)
     const I = UI().Inbox; if (!I || !I.data) return "Speicher auf diesem Gerät nicht verfügbar";
     if (!Array.isArray(I.data.planwoche)) I.data.planwoche = [];
     await I.upsert("planwoche", E);
