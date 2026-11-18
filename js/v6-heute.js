@@ -120,7 +120,7 @@
       ${ampel}
       ${rennen ? `<div class="card ek-test v7-rennen">${V6().icon("flagge", 18)}<b>${esc(rennen.name)}</b><small>Renntag</small></div>` : ""}
       ${U ? A.map((a) => U.aktKarte(a) + (window.V81UI ? window.V81UI.zeile(a) : "")).join("") : ""}
-      ${U ? karten.map((k) => k.erledigt ? U.einheitKarte(k.e, day, true).replace('class="card ek-karte v7-ek klein"', 'class="card ek-karte v7-ek klein v7-erl"') : U.einheitKarte(k.e, day)).join("") : ""}
+      ${U ? karten.map((k) => k.erledigt ? U.einheitKarte(k.e, day, true).replace('class="card ek-karte v7-ek klein"', 'class="card ek-karte v7-ek klein v7-erl"') : U.einheitKarte(k.e, day) + (window.VPUI ? window.VPUI.zeile(day, k.e) : "")).join("") : ""}
       ${leer ? `<div class="card ek-leer"><p>${X && X.t.gesperrt ? "Heute ist gesperrt – kein Training geplant." : X && X.t.ampel && X.t.ampel.status === "krank" && !X.t.ampel.trotzdem ? "Heute Ruhetag (Krankheitszeichen)." : "Für heute ist nichts geplant."}</p>
         ${X && !X.t.gesperrt ? `<button type="button" class="btn" data-v7add>${V6().icon("plus", 16)} Training hinzufügen</button>` : ""}</div>` : ""}
       ${testHinweis(day)}`;

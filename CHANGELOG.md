@@ -1,5 +1,18 @@
 # Änderungen
 
+## V8.1.1 · 18.11.2026 · Verpflegung je Einheit (verpflegung-1.0), nachher-1.1, wissen-1.26
+- **Verpflegung je Einheit** (verpflegung-1.0, Silas' Wunsch vom 18.11.2026): auf der Einheit-Seite ein Abschnitt «Verpflegung» mit vorher · während · nachher –
+  Zeitplan entlang der Schritte (nie in harten Abschnitten), Kohlenhydrate pro Stunde, Natrium, Packliste; auf Heute eine Zeile unter der Einheit des Tages. Grundlage sind
+  deine eigenen Lebensmittel aus Garmin Connect (das Nacht-Update holt sie mit `get_custom_foods`) und die Fueling-Vorlagen; Nährwerte nur wie eingetragen.
+- **Produkte für die Verpflegung** (Blatt, auch aus dem Abschnitt): je Produkt unterwegs / vorher / nachher und «Glukose + Fruktose» (erst dann mehr als 60 g/h),
+  dazu deine Stufe ab 2,5 h (Standard 60 g/h). Gespeichert als Planeinstellung «pe-verpflegung» (Listen `davor`/`danach`, weil `vorher` dort schon belegt ist).
+- **Verpflegung anpassen** je Einheit (g/h, nur Gels, Getränk zuerst, feste Nahrung zuerst, diesmal ohne) – Eingabe «verpflegung» → `plan_verpflegung`.
+- **Nach dem Training** (nachher-1.1): ab 60 min (nicht Schwimmen, nicht Krafttraining) Magen und Energie gegen Ende; daraus mit dem Fueling-Protokoll der Abgleich geplant
+  gegen genommen und der Vorschlag fürs Darmtraining.
+- Wissen «verpflegung» (wissen-1.26): Thomas et al. 2016, Jäger et al. 2017; eigene Festlegungen gekennzeichnet.
+- Ausgewählte Chips mit `aria-checked` sind jetzt sichtbar markiert (betraf auch «Nach dem Training» und die Schmerz-Frage im Check-in).
+- Tests: `tests/test_verpflegung.cjs` (13), `tests/test_v81.cjs` (+1), `tests/test_tools.py` (+6).
+
 ## V8.1 · 18.11.2026 · Daten zusammenführen (Masterprompt V8, Etappe V8.1): Nach dem Training, Puls zur Leistung, TL ≈ wie gemessen, Anstieg der Belastung, wissen-1.25
 - **Nach dem Training** (nachher-1.0): unter jeder erledigten Aktivität auf Heute und im Tagesblatt eine Zeile, die ein Blatt öffnet – Anstrengung (RPE 1–10), Gefühl in
   fünf Stufen wie auf der Uhr, leichter / wie erwartet / schwerer, bei Intervallen «alle / nicht alle / keine», Notiz. Was du auf der Uhr schon eingegeben hast (Garmins

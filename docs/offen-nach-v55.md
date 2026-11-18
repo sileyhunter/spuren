@@ -274,3 +274,9 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 108. **Schwimmen TL ≈ aus der Last pro Stunde** unterscheidet nicht zwischen locker und CSS; die absolvierte Last kommt beim Schwimmen aus dem Puls (Schwellenpuls Rad als
      Standard). Eigene Pulszonen fürs Schwimmen wären genauer – erst mit Silas' Okay.
 
+## Nach V8.1.1 (18.11.2026, Verpflegung je Einheit)
+109. **Glukose + Fruktose** muss Silas je Produkt markieren (Blatt «Produkte für die Verpflegung»); ohne Markierung bleibt jede Empfehlung bei höchstens 60 g/h.
+110. **Verpflegung im Garmin-Workout** (Text im Schritt, z. B. «Gel bei 60 min»): erst nach Silas' Okay; bis dahin nur auf der Seite.
+111. **Trinkmenge:** Garmins Schweissverlust wird erst ab 5 Tagen mit mindestens 45 min Training verwendet; Hitze und Höhe sind nicht eingerechnet (nur Hinweis).
+112. **Koffein** wird nicht geplant (nicht unter den übernommenen Nährwerten); Renn-Verpflegung (Jesolo, Hamburg) kommt mit dem Rennplan, nicht je Einheit.
+113. **Zuordnung Aktivität ↔ Einheit** für «geplant gegen genommen»: dieselbe Sportart am selben Tag, die Dauer am nächsten (wie last-abweichung-1.0).

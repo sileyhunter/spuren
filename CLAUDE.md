@@ -87,6 +87,12 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   Garmins Selbsteinschätzung `garmin_selbst` (`tools/notizen.py` `selbst_von`/`selbst_einlesen`, `merge_daily.py`); Check-in befinden-2.1 (Motivation, Schmerzen) in
   `js/v59-logik.js`/`js/v59.js`, Ampel readiness-2.3 in `js/formkurve.js`; harte Einheiten an Land nie an zwei Tagen hintereinander verfuegbarkeit-1.2 (`V66.verteilen`) und
   kraft-plan-1.2 (`V76.einplanen` opt.nurPassend, `mitKraft` in `js/v64-ui.js`)
+- **V8.1.1 (Verpflegung je Einheit, verpflegung-1.0, Silas' Wunsch vom 18.11.2026, Prompt «Verpflegung je Einheit» von ihm freigegeben):** `js/verpflegung.js` (ohne DOM:
+  Produkte aus `garmin_lebensmittel` und den Fueling-Vorlagen `VP.produkte`, Wahl `VP.wahl`, Ziel je Einheit `VP.ziel`, vorher · während · nachher mit Zeitplan und Packliste
+  `VP.plan`, Kurzfassung `VP.kurz`, Anpassung je Einheit `VP.eintrag`/`VP.pruefen`/`VP.anpassung`, geplant gegen genommen `VP.vergleich`, Darmtraining `VP.darm`),
+  `js/verpflegung-ui.js` (Abschnitt «Verpflegung» auf der Einheit-Seite, Zeile unter der heutigen Einheit auf Heute, Blätter «Produkte für die Verpflegung» und «Verpflegung
+  anpassen»), `tools/verpflegung.py` (eigene Lebensmittel aus Garmin einlesen, Prüfungen wie die Seite), `tests/test_verpflegung.cjs`; «Nach dem Training» nachher-1.1
+  (Magen und Energie ab 60 min, `V81.mitVerpflegung`); Regeln im Abschnitt «Verpflegung je Einheit»
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
 - `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)
@@ -174,6 +180,11 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
    - **Selbsteinschätzung (V8.1, nachher-1.0):** aus derselben Antwort von `get_activity` `workout_rpe` und `workout_feel` unverändert in den Eintrag der
      Aktivität (fehlen sie: `null`). `merge_daily.py` legt sie je Garmin-ID in `garmin_selbst` ab (`rpe_g` 1–10, `feel_g` 0/25/50/75/100); die Seite schlägt
      sie unter «Nach dem Training» vor. Nie selbst etwas eintragen oder nach Garmin schreiben.
+   - **Eigene Lebensmittel (V8.1.1, verpflegung-1.0):** `get_custom_foods(start=0, limit=20)`, dann `start` 20, 40 … solange `moreDataAvailable` true ist (höchstens
+     10 Seiten; ein `limit` über 20 lehnt Garmin ab). Jede Antwort unverändert als `work/lm_<n>.json` speichern (kommt sie als Datei, deren Pfad nehmen), dann
+     `python3 -I tools/verpflegung.py liste work/lm_*.json > work/lebensmittel.json` und in `work/new.json` `"garmin_lebensmittel"` = Inhalt dieser Datei (ganze Liste,
+     ersetzt die bisherige). Schlägt eine Seite fehl: den ganzen Schritt weglassen (sonst fehlten Produkte), kein Abbruch, keine Nachricht. Nie Lebensmittel in Garmin
+     anlegen, ändern oder löschen.
    - **Workout-Schritte (V5.7, für «Passende Route finden»):** für jede Einheit aus `get_scheduled_workouts` mit `workout_id`:
      `get_workout_by_id(workout_id)` (vereinfachte Form, nicht `raw`) und im `planned`-Eintrag ergänzen: `wid` = workout_id,
      `quelle` = `<provider> über Garmin` (z. B. «Enduco über Garmin»), `desc` = erster Satz der Beschreibung (höchstens 200 Zeichen),
@@ -281,6 +292,8 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
                     "desc": "", "desc_voll": "", "steps": []}],
   "enduco_schritte": [{"wid": 0, "titel": "", "sport": "swimming", "erstellt": "", "geaendert": "", "desc_voll": "", "steps": [],
                        "distanz_m": 2000.0, "pool_m": 50.0}, {"wid": 0, "fehlt": true}],
+  "garmin_lebensmittel": [{"id": "", "name": "", "marke": null, "menge": 1.0, "einheit": "SERVING", "kcal": 0, "kh": 0, "zucker": null, "protein": 0, "fett": 0,
+                           "natrium": null, "kalium": null}],
   "food_logs": [{"date": "2026-11-08", "dailyCalories": 0, "dailyCarbs": 0, "hydration": {"valueInML": 0, "activityIntakeInML": 0, "sweatLossInML": 0, "lastEntryTimestampLocal": ""},
                  "items": [{"logId": "", "foodName": "", "brandName": null, "servingQty": 1.0, "numberOfUnits": 1.0, "servingUnit": "SERVING",
                             "calories": 0, "carbs": 0, "sodium": null, "mealName": "SNACKS", "mealTime": "10:45:00", "logTimestamp": "2026-11-08T12:52:14.000Z"}]}],
@@ -416,7 +429,8 @@ V6.1 (notizen-1.0): Verpflegung aus der Garmin-Notiz einer Aktivität nur als Vo
 Summe gegen «Total»); zu `fueling` wird sie erst, wenn Silas den Eintrag auf der Seite speichert (kommt als `fueling_add` «fn-…» zurück).
 Gibt es zur Einheit schon einen Fueling-Eintrag, entsteht keine Vorschau; nie aus der Notiz etwas ergänzen oder schätzen.
 V5.6: zusätzlich `rpe` (→ `rpe`; seit V8.1 nachher-1.0 auch aus «Nach dem Training»: ID = Aktivität, dazu `gefuehl` (sehr schwach … sehr stark wie die Uhr),
-`erwartung` leichter/wie erwartet/schwerer, `intervalle` alle/nicht alle/keine, `notiz`, `rpe_uhr`/`feel_uhr` = Vorschlag der Uhr; ältere Felder bleiben), `intervalle` (Korrekturen von Hand → `intervall_korr`), `laktat_punkte` (Laktat einem Abschnitt
+`erwartung` leichter/wie erwartet/schwerer, `intervalle` alle/nicht alle/keine, `notiz`, `rpe_uhr`/`feel_uhr` = Vorschlag der Uhr; ältere Felder bleiben; nachher-1.1 (V8.1.1) ab 60 min ausser Schwimmen und Krafttraining auch `magen` ok/leicht/stark und
+`energie` gut/nachgelassen/leer), `intervalle` (Korrekturen von Hand → `intervall_korr`), `laktat_punkte` (Laktat einem Abschnitt
 zugeordnet → `laktat_punkte`, Status «vorschau») und `saison` (Stunden «jetzt»/«Spitze» → `saison_plan`); gleiche ID ersetzt mit Audit.
 V5.7: `startorte` (ganze Liste → `startorte`, alte Fassung ins Audit) und `trainingsrouten` (gewählte Vorschläge → `trainingsrouten`, gleiche
 ID ersetzt mit Audit). Startorte und Routen nur verschlüsselt (data.enc.json), nie offen ins Repository.
@@ -440,6 +454,10 @@ V7.5: `planeinstellung` (je Gruppe «pe-start» {art fitness/aufteilung} und «p
 → `plan_einstellungen`; `merge_daily.planeinstellung_pruefen` wie `V75.pruefen`; gleiche ID ersetzt mit Audit, eine ältere Fassung (`geaendert`) nie; «pe-basis» mit Stunden
 aus V7.5 wird abgelehnt). V7.7 aktivitaet-plan-1.0: `aktivitaet` (Aktivität draussen je Tag «ak-JJJJ-MM-TT» {art skitour/wandern/langlauf/trail, min 60–600 in 15er-Schritten, zone z1/z2, uhrzeit, notiz ≤ 300}
 oder {entfernt: true} → `aktivitaet_add` → `plan_aktivitaeten`; `merge_daily.aktivitaet_pruefen` wie `V77.pruefen`; gleiche ID ersetzt mit Audit, ältere Fassung nie).
+V8.1.1 verpflegung-1.0: `verpflegung` (Anpassung je Einheit «vp-<Datum>-<uid>» {g_h 0–120 in 5er-Schritten, mix auto/gel/getraenk/fest, aus} oder {entfernt: true} = zurück
+auf die Empfehlung → `verpflegung_add` → `plan_verpflegung`; `verpflegung.pruefen` wie `VP.pruefen`; gleiche ID ersetzt mit Audit, ältere Fassung nie) und «pe-verpflegung»
+in `planeinstellung` {unterwegs, davor, danach, fruktose: Listen von Produkt-IDs aus `garmin_lebensmittel` bzw. den Fueling-Vorlagen (höchstens 60, ohne Doppel), max_g_h
+30–120 in 10er-Schritten; gilt sofort, ohne `vorher` – die Listen heissen davor/danach, weil `vorher` in den Planeinstellungen die Fassung der laufenden Woche trägt}.
 V7.6 kraft-plan-1.1: «pe-kraft» {aktiv, modus auto/fest (ohne = fest), tage 1–7 je einmal (auto), wt 1–7 (fest), uhrzeit, dauer 15–180 in
 5er-Schritten, notiz ≤ 500} und «pe-kraft-<Montag>» {aus und/oder tag dieser Woche, uhrzeit; entfernt = wieder die Regel}; V7.6.1 «pe-lang» {rad, lauf: Wochentage 1–7 je
 einmal, leer = keine Vorliebe}; «pe-start», «pe-basis-…», «pe-kraft» und «pe-lang» tragen optional `vorher` = die Fassung, die in der Woche des Speicherns
@@ -630,6 +648,22 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Aufgezeichnete Garmin-Krafteinheiten (Typ «Krafttraining»/«Strength») zählen seit pmc-2.1 nicht mehr in Fitness und Form; sie stehen in «Diese Woche» und in der
   Wochenauswertung als eigene Zeile. «Nur diese Woche» auf der Einheit-Seite: in kommenden Wochen, deren Tage dem Vorschlag folgen, als Ausnahme «pe-kraft-<Montag>»; in der
   laufenden Woche und an gespeicherten Tagen über Mein Plan (verschieben, entfernen). Regel ändern = Version in `V76.VERSIONS`, Wissen (Kapitel «kraft») und `tests/test_v76.cjs`.
+
+## Verpflegung je Einheit (V8.1.1, verpflegung-1.0, Silas' Wunsch vom 18.11.2026)
+- Je Einheit aus Mein Plan eine Empfehlung vorher · während · nachher (`VP.plan`), nur mit Silas' eigenen Produkten: eigene Lebensmittel aus Garmin Connect
+  (`garmin_lebensmittel`, Nacht-Update) und die Fueling-Vorlagen. Nährwerte nur wie dort eingetragen, nie geschätzt oder ergänzt; ohne passende Produkte nur Gramm
+  Kohlenhydrate. Welche Produkte wofür (unterwegs, vorher, nachher) und welche aus Glukose und Fruktose sind, wählt Silas auf der Seite («Produkte für die Verpflegung»);
+  ohne Wahl gelten Gel, Getränk und Frucht unterwegs, Frucht und Riegel vorher (Banane zuerst), Protein nachher, was im Fueling-Protokoll vorkommt zuerst.
+- Während (Richtwerte Jeukendrup 2014, Thomas et al. 2016): unter 75 min nichts (hart ab 45 min: eine kleine Portion in der ersten Pause ab Minute 20, «oder nichts»),
+  75 bis unter 120 min 30 g/h (hart 45 g/h), 120 bis unter 150 min 60 g/h, ab 150 min seine Stufe (Standard 60, 30–120 einstellbar; über 60 nur mit Produkten aus Glukose und Fruktose);
+  Schwimmen, Krafttraining, Mobility nichts; Tests «wie beim letzten Test». Zeitpunkte ab Minute 20 gleichmässig bis 10 min vor Schluss, nie in harten Abschnitten.
+  Vorher Mahlzeit 1–4 h (≈ 1 g/kg je Stunde Abstand) und Snack 30–60 min; nachher Protein 0,25 g/kg (20–40 g, Jäger et al. 2017), rasch Kohlenhydrate (1–1,2 g/kg)
+  nur, wenn die nächste harte oder lange Einheit in weniger als 8 h kommt. Alles Weitere sind eigene Festlegungen (Wissen, Kapitel «verpflegung»).
+- Anpassen je Einheit («Verpflegung anpassen»: g/h, Produktart, ohne Verpflegung) gilt nur für diese Einheit. «Nach dem Training» fragt ab 60 min Magen und Energie
+  (nachher-1.1); daraus und aus dem Fueling-Protokoll der Abgleich geplant gegen genommen und der Vorschlag fürs Darmtraining (+10 g/h nach dreimal ohne Beschwerden,
+  −10 nach zweimal starken; nur Vorschlag, die Stufe ändert nur Silas).
+- Nichts davon geht an Garmin oder Enduco; Lebensmittel in Garmin werden nur gelesen. Regel ändern = Version in `VP.VERSIONS`, Wissen (Kapitel «verpflegung») und
+  `tests/test_verpflegung.cjs` nachführen.
 
 ## Aktivitäten draussen (V7.7, aktivitaet-plan-1.0, Etappe 4 Teil 1; Vorschlag vom 17.11.2026, von Silas am 18.11.2026 bestätigt, Ersatz «nur Rad» von Claude entschieden)
 - Skitour, Wandern, Langlauf und Traillauf im Voraus planen (Tagesblatt → «Training hinzufügen» → «Draussen – blockiert den Tag», Blatt `V77UI.blatt`): Dauer 1–10 h in
@@ -935,7 +969,7 @@ Laufen nach Puls, Schwimmen Last pro Bewegungsstunde der letzten acht Wochen) si
   Die exakten Grössen der SPS1-Dateien stehen in der Git-Historie.
 
 ## Prüfen vor jedem Push von Seite oder Werkzeugen
-`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `node --test tests/test_v66.cjs`, `node --test tests/test_v7.cjs`, `node --test tests/test_v72.cjs`, `node --test tests/test_v73.cjs`, `node --test tests/test_v74.cjs`, `node --test tests/test_v75.cjs`, `node --test tests/test_v76.cjs`, `node --test tests/test_v77.cjs`, `node --test tests/test_v78.cjs`, `node --test tests/test_v80.cjs`, `node --test tests/test_v81.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`,
+`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `node --test tests/test_v66.cjs`, `node --test tests/test_v7.cjs`, `node --test tests/test_v72.cjs`, `node --test tests/test_v73.cjs`, `node --test tests/test_v74.cjs`, `node --test tests/test_v75.cjs`, `node --test tests/test_v76.cjs`, `node --test tests/test_v77.cjs`, `node --test tests/test_v78.cjs`, `node --test tests/test_v80.cjs`, `node --test tests/test_v81.cjs`, `node --test tests/test_verpflegung.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`,
 bei Änderungen an `bilder/` oder `config.bilder` `SPUREN_PW=… node tools/bilder_crypt.mjs pruefen` («PRÜFUNG BILDER: bestanden»).
 **Leck-Prüfung (V6.4.4):** `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json work/data.json`, `python3 -I tools/leck_pruefen.py work/data.json`
 («LECK-PRÜFUNG: bestanden»), danach `rm work/data.json`. Gilt für jeden Push von Seite, Werkzeugen, Tests oder Doku (nicht für die reinen Daten-Updates).

@@ -1720,6 +1720,8 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <script src="js/v78-ui.js"></script>
 <script src="js/v81.js"></script>
 <script src="js/v81-ui.js"></script>
+<script src="js/verpflegung.js"></script>
+<script src="js/verpflegung-ui.js"></script>
 <script>window.SPUREN_DEMO = true;</script>
 <script>
 (() => {
@@ -2091,7 +2093,16 @@ function makeDemo() {
       pruefung_text: "Summe der Zeilen 50 g KH = Total laut Notiz 50 g", hinweise: [], gi: [], notiz: "" });
   }
   return { demo: true, activities: acts, days, weights, ftp, ftp_est, pdc, lactate, points, routes, tests, planned, workouts_neu, stufen, laktat_vorschau, protokolle, versions, referenz,
-    garmin_notizen, fueling_vorschau, enduco_bib };
+    garmin_notizen, fueling_vorschau, enduco_bib,
+    // V8.1.1 verpflegung-1.0: erfundene eigene Lebensmittel wie aus Garmin Connect (keine echten Marken)
+    garmin_lebensmittel: [
+      { id: "demo-gel", name: "Energie-Gel Orange", marke: "Beispiel", menge: 1, einheit: "SERVING", kcal: 100, kh: 25, zucker: 11, protein: 0, fett: 0, natrium: 50, kalium: null },
+      { id: "demo-iso", name: "Iso-Getränk Zitrone (1 Flasche)", marke: "Beispiel", menge: 60, einheit: "G", kcal: 228, kh: 56, zucker: 27, protein: 0, fett: 0, natrium: 420, kalium: 90 },
+      { id: "demo-riegel", name: "Hafer-Riegel", marke: "Beispiel", menge: 1, einheit: "PIECE", kcal: 190, kh: 31, zucker: 12, protein: 4, fett: 5, natrium: 60, kalium: null },
+      { id: "demo-banane", name: "Banane (mit Schale)", marke: null, menge: 100, einheit: "G", kcal: 60, kh: 15, zucker: 8, protein: 0.7, fett: 0.2, natrium: 1, kalium: 230 },
+      { id: "demo-whey", name: "Whey-Protein Vanille (1 Scoop)", marke: "Beispiel", menge: 30, einheit: "G", kcal: 118, kh: 2.5, zucker: 1.5, protein: 23, fett: 1.6, natrium: 60, kalium: null },
+    ],
+    garmin_lebensmittel_stand: iso(today) };
 }
 
 /* =====================================================================

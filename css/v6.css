@@ -124,8 +124,8 @@ input[type="range"] { accent-color: var(--good); }
 .seg button[aria-pressed="true"], .card .seg button[aria-pressed="true"] { background: var(--btn-2); color: var(--fg); }
 :root[data-theme="light"] .seg button[aria-pressed="true"], :root[data-theme="light"] .card .seg button[aria-pressed="true"] { background: var(--fg); color: #fff; }
 .chip { background: var(--surface-2); border: 0; color: var(--muted); border-radius: 999px; }
-.chip[aria-pressed="true"] { background: var(--btn-2); color: var(--fg); border: 0; }
-:root[data-theme="light"] .chip[aria-pressed="true"] { background: var(--fg); color: #fff; }
+.chip[aria-pressed="true"], .chip[aria-checked="true"] { background: var(--btn-2); color: var(--fg); border: 0; }
+:root[data-theme="light"] .chip[aria-pressed="true"], :root[data-theme="light"] .chip[aria-checked="true"] { background: var(--fg); color: #fff; }
 .zchip { display: inline-flex; align-items: center; font: 700 12px/1 var(--f-body); letter-spacing: .01em; padding: 4px 7px; border-radius: 7px; white-space: nowrap; color: var(--zc); }
 .zpunkt { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--zc); flex: none; }
 :root:not([data-theme="light"]) .badge { background: var(--surface-2); color: var(--muted); }
@@ -1412,3 +1412,29 @@ div.k4-r-kw { height: auto; }
 .ci-warten { margin-top: 12px; }
 .ci-schmerz .chips { margin-top: 6px; }
 .v81-satz { margin-top: 10px; }
+
+/* V8.1.1 verpflegung-1.0: Abschnitt «Verpflegung» (Einheit-Seite), Zeile auf Heute, Blätter Produkte und Anpassen */
+.vp-zeile { display: flex; align-items: center; gap: 10px; width: 100%; margin: -4px 0 12px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 14px;
+  background: var(--surface-2); color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.vp-zeile > span { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.vp-zeile small { color: var(--muted); overflow-wrap: anywhere; }
+.vp-ab h3.abschnitt.klein { margin: 14px 0 6px; font-size: .78rem; }
+.vp-angepasst { margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: .72rem; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.vp-liste { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.vp-zeit { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.vp-zeit li { display: flex; gap: 10px; align-items: baseline; }
+.vp-zeit li b { flex: 0 0 auto; min-width: 72px; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--accent-text); }
+.vp-zeit li span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.vp-pack { margin: 12px 0 6px; overflow-wrap: anywhere; }
+.vp-knoepfe { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.vp-produkte { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.vp-p { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+.vp-p > div:first-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.vp-p small { color: var(--muted); overflow-wrap: anywhere; }
+.vp-p .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.vp-p .chip { border: 1px solid var(--line); background: transparent; min-height: 36px; padding: 4px 12px; }
+.vp-p .chip[aria-pressed="true"] { border-color: var(--accent); background: var(--btn-2); color: var(--fg); }
+.vp-p .chip[aria-pressed="true"]::before { content: "✓"; margin-right: 4px; font-weight: 700; color: var(--good); }
+.vp-stufe { display: flex; align-items: center; gap: 14px; margin: 6px 0; }
+.vp-stufe b { min-width: 9ch; text-align: center; font-variant-numeric: tabular-nums; }
+.vp-aus { display: flex; align-items: center; gap: 8px; margin: 14px 0 4px; }

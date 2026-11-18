@@ -232,8 +232,8 @@
     const kraft = X.art === "plan" && X.sport === "kraft" && !!V76();      // V7.6 kraft-plan-1.0: ohne Ablauf, Schritte und Zonen
     const drau = X.art === "plan" && X.e && X.e.art === "draussen" && !!window.V77UI;   // V7.7 aktivitaet-plan-1.0: eigener Abschnitt (js/v77-ui.js)
     const bk = bildKey(X.sport, X.e);
-    sc.innerHTML = drau ? kopf(bk) + `<div class="v73-inhalt"><div class="v73-chips"><span class="v73-chip still">${ic("kalender", 16)}${esc(datumKurz(X.ds))}</span>${X.e.uhrzeit ? `<span class="v73-chip still">${ic("uhr", 16)}${esc(X.e.uhrzeit)}</span>` : ""}</div>${aa}${window.V77UI.abschnitt(X)}</div>`
-      : kopf(bk) + `<div class="v73-inhalt">${chips()}${aa}${kacheln()}${kennzahlen()}${kraft ? kraftAbschnitt() + coach() : fokus() + equipment() + ablauf() + schritte() + coach() + zonen()}${extra()}${fussnote()}</div>`;
+    sc.innerHTML = drau ? kopf(bk) + `<div class="v73-inhalt"><div class="v73-chips"><span class="v73-chip still">${ic("kalender", 16)}${esc(datumKurz(X.ds))}</span>${X.e.uhrzeit ? `<span class="v73-chip still">${ic("uhr", 16)}${esc(X.e.uhrzeit)}</span>` : ""}</div>${aa}${window.V77UI.abschnitt(X)}${verpflegung()}</div>`
+      : kopf(bk) + `<div class="v73-inhalt">${chips()}${aa}${kacheln()}${kennzahlen()}${kraft ? kraftAbschnitt() + verpflegung() + coach() : fokus() + equipment() + verpflegung() + ablauf() + schritte() + coach() + zonen()}${extra()}${fussnote()}</div>`;
     sc.querySelectorAll("details[data-v73ab]").forEach((d) => { if (offen.has(d.dataset.v73ab)) d.open = false; });
     sc.scrollTop = oben;
     SEITE.querySelector(".v73-mini b").textContent = X.titel;
@@ -430,6 +430,8 @@
       <ol class="v73-zonen">${[1, 2, 3, 4, 5].map(zeile).join("")}</ol>${Zz.ohne ? `<p class="hint">Ohne Zone: ${esc(V6().dauerText(Zz.ohne))} (Test oder ohne Ziel).</p>` : ""}</section>`;
   }
   function extra() { return Z.art === "workout" && Z.opt && Z.opt.extra ? `<section class="v73-ab v73-extra">${Z.opt.extra}</section>` : ""; }
+  /** V8.1.1 verpflegung-1.0: Abschnitt «Verpflegung» (js/verpflegung-ui.js) – nur Einheiten aus Mein Plan. */
+  function verpflegung() { try { return X.art === "plan" && window.VPUI ? window.VPUI.abschnitt(X.ds, X.e, { vorbei: !!X.vorbei }) : ""; } catch (e) { console.error(e); return ""; } }
   function fussnote() {
     const D = V73();
     if (X.art === "workout") return `<p class="ek-quelle">${esc(D.VERSIONS.einheit)}, ${esc(D.VERSIONS.schritte)}: Schritte und Ziele wie im Workout; Zonen und Farben aus deinem aktiven Zonenprofil. Nur lesen – geändert wird in Enduco bzw. Garmin.</p>`;

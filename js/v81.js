@@ -1,5 +1,5 @@
 /* V8.1 «Daten zusammenführen» (Masterprompt V8, Abschnitte 5 und 8) – Rechenlogik ohne DOM:
-   - nachher-1.0: «Nach dem Training» je Aktivität – Anstrengung (RPE 1–10) und Gefühl von der Uhr (Garmins Selbsteinschätzung workout_rpe/workout_feel,
+   - nachher-1.0 (1.1 = V8.1.1 mit Magen und Energie ab 60 min): «Nach dem Training» je Aktivität – Anstrengung (RPE 1–10) und Gefühl von der Uhr (Garmins Selbsteinschätzung workout_rpe/workout_feel,
      vom Nacht-Update je Garmin-ID in D.garmin_selbst als rpe_g/feel_g) oder von der Seite, dazu leichter/schwerer als erwartet, Intervalle geschafft, Notiz. Gespeichert wird
      wie bisher in der Liste «rpe» (ID = Aktivität), mit denselben Feldern wie rpe-1.0 und den neuen.
    - hf-leistung-1.0: Puls zur Leistung einer Einheit gegen deine Basis – nur aus Abschnitten mit gleichmässiger Leistung (gleichmässige 10-min-Blöcke eb-1.0
@@ -13,7 +13,7 @@
   else root.V81 = factory();
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
-  const V81 = { VERSIONS: { nachher: "nachher-1.0", hf_leistung: "hf-leistung-1.0", abweichung: "last-abweichung-1.0", anstieg: "anstieg-1.0" } };
+  const V81 = { VERSIONS: { nachher: "nachher-1.1", hf_leistung: "hf-leistung-1.0", abweichung: "last-abweichung-1.0", anstieg: "anstieg-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const tagNr = (iso) => Math.round(Date.parse(String(iso).slice(0, 10) + "T12:00:00Z") / 864e5);
   const addDays = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
@@ -28,6 +28,11 @@
   V81.gefuehlWort = (v) => { if (!isNum(v)) return null; const g = V81.GEFUEHL.reduce((b, x) => (Math.abs(x[0] - v) < Math.abs(b[0] - v) ? x : b)); return g[1]; };
   V81.ERWARTUNG = ["leichter", "wie erwartet", "schwerer"];
   V81.INTERVALLE = ["alle", "nicht alle", "keine"];
+  /** nachher-1.1 (V8.1.1, verpflegung-1.0): Magen und Energie bei Einheiten ab 60 min – für den Abgleich mit der Verpflegung und das Darmtraining (VP.darm). */
+  V81.MAGEN = [["ok", "ohne Beschwerden"], ["leicht", "leichte Beschwerden"], ["stark", "starke Beschwerden"]];
+  V81.ENERGIE = ["gut", "nachgelassen", "leer"];
+  /** Magen und Energie fragen: ab 60 min Bewegungszeit, nicht beim Schwimmen und Krafttraining. */
+  V81.mitVerpflegung = (a) => !!a && !["schwimm", "kraft"].includes(a.sport) && (isNum(a.mv) ? a.mv : a.dur || 0) >= 3600;
   /** Garmin-Rohwerte (workout_rpe 10–100, workout_feel 0–100) → { rpe_g 1–10, feel_g 0/25/50/75/100 }; gleiche Regel wie tools/notizen.py selbst_von (Nacht-Update). */
   V81.garminSelbst = function (workout_rpe, workout_feel) {
     const out = {};
@@ -44,9 +49,10 @@
     const gef = e && e.gefuehl ? e.gefuehl : s && isNum(s.feel_g) ? V81.gefuehlWort(s.feel_g) : null;
     return { rpe, rpeQuelle: e && isNum(e.rpe) ? "seite" : rpe != null ? "uhr" : null, gefuehl: gef, gefuehlQuelle: e && e.gefuehl ? "seite" : gef ? "uhr" : null,
       erwartung: e && V81.ERWARTUNG.includes(e.erwartung) ? e.erwartung : null, intervalle: e && V81.INTERVALLE.includes(e.intervalle) ? e.intervalle : null,
-      notiz: e && e.notiz ? e.notiz : null, offen: !(e && (e.erwartung || isNum(e.rpe))) };
+      notiz: e && e.notiz ? e.notiz : null, offen: !(e && (e.erwartung || isNum(e.rpe))),
+      magen: e && V81.MAGEN.some((x) => x[0] === e.magen) ? e.magen : null, energie: e && V81.ENERGIE.includes(e.energie) ? e.energie : null };
   };
-  /** Eintrag «Nach dem Training» für die Liste «rpe» (wie rpe-1.0 mit den neuen Feldern). w = { rpe, gefuehl, erwartung, intervalle, notiz }. → Eintrag oder null */
+  /** Eintrag «Nach dem Training» für die Liste «rpe» (wie rpe-1.0 mit den neuen Feldern). w = { rpe, gefuehl, erwartung, intervalle, notiz, magen, energie }. → Eintrag oder null */
   V81.eintrag = function (a, w, jetzt, s) {
     if (!a || !a.id || !a.date || !w) return null;
     if (!(Number.isInteger(w.rpe) && w.rpe >= 1 && w.rpe <= 10)) return null;
@@ -55,6 +61,8 @@
       erwartung: V81.ERWARTUNG.includes(w.erwartung) ? w.erwartung : null, intervalle: V81.INTERVALLE.includes(w.intervalle) ? w.intervalle : null,
       notiz: String(w.notiz || "").trim().slice(0, 500) || null, srpe: isNum(mv) ? Math.round((w.rpe * mv) / 60) : null, tl: isNum(a.tss) ? Math.round(a.tss) : null,
       quelle: "seite", v: V81.VERSIONS.nachher, erfasst: jetzt || new Date().toISOString() };
+    if (V81.MAGEN.some((x) => x[0] === w.magen)) e.magen = w.magen;
+    if (V81.ENERGIE.includes(w.energie)) e.energie = w.energie;
     if (s && isNum(s.rpe_g)) e.rpe_uhr = s.rpe_g;
     if (s && isNum(s.feel_g)) e.feel_uhr = s.feel_g;
     return e;

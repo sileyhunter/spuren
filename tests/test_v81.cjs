@@ -10,7 +10,7 @@ const addDays = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDa
 const HEUTE = "2027-01-20";
 
 test("Versionen", () => {
-  assert.deepEqual(V81.VERSIONS, { nachher: "nachher-1.0", hf_leistung: "hf-leistung-1.0", abweichung: "last-abweichung-1.0", anstieg: "anstieg-1.0" });
+  assert.deepEqual(V81.VERSIONS, { nachher: "nachher-1.1", hf_leistung: "hf-leistung-1.0", abweichung: "last-abweichung-1.0", anstieg: "anstieg-1.0" });
 });
 
 test("nachher-1.0: Garmins Selbsteinschätzung (workout_rpe 10–100, workout_feel 0–100) wie auf der Uhr", () => {
@@ -52,7 +52,7 @@ test("nachher-1.0: Eintrag für die Liste «rpe» (Felder wie rpe-1.0, sRPE = RP
   const a = { id: "g1", gid: "g1", date: HEUTE, sport: "lauf", mv: 2700, dur: 3000, tss: 54.4 };
   const e = V81.eintrag(a, { rpe: 5, gefuehl: "stark", erwartung: "wie erwartet", intervalle: "keine", notiz: "  Wade etwas fest  " }, "2027-01-20T18:00:00Z", { rpe_g: 6, feel_g: 50 });
   assert.deepEqual(e, { id: "g1", act: "g1", datum: HEUTE, sport: "lauf", rpe: 5, gefuehl: "stark", erwartung: "wie erwartet", intervalle: "keine",
-    notiz: "Wade etwas fest", srpe: 225, tl: 54, quelle: "seite", v: "nachher-1.0", erfasst: "2027-01-20T18:00:00Z", rpe_uhr: 6, feel_uhr: 50 });
+    notiz: "Wade etwas fest", srpe: 225, tl: 54, quelle: "seite", v: "nachher-1.1", erfasst: "2027-01-20T18:00:00Z", rpe_uhr: 6, feel_uhr: 50 });
   assert.equal(V81.eintrag(a, { rpe: 0 }), null, "RPE 1–10");
   assert.equal(V81.eintrag(a, { rpe: 5.5 }), null, "ganze Zahl");
   assert.equal(V81.eintrag(a, { rpe: 11 }), null);
@@ -145,4 +145,19 @@ test("anstieg-1.0: langfristig, aktuell und geplant", () => {
   assert.equal(R.geplant.status, "stabil");
   assert.equal(V81.anstieg({ fitness: 0.5, ermuedung: 1 }, null), null, "ohne Fitness kein Urteil");
   assert.equal(V81.anstieg({ fitness: 40, ermuedung: 40 }, null).lang.status, "unbekannt");
+});
+
+test("nachher-1.1: Magen und Energie ab 60 min (nicht Schwimmen, nicht Krafttraining), nur bekannte Werte", () => {
+  const lang = { id: "g2", date: HEUTE, sport: "rad", mv: 5400, dur: 5600 }, kurz = { id: "g3", date: HEUTE, sport: "lauf", mv: 3000 };
+  assert.equal(V81.mitVerpflegung(lang), true);
+  assert.equal(V81.mitVerpflegung(kurz), false, "unter 60 min");
+  assert.equal(V81.mitVerpflegung({ id: "g4", date: HEUTE, sport: "schwimm", mv: 4000 }), false);
+  assert.equal(V81.mitVerpflegung({ id: "g5", date: HEUTE, sport: "kraft", mv: 5400 }), false);
+  const e = V81.eintrag(lang, { rpe: 6, magen: "leicht", energie: "nachgelassen" }, "2027-01-20T18:00:00Z");
+  assert.equal(e.magen, "leicht"); assert.equal(e.energie, "nachgelassen");
+  const f = V81.eintrag(lang, { rpe: 6, magen: "schlecht", energie: "?" }, "2027-01-20T18:00:00Z");
+  assert.equal("magen" in f, false, "unbekannter Wert fällt weg"); assert.equal("energie" in f, false);
+  const X = V81.nachher(lang, e, null);
+  assert.equal(X.magen, "leicht"); assert.equal(X.energie, "nachgelassen");
+  assert.equal(V81.nachher(lang, null, null).magen, null);
 });

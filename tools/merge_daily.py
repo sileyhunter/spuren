@@ -18,6 +18,7 @@ import garmin_export  # noqa: E402       V6.2.3: Garmin-Datenexport (Verlauf), f
 import garmin_senden  # noqa: E402       V6.6: Aufträge «An Garmin senden» (garmin-senden-1.0) prüfen
 import last  # noqa: E402                V5.9.1: Trainingslast mit LT2 (tl2, last-2.0)
 import notizen  # noqa: E402             V6.1: Garmin-Notizen, Laktat und Verpflegung daraus als Vorschau (notizen-1.0)
+import verpflegung  # noqa: E402         V8.1.1: Verpflegung je Einheit (verpflegung-1.0): eigene Lebensmittel aus Garmin, Anpassungen je Einheit
 import wellness  # noqa: E402            V6.1: Readiness, Body Battery, Stress je Tag (wellness-1.0)
 
 ZRH = zoneinfo.ZoneInfo("Europe/Zurich")
@@ -335,6 +336,17 @@ def v5_merge(D, N):
         x, y = _upsert(D, "plan_aktivitaeten", [a], what="Aktivität draussen")
         if x or y:
             msg.append(f"Aktivität draussen {a['date']}" + (" entfernt" if a.get("entfernt") else f" ({a['art']}, {a['min']} min, {a['zone'].upper()})"))
+    for v in N.get("verpflegung_add") or []:            # V8.1.1 verpflegung-1.0: Anpassung je Einheit (gleiche ID ersetzt mit Audit, ältere Fassung nie)
+        fehler = verpflegung.pruefen(v)
+        if fehler:
+            msg.append(f"Verpflegung nicht übernommen: {fehler}")
+            continue
+        alt = next((x for x in D.get("plan_verpflegung") or [] if x.get("id") == v["id"]), None)
+        if alt and str(alt.get("geaendert") or "") > str(v["geaendert"]):
+            continue
+        x, y = _upsert(D, "plan_verpflegung", [v], what="Verpflegung je Einheit")
+        if x or y:
+            msg.append(f"Verpflegung {v['datum']}" + (" zurück auf die Empfehlung" if v.get("entfernt") else " angepasst"))
     for g in N.get("garmin_senden_add") or []:          # V6.6 garmin-senden-1.0: Auftrag je Tag; gesendet wird im Nacht-Update (tools/garmin_senden.py)
         fehler = garmin_senden.pruefen(g)
         if fehler:
@@ -516,6 +528,8 @@ def planeinstellung_pruefen(e):
         if e.get("kurs_nur") is not None and not isinstance(e.get("kurs_nur"), bool):
             return "Schwimmkurs: nur Schwimmen ja oder nein"
         return None
+    if i == "pe-verpflegung":                            # V8.1.1 verpflegung-1.0: Produkte unterwegs/davor/danach, Glukose + Fruktose, höchstens g/h
+        return verpflegung.einstellung_pruefen(e)
     return "unbekannte Einstellung"
 
 
@@ -931,6 +945,13 @@ def main(data_path, new_path, fit_path=None):
     selbst_in.update(N.get("selbst_garmin") or {})
     if selbst_in:
         print(f"Garmin-Selbsteinschätzung: {len(selbst_in)} abgerufen, {notizen.selbst_einlesen(D, selbst_in)} neu oder geändert")
+    if N.get("garmin_lebensmittel"):           # V8.1.1 verpflegung-1.0: eigene Lebensmittel aus Garmin (alle Seiten von get_custom_foods), ganze Liste
+        lm = verpflegung.lebensmittel(N["garmin_lebensmittel"])
+        if lm:
+            neu_lm = json.dumps(lm, sort_keys=True) != json.dumps(D.get("garmin_lebensmittel") or [], sort_keys=True)
+            D["garmin_lebensmittel"] = lm
+            D["garmin_lebensmittel_stand"] = dt.datetime.now(ZRH).strftime("%Y-%m-%d")
+            print(f"Eigene Lebensmittel aus Garmin: {len(lm)}" + (" (geändert)" if neu_lm else " (unverändert)"))
     n_la, n_fu, hw_n = notizen.ableiten(D)
     if n_la or n_fu:
         print(f"Aus Notizen: {n_la} Laktat-Vorschau(en), {n_fu} Verpflegungs-Vorschau(en) neu")

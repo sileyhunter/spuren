@@ -1699,5 +1699,45 @@ _alt81 = json.dumps(_S81, sort_keys=True)
 check("nachher-1.0: gleiche Werte nochmals → keine Änderung", NZ.selbst_einlesen(_D81, {"g81000000003": {"workout_rpe": 40, "workout_feel": 75}}) == 0
       and json.dumps(_D81["garmin_selbst"], sort_keys=True) == _alt81)
 
+# ---------------- V8.1.1 verpflegung-1.0 (tools/verpflegung.py, merge_daily) – alle Produkte erfunden ----------------
+import verpflegung as VPY  # noqa: E402
+_cf = lambda fid, name, marke, menge, einheit, **n: {"foodMetaData": {"foodId": fid, "foodName": name, "brandName": marke},
+                                                      "nutritionContents": [dict({"numberOfUnits": menge, "servingUnit": einheit}, **n)]}
+_seiten = [{"customFoods": [_cf("t-gel", "Test-Gel Kirsche", "Testmarke", 1, "serving", calories=100, carbs=25, sodium=-1),
+                            _cf("t-iso", "Test-Isodrink (1 Flasche)", "Testmarke", 60, "G", calories=230, carbs=56, sodium=400, potassium=None)],
+            "moreDataAvailable": True},
+           {"customFoods": [_cf("t-gel", "Test-Gel Kirsche", "Testmarke", 1, "serving", calories=100, carbs=25),
+                            {"foodMetaData": {"foodId": "t-leer", "foodName": "ohne Nährwerte"}, "nutritionContents": []},
+                            _cf("t/x", "falsche ID", None, 1, "G", carbs=1), _cf("t-ban", "Banane", None, 100, "G", calories=60, carbs=15)],
+            "moreDataAvailable": False}]
+_lm = VPY.lebensmittel(_seiten)
+check("verpflegung-1.0: eigene Lebensmittel aus allen Seiten – je ID einmal, ohne Portion/ungültige ID weg, negative Werte = leer, nach Name sortiert",
+      [x["id"] for x in _lm] == ["t-ban", "t-gel", "t-iso"] and _lm[1]["einheit"] == "SERVING" and _lm[1]["natrium"] is None
+      and _lm[2]["kh"] == 56.0 and _lm[2]["kalium"] is None and _lm[0]["menge"] == 100.0, str(_lm))
+check("verpflegung-1.0: Ausgabe von «liste» lässt sich nochmals einlesen (gleiches Ergebnis)", VPY.lebensmittel(_lm) == _lm)
+_vpe = {"id": "vp-2026-12-05-v-2026-12-05-1", "datum": "2026-12-05", "uid": "v-2026-12-05-1", "g_h": 45, "mix": "gel", "v": "verpflegung-1.0",
+        "geaendert": "2026-11-18T10:00:00Z"}
+check("verpflegung-1.0: Anpassung je Einheit geprüft (Kennung, 5er-Schritte, Auswahl)",
+      VPY.pruefen(_vpe) is None and VPY.pruefen(dict(_vpe, g_h=47)) and VPY.pruefen(dict(_vpe, id="vp-x")) and VPY.pruefen(dict(_vpe, mix="bar"))
+      and VPY.pruefen(dict(_vpe, g_h=None, mix=None)) == "keine Änderung")
+_pev = {"id": "pe-verpflegung", "unterwegs": ["t-gel", "t-iso"], "davor": ["t-ban"], "danach": [], "fruktose": ["t-iso"], "max_g_h": 70,
+        "v": "planeinstellungen-1.0", "geaendert": "2026-11-18T10:00:00Z"}
+check("verpflegung-1.0: Planeinstellung «pe-verpflegung» (davor/danach, höchstens 30–120 g/h in 10er-Schritten)",
+      merge_daily.planeinstellung_pruefen(_pev) is None and merge_daily.planeinstellung_pruefen(dict(_pev, max_g_h=75))
+      and merge_daily.planeinstellung_pruefen(dict(_pev, davor=["t-ban", "t-ban"])) and merge_daily.planeinstellung_pruefen(dict(_pev, danach="t-ban")))
+_tvp = tempfile.mkdtemp()
+json.dump({"activities": [], "days": [], "config": {}}, open(os.path.join(_tvp, "d.json"), "w"))
+json.dump({"lauf": "nacht", "garmin_lebensmittel": _seiten}, open(os.path.join(_tvp, "n.json"), "w"))
+merge_daily.main(os.path.join(_tvp, "d.json"), os.path.join(_tvp, "n.json"))
+json.dump({"verpflegung_add": [_vpe, dict(_vpe, g_h=30, geaendert="2026-11-17T10:00:00Z"), dict(_vpe, id="vp-2026-12-06-u", datum="2026-12-06", uid="u", g_h=33)],
+           "planeinstellung_add": [_pev]}, open(os.path.join(_tvp, "e.json"), "w"))
+merge_daily.main(os.path.join(_tvp, "d.json"), os.path.join(_tvp, "e.json"))
+_DVP = json.load(open(os.path.join(_tvp, "d.json")))
+check("verpflegung-1.0 (merge_daily): Lebensmittel aus Garmin als ganze Liste, Anpassung (ältere Fassung nie, ungültige abgelehnt), Planeinstellung",
+      [x["id"] for x in _DVP.get("garmin_lebensmittel") or []] == ["t-ban", "t-gel", "t-iso"] and bool(_DVP.get("garmin_lebensmittel_stand"))
+      and [(x["id"], x.get("g_h")) for x in _DVP.get("plan_verpflegung") or []] == [(_vpe["id"], 45)]
+      and any(x.get("id") == "pe-verpflegung" and x.get("davor") == ["t-ban"] for x in _DVP.get("plan_einstellungen") or []),
+      json.dumps({k: _DVP.get(k) for k in ("plan_verpflegung", "plan_einstellungen")})[:400])
+
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)

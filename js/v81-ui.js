@@ -1,4 +1,4 @@
-/* V8.1 Oberfläche zu js/v81.js: Blatt «Nach dem Training» (nachher-1.0) je Aktivität – Anstrengung und Gefühl von der Uhr vorbelegt, dazu
+/* V8.1 Oberfläche zu js/v81.js: Blatt «Nach dem Training» (nachher-1.0, 1.1 mit Magen und Energie ab 60 min) je Aktivität – Anstrengung und Gefühl von der Uhr vorbelegt, dazu
    leichter/schwerer als erwartet, Intervalle, Notiz; daneben Puls zur Leistung gegen deine Basis (hf-leistung-1.0) und geplante gegen absolvierte Last
    (last-abweichung-1.0). Gespeichert wird in der Liste «rpe» über «Direkt speichern». Zeile unter jeder erledigten Aktivität auf Heute, Karte «Anstieg der
    Belastung» (anstieg-1.0) unter Analyse → Belastung und Erholung. Eine Einheit ist immer nur ein Hinweis: nichts hier ändert den Plan. */
@@ -49,10 +49,15 @@
     if (!bereit()) return;
     const a = aktVon(aid); if (!a) return;
     const W = V6(), D = V81(), s = D.selbstVon(C.D, a), alt = eintragVon(a.id), X = D.nachher(a, alt, s);
-    const w = { rpe: X.rpe, gefuehl: X.gefuehl, erwartung: X.erwartung, intervalle: X.intervalle, notiz: X.notiz || "" };
+    const w = { rpe: X.rpe, gefuehl: X.gefuehl, erwartung: X.erwartung, intervalle: X.intervalle, notiz: X.notiz || "", magen: X.magen, energie: X.energie };
     const H = D.pulsZurLeistung(C.D.activities || [], a), G = geplant(a), AB = G ? D.abweichung(G.tl, a) : null;
     if (!w.intervalle && G && G.stufe === "locker" && !(a.wk && Array.isArray(a.wk.schritte) && a.wk.schritte.length > 3)) w.intervalle = "keine";
     const chips = (attr, L, wert) => `<div class="chips" role="radiogroup">${L.map((t) => `<button type="button" class="chip" role="radio" ${attr}="${esc(t)}" aria-checked="${t === wert}">${esc(t)}</button>`).join("")}</div>`;
+    const chipsW = (attr, L, wert) => `<div class="chips" role="radiogroup">${L.map(([k, t]) => `<button type="button" class="chip" role="radio" ${attr}="${esc(k)}" aria-checked="${k === wert}">${esc(t)}</button>`).join("")}</div>`;
+    // V8.1.1 nachher-1.1 / verpflegung-1.0: Magen und Energie ab 60 min, Verpflegung geplant gegen genommen (Fueling-Protokoll)
+    const mitV = D.mitVerpflegung ? D.mitVerpflegung(a) : false;
+    let VN = null; try { VN = mitV && G && window.VPUI && window.VPUI.nachher ? window.VPUI.nachher(a, G.e) : null; } catch (err) { console.error(err); }
+    const vpText = VN && VN.R.ziel.stufe === "ja" ? `Verpflegung: geplant ${VN.R.waehrend.g_h} g/h${VN.V ? ` · genommen ${VN.V.genommen} g/h (${VN.V.urteil})` : " · genommen: noch nicht im Fueling-Protokoll"}.` : "";
     const zahlen = [[dauer(isNum(a.mv) ? a.mv : a.dur || 0), "Dauer"]];
     if (isNum(a.tss)) zahlen.push([String(Math.round(a.tss)), "TL"]);
     if (AB) zahlen.push([`≈ ${AB.plan}`, "TL geplant"]);
@@ -66,6 +71,7 @@
       ${s && isNum(s.feel_g) ? `<p class="hint">Von deiner Uhr: ${esc(D.gefuehlWort(s.feel_g))}.</p>` : ""}
       <h3 class="abschnitt">Im Vergleich zur Erwartung</h3>${chips("data-nte", D.ERWARTUNG, w.erwartung)}
       <h3 class="abschnitt">Intervalle</h3>${chips("data-nti", ["alle", "nicht alle", "keine"], w.intervalle)}
+      ${mitV ? `<h3 class="abschnitt">Magen</h3>${chipsW("data-ntm", D.MAGEN, w.magen)}<h3 class="abschnitt">Energie gegen Ende</h3>${chips("data-ntv", D.ENERGIE, w.energie)}${vpText ? `<p class="hint keep">${esc(vpText)}</p>` : ""}` : ""}
       <label class="nt-notiz">Notiz (optional)<input type="text" maxlength="500" data-ntn value="${esc(w.notiz)}" placeholder="z. B. Wind, Beine schwer, Magen"></label>
       <h3 class="abschnitt">Puls zur Leistung</h3>
       <p class="${H.urteil === "höher" ? "warn-t" : "hint"}">${H.quelle ? `${esc(H.urteil === "wie üblich" ? "Wie üblich" : H.urteil === "höher" ? "Höher als üblich" : "Tiefer als üblich")}: ${H.delta > 0 ? "+" : ""}${komma(H.delta)} bpm gegen deine Basis (${esc(H.bezug)}, ${H.n_ref} Vergleiche aus den Wochen davor; ab ±${komma(H.grenze)} bpm gilt es als anders)${H.vorbehalte.length ? ` – Vorsicht: ${esc(H.vorbehalte.join(", "))}` : ""}.` : esc(`Kein Vergleich: ${H.grund}.`)}</p>
@@ -78,7 +84,7 @@
     const q = (x) => ov.querySelector(x), ok = q("[data-ntok]");
     const zeig = () => {
       ov.querySelectorAll("[data-ntr]").forEach((b) => b.setAttribute("aria-checked", String(+b.dataset.ntr === w.rpe)));
-      for (const [attr, k] of [["data-ntg", "gefuehl"], ["data-nte", "erwartung"], ["data-nti", "intervalle"]]) ov.querySelectorAll(`[${attr}]`).forEach((b) => b.setAttribute("aria-checked", String(b.getAttribute(attr) === w[k])));
+      for (const [attr, k] of [["data-ntg", "gefuehl"], ["data-nte", "erwartung"], ["data-nti", "intervalle"], ["data-ntm", "magen"], ["data-ntv", "energie"]]) ov.querySelectorAll(`[${attr}]`).forEach((b) => b.setAttribute("aria-checked", String(b.getAttribute(attr) === w[k])));
       const h = D.hinweis({ rpe: w.rpe, erwartung: w.erwartung }, H, { stufe: G ? G.stufe : null }), el = q("[data-nth]");
       el.className = h ? (h.art === "warn" ? "warn-t" : "hint") : "hint"; el.textContent = h ? h.text : "";
       ok.disabled = !Number.isInteger(w.rpe);
@@ -87,6 +93,8 @@
     ov.querySelectorAll("[data-ntg]").forEach((b) => (b.onclick = () => { w.gefuehl = b.dataset.ntg; zeig(); }));
     ov.querySelectorAll("[data-nte]").forEach((b) => (b.onclick = () => { w.erwartung = b.dataset.nte; zeig(); }));
     ov.querySelectorAll("[data-nti]").forEach((b) => (b.onclick = () => { w.intervalle = b.dataset.nti; zeig(); }));
+    ov.querySelectorAll("[data-ntm]").forEach((b) => (b.onclick = () => { w.magen = w.magen === b.dataset.ntm ? null : b.dataset.ntm; zeig(); }));
+    ov.querySelectorAll("[data-ntv]").forEach((b) => (b.onclick = () => { w.energie = w.energie === b.dataset.ntv ? null : b.dataset.ntv; zeig(); }));
     zeig();
     q("[data-ntz]").onclick = () => (zurueck ? zurueck() : V59().schliessen());
     ok.onclick = async () => {

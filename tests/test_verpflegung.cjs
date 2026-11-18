@@ -1,0 +1,162 @@
+// Abnahmetests V8.1.1 Verpflegung je Einheit (verpflegung-1.0, js/verpflegung.js). Alle Produkte und Werte erfunden.
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const path = require("node:path");
+const { execFileSync } = require("node:child_process");
+const VP = require("../js/verpflegung.js");
+
+// erfundene Produkte im Format von D.garmin_lebensmittel (wie tools/verpflegung.py lebensmittel liefert)
+const LM = [
+  { id: "g1", name: "Beispiel Energy Gel (1 Gel, 25 g KH)", marke: "Beispiel", menge: 1, einheit: "SERVING", kcal: 100, kh: 25, zucker: 10, protein: 0, fett: 0, natrium: 50, kalium: null },
+  { id: "g2", name: "Energy Gel (60 ml)", marke: "Beispiel", menge: 1, einheit: "PIECE", kcal: 100, kh: 25, zucker: 10, protein: 0, fett: 0, natrium: null, kalium: null },
+  { id: "d1", name: "Beispiel Sportgetränk Pulver (pro 60 g = 1 Flasche)", marke: "Beispiel", menge: 60, einheit: "G", kcal: 220, kh: 55, zucker: 30, protein: 0, fett: 0, natrium: 300, kalium: null },
+  { id: "b1", name: "Banane – Gewicht MIT Schale (pro 100 g)", marke: null, menge: 100, einheit: "G", kcal: 60, kh: 15, zucker: 8, protein: 1, fett: 0, natrium: 1, kalium: null },
+  { id: "r1", name: "Beispielriegel Hafer (Riegel 60 g)", marke: "Beispiel", menge: 60, einheit: "G", kcal: 230, kh: 35, zucker: 5, protein: 6, fett: 6, natrium: 100, kalium: null },
+  { id: "p1", name: "Beispiel Whey (Portion 30 g Pulver)", marke: "Beispiel", menge: 30, einheit: "G", kcal: 115, kh: 3, zucker: 2, protein: 24, fett: 2, natrium: 50, kalium: null },
+  { id: "m1", name: "Reis gekocht (pro 100 g)", marke: null, menge: 100, einheit: "G", kcal: 125, kh: 28, zucker: 0, protein: 3, fett: 0, natrium: 1, kalium: null },
+];
+const P = VP.produkte({ garmin_lebensmittel: LM });
+const W = VP.wahl(P, null);
+const einheit = (sport, art, dauer, teile, mehr) => Object.assign({ uid: "u1", sport, art, dauer, teile: teile || [["z1", 10], ["z2", dauer - 10]] }, mehr || {});
+const vo2 = (n) => Array(n).fill(0).flatMap(() => [["vo2", 0.5], ["pause", 0.25]]);
+
+test("Version", () => assert.equal(VP.VERSIONS.verpflegung, "verpflegung-1.0"));
+
+test("Produkte: Art aus Name und Nährwerten, Portionen, Doppel einmal (mit beiden Namen), Mahlzeiten nicht unterwegs", () => {
+  const art = Object.fromEntries(P.map((p) => [p.id, p.art]));
+  assert.equal(art.g1 || art.g2, "gel"); assert.equal(art.d1, "getraenk"); assert.equal(art.b1, "frucht"); assert.equal(art.r1, "riegel"); assert.equal(art.p1, "protein"); assert.equal(art.m1, "anderes");
+  const gels = P.filter((p) => p.art === "gel");
+  assert.equal(gels.length, 1, "gleiches Gel zweimal eingetragen"); assert.equal(gels[0].natrium, 50, "der Eintrag mit mehr Angaben bleibt"); assert.equal(gels[0].namen.length, 2);
+  assert.equal(P.find((p) => p.id === "d1").portion.text, "1 Flasche (60 g Pulver)");
+  assert.equal(P.find((p) => p.id === "b1").portion.nachGewicht, true);
+  assert.equal(P.find((p) => p.id === "b1").anzeige, "Banane (mit Schale)");
+  assert.ok(!W.unterwegs.some((p) => p.id === "m1"), "Mahlzeiten nicht unterwegs");
+  assert.deepEqual(W.nachher.map((p) => p.id), ["p1"]);
+  assert.equal(W.vorher[0].id, "b1", "vorher ohne eigene Auswahl: Banane zuerst");
+});
+
+test("45 min locker → nichts; Schwimmen → nichts während; Test → wie beim letzten Test", () => {
+  const R = VP.plan(einheit("lauf", "locker", 45), { W, kg: 70 });
+  assert.equal(R.ziel.stufe, "nichts"); assert.equal(R.waehrend.produkte.length, 0); assert.equal(VP.kurz(R), "nichts nötig");
+  assert.match(R.vorher[0].text, /nichts extra/);
+  const S = VP.plan(einheit("schwimm", "locker", 60, [["z2", 60]]), { W, kg: 70 });
+  assert.equal(S.ziel.stufe, "nichts"); assert.match(S.ziel.gruende[0], /Schwimmen/); assert.match(S.nachher[0].text, /Protein/);
+  const T = VP.plan(einheit("rad", "test", 75, [["test", 75]]), { W, kg: 70 });
+  assert.equal(T.ziel.stufe, "test"); assert.equal(T.waehrend.produkte.length, 0);
+});
+
+test("75 min Intervalle → 45 g/h, Einnahme nie im harten Teil", () => {
+  const e = einheit("lauf", "schluessel", 75, [["z1", 15]].concat(vo2(13), [["z1", 3]], vo2(13), [["z1", 3]], vo2(13), [["z1", 24.75]]));
+  const R = VP.plan(e, { W, kg: 70 });
+  assert.equal(R.ziel.g_h, 45); assert.equal(R.ziel.hart, true);
+  const achse = VP._intern.zeitachse(e);
+  for (const z of R.waehrend.zeitplan) {
+    const a = achse.find((x) => z.min >= x.von && z.min < x.bis);
+    assert.ok(!a || !a.hart, `Einnahme in Minute ${z.min} liegt in einem harten Abschnitt`);
+  }
+  assert.ok(R.waehrend.produkte.every((x) => x.p.art === "gel"), "Laufen: Gels");
+});
+
+test("kurze harte Einheit (45–75 min) → kleine Menge in einer Pause, oder nichts", () => {
+  const e = einheit("rad", "schluessel", 60, [["z1", 20], ["z3o", 8], ["z1", 2], ["z3o", 8], ["z1", 22]]);
+  const R = VP.plan(e, { W, kg: 70 });
+  assert.equal(R.ziel.stufe, "klein"); assert.equal(R.waehrend.zeitplan.length, 1);
+  assert.equal(R.waehrend.zeitplan[0].min, 28, "in der ersten Pause nach einem harten Block ab Minute 20");
+  assert.match(R.waehrend.zeitplan[0].text, /oder nichts/);
+});
+
+test("3 h Ausfahrt → 60 g/h: Getränk höchstens zwei Drittel, Rest Gels; über 60 g/h nur mit Glukose + Fruktose", () => {
+  const e = einheit("rad", "lang", 180);
+  const R = VP.plan(e, { W, kg: 70 });
+  assert.equal(R.ziel.g_h, 60);
+  assert.ok(Math.abs(R.waehrend.g_h - 60) <= 6, `≈ 60 g/h (${R.waehrend.g_h})`);
+  const fl = R.waehrend.produkte.find((x) => x.p.art === "getraenk"), gel = R.waehrend.produkte.find((x) => x.p.art === "gel");
+  assert.ok(fl && gel, "Getränk und Gels gemischt");
+  assert.ok(fl.kh <= 180 * 0.65 + 1, "Getränk höchstens zwei Drittel");
+  assert.ok(R.packliste.length >= 2); assert.ok(R.vorher.some((x) => /30–60 min vorher/.test(x.text)));
+  // eigene Stufe 90 g/h: ohne Glukose-Fruktose-Produkt bleibt es bei 60
+  const W90 = VP.wahl(P, { unterwegs: ["d1", "g1"], max_g_h: 90 });
+  const R60 = VP.plan(e, { W: W90, kg: 70 });
+  assert.equal(R60.ziel.g_h, 60); assert.ok(R60.ziel.gruende.some((g) => /Glukose und Fruktose/.test(g)));
+  const R90 = VP.plan(e, { W: VP.wahl(P, { unterwegs: ["d1", "g1"], fruktose: ["d1"], max_g_h: 90 }), kg: 70 });
+  assert.equal(R90.ziel.g_h, 90); assert.ok(R90.waehrend.g_h >= 84);
+});
+
+test("Ohne Produkte → Gramm statt erfundener Produkte; Anpassung je Einheit", () => {
+  const leer = VP.wahl([], null);
+  const R = VP.plan(einheit("rad", "lang", 150), { W: leer, kg: 70 });
+  assert.equal(R.waehrend.produkte.length, 0); assert.equal(R.waehrend.gramm, 150); assert.match(R.waehrend.text[0], /≈ 150 g Kohlenhydrate/);
+  assert.equal(VP.kurz(R), "während ≈ 150 g KH (≈ 60 g/h)");
+  const aus = VP.plan(einheit("rad", "lang", 150), { W, kg: 70, anpassung: { aus: true } });
+  assert.equal(aus.ziel.stufe, "aus"); assert.equal(aus.waehrend.produkte.length, 0);
+  const a40 = VP.plan(einheit("rad", "locker", 100), { W, kg: 70, anpassung: { g_h: 40, mix: "gel" } });
+  assert.equal(a40.ziel.g_h, 40); assert.ok(a40.waehrend.produkte.every((x) => x.p.art === "gel")); assert.equal(a40.angepasst, true);
+});
+
+test("Nachher: Protein ≈ 0,25 g/kg (20–40 g); Kohlenhydrate rasch nur vor der nächsten harten oder langen Einheit innert 8 h", () => {
+  const e = einheit("rad", "schluessel", 90, [["z1", 15]].concat(vo2(40), [["z1", 45]]));
+  const R = VP.plan(e, { W, kg: 80, naechsteStd: 6 });
+  assert.match(R.nachher[0].text, /≈ 24 g Protein, Ziel ≈ 20 g/);
+  assert.match(R.nachher[1].text, /80–96 g/);
+  const R2 = VP.plan(e, { W, kg: 80, naechsteStd: 16 });
+  assert.match(R2.nachher[1].text, /normale Mahlzeit/);
+});
+
+test("Hinweise: Renn-Fueling üben, Darmtraining, neues Produkt nicht in Schlüsseleinheiten", () => {
+  const e = einheit("rad", "lang", 200, [["z1", 10], ["z2", 100], ["renntempo", 30], ["z2", 60]]);
+  const R = VP.plan(e, { W, kg: 70 });
+  assert.ok(R.hinweise.some((h) => /Renn-Fueling/.test(h))); assert.ok(R.hinweise.some((h) => /Darmtraining/.test(h)));
+  const hart = einheit("rad", "schluessel", 100, [["z1", 15]].concat(vo2(40), [["z1", 55]]));
+  const N = VP.plan(hart, { W, kg: 70, genutzt: new Set(["etwas anderes"]) });
+  assert.ok(N.hinweise.some((h) => /neues nie zuerst/.test(h)));
+});
+
+test("Anpassung «vp-…»: Prüfung wie tools/verpflegung.py, neueste Fassung zählt", () => {
+  const ok = VP.eintrag("2027-01-20", "v-2027-01-20-0", { g_h: 50, mix: "gel" }, "2027-01-19T10:00:00Z");
+  assert.ok(ok); assert.equal(ok.id, "vp-2027-01-20-v-2027-01-20-0");
+  assert.equal(VP.eintrag("2027-01-20", "u1", { g_h: 52 }), null, "5er-Schritte");
+  assert.equal(VP.eintrag("2027-01-20", "u1", { mix: "auto" }), null, "keine Änderung");
+  assert.equal(VP.pruefen(Object.assign({}, ok, { id: "vp-x" })), "Kennung passt nicht zu Tag und Einheit");
+  const weg = { id: ok.id, datum: ok.datum, uid: ok.uid, entfernt: true, geaendert: "2027-01-19T11:00:00Z" };
+  assert.equal(VP.anpassung([ok], [], "2027-01-20", ok.uid).g_h, 50);
+  assert.equal(VP.anpassung([ok], [weg], "2027-01-20", ok.uid), null, "zurück auf die Empfehlung");
+  // gleiche Regeln in Python
+  const faelle = [ok, Object.assign({}, ok, { g_h: 52 }), Object.assign({}, ok, { mix: "x" }), weg, Object.assign({}, ok, { g_h: null, mix: "auto" })];
+  const code = `import json, sys\nsys.path.insert(0, ${JSON.stringify(path.join(__dirname, "..", "tools"))})\nimport verpflegung\n`
+    + `print(json.dumps([verpflegung.pruefen(e) for e in json.loads(sys.argv[1])]))`;
+  const py = JSON.parse(execFileSync("python3", ["-I", "-c", code, JSON.stringify(faelle)], { encoding: "utf8" }));
+  assert.deepEqual(py, faelle.map((e) => VP.pruefen(JSON.parse(JSON.stringify(e)))));
+});
+
+test("Geplant gegen genommen; Darmtraining-Vorschlag erst nach dreimal ohne Beschwerden", () => {
+  const R = VP.plan(einheit("rad", "lang", 180), { W, kg: 70 });
+  assert.equal(VP.vergleich(R, { kh_g_h: 58 }).urteil, "wie geplant");
+  assert.equal(VP.vergleich(R, { kh_g_h: 35 }).urteil, "weniger als geplant");
+  assert.equal(VP.vergleich(R, null), null);
+  assert.equal(VP.darm([{ genommen: 60, magen: "ok" }, { genommen: 58, magen: "ok" }], 60), null, "zweimal reicht nicht");
+  assert.deepEqual(VP.darm([{ genommen: 60, magen: "ok" }, { genommen: 58, magen: "ok" }, { genommen: 61, magen: "ok" }], 60).vorschlag, 70);
+  assert.equal(VP.darm([{ genommen: 60, magen: "stark" }, { genommen: 60, magen: "stark" }], 70).art, "runter");
+  assert.equal(VP.darm([{ genommen: 40, magen: "ok" }, { genommen: 58, magen: "ok" }, { genommen: 61, magen: "ok" }], 60), null, "zu wenig genommen");
+});
+
+test("Planeinstellung «pe-verpflegung»: Listen heissen davor/danach (vorher = Fassung der laufenden Woche), gleiche Prüfung wie Python", () => {
+  const V75 = require("../js/v75.js");
+  const x = V75.eintrag("pe-verpflegung", { unterwegs: ["g1", "d1"], davor: ["b1"], danach: ["p1"], fruktose: ["d1"], max_g_h: 80 }, "2027-01-19T10:00:00Z", null);
+  assert.deepEqual(x.davor, ["b1"], "bleibt im Eintrag"); assert.equal("vorher" in x, false);
+  assert.equal(V75.pruefen(x), null);
+  const W2 = VP.wahl(P, x);
+  assert.deepEqual(W2.vorher.map((p) => p.id), ["b1"]); assert.deepEqual(W2.nachher.map((p) => p.id), ["p1"]); assert.equal(W2.max_g_h, 80);
+  const faelle = [x, Object.assign({}, x, { max_g_h: 85 }), Object.assign({}, x, { danach: ["p1", "p1"] }), Object.assign({}, x, { davor: "b1" }), Object.assign({}, x, { max_g_h: 130 })];
+  const code = `import json, sys\nsys.path.insert(0, ${JSON.stringify(path.join(__dirname, "..", "tools"))})\nimport verpflegung\n`
+    + `print(json.dumps([verpflegung.einstellung_pruefen(e) for e in json.loads(sys.argv[1])]))`;
+  const py = JSON.parse(execFileSync("python3", ["-I", "-c", code, JSON.stringify(faelle)], { encoding: "utf8" }));
+  assert.deepEqual(py, faelle.map((e) => V75.pruefen(e)));
+  assert.deepEqual(py.map((f) => f === null), [true, false, false, false, false]);
+});
+
+test("Kurzfassung für Heute: vorher, während mit g/h und Produkten", () => {
+  const R = VP.plan(einheit("rad", "lang", 180), { W, kg: 70 });
+  assert.match(VP.kurz(R), /^vorher Banane.* · während ≈ \d+ g\/h: \d+ × (Flasche Getränk|Gel)/);
+  const k = VP.plan(einheit("rad", "schluessel", 60, [["z1", 15]].concat(vo2(30), [["z1", 22.5]])), { W, kg: 70 });
+  assert.equal(k.ziel.stufe, "klein"); assert.doesNotMatch(VP.kurz(k), /g\/h/, "kleine Menge ohne g/h");
+});

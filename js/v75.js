@@ -117,6 +117,12 @@
         if (e.kurs_bis != null && !istDatum(e.kurs_bis)) return "Schwimmkurs: letzter Kurstag als Datum";       // V7.6.2 kurs-1.0
         if (e.kurs_nur != null && typeof e.kurs_nur !== "boolean") return "Schwimmkurs: nur Schwimmen ja oder nein";
         return null;
+      case "pe-verpflegung": {                                             // V8.1.1 verpflegung-1.0 (gleiche Regeln wie tools/verpflegung.py einstellung_pruefen)
+        const ids = (L) => L == null || (Array.isArray(L) && L.length <= 60 && new Set(L).size === L.length && L.every((i) => typeof i === "string" && /^[A-Za-z0-9_.:-]{1,64}$/.test(i)));
+        for (const k of ["unterwegs", "davor", "danach", "fruktose"]) if (!ids(e[k])) return "Produkte: Liste bekannter Einträge ohne Doppel";
+        if (e.max_g_h != null && !(Number.isInteger(e.max_g_h) && e.max_g_h >= 30 && e.max_g_h <= 120 && e.max_g_h % 10 === 0)) return "höchstens 30–120 g pro Stunde in 10er-Schritten";
+        return null;
+      }
       default: return "unbekannte Einstellung";
     }
   };
