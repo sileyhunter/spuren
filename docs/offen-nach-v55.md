@@ -243,7 +243,10 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
     **Erledigt am 17.11.2026 (V7.6.2, Silas: «offene Punkte bereinigen»):** Tage für lange Einheiten Laufen = Sonntag (gilt ab der Woche vom 23.11.2026).
 99. **Schwimmkurs: letzter Kurstag** (kurs-1.0, V7.6.2): bis Silas das Datum nennt, gilt jeder Dienstag als Kurstag (nur Schwimmen). Sobald bekannt: unter Planeinstellungen →
     Schwimmen → «Schwimmkurs» eintragen; danach plant die Seite dienstags wieder alle Sportarten (2:45 h) und lockeres Schwimmen statt des Kurses.
+    **Erledigt am 18.11.2026:** von Silas genannt und eingetragen (nur verschlüsselt).
 100. **Zonen-Prüfung für Einheiten nach Puls** (laktat-hf-1.0 erfasst Puls und Laktat; die Prüfung «passt / Z2 zu hoch / unklar» ist nur vorgeschlagen, Etappe 4 mit
     aktivitaet-plan-1.0 für Skitour, Wandern, Langlauf und Traillauf – erst nach Silas' Okay).
+     **Erledigt in V7.7 (zonenpruefung-hf-1.0, Karte «Zonen nach Puls prüfen»)**, mit der Planung von Skitour, Wandern, Langlauf und Traillauf (aktivitaet-plan-1.0).
+101. **Etappe 4, übrige Teile** (Kalender, Zyklus, Bearbeiten und Tagesblatt wie enduco): erst nach Silas' Okay.
 98. **Krafttraining:** der automatische Tag wird an der schon verteilten Woche gewählt; eine Woche mit Tests am Wochenende lässt oft nur den Tag des langen Laufs
     (Hinweis). Die Übungen plant die Seite nicht; Kraft geht nicht an Garmin.

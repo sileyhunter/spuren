@@ -1,5 +1,15 @@
 # Änderungen
 
+## V7.7 · 18.11.2026 · Draussen planen: Skitour, Wandern, Langlauf, Traillauf (aktivitaet-plan-1.0), Zonen nach Puls prüfen (zonenpruefung-hf-1.0), wissen-1.20
+- **Draussen planen** (Etappe 4, erster Teil; Regeln am 17.11. vorgeschlagen, am 18.11. bestätigt): im Tagesblatt unter «Training hinzufügen» → «Draussen – blockiert den Tag».
+  Dauer 1–10 h, Z1 oder Z2 nach Puls (Pulszonen vom Laufen), Uhrzeit und Notiz. Der Tag gehört der Aktivität; ab 2 h am Vortag und am Tag danach keine harte Rad- oder
+  Laufeinheit. Skitour, Langlauf und Wandern ersetzen Rad-Stunden (Z2 ganz, Z1 halb; zuerst die lange Ausfahrt, dann lockere), Traillauf Lauf-Stunden; Schlüsseleinheiten
+  bleiben, der Rest kommt dazu. TL ≈ aus den eigenen Skitouren bzw. Wanderungen. Nicht an Garmin. Auch für die laufende, schon gespeicherte Woche.
+- **Einheit-Seite** für diese Aktivitäten: Kopfbild, Dauer, Puls-Bereich, TL ≈, was sich in der Woche ändert, Regeln, «Ändern» und «Entfernen».
+- **Zonen nach Puls prüfen** (Analyse → Laktat): bestätigte Messungen mit Puls aus den 10–20 min davor gegen den LT1-Wert des letzten Stufentests – «passt», «Z2 zu hoch»
+  oder «unklar»; ein Hinweis erst nach drei gleichen Urteilen in acht Wochen, Zonen ändern sich nie von selbst.
+- Schwimmkurs: letzter Kurstag eingetragen; danach plant die Seite dienstags wieder alle Sportarten.
+
 ## V7.6.2 · 17.11.2026 · Offene Punkte bereinigt, Kopfbilder, Kurzcheck nach Puls (bilder-1.0, kurs-1.0, aufbau-1.2, laktat-hf-1.0, wissen-1.19)
 - **Kopfbilder der Einheit-Seite aus Silas' Fotos** (Wunsch vom 17.11.2026): Schwimmen, Laufen, Rad, lange Ausfahrt, Wandern und Skitour statt des Berg-Symbols. Die Fotos
   liegen nur verschlüsselt im Repository (`bilder/`, Format wie die Reihen, 64-KiB-Stufen, Namen aus dem Salz, ohne EXIF); die Demo zeigt weiter das Symbol.

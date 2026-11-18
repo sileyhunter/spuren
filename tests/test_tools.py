@@ -1617,6 +1617,25 @@ check("kraft-plan-1.1 / verfuegbarkeit-1.1: Python prüft Tag automatisch, mögl
 check("kraft-plan-1.1 / verfuegbarkeit-1.1: gültig automatisch mit möglichen Tagen 1–7 (jeder einmal) oder fest mit Wochentag; lange Einheiten je Sportart 1–7, "
       "leer = keine Vorliebe, vorher erlaubt",
       [x is None for x in _k11_py] == [True, True, False, False, False, False, False, False, True, True, True, True, False, False, False, True, False], str(_k11_py))
+# V7.7 aktivitaet-plan-1.0: Python prüft Aktivitäten draussen wie die Seite (V77.pruefen) und spielt sie ein (ältere Fassung nie)
+_AK = {"id": "ak-2026-12-05", "date": "2026-12-05", "art": "skitour", "min": 300, "zone": "z2", "geaendert": "2026-11-18T07:00:00.000Z"}
+_AK_FAELLE = [dict(_AK), dict(_AK, min=305), dict(_AK, min=45), dict(_AK, min=615), dict(_AK, zone="z3"), dict(_AK, art="velo"), dict(_AK, id="ak-2026-12-06"),
+              dict(_AK, date="2026-02-30", id="ak-2026-02-30"), dict(_AK, uhrzeit="07:30"), dict(_AK, uhrzeit="07:31"), dict(_AK, notiz="x" * 301), dict(_AK, geaendert="gestern"),
+              {"id": "ak-2026-12-05", "date": "2026-12-05", "entfernt": True, "geaendert": "2026-11-18T07:00:00Z"}, dict(_AK, entfernt=False), dict(_AK, art="trail", min=60, zone="z1"), dict(_AK, min=True)]
+_akj = subprocess.run(["node", "-e", "const V77 = require('./js/v77.js'); const F = JSON.parse(process.argv[1]); console.log(JSON.stringify(F.map((e) => V77.pruefen(e))));",
+                       json.dumps(_AK_FAELLE)], cwd=ROOT, capture_output=True, text=True)
+_ak_js = json.loads(_akj.stdout or "[]")
+_ak_py = [merge_daily.aktivitaet_pruefen(e) for e in _AK_FAELLE]
+check("aktivitaet-plan-1.0: Python prüft Aktivitäten draussen wie die Seite (gleiche Entscheide)",
+      len(_ak_js) == len(_AK_FAELLE) and [x is None for x in _ak_js] == [x is None for x in _ak_py]
+      == [True, False, False, False, False, False, False, False, True, False, False, False, True, False, True, False], _akj.stderr + str(list(zip(_ak_js, _ak_py))))
+_AKD = {"audit": []}
+merge_daily.v5_merge(_AKD, {"aktivitaet_add": [dict(_AK), dict(_AK, date="2026-12-06", id="ak-2026-12-06", min=7)]})
+merge_daily.v5_merge(_AKD, {"aktivitaet_add": [dict(_AK, art="wandern", geaendert="2026-11-17T07:00:00Z")]})          # ältere Fassung: bleibt draussen
+_ak1 = [x.get("art") for x in _AKD.get("plan_aktivitaeten", [])]
+merge_daily.v5_merge(_AKD, {"aktivitaet_add": [{"id": "ak-2026-12-05", "date": "2026-12-05", "entfernt": True, "geaendert": "2026-11-19T07:00:00Z"}]})
+check("aktivitaet-plan-1.0: eingespielt nach plan_aktivitaeten (ungültige abgelehnt, ältere Fassung nie, entfernt mit Audit)",
+      _ak1 == ["skitour"] and [x.get("entfernt") for x in _AKD["plan_aktivitaeten"]] == [True] and any("Aktivit" in str(x.get("was", "")) for x in _AKD["audit"]), str(_AKD)[:400])
 # V7.6.2 laktat-hf-1.0: Laktatpunkt mit dem Puls der 10–20 min vor der Messung → Kurzcheck mit Puls max, Pulsanstieg, Zeit und Fenster
 import notizen as _notizen_lh  # noqa: E402
 _LH = {"lactate": [], "laktat_punkte": [{"id": "lp-g10000000009-5400", "act": "g10000000009", "datum": "2026-12-05", "sport": "skitour", "t": 5400, "t_timer": 5280,

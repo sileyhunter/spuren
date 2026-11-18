@@ -324,6 +324,17 @@ def v5_merge(D, N):
         a, b = _upsert(D, "plan_verfuegbarkeit", [v], what="Verfügbarkeit")
         if a or b:
             msg.append(f"Verfügbarkeit {v.get('date') or 'Wochentag ' + str(v.get('wt'))}" + (" zurückgesetzt" if v.get("entfernt") else ""))
+    for a in N.get("aktivitaet_add") or []:             # V7.7 aktivitaet-plan-1.0: Aktivität draussen je Tag (gleiche ID ersetzt mit Audit, ältere Fassung nie)
+        fehler = aktivitaet_pruefen(a)
+        if fehler:
+            msg.append(f"Aktivität draussen nicht übernommen: {fehler}")
+            continue
+        alt = next((x for x in D.get("plan_aktivitaeten") or [] if x.get("id") == a["id"]), None)
+        if alt and str(alt.get("geaendert") or "") > str(a["geaendert"]):
+            continue
+        x, y = _upsert(D, "plan_aktivitaeten", [a], what="Aktivität draussen")
+        if x or y:
+            msg.append(f"Aktivität draussen {a['date']}" + (" entfernt" if a.get("entfernt") else f" ({a['art']}, {a['min']} min, {a['zone'].upper()})"))
     for g in N.get("garmin_senden_add") or []:          # V6.6 garmin-senden-1.0: Auftrag je Tag; gesendet wird im Nacht-Update (tools/garmin_senden.py)
         fehler = garmin_senden.pruefen(g)
         if fehler:
@@ -591,6 +602,49 @@ def planwahl_pruefen(w):
 
 
 VF_SPORT = ("schwimm", "rad", "lauf")
+
+
+AKTIVITAET_ARTEN = ("skitour", "wandern", "langlauf", "trail")
+
+
+def aktivitaet_pruefen(a):
+    """V7.7 aktivitaet-plan-1.0: Aktivität draussen «ak-JJJJ-MM-TT» – gleiche Regeln wie V77.pruefen (js/v77.js). → None oder Grund."""
+    if not isinstance(a, dict):
+        return "kein Eintrag"
+    d = a.get("date")
+    try:
+        ok = isinstance(d, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", d) is not None and dt.date.fromisoformat(d).isoformat() == d
+    except ValueError:
+        ok = False
+    if not ok:
+        return "Datum fehlt"
+    if a.get("id") != "ak-" + d:
+        return "Kennung passt nicht zum Datum"
+    g = a.get("geaendert")
+    try:
+        g_ok = isinstance(g, str) and dt.datetime.fromisoformat(g.replace("Z", "+00:00")) is not None
+    except ValueError:
+        g_ok = False
+    if not g_ok:
+        return "ohne Zeitpunkt der Änderung"
+    if "entfernt" in a and a["entfernt"] is not True:
+        return "entfernt nur ja"
+    if a.get("entfernt") is True:
+        return None
+    if a.get("art") not in AKTIVITAET_ARTEN:
+        return "unbekannte Aktivität"
+    m = a.get("min")
+    if isinstance(m, bool) or not isinstance(m, int) or not 60 <= m <= 600 or m % 15:
+        return "Dauer 1–10 h in 15-min-Schritten"
+    if a.get("zone") not in ("z1", "z2"):
+        return "Intensität Z1 oder Z2"
+    u = a.get("uhrzeit")
+    if u is not None and (not isinstance(u, str) or not re.fullmatch(r"([01]\d|2[0-3]):[0-5][05]", u)):
+        return "Uhrzeit hh:mm in 5-min-Schritten"
+    n = a.get("notiz")
+    if n is not None and (not isinstance(n, str) or len(n) > 300):
+        return "Notiz höchstens 300 Zeichen"
+    return None
 
 
 def verfuegbarkeit_pruefen(v):

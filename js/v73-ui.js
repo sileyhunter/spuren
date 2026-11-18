@@ -111,6 +111,10 @@
   /** Bild zur Einheit: Schwimmen, Laufen, Rad (lange Ausfahrt mit eigenem Bild, sonst das Rad-Bild), Wandern, Skitour; sonst keins (Berg). */
   function bildKey(sport, e) {
     const cfg = C && C.D && C.D.config && C.D.config.bilder; if (!cfg || window.SPUREN_DEMO) return null;
+    if (e && e.art === "draussen") {                                   // V7.7 aktivitaet-plan-1.0: Skitour, Wandern; Langlauf und Traillauf mit dem nächsten Bild
+      const A = window.V77 && window.V77.ARTEN[e.draussen], k1 = e.draussen, k2 = A && A.bild;
+      return cfg[k1] ? k1 : k2 && cfg[k2] ? k2 : null;
+    }
     let k = sport === "rad" && e && (e.art === "lang" || /^rad_lang/.test(e.id || e.vorlage || "")) ? "rad-lang" : sport;
     if (k === "rad-lang" && !cfg[k]) k = "rad";
     return cfg[k] ? k : null;
@@ -226,14 +230,17 @@
     const offen = new Set([...sc.querySelectorAll("details[data-v73ab]")].filter((d) => !d.open).map((d) => d.dataset.v73ab));
     let aa = ""; try { aa = X.art === "plan" && window.V74UI ? window.V74UI.einheitBanner(X.ds, X.e, X.t) : ""; } catch (err) { console.error(err); }   // V7.4 ampel-plan-1.0
     const kraft = X.art === "plan" && X.sport === "kraft" && !!V76();      // V7.6 kraft-plan-1.0: ohne Ablauf, Schritte und Zonen
+    const drau = X.art === "plan" && X.e && X.e.art === "draussen" && !!window.V77UI;   // V7.7 aktivitaet-plan-1.0: eigener Abschnitt (js/v77-ui.js)
     const bk = bildKey(X.sport, X.e);
-    sc.innerHTML = kopf(bk) + `<div class="v73-inhalt">${chips()}${aa}${kacheln()}${kennzahlen()}${kraft ? kraftAbschnitt() + coach() : fokus() + equipment() + ablauf() + schritte() + coach() + zonen()}${extra()}${fussnote()}</div>`;
+    sc.innerHTML = drau ? kopf(bk) + `<div class="v73-inhalt"><div class="v73-chips"><span class="v73-chip still">${ic("kalender", 16)}${esc(datumKurz(X.ds))}</span>${X.e.uhrzeit ? `<span class="v73-chip still">${ic("uhr", 16)}${esc(X.e.uhrzeit)}</span>` : ""}</div>${aa}${window.V77UI.abschnitt(X)}</div>`
+      : kopf(bk) + `<div class="v73-inhalt">${chips()}${aa}${kacheln()}${kennzahlen()}${kraft ? kraftAbschnitt() + coach() : fokus() + equipment() + ablauf() + schritte() + coach() + zonen()}${extra()}${fussnote()}</div>`;
     sc.querySelectorAll("details[data-v73ab]").forEach((d) => { if (offen.has(d.dataset.v73ab)) d.open = false; });
     sc.scrollTop = oben;
     SEITE.querySelector(".v73-mini b").textContent = X.titel;
-    SEITE.querySelector(".v73-haupt").innerHTML = X.art === "plan" && !X.vorbei && !kraft ? `<button type="button" class="btn primary v73-export" data-v73="export">Export ${ic("play", 18)}</button>` : "";
+    SEITE.querySelector(".v73-haupt").innerHTML = X.art === "plan" && !X.vorbei && !kraft && !drau ? `<button type="button" class="btn primary v73-export" data-v73="export">Export ${ic("play", 18)}</button>` : "";
     binden();
     if (kraft) kraftBinden(sc);
+    if (drau) window.V77UI.binden(sc, X, () => zeichnen());
     bildEinsetzen(bk);
     if (window.V74UI) window.V74UI.binden(sc, () => zeichnen());
     const f = LETZT && SEITE.querySelector(`[data-v73="${LETZT}"]`);
@@ -242,7 +249,7 @@
   function kopf(bk) {
     const W = V6(), gesperrt = X.art === "plan" && (X.e.gesperrt || X.t.gesperrt);
     const unter = X.art === "workout" ? `${SPORT_WORT[X.sport] || ""} · ${X.quelle}`
-      : X.e.kraft_plan ? (X.e.kraft_auto ? "Tag automatisch · Planeinstellungen" : "fester Termin · Planeinstellungen") : X.e.quelle === "bibliothek" ? "aus deiner Enduco-Bibliothek" : X.e.quelle === "eigen" ? "eigene Einheit · Mein Plan" : `Vorschlag «${X.K.w.modellName || "Modell"}» · Mein Plan`;
+      : X.e.kraft_plan ? (X.e.kraft_auto ? "Tag automatisch · Planeinstellungen" : "fester Termin · Planeinstellungen") : X.e.art === "draussen" ? "Aktivität draussen · blockiert den Tag" : X.e.quelle === "bibliothek" ? "aus deiner Enduco-Bibliothek" : X.e.quelle === "eigen" ? "eigene Einheit · Mein Plan" : `Vorschlag «${X.K.w.modellName || "Modell"}» · Mein Plan`;
     const o = bk ? BILD_OK.get(bk) : null;
     return `<div class="v73-hero${o ? " bild" : ""}"${bk ? ` data-bild="${bk}"` : ""} style="--sp:${spVar(X.sport)}${o ? `;--hero-bild:url('${o.url}');--hero-pos:${o.pos}` : ""}"><span class="v73-hero-sym" aria-hidden="true">${W.sportIcon(X.sport, 150)}</span>
       <div class="v73-hero-text"><p class="v73-ueber">${W.sportIcon(X.sport, 16)}${gesperrt ? `<span class="v73-schloss" title="gesperrt">${ic("schloss", 15)}</span>` : ""}<span>Trainingsbriefing</span></p>

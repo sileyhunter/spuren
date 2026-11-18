@@ -55,6 +55,11 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
 - **V7.6.2 (offene Punkte und Wünsche vom 17.11.2026):** `tools/bilder_crypt.mjs` und `bilder/` (Kopfbilder der Einheit-Seite, bilder-1.0, Abschnitt «Bilder»);
   Schwimmkurs kurs-1.0 (`pe-schwimm` `kurs_bis`/`kurs_nur`, `V66.mitKurs`, `V64.woche` `kurs_bis`, Blatt «Schwimmkurs» in `js/v75-ui.js`); Aufbau-Grenze mit geplanten
   Läufen aufbau-1.2 (`V64.laufGrenze`, `geplanteLaeufe` in `js/v64-ui.js`); Kurzcheck nach Puls laktat-hf-1.0 (`AN.laktatFenster`, `AN.pulsAnstieg`, Explorer und Notiz-Vorschau)
+- **V7.7 (Etappe 4, erster Teil «Draussen», aktivitaet-plan-1.0 und zonenpruefung-hf-1.0; Regeln von Silas am 18.11.2026 bestätigt):** `js/v77.js` (ohne DOM: Eintrag
+  prüfen und zusammenführen `V77.pruefen`/`V77.liste`, Einheit `V77.einheit`, Woche `V77.einplanen` (Ersatz), gespeicherte Woche `V77.ersetzenGespeichert`, TL je Stunde
+  `V77.tlProStunde`, Zonen nach Puls `V77.zonenPruefung`), `js/v77-ui.js` (Blatt «Draussen planen» aus «Training hinzufügen», Abschnitt auf der Einheit-Seite, Karte
+  `#zp-card` unter Laktat), `tests/test_v77.cjs`; Vorlagen skitour/wandern/langlauf/trail und Tag/Nachbartage in `js/v66.js` (`V66.verteilen`, `V66.aendern` «aktivitaet»,
+  «aktivitaet_weg», `V66.schaetzung` mit `V66.draussenTL`), `js/v74.js` (lockere Fassung, Nachholen), `js/v76.js` (Kraft nicht am Tag der Aktivität)
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
 - `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)
@@ -400,7 +405,9 @@ nur Schwimmen, nicht Bibliothek) und `drinnen: false` bleibt (ausdrücklich drau
 V7.5: `planeinstellung` (je Gruppe «pe-start» {art fitness/aufteilung} und «pe-basis-schwimm»/«-rad»/«-lauf» {wert: eigene Fitness 0–200 oder null} (V7.5.2, basis-1.1),
 «pe-steigerung» {wert}, «pe-indoor-rad»/«pe-indoor-lauf» {von, bis}, «pe-schwimm» {hilfsmittel, pool, stile (ruecken/brust), anfaenger (V7.5.1), kurs_bis (letzter Kurstag oder null), kurs_nur (V7.6.2 kurs-1.0)} → `planeinstellung_add`
 → `plan_einstellungen`; `merge_daily.planeinstellung_pruefen` wie `V75.pruefen`; gleiche ID ersetzt mit Audit, eine ältere Fassung (`geaendert`) nie; «pe-basis» mit Stunden
-aus V7.5 wird abgelehnt). V7.6 kraft-plan-1.1: «pe-kraft» {aktiv, modus auto/fest (ohne = fest), tage 1–7 je einmal (auto), wt 1–7 (fest), uhrzeit, dauer 15–180 in
+aus V7.5 wird abgelehnt). V7.7 aktivitaet-plan-1.0: `aktivitaet` (Aktivität draussen je Tag «ak-JJJJ-MM-TT» {art skitour/wandern/langlauf/trail, min 60–600 in 15er-Schritten, zone z1/z2, uhrzeit, notiz ≤ 300}
+oder {entfernt: true} → `aktivitaet_add` → `plan_aktivitaeten`; `merge_daily.aktivitaet_pruefen` wie `V77.pruefen`; gleiche ID ersetzt mit Audit, ältere Fassung nie).
+V7.6 kraft-plan-1.1: «pe-kraft» {aktiv, modus auto/fest (ohne = fest), tage 1–7 je einmal (auto), wt 1–7 (fest), uhrzeit, dauer 15–180 in
 5er-Schritten, notiz ≤ 500} und «pe-kraft-<Montag>» {aus und/oder tag dieser Woche, uhrzeit; entfernt = wieder die Regel}; V7.6.1 «pe-lang» {rad, lauf: Wochentage 1–7 je
 einmal, leer = keine Vorliebe}; «pe-start», «pe-basis-…», «pe-kraft» und «pe-lang» tragen optional `vorher` = die Fassung, die in der Woche des Speicherns
 noch gilt (gleiche Regeln, mit `geaendert`, ohne eigenes `vorher`) – sie gelten ab der nächsten Woche, und `plan_einstellungen` behält je ID nur die neueste Fassung.
@@ -567,8 +574,8 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   lang an Land am selben Tag −120 (bis 1.0 −40). Verschieben trägt einen Grund (Verfügbarkeit, Tag für lange Einheiten, Tag nach dem Krafttraining).
   **Übernommen am 17.11.2026 aus Silas' Enduco-Einstellungen (Bildschirmfotos) und seiner Nachricht:** Mo kein Training, Di nur Schwimmen (Schwimmkurs bis Dezember), Mi–Fr 2:45 h,
   Sa und So 5:00 h; lange Ausfahrt Sa/So, langer Lauf Do (wie Enduco); Krafttraining automatisch ohne Do. **Seit 17.11.2026 (V7.6.2, Silas: «offene Punkte bereinigen»):** Di 2:45 h
-  mit allen Sportarten und «An Kurstagen nur Schwimmen» (kurs-1.0, letzter Kurstag noch offen – sobald Silas ihn nennt, unter Schwimmen eintragen; danach gilt der Dienstag
-  ohne weiteres Zutun wieder für alle Sportarten); langer Lauf So (am Do war neben Rad-Schlüssel und CSS kein Platz, die Woche meldete es jede Woche).
+  mit allen Sportarten und «An Kurstagen nur Schwimmen» (kurs-1.0; letzter Kurstag am 18.11.2026 von Silas genannt und eingetragen, nur verschlüsselt; danach gilt der
+  Dienstag ohne weiteres Zutun wieder für alle Sportarten); langer Lauf So (am Do war neben Rad-Schlüssel und CSS kein Platz, die Woche meldete es jede Woche).
 - **Krafttraining (V7.6, kraft-plan-1.1, Etappe 7; Regeln von Silas am 17.11.2026 freigegeben):** Seite zwischen Schwimmen und Trainingsumfang, Blatt `V75UI.kraft` (auch aus
   dem Tagesblatt und der Einheit-Seite): an/aus, Tag «Automatisch» (mögliche Tage; Silas: alle ausser Do, dort schliesst der Kraftraum früh) oder «Fester Tag» (Wochentag),
   Uhrzeit (oder ohne), Dauer 15–180 min (Standard 1:30 h), Notiz für die Übungen (die Seite plant keine Übungen). Gilt ab der Woche nach dem Speichern (`vorher` hält die
@@ -583,6 +590,27 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Aufgezeichnete Garmin-Krafteinheiten (Typ «Krafttraining»/«Strength») zählen seit pmc-2.1 nicht mehr in Fitness und Form; sie stehen in «Diese Woche» und in der
   Wochenauswertung als eigene Zeile. «Nur diese Woche» auf der Einheit-Seite: in kommenden Wochen, deren Tage dem Vorschlag folgen, als Ausnahme «pe-kraft-<Montag>»; in der
   laufenden Woche und an gespeicherten Tagen über Mein Plan (verschieben, entfernen). Regel ändern = Version in `V76.VERSIONS`, Wissen (Kapitel «kraft») und `tests/test_v76.cjs`.
+
+## Aktivitäten draussen (V7.7, aktivitaet-plan-1.0, Etappe 4 Teil 1; Vorschlag vom 17.11.2026, von Silas am 18.11.2026 bestätigt, Ersatz «nur Rad» von Claude entschieden)
+- Skitour, Wandern, Langlauf und Traillauf im Voraus planen (Tagesblatt → «Training hinzufügen» → «Draussen – blockiert den Tag», Blatt `V77UI.blatt`): Dauer 1–10 h in
+  15-min-Schritten, Z1 oder Z2 nach Puls (Pulszonen vom Laufen, wie Wandern in `V6.SKALA`), Uhrzeit und Notiz optional; ein Eintrag je Tag. Der Rest von Etappe 4 (Kalender,
+  Zyklus, Bearbeiten, Tagesblatt wie enduco) erst nach Silas' Okay.
+- Wirkung (eigene Festlegungen, Wissen Kapitel «draussen»): der Tag gehört der Aktivität (`V66.verteilen` `aktTag`: keine andere Einheit des Vorschlags), ab 2 h am Vortag
+  und am Tag danach keine harte Rad- oder Laufeinheit (wie nach dem Krafttraining, sonst locker, gemeldet). Ersatz: Skitour, Langlauf, Wandern ersetzen Rad-Stunden, Traillauf
+  Lauf-Stunden (Laufen sonst unberührt – für Hamburg am spezifischsten, Aufbau am heikelsten); Z2 ganz, Z1 halb; ab 2 h zuerst die lange Einheit, dann lockere (die nächste
+  zuerst), unter 2 h umgekehrt; Schlüssel, Tests, eigene und gesperrte Einheiten nie; Rest kommt dazu (gemeldet). Tests am selben Tag oder am Tag danach nur gemeldet, nie
+  verschoben. Krafttraining nicht am Tag der Aktivität (`V76.einplanen`), Nachholen der Ampel nicht dort und (Rad, Laufen) nicht daneben (`V74.woche`).
+- Ungespeicherte Wochen rechnen die Aktivität von selbst ein (`V64UI` kontext `mitAkt`, vor dem Krafttraining und dem Verteilen; vergangene Wochen nicht). Gespeicherte Wochen
+  (`ganz`): beim Speichern `V66.aendern` «aktivitaet» (Einheit «akt-<Datum>» rein, Ersatz ab heute mit `schon` = was die bisherige Fassung schon ersetzt hat, dann «Anpassen»);
+  entfernen = «aktivitaet_weg» (Ersetztes kommt mit «Neu berechnen» zurück).
+- TL ≈ aus den eigenen Aktivitäten derselben Art (`V77.tlProStunde`: Median Last pro Stunde, zwei Jahre, mind. drei ab 1 h; Z1 × 0,8), sonst keine Zahl. Zählt in Fitness,
+  Form und Ampel wie absolvierte Skitouren. Ampel «vorsichtig»: zwei Drittel (ab 90 min) und Z1 (`V74.locker`). Nie an Garmin (`V66.garminGrund`). Traillauf erhöht die
+  Aufbau-Grenze im Voraus nicht (Distanz unbekannt), absolvierte Trailläufe zählen wie jeder Lauf. Kopfbilder: Skitour, Wandern; Langlauf mit dem Skitour-, Traillauf mit dem
+  Wanderbild.
+- **Zonen nach Puls prüfen (zonenpruefung-hf-1.0, Karte `#zp-card` unter Laktat):** bestätigte Kurzchecks mit Puls-Fenster ab 10 min (laktat-hf-1.0) und Pulsanstieg bis 5 %
+  gegen LT1 ≈ = Basis + 0,5 mmol/l des letzten bestätigten Stufentests davor (Rad mit Rad, sonst Laufen): Puls in Z1–Z2 und Laktat deutlich darunter «passt», deutlich darüber
+  «Z2 zu hoch», sonst «unklar» (deutlich = 2·√(σ₁² + σ₂²), σ = max(0,15; 7,5 %)); Puls über Z2 nicht beurteilt. Hinweis erst nach drei gleichen Urteilen in acht Wochen;
+  Zonen ändern sich nie von selbst. Regel ändern = Version in `V77.VERSIONS`, Wissen (Kapitel «draussen») und `tests/test_v77.cjs`.
 
 ## Ampel passt das Training an (V7.4, ampel-plan-1.0, Etappe 6 des Auftrags V7.3, freigegeben am 17.11.2026)
 - Entscheid je Tag aus der Ampel (readiness-2.2, `V74.entscheid`): «bereit», «normal», «nicht beurteilbar» = wie geplant; «vorsichtig» = keine harten und
@@ -705,7 +733,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
   Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
   Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
-- **Wissen `wissen-1.19` (`js/wissen.js`; 1.19 = V7.6.2 Schwimmkurs, aufbau-1.2, Kurzcheck nach Puls; 1.18 = V7.6.1 Abstimmung ums Krafttraining, Tag automatisch, Tage für lange Einheiten, Form ohne Krafttraining; 1.17 = V7.6 Kapitel «kraft» (Rønnestad & Mujika 2014, Rønnestad et al. 2010, Doma et al. 2017, Lauersen et al. 2014, Foster et al. 2001); 1.16 = V7.5.2 Basis-Fitness Variante A; 1.15 = V7.5.1 Planeinstellungen als Blatt-Folge, Basis-Regel offen, Anfänger-Modus, Stile auf der Uhr; 1.14 = V7.5 Kapitel «planeinstellungen», 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.13 = V7.4 Ampel passt das Training an (Kapitel «erholung», Düking 2021, Manresa-Rocamora 2021), 1.12 = V7.3.2 Übungen aus der Enduco-Liste, 1.11 = V7.3 Etappe 2 Schwimmen,
+- **Wissen `wissen-1.20` (`js/wissen.js`; 1.20 = V7.7 Kapitel «draussen»; 1.19 = V7.6.2 Schwimmkurs, aufbau-1.2, Kurzcheck nach Puls; 1.18 = V7.6.1 Abstimmung ums Krafttraining, Tag automatisch, Tage für lange Einheiten, Form ohne Krafttraining; 1.17 = V7.6 Kapitel «kraft» (Rønnestad & Mujika 2014, Rønnestad et al. 2010, Doma et al. 2017, Lauersen et al. 2014, Foster et al. 2001); 1.16 = V7.5.2 Basis-Fitness Variante A; 1.15 = V7.5.1 Planeinstellungen als Blatt-Folge, Basis-Regel offen, Anfänger-Modus, Stile auf der Uhr; 1.14 = V7.5 Kapitel «planeinstellungen», 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.13 = V7.4 Ampel passt das Training an (Kapitel «erholung», Düking 2021, Manresa-Rocamora 2021), 1.12 = V7.3.2 Übungen aus der Enduco-Liste, 1.11 = V7.3 Etappe 2 Schwimmen,
   Puls und RPE an Garmin im Kapitel «modelle», 1.10 = V7.3 Einheit als
   Schritte, Einfahren und Intervall-Intensität, RPE je Abschnitt im Kapitel «intervalle»; 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
   1.3: Kapitel «Vorschlag und Enduco vergleichen», 1.4: Prüfung der Quellen – Formulierungen nicht stärker als die Studien, eigene Festlegungen
@@ -850,7 +878,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Die exakten Grössen der SPS1-Dateien stehen in der Git-Historie.
 
 ## Prüfen vor jedem Push von Seite oder Werkzeugen
-`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `node --test tests/test_v66.cjs`, `node --test tests/test_v7.cjs`, `node --test tests/test_v72.cjs`, `node --test tests/test_v73.cjs`, `node --test tests/test_v74.cjs`, `node --test tests/test_v75.cjs`, `node --test tests/test_v76.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`,
+`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `node --test tests/test_v66.cjs`, `node --test tests/test_v7.cjs`, `node --test tests/test_v72.cjs`, `node --test tests/test_v73.cjs`, `node --test tests/test_v74.cjs`, `node --test tests/test_v75.cjs`, `node --test tests/test_v76.cjs`, `node --test tests/test_v77.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`,
 bei Änderungen an `bilder/` oder `config.bilder` `SPUREN_PW=… node tools/bilder_crypt.mjs pruefen` («PRÜFUNG BILDER: bestanden»).
 **Leck-Prüfung (V6.4.4):** `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json work/data.json`, `python3 -I tools/leck_pruefen.py work/data.json`
 («LECK-PRÜFUNG: bestanden»), danach `rm work/data.json`. Gilt für jeden Push von Seite, Werkzeugen, Tests oder Doku (nicht für die reinen Daten-Updates).

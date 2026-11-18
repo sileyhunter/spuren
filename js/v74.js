@@ -75,6 +75,17 @@
   /** Lockere Fassung einer Einheit bei «vorsichtig» → neue Einheit mit `ampel` { von, grund } oder null (bleibt, wie sie ist).
    *  Gleiche Sportart, gleiche Uhrzeit und Metrik; Intensität nur locker; lange Einheiten höchstens zwei Drittel. ctx = { phase, css_s }. */
   V74.locker = function (e, ctx) {
+    // V7.7 aktivitaet-plan-1.0: Aktivität draussen bei «vorsichtig» höchstens zwei Drittel der Dauer (ab 90 min) und nur Z1
+    if (e && !e.gesperrt && e.art === "draussen" && e.spec) {
+      const gr = []; let d = e.dauer;
+      if (d > V74.LANG_AB) { const k = Math.max(60, Math.floor((d * V74.ANTEIL) / 15) * 15); if (k < d) { d = k; gr.push(`auf zwei Drittel gekürzt (${d} min)`); } }
+      if (e.zone !== "z1") gr.push("nur Z1");
+      if (!gr.length) return null;
+      const n = V66.einheit(Object.assign({}, e.spec, { dauer: d, zone: "z1" }), ctx || {});
+      if (!n) return null;
+      n.titel += " (Ampel)"; n.ablauf = [`Ampel: statt «${e.titel}» (${e.dauer} min)`].concat(n.ablauf || []); n.ampel = { von: kurz(e), grund: gr };
+      return n;
+    }
     if (!e || e.gesperrt || !LOCKER[e.sport] || e.id === "schwimm_kurs") return null;      // Kraft, Mobility und der Schwimmkurs bleiben
     let id = null, d = isNum(e.dauer) ? e.dauer : null; const gr = [];
     if (!isNum(d)) return null;
@@ -134,6 +145,9 @@
       if (nach && (nach.rennen || nach.einheiten.some(istTest))) return -1;                       // nicht am Tag vor einem Test oder Rennen
       const vor = tage[i - 1];                                                                    // V7.6 kraft-plan-1.1: nicht am Tag nach einem Krafttraining (Rad, Laufen)
       if (vor && (H.sport === "rad" || H.sport === "lauf") && vor.einheiten.some((x) => x.sport === "kraft")) return -1;
+      // V7.7 aktivitaet-plan-1.0: nicht am Tag einer Aktivität draussen, als Rad- oder Laufeinheit nicht neben einer ab 2 h
+      if (t.einheiten.some((x) => x.art === "draussen")) return -1;
+      if ((H.sport === "rad" || H.sport === "lauf") && [vor, nach].some((n) => n && n.einheiten.some((x) => x.art === "draussen" && (x.dauer || 0) >= 120))) return -1;
       for (const k of [i - 1, i, i + 1]) { const n = tage[k]; if (n && n.einheiten.some((x) => hartAmTag(x) && stoert(x, H))) return -1; }
       const j = t.einheiten.findIndex((x) => x.sport === H.sport && x.id === LOCKER[x.sport] && !x.gesperrt && x.quelle !== "bibliothek" && !x.ampel);
       if (j < 0) return -1;

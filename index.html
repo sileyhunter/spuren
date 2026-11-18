@@ -1472,6 +1472,10 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
         <div class="zc" id="zc-box"></div>
         <p class="hint">LT1/LT2 sind Werte des jeweiligen Tests und auf jeder Skala eigen. Antippen öffnet Grenzen, Methode, Quelle, Datum und Status. Neue Zonen gelten nur nach deiner Bestätigung (Vorschlag unten).</p>
       </div>
+      <div class="card w12" id="zp-card">
+        <div class="card-head"><div><h2>Zonen nach Puls prüfen</h2><div class="sub">Laktat bei Skitour, Wandern, Langlauf und Grundlage gegen deinen Stufentest · ändert keine Zonen</div></div></div>
+        <div id="zp-box" aria-live="polite"></div>
+      </div>
       <div class="card w12" id="zv-card">
         <div class="card-head"><div><h2>Zonen-Vorschlag aus LT1/LT2</h2><div class="sub">Aus dem neuesten Stufentest je Sportart · gilt erst nach deiner Bestätigung</div></div></div>
         <div id="zv-box" aria-live="polite"></div>
@@ -1697,6 +1701,8 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <script src="js/v75.js"></script>
 <script src="js/v75-ui.js"></script>
 <script src="js/v76.js"></script>
+<script src="js/v77.js"></script>
+<script src="js/v77-ui.js"></script>
 <script>
 (() => {
   const b64d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));

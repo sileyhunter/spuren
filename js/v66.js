@@ -30,10 +30,15 @@
   V66.SPORTARTEN = [["schwimm", "Schwimmen"], ["rad", "Rad"], ["rad_drinnen", "Rad drinnen"], ["lauf", "Laufen"], ["lauf_drinnen", "Laufen drinnen"],
     ["kraft", "Kraft und Athletik"], ["mobility", "Mobility"]];
   V66.ARTEN = { grundlage: "Grundlage", lang: "Lang", tempo: "Tempo", schwelle: "Schwelle", vo2max: "VO2max", renntempo: "Renntempo",
-    koppel: "Koppellauf", technik: "Technik und Kurs", aktivierung: "Aktivierung", test: "Test", kraft: "Kraft und Athletik", mobility: "Mobility" };
+    koppel: "Koppellauf", technik: "Technik und Kurs", aktivierung: "Aktivierung", test: "Test", kraft: "Kraft und Athletik", mobility: "Mobility", draussen: "Draussen" };
   const EXTRA = {
     kraft: { sport: "kraft", titel: "Krafttraining", art: "kraft", zweck: "Kraft- und Stabilisationsübungen nach deinem Programm; die Seite plant keine Übungen und keine Ziele." },
     mobility: { sport: "mobility", titel: "Mobility", art: "mobility", zweck: "Beweglichkeit und Lockerung, ohne Ziele." },
+    // V7.7 aktivitaet-plan-1.0 (js/v77.js): Aktivitäten draussen, nach Puls (Pulszonen vom Laufen), blockieren ihren Tag; nur über «Draussen planen»
+    skitour: { sport: "ski", titel: "Skitour", art: "draussen", draussen: true, zweck: "Skitour nach Puls im Grundlagenbereich. Ersetzt Rad-Stunden der Woche; am Vortag und am Tag danach keine harte Einheit an Land." },
+    wandern: { sport: "wandern", titel: "Wandern", art: "draussen", draussen: true, zweck: "Wanderung nach Puls im Grundlagenbereich. Ersetzt Rad-Stunden der Woche; am Vortag und am Tag danach keine harte Einheit an Land." },
+    langlauf: { sport: "ski", titel: "Langlauf", art: "draussen", draussen: true, zweck: "Langlauf nach Puls im Grundlagenbereich. Ersetzt Rad-Stunden der Woche; am Vortag und am Tag danach keine harte Einheit an Land." },
+    trail: { sport: "lauf", titel: "Traillauf", art: "draussen", draussen: true, zweck: "Traillauf nach Puls im Grundlagenbereich. Ersetzt Lauf-Stunden der Woche und zählt im Aufbau-Check als Lauf; am Vortag und am Tag danach keine harte Einheit an Land." },
   };
   // Vorlage → [Art, min, max, Standard] in Minuten; ohne Zahlen: Schlüsseleinheit (min = kurze Fassung, Standard = volle, max = volle + 60)
   const ZU = {
@@ -43,6 +48,7 @@
     lauf_laktat: ["schwelle"], lauf_vo2: ["vo2max"], lauf_koppel: ["koppel", 10, 60, 20], test_lauf: ["test"],
     schwimm_locker: ["grundlage", 20, 90, 45], schwimm_css: ["schwelle"], schwimm_kurs: ["technik", 30, 90, 60], test_css: ["test"],
     kraft: ["kraft", 15, 180, 90], mobility: ["mobility", 10, 60, 20],             // V7.6 kraft-plan-1.0: Standard 1:30 h, bis 3 h
+    skitour: ["draussen", 60, 600, 300], wandern: ["draussen", 60, 600, 240], langlauf: ["draussen", 60, 600, 120], trail: ["draussen", 60, 600, 120],   // V7.7 aktivitaet-plan-1.0
   };
   const DYN = new Set(["locker", "lang", "kurs", "koppel"]);    // Bausteine, deren Dauer frei ist (V64: o.d)
   const r5 = (x) => Math.round(x / 5) * 5;
@@ -61,7 +67,7 @@
     const basis = String(sportKey || "").replace("_drinnen", "");
     const out = [];
     for (const id of Object.keys(ZU)) {
-      const b = EXTRA[id] || V64.BAUSTEINE[id]; if (!b || b.sport !== basis) continue;
+      const b = EXTRA[id] || V64.BAUSTEINE[id]; if (!b || b.sport !== basis || b.draussen) continue;     // V7.7: Draussen nur über «Draussen planen»
       if (sportKey.endsWith("_drinnen") && ["lang", "renntempo", "koppel"].includes(ZU[id][0])) continue;   // drinnen keine langen Einheiten und kein Koppellauf
       out.push(Object.assign({ id, sport: b.sport, art: ZU[id][0], titel: b.titel }, V66.bereich(id)));
     }
@@ -85,6 +91,12 @@
         stufe: st, ablauf: ["Ablauf wie im Enduco-Workout (Bibliothek)"], zweck: "Aus deiner Enduco-Bibliothek eingeplant.", quellen: [], wissen: "vergleich", wid: s.wid }, mehr);
     }
     const X = EXTRA[s.vorlage];
+    if (X && X.draussen) {                                             // V7.7 aktivitaet-plan-1.0: ein Abschnitt in Z1 oder Z2 nach Puls
+      const z = s.zone === "z1" ? "z1" : "z2";
+      return Object.assign({ id: s.vorlage, sport: X.sport, titel: `${X.titel} ${z.toUpperCase()}`, art: "draussen", draussen: s.vorlage, zone: z, dauer: s.dauer, teile: [[z, s.dauer]],
+        minuten: { locker: s.dauer, mittel: 0, hart: 0 }, ablauf: [`${s.dauer} min in ${z.toUpperCase()} nach Puls`], zweck: X.zweck, quellen: [], wissen: "draussen", metrik: "puls",
+        spec: Object.assign({}, s) }, mehr, { metrik: "puls" });
+    }
     if (X) return Object.assign({ id: s.vorlage, sport: X.sport, titel: X.titel, art: X.art, dauer: s.dauer, teile: [["ohne", s.dauer]], minuten: { locker: 0, mittel: 0, hart: 0 },
       ablauf: [`${s.dauer} min`], zweck: X.zweck, quellen: [], wissen: null }, mehr);
     const b = V64.BAUSTEINE[s.vorlage]; if (!b) return null;
@@ -223,6 +235,7 @@
     for (const k of Object.keys(V66.FELDER)) if (s[k] != null) { const f = V66.feldPruefen(k, s[k]); if (f) return f; }   // V7.3
     if (s.quelle === "bibliothek") return isNum(s.wid) && ["rad", "lauf", "schwimm"].includes(s.sport) ? null : "Bibliothek ohne Workout oder Sportart";
     const B = V66.bereich(s.vorlage); if (!B) return "unbekannte Vorlage";
+    if (EXTRA[s.vorlage] && EXTRA[s.vorlage].draussen && s.zone != null && !["z1", "z2"].includes(s.zone)) return "Intensität Z1 oder Z2";   // V7.7
     if (s.quelle === "eigen" && (s.dauer < B.min || s.dauer > B.max)) return `Dauer ${B.min}–${B.max} min`;
     return null;
   };
@@ -293,6 +306,24 @@
         // Inhalt geändert (Einfahren, Pausen, drinnen) = eigene Einheit wie beim Ändern der Dauer; Uhrzeit, Sperre und Metrik lassen die Quelle
         if (neu.quelle === "vorschlag" && ["ein_min", "pausen", "drinnen"].some((k) => neu[k] !== alt[k])) neu.quelle = "eigen";
         L[i] = neu;
+        break;
+      }
+      case "aktivitaet": {                                             // V7.7 aktivitaet-plan-1.0: Aktivität draussen in eine gespeicherte Woche
+        f = darf(a.date); if (f) break;
+        const s = Object.assign({}, a.einheit, { quelle: "eigen" });
+        f = V66.einheitPruefen(s); if (f) break;
+        if (!(EXTRA[s.vorlage] && EXTRA[s.vorlage].draussen)) { f = "keine Aktivität draussen"; break; }
+        festhalten();
+        for (const d of wochenTage()) if (E.tage[d] && Array.isArray(E.tage[d].einheiten)) E.tage[d].einheiten = E.tage[d].einheiten.filter((x) => x.uid !== s.uid);   // bisherige Fassung
+        liste(a.date).unshift(s);
+        if (typeof ctx.ersetzen === "function") ctx.ersetzen(E, a);   // Ersatz von Rad- bzw. Lauf-Einheiten ab heute (V77.ersetzenGespeichert)
+        if (ctx.verf) f = anpassen(E, ctx);                           // der Tag gehört der Aktivität, Vortag und Tag danach ohne harte Einheit an Land
+        break;
+      }
+      case "aktivitaet_weg": {                                         // V7.7: Aktivität aus der gespeicherten Woche nehmen (Ersetztes kommt mit «Neu berechnen» zurück)
+        f = darf(a.date); if (f) break;
+        const uid = "akt-" + a.date;
+        for (const d of wochenTage()) if (E.tage[d] && Array.isArray(E.tage[d].einheiten)) E.tage[d].einheiten = E.tage[d].einheiten.filter((x) => x.uid !== uid);
         break;
       }
       case "sperren": f = !inWoche(a.date) ? "nicht in dieser Woche" : a.date < ctx.heute ? "vergangen – nur lesen" : null; if (!f) tag(a.date).gesperrt = true; break;
@@ -381,7 +412,7 @@
 
   /* ---------------- Verteilen nach der Verfügbarkeit (verfuegbarkeit-1.0) ---------------- */
   const ORTSFEST = new Set(["schwimm_kurs", "aktivierung", "test_rad", "test_lauf", "test_css"]);
-  const istOrtsfest = (e) => !!e && (ORTSFEST.has(e.id) || e.art === "test" || !!e.test || e.art === "kraft");   // V7.6: Krafttraining bleibt am Tag und belegt seine Zeit
+  const istOrtsfest = (e) => !!e && (ORTSFEST.has(e.id) || e.art === "test" || !!e.test || e.art === "kraft" || e.art === "draussen");   // V7.6 Kraft, V7.7 Aktivität draussen bleiben am Tag
   const istEigen = (e) => !!e && (e.quelle === "eigen" || e.quelle === "bibliothek" || !!e.gesperrt);   // V7.3: gesperrte Einheit bleibt am Tag
   const hart = (e) => !!e && (!!e.schluessel || e.art === "schluessel_s");
   V66.hart = hart;
@@ -465,8 +496,12 @@
     const stoert = (a, b) => hart(a) && hart(b) && (a.sport === b.sport || (land(a) && land(b)));
     const hartAm = (i, e) => i >= 0 && i < T.length && belegt[i].some((x) => stoert(x, e));
     const ruheOk = (i) => !T[i].ruhetag || !!(V[i] && V[i].min !== 0 && (!V[i].sport || V[i].sport.length));
-    // V7.6 kraft-plan-1.1: am Tag nach einem Krafttraining keine harte Einheit an Land
-    const nachKraft = (e, i) => hart(e) && land(e) && i > 0 && belegt[i - 1].some((x) => x.sport === "kraft");
+    // V7.6 kraft-plan-1.1: am Tag nach einem Krafttraining keine harte Einheit an Land; V7.7 aktivitaet-plan-1.0: ebenso am Vortag und am Tag nach
+    // einer Aktivität draussen ab 2 h, und am Tag der Aktivität selbst keine andere Einheit des Vorschlags (der Tag gehört ihr)
+    const aktLang = (j) => j >= 0 && j < T.length && belegt[j].some((x) => x.art === "draussen" && (x.dauer || 0) >= 120);
+    const aktTag = (j) => j >= 0 && j < T.length && belegt[j].some((x) => x.art === "draussen");
+    const nachKraft = (e, i) => hart(e) && land(e) && ((i > 0 && belegt[i - 1].some((x) => x.sport === "kraft")) || aktLang(i - 1) || aktLang(i + 1));
+    const schonGrund = (i) => (i > 0 && belegt[i - 1].some((x) => x.sport === "kraft") ? "Tag nach dem Krafttraining" : "neben einer langen Aktivität draussen");
     const wt = (i) => V66.wtNr(T[i].date), langOk = (e, i) => { const L = e.art === "lang" ? langTage(opt, e.sport) : null; return !L || L.includes(wt(i)); };
     // verfuegbarkeit-1.1: eine lange Einheit verlässt ihren Tag für einen gewählten nur, wenn dort die Sportart geht und Zeit ist – sonst bleibt sie
     const langFrei = (p) => T.some((t, j) => !t.fest && j !== p.von && langOk(p.e, j) && erlaubt(j, p.e.sport) && rest(j) >= p.e.dauer
@@ -501,8 +536,8 @@
     const offen = [];
     for (const p of L) {
       const i = p.von, sp = p.e.sport, k = p.koppel;
-      if (!erlaubt(i, sp) || nachKraft(p.e, i) || (!langOk(p.e, i) && langFrei(p))) {
-        p.grund = !erlaubt(i, sp) ? "Verfügbarkeit" : nachKraft(p.e, i) ? "Tag nach dem Krafttraining" : "Tag für lange Einheiten";   // V7.6.1: Grund in der Meldung
+      if (!erlaubt(i, sp) || aktTag(i) || nachKraft(p.e, i) || (!langOk(p.e, i) && langFrei(p))) {
+        p.grund = !erlaubt(i, sp) ? "Verfügbarkeit" : aktTag(i) ? "Tag der Aktivität draussen" : nachKraft(p.e, i) ? schonGrund(i) : "Tag für lange Einheiten";   // V7.6.1: Grund in der Meldung
         offen.push(p); continue;
       }
       if (k && erlaubt(i, "lauf") && rest(i) >= p.e.dauer + k.dauer) { setzen(p, i, p.e, true); continue; }
@@ -513,8 +548,8 @@
     }
     // 2. Runde: die übrigen auf den besten anderen erlaubten Tag mit genug Zeit; sonst gekürzt; sonst entfällt sie
     for (const p of offen) {
-      const sp = p.e.sport, k = p.koppel, frei = (j) => erlaubt(j, sp) && !nachKraft(p.e, j);
-      const eigen = !langOk(p.e, p.von) && erlaubt(p.von, sp) && !nachKraft(p.e, p.von);   // wegen eines gewählten Tags unterwegs: der eigene Tag bleibt möglich
+      const sp = p.e.sport, k = p.koppel, frei = (j) => erlaubt(j, sp) && !aktTag(j) && !nachKraft(p.e, j);
+      const eigen = !langOk(p.e, p.von) && erlaubt(p.von, sp) && !aktTag(p.von) && !nachKraft(p.e, p.von);   // wegen eines gewählten Tags unterwegs: der eigene Tag bleibt möglich
       let i = k ? waehle(p, (j) => frei(j) && erlaubt(j, "lauf") && rest(j) >= p.e.dauer + k.dauer, eigen) : null;
       if (i != null) { setzen(p, i, p.e, true); continue; }
       i = waehle(p, (j) => frei(j) && rest(j) >= p.e.dauer, eigen);
@@ -524,12 +559,14 @@
       const n = i != null ? kurz(p, i) : null;
       if (n) { setzen(p, i, n, false); continue; }
       // kraft-plan-1.1: eine harte Einheit, die nur wegen des Krafttrainings am Vortag nirgends Platz hat, wird an ihrem Tag locker
-      if (nachKraft(p.e, p.von) && erlaubt(p.von, sp) && rest(p.von) >= p.e.dauer) {
+      if (nachKraft(p.e, p.von) && !aktTag(p.von) && erlaubt(p.von, sp) && rest(p.von) >= p.e.dauer) {
         const l = V66.einheit({ uid: p.e.uid || "kraft-locker-" + T[p.von].date, vorlage: sp === "rad" ? "rad_locker" : "lauf_locker", dauer: p.e.dauer, quelle: "vorschlag" }, opt.ctxE || {});
         if (l) {
           if (ORD.has(p.e)) ORD.set(l, ORD.get(p.e));
           VON.set(l, p.von); belegt[p.von].push(l);
-          P.hinweise.push(`«${p.e.titel}» am ${wtK(T[p.von].date)}: am Tag nach dem Krafttraining locker statt hart (kraft-plan-1.1)`);
+          const g = schonGrund(p.von);
+          P.hinweise.push(g === "Tag nach dem Krafttraining" ? `«${p.e.titel}» am ${wtK(T[p.von].date)}: am Tag nach dem Krafttraining locker statt hart (kraft-plan-1.1)`
+            : `«${p.e.titel}» am ${wtK(T[p.von].date)}: neben einer langen Aktivität draussen locker statt hart (aktivitaet-plan-1.0)`);
           if (k) { if (erlaubt(p.von, "lauf") && rest(p.von) >= k.dauer) belegt[p.von].push(k); else P.weg.push({ titel: k.titel, date: T[p.von].date, grund: "gehört zur langen Ausfahrt" }); }
           continue;
         }
@@ -542,7 +579,7 @@
       if (T[i].fest || PRIO(e) !== 2 || !VON.has(e)) continue;
       const p = { e, von: VON.get(e) };
       belegt[i].splice(belegt[i].indexOf(e), 1);
-      const jetzt = score(p, i), j = waehle(p, (k) => erlaubt(k, e.sport) && rest(k) >= e.dauer, true);
+      const jetzt = score(p, i), j = waehle(p, (k) => erlaubt(k, e.sport) && !aktTag(k) && rest(k) >= e.dauer, true);
       if (j != null && j !== i && score(p, j) > jetzt + 20) {
         belegt[j].push(e);
         const r = WEG.get(e);
@@ -599,7 +636,8 @@
     if (!w || !Array.isArray(w.tage)) return w;
     // V7.6: auch ohne eingetragene Verfügbarkeit, wenn lange Tage gewählt sind oder ein Krafttraining in der Woche steht (dann ohne Zeitgrenzen)
     const mitVerf = !!(verf && !verf.leer && w.tage.some((t) => verf(t.date)));
-    const zwingt = !!((ctx && ctx.lang && (langTage(ctx, "rad") || langTage(ctx, "lauf"))) || w.tage.some((t) => (t.einheiten || []).some((e) => e.sport === "kraft")));
+    // V7.7: ebenso mit einer Aktivität draussen (ihr Tag und die Nachbartage)
+    const zwingt = !!((ctx && ctx.lang && (langTage(ctx, "rad") || langTage(ctx, "lauf"))) || w.tage.some((t) => (t.einheiten || []).some((e) => e.sport === "kraft" || e.art === "draussen")));
     if (!mitVerf && !zwingt) return w;
     const r = V66.verteilen(w.tage.map((t) => Object.assign({}, t, { fest: false })), mitVerf ? verf : () => null, { o: bausteinO(w, ctx), lang: ctx && ctx.lang, ctxE: ctx && ctx.ctxE });
     if (!r.geaendert) return w;
@@ -727,6 +765,12 @@
     if (!e || !Array.isArray(e.teile) || !e.teile.length) { out.grund = "ohne Ablauf"; return out; }
     if (["test", "kraft", "mobility", "bibliothek"].includes(e.art)) { out.grund = e.art === "test" ? "Test – Belastung hängt vom Verlauf ab" : "ohne Ziele"; return out; }
     const B = bezug || {};
+    if (e.art === "draussen") {                                         // V7.7 aktivitaet-plan-1.0: Last pro Stunde aus den eigenen Aktivitäten derselben Art
+      const M = B.draussen || (typeof V66.draussenTL === "function" ? V66.draussenTL() : V66.draussenTL) || {}, tlh = M[e.draussen];
+      if (!isNum(tlh)) { out.grund = "ohne eigene Vergleichswerte (mind. drei Aktivitäten dieser Art ab 1 h)"; return out; }
+      out.tl = Math.round((e.dauer / 60) * tlh * (e.zone === "z1" ? 0.8 : 1)); out.vollstaendig = true; out.grund = "aus deinen eigenen Aktivitäten dieser Art";
+      return out;
+    }
     let tl = 0, km = 0, offen = 0;
     for (const [k, m] of e.teile) {
       const h = m / 60;
@@ -862,6 +906,7 @@
     if (!e) return "keine Einheit";
     if (e.art === "bibliothek") return null;
     if (e.art === "test") return "Tests über die Test-Workouts (Testkalender)";
+    if (e.art === "draussen") return "Aktivität draussen: nach Puls, ohne Workout (aktivitaet-plan-1.0)";
     if (e.sport === "schwimm") return e.art === "kurs" || e.id === "schwimm_kurs" ? "Schwimmkurs: Inhalt laut Kurs" : null;
     if (!GSPORT[e.sport]) return "nur Rad, Laufen und Schwimmen";
     if (!Array.isArray(e.teile) || !e.teile.length || e.teile[0][0] === "ohne") return "ohne Ablauf";

@@ -117,7 +117,9 @@
     } else if (w.erholung) { dauer = zweiDrittel(dauer); info.kurz = "Erholungswoche"; }      // Regel 6
     // Regel 4: nicht am Tag eines Tests und nicht am Vortag
     const testNah = (i) => [i, i + 1].some((k) => w.tage[k] && (w.tage[k].einheiten || []).some(istTest));
-    const moeglich = (i) => { const x = w.tage[i]; return !!x && !x.gesperrt && !testNah(i) && (!fenster || fenster.includes(i)); };
+    // V7.7 aktivitaet-plan-1.0: nicht am Tag einer Aktivität draussen (der Tag gehört ihr)
+    const akt = (i) => !!w.tage[i] && (w.tage[i].einheiten || []).some((e) => e.art === "draussen");
+    const moeglich = (i) => { const x = w.tage[i]; return !!x && !x.gesperrt && !testNah(i) && (!fenster || fenster.includes(i)) && !akt(i); };
     let i = -1;
     if (t.auto && opt.tag) {
       i = w.tage.findIndex((x) => x.date === opt.tag);
@@ -132,8 +134,8 @@
       if (k0 < 0) return w;
       if (fenster && !fenster.includes(k0)) i = fenster.slice().sort((a, b) => Math.abs(a - k0) - Math.abs(b - k0) || a - b)[0];
       else if (moeglich(k0)) i = k0;
-      else if (k0 > 0 && moeglich(k0 - 1) && !w.tage[k0].gesperrt) { i = k0 - 1; hinweise.push(`Krafttraining einen Tag früher (${V76.TAGE[wtNr(w.tage[i].date) - 1]}): Test am Tag danach (kraft-plan-1.1)`); }
-      else { hinweise.push("Krafttraining fällt diese Woche aus: Test am selben oder am nächsten Tag (kraft-plan-1.1)"); return fertig("weg", "Test"); }
+      else if (k0 > 0 && moeglich(k0 - 1) && !w.tage[k0].gesperrt) { i = k0 - 1; hinweise.push(`Krafttraining einen Tag früher (${V76.TAGE[wtNr(w.tage[i].date) - 1]}): ${akt(k0) ? "Aktivität draussen an diesem Tag (aktivitaet-plan-1.0)" : "Test am Tag danach (kraft-plan-1.1)"}`); }
+      else { hinweise.push(akt(k0) ? "Krafttraining fällt diese Woche aus: Aktivität draussen an diesem Tag (aktivitaet-plan-1.0)" : "Krafttraining fällt diese Woche aus: Test am selben oder am nächsten Tag (kraft-plan-1.1)"); return fertig("weg", akt(k0) ? "Aktivität" : "Test"); }
       if (fenster && i !== k0) hinweise.push(`Taper: Krafttraining am ${V76.TAGE[wtNr(w.tage[i].date) - 1]} (7–10 Tage vor dem Rennen)`);
       if (keinTraining(opt.verf ? opt.verf(w.tage[i].date) : null)) hinweise.push(`Krafttraining am ${V76.TAGE[wtNr(w.tage[i].date) - 1]}: laut Verfügbarkeit kein Training an diesem Tag`);
     }

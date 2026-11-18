@@ -130,7 +130,8 @@
     const roh = (d) => ((K.w0roh || K.w0 || K.w).tage.find((t) => t.date === d) || { einheiten: [] }).einheiten;
     const r = V66().aendern(P().planEintrag(mo), a, { heute: heute(), montag: mo, vorschlag, roh, verf: K.verf || null, verteilt: !!K.verteilt, ctxE: K.ctxE, lang: K.lang || null,
       o: { phase: K.w.phase, css_s: K.css ? K.css.s : null, kurz: !!(K.w.taper || K.w.erholung) }, jetzt: new Date().toISOString(),
-      erholung: K.erh || null, grund: a.art === "erholung" ? "Ampel: mehrere Tage «vorsichtig» (ampel-plan-1.0)" : null });
+      erholung: K.erh || null, grund: a.art === "erholung" ? "Ampel: mehrere Tage «vorsichtig» (ampel-plan-1.0)" : null,
+      ersetzen: window.V77 ? (E, x) => window.V77.ersetzenGespeichert(E, x.akt, heute(), K.ctxE, x.schon) : null });   // V7.7 aktivitaet-plan-1.0
     if (r.fehler) return r.fehler;
     const I = UI().Inbox; if (!I || !I.data) return "Speicher auf diesem Gerät nicht verfügbar";
     if (!Array.isArray(I.data.planwoche)) I.data.planwoche = [];
@@ -148,7 +149,7 @@
     const W = V6(), S = V66().schaetzung(e, bezug(K)), hk = e.teile && e.teile.length && P().hauptKey ? P().hauptKey(e) : null;
     let st = null; try { const A = ds ? auftrag(ds) : null; st = ds ? V66().garminStand(e, ds, skalen(), gesendet(), A && (A.lokal ? Object.assign({ status: "offen" }, A.a) : A.a), swOpt(ds, K)) : null; } catch (err) { console.error(err); }
     const teile = [W.dauerText(e.dauer * 60), isNum(S.tl) ? `TL ≈ ${S.vollstaendig ? "" : "mind. "}${S.tl}` : "", isNum(S.km) && S.km > 0 ? `≈ ${komma(S.km)} km` : "", st ? STAND_WORT[st] : ""].filter(Boolean);
-    const q = (e.kraft_plan ? (e.kraft_auto ? "Tag automatisch" : "fester Termin") : e.quelle === "eigen" ? "eigen" : e.quelle === "bibliothek" ? "Bibliothek" : "Vorschlag") + (e.ampel ? (e.ampel.von ? " · Ampel" : " · nachgeholt") : "");   // V7.6
+    const q = (e.kraft_plan ? (e.kraft_auto ? "Tag automatisch" : "fester Termin") : e.art === "draussen" ? "draussen" : e.quelle === "eigen" ? "eigen" : e.quelle === "bibliothek" ? "Bibliothek" : "Vorschlag") + (e.ampel ? (e.ampel.von ? " · Ampel" : " · nachgeholt") : "");   // V7.6
     if (e.uhrzeit) teile.unshift(e.uhrzeit);                               // V7.3: Uhrzeit aus «Festlegen»
     return `<button type="button" class="mo-e mp-e${e.quelle === "eigen" ? " eigen" : ""}" data-mpe="${esc(e.uid)}">
       <span class="mo-sp" style="--sp:${spFarbe(e.sport)}">${W.sportIcon(e.sport, 16)}</span>
@@ -533,10 +534,13 @@
     const html = `<h2 id="v59-ov-h" tabindex="-1">Training hinzufügen</h2><p class="sub">${esc(tagText(ds))} · Sportart wählen</p>
       <ul class="mp-wahl">${V66().SPORTARTEN.map(([k, n]) => [k, name(k, n)]).map(([k, name]) => `<li><button type="button" class="mp-zeile" data-mpsp="${k}">
         <span class="mo-sp" style="--sp:${spFarbe(k.replace("_drinnen", ""))}">${W.sportIcon(k.replace("_drinnen", ""), 18)}</span><b>${esc(name)}</b>${W.icon("weiter", 18)}</button></li>`).join("")}</ul>
+      ${window.V77UI ? window.V77UI.wahlZeilen() : ""}
       ${fuss("data-mpz")}`;
     const ov = V59().blatt("mp-neu", html);
     ov.querySelector("[data-mpz]").onclick = () => (zurueck ? zurueck() : V59().schliessen());
     ov.querySelectorAll("[data-mpsp]").forEach((b) => (b.onclick = () => vorlagenBlatt(ds, b.dataset.mpsp, zurueck)));
+    // V7.7 aktivitaet-plan-1.0: Skitour, Wandern, Langlauf, Traillauf – eigenes Blatt (js/v77-ui.js), zurück hierher
+    ov.querySelectorAll("[data-akneu]").forEach((b) => (b.onclick = () => window.V77UI.blatt(ds, b.dataset.akneu, () => (zurueck ? zurueck() : V59().schliessen()))));
   };
   function vorlagenBlatt(ds, sp, zurueck) {
     const W = V6(), x = tagVon(ds); if (!x) return;

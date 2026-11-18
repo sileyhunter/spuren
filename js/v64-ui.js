@@ -91,10 +91,14 @@
       return { roh: r, v: !d || D76.passt(kP, o.verf) ? kP : verteilt(r) };
     };
     const abgestimmt = (w) => (window.V76 && window.V76.abstimmen ? window.V76.abstimmen(w, { ctxE }) : w);
+    // V7.7 aktivitaet-plan-1.0 (js/v77.js): geplante Aktivitäten draussen dieser Woche in den unverteilten Vorschlag (Einheit an ihrem Tag, Ersatz von Rad- bzw.
+    // Lauf-Stunden); verteilt wird danach wie immer (der Tag gehört der Aktivität, Vortag und Tag danach ohne harte Einheit an Land). Vergangene Wochen nicht.
+    const AK = !vorbei && window.V77 ? window.V77.liste(C.D.plan_aktivitaeten || [], ((UI() && UI().Inbox && UI().Inbox.data) || {}).aktivitaet || []) : null;
+    const mitAkt = (w) => (AK && AK.size ? window.V77.einplanen(w, AK, { ctxE }) : w);
     // aufbau-1.2 (V7.6.2): für Wochen nach der laufenden zählen die geplanten Läufe der Wochen dazwischen mit (V64.laufGrenze, r.geplant)
     const laeufe = V.laeufe(C.D.activities).concat(offset > 0 ? geplanteLaeufe(offset) : []);
-    const X0 = mitKraft(V.woche({ woche: mo, phase, erholung, stunden, aufteilung, modell, tests, rennen: rennen(), css_s: css ? css.s : null,
-      intensitaet: V.intensitaet(wahlEintrag()), laeufe, heute: st.heute, skalen: sk, kurs_bis: KS ? KS.kurs_bis : null })), w0 = X0.roh;
+    const X0 = mitKraft(mitAkt(V.woche({ woche: mo, phase, erholung, stunden, aufteilung, modell, tests, rennen: rennen(), css_s: css ? css.s : null,
+      intensitaet: V.intensitaet(wahlEintrag()), laeufe, heute: st.heute, skalen: sk, kurs_bis: KS ? KS.kurs_bis : null }))), w0 = X0.roh;
     // V7.2 verfuegbarkeit-1.0 / eigenplan-1.1: ab der laufenden Woche nach deiner Verfügbarkeit verteilt (ganze Woche, unabhängig vom heutigen Tag).
     // Wochen ohne eigene Änderungen folgen ihr von selbst; ganz festgehaltene Wochen zeigen das Gespeicherte; ältere, nur teilweise gespeicherte
     // Wochen (eigenplan-1.0) bleiben beim unverteilten Vorschlag, bis du «Anpassen» wählst. w0 = Vorschlag, auf dem Mein Plan aufbaut; w0roh = unverteilt.
@@ -113,8 +117,8 @@
     let wErh = null;
     const erh = (d) => {
       if (!wErh) {
-        wErh = abgestimmt(mitKraft(V.woche({ woche: mo, phase, erholung: true, stunden: Math.max(1, Math.round(stunden * 0.65 * 2) / 2), aufteilung, modell, tests, rennen: rennen(), css_s: css ? css.s : null,
-          intensitaet: V.intensitaet(wahlEintrag()), laeufe, heute: st.heute, skalen: sk, kurs_bis: KS ? KS.kurs_bis : null })).v);
+        wErh = abgestimmt(mitKraft(mitAkt(V.woche({ woche: mo, phase, erholung: true, stunden: Math.max(1, Math.round(stunden * 0.65 * 2) / 2), aufteilung, modell, tests, rennen: rennen(), css_s: css ? css.s : null,
+          intensitaet: V.intensitaet(wahlEintrag()), laeufe, heute: st.heute, skalen: sk, kurs_bis: KS ? KS.kurs_bis : null }))).v);
       }
       return ((wErh.tage.find((t) => t.date === d) || {}).einheiten) || [];
     };
@@ -138,7 +142,7 @@
           if (K && K.w) for (const t of K.w.tage || []) {
             if (t.date < h || (t.date === h && gelaufen.has(h))) continue;
             for (const e of t.einheiten || []) {
-              if (e.sport !== "lauf") continue;
+              if (e.sport !== "lauf" || e.art === "draussen") continue;      // V7.7: Traillauf ohne bekannte Distanz – erhöht die Grenze nicht
               const km = V.kmSchaetzung(e, K.skalen);
               if (isNum(km) && km >= 0.5) L.push({ date: t.date, km, min: e.dauer || null, name: e.titel || "", id: null, geplant: true });
             }
