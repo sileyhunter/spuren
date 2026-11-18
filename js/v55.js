@@ -233,9 +233,12 @@
     const sT = I.schlaf.status === "unbekannt"
       ? tile(`Schlaf, ${nacht(day)}`, "fehlt", lastSleep ? `zuletzt erfasst: ${nacht(lastSleep.date)}, ${C.fmt(lastSleep.sleepH, 1)} h – zählt heute nicht` : "keine Schlafdaten", true)
       : tile(`Schlaf, ${nacht(day)}`, `${C.fmt(I.schlaf.wert, 1)} h`, `${I.schlaf.score != null ? `Garmin-Schlafwert ${I.schlaf.score} von 100 · ` : ""}${C.esc(I.schlaf.status)}${I.schlaf.ref != null ? ` (Ø 28 Tage ${C.fmt(I.schlaf.ref, 1)} h)` : ""}`);
+    // readiness-3.0: Erholung der Nacht (HRV und Ruhepuls dieser Nacht gegen die 60 Tage) als eigene Kachel
+    const E = I.erholung, eT = !E ? "" : E.wert == null ? tile("Erholung der Nacht", "fehlt", C.esc(E.grund || "keine Werte"), true)
+      : tile("Erholung der Nacht", `${E.wert} %`, `${C.esc(E.quelle || "")} gegen deine 60 Tage · ${C.esc(E.status)}${E.status === "tief" ? " (Warnzeichen)" : E.status === "mittel" ? " (für «bereit» ab 50 %)" : ""}`);
     box.innerHTML = `<div class="td-verdict rd-${r.status.replace(/ /g, "-")}"><b>${head}</b><span>${C.esc(r.empfehlung)}</span></div>
       <p class="td-dq${dq.some((x) => !x.ok) ? " keep" : ""}"><span>Datenqualität:</span> ${dq.map((x) => `<i class="${x.ok ? "ok" : "no"}">${x.ok ? "✓" : "–"} ${C.esc(x.t)}</i>`).join("")}</p>
-      <div class="td-tiles">${hrvT}${rhrT}${sT}</div>${V.datenlage(C)}`;
+      <div class="td-tiles">${eT}${hrvT}${rhrT}${sT}</div>${V.datenlage(C)}`;
   };
   /* V5.8 Ringe (ringe-1.0): Erholung, Schlaf, Belastung je 0–100 % mit Wochenverlauf. Angezeigt wird der letzte Tag mit
    * Morgenwerten (die Werte von heute kommen mit dem Garmin-Update in der Nacht) – immer mit Datum, nie eine andere Nacht. */

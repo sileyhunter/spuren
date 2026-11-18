@@ -102,74 +102,21 @@
     if (!k || k === "nichts nötig") return "";
     return `<button type="button" class="vp-zeile" data-v7ek="${esc(ds)}|${esc(e.uid)}">${ic("flasche", 18)}<span><b>Verpflegung</b><small>${esc(k)}</small></span>${ic("weiter", 16)}</button>`;
   };
-  const liste = (L) => (L.length ? `<ul class="vp-liste">${L.map((x) => `<li>${esc(x.text || x)}</li>`).join("")}</ul>` : "");
-  /** Abschnitt «Verpflegung» auf der Einheit-Seite. opt.vorbei = vergangener Tag (nur lesen). */
+  /** verpflegung-2.0 (Silas am 18.11.2026: «zu kompliziert – Vorschlag g/h, ich entscheide, wie ich sie aufnehme; kurz und bündig»):
+   *  Abschnitt «Verpflegung» auf der Einheit-Seite – g/h und Menge, je eine Zeile vorher und nachher nur, wenn sie etwas ändert. opt.vorbei = nur lesen. */
   U.abschnitt = function (ds, e, opt) {
     const R = U.plan(ds, e); if (!R) return "";
-    const w = R.waehrend, Z = R.ziel, vorbei = !!(opt && opt.vorbei), darm = !vorbei && Z.stufe === "ja" && (e.dauer || 0) >= 120 ? U.darm() : null;
-    const kopf = [];
-    if (Z.stufe === "ja") { kopf.push([`${w.g_h} g/h`, "Kohlenhydrate"]); kopf.push([`${w.kh} g`, "während"]); if (isNum(w.natrium)) kopf.push([`${w.natrium} mg`, "Natrium"]); }
-    const zeit = w.zeitplan.length ? `<ol class="vp-zeit">${w.zeitplan.map((z) => `<li><b>${z.bis != null ? `${z.min}–${z.bis}` : z.min}′</b><span>${esc(z.text)}</span></li>`).join("")}</ol>` : "";
+    const K = VP().knapp(R, e, { naechsteStd: naechste(ds, e) }); if (!K) return "";
+    const vorbei = !!(opt && opt.vorbei), Z = R.ziel;
+    if (!K.waehrend && !K.vorher && !K.nachher) return "";
+    const darm = !vorbei && Z.stufe === "ja" && (e.dauer || 0) >= 120 ? U.darm() : null;
+    const z = (t, x) => (x ? `<p class="vp-z"><b>${t}</b><span>${esc(x)}</span></p>` : "");
     return `<section class="v73-ab vp-ab" id="vp-ab"><h2 class="abschnitt">${ic("flasche", 15)}Verpflegung${R.angepasst ? `<span class="vp-angepasst">angepasst</span>` : ""}</h2>
-      ${kopf.length ? `<div class="kv vp-kv">${kopf.map(([v, l]) => `<div><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("")}</div>` : ""}
-      <h3 class="abschnitt klein">Vorher</h3>${liste(R.vorher)}
-      <h3 class="abschnitt klein">Während</h3>${zeit}${liste(w.text)}
-      ${R.nachher.length ? `<h3 class="abschnitt klein">Nachher</h3>${liste(R.nachher)}` : ""}
-      ${R.packliste.length ? `<p class="vp-pack"><b>Mitnehmen:</b> ${esc(R.packliste.join(" · "))}</p>` : ""}
-      ${R.hinweise.map((h) => `<p class="hint keep">${esc(h)}</p>`).join("")}
-      ${darm && Z.stufe === "ja" && (e.dauer || 0) >= 120 ? `<p class="hint keep">Darmtraining: ${esc(darm.text)}</p>` : ""}
-      <p class="hint">${esc(Z.gruende.join(" · "))}. ${esc(R.annahmen.join(" · "))}.</p>
-      <div class="vp-knoepfe">${vorbei ? "" : `<button type="button" class="btn" data-vp="anpassen" data-vpds="${esc(ds)}" data-vpuid="${esc(e.uid)}">${ic("regler", 16)} Anpassen</button>`}
-        <button type="button" class="btn" data-vp="produkte">${ic("flasche", 16)} Produkte wählen</button></div></section>`;
-  };
-
-  /* ---------------- Blatt «Produkte wählen» ---------------- */
-  const ZWECK = [["unterwegs", "unterwegs"], ["davor", "vorher"], ["danach", "nachher"]];
-  U.blattProdukte = function (zurueck) {
-    if (!bereit() || !V59() || !V75()) return;
-    const P0 = produkte(), W = U.wahl(), e0 = einstellung();
-    const sel = { unterwegs: new Set(W.unterwegs.map((p) => p.id)), davor: new Set(W.vorher.map((p) => p.id)), danach: new Set(W.nachher.map((p) => p.id)), fruktose: new Set(W.fruktose) };
-    let max = W.max_g_h, alle = false;
-    const darm = U.darm();
-    const zeile = (p) => `<li class="vp-p${p.art === "anderes" ? " anderes" : ""}"><div><b>${esc(p.anzeige || p.name)}</b><small>${esc(VP().ART_WORT[p.art])} · ${esc(p.portion.text)}${isNum(p.kh) ? ` · ${komma(Math.round(p.kh * 10) / 10)} g KH` : ""}${isNum(p.protein) && p.protein >= 5 ? ` · ${komma(Math.round(p.protein))} g Protein` : ""}${isNum(p.natrium) ? ` · ${Math.round(p.natrium)} mg Natrium` : ""}</small></div>
-      <div class="chips" role="group" aria-label="${esc(p.anzeige || p.name)}">${ZWECK.map(([k, t]) => `<button type="button" class="chip" data-vpz="${k}" data-vpid="${esc(p.id)}" aria-pressed="${sel[k].has(p.id)}">${t}</button>`).join("")}
-        <button type="button" class="chip" data-vpz="fruktose" data-vpid="${esc(p.id)}" aria-pressed="${sel.fruktose.has(p.id)}" title="laut Etikett aus Glukose und Fruktose">Glukose + Fruktose</button></div></li>`;
-    const html = () => `<div class="blatt-titel">${ic("flasche", 34)}<h2 id="v59-ov-h" tabindex="-1">Produkte für die Verpflegung</h2><p class="sub">aus deinen eigenen Lebensmitteln in Garmin Connect${C.D.garmin_lebensmittel_stand ? ` (Stand ${esc(new Date(C.D.garmin_lebensmittel_stand + "T12:00:00").toLocaleDateString("de-CH"))})` : ""}${P0.some((p) => p.quelle === "vorlage") ? " und deinen Fueling-Vorlagen" : ""}</p></div>
-      ${P0.length ? "" : `<p class="warn-t">Noch keine Produkte: das Nacht-Update holt deine eigenen Lebensmittel aus Garmin Connect (Ernährung → eigene Lebensmittel).</p>`}
-      <p class="hint">Gezeigt werden deine Gruppen: Gels, Fruchtgummi, Kohlenhydrat-Getränke, Hafer-Riegel, Hafer-Getränk, Whey und Bananen. Wähle je Produkt, wofür du es nimmst; die Reihenfolge der Wahl gilt als Vorrang. «Glukose + Fruktose» nur, wenn es so auf dem Etikett steht – erst dann empfiehlt die Seite mehr als 60 g pro Stunde.</p>
-      <ul class="vp-produkte">${P0.filter((p) => alle || VP().imSet(p) || ZWECK.some(([k]) => sel[k].has(p.id))).map(zeile).join("")}</ul>
-      <button type="button" class="lnk" data-vpalle>${alle ? "Nur passende zeigen" : "Alle Lebensmittel zeigen"}</button>
-      <h3 class="abschnitt">Deine Stufe ab 2,5 h</h3>
-      <div class="vp-stufe"><button type="button" class="btn" data-vpm="-10" aria-label="weniger">−</button><b data-vpmw>${max} g/h</b><button type="button" class="btn" data-vpm="10" aria-label="mehr">+</button></div>
-      <p class="hint">Anfangs 60 g pro Stunde; erhöhen, wenn der Magen in langen Einheiten mitmacht (Darmtraining). Über 90 g nur, wenn du das schon erprobt hast.</p>
-      ${darm ? `<p class="hint keep">${esc(darm.text)}</p>` : ""}
-      <p class="warn-t" data-vpf hidden></p>
-      <div class="blatt-fuss"><button type="button" class="btn-zurueck" data-vpzu aria-label="Zurück">${ic("zurueck", 22)}</button>
-        <button type="button" class="btn primary gross" data-vpok>${ic("check", 18)} Übernehmen</button></div>`;
-    const ov = V59().blatt("verpflegung", html());
-    const binden = () => {
-      ov.querySelectorAll("[data-vpz]").forEach((b) => (b.onclick = () => {
-        const s = sel[b.dataset.vpz], id = b.dataset.vpid;
-        if (s.has(id)) s.delete(id); else s.add(id);
-        b.setAttribute("aria-pressed", String(s.has(id)));
-      }));
-      ov.querySelectorAll("[data-vpm]").forEach((b) => (b.onclick = () => { max = Math.max(30, Math.min(120, max + +b.dataset.vpm)); ov.querySelector("[data-vpmw]").textContent = `${max} g/h`; }));
-      ov.querySelector("[data-vpalle]").onclick = () => { alle = !alle; const box = ov.querySelector(".v59-inhalt") || ov; const y = box.scrollTop; ov.querySelector(".vp-produkte").outerHTML = `<ul class="vp-produkte">${P0.filter((p) => alle || VP().imSet(p) || ZWECK.some(([k]) => sel[k].has(p.id))).map(zeile).join("")}</ul>`; ov.querySelector("[data-vpalle]").textContent = alle ? "Nur passende zeigen" : "Alle Lebensmittel zeigen"; binden(); box.scrollTop = y; };
-      ov.querySelector("[data-vpzu]").onclick = () => { V59().schliessen(); if (zurueck) zurueck(); };
-      ov.querySelector("[data-vpok]").onclick = async () => {
-        const f = ov.querySelector("[data-vpf]"), Inb = UI().Inbox;
-        if (!Inb || !Inb.data) { f.textContent = "Speicher auf diesem Gerät nicht verfügbar."; f.hidden = false; return; }
-        const x = V75().eintrag("pe-verpflegung", { unterwegs: [...sel.unterwegs], davor: [...sel.davor], danach: [...sel.danach], fruktose: [...sel.fruktose], max_g_h: max }, undefined, e0);
-        const fe = V75().pruefen(x); if (fe) { f.textContent = fe; f.hidden = false; return; }
-        if (!Array.isArray(Inb.data.planeinstellung)) Inb.data.planeinstellung = [];
-        try { await Inb.upsert("planeinstellung", x); } catch (err) { console.error(err); f.textContent = "Speichern auf diesem Gerät ging nicht."; f.hidden = false; return; }
-        V59().schliessen();
-        try { document.dispatchEvent(new CustomEvent("meinplan")); } catch (err) { console.error(err); }
-        try { if (window.V6H && window.V6H.zeichnen) window.V6H.zeichnen(); } catch (err) { console.error(err); }
-        if (zurueck) zurueck();
-      };
-    };
-    binden();
+      ${K.g_h != null ? `<div class="vp-gross"><b>${K.g_h} g/h</b><span>≈ ${K.gramm} g Kohlenhydrate · ${esc(K.wann)}</span></div>` : z("Während", K.waehrend)}
+      ${z("Vorher", K.vorher)}${z("Nachher", K.nachher)}
+      ${K.hinweis ? `<p class="hint keep">${esc(K.hinweis)}</p>` : ""}${darm ? `<p class="hint keep">${esc(darm.text)}</p>` : ""}
+      <p class="hint">${R.angepasst || /draussen/.test(Z.gruende.join(" ")) ? esc(Z.gruende.filter((g) => /draussen|von dir/.test(g)).join(" · ")) + ". " : ""}Richtwerte nach Jeukendrup 2014 und Thomas et al. 2016; wie du die Kohlenhydrate nimmst, entscheidest du.</p>
+      ${vorbei ? "" : `<div class="vp-knoepfe"><button type="button" class="btn" data-vp="anpassen" data-vpds="${esc(ds)}" data-vpuid="${esc(e.uid)}">${ic("regler", 16)} Anpassen</button></div>`}</section>`;
   };
 
   /* ---------------- Blatt «Verpflegung anpassen» je Einheit ---------------- */
@@ -177,39 +124,47 @@
     if (!bereit() || !V59()) return;
     const e = tagEinheiten(ds).find((x) => x.uid === uid); if (!e) return;
     const alt = VP().anpassung(C.D.plan_verpflegung || [], I().verpflegung || [], ds, uid);
-    const ohne = VP().plan(e, { W: U.wahl(), kg: gewicht(ds) });
-    const w = { g_h: alt && isNum(alt.g_h) ? alt.g_h : null, mix: (alt && alt.mix) || "auto", aus: !!(alt && alt.aus) };
+    const W0 = U.wahl(), ohne = VP().plan(e, { W: W0, kg: gewicht(ds) }), e0 = einstellung();
+    const w = { g_h: alt && isNum(alt.g_h) ? alt.g_h : null, aus: !!(alt && alt.aus) };
+    let stufe = W0.max_g_h;
     const emp = ohne.ziel.stufe === "ja" ? ohne.ziel.g_h : 0;
     const html = `<div class="blatt-titel">${ic("regler", 34)}<h2 id="v59-ov-h" tabindex="-1">Verpflegung anpassen</h2><p class="sub">${esc(e.titel)} · ${esc(new Date(ds + "T12:00:00").toLocaleDateString("de-CH", { weekday: "long", day: "numeric", month: "long" }))}</p></div>
-      <h3 class="abschnitt">Kohlenhydrate während</h3>
+      <h3 class="abschnitt">Diese Einheit</h3>
       <div class="vp-stufe"><button type="button" class="btn" data-vpg="-5" aria-label="weniger">−</button><b data-vpgw></b><button type="button" class="btn" data-vpg="5" aria-label="mehr">+</button></div>
-      <p class="hint">Empfehlung: ${emp ? `${emp} g pro Stunde` : "nichts nötig"}. Über 60 g pro Stunde nur mit Produkten aus Glukose und Fruktose.</p>
-      <h3 class="abschnitt">Produkte</h3>
-      <div class="chips" role="radiogroup">${VP().MIX.map((m) => `<button type="button" class="chip" role="radio" data-vpx="${m}">${esc(VP().MIX_WORT[m])}</button>`).join("")}</div>
+      <p class="hint">Empfehlung: ${emp ? `${emp} g pro Stunde` : "nichts nötig"}.</p>
       <label class="vp-aus"><input type="checkbox" data-vpaus${w.aus ? " checked" : ""}> Diesmal ohne Verpflegung</label>
+      <h3 class="abschnitt">Deine Stufe ab 2,5 h</h3>
+      <div class="vp-stufe"><button type="button" class="btn" data-vpm="-10" aria-label="weniger">−</button><b data-vpmw>${stufe} g/h</b><button type="button" class="btn" data-vpm="10" aria-label="mehr">+</button></div>
+      <p class="hint">Gilt für alle langen Einheiten. Erhöhen, wenn der Magen mitmacht; über 60 g/h nur mit Glukose und Fruktose zusammen.</p>
       <p class="warn-t" data-vpf hidden></p>
       <div class="blatt-fuss"><button type="button" class="btn-zurueck" data-vpzu aria-label="Zurück">${ic("zurueck", 22)}</button>
         ${alt ? `<button type="button" class="btn" data-vpweg>Zurück auf die Empfehlung</button>` : ""}
         <button type="button" class="btn primary gross" data-vpok>${ic("check", 18)} Speichern</button></div>`;
-    const ov = V59().blatt("verpflegung", html), q = (s) => ov.querySelector(s);
-    const zeig = () => {
-      q("[data-vpgw]").textContent = w.g_h == null ? `${emp} g/h (Empfehlung)` : `${w.g_h} g/h`;
-      ov.querySelectorAll("[data-vpx]").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.vpx === w.mix)));
-    };
+    const ov = V59().blatt("verpflegung", html), q = (x) => ov.querySelector(x);
+    const zeig = () => { q("[data-vpgw]").textContent = w.g_h == null ? `${emp} g/h (Empfehlung)` : `${w.g_h} g/h`; q("[data-vpmw]").textContent = `${stufe} g/h`; };
     ov.querySelectorAll("[data-vpg]").forEach((b) => (b.onclick = () => { w.g_h = Math.max(0, Math.min(120, (w.g_h == null ? emp : w.g_h) + +b.dataset.vpg)); zeig(); }));
-    ov.querySelectorAll("[data-vpx]").forEach((b) => (b.onclick = () => { w.mix = b.dataset.vpx; zeig(); }));
+    ov.querySelectorAll("[data-vpm]").forEach((b) => (b.onclick = () => { stufe = Math.max(30, Math.min(120, stufe + +b.dataset.vpm)); zeig(); }));
     q("[data-vpaus]").onchange = (ev) => { w.aus = ev.target.checked; };
     const fertig = () => { V59().schliessen(); try { document.dispatchEvent(new CustomEvent("meinplan")); } catch (err) { console.error(err); } try { if (window.V6H && window.V6H.zeichnen) window.V6H.zeichnen(); } catch (err) { console.error(err); } if (zurueck) zurueck(); };
     const speichern = async (x) => {
       const f = q("[data-vpf]"), Inb = UI().Inbox;
-      if (!x) { f.textContent = "Nichts geändert – die Empfehlung gilt."; f.hidden = false; return; }
       if (!Inb || !Inb.data) { f.textContent = "Speicher auf diesem Gerät nicht verfügbar."; f.hidden = false; return; }
-      if (!Array.isArray(Inb.data.verpflegung)) Inb.data.verpflegung = [];
-      try { await Inb.upsert("verpflegung", x); } catch (err) { console.error(err); f.textContent = "Speichern auf diesem Gerät ging nicht."; f.hidden = false; return; }
+      if (stufe !== W0.max_g_h && V75()) {                     // Stufe ab 2,5 h: «pe-verpflegung» wie bisher, die übrigen Felder bleiben
+        const vorher = e0 || {};
+        const pe = V75().eintrag("pe-verpflegung", { unterwegs: vorher.unterwegs || [], davor: vorher.davor || [], danach: vorher.danach || [], fruktose: vorher.fruktose || [], max_g_h: stufe }, undefined, e0);
+        const fe = V75().pruefen(pe); if (fe) { f.textContent = fe; f.hidden = false; return; }
+        if (!Array.isArray(Inb.data.planeinstellung)) Inb.data.planeinstellung = [];
+        try { await Inb.upsert("planeinstellung", pe); } catch (err) { console.error(err); f.textContent = "Speichern auf diesem Gerät ging nicht."; f.hidden = false; return; }
+      }
+      if (x) {
+        if (!Array.isArray(Inb.data.verpflegung)) Inb.data.verpflegung = [];
+        try { await Inb.upsert("verpflegung", x); } catch (err) { console.error(err); f.textContent = "Speichern auf diesem Gerät ging nicht."; f.hidden = false; return; }
+      } else if (stufe === W0.max_g_h) { f.textContent = "Nichts geändert – die Empfehlung gilt."; f.hidden = false; return; }
       fertig();
     };
-    q("[data-vpok]").onclick = () => speichern(VP().eintrag(ds, uid, { g_h: w.g_h == null || w.g_h === emp ? null : w.g_h, mix: w.mix === "auto" ? null : w.mix, aus: w.aus || null }));
-    if (q("[data-vpweg]")) q("[data-vpweg]").onclick = () => speichern({ id: `vp-${ds}-${uid}`, datum: ds, uid, entfernt: true, v: VP().VERSIONS.verpflegung, geaendert: new Date().toISOString() });
+    const weg = () => ({ id: `vp-${ds}-${uid}`, datum: ds, uid, entfernt: true, v: VP().VERSIONS.verpflegung, geaendert: new Date().toISOString() });
+    q("[data-vpok]").onclick = () => speichern(w.aus ? VP().eintrag(ds, uid, { aus: true }) : w.g_h != null && w.g_h !== emp ? VP().eintrag(ds, uid, { g_h: w.g_h }) : alt ? weg() : null);
+    if (q("[data-vpweg]")) q("[data-vpweg]").onclick = () => speichern(weg());
     q("[data-vpzu]").onclick = () => { V59().schliessen(); if (zurueck) zurueck(); };
     zeig();
   };
@@ -219,7 +174,6 @@
     const b = ev.target && ev.target.closest ? ev.target.closest("[data-vp]") : null;
     if (!b) return;
     ev.preventDefault();
-    if (b.dataset.vp === "produkte") U.blattProdukte(null);
-    else if (b.dataset.vp === "anpassen") U.blattAnpassen(b.dataset.vpds, b.dataset.vpuid, null);
+    if (b.dataset.vp === "anpassen") U.blattAnpassen(b.dataset.vpds, b.dataset.vpuid, null);
   });
 })();

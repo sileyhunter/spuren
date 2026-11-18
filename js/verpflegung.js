@@ -13,7 +13,7 @@
   else root.VP = factory();
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
-  const VP = { VERSIONS: { verpflegung: "verpflegung-1.1" } };
+  const VP = { VERSIONS: { verpflegung: "verpflegung-2.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const r5 = (x) => Math.round(x / 5) * 5;
   const runden = (x, n) => { const f = Math.pow(10, n || 0); return Math.round(x * f) / f; };
@@ -161,8 +161,8 @@
       if (g > cap) { g = cap; out.gruende.push(`draussen in ${z.toUpperCase()}: höchstens ${cap} g/h (niedrige Intensität)`); }
     }
     if (a && isNum(a.g_h)) { g = a.g_h; out.gruende.push(`von dir angepasst: ${g} g/h`); }
-    const fruk = W && W.unterwegs.some((p) => W.fruktose.has(p.id));
-    if (g > 60 && !fruk) { g = 60; out.gruende.push("über 60 g/h nur mit Produkten aus Glukose und Fruktose – markiere sie in der Auswahl"); }
+    // verpflegung-2.0 (Silas am 18.11.2026: «Vorschlag g/h, ich entscheide, wie ich sie aufnehme»): keine Produktwahl mehr – über 60 g/h nur der Hinweis
+    if (g > 60) out.gruende.push("über 60 g/h nur mit Glukose und Fruktose zusammen (Gel oder Getränk mit beidem)");
     out.g_h = g; out.stufe = g > 0 ? "ja" : "nichts";
     return out;
   };
@@ -322,9 +322,36 @@
     if (kg) R.annahmen.push(`Gewicht ${komma(runden(kg, 1))} kg (letzte Morgenmessung)`);
     return R;
   };
-  /** Kurzform für Heute und Kalender: «1 Banane vorher · 2 Gels · 1 Flasche». */
+  /** verpflegung-2.0: die Empfehlung kurz und bündig – g/h und Menge während, je eine Zeile vorher und nachher nur, wenn sie etwas ändert.
+   *  → { g_h, gramm, waehrend (Text), wann, vorher, nachher, hinweis } */
+  VP.knapp = function (R, e, ctx) {
+    if (!R) return null;
+    const Z = R.ziel, d = Z.dauer, c = ctx || {}, lang = d >= 90 || (e && e.art === "lang");
+    const out = { g_h: null, gramm: null, waehrend: null, wann: null, vorher: null, nachher: null, hinweis: null };
+    if (Z.stufe === "ja") {
+      out.g_h = Z.g_h; out.gramm = Math.round((Z.g_h * d) / 60);
+      out.waehrend = `${Z.g_h} g Kohlenhydrate pro Stunde`;
+      out.wann = `ab Minute ${VP.START_MIN}, dann alle 20–30 min${Z.hart ? " – nicht in den harten Abschnitten" : ""}`;
+      if (Z.g_h > 60) out.hinweis = "über 60 g/h nur mit Glukose und Fruktose zusammen";
+    } else if (Z.stufe === "klein") out.waehrend = "eine kleine Portion in einer Pause – oder nichts";
+    else if (Z.stufe === "test") out.waehrend = "wie beim letzten Test";
+    else if (Z.stufe === "aus") out.waehrend = "ohne Verpflegung (von dir so gewählt)";
+    const sp = e && e.sport;
+    if (sp !== "schwimm" && sp !== "kraft" && sp !== "mobility" && (Z.hart || lang))
+      out.vorher = e && e.uhrzeit && e.uhrzeit < "08:30" ? "früh: kleines Frühstück oder ein Snack mit Kohlenhydraten" : "Mahlzeit mit Kohlenhydraten 2–3 h davor";
+    if (isNum(c.naechsteStd) && c.naechsteStd < VP.RASCH_STD && (Z.hart || lang))
+      out.nachher = `rasch Kohlenhydrate und 20–40 g Protein – die nächste harte oder lange Einheit kommt in ${Math.round(c.naechsteStd)} h`;
+    return out;
+  };
+  /** Kurzform für Heute und Kalender (verpflegung-2.0): «60 g/h · ≈ 180 g». */
   VP.kurz = function (R) {
     if (!R) return "";
+    const Z = R.ziel;
+    if (Z.stufe === "ja") return `${Z.g_h} g/h · ≈ ${Math.round((Z.g_h * Z.dauer) / 60)} g`;
+    if (Z.stufe === "klein") return "kleine Portion oder nichts";
+    if (Z.stufe === "test") return "wie beim letzten Test";
+    if (Z.stufe === "aus") return "";
+    if (Z.stufe === "nichts") return "nichts nötig";
     const w = R.waehrend, t = [];
     const v = R.vorher.find((x) => x.produkt);
     if (v && v.kurz) t.push(`vorher ${v.kurz}`);
@@ -377,7 +404,7 @@
   /** geplante g/h gegen genommene g/h (Fueling-Protokoll, FK.fuelingTotals). → {geplant, genommen, urteil} oder null */
   VP.vergleich = function (R, totals) {
     if (!R || R.ziel.stufe !== "ja" || !totals || !isNum(totals.kh_g_h)) return null;
-    const g = R.waehrend.g_h, n = runden(totals.kh_g_h, 0), dlt = n - g;
+    const g = R.ziel.g_h, n = runden(totals.kh_g_h, 0), dlt = n - g;          // verpflegung-2.0: gegen die Empfehlung g/h (nicht gegen eine Produktauswahl)
     return { geplant: g, genommen: n, urteil: Math.abs(dlt) <= 10 ? "wie geplant" : dlt < 0 ? "weniger als geplant" : "mehr als geplant" };
   };
   /** Darmtraining: L = lange Einheiten (ab 2 h) der letzten 8 Wochen, neueste zuerst: {genommen (g/h), magen: ok/leicht/stark}.

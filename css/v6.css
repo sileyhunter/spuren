@@ -1419,6 +1419,13 @@ div.k4-r-kw { height: auto; }
 .vp-zeile > span { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .vp-zeile small { color: var(--muted); overflow-wrap: anywhere; }
 .vp-ab h3.abschnitt.klein { margin: 14px 0 6px; font-size: .78rem; }
+/* verpflegung-2.0: kurz und bündig – grosse Zahl g/h, darunter je eine Zeile */
+.vp-gross { display: flex; flex-direction: column; gap: 2px; margin: 4px 0 10px; }
+.vp-gross b { font-size: 1.9rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.vp-gross span { color: var(--muted); overflow-wrap: anywhere; }
+.vp-z { display: flex; gap: 10px; align-items: baseline; margin: 6px 0; }
+.vp-z b { flex: 0 0 64px; color: var(--muted); font-weight: 600; font-size: .85rem; }
+.vp-z span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .vp-angepasst { margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: .72rem; font-weight: 600; letter-spacing: 0; text-transform: none; }
 .vp-liste { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
 .vp-zeit { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }

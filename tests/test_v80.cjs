@@ -65,17 +65,28 @@ test("A · Harte Einheit, Erholung schlechter als erwartet", async (t) => {
     assert.ok(d.ampel.gruende.some((g) => /Beine 6\/7/.test(g)));
     nieHaerter(sim, W3);
   });
-  await t.test("A3 nach einem einzigen schlechten Morgen prüft der Coach die nächsten Tage mit Grund (tagescoach-1.0)", async () => {
-    // ein einzelner tiefer HRV-Wert zählt im 7-Tage-Schnitt kaum → Ampel «normal»; der Coach schlägt für die harte Einheit am Donnerstag Tauschen oder
-    // locker vor, mit Grund. Angenommen hat der Donnerstag keine harte Radeinheit mehr – nie härter oder länger als Mein Plan
+  await t.test("A3 ein einzelner, deutlich schlechter Morgen: seit readiness-3.0 reagiert die Ampel am selben Tag (Erholung der Nacht)", async () => {
+    // bis readiness-2.3 zählte ein einzelner tiefer HRV-Wert im 7-Tage-Schnitt kaum; jetzt ist die Erholung der Nacht ein eigenes Zeichen
+    const sim = await vorlauf(), mi = tag(W3, 2);
+    await sim.tage(W3, 4, { morgen: morgenMit({ [mi]: { hrv: 0.68, rhr: 9, score: 60 } }) });
+    const x = sim.log.get(mi);
+    assert.equal(x.ampel.status, "vorsichtig");
+    assert.ok(x.ampel.gruende.some((g) => /^Erholung der Nacht \d+ %/.test(g)), x.ampel.gruende.join("; "));
+    assert.ok(x.einheiten.every((e) => e.stufe === "locker"), kurz(x.einheiten));
+    nieHaerter(sim, W3);
+  });
+  await t.test("A4 ein einzelner Morgen mit tiefer HRV, Ampel nur «normal»: der Coach prüft die nächsten Tage mit Grund (tagescoach-1.0)", async () => {
+    // HRV −25 %, Ruhepuls unverändert: ein schwaches Zeichen → «normal»; der Coach schlägt für die harte Einheit am Donnerstag Tauschen oder locker vor.
+    // Angenommen hat der Donnerstag keine harte Radeinheit mehr – nie härter oder länger als Mein Plan
     const sim = await vorlauf(), mi = tag(W3, 2), doD = tag(W3, 3);
-    await sim.tage(W3, 4, { morgen: morgenMit({ [mi]: { hrv: 0.68, rhr: 9, score: 60 } }),
+    await sim.tage(W3, 4, { morgen: morgenMit({ [mi]: { hrv: 0.75, rhr: 0, score: 60 } }),
       coach: (d, V) => (d === mi ? V.filter((p) => p.anlass === "morgen").map((p) => p.id) : []) });
     const x = sim.log.get(mi);
-    assert.equal(x.ampel.status, "wie_geplant", "Ampel noch nicht «vorsichtig»");
+    assert.equal(x.ampel.status, "wie_geplant", "Ampel nicht «vorsichtig»");
+    assert.equal(x.ampel.ampel, "normal");
     const p = x.coach.find((v) => v.anlass === "morgen" && v.date === doD);
     assert.ok(p, "Vorschlag für Donnerstag: " + JSON.stringify(x.coach));
-    assert.ok(p.grund.some((g) => /HRV heute −\d+ %/.test(g)) && p.grund.some((g) => /Ruhepuls heute \+\d+ bpm/.test(g)), p.grund.join(" | "));
+    assert.ok(p.grund.some((g) => /HRV heute −\d+ %/.test(g)), p.grund.join(" | "));
     assert.ok(sim.log.get(tag(W3, 1)).coach.every((v) => v.anlass !== "morgen"), "am Tag davor (normaler Morgen) kein Vorschlag");
     const d = sim.log.get(doD);
     assert.ok(!d.einheiten.some((e) => e.sport === "rad" && e.stufe === "hart"), kurz(d.einheiten));
@@ -150,9 +161,13 @@ test("C · Mehrere Tage aussergewöhnlich gut erholt", async (t) => {
     for (let i = 0; i < 28; i++) { const x = sim.log.get(tag(W3, i)); assert.equal(kurz(x.einheiten), kurz(x.plan), tag(W3, i)); }
   });
   await t.test("C2 gute Erholung steigert den Plan nicht: Wochenstunden wie ohne gute Erholung, Anstieg höchstens 10 % je Woche", () => {
+    // Mein Plan der ersten Woche gleich wie in der Kontrolle (gleiche Vorgeschichte); später nur so viel anders, wie die Kontrolle an ihren
+    // «vorsichtig»-Tagen (readiness-3.0) weniger trainiert hat – nie mehr als 15 min je Woche. Gute Erholung fügt nichts hinzu: absolviert = Mein Plan.
     for (let k = 0; k < 4; k++) {
       const mo = addDays(W3, 7 * k);
-      assert.equal(sim.wochenMinuten(mo), kontrolle.wochenMinuten(mo), `Woche ${mo}`);
+      if (k === 0) assert.equal(sim.wochenMinuten(mo, "plan"), kontrolle.wochenMinuten(mo, "plan"), `Woche ${mo}`);
+      else assert.ok(Math.abs(sim.wochenMinuten(mo, "plan") - kontrolle.wochenMinuten(mo, "plan")) <= 15, `Woche ${mo}: ${sim.wochenMinuten(mo, "plan")} gegen ${kontrolle.wochenMinuten(mo, "plan")} min`);
+      assert.equal(sim.wochenMinuten(mo), sim.wochenMinuten(mo, "plan"), `Woche ${mo}: nichts dazu`);
     }
     let vorher = null;
     for (let k = 0; k < 6; k++) {

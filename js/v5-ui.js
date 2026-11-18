@@ -814,6 +814,9 @@
       <h3 class="mini-h">Was wurde berücksichtigt?</h3>
       ${row("HRV-Trend", ind.hrv.status === "unbekannt" ? ind.hrv.grund : `${ind.hrv.status} (7 Tage Ø ${ind.hrv.wert7} ms)`, ind.hrv.status)}
       ${row("Ruhepuls", ind.rhr.status === "unbekannt" ? ind.rhr.grund : `${ind.rhr.status} (Ø ${num(ind.rhr.wert3, 1)} bpm)`, ind.rhr.status)}
+      ${ind.erholung ? row("Erholung der Nacht", ind.erholung.wert != null ? `${ind.erholung.status} (${ind.erholung.wert} %)` : ind.erholung.grund, ind.erholung.status === "tief" ? "unter" : "") : ""}
+      ${ind.atem && ind.atem.wert != null ? row("Atemfrequenz im Schlaf", `${num(ind.atem.wert, 1)} /min${ind.atem.status === "unbekannt" ? " · " + ind.atem.grund : ind.atem.diff != null ? ` (${ind.atem.diff >= 0 ? "+" : ""}${num(ind.atem.diff, 1)} gegen Ø 28 Nächte)` : ""}`, ind.atem.status) : ""}
+      ${ind.haut && ind.haut.wert != null ? row("Hauttemperatur (Abweichung)", `${ind.haut.wert >= 0 ? "+" : ""}${num(ind.haut.wert, 1)} °C${ind.haut.status === "unbekannt" ? " · " + ind.haut.grund : ""}`, ind.haut.status) : ""}
       ${row("Schlaf", ind.schlaf.wert != null ? `${ind.schlaf.status} (${num(ind.schlaf.wert, 1)} h)` : ind.schlaf.grund, ind.schlaf.status)}
       ${row("Belastung 7 Tage", ind.last.status === "unbekannt" ? ind.last.grund : `${ind.last.status} (${ind.last.akut7} / Ø ${ind.last.chronisch7})`, ind.last.status)}
       ${row("Befinden", ind.befinden.status === "nicht angegeben" ? "nicht angegeben (Check-in oben)" : ind.befinden.status, ind.befinden.status)}${ind.krank ? row("Krankheitszeichen", ind.krank.zeichen.join(", "), "erhöht") : ""}

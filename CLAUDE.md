@@ -106,6 +106,10 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   Probelauf bis `config.enduco_bis`), `tools/tagescoach.py` (Prüfung der Entscheide wie die Seite), `tests/test_v83.cjs`; `V66.aendern` Art «ersetzen» (gleiche Kennung) und
   «hinzufuegen» mit freier Kennung beim Zurückholen, `V66UI.aendernFolge` (mehrere Änderungen, einmal gespeichert); ampel-plan-1.2 in `js/v74.js` (Nachholen nur als Vorschlag,
   `ampel.nachholen[].vorschlag`); basis-1.2 in `js/v75.js` (`V75.datenBis`: Tage nach den letzten Garmin-Daten zählen nicht als Ruhetage). Der Coach ändert nie selbst etwas.
+- **V8.4 Teil 1 (Silas' Rückmeldungen vom 18.11.2026, «Ampel zu mild, Verpflegung zu kompliziert»):** Ampel readiness-3.0 in `js/formkurve.js` (`FK.erholungNacht` = Erholung der
+  einzelnen Nacht wie der Ring, `FK.ERHOLUNG` 34/50 %, `FK.NACHT` Atemfrequenz und Hauttemperatur als mögliche Krankheitszeichen ab 14 Nächten; Anzeige in `js/v5-ui.js`,
+  `js/v55.js`, Kachel auf Heute `js/v6-heute.js`); Nachtwerte nacht-1.0 (`tools/wellness.py nacht`, Nacht- und Morgen-Update); Verpflegung verpflegung-2.0 (`VP.knapp`, `VP.kurz`:
+  nur g/h und Menge, je eine Zeile vorher/nachher; Produktwahl aus der Oberfläche genommen, Blatt «Anpassen» mit g/h, «Diesmal ohne» und Stufe ab 2,5 h)
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
 - `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)
@@ -188,6 +192,9 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
    - `get_sleep_summary_range` letzte 7 Nächte; `get_stats_range` letzte 7 Tage; `get_nutrition_summary_between_dates` letzte 7 Tage; `get_weigh_ins` letzte 14 Tage; `get_scheduled_workouts` heute bis +14 Tage.
    - **Tageswerte (V6.1, wellness-1.0):** `get_morning_training_readiness(heute)`, `get_user_summary(gestern)` (abgeschlossener Tag) und
      `get_user_summary(heute)` (nur `bodyBattery`, `bbSleep`) → `days` (Zuordnung unten). «No … data found» oder Fehler: weglassen.
+   - **Nachtwerte (V8.4, nacht-1.0, für die Ampel readiness-3.0):** `get_sleep_data(heute)` – die Antwort ist gross und wird als Datei gespeichert; die Datei nicht lesen,
+     nur `python3 -I tools/wellness.py nacht <pfad>` → ein Tag mit `atem`, `haut`, `spo2`, `spo2min`, `schlafBedarf` (nur vorhandene Werte); ist die Ausgabe nicht `{}`,
+     als zusätzlichen Eintrag in `days` aufnehmen. Fehler: weglassen, kein Abbruch, keine Nachricht.
    - **Notizen (V6.1, notizen-1.0):** für jede Aktivität, die du mit `get_activity` abrufst, `description` unverändert als `notiz` (fehlt sie:
      `null`). Die Notiz nie ändern, kürzen oder zusammenfassen; `merge_daily.py` macht daraus Vorschauen für Laktat und Verpflegung.
    - **Selbsteinschätzung (V8.1, nachher-1.0):** aus derselben Antwort von `get_activity` `workout_rpe` und `workout_feel` unverändert in den Eintrag der
@@ -322,7 +329,8 @@ Tage: `hrv` = `avg_overnight_hrv`, `rhr` = `resting_heart_rate_bpm`, `sleepH` = 
 `item_count` ≥ 4. V6.1 (wellness-1.0, `tools/wellness.py`): `readiness` = `score`, `readinessLevel` = `level` aus `get_morning_training_readiness`;
 aus `get_user_summary`: `bodyBattery` = `bodyBatteryAtWakeTime`, `bbSleep` = `bodyBatteryDuringSleep`, und nur für abgeschlossene Tage
 `stress` = `averageStressLevel`, `stressHighMin` = `highStressDuration` ÷ 60 (gerundet), `bbHigh` = `bodyBatteryHighestValue`,
-`bbLow` = `bodyBatteryLowestValue`; negative Garmin-Werte = fehlend (`null`). Notiz: `notiz` bzw. `notizen_garmin` = `description` aus `get_activity`; Selbsteinschätzung (V8.1): `workout_rpe`, `workout_feel` aus `get_activity` (Garmin 10–100 bzw. 0–100).
+`bbLow` = `bodyBatteryLowestValue`; negative Garmin-Werte = fehlend (`null`). V8.4 (nacht-1.0, `tools/wellness.py nacht`): `atem` = `averageRespirationValue`,
+`haut` = `avgSkinTempDeviationC` (nur mit `skinTempDataExists`), `spo2` = `averageSpO2Value`, `spo2min` = `lowestSpO2Value`, `schlafBedarf` = `sleepNeed.actual` (Minuten). Notiz: `notiz` bzw. `notizen_garmin` = `description` aus `get_activity`; Selbsteinschätzung (V8.1): `workout_rpe`, `workout_feel` aus `get_activity` (Garmin 10–100 bzw. 0–100).
 Gewicht: `weight_kg`, `ts_gmt` = `timestamp_gmt` (alle Messungen; das Skript nimmt pro Tag die Morgenmessung).
 Leere Werte als `null`. Unbekannte Felder weglassen. Werte nie schätzen.
 
@@ -337,6 +345,7 @@ Enduco-Workouts werden nie geändert. Jeder Abruf, der fehlschlägt, wird weggel
    - `get_stats_range` für heute → `rhr` von heute, falls es im Schlaf fehlt. Kein `kcalOut` und keine Ernährung: der Tag läuft noch.
    - V6.1: `get_morning_training_readiness(heute)` → `readiness`, `readinessLevel`; `get_user_summary(heute)` → nur `bodyBattery`, `bbSleep`;
      `get_user_summary(gestern)` → `stress`, `stressHighMin`, `bbHigh`, `bbLow` (und `bodyBattery`, `bbSleep`) für gestern. Kein Nachholen.
+   - V8.4 (nacht-1.0): `get_sleep_data(heute)` als Datei → `python3 -I tools/wellness.py nacht <pfad>` → zusätzlicher Eintrag in `days` (wie im Nacht-Update).
    - `get_scheduled_workouts` heute bis +14 Tage, je Einheit mit `workout_id` `get_workout_by_id` → `planned` und `planned_range`,
      genau wie im Nacht-Update (Workout-Schritte V5.7).
    - `get_workouts` → `workouts_neu` wie im Nacht-Update (Enduco, letzte 2 Tage, nicht im Kalender, höchstens 5); den Pfad der gespeicherten
@@ -553,7 +562,11 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   den Abfahrten (`RT.istDoppelt` mit Bereichen), nie aus der ganzen Route mit dem gemeinsamen Aufstieg.
 - Rennrad `varianten-3.0`: direkteste, velofreundliche, ruhigste (consider_traffic 1) – alle über das Profil ohne Gravel; `alternativen-1.1` ohne
   zusätzlichen Gravel. Windpfeile `windpfeile-1.1`: 3–20, Gegen-/Rückenwind ±5 km/h, abschaltbar (`sf.rt.windkarte`).
-- **Ampel `readiness-2.3` (V6.3, Etappe 3; 2.1 V6.4.4; 2.2 V7.6.1: Last ohne Krafttraining, am 17.11.2026 an 180 Tagen nachgerechnet; 2.3 V8.1: Motivation tief =
+- **Ampel `readiness-3.0` (V8.4, Silas' Wunsch vom 18.11.2026 «strenger, wie Whoop», von ihm mit Wirkung aufs Training gewählt): dazu die Erholung der einzelnen Nacht
+  (`FK.erholungNacht`, HRV und Ruhepuls dieser Nacht gegen die 60 Tage, wie der Ring): unter 34 % schwaches Zeichen, «bereit» erst ab 50 %; Atemfrequenz im Schlaf ≥ 1 /min über dem
+  Median der 28 Nächte davor und Hauttemperatur ≥ +0,5 °C je ein schwaches Zeichen, erst ab 14 Nächten mit Wert (`FK.NACHT`). Am 18.11.2026 an den eigenen Daten geprüft
+  (Puls bei gleicher Leistung, eb-Blöcke): vorher an Tagen «ok» mit tiefer Nacht messbar höher; Garmins Readiness zeigte keinen Zusammenhang und bleibt draussen.
+  Zahlen nur im Chat. Vorher:** **Ampel `readiness-2.3` (V6.3, Etappe 3; 2.1 V6.4.4; 2.2 V7.6.1: Last ohne Krafttraining, am 17.11.2026 an 180 Tagen nachgerechnet; 2.3 V8.1: Motivation tief =
   schwaches Zeichen, Schmerzen deutlich = starkes, leicht = schwaches Zeichen mit Empfehlung je Ort; Last bleibt 7/28 Tage):** wie readiness-1.0 (HRV-7-Tage gegen eigene 60 Tage nach Plews/Buchheit, Ruhepuls 3 Tage, Schlaf,
   Last 7/28 Tage, Befinden, Krankheit), dazu: Befinden als Anteil auf der Skala (belastet ab 0,75, mittel ab 0,5; vier Fragen inkl. Schlaf);
   Schlaf 5–6 h nur noch Hinweis (kein Warnzeichen, aber dann nicht «bereit»; unter 5 h weiter starkes Zeichen). **readiness-2.1 (V6.4.4):** Last
@@ -682,7 +695,12 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - Probelauf bis `config.enduco_bis` (2026-11-30, Silas trainiert bis Ende November mit Enduco): Hinweis auf der Karte; danach gilt nur noch Mein Plan. Selbst handelt der Coach
   nicht – Automatik erst nach Silas' Okay und nur in Grenzen, die er setzt. Regel ändern = Version in `V83.VERSIONS`, Wissen (Kapitel «coach») und `tests/test_v83.cjs`.
 
-## Verpflegung je Einheit (V8.1.1, verpflegung-1.0, Silas' Wunsch vom 18.11.2026; 1.1 = V8.1.2 nur seine Produktgruppen)
+## Verpflegung je Einheit (V8.1.1, verpflegung-1.0, Silas' Wunsch vom 18.11.2026; 1.1 = V8.1.2 nur seine Produktgruppen; 2.0 = V8.4 kurz und bündig)
+- **verpflegung-2.0 (Silas am 18.11.2026: «zu kompliziert, so füll ich das nie aus – Vorschlag g/h, ich entscheide, wie ich sie aufnehme; kurz und bündig»):** auf der Einheit-Seite
+  nur noch g/h gross, Menge für die Einheit, «ab Minute 20, dann alle 20–30 min», je eine Zeile «Vorher» (lange oder harte Einheit) und «Nachher» (nur rasch auffüllen vor der
+  nächsten harten oder langen Einheit in weniger als 8 h); keine Produkte, kein Zeitplan, keine Packliste in der Oberfläche (`VP.knapp`; die Produktlogik bleibt im Modul für
+  den Vergleich, wird aber nicht gezeigt). Über 60 g/h kein Deckel mehr, nur der Hinweis «Glukose und Fruktose zusammen». «Anpassen»: g/h dieser Einheit, «Diesmal ohne» und die
+  Stufe ab 2,5 h (`pe-verpflegung` `max_g_h`). Die Absätze unten zu Produkten gelten nur noch für die Rechnung im Hintergrund.
 - Je Einheit aus Mein Plan eine Empfehlung vorher · während · nachher (`VP.plan`), nur mit Silas' eigenen Produkten: eigene Lebensmittel aus Garmin Connect
   (`garmin_lebensmittel`, Nacht-Update) und die Fueling-Vorlagen. Nährwerte nur wie dort eingetragen, nie geschätzt oder ergänzt; ohne passende Produkte nur Gramm
   Kohlenhydrate. Welche Produkte wofür (unterwegs, vorher, nachher) und welche aus Glukose und Fruktose sind, wählt Silas auf der Seite («Produkte für die Verpflegung»);

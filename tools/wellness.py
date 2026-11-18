@@ -8,6 +8,11 @@ Felder (Zuordnung wie im Nacht- und Morgen-Update, CLAUDE.md):
 - get_sleep_summary_range: sleepStress = avg_sleep_stress (Stress im Schlaf).
 Werte werden nie geschätzt; fehlt einer, bleibt er leer. Es sind Garmins eigene Werte: angezeigt und gespeichert, aber (noch) nicht Teil der Ampel.
 
+V8.4 (nacht-1.0, readiness-3.0): get_sleep_data(Datum) ist gross und kommt als Datei. python3 -I tools/wellness.py nacht <datei> gibt einen Tag aus:
+atem = dailySleepDTO.averageRespirationValue (Atemzüge je Minute im Schlaf), haut = avgSkinTempDeviationC (Abweichung der Hauttemperatur von Garmins
+Normalwert, nur wenn skinTempDataExists), spo2 = averageSpO2Value, spo2min = lowestSpO2Value, schlafBedarf = sleepNeed.actual (Minuten). Atemfrequenz und
+Hauttemperatur zählen in der Ampel als mögliche Krankheitszeichen, sobald 14 Nächte mit Wert da sind; SpO2 und Schlafbedarf werden nur gezeigt.
+
 Rückwirkend (wie days_backfill): python3 -I tools/wellness.py offen data.json [--heute JJJJ-MM-TT]
 → die nächsten Tage für diese Nacht (höchstens 20, nie vor 2020-01-01; Readiness erst ab 2024-08-01, vorher liefert Garmin bei Silas keine).
 Nachgeholt wird mit den kleinen Abfragen (V6.2.1): get_stress_summary → stress = avg_stress_level (Tagesmittel), dazu die Readiness.
@@ -24,6 +29,8 @@ AB = "2020-01-01"
 READINESS_AB = "2024-08-01"          # geprüft am 13.11.2026: 15.8.2024 ohne, 15.9.2024 mit Readiness
 JE_NACHT = 20
 FELDER = ("readiness", "readinessLevel", "bodyBattery", "bbSleep", "bbHigh", "bbLow", "stress", "stressHighMin", "sleepStress")
+NACHT_V = "nacht-1.0"
+NACHT_FELDER = ("atem", "haut", "spo2", "spo2min", "schlafBedarf")
 
 
 def _wert(x):
@@ -58,6 +65,44 @@ def aus_stress_summary(s):
     return {"stress": int(v) if isinstance(v, float) and v.is_integer() else v} if v is not None else {}
 
 
+def _zahl(x):
+    return x if isinstance(x, (int, float)) and not isinstance(x, bool) else None
+
+
+def aus_schlafdaten(d):
+    """Antwort von get_sleep_data → ein Tag mit den Nachtwerten (V8.4, nacht-1.0). Nichts geschätzt: fehlt ein Wert, fehlt das Feld."""
+    if not isinstance(d, dict):
+        return {}
+    dto = d.get("dailySleepDTO") or {}
+    datum = dto.get("calendarDate")
+    if not isinstance(datum, str) or len(datum) != 10:
+        return {}
+    out = {"date": datum}
+    atem = _zahl(dto.get("averageRespirationValue"))
+    if atem is not None and 4 <= atem <= 40:
+        out["atem"] = round(float(atem), 1)
+    haut = _zahl(d.get("avgSkinTempDeviationC"))
+    if d.get("skinTempDataExists") is True and haut is not None and -5 <= haut <= 5:
+        out["haut"] = round(float(haut), 1)
+    sp = _zahl(dto.get("averageSpO2Value"))
+    if sp is not None and 50 <= sp <= 100:
+        out["spo2"] = int(round(sp))
+    spm = _zahl(dto.get("lowestSpO2Value"))
+    if spm is not None and 50 <= spm <= 100:
+        out["spo2min"] = int(round(spm))
+    bed = _zahl((dto.get("sleepNeed") or {}).get("actual"))
+    if bed is not None and 180 <= bed <= 900:
+        out["schlafBedarf"] = int(round(bed))
+    return out if len(out) > 1 else {}
+
+
+def _lesen(pfad):
+    """Gespeicherte Antwort lesen (das Werkzeug speichert JSON, manchmal mit Text davor)."""
+    t = open(pfad, encoding="utf-8").read()
+    i = t.find("{")
+    return json.loads(t[i:]) if i >= 0 else None
+
+
 def offen(D, heute, n=JE_NACHT):
     """Tage für das Nachholen in dieser Nacht: vor dem Zeiger config.wellness_backfill (fehlt er: vor gestern), nie vor 2020-01-01."""
     zeiger = (D.get("config") or {}).get("wellness_backfill") or (dt.date.fromisoformat(heute) - dt.timedelta(days=1)).isoformat()
@@ -71,11 +116,18 @@ def offen(D, heute, n=JE_NACHT):
 
 def main():
     ap = argparse.ArgumentParser(description="Garmin-Tageswerte rückwirkend: welche Tage diese Nacht")
-    ap.add_argument("befehl", choices=["offen"])
-    ap.add_argument("data")
+    ap.add_argument("befehl", choices=["offen", "nacht"])
+    ap.add_argument("data", help="offen: data.json · nacht: gespeicherte Antwort von get_sleep_data")
     ap.add_argument("--heute", default=dt.date.today().isoformat())
     ap.add_argument("--max", type=int, default=JE_NACHT)
     a = ap.parse_args()
+    if a.befehl == "nacht":
+        try:
+            tag = aus_schlafdaten(_lesen(a.data))
+        except (OSError, ValueError):
+            tag = {}
+        print(json.dumps(tag, ensure_ascii=False))
+        return 0
     print(json.dumps(offen(json.load(open(a.data, encoding="utf-8")), a.heute, a.max)))
 
 

@@ -8,7 +8,7 @@
   "use strict";
   const FK = {};
   FK.VERSIONS = {
-    cockpit: "cockpit-1.0", readiness: "readiness-2.3", ampel_pruefung: "ampel-pruefung-1.1", langfahrt: "langfahrt-2.0", koppel: "koppel-1.1",
+    cockpit: "cockpit-1.0", readiness: "readiness-3.0", ampel_pruefung: "ampel-pruefung-1.1", langfahrt: "langfahrt-2.0", koppel: "koppel-1.1",
     fueling: "fueling-1.0", eta: "eta-1.0", cda: "cda-1.0", fit: "fit-js-1.0", wetter: "wetter-1.0",
     pmc: "pmc-2.1", zonen: "zonenverteilung-2.0", orientierung: "langfahrt-orientierung-1.0", entwicklung: "entwicklung-1.0", laufeffizienz: "laufeffizienz-1.1",
     laufvergleich: "laufvergleich-1.0",
@@ -258,6 +258,25 @@
     const tag = `${m[3]}-${m[2]}-${m[1]}`;
     return D.updated_lauf === "Nacht-Update" ? tag : FK.addDays(tag, -1);
   };
+  /** Erholung der Nacht (ringe-1.1, seit readiness-3.0 auch in der Ampel): HRV (ln) und Ruhepuls dieser einen Nacht gegen die 60 Tage davor
+   *  (mindestens 14 Werte), z = (z_HRV − z_Ruhepuls)/2, Erholung = Φ(z) in %. byDate = Map Datum → Tag. */
+  FK.erholungNacht = function (byDate, date) {
+    const d = byDate.get(date) || {};
+    const ref = []; for (let k = 1; k <= FK.RINGE.ref_tage; k++) { const r = byDate.get(FK.addDays(date, -k)); if (r) ref.push(r); }
+    const lh = ref.filter((r) => isNum(r.hrv) && r.hrv > 0).map((r) => Math.log(r.hrv)), rh = ref.filter((r) => isNum(r.rhr) && r.rhr > 0).map((r) => r.rhr);
+    let zH = null, zR = null;
+    if (isNum(d.hrv) && d.hrv > 0 && lh.length >= FK.RINGE.min_ref) zH = (Math.log(d.hrv) - mean(lh)) / Math.max(FK.RINGE.sd_ln_hrv, sd(lh));
+    if (isNum(d.rhr) && d.rhr > 0 && rh.length >= FK.RINGE.min_ref) zR = (d.rhr - mean(rh)) / Math.max(FK.RINGE.sd_rhr, sd(rh));
+    const z = zH != null && zR != null ? (zH - zR) / 2 : zH != null ? zH : zR != null ? -zR : null;
+    return { erholung: z == null ? null : Math.round(100 * phi(z)), zH, zR, n_ref: Math.min(lh.length, rh.length),
+      quelle: zH != null && zR != null ? "HRV und Ruhepuls" : zH != null ? "nur HRV (Ruhepuls fehlt)" : zR != null ? "nur Ruhepuls (HRV fehlt)" : null,
+      hrv: isNum(d.hrv) ? d.hrv : null, rhr: isNum(d.rhr) ? d.rhr : null };
+  };
+  /** readiness-3.0: unter 34 % ist die Nacht ein Warnzeichen, «bereit» erst ab 50 % (an den eigenen Daten geprüft, ampel-pruefung-1.1). */
+  FK.ERHOLUNG = { warn: 34, bereit: 50 };
+  /** readiness-3.0: Nachtwerte als mögliche Krankheitszeichen (Garmin get_sleep_data, ab V8.4 jede Nacht): Atemfrequenz im Schlaf mindestens 1 /min über
+   *  dem Median der 28 Nächte davor, Hauttemperatur mindestens 0,5 °C über Garmins Normalwert. Erst ab 14 Nächten mit Wert – vorher nur gezeigt. */
+  FK.NACHT = { atem_diff: 1, haut_diff: 0.5, min_naechte: 14 };
   FK.ringeVerlauf = function (days, acts, bisISO, n, opt) {
     n = n || 7; const aktBis = opt && opt.aktBis ? opt.aktBis : null;
     const byDate = new Map((days || []).map((d) => [d.date, d]));
@@ -269,20 +288,13 @@
     const out = [];
     for (let i = n - 1; i >= 0; i--) {
       const date = FK.addDays(bisISO, -i), d = byDate.get(date) || {};
-      const ref = []; for (let k = 1; k <= FK.RINGE.ref_tage; k++) { const r = byDate.get(FK.addDays(date, -k)); if (r) ref.push(r); }
-      const lh = ref.filter((r) => isNum(r.hrv) && r.hrv > 0).map((r) => Math.log(r.hrv)), rh = ref.filter((r) => isNum(r.rhr) && r.rhr > 0).map((r) => r.rhr);
-      let zH = null, zR = null;
-      if (isNum(d.hrv) && d.hrv > 0 && lh.length >= FK.RINGE.min_ref) zH = (Math.log(d.hrv) - mean(lh)) / Math.max(FK.RINGE.sd_ln_hrv, sd(lh));
-      if (isNum(d.rhr) && d.rhr > 0 && rh.length >= FK.RINGE.min_ref) zR = (d.rhr - mean(rh)) / Math.max(FK.RINGE.sd_rhr, sd(rh));
-      const z = zH != null && zR != null ? (zH - zR) / 2 : zH != null ? zH : zR != null ? -zR : null;
-      const erholung = z == null ? null : Math.round(100 * phi(z));
-      const quelleE = zH != null && zR != null ? "HRV und Ruhepuls" : zH != null ? "nur HRV (Ruhepuls fehlt)" : zR != null ? "nur Ruhepuls (HRV fehlt)" : null;
+      const EN = FK.erholungNacht(byDate, date), zH = EN.zH, zR = EN.zR, erholung = EN.erholung, quelleE = EN.quelle;
       const schlaf = isNum(d.sleepScore) ? Math.round(d.sleepScore) : null;
       const tss = loads.get(date) || 0, ctl = ctlAm.get(FK.addDays(date, -1));
       // Tag noch nicht eingespielt (aktBis): Belastung offen statt 0 % «Ruhetag» – fehlend bleibt fehlend
       const offen = !!(aktBis && date > aktBis);
       const belastung = !offen && isNum(ctl) && ctl >= 5 ? Math.round(100 * (1 - Math.pow(2, -tss / ctl))) : null;
-      out.push({ date, erholung, quelleE, zH, zR, hrv: isNum(d.hrv) ? d.hrv : null, rhr: isNum(d.rhr) ? d.rhr : null, n_ref: Math.min(lh.length, rh.length),
+      out.push({ date, erholung, quelleE, zH, zR, hrv: isNum(d.hrv) ? d.hrv : null, rhr: isNum(d.rhr) ? d.rhr : null, n_ref: EN.n_ref,
         schlaf, sleepH: isNum(d.sleepH) ? d.sleepH : null, belastung, belastungOffen: offen, tss: offen ? null : tss, ctl: isNum(ctl) ? ctl : null, v: FK.VERSIONS.ringe });
     }
     return out;
@@ -438,6 +450,23 @@
       const d = m3 - rm;
       ind.rhr = { status: d >= Math.max(7, 2 * rs) ? "deutlich erhöht" : d >= Math.max(3, rs) ? "erhöht" : "im Bereich", wert3: +m3.toFixed(1), ref: +rm.toFixed(1), diff: +d.toFixed(1), referenz: rKind };
     }
+    // readiness-3.0 (V8.4, Silas' Wunsch vom 18.11.2026: «strenger, wie Whoop»): Erholung der Nacht – HRV und Ruhepuls dieser einen Nacht gegen deine
+    // 60 Tage (wie der Ring «Erholung»). Das 7-Tage-Mittel oben glättet einzelne schlechte Nächte weg; an Tagen, die bis 2.3 «ok» waren, die Nacht aber
+    // tief, lag der Puls bei gleicher Leistung messbar höher (an den eigenen Daten geprüft). Unter 34 % schwaches Zeichen, «bereit» erst ab 50 %.
+    const EN = FK.erholungNacht(byDate, dateISO);
+    if (EN.erholung == null) ind.erholung = { status: "unbekannt", grund: EN.hrv == null && EN.rhr == null ? "HRV und Ruhepuls dieser Nacht fehlen" : "zu wenig Referenz (unter 14 Tage)" };
+    else if (shift) ind.erholung = { status: "nicht vergleichbar", wert: EN.erholung, grund: "Nachtdienst angegeben" };
+    else ind.erholung = { status: EN.erholung < FK.ERHOLUNG.warn ? "tief" : EN.erholung < FK.ERHOLUNG.bereit ? "mittel" : "gut", wert: EN.erholung, quelle: EN.quelle,
+      zH: EN.zH == null ? null : +EN.zH.toFixed(2), zR: EN.zR == null ? null : +EN.zR.toFixed(2) };
+    // readiness-3.0: Atemfrequenz und Hauttemperatur der Nacht (wie Whoop; eigene Grenzen, Miller et al. 2020, Mason et al. 2022)
+    const at0 = get(0).atem, atRef = series("atem", -28, -1, (v) => isNum(v) && v > 0);
+    if (!isNum(at0) || at0 <= 0) ind.atem = { status: "unbekannt", grund: "Atemfrequenz der Nacht fehlt" };
+    else if (atRef.length < FK.NACHT.min_naechte) ind.atem = { status: "unbekannt", wert: at0, grund: `erst ${atRef.length} Nächte mit Atemfrequenz (ab ${FK.NACHT.min_naechte} beurteilt)` };
+    else { const med = median(atRef), d = at0 - med; ind.atem = { status: d >= FK.NACHT.atem_diff ? "erhöht" : "im Bereich", wert: at0, ref: +med.toFixed(1), diff: +d.toFixed(1) }; }
+    const ht = get(0).haut, htN = series("haut", -60, -1, isNum).length;
+    if (!isNum(ht)) ind.haut = { status: "unbekannt", grund: "Hauttemperatur der Nacht fehlt" };
+    else if (htN < FK.NACHT.min_naechte) ind.haut = { status: "unbekannt", wert: ht, grund: `erst ${htN} Nächte mit Hauttemperatur (ab ${FK.NACHT.min_naechte} beurteilt)` };
+    else ind.haut = { status: ht >= FK.NACHT.haut_diff ? "erhöht" : "im Bereich", wert: ht };
     // Schlaf
     const s0 = get(0).sleepH;
     const sref = series("sleepH", -28, -1, (v) => isNum(v) && v > 0);
@@ -495,6 +524,10 @@
     else if (ind.hrv.status === "unter Referenz") { weak++; add(5, `HRV 7 Tage Ø ${ind.hrv.wert7} ms unter deiner Referenz (${ind.hrv.refLo}–${ind.hrv.refHi} ms)`, "hrv"); }
     if (ind.rhr.status === "deutlich erhöht") { strong++; add(7, `Ruhepuls 3 Tage Ø ${fmt1(ind.rhr.wert3)} bpm, ${fmt1(ind.rhr.diff)} über Referenz ${fmt1(ind.rhr.ref)}`, "rhr"); }
     else if (ind.rhr.status === "erhöht") { weak++; add(5, `Ruhepuls 3 Tage Ø ${fmt1(ind.rhr.wert3)} bpm, ${fmt1(ind.rhr.diff)} über Referenz ${fmt1(ind.rhr.ref)}`, "rhr"); }
+    if (ind.erholung.status === "tief") { weak++; add(5, `Erholung der Nacht ${ind.erholung.wert} %: HRV und Ruhepuls dieser Nacht unter deinem Schnitt der 60 Tage`, "erholung"); }
+    else if (ind.erholung.status === "mittel") add(2, `Erholung der Nacht ${ind.erholung.wert} % – für «bereit» braucht es ${FK.ERHOLUNG.bereit} %`, "erholung-info");
+    if (ind.atem.status === "erhöht") { weak++; add(5, `Atemfrequenz im Schlaf ${fmt1(ind.atem.wert)} /min, ${fmt1(ind.atem.diff)} über deinem Schnitt – mögliches Krankheitszeichen`, "atem"); }
+    if (ind.haut.status === "erhöht") { weak++; add(5, `Hauttemperatur in der Nacht +${fmt1(ind.haut.wert)} °C über deinem Normalwert – mögliches Krankheitszeichen`, "haut"); }
     if (ind.schlaf.status === "sehr kurz") { strong++; add(6, `Schlaf ${fmt1(ind.schlaf.wert)} h`, "schlaf"); }
     // readiness-2.0 (an deinen Daten geprüft, ampel-pruefung-1.0): 5–6 h Schlaf zeigten keinen höheren Puls bei gleicher Leistung → nur Hinweis
     else if (ind.schlaf.status === "kurz") add(1, `Schlaf ${fmt1(ind.schlaf.wert)} h${ind.schlaf.ref ? ` (sonst Ø ${fmt1(ind.schlaf.ref)} h)` : ""} – nur Hinweis`, "schlaf-info");
@@ -505,7 +538,7 @@
     if (strong || weak >= 2) status = "vorsichtig";
     else if (objKnown.length < 2) status = "nicht beurteilbar";
     else if (weak === 1 || ind.befinden.status === "mittel") status = "normal";
-    else if (objKnown.length >= 2 && (ind.hrv.status === "im Bereich" || ind.hrv.status === "über Referenz") && ind.schlaf.status === "ausreichend") status = "bereit";
+    else if (objKnown.length >= 2 && (ind.hrv.status === "im Bereich" || ind.hrv.status === "über Referenz") && ind.schlaf.status === "ausreichend" && ind.erholung.status === "gut") status = "bereit";
     else status = "normal";
     if (status === "nicht beurteilbar") {
       for (const k of ["hrv", "rhr", "schlaf"]) if (ind[k] && ["unbekannt", "nicht vergleichbar"].includes(ind[k].status)) add(3, labelOf(k) + ": " + (ind[k].grund || ind[k].status), "fehlt");
@@ -515,6 +548,7 @@
       if (ind.hrv.wert7 && (ind.hrv.status === "im Bereich" || ind.hrv.status === "über Referenz")) add(1, `HRV 7 Tage Ø ${ind.hrv.wert7} ms ${ind.hrv.status === "über Referenz" ? "über" : "im Bereich"} deiner Referenz (${ind.hrv.refLo}–${ind.hrv.refHi} ms)`, "hrv+");
       if (ind.rhr.wert3 && ind.rhr.status === "im Bereich") add(1, `Ruhepuls Ø ${fmt1(ind.rhr.wert3)} bpm, Referenz ${fmt1(ind.rhr.ref)}`, "rhr+");
       if (ind.schlaf.wert && ind.schlaf.status === "ausreichend") add(1, `Schlaf ${fmt1(ind.schlaf.wert)} h`, "schlaf+");
+      if (ind.erholung.status === "gut") add(1, `Erholung der Nacht ${ind.erholung.wert} %`, "erholung+");
     }
     reasons.sort((a, b) => b.w - a.w);
     const vertrauen = objKnown.length === 3 ? "hoch" : objKnown.length === 2 ? "mittel" : "gering";

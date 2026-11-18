@@ -852,6 +852,15 @@ check("Tageswerte rückwirkend: ohne Zeiger die 20 Tage vor gestern; Readiness e
       and WL.offen({"config": {"wellness_backfill": "2024-08-05"}}, "2026-11-13")["readiness"] == ["2024-08-04", "2024-08-03", "2024-08-02", "2024-08-01"]
       and WL.offen({"config": {"wellness_backfill": "2020-01-04"}}, "2026-11-13")["tage"] == ["2020-01-03", "2020-01-02", "2020-01-01"]
       and WL.offen({"config": {"wellness_backfill": "2020-01-01"}}, "2026-11-13")["fertig"] is True, str(_o))
+# V8.4 nacht-1.0: Nachtwerte aus get_sleep_data (erfundene Werte) – Hauttemperatur nur mit skinTempDataExists, nichts geschätzt
+_sd = {"dailySleepDTO": {"calendarDate": "2026-11-18", "averageRespirationValue": 13.4, "averageSpO2Value": 95.6, "lowestSpO2Value": 87,
+                         "sleepNeed": {"baseline": 450, "actual": 465}}, "avgSkinTempDeviationC": 0.34, "skinTempDataExists": True}
+_n1 = WL.aus_schlafdaten(_sd)
+_n2 = WL.aus_schlafdaten({**_sd, "skinTempDataExists": False})
+_n3 = WL.aus_schlafdaten({"dailySleepDTO": {"calendarDate": "2026-11-18", "averageRespirationValue": None}})
+check("Nachtwerte (nacht-1.0): Atemfrequenz, Hauttemperatur, SpO2, Schlafbedarf; ohne Hauttemperatur-Daten kein Wert; ohne Werte kein Tag",
+      _n1 == {"date": "2026-11-18", "atem": 13.4, "haut": 0.3, "spo2": 96, "spo2min": 87, "schlafBedarf": 465} and "haut" not in _n2 and _n3 == {}
+      and WL.NACHT_FELDER == ("atem", "haut", "spo2", "spo2min", "schlafBedarf"), str((_n1, _n2, _n3)))
 
 # --- V6.2.3 garmin-export-1.0: Garmin-Datenexport → Verlauf (Format wie im echten Export, erfundene Werte) ---
 import garmin_export as GX  # noqa: E402

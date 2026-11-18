@@ -73,7 +73,7 @@
     box.innerHTML = `
       <button type="button" class="kachel" data-v6="bereit" aria-label="Ampel, Bereitschaft heute: ${esc(bw)} – Einzelheiten">
         <span class="k-kopf">${V6().icon("ampel", 15)}Ampel</span><b class="k-wert k-farbe" style="--kc:var(${bf})">${esc(bw)}</b>
-        <small>${!r ? "wird berechnet" : tag === heuteISO() ? "Morgenwerte heute" : tag ? "Werte vom " + esc(C.dateCH(tag).slice(0, 6)) : "keine Morgenwerte"}</small></button>
+        <small>${!r ? "wird berechnet" : tag === heuteISO() ? (r.indikatoren && r.indikatoren.erholung && r.indikatoren.erholung.wert != null ? "Erholung " + r.indikatoren.erholung.wert + " %" : "Morgenwerte heute") : tag ? "Werte vom " + esc(C.dateCH(tag).slice(0, 6)) : "keine Morgenwerte"}</small></button>
       <button type="button" class="kachel" data-v6="optionen" aria-label="Trainingsstatus zu Tagesbeginn: ${esc(st ? st.name : "offen")} – Optionen für heute">
         <span class="k-kopf">${V6().icon("status", 15)}Status</span><b class="k-wert${st ? " st-farbe" : ""}" style="${st ? `--stc:${st.farbe}` : "color:var(--muted)"}">${esc(st ? st.name : "offen")}</b>
         <small>${pa ? "Form " + sg(pa.form) : "ohne Einheiten"}</small></button>

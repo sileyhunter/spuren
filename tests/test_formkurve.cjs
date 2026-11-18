@@ -177,6 +177,57 @@ test("Readiness 2.3 (V8.1, befinden-2.1): tiefe Motivation allein ändert nichts
   const ohne = FK.readiness(base(), ACTS, b({}), D70);
   assert.equal(ohne.indikatoren.motivation, undefined, "ohne Angabe kein Indikator");
 });
+test("Readiness 3.0 (V8.4): die einzelne Nacht zählt – Erholung unter 34 % ist ein schwaches Zeichen, «bereit» erst ab 50 %", () => {
+  // Nacht deutlich schlechter (HRV tief, Ruhepuls hoch), das 7-Tage-Mittel bleibt im Bereich (ein einzelner Ausreisser zählt dort nicht)
+  const tief = FK.readiness(base((i) => (i === 69 ? { hrv: 70, rhr: 50 } : {})), ACTS, [], D70);
+  assert.equal(tief.indikatoren.hrv.status, "im Bereich", "7-Tage-Mittel unverändert");
+  assert.equal(tief.indikatoren.erholung.status, "tief");
+  assert.equal(tief.status, "normal", "ein schwaches Zeichen");
+  assert.ok(tief.gruende.some((g) => /^Erholung der Nacht \d+ %: HRV und Ruhepuls/.test(g)));
+  // mit einem weiteren schwachen Zeichen «vorsichtig» – und der Grund kommt in den Entscheid der Ampel
+  const b = [{ date: D70, skala: 7, v: "befinden-2.1", schlaf: 2, muede: 2, muskel: 2, stress: 2, schmerz: { stufe: "leicht", ort: ["Knie"] } }];
+  const zwei = FK.readiness(base((i) => (i === 69 ? { hrv: 70, rhr: 50 } : {})), ACTS, b, D70);
+  assert.equal(zwei.status, "vorsichtig");
+  assert.ok(zwei.alle_gruende.some((g) => g.kind === "erholung" && g.w >= 4));
+  // mittel (34–49 %): nicht «bereit», sondern «normal» mit Erklärung
+  const mittel = FK.readiness(base((i) => (i === 69 ? { hrv: 79, rhr: 46 } : {})), ACTS, [], D70);
+  assert.equal(mittel.indikatoren.erholung.status, "mittel");
+  assert.ok(mittel.indikatoren.erholung.wert >= 34 && mittel.indikatoren.erholung.wert < 50);
+  assert.equal(mittel.status, "normal");
+  assert.ok(mittel.alle_gruende.some((g) => g.kind === "erholung-info" && /bereit/.test(g.txt)));
+  // gut: wie bisher «bereit»
+  const gut = FK.readiness(base(), ACTS, [], D70);
+  assert.equal(gut.status, "bereit");
+  assert.equal(gut.indikatoren.erholung.status, "gut");
+  // ohne Werte dieser Nacht nie «bereit», nie geraten
+  const ohne = FK.readiness(base((i) => (i === 69 ? { hrv: null, rhr: null } : {})), ACTS, [], D70);
+  assert.equal(ohne.indikatoren.erholung.status, "unbekannt");
+  assert.notEqual(ohne.status, "bereit");
+  // gleiche Rechnung wie der Ring «Erholung»
+  const dd = base((i) => (i === 69 ? { hrv: 70, rhr: 50 } : {}));
+  assert.equal(FK.ringeVerlauf(dd, ACTS, D70, 1)[0].erholung, tief.indikatoren.erholung.wert);
+  assert.deepEqual(FK.ERHOLUNG, { warn: 34, bereit: 50 });
+});
+test("Readiness 3.0 (V8.4): Atemfrequenz und Hauttemperatur der Nacht – erst ab 14 Nächten beurteilt, je ein schwaches Zeichen, beide zusammen «vorsichtig»", () => {
+  const mit = (f) => base((i) => Object.assign({ atem: 13 + (i % 3) * 0.2, haut: (i % 4) * 0.05 }, f(i) || {}));
+  const ruhig = FK.readiness(mit(() => ({})), ACTS, [], D70);
+  assert.equal(ruhig.indikatoren.atem.status, "im Bereich");
+  assert.equal(ruhig.indikatoren.haut.status, "im Bereich");
+  assert.equal(ruhig.status, "bereit");
+  const atem = FK.readiness(mit((i) => (i === 69 ? { atem: 14.6 } : {})), ACTS, [], D70);
+  assert.equal(atem.indikatoren.atem.status, "erhöht");
+  assert.equal(atem.status, "normal");
+  assert.ok(atem.gruende.some((g) => /Atemfrequenz im Schlaf .* mögliches Krankheitszeichen/.test(g)));
+  const beide = FK.readiness(mit((i) => (i === 69 ? { atem: 14.6, haut: 0.7 } : {})), ACTS, [], D70);
+  assert.equal(beide.status, "vorsichtig");
+  // zu wenig Nächte: gezeigt, aber nicht beurteilt
+  const neu = base((i) => (i >= 60 ? { atem: i === 69 ? 16 : 13, haut: i === 69 ? 0.9 : 0 } : {}));
+  const r = FK.readiness(neu, ACTS, [], D70);
+  assert.equal(r.indikatoren.atem.status, "unbekannt");
+  assert.equal(r.indikatoren.haut.status, "unbekannt");
+  assert.equal(r.status, "bereit");
+  assert.deepEqual(FK.NACHT, { atem_diff: 1, haut_diff: 0.5, min_naechte: 14 });
+});
 test("Readiness 2.0: 5–6 h Schlaf nur Hinweis (an den eigenen Daten geprüft), unter 5 h weiter ein starkes Zeichen", () => {
   const r = FK.readiness(base((i) => (i === 69 ? { sleepH: 5.5 } : {})), ACTS, [], D70);
   assert.equal(r.indikatoren.schlaf.status, "kurz");
@@ -189,7 +240,7 @@ test("Readiness 2.1 (Audit V6.4 B3): Stand am Morgen – eine harte Einheit dess
   const mit = FK.readiness(base(), ACTS.concat([{ id: "heute", date: D70, sport: "rad", tss: 400, mv: 5 * 3600 }]), [], D70);
   assert.equal(mit.status, ohne.status);
   assert.deepEqual(mit.indikatoren.last, ohne.indikatoren.last, "Last bis gestern");
-  assert.equal(FK.VERSIONS.readiness, "readiness-2.3");
+  assert.equal(FK.VERSIONS.readiness, "readiness-3.0");
   // Ampel-Prüfung: derselbe Block landet in derselben Gruppe, egal wie gross die Einheit des Tages war
   const dd = days("2026-01-01", 70, (i) => ({ hrv: 80 + ((i * 7) % 5) - 2, rhr: 46 + (i % 3) - 1, sleepH: 7.5 }));
   const acts = []; for (let i = 0; i < 70; i++) acts.push({ id: "b" + i, date: dd[i].date, sport: "rad", tss: 50, indoor: true, ...(i % 2 ? {} : { eb: { v: "eb-1.0", art: "rad200", n: 1, w: 200, hr: 140 } }) });
@@ -456,7 +507,7 @@ test("pmc-2.1: Krafttraining aus Garmin (Typ oder Name) zählt nicht in Fitness,
   const days = []; for (let i = 0; i < 70; i++) days.push({ date: FK.addDays("2026-03-06", -69 + i), hrv: 80, rhr: 50, sleepScore: 75, sleepH: 7 });
   const r1 = FK.ringe(days, sonst, "2026-03-03"), r2 = FK.ringe(days, sonst.concat(kraft), "2026-03-03");
   assert.equal(r2.belastung, r1.belastung); assert.equal(r2.tss, r1.tss);
-  assert.equal(FK.VERSIONS.pmc, "pmc-2.1"); assert.equal(FK.VERSIONS.readiness, "readiness-2.3"); assert.equal(FK.VERSIONS.ringe, "ringe-1.1");
+  assert.equal(FK.VERSIONS.pmc, "pmc-2.1"); assert.equal(FK.VERSIONS.readiness, "readiness-3.0"); assert.equal(FK.VERSIONS.ringe, "ringe-1.1");
 });
 
 /* ---------- status-1.1 (Prüfbericht 13.11.2026, Befund 3): «Heute» mit der Form zu Tagesbeginn ---------- */

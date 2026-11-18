@@ -1,5 +1,14 @@
 # Änderungen
 
+## V8.4 Teil 1 · 18.11.2026 · Strengere Ampel (readiness-3.0), Nachtwerte (nacht-1.0), Verpflegung kurz (verpflegung-2.0), wissen-1.29
+- **Ampel zählt die einzelne Nacht:** Erholung der Nacht (HRV und Ruhepuls dieser Nacht gegen deine 60 Tage) unter 34 % ist ein Warnzeichen, «bereit» gibt es erst ab 50 %.
+  Mit deinen Daten geprüft: an Tagen, die bisher «ok» waren, deren Nacht aber tief lag, kostete die gleiche Leistung mehr Puls. Die Kachel auf Heute zeigt die Erholung in %.
+- **Atemfrequenz und Hauttemperatur** aus Garmin (jede Nacht neu geholt): je ein mögliches Krankheitszeichen, sobald 14 Nächte beisammen sind; SpO2 und Schlafbedarf werden gespeichert.
+- **Verpflegung kurz und bündig:** nur noch g/h und Menge, dazu je eine Zeile vorher und nachher, wenn sie etwas ändert. Welche Produkte du nimmst, entscheidest du; «Anpassen» mit g/h,
+  «Diesmal ohne» und deiner Stufe ab 2,5 h.
+- Wissen: Kapitel «erholung» (Kiviniemi et al. 2007) und «verpflegung» nachgeführt.
+- Tests: `tests/test_formkurve.cjs` (+2), `tests/test_verpflegung.cjs` (neu gefasst), `tests/test_tools.py` (+1), Szenarien A3/A4 und C2 in `tests/test_v80.cjs` an die strengere Ampel angepasst.
+
 ## V8.3 · 18.11.2026 · Täglicher Coach (Masterprompt V8, Etappe V8.3), ampel-plan-1.2, basis-1.2, wissen-1.28
 - **Karte «Coach» auf Heute** und Vorschläge im Tagesblatt: Der Coach prüft heute und die nächsten Tage nach dem Morgen-Update, dem Check-in, jeder neuen Einheit und wenn
   sich deine Zeit ändert, und schlägt vor – mit Grund, Annehmen, Ablehnen und Rückgängig (tagescoach-1.0). Er ändert nie selbst etwas.

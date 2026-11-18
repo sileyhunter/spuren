@@ -20,7 +20,7 @@ const W = VP.wahl(P, null);
 const einheit = (sport, art, dauer, teile, mehr) => Object.assign({ uid: "u1", sport, art, dauer, teile: teile || [["z1", 10], ["z2", dauer - 10]] }, mehr || {});
 const vo2 = (n) => Array(n).fill(0).flatMap(() => [["vo2", 0.5], ["pause", 0.25]]);
 
-test("Version", () => assert.equal(VP.VERSIONS.verpflegung, "verpflegung-1.1"));
+test("Version", () => assert.equal(VP.VERSIONS.verpflegung, "verpflegung-2.0"));
 
 test("Produkte: Art aus Name und Nährwerten, Portionen, Doppel einmal (mit beiden Namen), Mahlzeiten nicht unterwegs", () => {
   const art = Object.fromEntries(P.map((p) => [p.id, p.art]));
@@ -65,7 +65,7 @@ test("kurze harte Einheit (45–75 min) → kleine Menge in einer Pause, oder ni
   assert.match(R.waehrend.zeitplan[0].text, /oder nichts/);
 });
 
-test("3 h Ausfahrt → 60 g/h: Getränk höchstens zwei Drittel, Rest Gels; über 60 g/h nur mit Glukose + Fruktose", () => {
+test("3 h Ausfahrt → 60 g/h: Getränk höchstens zwei Drittel, Rest Gels; über 60 g/h (eigene Stufe) mit dem Hinweis auf Glukose + Fruktose", () => {
   const e = einheit("rad", "lang", 180);
   const R = VP.plan(e, { W, kg: 70 });
   assert.equal(R.ziel.g_h, 60);
@@ -74,19 +74,18 @@ test("3 h Ausfahrt → 60 g/h: Getränk höchstens zwei Drittel, Rest Gels; übe
   assert.ok(fl && gel, "Getränk und Gels gemischt");
   assert.ok(fl.kh <= 180 * 0.65 + 1, "Getränk höchstens zwei Drittel");
   assert.ok(R.packliste.length >= 2); assert.ok(R.vorher.some((x) => /30–60 min vorher/.test(x.text)));
-  // eigene Stufe 90 g/h: ohne Glukose-Fruktose-Produkt bleibt es bei 60
+  // verpflegung-2.0: keine Produktwahl mehr – eigene Stufe 90 g/h gilt, mit dem Hinweis auf Glukose und Fruktose
   const W90 = VP.wahl(P, { unterwegs: ["d1", "g1"], max_g_h: 90 });
-  const R60 = VP.plan(e, { W: W90, kg: 70 });
-  assert.equal(R60.ziel.g_h, 60); assert.ok(R60.ziel.gruende.some((g) => /Glukose und Fruktose/.test(g)));
-  const R90 = VP.plan(e, { W: VP.wahl(P, { unterwegs: ["d1", "g1"], fruktose: ["d1"], max_g_h: 90 }), kg: 70 });
-  assert.equal(R90.ziel.g_h, 90); assert.ok(R90.waehrend.g_h >= 84);
+  const R90 = VP.plan(e, { W: W90, kg: 70 });
+  assert.equal(R90.ziel.g_h, 90); assert.ok(R90.ziel.gruende.some((g) => /Glukose und Fruktose zusammen/.test(g)));
+  assert.equal(VP.knapp(R90, e).hinweis, "über 60 g/h nur mit Glukose und Fruktose zusammen");
 });
 
 test("Ohne Produkte → Gramm statt erfundener Produkte; Anpassung je Einheit", () => {
   const leer = VP.wahl([], null);
   const R = VP.plan(einheit("rad", "lang", 150), { W: leer, kg: 70 });
   assert.equal(R.waehrend.produkte.length, 0); assert.equal(R.waehrend.gramm, 150); assert.match(R.waehrend.text[0], /≈ 150 g Kohlenhydrate/);
-  assert.equal(VP.kurz(R), "während ≈ 150 g KH (≈ 60 g/h)");
+  assert.equal(VP.kurz(R), "60 g/h · ≈ 150 g");
   const aus = VP.plan(einheit("rad", "lang", 150), { W, kg: 70, anpassung: { aus: true } });
   assert.equal(aus.ziel.stufe, "aus"); assert.equal(aus.waehrend.produkte.length, 0);
   const a40 = VP.plan(einheit("rad", "locker", 100), { W, kg: 70, anpassung: { g_h: 40, mix: "gel" } });
@@ -154,11 +153,25 @@ test("Planeinstellung «pe-verpflegung»: Listen heissen davor/danach (vorher = 
   assert.deepEqual(py.map((f) => f === null), [true, false, false, false, false]);
 });
 
-test("Kurzfassung für Heute: vorher, während mit g/h und Produkten", () => {
-  const R = VP.plan(einheit("rad", "lang", 180), { W, kg: 70 });
-  assert.match(VP.kurz(R), /^vorher Banane.* · während ≈ \d+ g\/h: \d+ × (Flasche Getränk|Gel)/);
+test("verpflegung-2.0: kurz und bündig – g/h und Menge, je eine Zeile vorher und nachher nur, wenn sie etwas ändert", () => {
+  const e = einheit("rad", "lang", 180), R = VP.plan(e, { W, kg: 70 });
+  assert.equal(VP.kurz(R), "60 g/h · ≈ 180 g");
+  const K = VP.knapp(R, e, { naechsteStd: 20 });
+  assert.equal(K.g_h, 60); assert.equal(K.gramm, 180);
+  assert.equal(K.waehrend, "60 g Kohlenhydrate pro Stunde");
+  assert.match(K.wann, /^ab Minute 20, dann alle 20–30 min$/);
+  assert.equal(K.vorher, "Mahlzeit mit Kohlenhydraten 2–3 h davor");
+  assert.equal(K.nachher, null, "nächste harte Einheit erst in 20 h: kein Extra");
+  assert.match(VP.knapp(R, e, { naechsteStd: 5 }).nachher, /^rasch Kohlenhydrate und 20–40 g Protein – die nächste harte oder lange Einheit kommt in 5 h$/);
+  // kurze lockere Einheit: nichts nötig, keine Zeile vorher oder nachher
+  const kurzE = einheit("rad", "locker", 60), Rk = VP.plan(kurzE, { W, kg: 70 });
+  assert.equal(VP.kurz(Rk), "nichts nötig");
+  const Kk = VP.knapp(Rk, kurzE, {}); assert.equal(Kk.g_h, null); assert.equal(Kk.vorher, null); assert.equal(Kk.nachher, null);
+  // harte Einheit unter 75 min: kleine Portion, ohne g/h
   const k = VP.plan(einheit("rad", "schluessel", 60, [["z1", 15]].concat(vo2(30), [["z1", 22.5]])), { W, kg: 70 });
-  assert.equal(k.ziel.stufe, "klein"); assert.doesNotMatch(VP.kurz(k), /g\/h/, "kleine Menge ohne g/h");
+  assert.equal(k.ziel.stufe, "klein"); assert.equal(VP.kurz(k), "kleine Portion oder nichts");
+  // früh am Morgen
+  assert.match(VP.knapp(R, Object.assign({}, e, { uhrzeit: "07:00" }), {}).vorher, /^früh:/);
 });
 
 test("verpflegung-1.1: nur deine Gruppen (Gels, Fruchtgummi, Getränke, Hafer-Riegel, Hafer-Getränk, Whey, Banane) – andere nur mit eigener Auswahl", () => {

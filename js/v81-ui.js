@@ -57,7 +57,7 @@
     // V8.1.1 nachher-1.1 / verpflegung-1.0: Magen und Energie ab 60 min, Verpflegung geplant gegen genommen (Fueling-Protokoll)
     const mitV = D.mitVerpflegung ? D.mitVerpflegung(a) : false;
     let VN = null; try { VN = mitV && G && window.VPUI && window.VPUI.nachher ? window.VPUI.nachher(a, G.e) : null; } catch (err) { console.error(err); }
-    const vpText = VN && VN.R.ziel.stufe === "ja" ? `Verpflegung: geplant ${VN.R.waehrend.g_h} g/h${VN.V ? ` · genommen ${VN.V.genommen} g/h (${VN.V.urteil})` : " · genommen: noch nicht im Fueling-Protokoll"}.` : "";
+    const vpText = VN && VN.R.ziel.stufe === "ja" ? `Verpflegung: empfohlen ${VN.R.ziel.g_h} g/h${VN.V ? ` · genommen ${VN.V.genommen} g/h (${VN.V.urteil})` : " · genommen: noch nicht im Fueling-Protokoll"}.` : "";
     const zahlen = [[dauer(isNum(a.mv) ? a.mv : a.dur || 0), "Dauer"]];
     if (isNum(a.tss)) zahlen.push([String(Math.round(a.tss)), "TL"]);
     if (AB) zahlen.push([`≈ ${AB.plan}`, "TL geplant"]);
