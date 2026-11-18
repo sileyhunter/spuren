@@ -65,12 +65,22 @@ test("A · Harte Einheit, Erholung schlechter als erwartet", async (t) => {
     assert.ok(d.ampel.gruende.some((g) => /Beine 6\/7/.test(g)));
     nieHaerter(sim, W3);
   });
-  await t.test("A3 nach einem einzigen schlechten Morgen prüft der Coach die nächsten Tage mit Grund", { todo: "V8.3 Täglicher Coach" }, async () => {
-    // heute: ein einzelner tiefer HRV-Wert zählt nicht in den 7-Tage-Schnitt (Ausreisser-Regel), der Ruhepuls zählt über 3 Tage → Ampel «normal»,
-    // die harte Einheit am Donnerstag bleibt ohne Hinweis
-    const sim = await vorlauf();
-    await sim.tage(W3, 4, { morgen: morgenMit({ [tag(W3, 2)]: { hrv: 0.68, rhr: 9, score: 60 } }) });
-    assert.ok(sim.win.V83 && typeof sim.win.V83.pruefen === "function", "Tagescoach (V8.3) fehlt");
+  await t.test("A3 nach einem einzigen schlechten Morgen prüft der Coach die nächsten Tage mit Grund (tagescoach-1.0)", async () => {
+    // ein einzelner tiefer HRV-Wert zählt im 7-Tage-Schnitt kaum → Ampel «normal»; der Coach schlägt für die harte Einheit am Donnerstag Tauschen oder
+    // locker vor, mit Grund. Angenommen hat der Donnerstag keine harte Radeinheit mehr – nie härter oder länger als Mein Plan
+    const sim = await vorlauf(), mi = tag(W3, 2), doD = tag(W3, 3);
+    await sim.tage(W3, 4, { morgen: morgenMit({ [mi]: { hrv: 0.68, rhr: 9, score: 60 } }),
+      coach: (d, V) => (d === mi ? V.filter((p) => p.anlass === "morgen").map((p) => p.id) : []) });
+    const x = sim.log.get(mi);
+    assert.equal(x.ampel.status, "wie_geplant", "Ampel noch nicht «vorsichtig»");
+    const p = x.coach.find((v) => v.anlass === "morgen" && v.date === doD);
+    assert.ok(p, "Vorschlag für Donnerstag: " + JSON.stringify(x.coach));
+    assert.ok(p.grund.some((g) => /HRV heute −\d+ %/.test(g)) && p.grund.some((g) => /Ruhepuls heute \+\d+ bpm/.test(g)), p.grund.join(" | "));
+    assert.ok(sim.log.get(tag(W3, 1)).coach.every((v) => v.anlass !== "morgen"), "am Tag davor (normaler Morgen) kein Vorschlag");
+    const d = sim.log.get(doD);
+    assert.ok(!d.einheiten.some((e) => e.sport === "rad" && e.stufe === "hart"), kurz(d.einheiten));
+    assert.ok(d.coach.every((v) => v.id !== p.id), "angenommen: kein zweites Mal");
+    nieHaerter(sim, W3);
   });
 });
 
@@ -106,12 +116,22 @@ test("B · Spontan 45 statt 120 Minuten Zeit", async (t) => {
     assert.ok(vorher.length > 0);
     assert.equal(hartWoche, 2, "beide harten Einheiten der Woche bleiben");
   });
-  await t.test("B3 für die 45 min schlägt der Coach eine Kurzfassung derselben Sportart vor, ohne zwei lange Einheiten auf einen Tag zu legen", { todo: "V8.3 Täglicher Coach" }, async () => {
-    // heute: «Woche anpassen» legt die lange Ausfahrt auf den Sonntag zum langen Lauf und das lockere Schwimmen vom Sonntag auf den Samstag
-    const { sim } = await knapp(tag(W3, 5));
-    const sa = sim.log.get(tag(W3, 5)), so = sim.log.get(tag(W3, 6));
-    assert.ok(sa.einheiten.some((e) => e.sport === "rad" && e.dauer >= 30 && e.dauer <= 45), `Samstag: ${kurz(sa.einheiten) || "leer"}`);
+  await t.test("B3 für die 45 min schlägt der Coach eine Kurzfassung derselben Sportart vor, ohne zwei lange Einheiten auf einen Tag zu legen (tagescoach-1.0)", async () => {
+    // Verfügbarkeit gespeichert, ohne «Woche anpassen»: der Coach sieht den Tag zu voll und schlägt die Kurzfassung vor; angenommen bleibt der Sonntag, wie er war
+    const sim = await vorlauf(), sa = tag(W3, 5), soD = tag(W3, 6);
+    let soVorher = null;
+    const kern = (L) => (L || []).map((e) => `${e.sport}:${e.titel}:${e.dauer}`).join(" | ");
+    await sim.tage(W3, 7, {
+      vorher: async (x) => { if (x !== sa) return; soVorher = kern(sim.plan(soD).einheiten); assert.equal(await sim.verfuegbarkeit({ date: sa }, { min: 45, sport: null }), null); },
+      coach: (d, V) => (d === sa ? V.filter((p) => p.anlass === "zeit" && p.date === sa).map((p) => p.id) : []),
+    });
+    const s = sim.log.get(sa), so = sim.log.get(soD);
+    const p = s.coach.find((v) => v.anlass === "zeit" && v.date === sa);
+    assert.ok(p && p.arten[0] === "kurz", JSON.stringify(s.coach));
+    assert.ok(s.einheiten.some((e) => e.sport === "rad" && e.dauer >= 30 && e.dauer <= 45), `Samstag: ${kurz(s.einheiten) || "leer"}`);
+    assert.ok(sportMin(s.einheiten) <= 45, kurz(s.einheiten));
     assert.ok(so.einheiten.filter((e) => e.art === "lang").length <= 1, `Sonntag: ${kurz(so.einheiten)}`);
+    assert.equal(kern(so.einheiten), soVorher, "Sonntag unverändert");
   });
 });
 
@@ -174,10 +194,16 @@ test("D · Einheit deutlich intensiver als geplant", async (t) => {
       for (const a of L.absolviert) { const e = L.einheiten.find((x) => x.uid === a.uid); if (e && e.tl) assert.notEqual(V81.abweichung(e.tl, { tss: a.tss }).urteil, "mehr als geplant", `${tag(W3, i)} ${a.sport}`); }
     }
   });
-  await t.test("D3 die folgenden Einheiten werden mit der tatsächlichen Last neu geprüft", { todo: "V8.3 Täglicher Coach" }, () => {
-    // heute: die harte Radeinheit am Donnerstag bleibt ohne Hinweis, obwohl der Mittwoch schon hart war
-    const doT = sim.log.get(tag(W3, 3));
-    assert.ok(!doT.einheiten.some((e) => e.sport === "rad" && e.stufe === "hart"), kurz(doT.einheiten));
+  await t.test("D3 die folgenden Einheiten werden mit der tatsächlichen Last neu geprüft (tagescoach-1.0)", async () => {
+    // Donnerstag: der Coach sieht den Mittwoch härter als geplant und schlägt für die harte Radeinheit Tauschen oder locker vor; angenommen ist sie nicht mehr hart
+    const s2 = await vorlauf(), doD = tag(W3, 3);
+    await s2.tage(W3, 7, { ausfuehren: hart, coach: (d, V) => (d === doD ? V.filter((p) => p.anlass === "last").map((p) => p.id) : []) });
+    const x = s2.log.get(doD), p = x.coach.find((v) => v.anlass === "last" && v.date === doD);
+    assert.ok(p, JSON.stringify(x.coach));
+    assert.ok(p.grund.some((g) => /Gestern: .* \d,\d × geplant gefahren – zwei harte Tage an Land/.test(g)), p.grund.join(" | "));
+    assert.ok(!x.einheiten.some((e) => e.sport === "rad" && e.stufe === "hart"), kurz(x.einheiten));
+    assert.ok(sim.log.get(doD).einheiten.some((e) => e.sport === "rad" && e.stufe === "hart"), "ohne Annehmen bleibt sie (nur Vorschlag)");
+    nieHaerter(s2, W3);
   });
 });
 
@@ -192,13 +218,25 @@ test("E · Mehrere Einheiten ausgelassen", async (t) => {
     const nW = addDays(W3, 7);
     assert.ok(sim.wochenMinuten(nW) <= kontrolle.wochenMinuten(nW), `nächste Woche ${sim.wochenMinuten(nW)} gegen ${kontrolle.wochenMinuten(nW)} min`);
   });
-  await t.test("E2 eine von der Ampel gelockerte Schlüsseleinheit wird nur vorgeschlagen, nicht von selbst verschoben", { todo: "V8.3 Täglicher Coach (Nachholen als Vorschlag)" }, async () => {
-    // heute (ampel-plan-1.0): die CSS-Einheit vom «vorsichtigen» Donnerstag ersetzt am Sonntag von selbst das lockere Schwimmen
+  await t.test("E2 eine von der Ampel gelockerte Schlüsseleinheit wird nur vorgeschlagen, nicht von selbst verschoben (ampel-plan-1.2, tagescoach-1.0)", async () => {
+    const doD = tag(W3, 3), ci = (d) => (d === doD ? { schlaf: 3, muede: 5, muskel: 6, stress: 3 } : null);
     const s2 = await vorlauf();
-    await s2.tage(W3, 7, { checkin: (d) => (d === tag(W3, 3) ? { schlaf: 3, muede: 5, muskel: 6, stress: 3 } : null) });
+    await s2.tage(W3, 7, { checkin: ci });
     const nach = [];
     for (let i = 0; i < 7; i++) for (const e of s2.log.get(tag(W3, i)).einheiten) if (e.ampel && e.ampel.nachgeholt) nach.push(`${tag(W3, i)} ${e.titel}`);
     assert.deepEqual(nach, [], "von selbst nachgeholt: " + nach.join(", "));
+    const p = s2.log.get(doD).coach.find((v) => v.anlass === "nachholen");
+    assert.ok(p && /nachholen\?$/.test(p.titel), JSON.stringify(s2.log.get(doD).coach));
+    // angenommen: am vorgeschlagenen Tag steht die Schlüsseleinheit in Mein Plan (an Stelle der lockeren derselben Sportart, nicht länger)
+    const s3 = await vorlauf(); let ziel = null, ersetzt = null;
+    await s3.tage(W3, 7, { checkin: ci, coach: (d, V) => {
+      const q = d === doD ? V.find((v) => v.anlass === "nachholen") : null; if (!q) return [];
+      const a = q.optionen[0].aktionen[0]; ziel = a.date; ersetzt = s3.plan(a.date).plan.find((e) => e.uid === a.uid);
+      return [q.id];
+    } });
+    assert.ok(ziel > doD, String(ziel));
+    const z = s3.log.get(ziel).plan.find((e) => e.uid === ersetzt.uid);
+    assert.ok(z && z.stufe !== "locker" && z.sport === ersetzt.sport && z.dauer <= ersetzt.dauer, `${ziel}: ${kurz(s3.log.get(ziel).plan)}`);
   });
 });
 
@@ -270,10 +308,15 @@ test("H · Seite ohne neue Garmin-Daten", async (t) => {
     assert.ok(r.gruende.some((g) => /Ruhepuls/.test(g)) && r.gruende.some((g) => /Schlaf/.test(g)), r.gruende.join("; "));
     for (let i = 2; i < 7; i++) assert.equal(kurz(sim.log.get(tag(W3, i)).einheiten), kurz(kontrolle.log.get(tag(W3, i)).einheiten));
   });
-  await t.test("H2 fehlende Garmin-Daten zählen nicht als Ruhetage: die nächste Woche plant nicht weniger", { todo: "V8.3 Täglicher Coach (Datenstand)" }, () => {
-    // heute: die Basis-Fitness am Montag sinkt, weil die Tage ohne Daten wie Ruhetage zählen
-    const nW = addDays(W3, 7);
-    assert.ok(sim.wochenMinuten(nW) >= kontrolle.wochenMinuten(nW), `nächste Woche ${sim.wochenMinuten(nW)} gegen ${kontrolle.wochenMinuten(nW)} min`);
+  await t.test("H2 fehlende Garmin-Daten zählen nicht als Ruhetage: die Fitness gilt vom letzten Tag mit Daten (basis-1.2)", () => {
+    const nW = addDays(W3, 7), V75 = sim.win.V75;
+    const B = V75.basisDaten(sim.D.activities, nW, null, { datenBis: V75.datenBis(sim.D) }), roh = V75.basisDaten(sim.D.activities, nW);
+    assert.deepEqual(B.luecke && [B.luecke.von, B.luecke.fitness_bis], [ab, tag(W3, 1)]);
+    for (const s of ["rad", "lauf", "schwimm"]) assert.ok(B[s].fitness >= roh[s].fitness, s);
+    assert.ok(B.rad.fitness > roh.rad.fitness, `${B.rad.fitness} > ${roh.rad.fitness}`);
+    assert.deepEqual(sim.win.V75UI.basisDaten(nW).luecke, B.luecke, "die Seite rechnet mit dem Datenstand");
+    // nicht weniger, weil Daten fehlen: höchstens so viel tiefer wie das Training nach dem letzten Datentag an Fitness gebracht hätte
+    assert.ok(sim.wochenMinuten(nW) >= 0.95 * kontrolle.wochenMinuten(nW), `nächste Woche ${sim.wochenMinuten(nW)} gegen ${kontrolle.wochenMinuten(nW)} min`);
   });
   await t.test("H3 Heute zeigt den eingeschränkten Datenstand durchgängig (Empfehlung, Ampel, Form)", { todo: "V8.6 Coach-Dashboard" }, () => {
     assert.ok(sim.win.V86 && typeof sim.win.V86.datenstand === "function", "Datenstand auf Heute (V8.6) fehlt");

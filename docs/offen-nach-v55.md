@@ -291,3 +291,14 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 117. **Grenzen und Mindestzahlen** (6 Fälle, 4 Wochen, 8 Block-Paare, Blockbilanz Fitness 3, Ruhepuls 1,5, HRV 5 %, Effizienz 2 %) sind eigene Festlegungen; nach einem
      halben Jahr mit mehr Daten prüfen.
 
+## Nach V8.3 (18.11.2026, Täglicher Coach)
+102. (Stand) A3, B3, D3, E2 und H2 sind normale Tests; F2 (V8.4) und H3 (V8.6) bleiben «todo».
+105. (Stand) Für den Coach reichte der Abgleich über «mehr als geplant» (D3); das Körpermodell Laufen im Simulator ist weiter nicht auf TL ≈ abgeglichen.
+118. **Verlängern** schlägt der Coach noch nicht vor (nur Tauschen, locker, Kurzfassung, Nachholen) – die Seite macht von selbst nie mehr; eine Verlängerung käme nur mit einer klaren Regel
+     (z. B. mehr Zeit als geplant und Woche unter dem Plan) und Silas' Okay.
+119. **Schmerzen und Motivation** aus dem Check-in wirken weiter nur über die Ampel; ein Vorschlag «heute Rad statt Laufen» bei Schmerzen am Fuss wäre ein Sportwechsel und kommt
+     nur mit Silas' Okay.
+120. **Automatik in Grenzen:** Der Coach ändert nichts von selbst. Ob und in welchen Grenzen (z. B. nur kürzer oder lockerer) er später selbst handeln darf, entscheidet Silas nach
+     dem Probelauf.
+121. **Wochenübergreifend** tauscht der Coach nicht (nur innerhalb Mo–So); am Sonntag prüft er den Montag, tauscht aber nur innerhalb der neuen Woche.
+

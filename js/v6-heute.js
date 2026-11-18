@@ -51,6 +51,7 @@
     try { kacheln(); } catch (e) { console.error(e); }
     try { plan(); } catch (e) { console.error(e); }
     try { woche(); } catch (e) { console.error(e); }
+    try { if (window.V83UI && window.V83UI.heute) window.V83UI.heute(); } catch (e) { console.error(e); }   // V8.3 Tagescoach
   };
 
   /* ---------- Kacheln: Bereitschaft, Status, Check-in ---------- */

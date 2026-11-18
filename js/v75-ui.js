@@ -62,7 +62,7 @@
     C = C || (UI() && UI().C); if (!C || !V75() || !mo) return null;
     const k = `${(C.D.activities || []).length}|${C.D.updated || ""}|${(C.D.config && C.D.config.load_model) || ""}`;
     if (BD.k !== k) BD = { k, m: new Map() };
-    if (!BD.m.has(mo)) { let d = null; try { d = V75().basisDaten(C.D.activities, mo); } catch (e) { console.error(e); } BD.m.set(mo, d); }
+    if (!BD.m.has(mo)) { let d = null; try { d = V75().basisDaten(C.D.activities, mo, null, { datenBis: V75().datenBis ? V75().datenBis(C.D) : null }); } catch (e) { console.error(e); } BD.m.set(mo, d); }
     return BD.m.get(mo);
   };
   /** Stand der laufenden Woche aus der Woche nach Modell: Saison, Vorgaben («jetzt», Spitze), Basis und Rampe. */

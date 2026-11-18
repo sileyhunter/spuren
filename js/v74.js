@@ -3,10 +3,10 @@
    - Entscheid je Tag aus der Ampel (readiness-2.1): «bereit», «normal» und «nicht beurteilbar» = wie geplant; «vorsichtig» = keine harten und
      keine mittleren Abschnitte (lockere Einheit derselben Sportart; lange Einheiten höchstens zwei Drittel); Krankheitszeichen = Ruhetag.
      Ohne Morgenwerte von heute (Schlaf oder HRV der Nacht) zählt nur der Check-in.
-   - Nachholen: eine Schlüsseleinheit, die locker wurde, kommt am nächsten passenden Tag derselben Woche an die Stelle einer lockeren Einheit
-     derselben Sportart (keine harte Einheit daneben bzw. am selben Tag, nicht am Tag vor einem Test oder Rennen, nicht an gesperrten Tagen,
-     nur mit genug Zeit); ob sie stattfindet, entscheidet die Ampel jenes Morgens. In Rennwochen und nach Krankheitszeichen wird nichts
-     nachgeholt; passt kein Tag, entfällt sie – gemeldet, nie still.
+   - Nachholen (seit ampel-plan-1.2 nur als Vorschlag): für eine Schlüsseleinheit, die locker wurde, sucht die Schicht den nächsten passenden kommenden
+     Tag derselben Woche (an Stelle einer lockeren Einheit derselben Sportart, keine harte Einheit daneben bzw. am selben Tag, nicht am Tag vor einem
+     Test oder Rennen, nicht an gesperrten Tagen, nur mit genug Zeit) und meldet ihn; eingeplant wird erst, wenn du den Vorschlag des Tagescoaches
+     annimmst (js/v83.js). In Rennwochen und nach Krankheitszeichen kein Vorschlag; passt kein Tag, entfällt sie – gemeldet, nie still.
    - Gesperrte Einheiten und Tage bleiben unverändert (nur Hinweis). «Trotzdem wie geplant» gilt je Tag.
    - Gespeichert wird je Tag nur der Entscheid (Eingabe «ampel» → ampel_anpassung); die Schicht wird beim Zeichnen angewendet, Mein Plan bleibt.
    Die Schicht macht eine Einheit nur leichter oder kürzer, nie härter oder länger, und nie zu einer anderen Sportart. */
@@ -17,7 +17,8 @@
   if (root) root.V74 = V74;
 })(typeof window !== "undefined" ? window : null, function (V64, V66) {
   "use strict";
-  const V74 = { VERSIONS: { ampelplan: "ampel-plan-1.1" } };            // 1.1 (V7.6.1): kein Nachholen von Rad oder Laufen am Tag nach einem Krafttraining
+  const V74 = { VERSIONS: { ampelplan: "ampel-plan-1.2" } };            // 1.1 (V7.6.1): kein Nachholen von Rad oder Laufen am Tag nach einem Krafttraining
+                                                                        // 1.2 (V8.3): Nachholen nur noch als Vorschlag (Tagescoach, js/v83.js), nie von selbst
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
   const add = (iso, n) => { const d = new Date(Date.parse(iso + "T12:00:00Z") + n * 864e5); return d.toISOString().slice(0, 10); };
@@ -123,7 +124,8 @@
    * Mein Plan einer Woche mit der Ampel-Schicht (was galt bzw. gilt). w = Woche aus V66.meinPlan; stand(date) → { status, gruende, hinweis,
    * trotzdem } oder null (kein Entscheid: wie geplant); opt = { ctx: { phase, css_s } (Einheiten), verf: Verfügbarkeit (V66.verfuegbarkeit) }.
    * → neue Woche; Tage mit Entscheid tragen `ampel` = { status, gruende, hinweis, trotzdem, geaendert [{uid, von, nach, grund}],
-   *   nachholen [{titel, nach}], weg [{titel, grund}], gesperrt [Titel] }; nachgeholte Einheiten tragen `ampel.nachgeholt`. Ohne Wirkung: w.
+   *   nachholen [{titel, nach, dauer, vorschlag: true, von_uid, ziel {uid, titel, dauer}, einheit {titel, dauer, sport}, spec}], weg [{titel, grund}],
+   *   gesperrt [Titel] }. ampel-plan-1.2: nachgeholt wird nie von selbst – nachholen nennt nur den passenden Tag (Vorschlag). Ohne Wirkung: w.
    */
   V74.woche = function (w, stand, opt) {
     if (!w || !Array.isArray(w.tage) || typeof stand !== "function") return w;
@@ -139,8 +141,11 @@
       return tage[i].ampel;
     };
     // Platz für eine nachgeholte Einheit H an Tag i: Index der lockeren Einheit derselben Sportart, die sie ersetzt, oder −1
+    const reserviert = new Map();                                           // Tag → vorgeschlagene Einheit (zählt für die Nachbartage als hart)
+    const mitRes = (k) => (tage[k] ? tage[k].einheiten.concat(reserviert.has(k) ? [reserviert.get(k)] : []) : []);
     const platz = (i, H) => {
       const t = tage[i], nach = tage[i + 1];
+      if (S[i] || reserviert.has(i)) return -1;                             // nur kommende Tage (ohne Entscheid), je Tag ein Vorschlag
       if (t.rennen || t.gesperrt || t.einheiten.some(istTest)) return -1;
       if (nach && (nach.rennen || nach.einheiten.some(istTest))) return -1;                       // nicht am Tag vor einem Test oder Rennen
       const vor = tage[i - 1];                                                                    // V7.6 kraft-plan-1.1: nicht am Tag nach einem Krafttraining (Rad, Laufen)
@@ -148,7 +153,7 @@
       // V7.7 aktivitaet-plan-1.0: nicht am Tag einer Aktivität draussen, als Rad- oder Laufeinheit nicht neben einer ab 2 h
       if (t.einheiten.some((x) => x.art === "draussen")) return -1;
       if ((H.sport === "rad" || H.sport === "lauf") && [vor, nach].some((n) => n && n.einheiten.some((x) => x.art === "draussen" && (x.dauer || 0) >= 120))) return -1;
-      for (const k of [i - 1, i, i + 1]) { const n = tage[k]; if (n && n.einheiten.some((x) => hartAmTag(x) && stoert(x, H))) return -1; }
+      for (const k of [i - 1, i, i + 1]) { if (mitRes(k).some((x) => hartAmTag(x) && stoert(x, H))) return -1; }
       const j = t.einheiten.findIndex((x) => x.sport === H.sport && x.id === LOCKER[x.sport] && !x.gesperrt && x.quelle !== "bibliothek" && !x.ampel);
       if (j < 0) return -1;
       const v = o.verf ? o.verf(t.date) : null;
@@ -169,18 +174,23 @@
       const k = V66.einheit(spec, ctx);
       return k && k.dauer <= X.dauer && V74.nachholbar(k) ? k : null;
     };
-    const ersetzt = new Map();                                              // nachgeholte Einheit → die lockere Einheit, deren Platz sie nahm
+    const specVon = (P) => {                                                // gespeicherte Form der vorgeschlagenen Einheit (für V66.aendern «ersetzen»)
+      if (P.art === "bibliothek") return { quelle: "bibliothek", wid: P.wid, sport: P.sport, titel: P.titel, dauer: P.dauer };
+      const s = { vorlage: P.id, dauer: P.dauer, quelle: "eigen" };
+      for (const k of ["metrik"]) if (P[k] != null && P[k] !== false) s[k] = P[k];
+      if (P.drinnen_fest) s.drinnen = !!P.drinnen;
+      return s;
+    };
     const offen = [];                                                       // ausgefallene Schlüsseleinheiten { e, von, i }
     for (let i = 0; i < tage.length; i++) {
       const t = tage[i];
-      for (const q of offen.slice()) {                                      // a) nachholen, bevor der Tag selbst entschieden wird
+      for (const q of offen.slice()) {                                      // a) passender kommender Tag zum Nachholen – nur als Vorschlag (ampel-plan-1.2)
         const j = platz(i, q.e); if (j < 0) continue;
         const X = t.einheiten[j], P = passend(q.e, X); if (!P) continue;
-        const H = Object.assign({}, P, { uid: X.uid, ampel: { nachgeholt: { von: q.von, titel: q.e.titel }, ersetzt: kurz(X) } });
-        delete H.gesperrt; if (X.uhrzeit) H.uhrzeit = X.uhrzeit; else delete H.uhrzeit;
-        t.einheiten[j] = H; ersetzt.set(H, X);
+        reserviert.set(i, P);
         offen.splice(offen.indexOf(q), 1);
-        info(q.i).nachholen.push({ titel: q.e.titel, nach: t.date, dauer: H.dauer });
+        info(q.i).nachholen.push({ titel: q.e.titel, nach: t.date, dauer: P.dauer, vorschlag: true, von_uid: q.e.uid,
+          ziel: { uid: X.uid, titel: X.titel, dauer: X.dauer }, einheit: { titel: P.titel, dauer: P.dauer, sport: P.sport }, spec: specVon(P) });
       }
       const s = S[i];                                                       // b) Entscheid dieses Tages
       if (!s || (s.status !== "vorsichtig" && s.status !== "krank")) continue;
@@ -197,12 +207,6 @@
       }
       t.einheiten = t.einheiten.map((e) => {
         if (e.gesperrt) { A.gesperrt.push(e.titel); return e; }
-        if (ersetzt.has(e)) {                                               // nachgeholt, aber auch hier «vorsichtig»: die lockere Einheit des Tages
-          const X = ersetzt.get(e), nx = V74.locker(X, ctx);                // gilt wieder (nie länger als geplant), nicht nochmals verschoben
-          A.weg.push({ titel: e.titel, grund: `nachgeholt vom ${V74.wochentag(e.ampel.nachgeholt.von)}, auch hier «vorsichtig» – entfällt` });
-          if (nx) A.geaendert.push({ uid: X.uid, von: kurz(X), nach: kurz(nx), grund: nx.ampel.grund });
-          return nx || X;
-        }
         const n = V74.locker(e, ctx);
         if (!n) return e;
         A.geaendert.push({ uid: e.uid, von: kurz(e), nach: kurz(n), grund: n.ampel.grund });
@@ -220,7 +224,7 @@
       const A = t.ampel; if (!A || A.trotzdem) continue;
       const wt = V74.wochentag(t.date).slice(0, 2);
       for (const g of A.geaendert) hinweise.push(g.nach ? `Ampel ${wt}: «${g.nach.titel}» ${g.nach.dauer} min statt «${g.von.titel}» ${g.von.dauer} min` : `Ampel ${wt}: «${g.von.titel}» entfällt (Ruhetag)`);
-      for (const x of A.nachholen) hinweise.push(`Ampel: «${x.titel}» nachgeholt am ${V74.wochentag(x.nach)}`);
+      for (const x of A.nachholen) hinweise.push(`Ampel: «${x.titel}» – nachholen am ${V74.wochentag(x.nach)} möglich (Vorschlag des Coaches)`);
       for (const x of A.weg) hinweise.push(`Ampel: «${x.titel}» entfällt – ${x.grund}`);
     }
     out.hinweise = (w.hinweise || []).concat(hinweise);

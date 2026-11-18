@@ -130,16 +130,20 @@
   M.nachtGelaufen = () => bereit() && nachtGelaufen();
   M.gesendet = () => (bereit() ? gesendet() : []);
 
+  /** Kontext für V66.aendern aus der Woche, wie sie gilt (Vorschlag, Verfügbarkeit, Verteilung, Erholungswoche, Aktivitäten draussen). */
+  function aendernCtx(K, mo, a) {
+    const vorschlag = (d) => ((K.w0 || K.w).tage.find((t) => t.date === d) || { einheiten: [] }).einheiten;
+    const roh = (d) => ((K.w0roh || K.w0 || K.w).tage.find((t) => t.date === d) || { einheiten: [] }).einheiten;
+    return { heute: heute(), montag: mo, vorschlag, roh, verf: K.verf || null, verteilt: !!K.verteilt, ctxE: K.ctxE, lang: K.lang || null,
+      o: { phase: K.w.phase, css_s: K.css ? K.css.s : null, kurz: !!(K.w.taper || K.w.erholung) }, jetzt: new Date().toISOString(),
+      erholung: K.erh || null, grund: a && a.art === "erholung" ? "Ampel: mehrere Tage «vorsichtig» (ampel-plan-1.0)" : null,
+      ersetzen: window.V77 ? (E, x) => window.V77.ersetzenGespeichert(E, x.akt, heute(), K.ctxE, x.schon) : null };   // V7.7 aktivitaet-plan-1.0
+  }
   /** Eine Änderung anwenden (V66.aendern) und über «Direkt speichern» sichern; → Fehlertext oder null. */
   async function aendern(mo, a) {
     if (!bereit()) return "Seite noch nicht bereit";
     const K = kontext(mo); if (!K) return "Plan dieser Woche nicht berechenbar";
-    const vorschlag = (d) => ((K.w0 || K.w).tage.find((t) => t.date === d) || { einheiten: [] }).einheiten;
-    const roh = (d) => ((K.w0roh || K.w0 || K.w).tage.find((t) => t.date === d) || { einheiten: [] }).einheiten;
-    const r = V66().aendern(P().planEintrag(mo), a, { heute: heute(), montag: mo, vorschlag, roh, verf: K.verf || null, verteilt: !!K.verteilt, ctxE: K.ctxE, lang: K.lang || null,
-      o: { phase: K.w.phase, css_s: K.css ? K.css.s : null, kurz: !!(K.w.taper || K.w.erholung) }, jetzt: new Date().toISOString(),
-      erholung: K.erh || null, grund: a.art === "erholung" ? "Ampel: mehrere Tage «vorsichtig» (ampel-plan-1.0)" : null,
-      ersetzen: window.V77 ? (E, x) => window.V77.ersetzenGespeichert(E, x.akt, heute(), K.ctxE, x.schon) : null });   // V7.7 aktivitaet-plan-1.0
+    const r = V66().aendern(P().planEintrag(mo), a, aendernCtx(K, mo, a));
     if (r.fehler) return r.fehler;
     const EN = P().entwurf;
     if (EN && EN.aktiv()) { EN.neu(mo, r.eintrag, a); neuZeichnen(); return null; }   // V7.9 bearbeiten-1.0: im Bearbeiten-Modus erst mit ✓ gespeichert
@@ -152,6 +156,28 @@
     return null;
   }
   M.aendern = aendern;
+  /** V8.3 tagescoach-1.0: mehrere Änderungen einer Woche nacheinander (V66.aendern) und einmal speichern – für angenommene Vorschläge des Coaches
+   *  und ihr Zurückholen. Schlägt eine fehl, wird nichts gespeichert. Nicht im Bearbeiten-Modus. → Fehlertext oder null */
+  M.aendernFolge = async function (mo, aktionen) {
+    if (!bereit()) return "Seite noch nicht bereit";
+    if (P().entwurf && P().entwurf.aktiv()) return IM_ENTWURF;
+    const K = kontext(mo); if (!K) return "Plan dieser Woche nicht berechenbar";
+    let E = P().planEintrag(mo);
+    for (const a of aktionen || []) {
+      const r = V66().aendern(E, a, aendernCtx(K, mo, a));
+      if (r.fehler) return r.fehler;
+      E = r.eintrag;
+    }
+    const I = UI().Inbox; if (!I || !I.data) return "Speicher auf diesem Gerät nicht verfügbar";
+    if (!Array.isArray(I.data.planwoche)) I.data.planwoche = [];
+    await I.upsert("planwoche", E);
+    for (const a of aktionen || []) {
+      const tage = [a.date].concat(a.nach ? [a.nach] : []).filter((d) => d >= heute());
+      try { await auftraegeNachfuehren(tage, a); } catch (e) { console.error(e); }
+    }
+    neuZeichnen();
+    return null;
+  };
   /** V7.9 bearbeiten-1.0: Entwurf speichern (✓) – jede geänderte Woche über «Direkt speichern», danach die offenen Garmin-Aufträge der betroffenen Tage
    *  wie nach jeder einzelnen Änderung (verschobene Einheiten behalten ihre Auswahl). → Fehlertext oder null */
   M.entwurfSpeichern = async function () {
@@ -189,7 +215,8 @@
     const W = V6(), S = V66().schaetzung(e, bezug(K)), hk = e.teile && e.teile.length && P().hauptKey ? P().hauptKey(e) : null;
     let st = null; try { const A = ds ? auftrag(ds) : null; st = ds ? V66().garminStand(e, ds, skalen(), gesendet(), A && (A.lokal ? Object.assign({ status: "offen" }, A.a) : A.a), swOpt(ds, K)) : null; } catch (err) { console.error(err); }
     const teile = [W.dauerText(e.dauer * 60), isNum(S.tl) ? `TL ≈ ${S.vollstaendig ? "" : "mind. "}${S.tl}` : "", isNum(S.km) && S.km > 0 ? `≈ ${komma(S.km)} km` : "", st ? STAND_WORT[st] : ""].filter(Boolean);
-    const q = (e.kraft_plan ? (e.kraft_auto ? "Tag automatisch" : "fester Termin") : e.art === "draussen" ? "draussen" : e.quelle === "eigen" ? "eigen" : e.quelle === "bibliothek" ? "Bibliothek" : "Vorschlag") + (e.ampel ? (e.ampel.von ? " · Ampel" : " · nachgeholt") : "");   // V7.6
+    const cm = ds && window.V83UI && window.V83UI.marke ? window.V83UI.marke(ds, e.uid) : null;   // V8.3: vom Coach geändert
+    const q = (e.kraft_plan ? (e.kraft_auto ? "Tag automatisch" : "fester Termin") : e.art === "draussen" ? "draussen" : cm ? "Coach" : e.quelle === "eigen" ? "eigen" : e.quelle === "bibliothek" ? "Bibliothek" : "Vorschlag") + (e.ampel ? (e.ampel.von ? " · Ampel" : " · nachgeholt") : "");   // V7.6
     if (e.uhrzeit) teile.unshift(e.uhrzeit);                               // V7.3: Uhrzeit aus «Festlegen»
     return `<button type="button" class="mo-e mp-e${e.quelle === "eigen" ? " eigen" : ""}" data-mpe="${esc(e.uid)}">
       <span class="mo-sp" style="--sp:${spFarbe(e.sport)}">${W.sportIcon(e.sport, 16)}</span>
@@ -199,7 +226,8 @@
   function zeileEinheit(e, K, ds) {
     const W = V6(), S = V66().schaetzung(e, bezug(K));
     let st = null; try { const A = ds ? auftrag(ds) : null; st = ds ? V66().garminStand(e, ds, skalen(), gesendet(), A && (A.lokal ? Object.assign({ status: "offen" }, A.a) : A.a), swOpt(ds, K)) : null; } catch (err) { console.error(err); }
-    const q = e.kraft_plan ? (e.kraft_auto ? "Tag automatisch" : "fester Termin") : e.art === "draussen" ? "draussen" : e.art === "eigen" ? `eigen · RPE ${e.rpe}` : e.quelle === "eigen" ? "eigen" : e.quelle === "bibliothek" ? "Bibliothek" : "Vorschlag";
+    const cm = ds && window.V83UI && window.V83UI.marke ? window.V83UI.marke(ds, e.uid) : null;   // V8.3: vom Coach geändert
+    const q = e.kraft_plan ? (e.kraft_auto ? "Tag automatisch" : "fester Termin") : e.art === "draussen" ? "draussen" : e.art === "eigen" ? `eigen · RPE ${e.rpe}` : cm ? `Coach · ${cm}` : e.quelle === "eigen" ? "eigen" : e.quelle === "bibliothek" ? "Bibliothek" : "Vorschlag";
     let prof = ""; try { prof = e.teile && e.teile.length && e.teile[0][0] !== "ohne" && P().profil ? W.profilSVG(P().profil(e), { h: 30 }) : ""; } catch (err) { prof = ""; }
     const z = [e.uhrzeit, window.V78 ? window.V78.zeile(e.dauer, S) : W.dauerText(e.dauer * 60), st ? STAND_WORT[st] : null].filter(Boolean).join(" · ");
     return `<button type="button" class="k4-e tb-e${e.quelle === "eigen" ? " eigen" : ""}" data-mpe="${esc(e.uid)}">
@@ -260,6 +288,7 @@
          <small>${t.gesperrt ? "Gesperrt: «Woche leeren», «Anpassen» und «Neu berechnen» lassen ihn stehen." : "Einheiten und Tage sperrst du auch im Kalender unter «Bearbeiten»."}</small></div>`;
     // V7.4 ampel-plan-1.0: Anpassung durch die Ampel (Gründe, ursprüngliche Einheit, «Trotzdem wie geplant») und «Woche anpassen?»
     let ampel = ""; try { ampel = window.V74UI ? window.V74UI.banner(ds, t) + window.V74UI.erholungKarte(ds, K) : ""; } catch (err) { console.error(err); }
+    try { if (window.V83UI && window.V83UI.tag) ampel += window.V83UI.tag(ds); } catch (err) { console.error(err); }   // V8.3 Vorschläge des Coaches für diesen Tag
     return `${woche}${formHTML(ds)}${ampel}<h3 class="abschnitt mp-kopf">Mein Plan ${status}</h3><div class="mp-liste tb-liste4">${karten}</div>${aufbau}${zeilen}
       ${vorbei ? "" : vfInline(ds, K)}${kraftHTML(ds, K)}<div class="tb-unten">${akt}${garminHTML(ds, t)}</div><p class="warn-t" data-mpfehler hidden></p>`;
   };

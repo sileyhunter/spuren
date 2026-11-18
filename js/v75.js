@@ -24,7 +24,8 @@
   if (root) root.V75 = V75;
 })(typeof window !== "undefined" ? window : null, function (V64) {
   "use strict";
-  const V75 = { VERSIONS: { einstellungen: "planeinstellungen-1.0", basis: "basis-1.1", steigerung: "steigerung-1.0", indoor: "indoor-phase-1.0" } };
+  const V75 = { VERSIONS: { einstellungen: "planeinstellungen-1.0", basis: "basis-1.2", steigerung: "steigerung-1.0", indoor: "indoor-phase-1.0" } };
+  // basis-1.2 (V8.3, Datenstand): Tage nach den letzten Garmin-Daten zählen nicht als Ruhetage – die Fitness gilt dann vom letzten Tag mit Daten
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const T = (iso) => Date.parse(iso + "T12:00:00Z");
   const add = (iso, n) => new Date(T(iso) + n * 864e5).toISOString().slice(0, 10);
@@ -205,9 +206,13 @@
   /** Grundlagen der Basis am Montag «montag»: Fitness je Sportart bis zum Sonntag davor (V75.fitness) und Last pro Stunde der 8 abgeschlossenen
    *  Wochen davor (Last ÷ Bewegungszeit mv bzw. dur wie saison-1.2); mit weniger als einer Stunde der Sportart die 52 Wochen davor.
    *  → { schwimm: { fitness, tl_h, h, wochen }, rad, lauf, stand: montag } */
-  V75.basisDaten = function (acts, montag, last) {
+  V75.basisDaten = function (acts, montag, last, opt) {
     last = last || ((a) => (isNum(a.tss) ? a.tss : 0));
-    const F = V75.fitness(acts, montag, last), out = { stand: montag };
+    // basis-1.2: liegen die letzten Garmin-Daten vor dem Sonntag (Nacht-Update ausgefallen, Uhr nicht synchronisiert), gilt die Fitness vom letzten
+    // Tag mit Daten – die Tage danach sind unbekannt, nicht trainingsfrei (sonst plante die nächste Woche weniger)
+    const db = opt && typeof opt.datenBis === "string" ? opt.datenBis : null, luecke = !!db && db < add(montag, -1);
+    const F = V75.fitness(acts, luecke ? add(db, 1) : montag, last), out = { stand: montag };
+    if (luecke) out.luecke = { von: add(db, 1), bis: add(montag, -1), fitness_bis: db };
     const fenster = (tage) => {
       const von = add(montag, -tage), r = { schwimm: { tl: 0, h: 0 }, rad: { tl: 0, h: 0 }, lauf: { tl: 0, h: 0 } };
       for (const a of acts || []) {
@@ -224,6 +229,16 @@
       out[s] = { fitness: F[s], tl_h: q.h >= 1 && q.tl > 0 ? Math.round((q.tl / q.h) * 10) / 10 : null, h: Math.round(q.h * 10) / 10, wochen };
     }
     return out;
+  };
+  /** basis-1.2: letzter Tag mit Garmin-Daten. Mit Protokoll der Nacht-Updates (fit_log) gilt der spätere von letzter Aktivität und letzter Nacht (das
+   *  Nacht-Update holt die Einheiten des Tages); ohne Protokoll der spätere von letzter Aktivität und letzten Morgenwerten (HRV, Ruhepuls, Schlaf). */
+  V75.datenBis = function (D) {
+    const m = (a, b) => (!a ? b : !b ? a : a > b ? a : b);
+    let akt = null, tag = null, nacht = null;
+    for (const a of (D && D.activities) || []) if (a && a.date) akt = m(akt, a.date);
+    for (const d of (D && D.days) || []) if (d && d.date && ((isNum(d.hrv) && d.hrv > 0) || (isNum(d.rhr) && d.rhr > 20) || (isNum(d.sleepH) && d.sleepH > 0))) tag = m(tag, d.date);
+    for (const x of (D && D.fit_log) || []) if (x && typeof x.nacht === "string") nacht = m(nacht, x.nacht);
+    return nacht ? m(akt, nacht) : m(akt, tag);
   };
   /** Fitness je Sportart (wie pmc-2.0: x += (Last − x)/42 je Kalendertag, Tage ohne Training mit 0) am Ende des Vortags von «heute».
    *  last(a) = Last einer Aktivität (Standard a.tss, so wie die Seite sie nach config.load_model rechnet). Ohne Einheit der Sportart: null. */

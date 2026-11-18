@@ -1739,5 +1739,24 @@ check("verpflegung-1.0 (merge_daily): Lebensmittel aus Garmin als ganze Liste, A
       and any(x.get("id") == "pe-verpflegung" and x.get("davor") == ["t-ban"] for x in _DVP.get("plan_einstellungen") or []),
       json.dumps({k: _DVP.get(k) for k in ("plan_verpflegung", "plan_einstellungen")})[:400])
 
+# ---------- V8.3 tagescoach-1.0: Entscheide zu Vorschlägen des Coaches (tools/tagescoach.py, merge_daily tagescoach_add → coach_entscheide) ----------
+import tagescoach as TC  # noqa: E402
+_tce = {"id": "co-2026-12-17-last-v-2026-12-17-0", "v": "tagescoach-1.0", "status": "angenommen", "am": "2026-12-17T06:40:00.000Z", "date": "2026-12-17",
+        "anlass": "last", "titel": "Do: «Rad 30/15» nach einer härteren Einheit", "art": "locker", "woche": "2026-12-14", "option": "«Grundlage» 60 min statt «Rad 30/15»",
+        "rueck": [{"art": "ersetzen", "date": "2026-12-17", "uid": "v-2026-12-17-0", "einheit": {"uid": "v-2026-12-17-0", "vorlage": "rad_vo2", "dauer": 60, "quelle": "vorschlag"}}],
+        "markiert": [{"date": "2026-12-17", "uid": "v-2026-12-17-0", "vorher": "statt «Rad 30/15»"}]}
+check("tagescoach-1.0: Entscheid geprüft (ID passt zu Datum und Anlass, Status, Rückweg nur mit bekannten Änderungen, Woche = Montag)",
+      TC.pruefen(_tce) is None and TC.pruefen({k: v for k, v in _tce.items() if k not in ("art", "woche", "rueck", "markiert", "option")} | {"status": "abgelehnt"}) is None
+      and TC.pruefen(dict(_tce, anlass="morgen")) and TC.pruefen(dict(_tce, woche="2026-12-15")) and TC.pruefen(dict(_tce, rueck=[]))
+      and TC.pruefen(dict(_tce, rueck=[{"art": "verschieben", "date": "2026-12-17", "uid": "x"}])) and TC.pruefen(dict(_tce, status="ok")))
+_tcd = tempfile.mkdtemp()
+json.dump({"activities": [], "days": [], "config": {}}, open(os.path.join(_tcd, "d.json"), "w"))
+json.dump({"tagescoach_add": [_tce, dict(_tce, status="zurueck", am="2026-12-17T06:30:00.000Z"), dict(_tce, id="co-2026-12-18-zeit-x", date="2026-12-18", anlass="zeit", woche="2026-12-16")]},
+          open(os.path.join(_tcd, "e.json"), "w"))
+merge_daily.main(os.path.join(_tcd, "d.json"), os.path.join(_tcd, "e.json"))
+_DTC = json.load(open(os.path.join(_tcd, "d.json")))
+check("tagescoach-1.0 (merge_daily): Entscheide nach coach_entscheide, der spätere Zeitpunkt gilt, ungültige abgelehnt",
+      [(x["id"], x["status"]) for x in _DTC.get("coach_entscheide") or []] == [(_tce["id"], "angenommen")], json.dumps(_DTC.get("coach_entscheide"))[:300])
+
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)

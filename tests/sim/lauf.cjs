@@ -102,11 +102,24 @@ function simulator(opt) {
     if (haken.vorher) await haken.vorher(d, sim);
     await S.win.V74UI.pruefen();                                              // Seite geöffnet: Ampel-Entscheid von heute speichern
     S.neu();
+    // V8.3 Tagescoach: Vorschläge nach dem Öffnen der Seite; ein Szenario nimmt sie über haken.coach an (Liste von IDs bzw. { id, option })
+    let coach = S.win.V83UI && S.win.V83UI.pruefen ? S.win.V83UI.pruefen() : null;
+    const coachLog = (R) => (R ? R.vorschlaege.map((p) => ({ id: p.id, anlass: p.anlass, date: p.date, uid: p.uid, titel: p.titel, grund: p.grund, arten: p.optionen.map((o) => o.art) })) : []);
+    const vorCoach = coachLog(coach);
+    if (haken.coach && coach) {
+      const wahl = haken.coach(d, coach.vorschlaege || [], sim) || [];
+      for (const w of wahl) {
+        const f = await S.win.V83UI.annehmen(typeof w === "string" ? w : w.id, typeof w === "object" ? w.option || 0 : 0);
+        if (f) throw new Error(`Coach ${d}: ${f}`);
+        S.neu();
+      }
+      if (wahl.length) coach = S.win.V83UI.pruefen();
+    }
     const P = sim.plan(d), A = S.win.V74UI.live();
     const info = { ampel: A, einheiten: P.einheiten.map((e) => ({ uid: e.uid, sport: e.sport, art: e.art, titel: e.titel, dauer: e.dauer, stufe: stufe(e), gesperrt: !!e.gesperrt,
       ampel: e.ampel || null, tl: sim.tlPlan(e, P.K), teile: JSON.stringify(e.teile || []) })),
       plan: P.plan.map((e) => ({ uid: e.uid, sport: e.sport, art: e.art, titel: e.titel, dauer: e.dauer, stufe: stufe(e), gesperrt: !!e.gesperrt, teile: JSON.stringify(e.teile || []) })),
-      tag: P.t ? { gesperrt: !!P.t.gesperrt, rennen: !!P.t.rennen } : null, absolviert: [] };
+      tag: P.t ? { gesperrt: !!P.t.gesperrt, rennen: !!P.t.rennen } : null, absolviert: [], coach: vorCoach, coachDanach: coachLog(coach) };
     S.uhr(d, "19:00");
     const aus = haken.ausfuehren ? haken.ausfuehren(d, P.einheiten, info) : null;
     const liste = aus || P.einheiten.filter((e) => !["test"].includes(e.art) || true).map((e) => {

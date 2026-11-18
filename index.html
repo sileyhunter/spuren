@@ -1050,6 +1050,11 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
       <div class="v6-voll v6-kacheln" id="heute-kacheln" role="group" aria-label="Bereitschaft, Status und Check-in"></div>
       <div class="card w12 ci-card gruss-karte" id="checkin-card"><div id="checkin" aria-live="polite"><p class="hint">Check-in wird geladen …</p></div></div>
       <div class="v6-voll ek-liste" id="heute-plan" aria-live="polite"></div>
+      <!-- V8.3 Tagescoach (js/v83.js, js/v83-ui.js): Vorschläge mit Grund, Annehmen und Ablehnen -->
+      <div class="card w12 co-karte" id="coach-card">
+        <div class="card-head"><div><h2>Coach</h2><div class="sub">Prüft heute und die nächsten Tage mit deinen Morgenwerten, Einheiten und deiner Zeit</div></div></div>
+        <div id="coach" aria-live="polite"><p class="hint">Coach wird geladen …</p></div>
+      </div>
       <div class="card w12" id="woche-card">
         <div class="card-head"><div><h2>Diese Woche</h2></div></div>
         <div id="wochen-leiste"></div>
@@ -1746,6 +1751,8 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <script src="js/verpflegung-ui.js"></script>
 <script src="js/v82.js"></script>
 <script src="js/v82-ui.js"></script>
+<script src="js/v83.js"></script>
+<script src="js/v83-ui.js"></script>
 <script>
 (() => {
   const b64d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));

@@ -52,7 +52,7 @@ test("planeinstellungen-1.0: Daten und Gerät zusammengeführt (neuere Fassung j
 
 /* ---------------- Basis je Sportart ---------------- */
 test("basis-1.1: Variante A – Start je Sportart = 7 × Fitness ÷ Last pro Stunde, eigener Wert ersetzt, ohne Last pro Stunde «jetzt» × Anteil, wahlweise 20/50/30", () => {
-  assert.equal(V75.VERSIONS.basis, "basis-1.1");
+  assert.equal(V75.VERSIONS.basis, "basis-1.2");
   const D = { stand: "2026-11-16", schwimm: { fitness: 10, tl_h: 50 }, rad: { fitness: 42, tl_h: 60 }, lauf: { fitness: 30, tl_h: 70 } };
   const b = V75.basis({ jetzt: 8 }, V75.standard(), null, D);
   assert.equal(b.quelle, "fitness"); assert.equal(b.stand, "2026-11-16");
@@ -87,6 +87,23 @@ test("basis-1.1: Grundlagen am Montag – Fitness bis zum Sonntag, Last pro Stun
   assert.equal(D.rad.fitness, V75.fitness(acts, "2026-11-16").rad); assert.ok(D.rad.fitness > 50 && D.rad.fitness < 55, String(D.rad.fitness));
   const b = V75.basis({ jetzt: 8 }, V75.standard(), null, D);
   assert.ok(nah(b.rad.h, (7 * D.rad.fitness) / 60)); assert.equal(b.schwimm.quelle, "aufteilung");
+});
+
+test("basis-1.2: Tage nach den letzten Garmin-Daten zählen nicht als Ruhetage – Fitness vom letzten Tag mit Daten", () => {
+  const acts = [];
+  for (let i = 0; i < 80; i++) acts.push({ date: FK.addDays("2026-08-24", i), sport: "rad", mv: 3600, tss: 60 });   // bis Mi 11.11.
+  const days = acts.map((a) => ({ date: a.date, hrv: 60, rhr: 50, sleepH: 7 }));
+  // ohne Protokoll der Nacht-Updates: letzter Tag mit Aktivität oder Morgenwerten
+  assert.equal(V75.datenBis({ activities: acts, days }), "2026-11-11");
+  assert.equal(V75.datenBis({ activities: acts, days: days.concat([{ date: "2026-11-13", hrv: 61 }]) }), "2026-11-13", "Morgenwerte ohne Einheit: Ruhetag");
+  // mit Protokoll: die letzte Nacht zählt (Ruhetage mit Nacht-Update sind echte Ruhetage), Morgenwerte allein nicht
+  assert.equal(V75.datenBis({ activities: acts, days: days.concat([{ date: "2026-11-14", hrv: 61 }]), fit_log: [{ nacht: "2026-11-12" }] }), "2026-11-12");
+  const ohne = V75.basisDaten(acts, "2026-11-16"), mit = V75.basisDaten(acts, "2026-11-16", null, { datenBis: "2026-11-11" });
+  assert.ok(ohne.rad.fitness < mit.rad.fitness, `${ohne.rad.fitness} < ${mit.rad.fitness}`);
+  assert.equal(mit.rad.fitness, V75.fitness(acts, "2026-11-12").rad);
+  assert.deepEqual(mit.luecke, { von: "2026-11-12", bis: "2026-11-15", fitness_bis: "2026-11-11" });
+  assert.equal(V75.basisDaten(acts, "2026-11-16", null, { datenBis: "2026-11-15" }).luecke, undefined, "Daten bis Sonntag: keine Lücke");
+  assert.equal(mit.rad.tl_h, ohne.rad.tl_h, "Last pro Stunde unverändert");
 });
 
 test("basis-1.1: Start und eigene Basis-Fitness gelten ab der Woche nach dem Speichern; Standard «Basis-Fitness» ab 23.11.2026", () => {

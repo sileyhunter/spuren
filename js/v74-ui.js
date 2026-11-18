@@ -110,7 +110,7 @@
           ${(t.einheiten || []).some((e) => ds === h && uhr(ds, e) === "locker") ? `<p class="hint">Auf der Uhr steht die lockere Fassung vom Morgen-Update; die geplante Fassung steht hier.</p>` : ""}${knopf}</div>`;
       } else {
         const liste = A.geaendert.map((g) => `<li>${g.nach ? `«${esc(g.von.titel)}» ${esc(dauer(g.von.dauer))} → <b>«${esc(g.nach.titel)}» ${esc(dauer(g.nach.dauer))}</b>` : `«${esc(g.von.titel)}» entfällt`}${g.grund && g.grund.length ? `<small>${esc(g.grund.join("; "))}</small>` : ""}</li>`).join("");
-        const holen = A.nachholen.map((x) => `<p class="aa-text">Nachholen: «${esc(x.titel)}» am ${esc(wt(x.nach))}${x.dauer ? ` (${esc(dauer(x.dauer))})` : ""} – ob sie stattfindet, entscheidet die Ampel an jenem Morgen.</p>`).join("");
+        const holen = A.nachholen.map((x) => `<p class="aa-text">Nachholen möglich: «${esc(x.titel)}» am ${esc(wt(x.nach))}${x.dauer ? ` (${esc(dauer(x.dauer))})` : ""} – nur wenn du den Vorschlag des Coaches annimmst (ampel-plan-1.2).</p>`).join("");
         const weg = A.weg.map((x) => `<p class="warn-t">«${esc(x.titel)}» entfällt: ${esc(x.grund)}.</p>`).join("");
         const gesp = A.gesperrt.length ? `<p class="hint">Gesperrt, bleibt wie geplant: ${A.gesperrt.map((x) => `«${esc(x)}»`).join(", ")} – ${A.status === "krank" ? "mit Krankheitszeichen besser nicht trainieren" : "nach Gefühl locker"}.</p>` : "";
         const hart = ds === h ? (t.einheiten || []).filter((e) => e.ampel && e.ampel.von && uhr(ds, e) === "hart") : [];

@@ -265,7 +265,8 @@
   };
   /** Eine Änderung anwenden (rein, ohne Speichern). a.art: hinzufuegen {date, einheit}, entfernen {date, uid}, dauer {date, uid, dauer},
    *  verschieben {date, uid, nach}, sperren {date}, entsperren {date}, verwerfen, leeren; V7.3: einheit {date, uid, felder} (Uhrzeit, Sperre,
-   *  Metrik, drinnen, Einfahren, Pausen; gesperrte Einheiten nur entsperren, nie ändern, verschieben oder entfernen). ctx = { heute, montag, vorschlag(date) → Einheiten
+   *  Metrik, drinnen, Einfahren, Pausen; gesperrte Einheiten nur entsperren, nie ändern, verschieben oder entfernen); V8.3: ersetzen {date, uid, einheit}
+   *  (Vorschlag des Tagescoaches, gleiche Kennung). ctx = { heute, montag, vorschlag(date) → Einheiten
    *  des Vorschlags an diesem Tag, jetzt, neuId }. Vergangene Tage nur lesen, gesperrte Tage unveränderlich. → { eintrag } oder { fehler, eintrag }. */
   V66.aendern = function (eintrag, a, ctx) {
     ctx = ctx || {};
@@ -291,7 +292,10 @@
     switch (a.art) {
       case "hinzufuegen": {
         f = darf(a.date); if (f) break;
-        const s = Object.assign({ quelle: "eigen" }, a.einheit, { uid: (ctx.neuId || neuId)() });
+        // V8.3: beim Zurückholen eines Vorschlags des Coaches dieselbe Kennung wie vorher (sofern frei in der Woche), sonst eine neue
+        const vorhanden = (d) => (Array.isArray((E.tage[d] || {}).einheiten) ? E.tage[d].einheiten : vorschlagGespeichert(d, ctx.vorschlag ? ctx.vorschlag(d) : []));
+        const frei = typeof a.uid === "string" && a.uid && !wochenTage().some((d) => vorhanden(d).some((x) => x.uid === a.uid));
+        const s = Object.assign({ quelle: "eigen" }, a.einheit, { uid: frei ? a.uid : (ctx.neuId || neuId)() });
         f = V66.einheitPruefen(s); if (!f) liste(a.date).push(s);
         break;
       }
@@ -330,6 +334,16 @@
         // Inhalt geändert (Einfahren, Pausen, drinnen) = eigene Einheit wie beim Ändern der Dauer; Uhrzeit, Sperre und Metrik lassen die Quelle
         if (neu.quelle === "vorschlag" && ["ein_min", "pausen", "drinnen"].some((k) => neu[k] !== alt[k])) neu.quelle = "eigen";
         L[i] = neu;
+        break;
+      }
+      case "ersetzen": {                                               // V8.3 tagescoach-1.0: Einheit durch eine andere ersetzen (gleiche Kennung) – angenommener Vorschlag
+        f = darf(a.date); if (f) break;
+        const L = liste(a.date), i = finde(a.date, a.uid); if (i < 0) { f = "Einheit nicht gefunden"; break; }
+        if (L[i].gesperrt) { f = GESPERRT_E; break; }
+        const s = Object.assign({ quelle: "eigen" }, a.einheit || {}, { uid: a.uid });
+        delete s.gesperrt;
+        f = V66.einheitPruefen(s); if (f) break;
+        L[i] = s;
         break;
       }
       case "aktivitaet": {                                             // V7.7 aktivitaet-plan-1.0: Aktivität draussen in eine gespeicherte Woche

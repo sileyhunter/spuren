@@ -215,3 +215,24 @@ zeile(`V8.0 Prüfung mit echten Daten · Stand ${BIS} · Fenster ${TAGE} Tage (a
     zeile(`  Blockbilanz: ${R.bloecke.bloecke.length} Blöcke; letzter: ${R.bloecke.bloecke.length ? R.bloecke.bloecke[R.bloecke.bloecke.length - 1].satz : "–"}`);
   }
 }
+
+/* 10 V8.3 Tagescoach (nur Zusammenfassung; Zahlen nur im Chat) */
+{
+  zeile("\n10 Tagescoach (V8.3)");
+  let R = null; try { R = W.V83UI && W.V83UI.pruefen ? W.V83UI.pruefen() : null; } catch (e) { zeile("  Fehler: " + e.message); }
+  if (!R) zeile("  nicht berechenbar");
+  else {
+    const je = {}; for (const p of R.vorschlaege) je[p.anlass] = (je[p.anlass] || 0) + 1;
+    zeile(`  Probelauf: ${R.probelauf ? "ja" : "nein"}; Morgen: ${R.morgen ? R.morgen.status : "–"}; Vorschläge: ${R.vorschlaege.length} ${JSON.stringify(je)}`);
+    zeile(`  geprüft: ${R.geprueft.join(" · ")}`);
+    for (const p of R.vorschlaege) zeile(`  ${p.date} ${p.anlass}: ${p.titel} → ${p.optionen.map((o) => o.art).join("/")}`);
+    for (const h of R.hinweise) zeile(`  Hinweis: ${h}`);
+    // Rückblick: was hätte der Coach in den letzten 28 Tagen gemeldet (nur Morgen und Last, ohne Mein Plan früherer Wochen)
+    let morgen = 0, haerter = 0;
+    for (let i = 1; i <= 28; i++) { const d = add(BIS, -i); if (W.V83.morgen(D.days, d).status === "auffaellig") morgen++; }
+    for (const a of D.activities.filter((x) => x.date >= add(BIS, -28) && x.date < BIS && (x.sport === "rad" || x.sport === "lauf"))) {
+      const h = (a.mv || a.dur || 0) / 3600; if (h > 0 && a.tss / h >= W.V83.LAST.hart_tl_h && h * 60 >= W.V83.LAST.hart_min) haerter++;
+    }
+    zeile(`  letzte 28 Tage: Morgen deutlich daneben an ${morgen} Tagen; Rad/Lauf mit Last ≥ ${W.V83.LAST.hart_tl_h} je Stunde: ${haerter} (ohne Vergleich mit dem Plan)`);
+  }
+}

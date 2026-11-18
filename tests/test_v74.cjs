@@ -21,7 +21,7 @@ const standVon = (m) => (d) => m[d] || null;
 
 /* ---------------- Entscheid je Tag ---------------- */
 test("ampel-plan-1.0: jede Ampelstufe → Entscheid; ohne Morgenwerte zählt nur der Check-in", () => {
-  assert.equal(V74.VERSIONS.ampelplan, "ampel-plan-1.1");
+  assert.equal(V74.VERSIONS.ampelplan, "ampel-plan-1.2");
   const r = (status, extra) => Object.assign({ datum: DI, status, alle_gruende: [{ w: 7, txt: "HRV deutlich unter Referenz", kind: "hrv" }, { w: 1, txt: "Schlaf 7,5 h", kind: "schlaf+" }],
     indikatoren: { befinden: { status: "gut" } } }, extra || {});
   for (const st of ["bereit", "normal", "nicht beurteilbar"]) assert.equal(V74.entscheid(r(st), { morgenwerte: true }).status, "wie_geplant", st);
@@ -117,44 +117,49 @@ test("ampel-plan-1.0: «vorsichtig» lockert die Einheiten des Tages, Mein Plan 
   }
 });
 
-test("ampel-plan-1.0: Nachholen in derselben Woche – nur mit Abstand zu harten Einheiten, sonst entfällt sie (gemeldet)", () => {
+test("ampel-plan-1.2: Nachholen nur als Vorschlag – passender kommender Tag mit Abstand zu harten Einheiten, sonst entfällt sie (gemeldet)", () => {
   const w = plan();
+  const nie = (x) => assert.ok(!x.tage.some((t) => t.einheiten.some((e) => e.ampel && e.ampel.nachgeholt)), "nie von selbst nachgeholt");
   // Di Lauf-Schlüssel fällt aus; Fr (lockerer Lauf) liegt direkt nach dem Rad-Schlüssel am Do → kein passender Tag
   const a = V74.woche(w, standVon({ [DI]: vorsichtig() }));
   assert.deepEqual(ids(a, FR), ids(w, FR));
   assert.equal(tag(a, DI).ampel.weg.length, 1); assert.match(tag(a, DI).ampel.weg[0].grund, /kein passender Tag/);
   assert.ok(a.hinweise.some((h) => /entfällt/.test(h)));
-  // ist der Do ebenfalls «vorsichtig», wird der Fr frei: der Lauf-Schlüssel kommt dorthin (an die Stelle des lockeren Laufs)
+  // ist der Do ebenfalls «vorsichtig», wird der Fr frei: Vorschlag für den Fr (an Stelle des lockeren Laufs) – der Plan selbst bleibt
   const b = V74.woche(w, standVon({ [DI]: vorsichtig(), [DO]: vorsichtig() }));
-  assert.deepEqual(ids(b, FR), ["lauf_vo2"]);
-  const H = tag(b, FR).einheiten[0];
-  assert.equal(H.ampel.nachgeholt.von, DI); assert.equal(H.uid, tag(w, FR).einheiten[0].uid, "Platz und Kennung der ersetzten Einheit");
-  assert.ok(H.dauer <= tag(w, FR).einheiten[0].dauer && tag(w, DI).einheiten[0].dauer > H.dauer, "nie länger: die kurze Fassung passt in den lockeren Lauf");
-  assert.deepEqual(tag(b, DI).ampel.nachholen, [{ titel: tag(w, DI).einheiten[0].titel, nach: FR, dauer: H.dauer }]);
+  assert.deepEqual(ids(b, FR), ["lauf_locker"], "Fr bleibt, bis du den Vorschlag annimmst"); nie(b);
+  const N = tag(b, DI).ampel.nachholen;
+  assert.equal(N.length, 1);
+  const X = tag(w, FR).einheiten[0], U = tag(w, DI).einheiten[0];
+  assert.equal(N[0].nach, FR); assert.equal(N[0].vorschlag, true); assert.equal(N[0].von_uid, U.uid); assert.equal(N[0].ziel.uid, X.uid);
+  assert.ok(N[0].dauer <= X.dauer && U.dauer > N[0].dauer, "nie länger: die kurze Fassung passt in den lockeren Lauf");
+  assert.deepEqual([N[0].spec.vorlage, N[0].spec.quelle, N[0].spec.dauer], ["lauf_vo2", "eigen", N[0].dauer]);
+  assert.equal(V66.einheitPruefen(Object.assign({ uid: X.uid }, N[0].spec)), null, "gültige Einheit für «ersetzen»");
+  assert.ok(b.hinweise.some((h) => /nachholen am Freitag möglich/.test(h)), b.hinweise.join(" | "));
   // Rad-Schlüssel vom Do: kein lockeres Rad mehr in der Woche → entfällt
   assert.ok(tag(b, DO).ampel.weg.some((x) => /kein passender Tag/.test(x.grund)));
-  // ist der Nachhol-Tag selbst «vorsichtig», wird die Einheit wieder locker und nicht nochmals verschoben
+  // ein Tag mit eigenem Entscheid (vergangen oder heute) ist nie Ziel: Fr «vorsichtig» → kein Vorschlag
   const c = V74.woche(w, standVon({ [DI]: vorsichtig(), [DO]: vorsichtig(), [FR]: vorsichtig() }));
-  assert.deepEqual(ids(c, FR), ["lauf_locker"]);
-  assert.equal(tag(c, FR).einheiten[0].dauer, tag(w, FR).einheiten[0].dauer, "wieder der geplante lockere Lauf, nicht länger");
-  assert.ok(tag(c, FR).ampel.weg.some((x) => /auch hier «vorsichtig»/.test(x.grund)));
-  assert.ok(!c.tage.some((t) => t.einheiten.some((e) => e.id === "lauf_vo2")), "nichts doppelt");
-  // CSS-Schwimmen vom Do kommt am So an die Stelle des lockeren Schwimmens (12 h: drei Schwimm-Einheiten)
+  assert.deepEqual(ids(c, FR), ["lauf_locker"]); nie(c);
+  assert.equal(tag(c, DI).ampel.nachholen.length, 0);
+  assert.equal(tag(c, FR).einheiten[0].dauer, tag(w, FR).einheiten[0].dauer, "der geplante lockere Lauf, nicht länger");
+  // CSS-Schwimmen vom Do: Vorschlag für den So (an Stelle des lockeren Schwimmens; 12 h: drei Schwimm-Einheiten)
   const w12 = plan({ stunden: 12, css_s: 100 });
   const d = V74.woche(w12, standVon({ [DO]: vorsichtig() }));
-  assert.ok(ids(d, SO).includes("schwimm_css"), ids(d, SO).join(", "));
+  assert.ok(!ids(d, SO).includes("schwimm_css"), ids(d, SO).join(", ")); nie(d);
+  assert.equal(tag(d, DO).ampel.nachholen[0].nach, SO); assert.equal(tag(d, DO).ampel.nachholen[0].spec.vorlage, "schwimm_css");
 });
 
 test("ampel-plan-1.0: nicht vor Test oder Rennen, Verfügbarkeit, Rennwoche ohne Nachholen", () => {
   // Stufentest am Sa: Fr ist Vortag eines Tests → kein Nachholen am Fr
   const wt = plan({ tests: [{ date: SA, kind: "stufentest", sport: "rad", status: "geplant" }] });
   const a = V74.woche(wt, standVon({ [DI]: vorsichtig(), [DO]: vorsichtig() }));
-  assert.ok(!ids(a, FR).includes("lauf_vo2"));
+  assert.ok(!ids(a, FR).includes("lauf_vo2")); assert.ok(tag(a, DI).ampel.nachholen.every((x) => x.nach !== FR), "kein Vorschlag am Vortag eines Tests");
   // Verfügbarkeit am Fr zu knapp für den Schlüssel → entfällt
   const w = plan();
   const verf = (d) => (d === FR ? { min: 40, sport: null } : null);
   const b = V74.woche(w, standVon({ [DI]: vorsichtig(), [DO]: vorsichtig() }), { verf });
-  assert.ok(!ids(b, FR).includes("lauf_vo2"));
+  assert.ok(!ids(b, FR).includes("lauf_vo2")); assert.ok(tag(b, DI).ampel.nachholen.every((x) => x.nach !== FR), "kein Vorschlag ohne genug Zeit");
   // Rennwoche: lockern ja, verschieben nie
   const wr = plan({ rennen: [{ date: SO, name: "Testrennen", short: "Test" }] });
   const c = V74.woche(wr, standVon({ [DI]: vorsichtig() }));

@@ -29,7 +29,8 @@
     ampel: id,                                                       // V7.4: Entscheid der Ampel je Tag (ampel-plan-1.0) → ampel_anpassung
     planeinstellung: id,                                             // V7.5: Planeinstellungen je Gruppe (planeinstellungen-1.0) → plan_einstellungen
     aktivitaet: id,                                                  // V7.7: Aktivität draussen je Tag (aktivitaet-plan-1.0) → plan_aktivitaeten
-    verpflegung: id };                                               // V8.1.1: Verpflegung je Einheit angepasst (verpflegung-1.0) → plan_verpflegung
+    verpflegung: id,                                                 // V8.1.1: Verpflegung je Einheit angepasst (verpflegung-1.0) → plan_verpflegung
+    tagescoach: id };                                                // V8.3: Entscheid zu einem Vorschlag des Tagescoaches (tagescoach-1.0) → coach_entscheide
   EG.MENGEN = ["archiv", "routen_entfernt"];                       // ID-Listen, gehen mit den übrigen Eingaben
   EG.BESTAETIGUNG = ["laktat_bestaetigt", "laktat_punkte_bestaetigt"];  // eigene Datei: bleibt liegen, wenn die Prüfung im Update scheitert
   EG.NAME_RE = /^\d{8}T\d{6}Z-[0-9a-f]{8}\.bin$/;

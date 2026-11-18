@@ -19,6 +19,7 @@ import garmin_senden  # noqa: E402       V6.6: Aufträge «An Garmin senden» (g
 import last  # noqa: E402                V5.9.1: Trainingslast mit LT2 (tl2, last-2.0)
 import notizen  # noqa: E402             V6.1: Garmin-Notizen, Laktat und Verpflegung daraus als Vorschau (notizen-1.0)
 import verpflegung  # noqa: E402         V8.1.1: Verpflegung je Einheit (verpflegung-1.0): eigene Lebensmittel aus Garmin, Anpassungen je Einheit
+import tagescoach  # noqa: E402         V8.3: Entscheide zu Vorschlägen des Tagescoaches (tagescoach-1.0)
 import wellness  # noqa: E402            V6.1: Readiness, Body Battery, Stress je Tag (wellness-1.0)
 
 ZRH = zoneinfo.ZoneInfo("Europe/Zurich")
@@ -347,6 +348,17 @@ def v5_merge(D, N):
         x, y = _upsert(D, "plan_verpflegung", [v], what="Verpflegung je Einheit")
         if x or y:
             msg.append(f"Verpflegung {v['datum']}" + (" zurück auf die Empfehlung" if v.get("entfernt") else " angepasst"))
+    for c in N.get("tagescoach_add") or []:             # V8.3 tagescoach-1.0: Entscheid zu einem Vorschlag (gleiche ID: der spätere Zeitpunkt gilt, alte Fassung ins Audit)
+        fehler = tagescoach.pruefen(c)
+        if fehler:
+            msg.append(f"Coach-Entscheid nicht übernommen: {fehler}")
+            continue
+        alt = next((x for x in D.get("coach_entscheide") or [] if x.get("id") == c["id"]), None)
+        if alt and str(alt.get("am") or "") > str(c["am"]):
+            continue
+        x, y = _upsert(D, "coach_entscheide", [c], what="Coach-Entscheid")
+        if x or y:
+            msg.append(f"Coach {c['date']}: {c['status']}")
     for g in N.get("garmin_senden_add") or []:          # V6.6 garmin-senden-1.0: Auftrag je Tag; gesendet wird im Nacht-Update (tools/garmin_senden.py)
         fehler = garmin_senden.pruefen(g)
         if fehler:

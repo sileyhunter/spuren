@@ -1451,3 +1451,19 @@ div.k4-r-kw { height: auto; }
 table.t.v82-t th:first-child, table.t.v82-t td:first-child { white-space: normal; }
 table.t.v82-t th { letter-spacing: .04em; }
 table.t.v82-t td small { display: block; font-size: 11px; }
+
+/* V8.3 Tagescoach (js/v83-ui.js) */
+.co-v { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin: 0 0 10px; background: var(--surface-2); }
+.co-kopf { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.co-kopf small { color: var(--muted); }
+.co-gruende { margin: 6px 0; padding-left: 18px; }
+.co-gruende li { margin: 2px 0; overflow-wrap: anywhere; }
+.co-opt { margin: 6px 0 8px; overflow-wrap: anywhere; }
+.co-opt span { color: var(--muted); }
+.co-knoepfe { gap: 8px; flex-wrap: wrap; }
+.co-probe { margin: 0 0 10px; color: var(--muted); }
+.co-ok { list-style: none; padding: 0; margin: 4px 0 8px; }
+.co-ok li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.co-zurueck { padding: 6px 12px; min-height: 0; font-size: 13px; white-space: nowrap; flex-shrink: 0; }
+.co-tag { margin: 8px 0; }
+.co-geprueft { margin: 8px 0 0; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }

@@ -77,7 +77,7 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
 - **V8.0 (Masterprompt V8, Etappe V8.0 «Prüfung und Szenario-Test», von Silas am 18.11.2026 freigegeben; Bericht `docs/AUDIT_V8.md`):** `tests/sim/` (Simulator ohne Browser:
   `umgebung.cjs` leeres DOM und eigene Uhr, `seite.cjs` Kontext C und V5UI wie index.html, `athlet.cjs` erfundener Athlet, `lauf.cjs` Tag für Tag mit Haken für Morgenwerte,
   Check-in, Änderungen und Ausführung), `tests/test_v80.cjs` (Abnahmetests A–H und acht Wochen Zusammenwirken; was eine spätere Etappe bringt, steht als `todo` mit der Etappe –
-  kommt sie, wird daraus ein normaler Test), `tools/pruefung_v8.cjs` (Prüfung der Modelle mit echten Daten: `node tools/pruefung_v8.cjs work/data.json`, seit V8.2 mit Abschnitt 9 «Reaktionen», nur Zusammenfassungen,
+  kommt sie, wird daraus ein normaler Test), `tools/pruefung_v8.cjs` (Prüfung der Modelle mit echten Daten: `node tools/pruefung_v8.cjs work/data.json`, seit V8.2 mit Abschnitt 9 «Reaktionen», seit V8.3 mit Abschnitt 10 «Tagescoach», nur Zusammenfassungen,
   Zahlen nur in den Chat, nie ins Repository). Neue Module, die Planen, Ampel oder Last betreffen, in `MODULE` von `tests/sim/umgebung.cjs` aufnehmen.
 - **V8.1 (Masterprompt V8, Etappe V8.1 «Daten zusammenführen», von Silas am 18.11.2026 freigegeben):** `js/v81.js` (ohne DOM: Nach dem Training nachher-1.0
   `V81.nachher`/`V81.eintrag`/`V81.garminSelbst`, Puls zur Leistung hf-leistung-1.0 `V81.pulsZurLeistung`, Satz zur Einheit `V81.hinweis`, Abweichung von der geplanten
@@ -99,6 +99,13 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   `js/v82-ui.js` (Ansicht `#reaktionen` unter Analyse, vier Karten, nacheinander gezeichnet), `tests/test_v82.cjs`. Nur Anzeige: nichts davon ändert den Plan (V8.3/V8.5 erst
   mit Silas' Okay). Mindestzahlen `V82.MIN`; ohne sie «noch zu wenig Daten». Ergebnisse mit echten Daten nur im Chat, nie in Doku oder Tests. Regel ändern = Version in
   `V82.VERSIONS`, Wissen (Kapitel «reaktionen») und `tests/test_v82.cjs`.
+- **V8.3 (Masterprompt V8, Etappe V8.3 «Täglicher Coach», von Silas am 18.11.2026 freigegeben; Enduco bis 30.11.2026 laut Silas, `config.enduco_bis`):** `js/v83.js`
+  (ohne DOM: tagescoach-1.0 `V83.pruefen` mit vier Prüfungen – einzelner Morgen deutlich daneben `V83.morgen`, härter als geplant `V83.haerter`, weniger Zeit, Nachholen
+  der Ampel nur als Vorschlag –, Optionen tauschen/locker/kurz/nachholen mit Aktionen für `V66.aendern` und Rückweg, Entscheid `V83.eintrag`/`V83.eintragPruefen`/
+  `V83.entscheide`, Markierung `V83.marke`), `js/v83-ui.js` (Karte «Coach» auf Heute `#coach-card`, Vorschläge im Tagesblatt `V83UI.tag`, Annehmen/Ablehnen/Rückgängig,
+  Probelauf bis `config.enduco_bis`), `tools/tagescoach.py` (Prüfung der Entscheide wie die Seite), `tests/test_v83.cjs`; `V66.aendern` Art «ersetzen» (gleiche Kennung) und
+  «hinzufuegen» mit freier Kennung beim Zurückholen, `V66UI.aendernFolge` (mehrere Änderungen, einmal gespeichert); ampel-plan-1.2 in `js/v74.js` (Nachholen nur als Vorschlag,
+  `ampel.nachholen[].vorschlag`); basis-1.2 in `js/v75.js` (`V75.datenBis`: Tage nach den letzten Garmin-Daten zählen nicht als Ruhetage). Der Coach ändert nie selbst etwas.
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
 - `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)
@@ -460,6 +467,9 @@ V7.5: `planeinstellung` (je Gruppe «pe-start» {art fitness/aufteilung} und «p
 → `plan_einstellungen`; `merge_daily.planeinstellung_pruefen` wie `V75.pruefen`; gleiche ID ersetzt mit Audit, eine ältere Fassung (`geaendert`) nie; «pe-basis» mit Stunden
 aus V7.5 wird abgelehnt). V7.7 aktivitaet-plan-1.0: `aktivitaet` (Aktivität draussen je Tag «ak-JJJJ-MM-TT» {art skitour/wandern/langlauf/trail, min 60–600 in 15er-Schritten, zone z1/z2, uhrzeit, notiz ≤ 300}
 oder {entfernt: true} → `aktivitaet_add` → `plan_aktivitaeten`; `merge_daily.aktivitaet_pruefen` wie `V77.pruefen`; gleiche ID ersetzt mit Audit, ältere Fassung nie).
+V8.3 tagescoach-1.0: `tagescoach` (Entscheid zu einem Vorschlag «co-<Datum>-<Anlass>-<Einheit>» {status angenommen/abgelehnt/zurueck, am, date, anlass, titel; angenommen
+mit art, woche (Montag), option, rueck (Änderungen für V66.aendern), markiert} → `tagescoach_add` → `coach_entscheide`; `tagescoach.pruefen` wie `V83.eintragPruefen`; gleiche ID:
+der spätere Zeitpunkt gilt, alte Fassung ins Audit). Die Änderung an Mein Plan kommt dabei als `planwoche` (geprüft wie jede).
 V8.1.1 verpflegung-1.0: `verpflegung` (Anpassung je Einheit «vp-<Datum>-<uid>» {g_h 0–120 in 5er-Schritten, mix auto/gel/getraenk/fest, aus} oder {entfernt: true} = zurück
 auf die Empfehlung → `verpflegung_add` → `plan_verpflegung`; `verpflegung.pruefen` wie `VP.pruefen`; gleiche ID ersetzt mit Audit, ältere Fassung nie) und «pe-verpflegung»
 in `planeinstellung` {unterwegs, davor, danach, fruktose: Listen von Produkt-IDs aus `garmin_lebensmittel` bzw. den Fueling-Vorlagen (höchstens 60, ohne Doppel), max_g_h
@@ -607,7 +617,9 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Last pro Stunde «jetzt» × Anteil. Eigener Wert je Sportart (Regler 0–200, «Zurück auf berechnet», Datum der Änderung). Wahl im Trainingsumfang: «Basis-Fitness»
   (Standard ab der Woche vom 23.11.2026, `V75.START_AB`) oder «jetzt» × 20/50/30 wie bis V7.5.1. Start und eigene Fitness gelten ab der Woche nach dem Speichern
   (`V75.einstellungen` opt.startBis): die laufende Woche bleibt, ab der nächsten rechnet die Rampe vom neuen Start (`V75UI.plan` für Kurve und Wochenstunden).
-  «jetzt» steht in den Wochenstunden nur, solange ein Start mit 20/50/30 gilt.
+  «jetzt» steht in den Wochenstunden nur, solange ein Start mit 20/50/30 gilt. **basis-1.2 (V8.3, Datenstand):** liegen die letzten Garmin-Daten (`V75.datenBis`: mit
+  `fit_log` die letzte Nacht bzw. Aktivität, sonst die letzte Aktivität oder Morgenwerte) vor dem Sonntag, gilt die Fitness vom letzten Tag mit Daten (`basisDaten(…, { datenBis })`,
+  `luecke`) – fehlende Daten zählen nicht als Ruhetage.
 - **Steigerung (steigerung-1.0):** ein Regler für alle drei Sportarten (Silas' Wunsch), 50–150 % in 5er-Schritten. Jede Sportart von der Basis zu Spitze ×
   aufteilung-1.0; Anteil des Wegs nach i Wochen min(1, Regler · i/(N − 1)), N = Wochen bis zum Taper; 100 % = genau saison-1.2. Höchstens 10 % (mindestens 0,5 h)
   über der Woche davor (eigene Festlegung, wie das Maximum bei enduco). Woche 0 bleibt die Basis; Erholung 65 %, B-Rennen 50 %, Taper 60/40 % unverändert.
@@ -654,6 +666,21 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Aufgezeichnete Garmin-Krafteinheiten (Typ «Krafttraining»/«Strength») zählen seit pmc-2.1 nicht mehr in Fitness und Form; sie stehen in «Diese Woche» und in der
   Wochenauswertung als eigene Zeile. «Nur diese Woche» auf der Einheit-Seite: in kommenden Wochen, deren Tage dem Vorschlag folgen, als Ausnahme «pe-kraft-<Montag>»; in der
   laufenden Woche und an gespeicherten Tagen über Mein Plan (verschieben, entfernen). Regel ändern = Version in `V76.VERSIONS`, Wissen (Kapitel «kraft») und `tests/test_v76.cjs`.
+
+## Täglicher Coach (V8.3, tagescoach-1.0, Masterprompt V8 Abschnitte 2, 9, 10; von Silas am 18.11.2026 freigegeben)
+- Der Coach rechnet bei jedem Zeichnen neu (nach Morgen-Update, Check-in, neuer Einheit, geänderter Verfügbarkeit) über gestern bis sechs Tage voraus, wie es gilt
+  (`V64UI.kontextFuer`: Mein Plan mit Verteilung, Kraft, Aktivitäten draussen und Ampel-Schicht). Vier Prüfungen (eigene Festlegungen, Wissen Kapitel «coach»):
+  **morgen** (einzelner Morgen: HRV ≥ 10 % bzw. 2 × tägliche Schwankung tiefer UND Ruhepuls ≥ 5 bzw. 2 × höher als die 7 Tage davor, oder einer allein stark 20 %/8 bzw. 3 ×;
+  nur solange die Ampel nicht «vorsichtig» zeigt) → harte Einheit an Land heute oder morgen; **last** (gestern oder heute ≥ 1,3 × und +15 über TL ≈ oder hart nach Puls, wo locker
+  geplant; ohne Pulsverteilung Last ≥ 75 je Stunde) → harte Einheit an Land am Tag danach; **zeit** (festgehaltener Tag über der Verfügbarkeit + 5 min) → Kurzfassung derselben
+  Sportart (längste bewegliche Einheit gekürzt, sonst locker; übrige bewegliche weg; feste – gesperrt, Test, Kurs, Kraft, draussen – bleiben, füllen sie die Zeit: nur Hinweis);
+  **nachholen** (ampel-plan-1.2) → Schlüsseleinheit an Stelle der lockeren am vorgeschlagenen Tag. Optionen: tauschen (mit der lockeren derselben Sportart an einem späteren Tag
+  der Woche, Regeln wie das Nachholen der Ampel), locker (`V74.locker`), kurz, nachholen.
+- Nie: gesperrte Tage oder Einheiten, Tests, Rennen, Schwimmkurs, vergangene Tage, heute schon absolvierte Sportart; nie härter oder länger als Mein Plan. Abgelehnte und
+  zurückgeholte Vorschläge (gleiche ID) kommen nicht wieder. Annehmen = `V66UI.aendernFolge` (Mein Plan, offene Garmin-Aufträge nachgeführt) + Entscheid; Rückgängig = Rückweg,
+  solange kein betroffener Tag vorbei ist. Geänderte Einheiten tragen «Coach» (Tagesblatt, Heute, Kalender).
+- Probelauf bis `config.enduco_bis` (2026-11-30, Silas trainiert bis Ende November mit Enduco): Hinweis auf der Karte; danach gilt nur noch Mein Plan. Selbst handelt der Coach
+  nicht – Automatik erst nach Silas' Okay und nur in Grenzen, die er setzt. Regel ändern = Version in `V83.VERSIONS`, Wissen (Kapitel «coach») und `tests/test_v83.cjs`.
 
 ## Verpflegung je Einheit (V8.1.1, verpflegung-1.0, Silas' Wunsch vom 18.11.2026; 1.1 = V8.1.2 nur seine Produktgruppen)
 - Je Einheit aus Mein Plan eine Empfehlung vorher · während · nachher (`VP.plan`), nur mit Silas' eigenen Produkten: eigene Lebensmittel aus Garmin Connect
@@ -706,7 +733,8 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   der Art «lang» höchstens zwei Drittel; Tests werden locker und im Testkalender verschoben); Krankheitszeichen im Check-in = Ruhetag. Solange für heute
   weder Schlaf noch HRV der Nacht da sind, zählt nur der Check-in (Befinden «belastet» = vorsichtig). Gesperrte Einheiten und Tage bleiben unverändert
   (Hinweis), Schwimmkurs, Kraft und Mobility auch. Nie härter, nie länger, nie eine andere Sportart.
-- Nachholen (`V74.woche`): eine Schlüsseleinheit (Rad, Laufen, CSS; harte Bibliothek), die locker wurde, kommt am nächsten passenden Tag derselben Woche
+- Nachholen (`V74.woche`; **seit ampel-plan-1.2 (V8.3) nur als Vorschlag des Tagescoaches**, nie von selbst – angenommen über `V66.aendern` «ersetzen»): eine
+  Schlüsseleinheit (Rad, Laufen, CSS; harte Bibliothek), die locker wurde, kommt am nächsten passenden kommenden Tag derselben Woche (Tage ohne Entscheid)
   an die Stelle einer lockeren Einheit derselben Sportart (Platz und Kennung der ersetzten Einheit, höchstens so lang, sonst die kurze Fassung): nicht
   neben einer harten Einheit an Land bzw. derselben Sportart, nicht an Test- oder Renntagen und deren Vortag, nicht an gesperrten Tagen, nur mit Zeit
   laut Verfügbarkeit, als Rad- oder Laufeinheit nicht am Tag nach einem Krafttraining (ampel-plan-1.1, V7.6.1), nie in Rennwochen und nie nach Krankheitszeichen.
@@ -838,7 +866,7 @@ Laufen nach Puls, Schwimmen Last pro Bewegungsstunde der letzten acht Wochen) si
 - **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
   Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
   Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
-- **Wissen `wissen-1.27` (`js/wissen.js`; 1.27 = V8.2 Kapitel «reaktionen»; 1.26 = V8.1.1 Kapitel «verpflegung»; 1.25 = V8.1 TL ≈ mit den Bezugsgrössen, Abweichung, Anstieg,
+- **Wissen `wissen-1.28` (`js/wissen.js`; 1.28 = V8.3 Kapitel «coach», ampel-plan-1.2 und basis-1.2; 1.27 = V8.2 Kapitel «reaktionen»; 1.26 = V8.1.1 Kapitel «verpflegung»; 1.25 = V8.1 TL ≈ mit den Bezugsgrössen, Abweichung, Anstieg,
   Nach dem Training, Puls zur Leistung; 1.24 = V8.1 harte Einheiten an Land nie an zwei Tagen hintereinander; 1.23 = V7.10 Tagesblatt und eigene Aktivität nach RPE im Kapitel «modelle»; 1.22 = V7.9 Fitness voraus im Kapitel «last», Zyklus und Bearbeiten im Kapitel «modelle»; 1.21 = V7.8 Trainingsstatus im Kapitel «last»; 1.20 = V7.7 Kapitel «draussen»; 1.19 = V7.6.2 Schwimmkurs, aufbau-1.2, Kurzcheck nach Puls; 1.18 = V7.6.1 Abstimmung ums Krafttraining, Tag automatisch, Tage für lange Einheiten, Form ohne Krafttraining; 1.17 = V7.6 Kapitel «kraft» (Rønnestad & Mujika 2014, Rønnestad et al. 2010, Doma et al. 2017, Lauersen et al. 2014, Foster et al. 2001); 1.16 = V7.5.2 Basis-Fitness Variante A; 1.15 = V7.5.1 Planeinstellungen als Blatt-Folge, Basis-Regel offen, Anfänger-Modus, Stile auf der Uhr; 1.14 = V7.5 Kapitel «planeinstellungen», 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.13 = V7.4 Ampel passt das Training an (Kapitel «erholung», Düking 2021, Manresa-Rocamora 2021), 1.12 = V7.3.2 Übungen aus der Enduco-Liste, 1.11 = V7.3 Etappe 2 Schwimmen,
   Puls und RPE an Garmin im Kapitel «modelle», 1.10 = V7.3 Einheit als
   Schritte, Einfahren und Intervall-Intensität, RPE je Abschnitt im Kapitel «intervalle»; 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
@@ -984,7 +1012,7 @@ Laufen nach Puls, Schwimmen Last pro Bewegungsstunde der letzten acht Wochen) si
   Die exakten Grössen der SPS1-Dateien stehen in der Git-Historie.
 
 ## Prüfen vor jedem Push von Seite oder Werkzeugen
-`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `node --test tests/test_v66.cjs`, `node --test tests/test_v7.cjs`, `node --test tests/test_v72.cjs`, `node --test tests/test_v73.cjs`, `node --test tests/test_v74.cjs`, `node --test tests/test_v75.cjs`, `node --test tests/test_v76.cjs`, `node --test tests/test_v77.cjs`, `node --test tests/test_v78.cjs`, `node --test tests/test_v80.cjs`, `node --test tests/test_v81.cjs`, `node --test tests/test_v82.cjs`, `node --test tests/test_verpflegung.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`,
+`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `node --test tests/test_v66.cjs`, `node --test tests/test_v7.cjs`, `node --test tests/test_v72.cjs`, `node --test tests/test_v73.cjs`, `node --test tests/test_v74.cjs`, `node --test tests/test_v75.cjs`, `node --test tests/test_v76.cjs`, `node --test tests/test_v77.cjs`, `node --test tests/test_v78.cjs`, `node --test tests/test_v80.cjs`, `node --test tests/test_v81.cjs`, `node --test tests/test_v82.cjs`, `node --test tests/test_v83.cjs`, `node --test tests/test_verpflegung.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`,
 bei Änderungen an `bilder/` oder `config.bilder` `SPUREN_PW=… node tools/bilder_crypt.mjs pruefen` («PRÜFUNG BILDER: bestanden»).
 **Leck-Prüfung (V6.4.4):** `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json work/data.json`, `python3 -I tools/leck_pruefen.py work/data.json`
 («LECK-PRÜFUNG: bestanden»), danach `rm work/data.json`. Gilt für jeden Push von Seite, Werkzeugen, Tests oder Doku (nicht für die reinen Daten-Updates).

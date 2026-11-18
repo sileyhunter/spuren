@@ -1,5 +1,19 @@
 # Änderungen
 
+## V8.3 · 18.11.2026 · Täglicher Coach (Masterprompt V8, Etappe V8.3), ampel-plan-1.2, basis-1.2, wissen-1.28
+- **Karte «Coach» auf Heute** und Vorschläge im Tagesblatt: Der Coach prüft heute und die nächsten Tage nach dem Morgen-Update, dem Check-in, jeder neuen Einheit und wenn
+  sich deine Zeit ändert, und schlägt vor – mit Grund, Annehmen, Ablehnen und Rückgängig (tagescoach-1.0). Er ändert nie selbst etwas.
+- **Ein einzelner Morgen deutlich daneben** (HRV tiefer und Ruhepuls höher als in den 7 Tagen davor, gemessen an deiner täglichen Schwankung), solange die Ampel noch nicht
+  reagiert: harte Einheit heute oder morgen tauschen oder locker.
+- **Härter als geplant** (Last ≥ 1,3 × TL ≈ und +15, oder hart statt locker): die harte Einheit an Land am Tag danach tauschen oder locker – mit dem Hinweis aus «Deine Reaktionen».
+- **Weniger Zeit an einem Tag:** Kurzfassung derselben Sportart statt Verschieben (keine zwei langen Einheiten an einem Tag).
+- **Nachholen der Ampel nur noch als Vorschlag** (ampel-plan-1.2): die gelockerte Schlüsseleinheit kommt erst in Mein Plan, wenn du annimmst.
+- **Fehlende Garmin-Daten zählen nicht als Ruhetage** (basis-1.2): die Basis-Fitness gilt vom letzten Tag mit Daten.
+- Probelauf bis 30.11.2026 (Enduco-Stichtag, `config.enduco_bis`); vom Coach geänderte Einheiten tragen «Coach».
+- Mein Plan: Änderung «ersetzen» (gleiche Kennung), mehrere Änderungen auf einmal speichern, Zurückholen mit derselben Kennung.
+- Tests: `tests/test_v83.cjs` (10), Szenarien A3, B3, D3, E2, H2 in `tests/test_v80.cjs` sind jetzt normale Tests, `tests/test_v74.cjs` und `tests/test_v75.cjs` nachgeführt,
+  `tests/test_tools.py` (+2).
+
 ## V8.2 · 18.11.2026 · Persönliche Reaktionen (Masterprompt V8, Etappe V8.2), wissen-1.27
 - **Neue Ansicht «Deine Reaktionen»** unter Analyse (Karte auf dem Analyse-Start, Link `#reaktionen`). Nur beschreibend; der Plan ändert sich dadurch nicht.
 - **Erholung nach harten Einheiten** (erholung-nach-1.0): HRV und Ruhepuls an den drei Morgen nach harten Rad- und Laufeinheiten (ab 5 min über LT2 oder 20 min über LT1)
