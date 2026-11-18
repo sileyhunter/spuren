@@ -244,7 +244,7 @@ test("Wissen: Regel-Liste verweist auf vorhandene Versionen und Kapitel", () => 
 
 test("Wissen 1.2/1.3: Kapitel «aufbau» und «vergleich» mit Quellen und Regeln", () => {
   const WS = require("../js/wissen.js");
-  assert.equal(WS.VERSION, "wissen-1.29");
+  assert.equal(WS.VERSION, "wissen-1.30");
   const k = WS.kapitel("aufbau");
   assert.ok(k, "Kapitel aufbau fehlt");
   const v = WS.verweise(k.text.join(" ") + " " + k.kurz);
@@ -556,4 +556,33 @@ test("Vergleich 1.2 (V6.5 planwahl-1.0): Wahl je Tag – Abweichung je Sportart 
   assert.deepEqual(V64.vergleich({ w, enduco: [], ist: [], heute: "2026-11-20", wahl: new Map([["2026-11-17", "vorschlag"]]) }).gewaehlt.n, { enduco: 0, vorschlag: 1, frei: 0 }, "auch ohne Enduco-Daten");
   const fr = V64.vergleich({ w, enduco, ist, heute: "2026-11-20", wahl: { "2026-11-19": "frei" } }).gewaehlt;
   assert.equal(fr.tage[0].ist_min, 60); assert.equal(fr.tage[0].abw_min, null); assert.equal(fr.fertig, 0, "frei mit Training: keine Abweichung zu einem leeren Plan");
+});
+
+test("abwechslung-1.0 (V8.4): gleicher Reiz in anderer Form, jede dritte Woche die Vergleichseinheit; ohne Schalter unverändert", () => {
+  assert.equal(V64.VERSIONS.abwechslung, "abwechslung-1.0");
+  const F = (mo) => V64.formFuer("rad_vo2", mo);
+  assert.equal(F(V64.FORM_START).id, "rad_vo2"); assert.equal(F(V64.FORM_START).vergleich, true);
+  assert.equal(F("2026-01-12").id, "rad_vo2_4x5"); assert.equal(F("2026-01-19").id, "rad_vo2_4020"); assert.equal(F("2026-01-26").id, "rad_vo2");
+  assert.equal(V64.formFuer("rad_tempo", "2026-01-19").id, "rad_tempo_3x15", "zwei Formen: Variante in Woche 1 und 2");
+  assert.equal(V64.formFuer("rad_laktat", "2026-01-12").id, "rad_laktat", "Schwelle mit Laktat bleibt gleich");
+  const kern = (w) => w.tage.flatMap((t) => t.einheiten.filter((e) => ["schluessel", "schluessel_s"].includes(e.art)).map((e) => ({ id: e.id, sport: e.sport, dauer: e.dauer, hart: e.minuten.hart, mittel: e.minuten.mittel })));
+  const c = { phase: "Grundlage", stunden: 9, modell: "polarisiert", css_s: 110 };
+  const ohne = kern(V64.woche(Object.assign({ woche: "2026-01-12" }, c))), mit = kern(V64.woche(Object.assign({ woche: "2026-01-12", abwechslung: true }, c)));
+  assert.deepEqual(ohne.map((e) => e.id), ["lauf_vo2", "rad_vo2", "schwimm_css"], "ohne Schalter wie bisher");
+  assert.deepEqual(mit.map((e) => e.id), ["lauf_vo2_5x3", "rad_vo2_4x5", "schwimm_css_200"]);
+  for (let i = 0; i < ohne.length; i++) {
+    assert.equal(mit[i].sport, ohne[i].sport);
+    assert.ok(Math.abs(mit[i].dauer - ohne[i].dauer) <= 15, `${mit[i].id}: ${mit[i].dauer} gegen ${ohne[i].dauer} min`);
+    if (ohne[i].hart > 0) assert.ok(mit[i].hart >= 0.6 * ohne[i].hart && mit[i].hart <= 1.6 * ohne[i].hart, `${mit[i].id}: ${mit[i].hart} gegen ${ohne[i].hart} min hart`);
+  }
+  // Varianten erben Stufe und Ersatz (intensitaet-1.1): «bis Schwelle» macht aus jeder VO2max-Form die Schwelle (in ihrer Form der Woche)
+  assert.equal(V64.kappen("rad_vo2_4020", "schwelle"), "rad_schwelle");
+  const sw = kern(V64.woche(Object.assign({ woche: "2026-01-12", abwechslung: true, intensitaet: { rad: "schwelle" } }, c)));
+  assert.ok(sw.some((e) => e.id === "rad_schwelle_4x10"), sw.map((e) => e.id).join(","));
+  // jede Form hat eine Wissens-Seite, Quellen und eine Vorlage für Mein Plan
+  const V66 = require("../js/v66.js");
+  for (const L of Object.values(V64.FAMILIEN)) for (const id of L) {
+    const b = V64.BAUSTEINE[id]; assert.ok(b && b.wissen && b.quellen.length, id);
+    assert.ok(V66.bereich(id), "Vorlage " + id);
+  }
 });

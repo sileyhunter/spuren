@@ -105,7 +105,7 @@
     // aufbau-1.2 (V7.6.2): für Wochen nach der laufenden zählen die geplanten Läufe der Wochen dazwischen mit (V64.laufGrenze, r.geplant)
     const laeufe = V.laeufe(C.D.activities).concat(offset > 0 ? geplanteLaeufe(offset) : []);
     const X0 = mitKraft(mitAkt(V.woche({ woche: mo, phase, erholung, stunden, aufteilung, modell, tests, rennen: rennen(), css_s: css ? css.s : null,
-      intensitaet: V.intensitaet(wahlEintrag()), laeufe, heute: st.heute, skalen: sk, kurs_bis: KS ? KS.kurs_bis : null }))), w0 = X0.roh;
+      intensitaet: V.intensitaet(wahlEintrag()), laeufe, heute: st.heute, skalen: sk, kurs_bis: KS ? KS.kurs_bis : null, abwechslung: true }))), w0 = X0.roh;
     // V7.2 verfuegbarkeit-1.0 / eigenplan-1.1: ab der laufenden Woche nach deiner Verfügbarkeit verteilt (ganze Woche, unabhängig vom heutigen Tag).
     // Wochen ohne eigene Änderungen folgen ihr von selbst; ganz festgehaltene Wochen zeigen das Gespeicherte; ältere, nur teilweise gespeicherte
     // Wochen (eigenplan-1.0) bleiben beim unverteilten Vorschlag, bis du «Anpassen» wählst. w0 = Vorschlag, auf dem Mein Plan aufbaut; w0roh = unverteilt.
@@ -125,7 +125,7 @@
     const erh = (d) => {
       if (!wErh) {
         wErh = abgestimmt(mitKraft(mitAkt(V.woche({ woche: mo, phase, erholung: true, stunden: Math.max(1, Math.round(stunden * 0.65 * 2) / 2), aufteilung, modell, tests, rennen: rennen(), css_s: css ? css.s : null,
-          intensitaet: V.intensitaet(wahlEintrag()), laeufe, heute: st.heute, skalen: sk, kurs_bis: KS ? KS.kurs_bis : null }))).v);
+          intensitaet: V.intensitaet(wahlEintrag()), laeufe, heute: st.heute, skalen: sk, kurs_bis: KS ? KS.kurs_bis : null, abwechslung: true }))).v);
       }
       return ((wErh.tage.find((t) => t.date === d) || {}).einheiten) || [];
     };
@@ -392,7 +392,7 @@
     try {
       if (e.sport === "schwimm" && window.SW && window.SWUI && e.art !== "bibliothek")
         swim = window.V66UI && window.V66UI.schwimmEinheit ? window.V66UI.schwimmEinheit(e, date, K)     // V7.5: dieselbe Einheit wie Einheit-Seite und Export
-          : window.SW.einheit(window.SW.artVon(e.id), { min: e.dauer, css_s: css, pool: e.pool || window.SWUI.becken(), ref_s: window.SW.refTempo(C.D.activities), woche: window.SWUI.woche(date) });
+          : window.SW.einheit(window.SW.artVon(e.id), { css_m: window.SW.cssStrecke ? window.SW.cssStrecke(e.id) : null, min: e.dauer, css_s: css, pool: e.pool || window.SWUI.becken(), ref_s: window.SW.refTempo(C.D.activities), woche: window.SWUI.woche(date) });
     } catch (err) { console.error(err); }
     const html = `<div class="ek-blatt-kopf"><span class="ek-sport gross" style="--sp:${spFarbe(e.sport)}">${W.sportIcon(e.sport, 28)}</span>
         <div><h2 id="v59-ov-h" tabindex="-1">${esc(e.titel)}</h2><p class="sub">${esc(tagText(t.date))} · ${e.quelle === "eigen" ? "eigene Einheit (Mein Plan)" : `Vorschlag «${esc(K.w.modellName)}»`}</p></div></div>

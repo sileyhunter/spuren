@@ -164,3 +164,14 @@ test("Seite: Skripte eingebunden, offline im Speicher, keine festen Farben in de
   assert.ok(!/#[0-9a-fA-F]{3,6}\b/.test(ui), "Farben nur über Variablen");
   assert.ok(!/ß/.test(ui), "Schweizer Schreibweise");
 });
+
+test("V8.4 abwechslung-1.0: CSS-Hauptserie in 200 bzw. 300 m (20 bzw. 30 s Pause), Anfänger-Modus bleibt bei 50 m", () => {
+  const haupt = (o) => SW.einheit("css", Object.assign({ min: 55, css_s: 110, pool: 25 }, o)).bloecke.find((b) => (b.key || b.id) === "haupt");
+  const s = (b) => (b.serien || b.teile)[0];
+  assert.equal(s(haupt({})).m, 100);
+  assert.equal(s(haupt({ css_m: 200 })).m, 200); assert.equal(s(haupt({ css_m: 200 })).pause_s, 20);
+  assert.equal(s(haupt({ css_m: 300 })).m, 300); assert.equal(s(haupt({ css_m: 300 })).pause_s, 30);
+  assert.ok(s(haupt({ css_m: 300 })).wdh >= 2 && s(haupt({ css_m: 300 })).wdh <= 6);
+  assert.equal(s(haupt({ css_m: 200, anfaenger: true })).m, 50, "Anfänger-Modus: kurze Stücke");
+  assert.equal(SW.artVon("schwimm_css_300"), "css"); assert.equal(SW.cssStrecke("schwimm_css_200"), 200); assert.equal(SW.cssStrecke("schwimm_css"), null);
+});

@@ -106,6 +106,11 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   Probelauf bis `config.enduco_bis`), `tools/tagescoach.py` (Prüfung der Entscheide wie die Seite), `tests/test_v83.cjs`; `V66.aendern` Art «ersetzen» (gleiche Kennung) und
   «hinzufuegen» mit freier Kennung beim Zurückholen, `V66UI.aendernFolge` (mehrere Änderungen, einmal gespeichert); ampel-plan-1.2 in `js/v74.js` (Nachholen nur als Vorschlag,
   `ampel.nachholen[].vorschlag`); basis-1.2 in `js/v75.js` (`V75.datenBis`: Tage nach den letzten Garmin-Daten zählen nicht als Ruhetage). Der Coach ändert nie selbst etwas.
+- **V8.4 Teil 4 (Masterprompt V8, Etappe V8.4 «Abwechslung», von Silas am 18.11.2026 freigegeben):** abwechslung-1.0 in `js/v64.js` (`V64.FAMILIEN` = Formen desselben Reizes, die erste
+  ist die Vergleichseinheit; `V64.formFuer(id, woche)`: Woche 0, 3, 6 … ab `V64.FORM_START` die Vergleichseinheit, dazwischen die anderen der Reihe nach; `V64.woche` opt.`abwechslung`, von
+  `V64UI.kontextFuer` immer gesetzt; Einheit trägt `form` {nr, n, vergleich, familie}), neue Bausteine `rad_vo2_4x5`, `rad_vo2_4020`, `rad_schwelle_4x10`, `rad_schwelle_3x12`, `rad_tempo_3x15`,
+  `lauf_vo2_5x3`, `lauf_vo2_3030`, `lauf_tempo_2x15`, `lauf_tempo_4x8`, `schwimm_css_200`, `schwimm_css_300` (Vorlagen in `js/v66.js` `ZU`, Schwimmen `SW.artVon`/`SW.cssStrecke`, `o.css_m`
+  in `SW.einheit`, übergeben an allen drei Aufrufen); Hinweis «Vergleichseinheit» bzw. «gleicher Reiz in anderer Form» im Coach-Text der Einheit-Seite (`js/v73-ui.js`)
 - **V8.4 Teil 1 (Silas' Rückmeldungen vom 18.11.2026, «Ampel zu mild, Verpflegung zu kompliziert»):** Ampel readiness-3.0 in `js/formkurve.js` (`FK.erholungNacht` = Erholung der
   einzelnen Nacht wie der Ring, `FK.ERHOLUNG` 34/50 %, `FK.NACHT` Atemfrequenz und Hauttemperatur als mögliche Krankheitszeichen ab 14 Nächten; Anzeige in `js/v5-ui.js`,
   `js/v55.js`, Kachel auf Heute `js/v6-heute.js`); Nachtwerte nacht-1.0 (`tools/wellness.py nacht`, Nacht- und Morgen-Update); Verpflegung verpflegung-2.0 (`VP.knapp`, `VP.kurz`:
@@ -855,6 +860,12 @@ Laufen nach Puls, Schwimmen Last pro Bewegungsstunde der letzten acht Wochen) si
   die Schlüsseleinheit derselben Sportart in den 3 Tagen davor locker. Sportart eines Tests über `V62.testSport` (fehlt `sport`: aus der Notiz).
   Ziele aus dem aktiven Zonenprofil (`V64.ziel`; Laufen Z1 «langsamer als»), ohne Profil bzw. CSS-Test
   nichts geraten. Renntempo = Rad 95–100 % der Leistung an LT1, Laufen bis 3 % langsamer als an LT1 (eigene Festlegung), zählt als locker.
+- **Abwechslung `abwechslung-1.0` (V8.4, Masterprompt V8):** gleicher Reiz in anderer Form (`V64.FAMILIEN`): Rad VO2max 30/15 · 4 × 5 · 40/20, Laufen 4 × 4 · 5 × 3 · 30/30, Schwelle 3 × 15 ·
+  4 × 10 · 3 × 12 min, Tempo Rad 2 × 20 · 3 × 15, Laufen 3 × 10 · 2 × 15 · 4 × 8 min, Schwimmen CSS 100/200/300 m (Pause 15/20/30 s, CSS-Strecke höchstens ≈ 1600 m, Anfänger-Modus bleibt bei 50 m).
+  Die erste Form ist die Vergleichseinheit: jede dritte Woche ab der Woche vom 5.1.2026 (`V64.FORM_START`), sonst die anderen der Reihe nach; Schwelle mit Laktat bleibt immer gleich.
+  Ähnliche Zeit im Bereich wie die Vergleichseinheit (Test in `tests/test_v64.cjs`); Varianten erben `V64.STUFE_BAUSTEIN` und `V64.ERSATZ`. Gilt nur für den Vorschlag; gespeicherte
+  Wochen und Mein Plan behalten ihre Einheiten. Formen ausser 30/15, 4 × 5 und 4 × 4 und die Reihenfolge sind eigene Festlegungen (Wissen, Kapitel «intervalle»). Regel ändern = Version
+  in `V64.VERSIONS`, Wissen und Tests nachführen.
 - **Intensität je Sportart `intensitaet-1.1` (V6.4.2; 1.1 = Titel-Regel mit Neuro und locker, V6.4.3, Version nachgeführt in V6.4.4; `V64.kappen`, `V64.planStufe`):** je Sportart «nur locker», «bis Schwelle» (Tempo, knapp unter
   LT2, CSS; keine VO2max-Intervalle) oder «alles» (Standard). Gespeichert im Eintrag «modell» (`intensitaet` = {schwimm, rad, lauf}, `vi`;
   `merge_daily.modell_pruefen` lehnt unbekannte Sportarten oder Stufen ab). Der Vorschlag ersetzt eine Schlüsseleinheit über der Wahl durch die nächst
@@ -896,7 +907,7 @@ Laufen nach Puls, Schwimmen Last pro Bewegungsstunde der letzten acht Wochen) si
 - **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
   Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
   Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
-- **Wissen `wissen-1.28` (`js/wissen.js`; 1.28 = V8.3 Kapitel «coach», ampel-plan-1.2 und basis-1.2; 1.27 = V8.2 Kapitel «reaktionen»; 1.26 = V8.1.1 Kapitel «verpflegung»; 1.25 = V8.1 TL ≈ mit den Bezugsgrössen, Abweichung, Anstieg,
+- **Wissen `wissen-1.30` (`js/wissen.js`; 1.30 = V8.4 Abwechslung im Kapitel «intervalle»; 1.29 = V8.4 Ampel readiness-3.0, Verpflegung kurz, Coach 1.1; 1.28 = V8.3 Kapitel «coach», ampel-plan-1.2 und basis-1.2; 1.27 = V8.2 Kapitel «reaktionen»; 1.26 = V8.1.1 Kapitel «verpflegung»; 1.25 = V8.1 TL ≈ mit den Bezugsgrössen, Abweichung, Anstieg,
   Nach dem Training, Puls zur Leistung; 1.24 = V8.1 harte Einheiten an Land nie an zwei Tagen hintereinander; 1.23 = V7.10 Tagesblatt und eigene Aktivität nach RPE im Kapitel «modelle»; 1.22 = V7.9 Fitness voraus im Kapitel «last», Zyklus und Bearbeiten im Kapitel «modelle»; 1.21 = V7.8 Trainingsstatus im Kapitel «last»; 1.20 = V7.7 Kapitel «draussen»; 1.19 = V7.6.2 Schwimmkurs, aufbau-1.2, Kurzcheck nach Puls; 1.18 = V7.6.1 Abstimmung ums Krafttraining, Tag automatisch, Tage für lange Einheiten, Form ohne Krafttraining; 1.17 = V7.6 Kapitel «kraft» (Rønnestad & Mujika 2014, Rønnestad et al. 2010, Doma et al. 2017, Lauersen et al. 2014, Foster et al. 2001); 1.16 = V7.5.2 Basis-Fitness Variante A; 1.15 = V7.5.1 Planeinstellungen als Blatt-Folge, Basis-Regel offen, Anfänger-Modus, Stile auf der Uhr; 1.14 = V7.5 Kapitel «planeinstellungen», 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.13 = V7.4 Ampel passt das Training an (Kapitel «erholung», Düking 2021, Manresa-Rocamora 2021), 1.12 = V7.3.2 Übungen aus der Enduco-Liste, 1.11 = V7.3 Etappe 2 Schwimmen,
   Puls und RPE an Garmin im Kapitel «modelle», 1.10 = V7.3 Einheit als
   Schritte, Einfahren und Intervall-Intensität, RPE je Abschnitt im Kapitel «intervalle»; 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,

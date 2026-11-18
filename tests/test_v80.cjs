@@ -266,10 +266,15 @@ test("F · Zwei Wochen mit anderer Workout-Auswahl, gleicher Reiz", async (t) =>
     for (const w of wochen) assert.equal(w.hart, wochen[0].hart, `${w.mo}: ${w.hart}`);
     assert.ok(wochen[0].hart.includes("rad") && wochen[0].hart.includes("lauf"));
   });
-  await t.test("F2 die konkrete Auswahl darf von Woche zu Woche wechseln", { todo: "V8.4 Abwechslung" }, () => {
-    // heute: Schlüsseleinheiten je Modell fest (polarisiert: Rad 30/15, Laufen 4 × 4 min) – jede Woche dieselben
+  await t.test("F2 die konkrete Auswahl wechselt von Woche zu Woche (abwechslung-1.0), die Vergleichseinheit kommt wieder", () => {
     const formen = new Set(wochen.map((w) => w.schluessel.sort().join(" + ")));
     assert.ok(formen.size >= 2, [...formen].join(" / "));
+    // jede dritte Woche dieselbe Vergleichseinheit (V64.formFuer): Woche 0 und 3 gleich
+    const V64 = sim.win.V64, ids = (mo) => { const L = []; for (let i = 0; i < 7; i++) for (const e of sim.plan(tag(mo, i)).einheiten) if (e.art === "schluessel") L.push(e.vorlage || e.id); return L.sort().join(","); };
+    const k = [0, 1, 2, 3].map((i) => addDays(START, 7 * i)).filter((mo) => !sim.plan(mo).K.w.erholung);
+    const vgl = k.filter((mo) => V64.formFuer("rad_vo2", mo).vergleich);
+    if (vgl.length >= 2) assert.equal(ids(vgl[0]), ids(vgl[1]), vgl.join(" / "));
+    assert.equal(V64.VERSIONS.abwechslung, "abwechslung-1.0");
   });
 });
 

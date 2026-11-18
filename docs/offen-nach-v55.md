@@ -292,13 +292,22 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
      halben Jahr mit mehr Daten prüfen.
 
 ## Nach V8.3 (18.11.2026, Täglicher Coach)
-102. (Stand) A3, B3, D3, E2 und H2 sind normale Tests; F2 (V8.4) und H3 (V8.6) bleiben «todo».
+102. (Stand) A3, B3, D3, E2 und H2 sind normale Tests; F2 seit V8.4 auch (abwechslung-1.0); H3 (V8.6) bleibt «todo».
 105. (Stand) Für den Coach reichte der Abgleich über «mehr als geplant» (D3); das Körpermodell Laufen im Simulator ist weiter nicht auf TL ≈ abgeglichen.
-118. **Verlängern** schlägt der Coach noch nicht vor (nur Tauschen, locker, Kurzfassung, Nachholen) – die Seite macht von selbst nie mehr; eine Verlängerung käme nur mit einer klaren Regel
+118. ~~**Verlängern** schlägt der Coach noch nicht vor~~ → erledigt in V8.4 (tagescoach-1.1, Anlass «umfang»; Silas: «wenn die Verfügbarkeit reicht, mit der Laufentwicklung aufpassen»). (nur Tauschen, locker, Kurzfassung, Nachholen) – die Seite macht von selbst nie mehr; eine Verlängerung käme nur mit einer klaren Regel
      (z. B. mehr Zeit als geplant und Woche unter dem Plan) und Silas' Okay.
-119. **Schmerzen und Motivation** aus dem Check-in wirken weiter nur über die Ampel; ein Vorschlag «heute Rad statt Laufen» bei Schmerzen am Fuss wäre ein Sportwechsel und kommt
+119. ~~**Schmerzen** aus dem Check-in~~ → erledigt in V8.4 (tagescoach-1.1, Anlass «schmerz», «Rad locker statt Laufen» auf Silas' Wunsch). Motivation wirkt weiter nur über die Ampel. Bisher: **Schmerzen und Motivation** aus dem Check-in wirken weiter nur über die Ampel; ein Vorschlag «heute Rad statt Laufen» bei Schmerzen am Fuss wäre ein Sportwechsel und kommt
      nur mit Silas' Okay.
 120. **Automatik in Grenzen:** Der Coach ändert nichts von selbst. Ob und in welchen Grenzen (z. B. nur kürzer oder lockerer) er später selbst handeln darf, entscheidet Silas nach
      dem Probelauf.
-121. **Wochenübergreifend** tauscht der Coach nicht (nur innerhalb Mo–So); am Sonntag prüft er den Montag, tauscht aber nur innerhalb der neuen Woche.
+121. ~~**Wochenübergreifend** tauscht der Coach nicht~~ → erledigt in V8.4 (tagescoach-1.1: Tauschen, Nachholen und Ausgefallenes auch in die nächste Woche). Bisher: **Wochenübergreifend** tauscht der Coach nicht (nur innerhalb Mo–So); am Sonntag prüft er den Montag, tauscht aber nur innerhalb der neuen Woche.
 
+## Nach V8.4 (18.11.2026, Rückmeldungen und Abwechslung)
+122. **Atemfrequenz und Hauttemperatur** wirken in der Ampel erst ab 14 Nächten mit Wert (readiness-3.0); bis dahin nur gezeigt. Rückwirkend holen ginge nur Nacht für Nacht über
+     `get_sleep_data` (grosse Antworten) – nur mit Silas' Okay.
+123. **Schlafbedarf und SpO2** (nacht-1.0) werden gespeichert, aber weder gezeigt noch eingerechnet: keine geprüfte Regel.
+124. **Probelauf des Coaches bis 30.11.2026:** Solange Silas nach Enduco trainiert, weichen Mein Plan und das Absolvierte ab – Vorschläge wie «ausgefallen» oder «verlängern» können
+     deshalb danebenliegen. Nach dem 30.11. die Entscheide auswerten (`tools/pruefung_v8.cjs`, Abschnitt 10).
+125. **Abwechslung:** Die Form folgt einer festen Reihe (nicht dem Erfolg der letzten Einheit). Eine Auswertung «Vergleichseinheit über die Wochen» (Puls bzw. Leistung in denselben
+     Intervallen) fehlt noch – Kandidat für V8.5/V8.6.
+126. **Verpflegung 2.0:** Die Produktwahl ist aus der Oberfläche genommen; gespeicherte Listen (`pe-verpflegung`) bleiben und wirken nur noch im Hintergrund.

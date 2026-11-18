@@ -62,6 +62,9 @@
     kraft: ["kraft", 15, 180, 90], mobility: ["mobility", 10, 60, 20],             // V7.6 kraft-plan-1.0: Standard 1:30 h, bis 3 h
     skitour: ["draussen", 60, 600, 300], wandern: ["draussen", 60, 600, 240], langlauf: ["draussen", 60, 600, 120], trail: ["draussen", 60, 600, 120],   // V7.7 aktivitaet-plan-1.0
     eigen: ["eigen", 10, 600, 60],                                                  // V7.10 eigene-aktivitaet-1.0
+    // V8.4 abwechslung-1.0: gleicher Reiz in anderer Form (V64.FAMILIEN)
+    rad_vo2_4x5: ["vo2max"], rad_vo2_4020: ["vo2max"], rad_schwelle_4x10: ["schwelle"], rad_schwelle_3x12: ["schwelle"], rad_tempo_3x15: ["tempo"],
+    lauf_vo2_5x3: ["vo2max"], lauf_vo2_3030: ["vo2max"], lauf_tempo_2x15: ["tempo"], lauf_tempo_4x8: ["tempo"], schwimm_css_200: ["schwelle"], schwimm_css_300: ["schwelle"],
   };
   const DYN = new Set(["locker", "lang", "kurs", "koppel"]);    // Bausteine, deren Dauer frei ist (V64: o.d)
   const r5 = (x) => Math.round(x / 5) * 5;

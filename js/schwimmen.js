@@ -340,7 +340,11 @@
       const rest = isNum(ref) ? T - fix : null;
       let haupt;
       if (art === "css") {
-        const m = anf ? 50 : 100, p = anf ? 30 : 15, rep = ((css ? css : ref || 120) * m) / 100 + p, n = isNum(rest) ? Math.max(anf ? 8 : 6, Math.min(anf ? 24 : 16, Math.floor(rest / rep))) : anf ? 12 : 10;
+        // V8.4 abwechslung-1.0: o.css_m 200 bzw. 300 m (nicht im Anfänger-Modus) mit 20 bzw. 30 s Pause; Anzahl so, dass die Zeit gleich bleibt
+        const lang = !anf && (o.css_m === 200 || o.css_m === 300) ? o.css_m : null;
+        const m = lang || (anf ? 50 : 100), p = lang === 300 ? 30 : lang === 200 ? 20 : anf ? 30 : 15, rep = ((css ? css : ref || 120) * m) / 100 + p;
+        const lo = lang === 300 ? 2 : lang === 200 ? 3 : anf ? 8 : 6, hi = lang === 300 ? 5 : lang === 200 ? 8 : anf ? 24 : 16;   // CSS-Strecke höchstens ≈ 1600 m wie bisher
+        const n = isNum(rest) ? Math.max(lo, Math.min(hi, Math.floor(rest / rep))) : lang === 300 ? 4 : lang === 200 ? 5 : anf ? 12 : 10;
         haupt = { wdh: n, m, zone: "css", pause_s: p, text: css ? `${m} m im CSS-Tempo` : `${m} m zügig (noch kein CSS-Test)` };
       } else {
         const L = anf ? 100 : T >= 60 * 60 ? 400 : T >= 40 * 60 ? 300 : 200, p = anf ? 45 : 30, rep = isNum(ref) ? L / 100 * ref + p : null;
@@ -362,7 +366,9 @@
       stile: stile.slice(), stil, anfaenger: anf, ohne_hilfsmittel: vorhanden ? Object.keys(SW.HILFSMITTEL).filter((h) => h !== "schnorchel" && !vorhanden.includes(h)) : [] };
   };
   /** Baustein-ID des Wochenvorschlags → Art der Schwimm-Einheit. */
-  SW.artVon = (id) => ({ schwimm_locker: "locker", schwimm_css: "css", test_css: "test", schwimm_kurs: "kurs" }[id] || "locker");
+  SW.artVon = (id) => ({ schwimm_locker: "locker", schwimm_css: "css", schwimm_css_200: "css", schwimm_css_300: "css", test_css: "test", schwimm_kurs: "kurs" }[id] || "locker");
+  /** V8.4 abwechslung-1.0: Strecke der CSS-Wiederholungen je Form (100 m Vergleichseinheit, 200 m, 300 m). */
+  SW.cssStrecke = (id) => ({ schwimm_css_200: 200, schwimm_css_300: 300 }[id] || null);
   /** Bahnen-Text: 25 m im 50-m-Becken = ½ L, 12,5 m = ¼ L, 100 m = 2 L. */
   SW.bahnen = (m, pool) => {
     if (!isNum(m) || !m) return "";

@@ -201,7 +201,7 @@
       pool = e.pool || SWUI().becken();                                     // V7.5 einheit-felder-1.1: Bahnlänge dieser Einheit, sonst der Standard
       // dieselbe Schwimm-Einheit wie beim Senden an Garmin (garmin-senden-1.1)
       if (U66() && U66().schwimmEinheit) S = U66().schwimmEinheit(e, Z.ds, K);
-      else try { S = SW().einheit(SW().artVon(e.id), Object.assign({ min: e.dauer, css_s: css, pool, ref_s: SW().refTempo(C.D.activities), woche: SWUI().woche(Z.ds) }, window.V75UI ? window.V75UI.schwimmOpt() : {})); } catch (err) { console.error(err); }
+      else try { S = SW().einheit(SW().artVon(e.id), Object.assign({ css_m: SW().cssStrecke ? SW().cssStrecke(e.id) : null, min: e.dauer, css_s: css, pool, ref_s: SW().refTempo(C.D.activities), woche: SWUI().woche(Z.ds) }, window.V75UI ? window.V75UI.schwimmOpt() : {})); } catch (err) { console.error(err); }
       baum = V73().ausSchwimm(S);
     } else baum = V73().ausTeilen(e);
     const vorbei = Z.ds < heute();
@@ -411,6 +411,13 @@
     else if (X.art === "plan" && !X.baum.length) text = X.e.zweck || "";
     else if (X.art === "plan") { const a = V73().coach(X.e, X.baum); text = [X.e.zweck, a].filter(Boolean).join(" "); }
     else text = X.wo && X.wo.beschreibung ? X.wo.beschreibung : V73().coach(null, X.baum);
+    // V8.4 abwechslung-1.0: Vergleichseinheit oder Form desselben Reizes (aus der Vorlage, auch in gespeicherten Wochen)
+    const V64 = window.V64, vl = X.art === "plan" && X.e ? X.e.vorlage || X.e.id : null, fam = vl && V64 && V64.familieVon ? V64.familieVon(vl) : null;
+    if (fam && V64.FAMILIEN[fam].length > 1) {
+      const F = V64.FAMILIEN[fam], erste = (V64.BAUSTEINE[F[0]] || {}).titel || F[0];
+      text = [text, vl === F[0] ? "Vergleichseinheit: Diese Form kommt jede dritte Woche gleich wieder – so siehst du, ob du dieselben Intervalle mit weniger Puls oder mehr Leistung schaffst."
+        : `Gleicher Reiz in anderer Form (Abwechslung); die Vergleichseinheit «${erste}» kommt jede dritte Woche wieder.`].filter(Boolean).join(" ");
+    }
     if (!text) return "";
     const warum = X.art === "plan" && (X.e.quellen && X.e.quellen.length || X.e.wissen);
     return `<section class="v73-coach"><span class="v73-coach-ic">${ic("coach", 22)}</span><div><b>Coach</b><p>${esc(text)}</p></div>

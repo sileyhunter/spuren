@@ -23,7 +23,7 @@
   if (root) root.V64 = V64;
 })(typeof window !== "undefined" ? window : null, function (V62) {
   "use strict";
-  const V64 = { VERSIONS: { modell: "modell-1.0", woche: "wochenplan-1.2", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.1", aufbau: "aufbau-1.2", vergleich: "vergleich-1.4" } };
+  const V64 = { VERSIONS: { modell: "modell-1.0", woche: "wochenplan-1.2", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.1", aufbau: "aufbau-1.2", vergleich: "vergleich-1.4", abwechslung: "abwechslung-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const T = (iso) => Date.parse(iso + "T12:00:00Z");
   const add = (iso, n) => new Date(T(iso) + n * 864e5).toISOString().slice(0, 10);
@@ -163,6 +163,62 @@
     schwimm_locker: { sport: "schwimm", titel: "Schwimmen locker", art: "locker", wissen: "schwimmen", quellen: ["dekerle2005"],
       zweck: "Lange Wiederholungen ruhig und sauber: Grundlage und Technik unter leichter Ermüdung.",
       teile: (o) => [["z2", o.d]], ablauf: (o) => ["lange Wiederholungen (300–400 m), 20–30 s Pause", isNum(o.css_s) ? `Tempo deutlich langsamer als CSS, etwa ${mmss(o.css_s + 8)}–${mmss(o.css_s + 12)}/100 m (CSS + 8–12 s, Annahme)` : "Tempo locker, nach Gefühl"] },
+    /* V8.4 abwechslung-1.0: gleicher Reiz in anderer Form (Familien in V64.FAMILIEN; die erste Form ist die Vergleichseinheit) */
+    rad_vo2_4x5: { sport: "rad", titel: "VO2max 4 × 5 min", art: "schluessel", wissen: "intervalle", quellen: ["roennestad2015", "buchheit2013a"],
+      zweck: "Gleicher Reiz wie 30/15 in langen Stücken: Zeit nahe der maximalen Sauerstoffaufnahme. Diese Form war in der Studie zu 30/15 die Vergleichsgruppe.",
+      wdh: (o) => (o.kurz ? 3 : 4),
+      teile(o) { const n = this.wdh(o); return mitAus([["z1", 5], ["z2", 10]].concat(wdh(n, [["vo2", 5]], [["z1", 2.5]])), n === 4 ? 60 : 50); },
+      ablauf(o) { return ["15 min einfahren (Z1–Z2)", `${this.wdh(o)} × 5 min hart, 2:30 min locker dazwischen`, "hart = gleichmässig, die letzte Wiederholung gleich stark wie die erste", "ausfahren"]; } },
+    rad_vo2_4020: { sport: "rad", titel: "VO2max 40/20", art: "schluessel", wissen: "intervalle", quellen: ["buchheit2013a", "roennestad2015"],
+      zweck: "Gleicher Reiz wie 30/15 in etwas längeren Stücken: viel Zeit nahe der maximalen Sauerstoffaufnahme mit kurzen Pausen (übliche Variante, keine eigene Studie).",
+      serien: (o) => (o.kurz ? 2 : 3),
+      teile(o) { const n = this.serien(o); return mitAus([["z1", 5], ["z2", 10]].concat(wdh(n, wdh(10, [["vo2", 40 / 60], ["pause", 20 / 60]]), [["z1", 3]])), n === 3 ? 60 : 50); },
+      ablauf(o) { return ["15 min einfahren (Z1–Z2)", `${this.serien(o)} Serien à 10 × 40 s hart / 20 s locker, 3 min locker zwischen den Serien`, "hart = so stark, dass alle Wiederholungen gleich bleiben", "rund 10 min ausfahren"]; } },
+    rad_schwelle_4x10: { sport: "rad", titel: "Schwelle 4 × 10 min", art: "schluessel", wissen: "modelle", quellen: ["stoeggl2015", "seiler2010"],
+      zweck: "Gleicher Reiz wie 3 × 15 min in kürzeren Stücken: lange Zeit knapp unter LT2, etwas leichter zu halten.",
+      wdh: (o) => (o.kurz ? 3 : 4),
+      teile(o) { const n = this.wdh(o); return mitAus([["z1", 5], ["z2", 10]].concat(wdh(n, [["z3o", 10]], [["z1", 3]])), n === 4 ? 80 : 60); },
+      ablauf(o) { return ["15 min einfahren", `${this.wdh(o)} × 10 min knapp unter LT2, 3 min locker dazwischen`, "gleichmässig fahren, die letzte Wiederholung nicht schneller", "ausfahren"]; } },
+    rad_schwelle_3x12: { sport: "rad", titel: "Schwelle 3 × 12 min", art: "schluessel", wissen: "modelle", quellen: ["stoeggl2015", "seiler2010"],
+      zweck: "Gleicher Reiz wie 3 × 15 min, etwas kürzer: Zeit knapp unter LT2 bei überschaubarer Ermüdung.",
+      wdh: (o) => (o.kurz ? 2 : 3),
+      teile(o) { const n = this.wdh(o); return mitAus([["z1", 5], ["z2", 10]].concat(wdh(n, [["z3o", 12]], [["z1", 4]])), n === 3 ? 75 : 55); },
+      ablauf(o) { return ["15 min einfahren", `${this.wdh(o)} × 12 min knapp unter LT2, 4 min locker dazwischen`, "gleichmässig fahren", "ausfahren"]; } },
+    rad_tempo_3x15: { sport: "rad", titel: "Tempo 3 × 15 min", art: "schluessel", wissen: "modelle", quellen: ["stoeggl2015", "seiler2010"],
+      zweck: "Gleicher Reiz wie 2 × 20 min: gleichmässig zwischen LT1 und LT2, nahe am Tempo langer Rennen (Begründung, keine Studie).",
+      wdh: (o) => (o.kurz ? 2 : 3),
+      teile(o) { const n = this.wdh(o); return mitAus([["z1", 5], ["z2", 10]].concat(wdh(n, [["z3", 15]], [["z1", 5]])), n === 3 ? 80 : 55); },
+      ablauf(o) { return ["15 min einfahren", `${this.wdh(o)} × 15 min Z3 (Tempo), 5 min locker dazwischen`, "Aero-Position üben, wenn möglich", "ausfahren"]; } },
+    lauf_vo2_5x3: { sport: "lauf", titel: "VO2max 5 × 3 min", art: "schluessel", wissen: "intervalle", quellen: ["buchheit2013a", "helgerud2007"],
+      zweck: "Gleicher Reiz wie 4 × 4 min in kürzeren Stücken: Zeit nahe der maximalen Sauerstoffaufnahme, etwas leichter zu dosieren.",
+      wdh: (o) => (o.kurz ? 3 : 5),
+      teile(o) { const n = this.wdh(o); return mitAus([["z1", 5], ["z2", 10]].concat(wdh(n, [["vo2", 3]], [["z1", 2]])), n === 5 ? 50 : 35); },
+      ablauf(o) { return ["15 min einlaufen", `${this.wdh(o)} × 3 min hart, 2 min Trab dazwischen`, "hart = kontrolliert, die letzte Wiederholung gleich schnell wie die erste", "auslaufen"]; } },
+    lauf_vo2_3030: { sport: "lauf", titel: "VO2max 30/30", art: "schluessel", wissen: "intervalle", quellen: ["buchheit2013a"],
+      zweck: "Kurze schnelle Stücke mit gleich langen Trabpausen: viel Zeit nahe der maximalen Sauerstoffaufnahme bei kleinerer Belastung je Stück.",
+      serien: (o) => (o.kurz ? 1 : 2),
+      teile(o) { const n = this.serien(o); return mitAus([["z1", 5], ["z2", 10]].concat(wdh(n, wdh(12, [["vo2", 0.5], ["pause", 0.5]]), [["z1", 4]])), n === 2 ? 50 : 35); },
+      ablauf(o) { return ["15 min einlaufen", `${this.serien(o)} Serie${this.serien(o) > 1 ? "n" : ""} à 12 × 30 s schnell / 30 s Trab${this.serien(o) > 1 ? ", 4 min Trab zwischen den Serien" : ""}`, "schnell = etwa das Tempo, das du 6 min halten könntest", "auslaufen"]; } },
+    lauf_tempo_2x15: { sport: "lauf", titel: "Tempo 2 × 15 min", art: "schluessel", wissen: "modelle", quellen: ["stoeggl2015", "seiler2010"],
+      zweck: "Gleicher Reiz wie 3 × 10 min in längeren Stücken: zügiges Laufen gleichmässig halten (Begründung, keine Studie).",
+      wdh: (o) => (o.kurz ? 1 : 2),
+      teile(o) { const n = this.wdh(o); return mitAus([["z1", 5], ["z2", 10]].concat(wdh(n, [["z3", 15]], [["z1", 3]])), n === 2 ? 60 : 40); },
+      ablauf(o) { return ["15 min einlaufen", `${this.wdh(o)} × 15 min Z3${this.wdh(o) > 1 ? ", 3 min Trab dazwischen" : ""}`, "auslaufen"]; } },
+    lauf_tempo_4x8: { sport: "lauf", titel: "Tempo 4 × 8 min", art: "schluessel", wissen: "modelle", quellen: ["stoeggl2015", "seiler2010"],
+      zweck: "Gleicher Reiz wie 3 × 10 min in kürzeren Stücken: zügig laufen, ohne tief in die Ermüdung zu gehen (Begründung, keine Studie).",
+      wdh: (o) => (o.kurz ? 3 : 4),
+      teile(o) { const n = this.wdh(o); return mitAus([["z1", 5], ["z2", 10]].concat(wdh(n, [["z3", 8]], [["z1", 2]])), n === 4 ? 60 : 45); },
+      ablauf(o) { return ["15 min einlaufen", `${this.wdh(o)} × 8 min Z3, 2 min Trab dazwischen`, "auslaufen"]; } },
+    schwimm_css_200: { sport: "schwimm", titel: "CSS 200er", art: "schluessel_s", wissen: "schwimmen", quellen: ["wakayoshi1992", "dekerle2005"],
+      zweck: "Gleicher Reiz wie die CSS-Wiederholungen in längeren Stücken: 200 m im CSS-Tempo mit kurzen Pausen.",
+      n: (o) => (isNum(o.css_s) ? clamp(Math.round((o.d - 20) / ((2 * o.css_s + 20) / 60)), 3, 8) : null),
+      teile(o) { const n = this.n(o) || 5, w = isNum(o.css_s) ? (2 * o.css_s + 20) / 60 : 4; return mitAus([["z2", 10]].concat(wdh(n, [["css", w]])), o.d); },
+      ablauf(o) { const n = this.n(o); return ["10 min einschwimmen", n ? `${n} × 200 m in ${mmss(2 * o.css_s)} (dein CSS), 20 s Pause` : "4–6 × 200 m zügig, 20 s Pause (noch kein CSS-Test: Tempo nach Gefühl)", "Rest locker, 200 m ausschwimmen"]; } },
+    schwimm_css_300: { sport: "schwimm", titel: "CSS 300er", art: "schluessel_s", wissen: "schwimmen", quellen: ["wakayoshi1992", "dekerle2005"],
+      zweck: "Gleicher Reiz wie die CSS-Wiederholungen in langen Stücken: 300 m im CSS-Tempo, das Tempo gleichmässig halten.",
+      n: (o) => (isNum(o.css_s) ? clamp(Math.round((o.d - 20) / ((3 * o.css_s + 30) / 60)), 2, 5) : null),
+      teile(o) { const n = this.n(o) || 4, w = isNum(o.css_s) ? (3 * o.css_s + 30) / 60 : 6; return mitAus([["z2", 10]].concat(wdh(n, [["css", w]])), o.d); },
+      ablauf(o) { const n = this.n(o); return ["10 min einschwimmen", n ? `${n} × 300 m in ${mmss(3 * o.css_s)} (dein CSS), 30 s Pause` : "3–4 × 300 m zügig, 30 s Pause (noch kein CSS-Test: Tempo nach Gefühl)", "Rest locker, 200 m ausschwimmen"]; } },
     test_rad: { sport: "rad", titel: "Rad-Stufentest", art: "test", fix: 75, wissen: "laktat-messen", quellen: ["jamnick2018", "bentley2007"],
       zweck: "LT1 und LT2 neu bestimmen und die Zonen nachführen.", teile: (o) => [["test", o.d]],
       ablauf: () => ["Ablauf laut Protokoll im Testzentrum: Laktat in der letzten Minute jeder Stufe", "am Vortag locker, gleiche Mahlzeit wie beim letzten Test"] },
@@ -190,6 +246,27 @@
   V64.ERSATZ = { rad_vo2: { schwelle: "rad_schwelle", locker: "rad_locker" }, lauf_vo2: { schwelle: "lauf_tempo", locker: "lauf_locker" },
     rad_schwelle: { locker: "rad_locker" }, rad_laktat: { locker: "rad_locker" }, rad_tempo: { locker: "rad_locker" },
     lauf_tempo: { locker: "lauf_locker" }, lauf_laktat: { locker: "lauf_locker" }, schwimm_css: { locker: "schwimm_locker" } };
+  /* ---------------- Abwechslung (abwechslung-1.0, V8.4) ---------------- */
+  /** Familien desselben Reizes: die erste Form ist die Vergleichseinheit, die anderen sind Varianten mit ähnlicher Zeit im selben Bereich. */
+  V64.FAMILIEN = { rad_vo2: ["rad_vo2", "rad_vo2_4x5", "rad_vo2_4020"], lauf_vo2: ["lauf_vo2", "lauf_vo2_5x3", "lauf_vo2_3030"],
+    rad_schwelle: ["rad_schwelle", "rad_schwelle_4x10", "rad_schwelle_3x12"], rad_tempo: ["rad_tempo", "rad_tempo_3x15"],
+    lauf_tempo: ["lauf_tempo", "lauf_tempo_2x15", "lauf_tempo_4x8"], schwimm_css: ["schwimm_css", "schwimm_css_200", "schwimm_css_300"] };
+  /** Schwelle mit Laktat (norwegisch) bleibt bewusst gleich: dieselbe Einheit mit Laktat ist selbst ein Vergleich. */
+  V64.FORM_START = "2026-01-05";
+  V64.familieVon = (id) => Object.keys(V64.FAMILIEN).find((f) => V64.FAMILIEN[f].includes(id)) || null;
+  /** Form einer Schlüsseleinheit in der Woche ab montag: Woche 0, 3, 6 … (ab V64.FORM_START) die Vergleichseinheit, dazwischen die Varianten
+   *  der Reihe nach (eigene Festlegung). → { id, nr, n, vergleich, familie } */
+  V64.formFuer = function (id, woche) {
+    const f = V64.familieVon(id), F = f ? V64.FAMILIEN[f] : null;
+    if (!F || F.length < 2) return { id, nr: 0, n: 1, vergleich: false, familie: f };
+    const k = Math.round((T(montag(woche)) - T(V64.FORM_START)) / 6048e5), slot = ((k % 3) + 3) % 3;
+    const nr = slot === 0 ? 0 : 1 + ((slot - 1) % (F.length - 1));
+    return { id: F[nr], nr, n: F.length, vergleich: nr === 0, familie: f };
+  };
+  for (const F of Object.values(V64.FAMILIEN)) for (const id of F.slice(1)) {                // Varianten erben Stufe und Ersatz der Vergleichseinheit
+    if (V64.STUFE_BAUSTEIN[F[0]]) V64.STUFE_BAUSTEIN[id] = V64.STUFE_BAUSTEIN[F[0]];
+    if (V64.ERSATZ[F[0]]) V64.ERSATZ[id] = V64.ERSATZ[F[0]];
+  }
   /** Gespeicherte Wahl (Eintrag «modell») → { schwimm, rad, lauf }; fehlend oder unbekannt = «alles». */
   V64.intensitaet = function (eintrag) {
     const x = (eintrag && eintrag.intensitaet) || {}, out = {};
@@ -301,12 +378,20 @@
     const tag = (wt) => tage[TAG.indexOf(wt)];
     // intensitaet-1.1: Schlüsseleinheit über der gewählten Stufe → nächst leichtere derselben Sportart (gleiche Dauer, wenn locker)
     const I = Object.assign({}, V64.INTENSITAET_STANDARD, c.intensitaet || {}), gekappt = [];
+    // abwechslung-1.0 (V8.4): mit c.abwechslung gleicher Reiz in anderer Form je Woche (V64.formFuer); die Vergleichseinheit kommt jede dritte Woche wieder
+    const form = (e) => {
+      if (!c.abwechslung || !e) return e;
+      const F = V64.formFuer(e.id, woche); if (F.n < 2 || F.id === e.id && !F.vergleich) return e;
+      const n = F.id === e.id ? e : Object.assign(V64.einheit(F.id, o(e.dauer)), e.gekappt ? { gekappt: e.gekappt } : {});
+      n.form = { nr: F.nr, n: F.n, vergleich: F.vergleich, familie: F.familie };
+      return n;
+    };
     const gewaehlt = (sport, id, d) => {
       const neu = V64.kappen(id, I[sport]);
-      if (neu === id) return V64.einheit(id, o(d));
+      if (neu === id) return form(V64.einheit(id, o(d)));
       const alt = V64.einheit(id, o(d)), e = V64.einheit(neu, o(B[neu].art === "locker" ? alt.dauer : d));
       e.gekappt = alt.titel; gekappt.push({ sport, alt: alt.titel, neu: e.titel, stufe: I[sport] });
-      return e;
+      return form(e);
     };
     // aufbau-1.1: kein Lauf über der Grenze (10 % über dem längsten Lauf der 30 Tage davor); Distanz aus dem Zonenprofil geschätzt.
     // 1.1 (Audit V6.4 B8/B12): ohne Lauf in den 30 Tagen davor (Pause) langer und lockerer Lauf höchstens V64.PAUSE_MIN min locker

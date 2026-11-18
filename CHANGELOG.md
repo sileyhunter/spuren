@@ -1,5 +1,14 @@
 # Änderungen
 
+## V8.4 Teil 4 · 18.11.2026 · Abwechslung (abwechslung-1.0), wissen-1.30
+- **Gleicher Reiz, andere Form:** Die Schlüsseleinheiten wechseln von Woche zu Woche die Form – Rad VO2max 30/15 · 4 × 5 min · 40/20, Laufen 4 × 4 · 5 × 3 min · 30/30,
+  Schwelle 3 × 15 · 4 × 10 · 3 × 12 min, Tempo 2 × 20 · 3 × 15 min bzw. 3 × 10 · 2 × 15 · 4 × 8 min, Schwimmen CSS über 100 · 200 · 300 m (`V64.FAMILIEN`, `V64.formFuer`).
+- **Vergleichseinheit:** Jede dritte Woche kommt die erste Form gleich wieder (fest ab der Woche vom 5.1.2026), damit sich Puls und Leistung über die Wochen vergleichen lassen;
+  die Einheit-Seite sagt, ob es die Vergleichseinheit oder eine andere Form ist. Die Schwelle mit Laktat (norwegisch) bleibt gleich.
+- Nur im Wochenvorschlag (`V64.woche` mit `abwechslung`, auf der Seite immer an); gespeicherte Wochen behalten ihre Einheiten. Varianten erben Stufe und Ersatz (intensitaet-1.1),
+  Vorlagen in `js/v66.js`, Schwimm-Hauptserie über 200/300 m in `js/schwimmen.js` (`SW.cssStrecke`, `o.css_m`).
+- Tests: `tests/test_v64.cjs` (+1), `tests/test_v72.cjs` (+1), Szenario F2 in `tests/test_v80.cjs` ist jetzt ein normaler Test; Wissen Kapitel «intervalle».
+
 ## V8.4 Teil 3 · 18.11.2026 · Coach 1.1 (tagescoach-1.1)
 - **Ausgefallen:** Eine Schlüsseleinheit von gestern ohne Aktivität schlägt der Coach an Stelle einer lockeren an einem der nächsten Tage vor – auch in der nächsten Woche,
   nie in eine Erholungs-, Taper- oder Rennwoche.

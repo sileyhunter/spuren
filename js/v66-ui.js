@@ -51,7 +51,7 @@
     const k = K || kontext(montag(ds));
     try {
       // V7.5: Bahnlänge der Einheit (einheit-felder-1.1), sonst der Standard; Hilfsmittel und Stile aus den Planeinstellungen (schwimmeinheit-1.2)
-      return window.SW.einheit(window.SW.artVon(e.id), Object.assign({ min: e.dauer, css_s: k && k.css ? k.css.s : null, pool: e.pool || window.SWUI.becken(), ref_s: window.SW.refTempo(C.D.activities),
+      return window.SW.einheit(window.SW.artVon(e.id), Object.assign({ css_m: window.SW.cssStrecke ? window.SW.cssStrecke(e.id) : null, min: e.dauer, css_s: k && k.css ? k.css.s : null, pool: e.pool || window.SWUI.becken(), ref_s: window.SW.refTempo(C.D.activities),
         woche: window.SWUI.woche(ds) }, window.V75UI ? window.V75UI.schwimmOpt() : {}));
     } catch (err) { console.error(err); return null; }
   }
