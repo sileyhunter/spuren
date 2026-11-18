@@ -477,7 +477,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - Die Seite legt jede Eingabe als `eingang/<JJJJMMTT>T<hhmmss>Z-<8 Hex>.bin` an (GitHub-Contents-API, Commit «Eingang»). Format EGS1:
   «EGS1» | IV | AES-256-GCM(Länge | gzip(JSON) | Nullen) | Tag, Seitenschlüssel wie data.enc.json, Datei auf eine Zweierpotenz ≥ 16 KiB
   aufgefüllt. Öffentlich sichtbar bleibt nur, dass und wann eine Eingabe kam. Bestätigungen (Laktat B1, Explorer) kommen in eine eigene Datei.
-- Zugang: feingranularer GitHub-Schlüssel nur für sileyhunter/spuren, «Contents: Read and write», 1 Jahr gültig (E4). Er liegt mit dem
+- Zugang: feingranularer GitHub-Schlüssel nur für sileyhunter/spuren, «Contents: Read and write», bis 1 Jahr gültig (E4; Expiration «Custom», notfalls 90 Tage – eine Auswahl «1 Jahr» gibt es bei GitHub nicht). Er liegt mit dem
   Seitenschlüssel verschlüsselt auf dem Gerät (`sf.eg.schluessel`), nie im Repository, nie im Chat. Ohne Netz oder Schlüssel wartet die Eingabe.
 - Nur Morgen- und Nacht-Update löschen Dateien in `eingang/`, und nur die eingespielten (`tools/eingang.mjs aufraeumen`). Abgelehnte Dateien
   (Demo, fremd, nicht entschlüsselbar) bleiben liegen und werden gemeldet. `tools/eingang.mjs pruefen --git`: nur gültige, aufgefüllte EGS1-Dateien.

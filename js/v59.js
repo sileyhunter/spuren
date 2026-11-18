@@ -312,7 +312,8 @@
           <p class="hint" id="es-msg" aria-live="polite"></p></form>
         <details class="es-hilfe"${hat ? "" : " open"}><summary>So legst du den Schlüssel an (einmal, etwa 2 Minuten)</summary><ol>
           <li>Auf github.com anmelden und <b>github.com/settings/personal-access-tokens/new</b> öffnen (Einstellungen → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token).</li>
-          <li>Name z. B. «Ironman Notebook iPhone», Ablauf <b>1 Jahr</b>.</li>
+          <li><b>Token name</b> frei wählbar, z. B. «Notebook iPhone» (gibt es den Namen schon, einen anderen nehmen). <b>Expiration</b>: «Custom» und ein Datum in
+            einem Jahr – geht das Datumsfeld auf dem iPhone nicht, einfach <b>90 days</b> (dann in drei Monaten neu anlegen). «1 Jahr» gibt es als Auswahl nicht.</li>
           <li>Repository access: <b>Only select repositories</b> → <b>sileyhunter/spuren</b>.</li>
           <li>Permissions → Repository permissions → <b>Contents: Read and write</b> (sonst nichts).</li>
           <li>«Generate token», den Schlüssel kopieren (beginnt mit github_pat_) und oben einfügen.</li></ol>
