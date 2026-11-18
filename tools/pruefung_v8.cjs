@@ -60,10 +60,10 @@ zeile(`V8.0 Prüfung mit echten Daten · Stand ${BIS} · Fenster ${TAGE} Tage (a
   zeile(`  Paare: ${paare}; doppelt gezählte Last (kleinere der beiden): ${Math.round(last)}${quellen.size ? " · Quellen " + [...quellen].map(([k, n]) => `${k}: ${n}`).join(", ") : ""}`);
 }
 
-/* 3 Bezugsgrössen: geplante Last (tl-plan-1.0) gegen absolvierte Last (Lastmodell) */
+/* 3 Bezugsgrössen: geplante Last (tl-plan-1.0 und seit V8.1 tl-plan-1.1) gegen absolvierte Last (Lastmodell) */
 {
   const sk = W.TR.zonen(D.zonen).skalen, css = (() => { const L = (D.css_tests || []).filter((c) => isNum(c.t400) && isNum(c.t200)).sort((a, b) => b.datum.localeCompare(a.datum)); return L[0] ? FK.css(L[0].t400, L[0].t200) : null; })();
-  const B = V66.bezug(sk, css), cfg = D.config || {}, refs = ((cfg.last_ref || {}).rad || []).slice().sort((a, b) => a.ab.localeCompare(b.ab));
+  const B = V66.bezug(sk, css, null), cfg = D.config || {}, B11 = V66.bezug(sk, css, V66.lastBezug ? V66.lastBezug() : { ref: cfg.last_ref || null, lthr: cfg.lthr || null }), refs = ((cfg.last_ref || {}).rad || []).slice().sort((a, b) => a.ab.localeCompare(b.ab));
   const rolle = refs.filter((r) => (r.system || "rolle") === "rolle").pop(), draussen = refs.filter((r) => r.system === "draussen").pop();
   zeile("\n3 Bezugsgrössen");
   if (B.rad) zeile(`  Rad: LT2 für TL ≈ geplant (Zonenprofil, Beginn Z4) gegen LT2 Rolle (last-2.1): Verhältnis ${r2(rolle ? B.rad.lt2 / rolle.lt2_w : null)}; gegen Garmin-FTP: ${r2(cfg.ftp ? B.rad.lt2 / cfg.ftp : null)}; LT2 draussen hinterlegt: ${draussen ? "ja" : "nein (draussen nach Puls)"}`);
@@ -76,14 +76,19 @@ zeile(`V8.0 Prüfung mit echten Daten · Stand ${BIS} · Fenster ${TAGE} Tage (a
   const lockerSw = (a) => Array.isArray(a.zones) && a.zones.length === 5 && a.zones.reduce((s, x) => s + (x || 0), 0) > 0
     && (a.zones[0] + a.zones[1]) / a.zones.reduce((s, x) => s + (x || 0), 0) >= 0.8;
   const proH = (a) => (isNum(a.tss) && (a.mv || a.dur) ? a.tss / ((a.mv || a.dur) / 3600) : null);
-  const planZ2 = (sport) => { const e = { sport, art: "locker", teile: [["z2", 60]] }; return V66.schaetzung(e, B).tl; };
+  const planZ2 = (sport, drinnen, bz) => { const e = { sport, art: "locker", drinnen, teile: [["z2", 60]] }; return V66.schaetzung(e, bz || B).tl; };
   const gruppen = [["Rad drinnen", (a) => a.sport === "rad" && a.indoor && inZ2(a, "rad_hf")], ["Rad draussen", (a) => a.sport === "rad" && !a.indoor && inZ2(a, "rad_hf")],
     ["Laufen", (a) => a.sport === "lauf" && inZ2(a, "lauf_hf")], ["Schwimmen", (a) => a.sport === "schwimm" && lockerSw(a)]];
   for (const [name, f] of gruppen) {
     const L = acts.filter((a) => (a.dur || 0) >= 2700 && f(a)).map(proH).filter(isNum);
-    const sp = name.startsWith("Rad") ? "rad" : name === "Laufen" ? "lauf" : "schwimm", p = planZ2(sp);
-    zeile(`  ${name}: Grundlage absolviert Median ${r1(median(L))} je Stunde (n = ${L.length}), geplant Z2 ≈ ${r1(p)} je Stunde → Verhältnis ${r2(isNum(p) && median(L) ? median(L) / p : null)}`);
+    const sp = name.startsWith("Rad") ? "rad" : name === "Laufen" ? "lauf" : "schwimm", dr = name === "Rad drinnen" ? true : name === "Rad draussen" ? false : undefined;
+    const p = planZ2(sp, dr), p11 = planZ2(sp, dr, B11);
+    zeile(`  ${name}: Grundlage absolviert Median ${r1(median(L))} je Stunde (n = ${L.length}), geplant Z2 ≈ ${r1(p)} je Stunde (tl-plan-1.0) → Verhältnis ${r2(isNum(p) && median(L) ? median(L) / p : null)}`
+      + `; tl-plan-1.1 ≈ ${r1(p11)} → Verhältnis ${r2(isNum(p11) && median(L) ? median(L) / p11 : null)}`);
   }
+  // tl-plan-1.1 rechnet Schwimmen mit dem Mittel aller Schwimmeinheiten (Last pro Bewegungsstunde, 8 Wochen): Vergleich mit allen Schwimmeinheiten des Zeitraums
+  { const L = acts.filter((a) => a.sport === "schwimm" && (a.dur || 0) >= 1800).map(proH).filter(isNum), p11 = planZ2("schwimm", undefined, B11);
+    zeile(`  Schwimmen alle (ab 30 min): absolviert Median ${r1(median(L))} je Stunde (n = ${L.length}), tl-plan-1.1 ≈ ${r1(p11)} → Verhältnis ${r2(isNum(p11) && median(L) ? median(L) / p11 : null)}`); }
   const q = new Map(); for (const a of acts.filter((x) => x.sport === "rad")) q.set(a.tl2q || "ohne", (q.get(a.tl2q || "ohne") || 0) + 1);
   zeile(`  Rad-Last nach Quelle (last-2.1): ${[...q].map(([k, n]) => `${k} ${n}`).join(", ")}`);
 }
@@ -131,7 +136,7 @@ zeile(`V8.0 Prüfung mit echten Daten · Stand ${BIS} · Fenster ${TAGE} Tage (a
     }
   }
   if (lauf) laengen.push(lauf);
-  zeile("\n5 Ampel (readiness-2.2, ohne Check-in)");
+  zeile(`\n5 Ampel (${FK.VERSIONS.readiness}, ohne Check-in)`);
   zeile(`  «vorsichtig» an ${vors} Tagen in ${laengen.length} Folgen (Median ${median(laengen) ?? "–"}, längste ${laengen.length ? Math.max(...laengen) : "–"} Tage); «nicht beurteilbar» an ${nb} Tagen`);
   zeile(`  Gründe (Gewicht ab 4): ${[...gruende].map(([k, c]) => `${k} ${c}`).join(", ") || "–"}`);
   zeile(`  Nachlauf: «vorsichtig» nur wegen des 7-Tage-Schnitts der HRV, obwohl HRV und Ruhepuls am Morgen im Bereich: ${nachlauf} Tage (${pct(nachlauf, vors)})`);

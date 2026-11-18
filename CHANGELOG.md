@@ -1,5 +1,25 @@
 # Änderungen
 
+## V8.1 · 18.11.2026 · Daten zusammenführen (Masterprompt V8, Etappe V8.1): Nach dem Training, Puls zur Leistung, TL ≈ wie gemessen, Anstieg der Belastung, wissen-1.25
+- **Nach dem Training** (nachher-1.0): unter jeder erledigten Aktivität auf Heute und im Tagesblatt eine Zeile, die ein Blatt öffnet – Anstrengung (RPE 1–10), Gefühl in
+  fünf Stufen wie auf der Uhr, leichter / wie erwartet / schwerer, bei Intervallen «alle / nicht alle / keine», Notiz. Was du auf der Uhr schon eingegeben hast (Garmins
+  Selbsteinschätzung), holt das Nacht-Update und die Seite schlägt es vor; deine Eingabe gilt. Gespeichert in der Liste «rpe» über «Direkt speichern».
+- **Puls zur Leistung** (hf-leistung-1.0) im Blatt: Puls bei gleicher Leistung bzw. gleichem Tempo gegen deine Basis – gleichmässige 10-min-Blöcke derselben Art (60 Tage)
+  oder Abschnitte eines Workouts mit gleicher Leistung ±5 % und ähnlicher Dauer (90 Tage), nie das Mittel der ganzen Einheit. Zusammen mit «schwerer als erwartet» ein Satz
+  zur Einheit; eine Einheit allein ändert den Plan nie.
+- **Abweichung je Einheit** (last-abweichung-1.0): gemessene Last neben TL ≈ der geplanten Einheit, «mehr» bzw. «weniger als geplant» ab 1,3× (+15) bzw. 0,7× (−15).
+  Abnahmetest D2 ist jetzt ein normaler Test.
+- **TL ≈ wie gemessen** (tl-plan-1.1, Befunde 1–2 und 7 der Prüfung V8.0): geplante Last mit denselben Bezugsgrössen wie die absolvierte – Rad drinnen mit der LT2 der
+  Rolle, draussen nach Puls (bzw. LT2 für draussen), Laufen nach Puls, Schwimmen mit der Last pro Bewegungsstunde deiner Schwimmeinheiten (die CSS gibt nur noch die
+  Distanz). An deinen Daten liegen geplante und absolvierte Grundlage jetzt nahe beieinander (vorher war geplant deutlich leichter); die Naht der Fitness-Vorschau
+  nach drei Wochen ist damit fast weg.
+- **Anstieg der Belastung** (anstieg-1.0): Karte unter Analyse → Belastung und Erholung – langfristig (Fitness gegen vor vier Wochen), aktuell (Ermüdung ÷ Fitness) und
+  geplant (Mein Plan, drei Wochen); über 1,5 «nimmt zu schnell zu». Fitness, Ermüdung, Last und Ampel bleiben getrennte Zahlen (Befund 3).
+- **Check-in** (befinden-2.1): fünfte Frage «Motivation» und Schmerzen (keine / leicht / deutlich, mit Ort); Ampel readiness-2.3: Motivation tief und leichte Schmerzen
+  sind schwache, deutliche Schmerzen ein starkes Zeichen, mit Empfehlung je Ort. Hinweis auf Heute, solange Eingaben nur auf dem Gerät liegen (Befund 15).
+- **Harte Tage** (verfuegbarkeit-1.2, kraft-plan-1.2, Befund 10): harte Rad- und Laufeinheiten nie an zwei Tagen hintereinander; geht es nicht, meldet es die Woche.
+- Gefühl-Kalibrierung ohne Krafttraining (Befund 14). Fitness-Karte: Krafttraining zählt nicht (Text nachgeführt).
+
 ## V8.0 · 18.11.2026 · Prüfung aller Modelle und Szenario-Tests A–H (Masterprompt V8, Etappe V8.0)
 - **Simulator** (`tests/sim/`): lädt die echten Module der Seite ohne Browser und spielt Woche für Woche durch – Morgenwerte, Check-in, Ampel, Plan des Tages,
   Ausführung durch einen erfundenen Athleten. **Abnahmetests A–H** (`tests/test_v80.cjs`) über mehrere Wochen und ein Lauf über acht Wochen mit Kraft, langen

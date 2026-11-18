@@ -8,7 +8,7 @@
   "use strict";
   const FK = {};
   FK.VERSIONS = {
-    cockpit: "cockpit-1.0", readiness: "readiness-2.2", ampel_pruefung: "ampel-pruefung-1.1", langfahrt: "langfahrt-2.0", koppel: "koppel-1.1",
+    cockpit: "cockpit-1.0", readiness: "readiness-2.3", ampel_pruefung: "ampel-pruefung-1.1", langfahrt: "langfahrt-2.0", koppel: "koppel-1.1",
     fueling: "fueling-1.0", eta: "eta-1.0", cda: "cda-1.0", fit: "fit-js-1.0", wetter: "wetter-1.0",
     pmc: "pmc-2.1", zonen: "zonenverteilung-2.0", orientierung: "langfahrt-orientierung-1.0", entwicklung: "entwicklung-1.0", laufeffizienz: "laufeffizienz-1.1",
     laufvergleich: "laufvergleich-1.0",
@@ -475,12 +475,22 @@
     }
     const krank = today && Array.isArray(today.krank) && today.krank.length ? today.krank : null;
     if (krank) ind.krank = { status: "angegeben", zeichen: krank };
+    // readiness-2.3 (V8.1, befinden-2.1): Motivation (Skala des Eintrags) und Schmerzen. Tiefe Motivation (6–7 von 7) ist ein schwaches Zeichen – allein
+    // ändert sie nichts; deutliche Schmerzen ein starkes (Gesundheit vor Training), leichte ein schwaches.
+    const motA = antB("motivation");
+    if (motA != null) ind.motivation = { status: motA >= 0.75 ? "tief" : motA >= 0.5 ? "mittel" : "gut", wert: today.motivation, skala: skB };
+    const sz = today && today.schmerz && ["leicht", "deutlich"].includes(today.schmerz.stufe) ? today.schmerz : null;
+    if (sz) ind.schmerz = { status: sz.stufe, ort: Array.isArray(sz.ort) ? sz.ort.slice() : [] };
 
     // Entscheidung: transparent, ohne Prozentmodell
     const reasons = []; let strong = 0, weak = 0;
     const add = (w, txt, kind) => { reasons.push({ w, txt, kind }); };
     if (krank) { strong++; add(10, `Krankheitszeichen angegeben (${krank.join(", ")})`, "krank"); }
     if (ind.befinden.status === "belastet") { strong++; add(8, `Befinden: ${ind.befinden.belastet.join(", ")} (deine Angabe)`, "befinden"); }
+    const ortText = (x) => (x.ort.length ? ": " + x.ort.join(", ") : "");
+    if (ind.schmerz && ind.schmerz.status === "deutlich") { strong++; add(8, `Schmerzen deutlich${ortText(ind.schmerz)} (deine Angabe)`, "schmerz"); }
+    else if (ind.schmerz) { weak++; add(3, `Schmerzen leicht${ortText(ind.schmerz)} (deine Angabe)`, "schmerz"); }
+    if (ind.motivation && ind.motivation.status === "tief") { weak++; add(3, `Motivation tief (${ind.motivation.wert}/${skB}, deine Angabe)`, "motivation"); }
     if (ind.hrv.status === "deutlich unter Referenz") { strong++; add(7, `HRV 7 Tage Ø ${ind.hrv.wert7} ms deutlich unter deiner Referenz (${ind.hrv.refLo}–${ind.hrv.refHi} ms)`, "hrv"); }
     else if (ind.hrv.status === "unter Referenz") { weak++; add(5, `HRV 7 Tage Ø ${ind.hrv.wert7} ms unter deiner Referenz (${ind.hrv.refLo}–${ind.hrv.refHi} ms)`, "hrv"); }
     if (ind.rhr.status === "deutlich erhöht") { strong++; add(7, `Ruhepuls 3 Tage Ø ${fmt1(ind.rhr.wert3)} bpm, ${fmt1(ind.rhr.diff)} über Referenz ${fmt1(ind.rhr.ref)}`, "rhr"); }
@@ -511,7 +521,9 @@
     const empf = {
       bereit: "Geplante Einheit wie vorgesehen.",
       normal: "Wie geplant; bei harten Einheiten auf das Gefühl achten.",
-      vorsichtig: krank ? "Keine harte oder lange Einheit. Bei Fieber oder allgemeinen Symptomen pausieren und ärztlich abklären." : "Intensität reduzieren oder locker trainieren; harte Einheit verschieben.",
+      vorsichtig: krank ? "Keine harte oder lange Einheit. Bei Fieber oder allgemeinen Symptomen pausieren und ärztlich abklären."
+        : ind.schmerz && ind.schmerz.status === "deutlich" ? "Keine harte oder lange Einheit; was schmerzt, nicht belasten (bei Beinen und Füssen kein Laufen, bei der Schulter kein Schwimmen). Bleibt es, ärztlich abklären."
+        : "Intensität reduzieren oder locker trainieren; harte Einheit verschieben.",
       "nicht beurteilbar": "Aus den Daten keine Empfehlung; nach Gefühl entscheiden.",
     }[status];
     return { v: FK.VERSIONS.readiness, datum: dateISO, status, gruende: reasons.slice(0, 4).map((r) => r.txt), alle_gruende: reasons, indikatoren: ind, vertrauen, empfehlung: empf,

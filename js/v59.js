@@ -21,11 +21,11 @@
     window.addEventListener("keydown", (e) => { const ex = document.getElementById("ex"); if (e.key === "Escape" && !$("v59-ov").hidden && !(ex && !ex.hidden)) V.schliessen(); });
   };
 
-  /* ======================= Morgen-Check-in (befinden-2.0) =======================
+  /* ======================= Morgen-Check-in (befinden-2.0, seit V8.1 befinden-2.1 mit Motivation und Schmerzen) =======================
    * V6.0.1: Begrüssungskarte auf «Heute» (ein Satz zur Lage, «Heute nicht» und «Check-in»). V6.3 (Etappe 3): Blatt mit vier Fragen
    * (Schlaf, Energie, Beine, Kopf) und sieben Stufen als Farbskala (1 = sehr gut … 4 = durchschnittlich … 7 = sehr schlecht, Türkis → Pink).
    * Gespeichert wird mit «Speichern» (als «befinden», verschlüsselt); ältere Einträge mit fünf Stufen bleiben, wie sie sind. */
-  const CI = { wahl: {}, krank: false, krankListe: [], notiz: "", geladen: null };
+  const CI = { wahl: {}, krank: false, krankListe: [], notiz: "", schmerz: null, schmerzOrte: [], geladen: null };
   const befHeute = () => (UI() ? UI().befinden().find((b) => b.date === heuteISO()) : null) || null;
   /** Steht der Eintrag schon in den Daten, ist er gesendet oder wartet er? */
   function syncText(b) {
@@ -40,7 +40,7 @@
   }
   const wort = (f, v) => L().wort(f, v);
   const gross1 = (t) => String(t).charAt(0).toUpperCase() + String(t).slice(1);
-  const FRAGE_ICON = { schlaf: "schlaf", muskel: "beine", muede: "energie", stress: "kopf" };
+  const FRAGE_ICON = { schlaf: "schlaf", muskel: "beine", muede: "energie", stress: "kopf", motivation: "funken" };
   const ico = (k, w) => (window.V6 ? window.V6.icon(k, w) : "");
   /** Ein Satz zur Lage: geplante Einheit(en) und Bereitschaft (nur aus vorhandenen Werten). */
   function lageSatz() {
@@ -59,19 +59,28 @@
   V.checkin = function () {
     const box = $("checkin"); if (!box || !C || !L()) return;
     const day = heuteISO(), b = befHeute(), F = L().FRAGEN;
-    if (CI.geladen !== day) Object.assign(CI, { wahl: {}, krank: false, krankListe: [], notiz: "", geladen: day });
+    if (CI.geladen !== day) Object.assign(CI, { wahl: {}, krank: false, krankListe: [], notiz: "", schmerz: null, schmerzOrte: [], geladen: day });
     const h = new Date().getHours(), gruss = window.V6 ? window.V6.gruss(h) : "Guten Morgen";
     const karte = $("checkin-card"); if (karte) karte.classList.toggle("ci-fertig", !!b);
     let unten;
-    if (b) unten = `<div class="ci-done" role="status"><span class="ci-ok" aria-hidden="true">✓</span><div><b>Befinden heute</b> ${F.filter((f) => isNum(b[f.k])).map((f) => `${f.label} <b>${b[f.k]}/${L().skalaVon(b)}</b><small> ${esc(L().wortVon(b, f))}</small>`).join(" · ")}${b.krank ? ` · <b class="down">${esc(b.krank.join(", "))}</b>` : ""}${b.notiz ? ` · «${esc(b.notiz)}»` : ""}
+    if (b) unten = `<div class="ci-done" role="status"><span class="ci-ok" aria-hidden="true">✓</span><div><b>Befinden heute</b> ${F.filter((f) => isNum(b[f.k])).map((f) => `${f.label} <b>${b[f.k]}/${L().skalaVon(b)}</b><small> ${esc(L().wortVon(b, f))}</small>`).join(" · ")}${b.schmerz ? ` · <b class="${b.schmerz.stufe === "deutlich" ? "down" : "warn-t"}">Schmerzen ${esc(b.schmerz.stufe)}${b.schmerz.ort && b.schmerz.ort.length ? ": " + esc(b.schmerz.ort.join(", ")) : ""}</b>` : ""}${b.krank ? ` · <b class="down">${esc(b.krank.join(", "))}</b>` : ""}${b.notiz ? ` · «${esc(b.notiz)}»` : ""}
         <div class="ci-meta">${syncText(b)}</div></div></div>
       <div class="gr-knoepfe"><button class="btn" type="button" data-ci="blatt">Ändern</button></div>`;
     else if (lsGet("sf.ci.aus") === day) unten = `<p class="gr-zeile">Check-in heute übersprungen.</p><div class="gr-knoepfe"><button class="btn" type="button" data-ci="neu">Doch eintragen</button></div>`;
     else unten = `<div class="gr-knoepfe"><button class="btn gross" type="button" data-ci="aus">Heute nicht</button><button class="btn primary gross" type="button" data-ci="blatt">${ico("check", 20)} Check-in</button></div>`;
-    box.innerHTML = `<div class="gruss"><h2>${esc(gruss)}</h2><p class="gr-lage">${lageSatz()}</p>${unten}</div>`;
+    box.innerHTML = `<div class="gruss"><h2>${esc(gruss)}</h2><p class="gr-lage">${lageSatz()}</p>${unten}${wartenHinweis()}</div>`;
     bindKarte(box);
     if (window.V59_CI_AUF) { window.V59_CI_AUF = false; if (!b) V.checkinBlatt(); }
   };
+  /** V8.1: Eingaben, die nur auf diesem Gerät liegen (ohne «Direkt speichern»), sehen Morgen- und Nacht-Update nicht – einmal deutlich sagen. */
+  function wartenHinweis() {
+    const E = EG(), I = UI() && UI().Inbox;
+    if (!E || !I || C.IS_DEMO || !E.aktiv() || E.hatSchluessel()) return "";
+    let n = 0; try { n = E.offen(I.data, (I.data.eg || {}).gesendet).n; } catch (e) { n = 0; }
+    if (!n) return "";
+    return `<p class="warn-t ci-warten" role="status">${n === 1 ? "Eine Eingabe liegt" : n + " Eingaben liegen"} nur auf diesem Gerät (Check-ins, Mein Plan, Verfügbarkeit, Aufträge an Garmin).
+      Die Updates am Morgen und in der Nacht sehen sie erst mit «Direkt speichern». <button class="lnk" type="button" data-ci="einst">Einrichten</button></p>`;
+  }
   function bindKarte(box) {
     box.querySelectorAll("[data-ci]").forEach((btn) => (btn.onclick = () => {
       const a = btn.dataset.ci;
@@ -83,7 +92,8 @@
   }
   async function speichern() {
     const alt = befHeute();
-    const b = L().checkinEintrag(heuteISO(), CI.wahl, { krank: CI.krank ? (CI.krankListe.length ? CI.krankListe : true) : null, notiz: CI.notiz, nachtdienst: alt && alt.nachtdienst });
+    const b = L().checkinEintrag(heuteISO(), CI.wahl, { krank: CI.krank ? (CI.krankListe.length ? CI.krankListe : true) : null, notiz: CI.notiz, nachtdienst: alt && alt.nachtdienst,
+      schmerz: CI.schmerz ? { stufe: CI.schmerz, ort: CI.schmerzOrte } : null });
     if (!b) return false;
     await UI().Inbox.upsert("befinden", b, (x) => x.date);
     try { UI().heute(); } catch (e) { console.error(e); }
@@ -91,13 +101,14 @@
     return true;
   }
   const alleDa = () => L().FRAGEN.every((f) => Number.isInteger(CI.wahl[f.k]));
-  /** Check-in als Blatt (befinden-2.0): vier Fragen, je Symbol, Frage, grosser Wert und Farbskala mit sieben Stufen. */
+  /** Check-in als Blatt (befinden-2.1): fünf Fragen (Motivation seit 2.1), je Symbol, Frage, grosser Wert und Farbskala mit sieben Stufen; Krankheit und Schmerzen. */
   V.checkinBlatt = function () {
     if (!C || !L()) return;
     const day = heuteISO(), b = befHeute(), F = L().FRAGEN;
     if (CI.geladen !== day) CI.geladen = day;
-    if (b) Object.assign(CI, { wahl: L().skalaVon(b) === L().SKALA ? { schlaf: b.schlaf, muskel: b.muskel, muede: b.muede, stress: b.stress } : {},   // alte 5er-Einträge nicht umdeuten
-      krank: !!(b.krank && b.krank.length), krankListe: (b.krank || []).filter((k) => L().KRANK.includes(k)), notiz: b.notiz || "" });
+    if (b) Object.assign(CI, { wahl: L().skalaVon(b) === L().SKALA ? { schlaf: b.schlaf, muskel: b.muskel, muede: b.muede, stress: b.stress, motivation: b.motivation } : {},   // alte 5er-Einträge nicht umdeuten
+      krank: !!(b.krank && b.krank.length), krankListe: (b.krank || []).filter((k) => L().KRANK.includes(k)), notiz: b.notiz || "",
+      schmerz: b.schmerz ? b.schmerz.stufe : null, schmerzOrte: b.schmerz && Array.isArray(b.schmerz.ort) ? b.schmerz.ort.slice() : [] });
     const frage = (f) => {
       const v = CI.wahl[f.k], ic = FRAGE_ICON[f.k] || "check", text = f.text || f.label, N = L().SKALA;
       return `<div class="ci-frage" data-f="${f.k}"><h3 class="abschnitt">${ico(ic, 15)}${esc(f.label)}</h3><p class="ci-text" id="ci-l-${f.k}">${esc(text)}</p>
@@ -105,8 +116,11 @@
         <div class="ci-skala ci7" role="radiogroup" aria-labelledby="ci-l-${f.k}">${Array.from({ length: N }, (_, i) => i + 1).map((n) => `<button type="button" role="radio" class="ci-p" style="--ci:var(--c7-${n})" aria-checked="${v === n}" aria-label="${esc(f.label)} ${n} von ${N}: ${esc(wort(f, n))}" data-q="${f.k}" data-v="${n}"></button>`).join("")}</div>
         <div class="ci-enden" aria-hidden="true"><span>${esc(f.lo)}</span><span>${esc(f.hi)}</span></div></div>`;
     };
-    const html = `<div class="blatt-titel">${ico("check", 34)}<h2 id="v59-ov-h" tabindex="-1">Check-in</h2><p class="sub">${b ? "Befinden von heute ändern" : "Wie geht es dir heute? Vier Tipps, dann speichern."}</p></div>
+    const html = `<div class="blatt-titel">${ico("check", 34)}<h2 id="v59-ov-h" tabindex="-1">Check-in</h2><p class="sub">${b ? "Befinden von heute ändern" : "Wie geht es dir heute? Fünf Tipps, dann speichern."}</p></div>
       ${F.map(frage).join("")}
+      <div class="ci-frage ci-schmerz"><h3 class="abschnitt">${ico("beine", 15)}Schmerzen</h3><p class="ci-text" id="ci-l-schmerz">Schmerzt etwas – mehr als Muskelkater?</p>
+        <div class="chips" role="radiogroup" aria-labelledby="ci-l-schmerz">${[["", "keine"], ["leicht", "leicht"], ["deutlich", "deutlich"]].map(([v, t]) => `<button type="button" class="chip" role="radio" aria-checked="${(CI.schmerz || "") === v}" data-sz="${v}">${t}</button>`).join("")}</div>
+        <div class="chips ci-so" role="group" aria-label="Wo? (mehrere möglich)" ${CI.schmerz ? "" : "hidden"}>${L().SCHMERZ_ORTE.map((o) => `<button type="button" class="chip" aria-pressed="${CI.schmerzOrte.includes(o)}" data-so="${esc(o)}">${esc(o)}</button>`).join("")}</div></div>
       <div class="ci-x"><label class="ci-k"><input type="checkbox" data-ci="krank" ${CI.krank ? "checked" : ""}> krank oder verletzt</label></div>
       <div class="chips ci-kl" role="group" aria-label="Was genau? (optional)" ${CI.krank ? "" : "hidden"}>${L().KRANK.map((k) => `<button type="button" class="chip" aria-pressed="${CI.krankListe.includes(k)}" data-kr="${esc(k)}">${esc(k)}</button>`).join("")}</div>
       <input class="ci-n" type="text" maxlength="280" placeholder="Notiz (optional), z. B. schlecht geschlafen" aria-label="Notiz zum Befinden" value="${esc(CI.notiz)}">
@@ -132,6 +146,17 @@
     ov.querySelectorAll("[data-kr]").forEach((btn) => (btn.onclick = () => {
       const k = btn.dataset.kr; CI.krankListe = CI.krankListe.includes(k) ? CI.krankListe.filter((x) => x !== k) : CI.krankListe.concat(k);
       btn.setAttribute("aria-pressed", String(CI.krankListe.includes(k)));
+    }));
+    const so = ov.querySelector(".ci-so");
+    ov.querySelectorAll("[data-sz]").forEach((btn) => (btn.onclick = () => {
+      CI.schmerz = btn.dataset.sz || null;
+      ov.querySelectorAll("[data-sz]").forEach((x) => x.setAttribute("aria-checked", String(x === btn)));
+      if (so) so.hidden = !CI.schmerz;
+      if (!CI.schmerz) { CI.schmerzOrte = []; if (so) so.querySelectorAll("[data-so]").forEach((x) => x.setAttribute("aria-pressed", "false")); }
+    }));
+    ov.querySelectorAll("[data-so]").forEach((btn) => (btn.onclick = () => {
+      const o = btn.dataset.so; CI.schmerzOrte = CI.schmerzOrte.includes(o) ? CI.schmerzOrte.filter((x) => x !== o) : CI.schmerzOrte.concat(o);
+      btn.setAttribute("aria-pressed", String(CI.schmerzOrte.includes(o)));
     }));
     const n = ov.querySelector(".ci-n");
     if (n) n.oninput = () => { CI.notiz = n.value.trim(); };

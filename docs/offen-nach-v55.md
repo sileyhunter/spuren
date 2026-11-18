@@ -260,4 +260,17 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 103. **Bezugsgrössen und Lastverhältnisse** (Befunde 1–3, 7, 14, 16): zwei LT2 für die Rad-Last, geplante Last unter der absolvierten, zwei Lastverhältnisse,
      Naht der Fitness-Vorschau, Gefühl-Kalibrierung mit Kraft, mehrere Rechnungen für Wochenstunden → V8.1, Regeländerungen nur mit Silas' Okay.
 104. **Harte Einheiten an Land an zwei Tagen hintereinander** nach einer Verschiebung (Befund 10, z. B. solange dienstags nur Schwimmen geht): Frage an Silas.
+     → erledigt in V8.1 (verfuegbarkeit-1.2, kraft-plan-1.2; Silas: «entscheide, was trainingstechnisch mehr Sinn macht»).
+
+## Nach V8.1 (18.11.2026, Daten zusammenführen)
+102. (Stand) D2 ist ein normaler Test; A3, B3, D3, E2, H2 (V8.3), F2 (V8.4) und H3 (V8.6) bleiben «todo».
+103. (Stand) Bezugsgrössen (Befunde 1, 2, 7) mit tl-plan-1.1 erledigt; zwei Lastverhältnisse bewusst getrennt (Befund 3, erklärt im Wissen «last»); Gefühl-Kalibrierung
+     ohne Kraft (Befund 14). Offen: Befund 16 – die Wochenstunden werden an mehreren Stellen gerechnet (gleiche Definition, aber kein gemeinsamer Code).
+105. **Simulator: Körpermodell Laufen nicht auf TL ≈ abgeglichen** (wie geplant gelaufen ≈ 0,7 × TL ≈, weil die erfundenen Pace-Zonen und die Intensitätstabelle nicht
+     zusammenpassen). D2 prüft darum nur «mehr als geplant». Vor V8.3 (Coach prüft die folgenden Tage mit der tatsächlichen Last) angleichen.
+106. **Garmins Selbsteinschätzung** wird nur für die letzten 90 Tage nachgeholt (je Nacht höchstens 20 zusammen mit den Notizen); ältere Einheiten haben keinen Vorschlag.
+     Ob Silas Anstrengung und Gefühl auf der Uhr überhaupt eingibt, zeigt sich erst nach einigen Nächten.
+107. **«Nach dem Training» für Schwimmen:** Puls zur Leistung gibt es nur für Rad und Laufen (im Wasser kein Bezug). Kraft hat sein RPE weiter auf der Einheit-Seite.
+108. **Schwimmen TL ≈ aus der Last pro Stunde** unterscheidet nicht zwischen locker und CSS; die absolvierte Last kommt beim Schwimmen aus dem Puls (Schwellenpuls Rad als
+     Standard). Eigene Pulszonen fürs Schwimmen wären genauer – erst mit Silas' Okay.
 

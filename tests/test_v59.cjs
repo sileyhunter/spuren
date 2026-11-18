@@ -73,7 +73,7 @@ test("Eingang: verständliche Meldungen für Schlüssel- und Netzfehler", () => 
 /* ---------------- befinden-2.0 (V6.3) ---------------- */
 test("Check-in 2.0: vier Fragen mit sieben Stufen (Schlaf, Energie, Beine, Kopf); alte Einträge mit fünf Stufen bleiben gültig", () => {
   const b = L.checkinEintrag("2026-11-10", { schlaf: 2, muskel: 6, muede: 4, stress: 1 }, { notiz: "  gut geschlafen ", erfasst: "2026-11-10T06:50:00Z" });
-  assert.deepEqual(b, { date: "2026-11-10", schlaf: 2, muede: 4, muskel: 6, stress: 1, skala: 7, quelle: "checkin", v: "befinden-2.0", erfasst: "2026-11-10T06:50:00Z", notiz: "gut geschlafen" });
+  assert.deepEqual(b, { date: "2026-11-10", schlaf: 2, muede: 4, muskel: 6, stress: 1, skala: 7, quelle: "checkin", v: "befinden-2.1", erfasst: "2026-11-10T06:50:00Z", notiz: "gut geschlafen" });
   assert.equal(L.checkinEintrag("2026-11-10", { muskel: 4, muede: 2, stress: 1 }), null, "ohne alle vier kein Eintrag");
   assert.equal(L.checkinEintrag("2026-11-10", { schlaf: 1, muskel: 8, muede: 2, stress: 1 }), null, "nur 1–7");
   assert.deepEqual(L.checkinEintrag("2026-11-10", { schlaf: 1, muskel: 1, muede: 1, stress: 1 }, { krank: true }).krank, ["krank oder verletzt"]);
@@ -109,6 +109,9 @@ test("Gefühl gegen Morgenwerte: erst ab 20 Morgen; der passende Wert wird erkan
   assert.equal(K.bester, "hrv", JSON.stringify(K.werte));
   const h = K.werte.find((w) => w.k === "hrv");
   assert.ok(h.rho > 0.7 && h.erwartet && h.brauchbar, JSON.stringify(h));
+  // V8.1 (Befund 14): Krafttraining zählt nicht in die Last des Vortags (wie pmc-2.1) – zusätzliche Kraft-Einheiten ändern nichts
+  const mitKraft = acts.concat(days.map((d, i) => ({ date: d.date, sport: "andere", typ: "strength_training", tss: (i * 37) % 120 })));
+  assert.deepEqual(L.gefuehlKalibrierung(bef, days, mitKraft).werte.find((w) => w.k === "last"), K.werte.find((w) => w.k === "last"));
 });
 
 /* ---------------- morgen-1.0 ---------------- */
@@ -168,3 +171,17 @@ test("Testkalender (Audit V6.4 B6/B20): Sportart auch ohne Feld sport (aus der N
   assert.deepEqual([B[0].sport, B[0].done], ["beide", false], "gemeinsamer Test erst erledigt, wenn beide gemacht sind");
   assert.equal(L.testsMitStatus([{ date: "2026-12-05", kind: "stufentest", note: "Test Rad und Lauf" }], [{ kind: "stufentest", sport: "rad", date: "2026-12-05" }, { kind: "stufentest", sport: "lauf", date: "2026-12-06" }], [])[0].done, true);
 });
+
+test("Check-in 2.1 (V8.1): Motivation als fünfte Frage und Schmerzen mit Ort; Motivation in älteren Einträgen fehlt", () => {
+  const b = L.checkinEintrag("2026-11-18", { schlaf: 3, muskel: 3, muede: 3, stress: 3, motivation: 6 }, { schmerz: { stufe: "deutlich", ort: ["Knie", "Knie", "Mond"] }, erfasst: "2026-11-18T06:00:00Z" });
+  assert.equal(b.v, "befinden-2.1"); assert.equal(b.motivation, 6);
+  assert.deepEqual(b.schmerz, { stufe: "deutlich", ort: ["Knie"] }, "Orte nur aus der Liste, je einmal");
+  assert.equal(L.checkinEintrag("2026-11-18", { schlaf: 3, muskel: 3, muede: 3, stress: 3, motivation: 9 }), null, "Motivation nur 1–7");
+  assert.equal(L.checkinEintrag("2026-11-18", { schlaf: 3, muskel: 3, muede: 3, stress: 3 }, { schmerz: { stufe: "stark" } }).schmerz, undefined, "unbekannte Stufe → keine Angabe");
+  assert.equal(L.FRAGEN.length, 5); assert.equal(L.FRAGEN[4].k, "motivation");
+  assert.equal(L.wortVon(b, L.FRAGEN[4]), "tief");
+  assert.deepEqual(L.schmerzSport(["Achilles/Wade", "Schulter", "Rücken"]), ["lauf", "schwimm"]);
+  const alt = L.checkinEintrag("2026-11-18", { schlaf: 2, muskel: 2, muede: 2, stress: 2 });
+  assert.ok(alt && alt.motivation === undefined && alt.schmerz === undefined, "ohne Motivation (Simulator, ältere Wege) bleibt der Eintrag gültig");
+});
+

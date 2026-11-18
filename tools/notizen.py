@@ -20,6 +20,7 @@ Regeln (notizen-1.0)
 import argparse
 import datetime as dt
 import json
+import math
 import re
 import sys
 import zoneinfo
@@ -272,11 +273,50 @@ def einlesen(D, notizen, heute=None):
     return n
 
 
-def offen(D, n=20):
-    """Aktivitäten mit Garmin-ID, deren Notiz noch nie abgerufen wurde (neueste zuerst): Garmin-IDs ohne «g»."""
-    G = D.get("garmin_notizen") or {}
-    acts = sorted((a for a in D.get("activities", []) if a.get("gid") and a["gid"] not in G), key=lambda a: (a.get("date", ""), a.get("start", "")), reverse=True)
+def offen(D, n=20, tage_selbst=90, heute=None):
+    """Aktivitäten mit Garmin-ID, deren Notiz noch nie abgerufen wurde, oder (V8.1, nachher-1.0) aus den letzten «tage_selbst» Tagen ohne abgerufene
+    Selbsteinschätzung (neueste zuerst): Garmin-IDs ohne «g». Beides kommt aus demselben get_activity (description bzw. workout_rpe/workout_feel);
+    ältere Selbsteinschätzungen werden nicht nachgeholt (für die Auswertung zählen die letzten Wochen)."""
+    G, S = D.get("garmin_notizen") or {}, D.get("garmin_selbst") or {}
+    heute = heute or dt.datetime.now(ZRH).date()
+    grenze = (heute - dt.timedelta(days=tage_selbst)).isoformat()
+    def fehlt(a):
+        return a["gid"] not in G or (a["gid"] not in S and a.get("date", "") >= grenze)
+    acts = sorted((a for a in D.get("activities", []) if a.get("gid") and fehlt(a)),
+                  key=lambda a: (a.get("date", ""), a.get("start", "")), reverse=True)
     return [a["gid"][1:] for a in acts[:n]], len(acts)
+
+
+def selbst_von(rpe, feel):
+    """Garmins Selbsteinschätzung nach der Aktivität (get_activity: workout_rpe 10–100, workout_feel 0–100) → {rpe_g 1–10, feel_g 0/25/50/75/100};
+    fehlend oder ungültig → None (wie V81.garminSelbst)."""
+    def zahl(x):
+        return isinstance(x, (int, float)) and not isinstance(x, bool) and x == x
+    def runden(x):                                        # wie Math.round in js/v81.js (halbe Werte aufwärts)
+        return int(math.floor(x + 0.5))
+    out = {"rpe_g": None, "feel_g": None}
+    if zahl(rpe) and 5 <= rpe <= 100:
+        out["rpe_g"] = max(1, min(10, runden(rpe / 10)))
+    if zahl(feel) and 0 <= feel <= 100:
+        out["feel_g"] = runden(feel / 25) * 25
+    return out
+
+
+def selbst_einlesen(D, eingang):
+    """{"g<ID>" oder "<ID>": {"workout_rpe", "workout_feel"} oder None} → D["garmin_selbst"] (je Garmin-ID, wie die Notizen: der Monatsexport baut die
+    Aktivitäten neu, die gid bleibt). Auch «nicht ausgefüllt» wird vermerkt, damit es nicht jede Nacht neu abgefragt wird. → Zahl der Änderungen"""
+    S = D.setdefault("garmin_selbst", {})
+    heute = dt.datetime.now(ZRH).strftime("%Y-%m-%d")
+    n = 0
+    for k, v in (eingang or {}).items():
+        gid = k if str(k).startswith("g") else "g" + str(k)
+        w = selbst_von((v or {}).get("workout_rpe"), (v or {}).get("workout_feel"))
+        alt = S.get(gid)
+        if alt and alt.get("rpe_g") == w["rpe_g"] and alt.get("feel_g") == w["feel_g"]:
+            continue
+        S[gid] = dict(w, abgerufen=heute)
+        n += 1
+    return n
 
 
 # ---------------------------------------------------------------- Vorschauen

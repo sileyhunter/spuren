@@ -786,7 +786,7 @@ def planwoche_pruefen(w, vorher=None):
     return None
 
 
-GARMIN_KEYS = ("activities", "days", "weights", "planned", "planned_range", "workouts_neu", "food_logs", "wx", "notizen_garmin", "enduco_schritte")
+GARMIN_KEYS = ("activities", "days", "weights", "planned", "planned_range", "workouts_neu", "food_logs", "wx", "notizen_garmin", "enduco_schritte", "selbst_garmin")
 
 
 def main(data_path, new_path, fit_path=None):
@@ -799,9 +799,12 @@ def main(data_path, new_path, fit_path=None):
     acts = D.setdefault("activities", [])
     added = updated = 0
     notes_in = {}                              # V6.1: Notiz je Aktivität (description aus get_activity), auch für schon vorhandene
+    selbst_in = {}                             # V8.1 nachher-1.0: Garmins Selbsteinschätzung (workout_rpe, workout_feel aus get_activity)
     for n in N.get("activities", []):
         if "notiz" in n:
             notes_in["g" + str(n["garmin_id"])] = n["notiz"]
+        if "workout_rpe" in n or "workout_feel" in n:
+            selbst_in["g" + str(n["garmin_id"])] = {"workout_rpe": n.get("workout_rpe"), "workout_feel": n.get("workout_feel")}
         t = n.get("type") or ""
         sport, label, indoor = TYPES.get(t, ("andere", t.replace("_", " ").title() or "Aktivität", False))
         start = dt.datetime.fromisoformat(n["start_local"].replace(" ", "T")[:19])
@@ -925,6 +928,9 @@ def main(data_path, new_path, fit_path=None):
     notes_in.update(N.get("notizen_garmin") or {})
     if notes_in:
         print(f"Garmin-Notizen: {len(notes_in)} abgerufen, {notizen.einlesen(D, notes_in)} neu oder geändert")
+    selbst_in.update(N.get("selbst_garmin") or {})
+    if selbst_in:
+        print(f"Garmin-Selbsteinschätzung: {len(selbst_in)} abgerufen, {notizen.selbst_einlesen(D, selbst_in)} neu oder geändert")
     n_la, n_fu, hw_n = notizen.ableiten(D)
     if n_la or n_fu:
         print(f"Aus Notizen: {n_la} Laktat-Vorschau(en), {n_fu} Verpflegungs-Vorschau(en) neu")

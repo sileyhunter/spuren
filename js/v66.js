@@ -3,6 +3,7 @@
      verschieben, entfernen, Tag sperren; Wochenaktionen «Änderungen verwerfen» und «Woche leeren». Vergangene und gesperrte Tage ändern sich nie.
    - vorlagen-1.0: Vorlagen für «Training hinzufügen» = die Bausteine der Modelle (V64.BAUSTEINE, eigene Texte) plus Kraft/Athletik und Mobility.
      Dauer in 5-min-Schritten; Schlüsseleinheiten ab ihrer kurzen Fassung, längere Wünsche werden mit lockerem Fahren bzw. Laufen (Z2) ergänzt.
+   - tl-plan-1.1 (V8.1): wie 1.0, aber mit den Bezugsgrössen der absolvierten Last (last-2.1: LT2 der Rolle drinnen, sonst Puls ÷ Schwellenpuls), V66.lastBezug.
    - tl-plan-1.0: TL ≈ geplanter Einheiten aus dem aktiven Zonenprofil (eigene Festlegung, Modell): Rad (Leistung ÷ LT2)², Laufen (Tempo ÷
      Tempo an der LT2)², Schwimmen (Tempo ÷ CSS)³, je × Stunden × 100 (wie last-2.0). Distanz ≈ für Laufen und Schwimmen aus Dauer und Ziel-Pace.
      Ohne Bezugswert keine Zahl; Tests und Kraft ohne TL.
@@ -21,8 +22,8 @@
   if (root) root.V66 = V66;
 })(typeof window !== "undefined" ? window : null, function (V64) {
   "use strict";
-  const V66 = { VERSIONS: { eigenplan: "eigenplan-1.2", vorlagen: "vorlagen-1.0", tl: "tl-plan-1.0", wochenblatt: "wochenblatt-1.0", kalender: "kalender-2.0",
-    verfuegbarkeit: "verfuegbarkeit-1.1", felder: "einheit-felder-1.1", anpassen: "einheit-anpassen-1.0", eigen: "eigene-aktivitaet-1.0" } };
+  const V66 = { VERSIONS: { eigenplan: "eigenplan-1.2", vorlagen: "vorlagen-1.0", tl: "tl-plan-1.1", wochenblatt: "wochenblatt-1.0", kalender: "kalender-2.0",
+    verfuegbarkeit: "verfuegbarkeit-1.2", felder: "einheit-felder-1.1", anpassen: "einheit-anpassen-1.0", eigen: "eigene-aktivitaet-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const add = (iso, n) => V64.addDays(iso, n);
 
@@ -474,10 +475,13 @@
    * an festen Tagen stehen], lang: { rad, lauf } (bevorzugte Wochentage für lange Einheiten), ctxE }. → { tage, protokoll: { verschoben, gekuerzt, weg, hinweise }, geaendert }
    * verfuegbarkeit-1.1 (V7.6): lange Einheiten bevorzugt an den gewählten Tagen (+80, sonst −20; eine Empfehlung, keine Pflicht); am Tag nach einem
    * Krafttraining keine harte Rad- oder Laufeinheit (kraft-plan-1.1) – passt sie an keinen anderen Tag, wird sie an ihrem Tag locker (gemeldet).
+   * verfuegbarkeit-1.2 (V8.1, Silas' Frage vom 18.11.2026): harte Einheiten an Land (Rad, Laufen) nicht an zwei Tagen hintereinander – Abzug −100 je Seite
+   * (bis 1.1 −20) und danach eine Runde, die eine der beiden auf einen Tag ohne harte Einheit an Land daneben verschiebt (auch eine, die an ihrem
+   * eigenen Tag stand); geht das nicht, bleibt es und die Woche meldet es.
    */
   V66.verteilen = function (tage, verf, opt) {
     opt = opt || {};
-    const P = { verschoben: [], gekuerzt: [], weg: [], hinweise: [] };
+    const P = { verschoben: [], gekuerzt: [], weg: [], hinweise: [], zweiHart: [] };
     const T = (tage || []).map((t) => Object.assign({}, t, { einheiten: (t.einheiten || []).slice() }));
     if (!verf) return { tage: T, protokoll: P, geaendert: false };
     const V = T.map((t) => verf(t.date));
@@ -530,12 +534,14 @@
     const langFrei = (p) => T.some((t, j) => !t.fest && j !== p.von && langOk(p.e, j) && erlaubt(j, p.e.sport) && rest(j) >= p.e.dauer
       && !(land(p.e) && belegt[j].some((x) => hart(x) && land(x))));
     // Gewichte (eigene Festlegung): je Tag Abstand −5, je Einheit am Tag −10 (ab der dritten −25 mehr), gleiche Sportart am Tag −45, zwei harte
-    // am Tag −60, hart neben hart −20 je Seite, hart und lang an Land am selben Tag −120 (bis verfuegbarkeit-1.0 −40; seit 1.1 stärker als der Vorteil
-    // eines gewählten Tags für lange Einheiten +80), zwei lange am Tag −50, Ruhetag ohne eingetragene Zeit −30.
+    // am Tag −60, hart neben hart −20 je Seite (an Land −100 seit verfuegbarkeit-1.2), hart und lang an Land am selben Tag −120 (bis verfuegbarkeit-1.0
+    // −40; seit 1.1 stärker als der Vorteil eines gewählten Tags für lange Einheiten +80), zwei lange am Tag −50, Ruhetag ohne eingetragene Zeit −30.
+    const hartLand = (x) => hart(x) && land(x);
+    const neben = (i, e) => (land(e) && i >= 0 && i < T.length && belegt[i].some((x) => x !== e && hartLand(x)) ? 100 : hartAm(i, e) ? 20 : 0);
     const score = (p, i) => {
       const B = belegt[i], e = p.e; let s = -5 * Math.abs(i - p.von) - 10 * B.length - (B.length >= 2 ? 25 : 0);
       if (B.some((x) => x.sport === e.sport)) s -= 45;
-      if (hart(e)) { if (hartAm(i, e)) s -= 60; if (hartAm(i - 1, e)) s -= 20; if (hartAm(i + 1, e)) s -= 20; }
+      if (hart(e)) { if (hartAm(i, e)) s -= 60; s -= neben(i - 1, e) + neben(i + 1, e); }
       if (land(e) && ((hart(e) && B.some((x) => x.art === "lang" && land(x))) || (e.art === "lang" && B.some((x) => hart(x) && land(x))))) s -= 120;
       if (e.art === "lang" && B.some((x) => x.art === "lang")) s -= 50;
       if (!ruheOk(i)) s -= 30;
@@ -596,6 +602,41 @@
       }
       P.weg.push({ titel: p.e.titel, date: T[p.von].date, grund: V66.VF_SPORT.includes(sp) && !T.some((t, j) => !t.fest && erlaubt(j, sp)) ? "diese Sportart ist an keinem freien Tag erlaubt" : "an keinem freien Tag genug Zeit" });
       if (k) P.weg.push({ titel: k.titel, date: T[p.von].date, grund: "gehört zur langen Ausfahrt" });
+    }
+    // verfuegbarkeit-1.2: zwei harte Einheiten an Land an Tagen hintereinander – eine davon (zuerst die, die schon verschoben wurde) auf den besten Tag ohne
+    // harte Einheit an Land daneben und ohne lange Einheit an Land am selben Tag; geht das für keine der beiden, bleibt es und wird gemeldet
+    const hartNebenan = (j, ohne) => [j - 1, j + 1].some((k) => k >= 0 && k < T.length && belegt[k].some((x) => x !== ohne && hartLand(x)));
+    for (let runde = 0; runde < 4; runde++) {
+      let paar = null;
+      for (let i = 0; i + 1 < T.length && !paar; i++) {
+        const a = belegt[i].find(hartLand), b = belegt[i + 1].find(hartLand);
+        if (a && b) paar = [[i, a], [i + 1, b]];
+      }
+      if (!paar) break;
+      let best = null;
+      for (const [i, e] of paar) {
+        if (!VON.has(e) || T[i].fest) continue;                           // feste, eigene und gesperrte Einheiten bleiben
+        belegt[i].splice(belegt[i].indexOf(e), 1);
+        const p = { e, von: VON.get(e) };
+        T.forEach((t, j) => {
+          if (t.fest || j === i || !erlaubt(j, e.sport) || aktTag(j) || nachKraft(e, j) || rest(j) < e.dauer || hartNebenan(j, e)
+            || belegt[j].some((x) => hartLand(x) || (x.art === "lang" && land(x)))) return;
+          const s = score(p, j) + (VON.get(e) !== i ? 1 : 0);              // bei Gleichstand die schon verschobene
+          if (!best || s > best.s) best = { e, i, j, s, von: p.von };
+        });
+        belegt[i].push(e);
+      }
+      if (!best) {
+        const [[i, a], [, b]] = paar;
+        P.hinweise.push(`Harte Einheiten an zwei Tagen hintereinander: «${a.titel}» (${wtK(T[i].date)}) und «${b.titel}» (${wtK(T[i + 1].date)}) – kein anderer Tag passte (Zeit, Sportart oder lange Einheit)`);
+        P.zweiHart.push({ von: T[i].date, bis: T[i + 1].date, a: a.titel, b: b.titel });
+        break;
+      }
+      belegt[best.i].splice(belegt[best.i].indexOf(best.e), 1);
+      belegt[best.j].push(best.e);
+      const grund = "nicht zwei harte Tage hintereinander", r = WEG.get(best.e);
+      if (r) { if (best.j === best.von) { P.verschoben.splice(P.verschoben.indexOf(r), 1); WEG.delete(best.e); } else { r.nach = T[best.j].date; r.grund = grund; } }
+      else if (best.j !== best.von) { const n = { titel: best.e.titel, von: T[best.von].date, nach: T[best.j].date, grund }; P.verschoben.push(n); WEG.set(best.e, n); }
     }
     // 3. Runde: lockere Einheiten von vollen Tagen auf einen deutlich besseren Tag (mehr als 20 Punkte), z. B. neben eine verschobene lange Ausfahrt
     for (let i = 0; i < T.length; i++) for (const e of belegt[i].slice()) {
@@ -760,11 +801,15 @@
     return out;
   };
 
-  /* ---------------- TL ≈ und Distanz ≈ (tl-plan-1.0) ---------------- */
+  /* ---------------- TL ≈ und Distanz ≈ (tl-plan-1.0, seit V8.1 tl-plan-1.1: Bezugsgrössen wie die absolvierte Last) ---------------- */
   const zone = (L, nr) => (Array.isArray(L) ? L.find((z) => z && z.z === "Z" + nr) || null : null);
   const mitte = (z) => (z && isNum(z.von) && isNum(z.bis) ? (z.von + z.bis) / 2 : null);
-  /** Bezugswerte aus dem aktiven Zonenprofil: skalen = TR.zonen(D.zonen).skalen; css_s = CSS in s/100 m. */
-  V66.bezug = function (skalen, css_s) {
+  /** Bezugswerte aus dem aktiven Zonenprofil: skalen = TR.zonen(D.zonen).skalen; css_s = CSS in s/100 m.
+   *  tl-plan-1.1 (V8.1, Befunde 1–2 der Prüfung V8.0): last = { ref: config.last_ref, lthr: config.lthr } (auf der Seite über V66.lastBezug) – geplant
+   *  rechnet dann wie die absolvierte Last (last-2.1): Rad drinnen mit der LT2 der Rolle, Rad draussen mit der LT2 für draussen, sonst wie Laufen nach Puls
+   *  (Puls der Zone ÷ Schwellenpuls der Sportart, höchstens 1,15; Pulszonen des aktiven Profils). Ohne diese Angaben wie tl-plan-1.0. */
+  V66.bezug = function (skalen, css_s, last) {
+    if (last === undefined && typeof V66.lastBezug === "function") { try { last = V66.lastBezug(); } catch (e) { last = null; } }
     const S = skalen || {}, R = { rad: null, lauf: null, schwimm: isNum(css_s) ? { css: css_s } : null };
     const w = S.rad_w, p = S.lauf_pace;
     const z2w = zone(w, 2), z3w = zone(w, 3), z4w = zone(w, 4), z5w = zone(w, 5);
@@ -780,6 +825,22 @@
       R.lauf = { lt2, pace: { z1: langsam, z2: mitte(z2p), z3: mitte(z3p), z3o: 1.03 * lt2, vo2: z5p && isNum(z5p.von) ? 0.97 * z5p.von : null,
         renntempo: lt1 ? 1.015 * lt1 : null, pause: langsam } };
     }
+    if (last) {                                                       // tl-plan-1.1: wie die absolvierte Last
+      const lthr = last.lthr || {}, puls = (L, schwelle) => {
+        const z2 = zone(L, 2), z3 = zone(L, 3), z4 = zone(L, 4), z5 = zone(L, 5);
+        if (!isNum(schwelle) || !z2 || !isNum(z2.von) || !isNum(z2.bis)) return null;
+        const locker = 0.95 * z2.von;
+        return { lthr: schwelle, wert: { z1: locker, pause: locker, z2: mitte(z2), renntempo: z2.von + (2 / 3) * (z2.bis - z2.von), z3: mitte(z3),
+          z3o: z4 && isNum(z4.von) ? 0.98 * z4.von : null, vo2: z5 && isNum(z5.von) ? z5.von : null } };
+      };
+      const refs = (((last.ref || {}).rad) || []).filter((x) => x && isNum(x.lt2_w)).sort((a, b) => String(a.ab || "").localeCompare(String(b.ab || "")));
+      const rolle = refs.filter((x) => (x.system || "rolle") === "rolle").pop(), draussen = refs.filter((x) => x.system === "draussen").pop();
+      if (R.rad) Object.assign(R.rad, { lt2Rolle: rolle ? rolle.lt2_w : null, lt2Draussen: draussen ? draussen.lt2_w : null, puls: puls(S.rad_hf, lthr.rad), v11: true });
+      if (R.lauf) Object.assign(R.lauf, { puls: puls(S.lauf_hf, lthr.lauf), v11: true });
+      // Schwimmen: die absolvierte Last kommt aus dem Puls (ohne Pulszonen fürs Schwimmen) – geplant darum mit deiner Last pro Bewegungsstunde
+      // der Schwimmeinheiten (basis-1.1, 8 abgeschlossene Wochen) statt aus der CSS; Distanz ≈ weiter aus der CSS
+      if (last.tlh && isNum(last.tlh.schwimm) && last.tlh.schwimm > 0) R.schwimmStunde = last.tlh.schwimm;
+    }
     return R;
   };
   /** TL ≈ und Distanz ≈ einer Einheit (Ergebnis von V66.einheit oder V64.einheit). → { tl, km, vollstaendig, grund } */
@@ -794,29 +855,38 @@
       out.tl = Math.round((e.dauer / 60) * tlh * (e.zone === "z1" ? 0.8 : 1)); out.vollstaendig = true; out.grund = "aus deinen eigenen Aktivitäten dieser Art";
       return out;
     }
-    let tl = 0, km = 0, offen = 0;
+    let tl = 0, km = 0, offen = 0, kmOffen = false;
     for (const [k, m] of e.teile) {
       const h = m / 60;
       if (e.sport === "rad") {
         const R = B.rad, P = R ? R.wert[k] : null;
         if (!isNum(P)) { offen += m; continue; }
-        tl += h * Math.pow(P / R.lt2, 2) * 100;
+        // tl-plan-1.1: drinnen mit der LT2 der Rolle, draussen mit der LT2 für draussen, sonst nach Puls – wie last-2.1; ohne Angaben wie 1.0
+        const hf = R.puls && isNum(R.puls.wert[k]) ? Math.min(1.15, R.puls.wert[k] / R.puls.lthr) : null;
+        const f = e.drinnen === true ? (isNum(R.lt2Rolle) ? P / R.lt2Rolle : P / R.lt2)
+          : isNum(R.lt2Draussen) ? P / R.lt2Draussen : hf != null ? hf : P / R.lt2;
+        tl += h * f * f * 100;
       } else if (e.sport === "lauf") {
         const R = B.lauf, pace = R ? R.pace[k] : null;
         if (!isNum(pace)) { offen += m; continue; }
-        tl += h * Math.pow(R.lt2 / pace, 2) * 100; km += (m * 60) / pace;
+        const hf = R.puls && isNum(R.puls.wert[k]) ? Math.min(1.15, R.puls.wert[k] / R.puls.lthr) : null;   // tl-plan-1.1: nach Puls wie die absolvierte Last
+        tl += h * (hf != null ? hf * hf : Math.pow(R.lt2 / pace, 2)) * 100; km += (m * 60) / pace;
       } else if (e.sport === "schwimm") {
-        const R = B.schwimm; if (!R) { offen += m; continue; }
+        const R = B.schwimm, q = isNum(B.schwimmStunde) ? B.schwimmStunde : null;
+        if (!R && q == null) { offen += m; continue; }
         if (k === "pause") continue;
-        const pace = k === "css" ? R.css : k === "z2" || k === "z1" ? R.css + 10 : null;    // Grundlage = CSS + 8–12 s (wie V64.ziel)
+        const pace = R ? (k === "css" ? R.css : k === "z2" || k === "z1" ? R.css + 10 : null) : null;    // Grundlage = CSS + 8–12 s (wie V64.ziel)
+        if (isNum(pace)) km += (m * 60 * 100) / pace / 1000; else kmOffen = true;
+        if (q != null) { tl += h * q; continue; }                         // tl-plan-1.1: Last pro Bewegungsstunde deiner Schwimmeinheiten
         if (!isNum(pace)) { offen += m; continue; }
-        tl += h * Math.pow(R.css / pace, 3) * 100; km += (m * 60 * 100) / pace / 1000;
+        tl += h * Math.pow(R.css / pace, 3) * 100;
       } else { offen += m; }
     }
     const total = e.teile.reduce((s, t) => s + t[1], 0);
     if (offen >= total) { out.grund = e.sport === "schwimm" ? "ohne CSS-Test" : "ohne Zonenprofil"; return out; }
     out.tl = Math.round(tl); out.vollstaendig = offen === 0;
-    if (e.sport !== "rad") out.km = Math.round(km * 10) / 10;
+    if (e.sport !== "rad" && !(e.sport === "schwimm" && !B.schwimm)) out.km = Math.round(km * 10) / 10;
+    if (kmOffen && out.km != null && e.sport === "schwimm") out.kmMin = true;     // Distanz ohne Übungen u. ä. (mindestens)
     if (!out.vollstaendig) out.grund = `${Math.round(offen)} min ohne Bezugswert (mind.)`;
     return out;
   };

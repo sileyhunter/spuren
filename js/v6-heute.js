@@ -68,7 +68,7 @@
     const tag = morgenTag(), pa = C.pmcHeute ? C.pmcHeute() : null, st = pa ? V6().status(pa.form) : null;
     const b = befundHeute(), aus = !b && ciAus();
     const sg = (v) => (v > 0 ? "+" + v : v < 0 ? "−" + Math.abs(v) : "0");
-    const ciSub = b ? (b._lokal ? (C.IS_DEMO ? "nur hier (Demo)" : "auf dem Gerät") : "in den Daten") : aus ? "übersprungen" : "4 kurze Fragen";
+    const ciSub = b ? (b._lokal ? (C.IS_DEMO ? "nur hier (Demo)" : "auf dem Gerät") : "in den Daten") : aus ? "übersprungen" : "5 kurze Fragen";
     box.innerHTML = `
       <button type="button" class="kachel" data-v6="bereit" aria-label="Ampel, Bereitschaft heute: ${esc(bw)} – Einzelheiten">
         <span class="k-kopf">${V6().icon("ampel", 15)}Ampel</span><b class="k-wert k-farbe" style="--kc:var(${bf})">${esc(bw)}</b>
@@ -119,7 +119,7 @@
         <button type="button" class="btn" data-v6="optionen">Optionen ${V6().icon("plus", 18)}</button></div>
       ${ampel}
       ${rennen ? `<div class="card ek-test v7-rennen">${V6().icon("flagge", 18)}<b>${esc(rennen.name)}</b><small>Renntag</small></div>` : ""}
-      ${U ? A.map((a) => U.aktKarte(a)).join("") : ""}
+      ${U ? A.map((a) => U.aktKarte(a) + (window.V81UI ? window.V81UI.zeile(a) : "")).join("") : ""}
       ${U ? karten.map((k) => k.erledigt ? U.einheitKarte(k.e, day, true).replace('class="card ek-karte v7-ek klein"', 'class="card ek-karte v7-ek klein v7-erl"') : U.einheitKarte(k.e, day)).join("") : ""}
       ${leer ? `<div class="card ek-leer"><p>${X && X.t.gesperrt ? "Heute ist gesperrt – kein Training geplant." : X && X.t.ampel && X.t.ampel.status === "krank" && !X.t.ampel.trotzdem ? "Heute Ruhetag (Krankheitszeichen)." : "Für heute ist nichts geplant."}</p>
         ${X && !X.t.gesperrt ? `<button type="button" class="btn" data-v7add>${V6().icon("plus", 16)} Training hinzufügen</button>` : ""}</div>` : ""}
@@ -230,7 +230,7 @@
     const sg = (v) => (v > 0 ? "+" + v : v < 0 ? "−" + Math.abs(v) : "0");
     const lage = pa ? W.statusLage(pa.form) : null;
     const akt = [
-      ["check", "Check-in", befundHeute() ? "Befinden von heute ansehen oder ändern" : "Vier kurze Fragen zum Befinden", "checkin"],
+      ["check", "Check-in", befundHeute() ? "Befinden von heute ansehen oder ändern" : "Fünf kurze Fragen zum Befinden", "checkin"],
       ["energie", "Verpflegung erfassen", "Fueling einer Einheit (Ausdauer)", "fueling"],
       ["trend", "Laktat eintragen", "Kurzcheck oder Stufentest (Laktat)", "laktat"],
       ["schwimm", "CSS-Test eintragen", "400 m und 200 m (Schwimmen)", "css"],

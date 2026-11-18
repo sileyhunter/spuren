@@ -86,9 +86,16 @@
       if (!D76 || !E75) return { roh, v: verteilt(roh) };
       const o = { verf: vorbei ? null : verf, haupt: S && S.haupt ? S.haupt.date : null, ctxE };
       if (vorbei) { const r = D76.einplanen(roh, E75, o); return { roh: r, v: r }; }
-      const kP = D76.einplanen(verteilt(roh), E75, o), d = kP.kraft && kP.kraft.status === "geplant" ? kP.kraft.date : null;
+      const vw = verteilt(roh), kP = D76.einplanen(vw, E75, o), d = kP.kraft && kP.kraft.status === "geplant" ? kP.kraft.date : null;
       const r = D76.einplanen(roh, E75, Object.assign({}, o, d ? { tag: d } : {}));
-      return { roh: r, v: !d || D76.passt(kP, o.verf) ? kP : verteilt(r) };
+      if (!d || D76.passt(kP, o.verf)) return { roh: r, v: kP };
+      const v1 = verteilt(r), zwei = (x) => ((x && x.verteilung && x.verteilung.zweiHart) || []).length;
+      // kraft-plan-1.2 / verfuegbarkeit-1.2: schiebt der gewählte Krafttag zwei harte Einheiten an Land an Tage hintereinander, ein Tag, an dem nichts umziehen muss
+      if (zwei(v1) > zwei(vw)) {
+        const kP2 = D76.einplanen(vw, E75, Object.assign({}, o, { nurPassend: true }));
+        if (kP2.kraft && kP2.kraft.status === "geplant") return { roh: D76.einplanen(roh, E75, Object.assign({}, o, { tag: kP2.kraft.date })), v: kP2 };
+      }
+      return { roh: r, v: v1 };
     };
     const abgestimmt = (w) => (window.V76 && window.V76.abstimmen ? window.V76.abstimmen(w, { ctxE }) : w);
     // V7.7 aktivitaet-plan-1.0 (js/v77.js): geplante Aktivitäten draussen dieser Woche in den unverteilten Vorschlag (Einheit an ihrem Tag, Ersatz von Rad- bzw.

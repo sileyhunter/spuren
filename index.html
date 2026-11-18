@@ -1279,6 +1279,10 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
         <div class="chart mid"><canvas id="c-ringe" aria-label="Erholung, Schlaf und Belastung im Verlauf, je 0 bis 100 Prozent"></canvas></div>
         <p class="hint" id="ringe-note"></p>
       </div>
+      <div class="card w12" id="v81-anstieg-card">
+        <div class="card-head"><div><h2>Anstieg der Belastung</h2><div class="sub">Steigt deine Belastung, ist sie stabil oder nimmt sie zu schnell zu? Langfristig, aktuell und mit Mein Plan</div></div></div>
+        <div id="v81-anstieg"><p class="hint">Wird berechnet …</p></div>
+      </div>
       <div class="card w12">
         <div class="card-head">
           <div><h2>Fitness, Ermüdung, Form</h2><div class="sub" id="pmc-sub">Fitness = Belastung der letzten 42 Tage, Ermüdung = letzte 7 Tage, Form = Differenz</div></div>
@@ -1714,6 +1718,8 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <script src="js/v77-ui.js"></script>
 <script src="js/v78.js"></script>
 <script src="js/v78-ui.js"></script>
+<script src="js/v81.js"></script>
+<script src="js/v81-ui.js"></script>
 <script>
 (() => {
   const b64d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
@@ -2233,6 +2239,7 @@ function showTab(name) {
   store.set("sf.tab", name);
   if (window.V59 && window.V59.ansicht) requestAnimationFrame(() => window.V59.ansicht(name));   // Info-Knopf, Tabellen als Liste
   if (window.V7UI && V7UI.gezeigt) requestAnimationFrame(() => { try { V7UI.gezeigt(name); } catch (e) { console.error(e); } });
+  if (window.V81UI && V81UI.gezeigt) requestAnimationFrame(() => { try { V81UI.gezeigt(name); } catch (e) { console.error(e); } });   // V8.1 anstieg-1.0
 }
 document.querySelectorAll("#leiste [data-gruppe]").forEach((b) => b.addEventListener("click", () => {
   const g = b.dataset.gruppe, akt = location.hash.slice(1), wurzel = GRUPPEN[g][0];
@@ -3732,7 +3739,7 @@ const TABS = {
           return `<div class="cd-akt">${W6 ? `<span class="ek-sport" style="--sp:var(--sp-${sp})">${W6.sportIcon(a.sport, 20)}</span>` : `<span class="dot" style="background:${e.c}"></span>`}
             <div class="cd-t"><b>${esc(a.name)}</b><small>${fmt(a.km, 1)} km · ${fmt(a.hm)} hm · ${hmm(effS(a))} h${Number.isFinite(a.mv) && a.dur - a.mv >= 300 ? ` (Timer ${hmm(a.dur)})` : ""}${a.hr ? " · Ø " + a.hr + " bpm" : ""}${a.watt ? " · " + a.watt + " W" : ""} · TL ${fmt(a.tss)}${a._lt2vor ? " (LT2 des ersten Tests)" : ""}</small>
             ${a.wk ? `<small>Plan «${esc(a.wk.name || "")}»: ${a.wk.plan_s ? hmm(a.wk.plan_s) + " h" : a.wk.plan_m ? (a.wk.plan_m >= 2000 ? fmt(a.wk.plan_m / 1000, 1) + " km" : a.wk.plan_m + " m") : "Dauer offen"} geplant, ${hmm(a.wk.ist_s)} h absolviert${a.wk.im_ziel != null ? ` · <b class="cd-ziel">${a.wk.im_ziel} % im Ziel</b>` : ""}</small>` : ""}</div>
-            <button class="btn ex-btn" data-ex="${esc(a.id)}">Analysieren</button></div>`;
+            <button class="btn ex-btn" data-ex="${esc(a.id)}">Analysieren</button></div>${window.V81UI ? V81UI.zeile(a) : ""}`;
         }
         if (e.p && H6 && W6) return H6.karteHTML("p:" + e.pi, true) + route(e);
         if (e.cls === "race") return `<div class="cd-rennen">${W6 ? W6.icon("flagge", 18) : ""}<b>${esc(e.title || e.text)}</b></div>`;
@@ -3880,7 +3887,7 @@ const TABS = {
     pmc() {
       const p = pmc().slice(-180), pa = FK.pmcAnzeige(p.at(-1)) || {}, sg = (v) => (v > 0 ? "+" + v : v < 0 ? "−" + Math.abs(v) : "0");
       document.getElementById("pmc-sub").textContent = "Fitness = Trainingslast geglättet über 42 Tage, Ermüdung = über 7 Tage, Form = Fitness − Ermüdung (beide inklusive heute). Rad-Trainingslast " + (LOAD_MODE === "ftp_est" ? "mit der geschätzten FTP." : LAST_AKTIV ? `auf der Rolle mit deiner LT2 (${lastRefText()}), ${lastDraussenText()}.` : "mit der in Garmin eingestellten FTP.")
-        + " Alle Sportarten zählen mit, auch Wandern.";
+        + " Alle Sportarten zählen mit, auch Wandern – ausser Krafttraining (pmc-2.1).";
       document.getElementById("pmc-kv").innerHTML = pa.fitness == null ? "" : `<div><span>Fitness</span><b>${pa.fitness}</b></div><div><span>Ermüdung</span><b>${pa.ermuedung}</b></div><div><span>Form</span><b>${sg(pa.form)}</b></div>`;
       document.getElementById("pmc-note").textContent = pa.fitness == null ? "" : `${pa.fitness} − ${pa.ermuedung} = ${sg(pa.form)} (gerundete Werte; genau ${fmt(pa.form_exakt, 1)}). ` +
         `Vor der Trainingslast von heute (bisher ${fmt(pa.last)}) lag die Form bei ${sg(pa.form_tagesbeginn)} – Werte von gestern Abend, so zeigen es manche Programme. ${pmcStand()} Regel ${pa.v}.`;

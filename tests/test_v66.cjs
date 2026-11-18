@@ -97,7 +97,7 @@ test("eigenplan-1.0: Prüfung gespeicherter Einheiten", () => {
   assert.match(V66.einheitPruefen({ uid: "x", vorlage: "rad_locker", dauer: 60, quelle: "fremd" }), /Quelle/);
 });
 
-test("tl-plan-1.0: TL ≈ aus dem Zonenprofil, Distanz ≈ beim Laufen, ohne Bezug keine Zahl", () => {
+test("tl-plan-1.0 (ohne Angaben zur Last unverändert): TL ≈ aus dem Zonenprofil, Distanz ≈ beim Laufen, ohne Bezug keine Zahl", () => {
   const BZ = V66.bezug(SK, 100);
   const rad = V66.schaetzung(V64.einheit("rad_locker", { d: 60 }), BZ);
   const erwartet = (10 / 60) * Math.pow((0.85 * 160) / 240, 2) * 100 + (50 / 60) * Math.pow(180 / 240, 2) * 100;
@@ -111,6 +111,36 @@ test("tl-plan-1.0: TL ≈ aus dem Zonenprofil, Distanz ≈ beim Laufen, ohne Bez
   assert.equal(V66.schaetzung(V64.einheit("schwimm_locker", { d: 40 }), V66.bezug(SK, null)).grund, "ohne CSS-Test");
   assert.ok(V66.schaetzung(V64.einheit("schwimm_locker", { d: 40 }), BZ).tl > 0);
   assert.match(V66.schaetzung(V64.einheit("test_rad", {}), BZ).grund, /Test/);
+});
+
+test("tl-plan-1.1 (V8.1): TL ≈ mit den Bezugsgrössen der absolvierten Last – Rolle mit ihrer LT2, draussen und Laufen nach Puls, Schwimmen pro Stunde", () => {
+  assert.equal(V66.VERSIONS.tl, "tl-plan-1.1");
+  const HF = { rad_hf: [{ z: "Z1", von: null, bis: 120 }, { z: "Z2", von: 120, bis: 140 }, { z: "Z3", von: 140, bis: 155 }, { z: "Z4", von: 155, bis: 165 }, { z: "Z5", von: 165, bis: null }],
+    lauf_hf: [{ z: "Z1", von: null, bis: 130 }, { z: "Z2", von: 130, bis: 150 }, { z: "Z3", von: 150, bis: 162 }, { z: "Z4", von: 162, bis: 172 }, { z: "Z5", von: 172, bis: null }] };
+  const sk = Object.assign({}, SK, HF), last = { ref: { rad: [{ ab: "2026-01-01", lt2_w: 220 }, { ab: "2026-06-01", lt2_w: 230, system: "rolle" }] }, lthr: { rad: 160, lauf: 170 }, tlh: { schwimm: 50 } };
+  const alt = V66.bezug(sk, 100, null), neu = V66.bezug(sk, 100, last);
+  const e = (sport, teile, drinnen) => ({ sport, art: "locker", drinnen, teile });
+  // Rad drinnen: Leistung der Zone ÷ neueste LT2 der Rolle (nicht der Beginn von Z4)
+  assert.equal(V66.schaetzung(e("rad", [["z2", 60]], true), neu).tl, Math.round(Math.pow(180 / 230, 2) * 100));
+  assert.equal(V66.schaetzung(e("rad", [["z2", 60]], true), alt).tl, Math.round(Math.pow(180 / 240, 2) * 100), "ohne Angaben wie tl-plan-1.0");
+  // Rad draussen ohne LT2 für draussen: Mitte der Pulszone ÷ Schwellenpuls Rad, höchstens 1,15
+  assert.equal(V66.schaetzung(e("rad", [["z2", 60]], false), neu).tl, Math.round(Math.pow(130 / 160, 2) * 100));
+  assert.equal(V66.schaetzung(e("rad", [["vo2", 60]]), neu).tl, Math.round(Math.pow(Math.min(1.15, 165 / 160), 2) * 100));
+  // … mit einer LT2 für draussen: Leistung ÷ diese LT2
+  const mitDraussen = V66.bezug(sk, 100, Object.assign({}, last, { ref: { rad: last.ref.rad.concat([{ ab: "2026-09-01", lt2_w: 250, system: "draussen" }]) } }));
+  assert.equal(V66.schaetzung(e("rad", [["z2", 60]], false), mitDraussen).tl, Math.round(Math.pow(180 / 250, 2) * 100));
+  // Laufen nach Puls, Distanz ≈ weiter aus dem Tempo
+  const L = V66.schaetzung(e("lauf", [["z2", 60]]), neu);
+  assert.equal(L.tl, Math.round(Math.pow(140 / 170, 2) * 100)); assert.equal(L.km, V66.schaetzung(e("lauf", [["z2", 60]]), alt).km);
+  // ohne Pulszonen bzw. Schwellenpuls: Laufen wie 1.0
+  assert.equal(V66.schaetzung(e("lauf", [["z2", 60]]), V66.bezug(SK, 100, last)).tl, V66.schaetzung(e("lauf", [["z2", 60]]), V66.bezug(SK, 100, null)).tl);
+  // Schwimmen: Minuten ohne Pause × Last pro Bewegungsstunde; Distanz ≈ aus der CSS, ohne CSS keine Distanz
+  const sw = { sport: "schwimm", art: "locker", teile: [["z2", 30], ["pause", 5], ["technik", 10], ["css", 15]] };
+  const S1 = V66.schaetzung(sw, neu);
+  assert.equal(S1.tl, Math.round((55 / 60) * 50)); assert.equal(S1.vollstaendig, true); assert.equal(S1.kmMin, true, "Übungen ohne Tempo: Distanz mindestens");
+  const S0 = V66.schaetzung(sw, V66.bezug(sk, null, last));
+  assert.equal(S0.tl, S1.tl, "ohne CSS-Test trotzdem eine Zahl"); assert.equal(S0.km, null, "ohne CSS keine Distanz");
+  assert.equal(V66.schaetzung(sw, V66.bezug(sk, null, null)).grund, "ohne CSS-Test", "ohne beides keine Zahl");
 });
 
 test("wochenblatt-1.0: Wochenart – Belastung 1–3 seit der letzten Erholung, Erholung, Taper, Rennwoche", () => {

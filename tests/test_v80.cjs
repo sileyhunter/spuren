@@ -157,8 +157,22 @@ test("D · Einheit deutlich intensiver als geplant", async (t) => {
     assert.equal(r.indikatoren.last.tage3, erwartet);
     nieHaerter(sim, W3);
   });
-  await t.test("D2 die Abweichung von der geplanten Last wird je Einheit erkannt", { todo: "V8.1 Daten zusammenführen" }, () => {
-    assert.ok(sim.win.V81 && typeof sim.win.V81.abweichung === "function", "Vergleich geplant gegen absolviert je Einheit (V8.1) fehlt");
+  await t.test("D2 die Abweichung von der geplanten Last wird je Einheit erkannt (last-abweichung-1.0, V8.1)", () => {
+    const V81 = sim.win.V81, mi = sim.log.get(tag(W3, 2));
+    assert.ok(V81 && typeof V81.abweichung === "function", "Vergleich geplant gegen absolviert je Einheit fehlt");
+    for (const a of mi.absolviert) {
+      const e = mi.einheiten.find((x) => x.uid === a.uid) || mi.einheiten.find((x) => x.sport === a.sport);
+      if (!e || !e.tl) continue;
+      const r = V81.abweichung(e.tl, { tss: a.tss });
+      assert.equal(r.urteil, "mehr als geplant", `${a.sport}: geplant ≈ ${e.tl}, ist ${a.tss}`);
+    }
+    // die übrigen Tage der Woche wurden wie geplant gefahren: keine wird als «mehr als geplant» gemeldet. («weniger als geplant» prüft der Test nicht:
+    // das Körpermodell des Simulators ist für Laufen nicht auf TL ≈ abgeglichen – offener Punkt 105, vor V8.3)
+    for (let i = 0; i < 7; i++) {
+      if (i === 2) continue;
+      const L = sim.log.get(tag(W3, i)); if (!L) continue;
+      for (const a of L.absolviert) { const e = L.einheiten.find((x) => x.uid === a.uid); if (e && e.tl) assert.notEqual(V81.abweichung(e.tl, { tss: a.tss }).urteil, "mehr als geplant", `${tag(W3, i)} ${a.sport}`); }
+    }
   });
   await t.test("D3 die folgenden Einheiten werden mit der tatsächlichen Last neu geprüft", { todo: "V8.3 Täglicher Coach" }, () => {
     // heute: die harte Radeinheit am Donnerstag bleibt ohne Hinweis, obwohl der Mittwoch schon hart war
@@ -330,4 +344,38 @@ test("Woche im Kalender: Bewegungszeit und TL ohne Krafttraining wie die Wochena
   const K = sim.S.kontext(START), k = sim.win.V66UI.wochenKopf(START, K);
   assert.equal(Math.round(k.istMin), 55, "Bewegungszeit, nur Schwimmen, Rad, Laufen");
   assert.equal(Math.round(k.istTl), 60, "TL ohne Krafttraining (pmc-2.1)");
+});
+
+test("Harte Einheiten an Land nie an zwei Tagen hintereinander (verfuegbarkeit-1.2, kraft-plan-1.2; Silas' Frage vom 18.11.2026)", async (t) => {
+  // dienstags nur Schwimmen (wie an Kurstagen), Mi–Fr 2:45 h: der harte Lauf muss umziehen und darf nicht neben das harte Rad am Donnerstag
+  const woche = (mitKraft) => {
+    const sim = simulator({ start: START, einstellungen: mitKraft ? KRAFT : [] });
+    for (const x of sim.D.plan_verfuegbarkeit) { if (x.wt === 2) Object.assign(x, { min: 165, sport: ["schwimm"] }); else if (x.wt >= 3 && x.wt <= 5) x.min = 165; }
+    sim.S.neu();
+    return sim.plan(START).K.w;
+  };
+  const hartLand = (t) => (t.einheiten || []).some((e) => (e.sport === "rad" || e.sport === "lauf") && e.schluessel);
+  for (const mitKraft of [false, true]) {
+    await t.test(mitKraft ? "mit Krafttraining (Tag automatisch)" : "ohne Krafttraining", () => {
+      const w = woche(mitKraft), T = w.tage;
+      assert.equal(T.filter(hartLand).length, 2, T.map((x) => x.date + " " + (x.einheiten || []).map((e) => e.titel).join("+")).join(" | "));
+      for (let i = 0; i + 1 < T.length; i++) assert.ok(!(hartLand(T[i]) && hartLand(T[i + 1])), `${T[i].date}/${T[i + 1].date} beide hart`);
+      assert.ok((w.hinweise || []).some((h) => /nicht zwei harte Tage hintereinander/.test(h)), (w.hinweise || []).join(" / "));
+      if (mitKraft) {
+        const k = T.findIndex((x) => (x.einheiten || []).some((e) => e.sport === "kraft"));
+        assert.ok(k >= 0, "Krafttraining geplant");
+        assert.ok(!T[k + 1] || !hartLand(T[k + 1]), "am Tag danach keine harte Einheit an Land");
+      }
+    });
+  }
+  await t.test("geht es nicht anders (nur Mi und Do mit Zeit für Land), meldet die Woche es", () => {
+    const sim = simulator({ start: START });
+    for (const x of sim.D.plan_verfuegbarkeit) {
+      if (x.wt === 3 || x.wt === 4) x.min = 165; else if (x.wt !== 1) Object.assign(x, { min: 120, sport: ["schwimm"] });
+    }
+    sim.S.neu();
+    const w = sim.plan(START).K.w;
+    assert.ok((w.hinweise || []).some((h) => /Harte Einheiten an zwei Tagen hintereinander/.test(h)) || !w.tage.some((x, i) => hartLand(x) && w.tage[i + 1] && hartLand(w.tage[i + 1])),
+      (w.hinweise || []).join(" / "));
+  });
 });

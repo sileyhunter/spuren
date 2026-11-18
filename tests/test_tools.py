@@ -1671,5 +1671,33 @@ check("einheit-felder-1.1: Bahnlänge 25 oder 50 m je Einheit, drinnen false erl
       merge_daily.einheit_feld_pruefen("pool", 50) is None and merge_daily.einheit_feld_pruefen("pool", 33) and merge_daily.einheit_feld_pruefen("pool", True)
       and merge_daily.einheit_feld_pruefen("drinnen", False) is None and "pool" in merge_daily.EINHEIT_FELDER)
 
+# ---------- V8.1 nachher-1.0: Garmins Selbsteinschätzung (workout_rpe, workout_feel aus get_activity) – erfundene Werte ----------
+check("nachher-1.0: selbst_von – Garmin 10–100 bzw. 0–100 in Stufen wie auf der Uhr, ungültig = leer",
+      NZ.selbst_von(70, 75) == {"rpe_g": 7, "feel_g": 75} and NZ.selbst_von(45, 37.5) == {"rpe_g": 5, "feel_g": 50}
+      and NZ.selbst_von(None, None) == {"rpe_g": None, "feel_g": None} and NZ.selbst_von(True, 101) == {"rpe_g": None, "feel_g": None}
+      and NZ.selbst_von(4, -1) == {"rpe_g": None, "feel_g": None})
+_t81 = tempfile.mkdtemp()
+_h81 = dt_mod.datetime.now(zoneinfo_mod.ZoneInfo("Europe/Zurich")).date()
+_d81 = lambda n: (_h81 - dt_mod.timedelta(days=n)).isoformat()
+json.dump({"activities": [{"id": "g81000000001", "gid": "g81000000001", "date": _d81(3), "start": "07:00", "sport": "rad", "dur": 3600, "tss": 50},
+                          {"id": "g81000000002", "gid": "g81000000002", "date": _d81(200), "start": "07:00", "sport": "lauf", "dur": 1800, "tss": 30}],
+           "days": [], "config": {}, "garmin_notizen": {"g81000000002": None}}, open(os.path.join(_t81, "d.json"), "w"))
+_o81 = NZ.offen(json.load(open(os.path.join(_t81, "d.json"))))
+check("nachher-1.0: offen nennt neue Aktivitäten ohne Notiz bzw. Selbsteinschätzung, ältere als 90 Tage nur ohne Notiz",
+      _o81 == (["81000000001"], 1), str(_o81))
+json.dump({"lauf": "nacht", "activities": [{"garmin_id": 81000000003, "name": "Lauf", "type": "running", "start_local": _d81(1) + "T18:00:00", "duration_s": 2700,
+                                            "distance_m": 8000, "elev_gain_m": 20, "avg_hr": 140, "max_hr": 160, "hr_zones_s": [0, 2700, 0, 0, 0], "notiz": None,
+                                            "workout_rpe": 40, "workout_feel": 75}],
+           "selbst_garmin": {"81000000001": {"workout_rpe": None, "workout_feel": None}}}, open(os.path.join(_t81, "n.json"), "w"))
+merge_daily.main(os.path.join(_t81, "d.json"), os.path.join(_t81, "n.json"))
+_D81 = json.load(open(os.path.join(_t81, "d.json")))
+_S81 = _D81.get("garmin_selbst") or {}
+check("nachher-1.0: Nacht-Update übernimmt workout_rpe/workout_feel je Garmin-ID; «nicht ausgefüllt» wird vermerkt (nicht jede Nacht neu abgefragt)",
+      {k: (v["rpe_g"], v["feel_g"]) for k, v in _S81.items()} == {"g81000000003": (4, 75), "g81000000001": (None, None)}
+      and all(v.get("abgerufen") for v in _S81.values()) and NZ.offen(_D81)[0] == ["81000000001"], str(_S81))
+_alt81 = json.dumps(_S81, sort_keys=True)
+check("nachher-1.0: gleiche Werte nochmals → keine Änderung", NZ.selbst_einlesen(_D81, {"g81000000003": {"workout_rpe": 40, "workout_feel": 75}}) == 0
+      and json.dumps(_D81["garmin_selbst"], sort_keys=True) == _alt81)
+
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)

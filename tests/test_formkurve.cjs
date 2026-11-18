@@ -162,6 +162,21 @@ test("Readiness 2.0: Check-in mit sieben Stufen (befinden-2.0) – 6/7 belastet,
   const g = FK.readiness(base(), ACTS, [{ date: D70, skala: 7, v: "befinden-2.0", schlaf: 3, muede: 3, muskel: 2, stress: 1 }], D70);
   assert.equal(g.indikatoren.befinden.status, "gut");
 });
+test("Readiness 2.3 (V8.1, befinden-2.1): tiefe Motivation allein ändert nichts, mit einem weiteren schwachen Zeichen «vorsichtig»; deutliche Schmerzen = starkes Zeichen", () => {
+  const b = (x) => [Object.assign({ date: D70, skala: 7, v: "befinden-2.1", schlaf: 2, muede: 2, muskel: 2, stress: 2 }, x)];
+  const nurMot = FK.readiness(base(), ACTS, b({ motivation: 7 }), D70);
+  assert.equal(nurMot.indikatoren.motivation.status, "tief");
+  assert.notEqual(nurMot.status, "vorsichtig");
+  assert.ok(nurMot.alle_gruende.some((g) => g.kind === "motivation"));
+  const mitLeicht = FK.readiness(base(), ACTS, b({ motivation: 7, schmerz: { stufe: "leicht", ort: ["Knie"] } }), D70);
+  assert.equal(mitLeicht.status, "vorsichtig", "zwei schwache Zeichen");
+  const deutlich = FK.readiness(base(), ACTS, b({ schmerz: { stufe: "deutlich", ort: ["Achilles/Wade"] } }), D70);
+  assert.equal(deutlich.status, "vorsichtig");
+  assert.ok(deutlich.gruende.some((g) => /Schmerzen deutlich: Achilles\/Wade/.test(g)));
+  assert.match(deutlich.empfehlung, /kein Laufen/);
+  const ohne = FK.readiness(base(), ACTS, b({}), D70);
+  assert.equal(ohne.indikatoren.motivation, undefined, "ohne Angabe kein Indikator");
+});
 test("Readiness 2.0: 5–6 h Schlaf nur Hinweis (an den eigenen Daten geprüft), unter 5 h weiter ein starkes Zeichen", () => {
   const r = FK.readiness(base((i) => (i === 69 ? { sleepH: 5.5 } : {})), ACTS, [], D70);
   assert.equal(r.indikatoren.schlaf.status, "kurz");
@@ -174,7 +189,7 @@ test("Readiness 2.1 (Audit V6.4 B3): Stand am Morgen – eine harte Einheit dess
   const mit = FK.readiness(base(), ACTS.concat([{ id: "heute", date: D70, sport: "rad", tss: 400, mv: 5 * 3600 }]), [], D70);
   assert.equal(mit.status, ohne.status);
   assert.deepEqual(mit.indikatoren.last, ohne.indikatoren.last, "Last bis gestern");
-  assert.equal(FK.VERSIONS.readiness, "readiness-2.2");
+  assert.equal(FK.VERSIONS.readiness, "readiness-2.3");
   // Ampel-Prüfung: derselbe Block landet in derselben Gruppe, egal wie gross die Einheit des Tages war
   const dd = days("2026-01-01", 70, (i) => ({ hrv: 80 + ((i * 7) % 5) - 2, rhr: 46 + (i % 3) - 1, sleepH: 7.5 }));
   const acts = []; for (let i = 0; i < 70; i++) acts.push({ id: "b" + i, date: dd[i].date, sport: "rad", tss: 50, indoor: true, ...(i % 2 ? {} : { eb: { v: "eb-1.0", art: "rad200", n: 1, w: 200, hr: 140 } }) });
@@ -441,7 +456,7 @@ test("pmc-2.1: Krafttraining aus Garmin (Typ oder Name) zählt nicht in Fitness,
   const days = []; for (let i = 0; i < 70; i++) days.push({ date: FK.addDays("2026-03-06", -69 + i), hrv: 80, rhr: 50, sleepScore: 75, sleepH: 7 });
   const r1 = FK.ringe(days, sonst, "2026-03-03"), r2 = FK.ringe(days, sonst.concat(kraft), "2026-03-03");
   assert.equal(r2.belastung, r1.belastung); assert.equal(r2.tss, r1.tss);
-  assert.equal(FK.VERSIONS.pmc, "pmc-2.1"); assert.equal(FK.VERSIONS.readiness, "readiness-2.2"); assert.equal(FK.VERSIONS.ringe, "ringe-1.1");
+  assert.equal(FK.VERSIONS.pmc, "pmc-2.1"); assert.equal(FK.VERSIONS.readiness, "readiness-2.3"); assert.equal(FK.VERSIONS.ringe, "ringe-1.1");
 });
 
 /* ---------- status-1.1 (Prüfbericht 13.11.2026, Befund 3): «Heute» mit der Form zu Tagesbeginn ---------- */

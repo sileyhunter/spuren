@@ -70,6 +70,18 @@ Simulator über mehrere Wochen (erfundene Daten). Fehler ohne Regeländerung sin
     keine harte und lange Einheit an Land am selben Tag, jede Einheit mit TL ≈. Simulator mit den echten Daten über drei Wochen: keine Regelverletzung,
     keine Fehler in den Modulen.
 
+## Stand nach V8.1 (18.11.2026)
+- Befunde 1, 2 und 7: TL ≈ rechnet mit denselben Bezugsgrössen wie die absolvierte Last (tl-plan-1.1). Nachprüfung mit `tools/pruefung_v8.cjs` (Abschnitt 3 zeigt beide
+  Fassungen): Grundlage Rad drinnen, Rad draussen und Laufen jetzt nahe 1 (vorher deutlich darüber); Schwimmen gegen alle Schwimmeinheiten nahe 1. Abschnitt 6: Mein Plan
+  und Steigerung je Woche nahe beieinander, die Naht nach drei Wochen ist klein.
+- Befund 3: bewusst zwei Zahlen – die Ampel (7 gegen 28 Tage) und der Trainingsstatus (Ermüdung ÷ Fitness) messen Verschiedenes; die Karte «Anstieg der Belastung» zeigt
+  beide Blicke nebeneinander, das Wissen erklärt den Unterschied. Eine gemeinsame Lastzahl brachte in der Prüfung keinen Vorteil (die Lastzeichen trennten den Puls in
+  den 10-min-Blöcken nicht).
+- Befund 10: harte Einheiten an Land nie an zwei Tagen hintereinander (verfuegbarkeit-1.2, kraft-plan-1.2); Test im Simulator über vier Wochen.
+- Befund 12: Abweichung je Einheit (last-abweichung-1.0), Test D2 normal. D3 (die folgenden Tage neu prüfen) bleibt V8.3.
+- Befund 14: Gefühl-Kalibrierung ohne Krafttraining. Befund 15: Hinweis auf Heute, solange Eingaben nur auf dem Gerät liegen.
+- Offen: Befund 16 (Wochenstunden an mehreren Stellen), offene Punkte 105–108.
+
 ## Nicht geprüft
 
 - Wie die Fenix Schwimm-Workouts und die lockere Fassung der Ampel zeigt (V8.7, mit Silas).

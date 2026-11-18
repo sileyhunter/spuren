@@ -1,5 +1,7 @@
 /* Ironman Notebook V7.6 – Etappe 7 «Krafttraining als Zusatzeinheit» (Auftrag V7.3 «wie enduco», Wunsch vom 16.11.2026), Rechenlogik ohne DOM.
-   kraft-plan-1.1 (Regeln von Silas am 17.11.2026 freigegeben; 1.0 = fester Tag ohne Abstimmung):
+   kraft-plan-1.1 (Regeln von Silas am 17.11.2026 freigegeben; 1.0 = fester Tag ohne Abstimmung); kraft-plan-1.2 (V8.1): ein automatischer Tag, an dem das
+   Krafttraining nur mit Umziehen passt und dabei zwei harte Einheiten an Land an Tage hintereinander schiebt, weicht einem Tag, an dem nichts umziehen muss
+   (opt.nurPassend, js/v64-ui.js mitKraft; verfuegbarkeit-1.2):
    - Termin je Woche aus den Planeinstellungen (pe-kraft: an/aus, Tag automatisch aus den möglichen Tagen oder fest, Uhrzeit, Dauer – Standard 1:30 h –,
      Notiz für die Übungen). Gilt ab der Woche nach dem Speichern wie Start und Basis-Fitness. Ausnahme für eine kommende Woche (pe-kraft-<Montag>):
      auslassen oder ein bestimmter Tag. In der laufenden Woche und an gespeicherten Tagen über Mein Plan.
@@ -17,7 +19,7 @@
   if (root) root.V76 = V76;
 })(typeof window !== "undefined" ? window : null, function (V64, V66) {
   "use strict";
-  const V76 = { VERSIONS: { kraft: "kraft-plan-1.1" } };
+  const V76 = { VERSIONS: { kraft: "kraft-plan-1.2" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const add = (iso, n) => V64.addDays(iso, n);
   const wtNr = (iso) => ((new Date(Date.parse(iso + "T12:00:00Z")).getUTCDay() + 6) % 7) + 1;
@@ -125,7 +127,11 @@
       i = w.tage.findIndex((x) => x.date === opt.tag);
       if (i < 0) return w;
     } else if (t.auto) {
-      const K = w.tage.map((x, k) => k).filter((k) => t.tage.includes(wtNr(w.tage[k].date)) && moeglich(k) && !keinTraining(opt.verf ? opt.verf(w.tage[k].date) : null));
+      // kraft-plan-1.2: opt.nurPassend = nur Tage, an denen nichts umziehen muss (wie V76.passt: Zeit reicht, am Tag danach keine harte Einheit an Land)
+      const passtAm = (k) => { const n = w.tage[k + 1], v = opt.verf ? opt.verf(w.tage[k].date) : null;
+        return !(n && (n.einheiten || []).some((e) => hart(e) && land(e))) && !(v && isNum(v.min) && tagMin(w.tage[k].einheiten || []) + dauer > v.min); };
+      const K = w.tage.map((x, k) => k).filter((k) => t.tage.includes(wtNr(w.tage[k].date)) && moeglich(k) && !keinTraining(opt.verf ? opt.verf(w.tage[k].date) : null)
+        && (!opt.nurPassend || passtAm(k)));
       let best = -Infinity;
       for (const k of K) { const s = V76.bewerten(w, k, dauer, opt.verf); if (s > best) { best = s; i = k; } }
       if (i < 0) { hinweise.push("Krafttraining: in dieser Woche kein möglicher Tag (Tests, Verfügbarkeit oder Taper) – fällt aus"); return fertig("weg", "kein Tag"); }

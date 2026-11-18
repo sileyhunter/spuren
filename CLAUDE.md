@@ -79,6 +79,14 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   Check-in, Änderungen und Ausführung), `tests/test_v80.cjs` (Abnahmetests A–H und acht Wochen Zusammenwirken; was eine spätere Etappe bringt, steht als `todo` mit der Etappe –
   kommt sie, wird daraus ein normaler Test), `tools/pruefung_v8.cjs` (Prüfung der Modelle mit echten Daten: `node tools/pruefung_v8.cjs work/data.json`, nur Zusammenfassungen,
   Zahlen nur in den Chat, nie ins Repository). Neue Module, die Planen, Ampel oder Last betreffen, in `MODULE` von `tests/sim/umgebung.cjs` aufnehmen.
+- **V8.1 (Masterprompt V8, Etappe V8.1 «Daten zusammenführen», von Silas am 18.11.2026 freigegeben):** `js/v81.js` (ohne DOM: Nach dem Training nachher-1.0
+  `V81.nachher`/`V81.eintrag`/`V81.garminSelbst`, Puls zur Leistung hf-leistung-1.0 `V81.pulsZurLeistung`, Satz zur Einheit `V81.hinweis`, Abweichung von der geplanten
+  Last last-abweichung-1.0 `V81.abweichung`, Anstieg der Belastung anstieg-1.0 `V81.anstieg`/`V81.projektion`), `js/v81-ui.js` (Zeile «Nach dem Training» unter jeder
+  erledigten Aktivität auf Heute und im Tagesblatt `V81UI.zeile`, Blatt `V81UI.blatt`, Karte `#v81-anstieg-card` unter Analyse → Belastung und Erholung), `tests/test_v81.cjs`;
+  TL ≈ tl-plan-1.1 in `js/v66.js` (`V66.bezug(skalen, css, last)`, auf der Seite `V66.lastBezug` aus `js/v66-ui.js`: dieselben Bezugsgrössen wie last-2.1);
+  Garmins Selbsteinschätzung `garmin_selbst` (`tools/notizen.py` `selbst_von`/`selbst_einlesen`, `merge_daily.py`); Check-in befinden-2.1 (Motivation, Schmerzen) in
+  `js/v59-logik.js`/`js/v59.js`, Ampel readiness-2.3 in `js/formkurve.js`; harte Einheiten an Land nie an zwei Tagen hintereinander verfuegbarkeit-1.2 (`V66.verteilen`) und
+  kraft-plan-1.2 (`V76.einplanen` opt.nurPassend, `mitKraft` in `js/v64-ui.js`)
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
 - `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)
@@ -163,6 +171,9 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
      `get_user_summary(heute)` (nur `bodyBattery`, `bbSleep`) → `days` (Zuordnung unten). «No … data found» oder Fehler: weglassen.
    - **Notizen (V6.1, notizen-1.0):** für jede Aktivität, die du mit `get_activity` abrufst, `description` unverändert als `notiz` (fehlt sie:
      `null`). Die Notiz nie ändern, kürzen oder zusammenfassen; `merge_daily.py` macht daraus Vorschauen für Laktat und Verpflegung.
+   - **Selbsteinschätzung (V8.1, nachher-1.0):** aus derselben Antwort von `get_activity` `workout_rpe` und `workout_feel` unverändert in den Eintrag der
+     Aktivität (fehlen sie: `null`). `merge_daily.py` legt sie je Garmin-ID in `garmin_selbst` ab (`rpe_g` 1–10, `feel_g` 0/25/50/75/100); die Seite schlägt
+     sie unter «Nach dem Training» vor. Nie selbst etwas eintragen oder nach Garmin schreiben.
    - **Workout-Schritte (V5.7, für «Passende Route finden»):** für jede Einheit aus `get_scheduled_workouts` mit `workout_id`:
      `get_workout_by_id(workout_id)` (vereinfachte Form, nicht `raw`) und im `planned`-Eintrag ergänzen: `wid` = workout_id,
      `quelle` = `<provider> über Garmin` (z. B. «Enduco über Garmin»), `desc` = erster Satz der Beschreibung (höchstens 200 Zeichen),
@@ -210,8 +221,9 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
         Readiness (`readiness`); je Tag `get_stress_summary` (nur `stress` = `avg_stress_level`) und für die Readiness-Tage
         `get_morning_training_readiness` → zusätzliche Einträge in `days`, dann `"config": {"wellness_backfill": "<neuer_zeiger>"}`.
         Kein `get_user_summary` beim Nachholen (zu gross); Body Battery gibt es nur ab jetzt. Bei `"fertig": true` nichts nachholen.
-     b) Notizen: `python3 -I tools/notizen.py offen data.json` nennt höchstens 20 Garmin-IDs ohne abgerufene Notiz; je ID `get_activity`
-        → `"notizen_garmin": {"<ID>": <description oder null>}`.
+     b) Notizen: `python3 -I tools/notizen.py offen data.json` nennt höchstens 20 Garmin-IDs ohne abgerufene Notiz bzw. (V8.1) aus den letzten 90 Tagen ohne
+        abgerufene Selbsteinschätzung; je ID `get_activity` → `"notizen_garmin": {"<ID>": <description oder null>}` und
+        `"selbst_garmin": {"<ID>": {"workout_rpe": <Wert oder null>, "workout_feel": <Wert oder null>}}`.
      c) Enduco-Bibliothek (V6.5): `python3 -I tools/bibliothek.py offen data.json` nennt unter `wids` höchstens 10 Workouts ohne Schritte;
         je ID `get_workout_by_id(<ID>)` (vereinfachte Form) → `"enduco_schritte": [{"wid", "titel" = name, "sport", "erstellt" = created_date,
         "geaendert" = updated_date, "desc_voll" = description, "steps" = segments[0].steps unverändert (alle Felder), "dauer_s" =
@@ -253,8 +265,9 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
 {
   "activities": [{"garmin_id": 0, "name": "", "type": "road_biking", "start_local": "2026-10-30T18:30:00",
                   "duration_s": 0, "distance_m": 0, "elev_gain_m": 0, "avg_hr": 0, "max_hr": 0,
-                  "avg_power": null, "np": null, "hr_zones_s": [z1, z2, z3, z4, z5], "notiz": null}],
+                  "avg_power": null, "np": null, "hr_zones_s": [z1, z2, z3, z4, z5], "notiz": null, "workout_rpe": null, "workout_feel": null}],
   "notizen_garmin": {"25000000000": "Text der Notiz wie in Garmin", "25000000001": null},
+  "selbst_garmin": {"25000000000": {"workout_rpe": 60, "workout_feel": 75}, "25000000001": {"workout_rpe": null, "workout_feel": null}},
   "days": [{"date": "2026-10-30", "hrv": 0, "rhr": 0, "sleepH": 0, "sleepScore": 0, "sleepStress": 0, "kcalOut": 0,
             "kcalIn": 0, "protein": 0, "carbs": 0, "fat": 0, "readiness": 0, "readinessLevel": "MODERATE", "bodyBattery": 0,
             "bbSleep": 0, "bbHigh": 0, "bbLow": 0, "stress": 0, "stressHighMin": 0}],
@@ -283,7 +296,7 @@ Tage: `hrv` = `avg_overnight_hrv`, `rhr` = `resting_heart_rate_bpm`, `sleepH` = 
 `item_count` ≥ 4. V6.1 (wellness-1.0, `tools/wellness.py`): `readiness` = `score`, `readinessLevel` = `level` aus `get_morning_training_readiness`;
 aus `get_user_summary`: `bodyBattery` = `bodyBatteryAtWakeTime`, `bbSleep` = `bodyBatteryDuringSleep`, und nur für abgeschlossene Tage
 `stress` = `averageStressLevel`, `stressHighMin` = `highStressDuration` ÷ 60 (gerundet), `bbHigh` = `bodyBatteryHighestValue`,
-`bbLow` = `bodyBatteryLowestValue`; negative Garmin-Werte = fehlend (`null`). Notiz: `notiz` bzw. `notizen_garmin` = `description` aus `get_activity`.
+`bbLow` = `bodyBatteryLowestValue`; negative Garmin-Werte = fehlend (`null`). Notiz: `notiz` bzw. `notizen_garmin` = `description` aus `get_activity`; Selbsteinschätzung (V8.1): `workout_rpe`, `workout_feel` aus `get_activity` (Garmin 10–100 bzw. 0–100).
 Gewicht: `weight_kg`, `ts_gmt` = `timestamp_gmt` (alle Messungen; das Skript nimmt pro Tag die Morgenmessung).
 Leere Werte als `null`. Unbekannte Felder weglassen. Werte nie schätzen.
 
@@ -402,7 +415,8 @@ Vorrang, auf der Seite bearbeitete Garmin-Einträge (`geaendert`) werden nie üb
 V6.1 (notizen-1.0): Verpflegung aus der Garmin-Notiz einer Aktivität nur als Vorschau `fueling_vorschau` («fn-<gid>», Werte laut Notiz,
 Summe gegen «Total»); zu `fueling` wird sie erst, wenn Silas den Eintrag auf der Seite speichert (kommt als `fueling_add` «fn-…» zurück).
 Gibt es zur Einheit schon einen Fueling-Eintrag, entsteht keine Vorschau; nie aus der Notiz etwas ergänzen oder schätzen.
-V5.6: zusätzlich `rpe` (→ `rpe`), `intervalle` (Korrekturen von Hand → `intervall_korr`), `laktat_punkte` (Laktat einem Abschnitt
+V5.6: zusätzlich `rpe` (→ `rpe`; seit V8.1 nachher-1.0 auch aus «Nach dem Training»: ID = Aktivität, dazu `gefuehl` (sehr schwach … sehr stark wie die Uhr),
+`erwartung` leichter/wie erwartet/schwerer, `intervalle` alle/nicht alle/keine, `notiz`, `rpe_uhr`/`feel_uhr` = Vorschlag der Uhr; ältere Felder bleiben), `intervalle` (Korrekturen von Hand → `intervall_korr`), `laktat_punkte` (Laktat einem Abschnitt
 zugeordnet → `laktat_punkte`, Status «vorschau») und `saison` (Stunden «jetzt»/«Spitze» → `saison_plan`); gleiche ID ersetzt mit Audit.
 V5.7: `startorte` (ganze Liste → `startorte`, alte Fassung ins Audit) und `trainingsrouten` (gewählte Vorschläge → `trainingsrouten`, gleiche
 ID ersetzt mit Audit). Startorte und Routen nur verschlüsselt (data.enc.json), nie offen ins Repository.
@@ -436,7 +450,9 @@ V6.4.4 alle eingespielt, `garmin_verlauf` darf eine Liste sein). V5.9.3: `routen
 `routes` entfernt, alte Fassung ins Audit), `laktat_punkte_bestaetigt` («Laktat hier» aus dem Explorer auf der Seite bestätigt → Kurzcheck in
 `lactate`, Quelle «aus Explorer», Punkt «übernommen»; übernommene Punkte werden nie wieder «vorschau»). Befinden kommt aus dem Morgen-Check-in
 (`befinden-2.0` seit V6.3: Schlaf → `schlaf`, Energie → `muede`, Beine → `muskel`, Kopf → `stress`, je 1–7 mit `skala: 7` (1 = sehr gut,
-4 = durchschnittlich, 7 = sehr schlecht); dazu `krank`, `notiz`; gleicher Tag ersetzt mit Audit. Ältere Einträge `befinden-1.1` (drei Fragen, 1–5,
+4 = durchschnittlich, 7 = sehr schlecht); dazu `krank`, `notiz`; gleicher Tag ersetzt mit Audit. **befinden-2.1 (V8.1):** dazu Motivation → `motivation` (1–7, auf der Seite
+Pflicht, im Eintrag optional) und Schmerzen → `schmerz` {`stufe` leicht/deutlich, `ort` [Fuss, Achilles/Wade, Schienbein, Knie, Hüfte/Leiste, Oberschenkel, Rücken, Schulter,
+anderes]}; ohne Schmerzen kein Feld. Ältere Einträge `befinden-1.1` (drei Fragen, 1–5,
 ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigenen Skala, `V59L.befindenAnteil`).
 
 ## Eingang (eingang/, V5.9.3 «Direkt speichern», eingang-1.0)
@@ -503,7 +519,8 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   den Abfahrten (`RT.istDoppelt` mit Bereichen), nie aus der ganzen Route mit dem gemeinsamen Aufstieg.
 - Rennrad `varianten-3.0`: direkteste, velofreundliche, ruhigste (consider_traffic 1) – alle über das Profil ohne Gravel; `alternativen-1.1` ohne
   zusätzlichen Gravel. Windpfeile `windpfeile-1.1`: 3–20, Gegen-/Rückenwind ±5 km/h, abschaltbar (`sf.rt.windkarte`).
-- **Ampel `readiness-2.2` (V6.3, Etappe 3; 2.1 V6.4.4; 2.2 V7.6.1: Last ohne Krafttraining, am 17.11.2026 an 180 Tagen nachgerechnet):** wie readiness-1.0 (HRV-7-Tage gegen eigene 60 Tage nach Plews/Buchheit, Ruhepuls 3 Tage, Schlaf,
+- **Ampel `readiness-2.3` (V6.3, Etappe 3; 2.1 V6.4.4; 2.2 V7.6.1: Last ohne Krafttraining, am 17.11.2026 an 180 Tagen nachgerechnet; 2.3 V8.1: Motivation tief =
+  schwaches Zeichen, Schmerzen deutlich = starkes, leicht = schwaches Zeichen mit Empfehlung je Ort; Last bleibt 7/28 Tage):** wie readiness-1.0 (HRV-7-Tage gegen eigene 60 Tage nach Plews/Buchheit, Ruhepuls 3 Tage, Schlaf,
   Last 7/28 Tage, Befinden, Krankheit), dazu: Befinden als Anteil auf der Skala (belastet ab 0,75, mittel ab 0,5; vier Fragen inkl. Schlaf);
   Schlaf 5–6 h nur noch Hinweis (kein Warnzeichen, aber dann nicht «bereit»; unter 5 h weiter starkes Zeichen). **readiness-2.1 (V6.4.4):** Last
   nur bis gestern (die Ampel ist der Stand am Morgen; eine Einheit des Tages ändert sie nicht). Grundlage `ampel-pruefung-1.1` (`FK.ampelPruefung`,
@@ -591,6 +608,10 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   «Neu berechnen» oder «Nur speichern». «Tage für lange Einheiten» (`pe-lang`, ab der nächsten Woche): Empfehlung beim Verteilen (+80 am gewählten Tag, −20 an anderen);
   eine lange Einheit verlässt ihren Tag nur, wenn ein gewählter Tag Sportart, Zeit und keine harte Einheit an Land hat, sonst bleibt sie und die Woche meldet es; hart und
   lang an Land am selben Tag −120 (bis 1.0 −40). Verschieben trägt einen Grund (Verfügbarkeit, Tag für lange Einheiten, Tag nach dem Krafttraining).
+  **verfuegbarkeit-1.2 (V8.1, Silas am 18.11.2026: «entscheide, was trainingstechnisch mehr Sinn macht»):** harte Einheiten an Land (Rad, Laufen) nie an zwei Tagen
+  hintereinander – beim Verteilen −100 je Seite (Wasser derselben Sportart −20), danach wird eine von zwei benachbarten harten Einheiten auf einen Tag ohne harte oder lange
+  Einheit an Land daneben verschoben (Grund «nicht zwei harte Tage hintereinander»); geht das nicht, meldet es die Woche. kraft-plan-1.2: braucht der automatische Krafttag
+  ein Neuverteilen, das zwei harte Tage hintereinander ergäbe, nimmt die Seite einen Tag, an dem das Krafttraining ohne Verschieben passt.
   **Übernommen am 17.11.2026 aus Silas' Enduco-Einstellungen (Bildschirmfotos) und seiner Nachricht:** Mo kein Training, Di nur Schwimmen (Schwimmkurs bis Dezember), Mi–Fr 2:45 h,
   Sa und So 5:00 h; lange Ausfahrt Sa/So, langer Lauf Do (wie Enduco); Krafttraining automatisch ohne Do. **Seit 17.11.2026 (V7.6.2, Silas: «offene Punkte bereinigen»):** Di 2:45 h
   mit allen Sportarten und «An Kurstagen nur Schwimmen» (kurs-1.0; letzter Kurstag am 18.11.2026 von Silas genannt und eingetragen, nur verschlüsselt; danach gilt der
@@ -704,7 +725,8 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   «Neu berechnen» setzt diese und alle folgenden gespeicherten Wochen zurück (nur gesperrte Tage bleiben; künftige Wochen ohne Sperre wieder automatisch).
   Tests, Schwimmkurs, Aktivierung und eigene Einheiten werden nie verschoben; in Rennwochen wird nichts verschoben. Gekürzt oder weggelassen wird nur
   gemeldet, nie still. Die Gewichte der Verteilung sind eigene Festlegungen (Wissen, Kapitel «modelle»). Nichts davon geht an Garmin oder Enduco. Bearbeitete Wochen: Stunden und Verteilung aus den eigenen Einheiten, «bearbeitet» sichtbar
-  (vergleich-1.3, seit 1.4 ohne eigene Garmin-Einträge als Enduco). TL ≈ und Distanz ≈ (tl-plan-1.0) sind Modelle, immer mit «≈»; ohne Bezugswert keine Zahl. Ein Lauf über der Aufbau-Grenze
+  (vergleich-1.3, seit 1.4 ohne eigene Garmin-Einträge als Enduco). TL ≈ und Distanz ≈ (tl-plan-1.0, seit V8.1 tl-plan-1.1: mit den Bezugsgrössen der absolvierten Last – Rad drinnen LT2 der Rolle, draussen LT2 für draussen oder Puls,
+Laufen nach Puls, Schwimmen Last pro Bewegungsstunde der letzten acht Wochen) sind Modelle, immer mit «≈»; ohne Bezugswert keine Zahl. Ein Lauf über der Aufbau-Grenze
   wird gemeldet, nie verhindert. Nach Garmin nur über «An Garmin senden» (Abschnitt «An Garmin senden») und am Morgen die lockere Fassung bei «vorsichtig»
   (Abschnitt «Ampel passt das Training an»); Enduco wird nie geändert.
 - Die Seite schreibt selbst nie nach Garmin oder Enduco: keine Knöpfe zum Verschieben, Starten oder Löschen von Workouts. Einzige Ausnahme
@@ -913,7 +935,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Die exakten Grössen der SPS1-Dateien stehen in der Git-Historie.
 
 ## Prüfen vor jedem Push von Seite oder Werkzeugen
-`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `node --test tests/test_v66.cjs`, `node --test tests/test_v7.cjs`, `node --test tests/test_v72.cjs`, `node --test tests/test_v73.cjs`, `node --test tests/test_v74.cjs`, `node --test tests/test_v75.cjs`, `node --test tests/test_v76.cjs`, `node --test tests/test_v77.cjs`, `node --test tests/test_v78.cjs`, `node --test tests/test_v80.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`,
+`node --test tests/test_archiv.cjs`, `node --test tests/test_formkurve.cjs`, `node --test tests/test_route.cjs`, `node --test tests/test_analyse.cjs`, `node --test tests/test_training.cjs`, `node --test tests/test_v59.cjs`, `node --test tests/test_v6.cjs`, `node --test tests/test_v61.cjs`, `node --test tests/test_v62.cjs`, `node --test tests/test_v64.cjs`, `node --test tests/test_v65.cjs`, `node --test tests/test_v66.cjs`, `node --test tests/test_v7.cjs`, `node --test tests/test_v72.cjs`, `node --test tests/test_v73.cjs`, `node --test tests/test_v74.cjs`, `node --test tests/test_v75.cjs`, `node --test tests/test_v76.cjs`, `node --test tests/test_v77.cjs`, `node --test tests/test_v78.cjs`, `node --test tests/test_v80.cjs`, `node --test tests/test_v81.cjs`, `python3 -I tests/test_tools.py`, `python3 -I tools/make_demo.py`, bei Datenänderungen `check_referenz.py`,
 bei Änderungen an `bilder/` oder `config.bilder` `SPUREN_PW=… node tools/bilder_crypt.mjs pruefen` («PRÜFUNG BILDER: bestanden»).
 **Leck-Prüfung (V6.4.4):** `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json work/data.json`, `python3 -I tools/leck_pruefen.py work/data.json`
 («LECK-PRÜFUNG: bestanden»), danach `rm work/data.json`. Gilt für jeden Push von Seite, Werkzeugen, Tests oder Doku (nicht für die reinen Daten-Updates).

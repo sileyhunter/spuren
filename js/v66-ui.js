@@ -29,6 +29,12 @@
   const kontext = (mo) => { try { return P().kontextFuer(mo); } catch (e) { console.error(e); return null; } };
   function tagVon(ds) { const K = kontext(montag(ds)); const t = K ? K.w.tage.find((x) => x.date === ds) : null; return t ? { K, t } : null; }
   const bezug = (K) => V66().bezug(TR() ? TR().zonen(C.D.zonen).skalen : null, K && K.css ? K.css.s : null);
+  // V8.1 tl-plan-1.1: TL ≈ geplant mit den Bezugsgrössen der absolvierten Last (config.last_ref, config.lthr) – für jeden Aufruf von V66.bezug auf der Seite
+  if (window.V66 && !window.V66.lastBezug) window.V66.lastBezug = () => {
+    const c = UI() && UI().C, k = c && c.D && c.D.config; if (!k) return null;
+    let bd = null; try { bd = window.V75UI && window.V75UI.basisDaten ? window.V75UI.basisDaten(V64().montag(c.iso(c.today))) : null; } catch (e) { bd = null; }
+    return { ref: k.last_ref || null, lthr: k.lthr || null, tlh: { schwimm: bd && bd.schwimm && isNum(bd.schwimm.tl_h) ? bd.schwimm.tl_h : null } };
+  };
   const istAenderbar = (ds, t) => ds >= heute() && !(t && t.gesperrt);
   const neuZeichnen = () => { try { document.dispatchEvent(new CustomEvent("meinplan")); } catch (e) { console.error(e); } };
   /** aufbau-1.1: Hinweis zu einem Lauf an einem Tag (V66.aufbauHinweis) – gemeldet, nicht verhindert. */

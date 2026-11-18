@@ -7,7 +7,7 @@
 })(typeof self !== "undefined" ? self : this, function (V62) {
   "use strict";
   const L = {};
-  L.VERSIONS = { befinden: "befinden-2.0", eingang: "eingang-1.0", morgen: "morgen-1.0", last: "last-2.1", css: "css-2.0", bedienung: "bedienung-1.0" };
+  L.VERSIONS = { befinden: "befinden-2.1", eingang: "eingang-1.0", morgen: "morgen-1.0", last: "last-2.1", css: "css-2.0", bedienung: "bedienung-1.0" };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const addDays = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
   L.addDays = addDays;
@@ -23,8 +23,25 @@
     { k: "muskel", label: "Beine", lo: "frisch", hi: "schwer", text: "Wie fühlen sich deine Beine an?" },
     { k: "stress", label: "Kopf", lo: "ruhig", hi: "gestresst", text: "Wie ruhig ist dein Kopf?" },
   ];
+  // befinden-2.1 (V8.1, Masterprompt V8 Abschnitt 5): Motivation als fünfte Frage (auf der Seite Pflicht, in älteren Einträgen fehlt sie) und Schmerzen
+  // (keine, leicht, deutlich; mit Ort). Die Skala bleibt 1–7 (Silas' Wahl vom 18.11.2026).
+  L.FRAGEN.push({ k: "motivation", label: "Motivation", lo: "hoch", hi: "tief", text: "Wie viel Lust hast du aufs Training?" });
+  L.PFLICHT = ["schlaf", "muede", "muskel", "stress"];  // ohne diese vier kein Eintrag (Motivation ab befinden-2.1 nur auf der Seite Pflicht)
   L.KERN = ["muede", "muskel", "stress"];               // in befinden-1.1 und 2.0 vorhanden
   L.KRANK = ["Erkältung", "Halsweh", "Fieber", "Magen-Darm", "Verletzung"];
+  L.SCHMERZ_STUFEN = ["leicht", "deutlich"];
+  L.SCHMERZ_ORTE = ["Fuss", "Achilles/Wade", "Schienbein", "Knie", "Hüfte/Leiste", "Oberschenkel", "Rücken", "Schulter", "anderes"];
+  /** Welche Sportart Schmerzen an diesem Ort vor allem belasten (Hinweis bei «deutlich»; eigene Einteilung): Beine und Füsse → Laufen, Schulter → Schwimmen. */
+  L.schmerzSport = (ort) => {
+    const O = Array.isArray(ort) ? ort : [];
+    return [...new Set(O.flatMap((o) => (["Fuss", "Achilles/Wade", "Schienbein", "Knie", "Hüfte/Leiste", "Oberschenkel"].includes(o) ? ["lauf"] : o === "Schulter" ? ["schwimm"] : [])))];
+  };
+  /** Schmerz-Angabe prüfen → { stufe, ort } oder null. */
+  L.schmerzVon = function (x) {
+    if (!x || typeof x !== "object" || !L.SCHMERZ_STUFEN.includes(x.stufe)) return null;
+    const ort = Array.isArray(x.ort) ? [...new Set(x.ort.filter((o) => L.SCHMERZ_ORTE.includes(o)))] : [];
+    return { stufe: x.stufe, ort };
+  };
   /** Wort zu einer Stufe (7er-Skala): sehr frisch, frisch, eher frisch, durchschnittlich, eher schwer, schwer, sehr schwer. */
   L.wort = (f, v) => (v === 4 ? "durchschnittlich" : v === 1 ? "sehr " + f.lo : v === 7 ? "sehr " + f.hi : v === 2 ? f.lo : v === 6 ? f.hi : v === 3 ? "eher " + f.lo : v === 5 ? "eher " + f.hi : "–");
   /** Wort zu einem gespeicherten Wert auf der Skala des Eintrags (alte Einträge 1–5: frisch, eher frisch, mittel, eher schwer, schwer). */
@@ -34,20 +51,23 @@
     if (L.skalaVon(b) === 7) return L.wort(f, v);
     return v === 1 ? f.lo : v === 5 ? f.hi : v === 3 ? "mittel" : v < 3 ? "eher " + f.lo : "eher " + f.hi;
   };
-  /** Skala eines Eintrags: 7 bei befinden-2.0 (skala: 7), sonst 5 (befinden-1.0/1.1). */
-  L.skalaVon = (b) => (b && (b.skala === 7 || b.v === "befinden-2.0") ? 7 : 5);
+  /** Skala eines Eintrags: 7 bei befinden-2.0 und 2.1 (skala: 7), sonst 5 (befinden-1.0/1.1). */
+  L.skalaVon = (b) => (b && (b.skala === 7 || b.v === "befinden-2.0" || b.v === "befinden-2.1") ? 7 : 5);
   /** Anteil auf der Skala (0 = bestens … 1 = schlechteste Stufe); ungültig oder fehlend → null. */
   L.befindenAnteil = function (b, k) {
     const sk = L.skalaVon(b), v = b ? b[k] : null;
     return Number.isInteger(v) && v >= 1 && v <= sk ? (v - 1) / (sk - 1) : null;
   };
-  /** Antworten → Befinden-Eintrag (alle vier Fragen 1–7; sonst kein Eintrag). */
+  /** Antworten → Befinden-Eintrag (die vier Pflichtfragen 1–7, Motivation optional seit befinden-2.1; sonst kein Eintrag). */
   L.checkinEintrag = function (datum, w, extra) {
     extra = extra || {};
     const ok = (v) => Number.isInteger(v) && v >= 1 && v <= L.SKALA;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(datum)) || !L.FRAGEN.every((f) => ok(w && w[f.k]))) return null;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(datum)) || !L.PFLICHT.every((k) => ok(w && w[k]))) return null;
+    if (w.motivation != null && !ok(w.motivation)) return null;
     const b = { date: datum, schlaf: w.schlaf, muede: w.muede, muskel: w.muskel, stress: w.stress, skala: L.SKALA, quelle: "checkin", v: L.VERSIONS.befinden,
       erfasst: extra.erfasst || new Date().toISOString() };
+    if (w.motivation != null) b.motivation = w.motivation;
+    const sz = L.schmerzVon(extra.schmerz); if (sz) b.schmerz = sz;
     if (extra.krank) b.krank = Array.isArray(extra.krank) && extra.krank.length ? extra.krank.slice() : ["krank oder verletzt"];
     if (extra.nachtdienst) b.nachtdienst = true;
     const n = String(extra.notiz || "").trim(); if (n) b.notiz = n.slice(0, 280);
@@ -73,14 +93,19 @@
   L.KAL = { min: 20, ref_tage: 60, ref_min: 14, brauchbar: 0.3 };
   /** Welcher Morgenwert passt bei dir am besten zum Gefühl? Erst ab 20 Morgen mit Check-in, nur Rangkorrelation (keine Prozente).
    *  HRV und Ruhepuls als Abweichung von deinen eigenen 60 Tagen davor (mind. 14 Werte), Schlaf = Garmin-Schlafwert der Nacht,
-   *  Last = Trainingslast des Vortags (alle Sportarten). Erwartete Richtung: HRV/Schlaf +, Ruhepuls/Last −. */
+   *  Last = Trainingslast des Vortags (alle Sportarten ausser Krafttraining, wie pmc-2.1; V8.1, Befund 14 der Prüfung V8.0). Erwartete Richtung: HRV/Schlaf +, Ruhepuls/Last −. */
+  const FKmod = () => {
+    if (typeof globalThis !== "undefined" && globalThis.FK && globalThis.FK.zaehlt) return globalThis.FK;
+    try { return typeof module === "object" && module.exports ? require("./formkurve.js") : null; } catch (e) { return null; }
+  };
   L.gefuehlKalibrierung = function (befinden, days, acts) {
     const B = (befinden || []).filter((b) => isNum(L.gefuehl(b))).sort((a, b) => a.date.localeCompare(b.date));
     const out = { v: L.VERSIONS.befinden, n: B.length, noetig: L.KAL.min, werte: [], bester: null };
     if (B.length < L.KAL.min) return out;
     const day = new Map((days || []).map((d) => [d.date, d])), dates = [...day.keys()].sort();
     const ref = (iso, k) => { const v = []; for (const d of dates) { if (d >= iso) break; if (d >= addDays(iso, -L.KAL.ref_tage)) { const x = day.get(d)[k]; if (isNum(x) && x > 0) v.push(k === "hrv" ? Math.log(x) : x); } } if (v.length < L.KAL.ref_min) return null; return v.reduce((s, x) => s + x, 0) / v.length; };
-    const last = new Map(); for (const a of acts || []) if (isNum(a.tss)) last.set(a.date, (last.get(a.date) || 0) + a.tss);
+    const FK = FKmod(), zaehlt = FK && FK.zaehlt ? FK.zaehlt : () => true;
+    const last = new Map(); for (const a of acts || []) if (isNum(a.tss) && zaehlt(a)) last.set(a.date, (last.get(a.date) || 0) + a.tss);
     const rows = B.map((b) => {
       const d = day.get(b.date) || {}, rh = ref(b.date, "hrv"), rr = ref(b.date, "rhr");
       return { g: L.gefuehl(b), hrv: isNum(d.hrv) && d.hrv > 0 && rh != null ? Math.log(d.hrv) - rh : null, rhr: isNum(d.rhr) && rr != null ? d.rhr - rr : null,
