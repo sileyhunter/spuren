@@ -1314,7 +1314,35 @@ div.k4-r-kw { height: auto; }
 #kal-woche.k4z { display: flex; flex-direction: column; gap: 12px; }
 /* V7.9 bearbeiten-1.0: Bearbeiten als Modus (Vorlage «Bearbeiten») */
 .k4-bearb { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
-.kal-v7.k4e .card-head, .kal-v7.k4e .kal-leiste { display: none; }
+/* kalender-4.1 (Silas am 18.11.2026, Vorlage enduco): Leiste unter dem Raster – Symbole Zyklus · Liste · Monat, Griff, Bearbeiten; Wochenleiste über der Liste;
+   Zyklus-Raster mit Tageszahlen und je Woche einer Leiste «Phase | Wochenart · Stunden · TL» */
+.kal-v7 .kal-leiste { margin: 4px 0 2px; gap: 8px; }
+.kal-v7 .kal-ans { display: flex; gap: 4px; margin: 0; }
+.kal-v7 .kal-ans button { flex: 0 0 auto; min-height: 44px; min-width: 48px; display: grid; place-items: center; padding: 0 12px; border: 0; border-radius: 16px; background: none; color: var(--fg); cursor: pointer; }
+.kal-v7 .kal-ans button[aria-pressed="true"] { background: var(--surface-2, var(--btn-2)); }
+.kal-v7 .kal-ans button:focus-visible { outline: 2px solid var(--accent-text, var(--accent)); outline-offset: 2px; }
+.kal-griff { flex: 1; display: flex; justify-content: center; min-width: 0; }
+.kal-griff .k4-griff { margin: 0; width: 80px; height: 30px; }
+.kal-griff .k4-griff span { width: 56px; }
+.kal-v7 .k4-bearb { margin-left: 0; }
+.k4-wbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 6px -4px 0; padding: 10px 14px; border-radius: 16px 16px 0 0; background: var(--surface);
+  border-bottom: 1px solid var(--line); }
+.k4-wbar b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.k4-wbar-z { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.k4-wbar-z > span { display: inline-flex; align-items: center; gap: 3px; color: var(--fg); font-weight: 600; }
+.k4-wbar-z small { font-size: 12px; }
+@media (max-width: 400px) { .k4-wbar-z small { display: none; } }
+.k4-zg { display: flex; flex-direction: column; gap: 4px; }
+.k4-zg-d { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); text-align: center; }
+.k4-zg-d span { font-size: 14px; font-weight: 600; padding: 2px 0; }
+.k4-zg-d span.heute { color: var(--race); font-weight: 800; }
+.k4-zg-d span.aus { color: var(--faint); }
+.k4-zg-wt span { font-size: 12px; font-weight: 700; color: var(--muted); }
+.k4-zg .k4-zw { display: flex; justify-content: center; align-items: center; gap: 10px; min-height: 38px; padding: 6px 12px; border-radius: 999px; }
+.k4-zg .k4-zw b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.k4-zw-z { display: inline-flex; align-items: center; gap: 3px; color: var(--muted); font-size: 13px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.k4-zg .k4-zw.jetzt b { color: var(--fg); }
+.kal-v7.k4e .card-head, .kal-v7.k4e .kal-leiste, .kal-v7.k4e .k4-wbar { display: none; }
 .k4-ebar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 0 4px; }
 .k4-ebar .rp-ib { width: 42px; height: 42px; min-height: 42px; padding: 0; display: grid; place-items: center; }
 .k4-fab .rp-ib { width: 44px; height: 44px; padding: 0; display: grid; place-items: center; }

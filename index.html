@@ -1074,11 +1074,13 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
           <div><h2 id="cal-title">Kalender</h2><div class="sub" id="cal-sub">Mein Plan, Absolviertes aus Garmin, Tests und Rennen.</div></div>
           <button class="btn kal-heute" id="cal-today">Heute</button>
         </div>
-        <div class="kal-leiste"><div class="seg kal-ans" role="group" aria-label="Ansicht"><button type="button" data-kalans="liste">Liste</button><button type="button" data-kalans="woche">Zyklus</button><button type="button" data-kalans="monat">Monat</button></div>
-          <div class="row" id="cal-pfeile"><button class="btn rp-ib" id="cal-prev" aria-label="Zurück">‹</button><button class="btn rp-ib" id="cal-next" aria-label="Weiter">›</button></div>
-          <button type="button" class="btn k4-bearb" id="kal-bearb" hidden>Bearbeiten</button></div>
         <div class="k4-wkarte" id="kal-wkarte" hidden></div>
         <div class="k4-raster" id="kal-raster" hidden></div>
+        <div class="kal-leiste"><div class="kal-ans" role="group" aria-label="Ansicht"><button type="button" data-kalans="woche" aria-label="Zyklus: Wochen mit Stunden und Last" title="Zyklus">Zyklus</button><button type="button" data-kalans="liste" aria-label="Liste: alle Tage" title="Liste">Liste</button><button type="button" data-kalans="monat" aria-label="Monat" title="Monat">Monat</button></div>
+          <div class="kal-griff" id="kal-griff"></div>
+          <div class="row" id="cal-pfeile"><button class="btn rp-ib" id="cal-prev" aria-label="Zurück">‹</button><button class="btn rp-ib" id="cal-next" aria-label="Weiter">›</button></div>
+          <button type="button" class="btn k4-bearb" id="kal-bearb" hidden>Bearbeiten</button></div>
+        <div class="k4-wbar" id="kal-wbar" hidden></div>
         <p class="k4-meldung" id="kal-meldung" role="status" aria-live="polite" hidden></p>
         </div>
         <div class="tablewrap" id="cal-wrap"><div class="cal" id="cal"></div></div>
@@ -3654,6 +3656,8 @@ const TABS = {
       // V7.8 kalender-4.0: Liste mit Raster (Standard), Zyklus (bisher «Woche») oder Monat
       { const a = store.get("sf.kal.ansicht4", "liste"); this.ansicht = ["liste", "woche", "monat"].includes(a) && (a !== "liste" || window.V78UI) ? a : window.V78UI ? "liste" : "woche"; }
       this.woche = iso(mondayOf(today));
+      // kalender-4.1 (Silas am 18.11.2026, Vorlage enduco): Ansicht als Symbole unter dem Raster – Zyklus (Wochen mit Stunden und Last), Liste, Monat
+      if (window.V6) document.querySelectorAll("[data-kalans]").forEach((b) => { b.innerHTML = V6.icon({ woche: "fokus", liste: "ablauf", monat: "kalender" }[b.dataset.kalans], 20); });
       document.querySelectorAll("[data-kalans]").forEach((b) => (b.onclick = () => {
         if (b.dataset.kalans === "woche" && this.ansicht !== "woche") {          // vom Monat zur Woche: die gewählte Woche, wenn sie im Monat liegt, sonst heute bzw. die erste
           const m0 = this.month, m1 = new Date(m0.getFullYear(), m0.getMonth() + 1, 0), w = pd(this.woche);
@@ -3694,7 +3698,9 @@ const TABS = {
       const liste = this.ansicht === "liste" && window.V78UI && window.V5UI && V5UI.C;            // V7.8 kalender-4.0
       const zyklus = this.ansicht === "woche" && window.V78UI && window.V66UI && window.V5UI && V5UI.C;   // V7.9 zyklus-1.0: Raster je Woche und vier Karten
       document.getElementById("kal-liste").hidden = !liste; document.getElementById("kal-raster").hidden = !(liste || zyklus);
-      document.getElementById("cal-pfeile").hidden = !!liste; document.querySelector(".kal-v7").classList.toggle("k4", !!(liste || zyklus));
+      document.getElementById("cal-pfeile").hidden = !!(liste || zyklus); document.querySelector(".kal-v7").classList.toggle("k4", !!(liste || zyklus));
+      document.getElementById("kal-griff").hidden = !(liste || zyklus); if (!(liste || zyklus)) document.getElementById("kal-griff").innerHTML = "";
+      document.getElementById("kal-wbar").hidden = !liste; document.getElementById("cal-sub").hidden = !!liste;
       document.getElementById("kal-bearb").hidden = !(liste || zyklus);
       if (!zyklus) this._zykWo = null;
       if (liste) {

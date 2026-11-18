@@ -29,7 +29,7 @@
   if (root) root.V78 = V78;
 })(typeof window !== "undefined" ? window : null, function () {
   "use strict";
-  const V78 = { VERSIONS: { kalender: "kalender-4.0", status: "trainingsstatus-1.0", zyklus: "zyklus-1.0", prognose: "fitness-prognose-1.0", bearbeiten: "bearbeiten-1.0", tagesblatt: "tagesblatt-2.0" } };
+  const V78 = { VERSIONS: { kalender: "kalender-4.1", status: "trainingsstatus-1.0", zyklus: "zyklus-1.0", prognose: "fitness-prognose-1.0", bearbeiten: "bearbeiten-1.0", tagesblatt: "tagesblatt-2.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const pd = (s) => new Date(s + "T12:00:00Z");
   const iso = (d) => d.toISOString().slice(0, 10);

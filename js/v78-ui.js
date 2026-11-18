@@ -62,8 +62,27 @@
         <span class="k4-r-d">${+ds.slice(8)}</span>${d && d.rennen ? `<span class="k4-r-p renn">${W.icon("flagge", 12)}</span>` : sp.length ? `<span class="k4-r-p">${sp.slice(0, 2).map((s) => `<i style="--sp:${SPF(s)}">${W.sportIcon(s, 11)}</i>`).join("")}</span>` : `<span class="k4-r-p leer">${leer ? "·" : ""}</span>`}
         <span class="k4-r-z">${pkt}${d && d.tests.length ? `<i class="test"></i>` : ""}</span></button>`;
     }).join("")).join("");
-    return `<div class="k4-r-gitter" role="group" aria-label="Kalender">${kopf}${zeilen}</div>
-      ${ST.edit ? "" : `<button type="button" class="k4-griff" data-k4griff aria-expanded="${ST.offen}" aria-label="${ST.offen ? "Raster zuklappen" : "Ganzen Monat zeigen"}"><span></span></button>`}`;
+    return `<div class="k4-r-gitter" role="group" aria-label="Kalender">${kopf}${zeilen}</div>`;
+  }
+  /** kalender-4.1: Griff in der Leiste unter dem Raster (wie die Vorlage), sonst unter dem Raster. */
+  const griffHTML = (offen, attr) => `<button type="button" class="k4-griff" ${attr} aria-expanded="${offen}" aria-label="${offen ? "Raster zuklappen" : "Ganzen Monat zeigen"}"><span></span></button>`;
+  function griffSetzen(raster, html, onclick) {
+    const platz = document.getElementById("kal-griff");
+    if (platz && !platz.hidden) { platz.innerHTML = html; const g = platz.firstElementChild; if (g) g.onclick = onclick; return; }
+    if (raster) { raster.insertAdjacentHTML("beforeend", html); const g = raster.lastElementChild; if (g) g.onclick = onclick; }
+  }
+  /** kalender-4.1: Wochenleiste über der Liste – Phase | Wochenart, Tage, Stunden und Last der Woche, die gerade oben steht (Vorlage enduco). */
+  function wochenZahlen(w, h) {
+    const k = w.kopf || {};
+    if (w.gilt && k.planMin) return { h: hmT(k.planMin), tl: `${k.tlOffen ? "mind. " : ""}${k.planTl}`, was: "Mein Plan" };
+    if (w.mo <= h && k.istMin) return { h: hmT(k.istMin), tl: `${Math.round(k.istTl || 0)}`, was: "absolviert" };
+    return null;
+  }
+  function wbarZeichnen(ds) {
+    const el = document.getElementById("kal-wbar"); if (!el || el.hidden || ST.edit) return;
+    const mo = V78().montag(ds), w = woche(mo), Z = wochenZahlen(w, heute());
+    const titel = V78().wochenTitel(w.K && w.K.w ? w.K.w.phase : null, w.kopf ? w.kopf.art : null);
+    el.innerHTML = `<b>${esc(titel)}</b><span class="k4-wbar-z">${Z ? `<span title="${esc(Z.was)}">${esc(Z.h)} ${V6().icon("uhr", 13)}</span><span title="TL ≈ ${esc(Z.was)}">${esc(Z.tl)} ${V6().icon("funken", 13)}</span>` : ""}<small>${esc(V78().bereichText(mo))}</small></span>`;
   }
 
   /* ---------------- Liste ---------------- */
@@ -153,11 +172,12 @@
     ST.raster.innerHTML = rasterHTML();
     ST.raster.querySelectorAll("[data-k4r]").forEach((b) => (b.onclick = () => N.zu(b.dataset.k4r)));
     ST.raster.querySelectorAll("[data-k4kw]").forEach((b) => (b.onclick = () => window.APP && window.APP.kalenderWoche && window.APP.kalenderWoche(b.dataset.k4kw)));
-    const g = ST.raster.querySelector("[data-k4griff]"); if (g) g.onclick = () => { ST.offen = !ST.offen; rasterZeichnen(); };
+    if (!ST.edit) griffSetzen(ST.raster, griffHTML(ST.offen, "data-k4griff"), () => { ST.offen = !ST.offen; rasterZeichnen(); });
   }
   function kopfText(ds) {
     if (ST.titel) ST.titel.textContent = V78().monatText(ds);
     if (ST.sub) { const mo = V78().montag(ds); ST.sub.textContent = `KW ${V6().isoWoche(mo)} · ${V78().bereichText(mo)}`; }
+    try { wbarZeichnen(ds); } catch (e) { console.error(e); }
   }
   /** Zum Tag ds scrollen (liegt er ausserhalb, wird die Liste erweitert). */
   N.zu = function (ds, still) {
@@ -471,15 +491,14 @@
     return k1 + k2 + k3 + k4;
   }
   function zyklusRaster() {
-    const W = V6(), h = heute(), R = ZS.offen ? V78().monatsRaster(ZS.mo) : V78().raster(ZS.mo, 2);
+    const W = V6(), h = heute(), R = ZS.offen ? V78().monatsRaster(ZS.mo) : V78().raster(ZS.mo, 2), mon = new Date(ZS.mo + "T12:00:00Z").getUTCMonth();
     const zeilen = R.map((wk) => {
-      const w = woche(wk.montag), k = w.kopf || {}, titel = V78().wochenTitel(w.K && w.K.w ? w.K.w.phase : null, k.art || null);
-      const zahlen = w.gilt && k.planMin ? `${hmT(k.planMin)} · ${k.tlOffen ? "mind. " : ""}${k.planTl}` : wk.montag <= h && k.istMin ? `absolviert ${hmT(k.istMin)} · ${Math.round(k.istTl || 0)}` : "–";
-      return `<button type="button" class="k4-zw${wk.montag === ZS.mo ? " sel" : ""}${wk.montag === V78().montag(h) ? " jetzt" : ""}" data-k4zw="${wk.montag}" aria-pressed="${wk.montag === ZS.mo}"
-        aria-label="KW ${W.isoWoche(wk.montag)}: ${esc(titel)}, ${esc(zahlen)}"><span class="k4-zw-kw"><small>KW</small>${W.isoWoche(wk.montag)}</span><b>${esc(titel)}</b><small>${esc(zahlen)}</small></button>`;
+      const w = woche(wk.montag), k = w.kopf || {}, titel = V78().wochenTitel(w.K && w.K.w ? w.K.w.phase : null, k.art || null), Z = wochenZahlen(w, h);
+      const tage = wk.tage.map((ds) => `<span class="${ds === h ? "heute" : ""}${ZS.offen && new Date(ds + "T12:00:00Z").getUTCMonth() !== mon ? " aus" : ""}">${+ds.slice(8)}</span>`).join("");
+      return `<div class="k4-zg-d" aria-hidden="true">${tage}</div><button type="button" class="k4-zw${wk.montag === ZS.mo ? " sel" : ""}${wk.montag === V78().montag(h) ? " jetzt" : ""}" data-k4zw="${wk.montag}" aria-pressed="${wk.montag === ZS.mo}"
+        aria-label="KW ${W.isoWoche(wk.montag)}: ${esc(titel)}${Z ? `, ${esc(Z.was)} ${esc(Z.h)}, TL ${esc(Z.tl)}` : ""}"><b>${esc(titel)}</b>${Z ? `<span class="k4-zw-z">${esc(Z.h)} ${W.icon("uhr", 13)}</span><span class="k4-zw-z">${esc(Z.tl)} ${W.icon("funken", 13)}</span>` : `<span class="k4-zw-z">–</span>`}</button>`;
     }).join("");
-    return `<div class="k4-zw-liste" role="group" aria-label="Wochen">${zeilen}</div>
-      <button type="button" class="k4-griff" data-k4zgriff aria-expanded="${ZS.offen}" aria-label="${ZS.offen ? "Zwei Wochen zeigen" : "Ganzen Monat zeigen"}"><span></span></button>`;
+    return `<div class="k4-zg" role="group" aria-label="Wochen"><div class="k4-zg-d k4-zg-wt" aria-hidden="true">${WT.map((t) => `<span>${t}</span>`).join("")}</div>${zeilen}</div>`;
   }
   /** Zyklus für die Woche mo: im Kopf das Raster mit einer Zeile je Woche, darunter die vier Karten und «Plan und absolviert» (V66UI). */
   N.zyklus = function (box, raster, titel, sub, mo, neu) {
@@ -487,7 +506,7 @@
     ST.KC = new Map(); ZS.PR = null; ZS.mo = V78().montag(mo || heute());
     raster.innerHTML = zyklusRaster();
     raster.querySelectorAll("[data-k4zw]").forEach((b) => (b.onclick = () => { if (window.APP && window.APP.kalenderWoche) window.APP.kalenderWoche(b.dataset.k4zw); }));
-    const g = raster.querySelector("[data-k4zgriff]"); if (g) g.onclick = () => { ZS.offen = !ZS.offen; N.zyklus(box, raster, titel, sub, ZS.mo, neu); };
+    griffSetzen(raster, griffHTML(ZS.offen, "data-k4zgriff"), () => { ZS.offen = !ZS.offen; N.zyklus(box, raster, titel, sub, ZS.mo, neu); });
     if (titel) titel.textContent = V78().monatText(ZS.mo);
     if (sub) sub.textContent = `KW ${V6().isoWoche(ZS.mo)} · ${V78().bereichText(ZS.mo)}`;
     let ausw = ""; try { ausw = M().wocheHTML(ZS.mo, { nurAuswertung: true }); } catch (e) { console.error(e); }

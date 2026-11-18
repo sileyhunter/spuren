@@ -20,7 +20,7 @@ test("trainingsstatus-1.0: Ermüdung ÷ Fitness, Stufen, Veränderung zum Vortag
 });
 
 test("kalender-4.0: Wochen der Liste, Raster zwei Wochen oder Monat, Texte wie die Vorlage", () => {
-  assert.equal(V78.VERSIONS.kalender, "kalender-4.0");
+  assert.equal(V78.VERSIONS.kalender, "kalender-4.1");
   assert.equal(V78.montag("2026-11-18"), "2026-11-16");
   assert.equal(V78.montag("2026-11-22"), "2026-11-16");
   assert.deepEqual(V78.wochen("2026-11-18", 1, 2), ["2026-11-09", "2026-11-16", "2026-11-23", "2026-11-30"]);

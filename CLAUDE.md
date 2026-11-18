@@ -789,6 +789,9 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   (`V56.saison`) und Testkalender. Kalender: Wochenband «KW · Phase · Stunden · TL», heute orange, Sport-Symbole, Fokus-Punkte; ein Tag
   öffnet das Tagesblatt (V6.6, `TABS.kalender.blatt`, auch aus Heute «Diese Woche» über `APP.tagBlatt`) mit Mini-Profilen (antippen öffnet die
   Einheit, «Zurück» führt ins Tagesblatt). Dauer immer als «1:15 h» bzw. «36 min» (`V6.dauerText`), nie «m» für Minuten.
+- **Kalender V8.4 (kalender-4.1, Silas am 18.11.2026: «bei enduco sehe ich oben Wochenart, Stunden und Last»):** Leiste unter dem Raster wie die Vorlage – Symbole Zyklus
+  (Zielscheibe) · Liste · Monat, Griff (Monat aufziehen) in der Mitte, «Bearbeiten» rechts; über der Liste klebt die Wochenleiste der Woche, die oben steht
+  («Phase | Wochenart», Stunden und TL ≈ von Mein Plan bzw. absolviert, Tage); im Zyklus über jeder Wochenleiste die Tageszahlen. Daten wie bisher aus `V66UI.wochenKopf`.
 - **Kalender V7.8 (kalender-4.0, Etappe 4 Teil 1):** Ansichten «Liste · Zyklus · Monat» (`sf.kal.ansicht4`, Standard Liste; «Zyklus» ist vorerst die bisherige Wochenansicht,
   Teil 2 bringt die vier Karten und den Bearbeiten-Modus, Teil 3 das Tagesblatt mit Verfügbarkeit im Blatt und «Eigene Aktivität planen»). Liste = `V78UI.zeichnen`: Raster und
   Kopf kleben oben in der Ansicht (die View scrollt, nicht das Dokument), Liste von einer Woche vor bis sieben Wochen nach heute, «Frühere/Weitere Wochen» erweitern um vier.
