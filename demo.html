@@ -3683,12 +3683,13 @@ const TABS = {
         const MP = window.V7UI ? V7UI.meinPlanWoche(iso(w)) : [];          // V7 kalender-3.0: Mein Plan statt Garmin-Kalender
         for (let i = 0; i < 7; i++) {
           const d = addDays(w, i), ds = iso(d), ev = calEvents(ds);
-          ev.forEach((e) => { if (e.a) { h += e.a.dur / 3600; tss += e.a.tss || 0; } });
+          // V8.0: wie der Wochenkopf der Liste (V66UI.wochenKopf): Stunden nur Schwimmen, Rad, Laufen als Bewegungszeit, TL ohne Krafttraining (pmc-2.1)
+          ev.forEach((e) => { if (e.a) { if (["rad", "lauf", "schwimm"].includes(e.a.sport)) h += effS(e.a) / 3600; if (!window.FK || FK.zaehlt(e.a)) tss += e.a.tss || 0; } });
           const cls = ["day", d.getMonth() !== m.getMonth() ? "out" : "", ds === t0 ? "today" : "", ds === this.sel ? "sel" : ""].join(" ");
           if (!W6) { tage += `<div class="${cls}" data-d="${ds}"><span class="dn">${d.getDate()}</span>` + ev.slice(0, 4).map((e) => `<div class="ev ${e.cls}" style="${e.c ? "--c:" + e.c : ""}">${esc(e.text)}</div>`).join("") + `</div>`; continue; }
           const frei = ev.filter((e) => e.a).map((e) => (W6 && W6.sportVon ? W6.sportVon(e.a) : e.a.sport)), zeichen = [], fokus = [];   // V7.6: Garmin-Krafttraining = kraft
           for (const x of MP.filter((y) => y.date === ds)) {
-            hp += x.dur_s / 3600;
+            if (["rad", "lauf", "schwimm"].includes(x.sport)) hp += x.dur_s / 3600;   // V8.0: Mein Plan wie der Wochenkopf (ohne Kraft, Mobility, draussen)
             const k = frei.indexOf(x.sport);
             if (k >= 0) { frei.splice(k, 1); zeichen.push([x.sport, "ist"]); } else zeichen.push([x.sport, ds < t0 ? "verpasst" : "plan"]);
             if (ds >= t0 && window.V7UI) for (const f of V7UI.profil(x.e).fokus) if (!fokus.includes(f.key)) fokus.push(f.key);

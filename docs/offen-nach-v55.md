@@ -252,3 +252,12 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
      Wie sich Ziehen auf dem iPhone anfühlt (Finger, Rand-Scrollen), ist nur im Browser geprüft.
 98. **Krafttraining:** der automatische Tag wird an der schon verteilten Woche gewählt; eine Woche mit Tests am Wochenende lässt oft nur den Tag des langen Laufs
     (Hinweis). Die Übungen plant die Seite nicht; Kraft geht nicht an Garmin.
+
+## Nach V8.0 (18.11.2026, Prüfung und Szenario-Tests, `docs/AUDIT_V8.md`)
+102. **Offene Abnahmetests (todo in `tests/test_v80.cjs`):** A3 nach einem einzigen schlechten Morgen die nächsten Tage prüfen, B3 Kurzfassung bei knapper Zeit,
+     D3 nach einer zu harten Einheit die folgenden prüfen, E2 Nachholen der Ampel nur als Vorschlag, H2 fehlende Garmin-Daten nicht als Ruhetage (alle V8.3);
+     D2 geplant gegen absolviert je Einheit (V8.1); F2 andere Form desselben Reizes (V8.4); H3 Datenstand auf Heute (V8.6).
+103. **Bezugsgrössen und Lastverhältnisse** (Befunde 1–3, 7, 14, 16): zwei LT2 für die Rad-Last, geplante Last unter der absolvierten, zwei Lastverhältnisse,
+     Naht der Fitness-Vorschau, Gefühl-Kalibrierung mit Kraft, mehrere Rechnungen für Wochenstunden → V8.1, Regeländerungen nur mit Silas' Okay.
+104. **Harte Einheiten an Land an zwei Tagen hintereinander** nach einer Verschiebung (Befund 10, z. B. solange dienstags nur Schwimmen geht): Frage an Silas.
+

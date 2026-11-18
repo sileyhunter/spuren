@@ -897,13 +897,14 @@
   M.istWoche = (mo) => (bereit() ? istWoche(mo) : []);                                  // V7.8 kalender-4.0 (js/v78-ui.js)
   function wochenKopf(mo, K) {
     const art = M.wochenart(mo), alle = istWoche(mo), ist = alle.filter((a) => ["rad", "lauf", "schwimm"].includes(a.sport));
-    // Stunden nur Schwimmen, Rad, Laufen; TL wie Fitness (pmc-2.1: alles ausser Krafttraining) – so vergleichbar mit der Plan-TL, die Aktivitäten draussen enthält (V7.9)
-    const istMin = ist.reduce((s, a) => s + (a.dur || a.dauer_s || 0) / 60, 0), istTl = alle.filter((a) => !window.FK || !window.FK.zaehlt || window.FK.zaehlt(a)).reduce((s, a) => s + (isNum(a.tss) ? a.tss : 0), 0);
+    // Stunden nur Schwimmen, Rad, Laufen; TL wie Fitness (pmc-2.1: alles ausser Krafttraining) – so vergleichbar mit der Plan-TL, die Aktivitäten draussen enthält (V7.9).
+    // V8.0: Bewegungszeit wie die Wochenauswertung darunter, die Plan-Übersicht und der Planvergleich (zeit-1.1; bis V7.10 hier die Timer-Zeit)
+    const istMin = ist.reduce((s, a) => s + (isNum(a.mv) ? a.mv : a.dur || a.dauer_s || 0) / 60, 0), istTl = alle.filter((a) => !window.FK || !window.FK.zaehlt || window.FK.zaehlt(a)).reduce((s, a) => s + (isNum(a.tss) ? a.tss : 0), 0);
     let planMin = 0, planTl = 0, tlOffen = false; const BZ = bezug(K);
     for (const t of K.w.tage) for (const e of t.einheiten) if (["rad", "lauf", "schwimm"].includes(e.sport) || e.art === "draussen") { if (e.art !== "draussen") planMin += e.dauer; const S = V66().schaetzung(e, BZ); if (isNum(S.tl)) planTl += S.tl; else tlOffen = true; }
     return { art, istMin, istTl, planMin, planTl: Math.round(planTl), tlOffen };
   }
-  M.wochenKopf = (mo, K) => wochenKopf(mo, K);                                          // V7.8 kalender-4.0
+  M.wochenKopf = (mo, K) => (bereit() ? wochenKopf(mo, K) : null);                                       // V7.8 kalender-4.0
   M.wochenart = function (mo) {
     try { const S = AN().saison(heute(), V6().rennenPrio(C.races ? C.races() : [])); if (!S) return null; return V66().wochenart(S.alle || S.wochen).get(mo) || null; }
     catch (e) { return null; }

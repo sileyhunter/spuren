@@ -1,5 +1,16 @@
 # Änderungen
 
+## V8.0 · 18.11.2026 · Prüfung aller Modelle und Szenario-Tests A–H (Masterprompt V8, Etappe V8.0)
+- **Simulator** (`tests/sim/`): lädt die echten Module der Seite ohne Browser und spielt Woche für Woche durch – Morgenwerte, Check-in, Ampel, Plan des Tages,
+  Ausführung durch einen erfundenen Athleten. **Abnahmetests A–H** (`tests/test_v80.cjs`) über mehrere Wochen und ein Lauf über acht Wochen mit Kraft, langen
+  Tagen, Krankheit, Lücken und Sperren: 20 Prüfungen erfüllt, 8 offen als «todo» mit der Etappe, die sie bringt (V8.1, V8.3, V8.4, V8.6).
+- **Prüfung mit echten Daten** (`tools/pruefung_v8.cjs`, Zahlen nur im Chat): Befunde zu Bezugsgrössen (zwei LT2 für die Rad-Last, geplante Last unter der
+  absolvierten), zwei Lastverhältnissen, Ampel (einzelner schlechter Morgen, Nachlauf des 7-Tage-Schnitts), fehlenden Daten, Fitness voraus und Wochensummen –
+  Bericht in `docs/AUDIT_V8.md`.
+- **Behoben:** Wochenkopf der Kalender-Liste und Wochenband im Monat rechnen wie die Wochenauswertung – Stunden nur Schwimmen, Rad, Laufen als Bewegungszeit,
+  TL ohne Krafttraining, Mein Plan ohne Kraft und Mobility (bis V7.10: Timer-Zeit bzw. alle Sportarten und Kraft).
+- Mobil: alle 22 Ansichten der Demo bei 390 px ohne Überlaufen; Datenschutz-Prüfungen bestanden.
+
 ## V7.10 · 18.11.2026 · Tagesblatt wie die Vorlage (tagesblatt-2.0), eigene Aktivität nach RPE (eigene-aktivitaet-1.0), wissen-1.23
 - **Tagesblatt** (Etappe 4, Teil 3): oben Fitness, Ermüdung, Status und Form mit der Veränderung zum Vortag, die Erklärung hinter «i»; die Einheiten wie im Kalender
   (mit Mini-Profil); Zeilen «Training hinzufügen ›» und «Eigene Aktivität planen ›»; die Verfügbarkeit des Tages direkt im Blatt – Sportarten antippen, Zeit mit dem
