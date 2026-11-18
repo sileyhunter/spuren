@@ -28,13 +28,15 @@
   const add = (iso, n) => V64.addDays(iso, n);
 
   /* ---------------- Vorlagen (vorlagen-1.0) ---------------- */
+  // V8.4.1 (Silas am 18.11.2026: «lösche bei Trainings Mobility, ergänze dafür die Lauf-ABC»): Mobility wird nicht mehr angeboten – die Lauf-ABC
+  // gehört zu den harten Läufen (lauf-abc-1.0, js/v64.js). Vorlage «mobility» bleibt nur, damit ältere Einträge lesbar bleiben.
   V66.SPORTARTEN = [["schwimm", "Schwimmen"], ["rad", "Rad"], ["rad_drinnen", "Rad drinnen"], ["lauf", "Laufen"], ["lauf_drinnen", "Laufen drinnen"],
-    ["kraft", "Kraft und Athletik"], ["mobility", "Mobility"]];
+    ["kraft", "Kraft und Athletik"]];
   V66.ARTEN = { grundlage: "Grundlage", lang: "Lang", tempo: "Tempo", schwelle: "Schwelle", vo2max: "VO2max", renntempo: "Renntempo",
     koppel: "Koppellauf", technik: "Technik und Kurs", aktivierung: "Aktivierung", test: "Test", kraft: "Kraft und Athletik", mobility: "Mobility", draussen: "Draussen" };
   const EXTRA = {
     kraft: { sport: "kraft", titel: "Krafttraining", art: "kraft", zweck: "Kraft- und Stabilisationsübungen nach deinem Programm; die Seite plant keine Übungen und keine Ziele." },
-    mobility: { sport: "mobility", titel: "Mobility", art: "mobility", zweck: "Beweglichkeit und Lockerung, ohne Ziele." },
+    mobility: { sport: "mobility", titel: "Mobility", art: "mobility", zweck: "Beweglichkeit und Lockerung, ohne Ziele." },   // nur noch für ältere Einträge (V8.4.1)
     // V7.7 aktivitaet-plan-1.0 (js/v77.js): Aktivitäten draussen, nach Puls (Pulszonen vom Laufen), blockieren ihren Tag; nur über «Draussen planen»
     skitour: { sport: "ski", titel: "Skitour", art: "draussen", draussen: true, zweck: "Skitour nach Puls im Grundlagenbereich. Ersetzt Rad-Stunden der Woche; am Vortag und am Tag danach keine harte Einheit an Land." },
     wandern: { sport: "wandern", titel: "Wandern", art: "draussen", draussen: true, zweck: "Wanderung nach Puls im Grundlagenbereich. Ersetzt Rad-Stunden der Woche; am Vortag und am Tag danach keine harte Einheit an Land." },
@@ -45,7 +47,7 @@
   };
   /** eigene-aktivitaet-1.0: Sportarten und RPE (CR-10 nach Foster) → Zone, umgekehrt zu rpe-zonen-1.0 (js/v73.js; eigene Festlegung). Für Rad und Laufen:
    *  1–2 Z1, 3–4 Z2, 5–6 Z3, 7 knapp unter LT2, 8–10 VO2max; Schwimmen: 1–2 Z1, 3–4 Z2, 5–6 Z3, 7–10 CSS-Tempo; andere ohne Zone (zählt nicht in TL ≈). */
-  V66.EIGEN_SPORT = ["rad", "lauf", "schwimm", "mobility", "andere"];
+  V66.EIGEN_SPORT = ["rad", "lauf", "schwimm", "andere"];                      // V8.4.1: ohne Mobility
   V66.rpeZone = function (rpe, sport) {
     if (!Number.isInteger(rpe) || rpe < 1 || rpe > 10) return null;
     if (sport === "rad" || sport === "lauf") return rpe <= 2 ? "z1" : rpe <= 4 ? "z2" : rpe <= 6 ? "z3" : rpe === 7 ? "z3o" : "vo2";
@@ -191,7 +193,7 @@
       const z1 = T.slice(0, erste).filter((t) => t[0] === "z1").reduce((s, t) => s + t[1], 0);
       const z1n = Math.min(z1 > 0 ? z1 : 5, a.ein_min), z2n = Math.max(0, a.ein_min - z1n), vor = [];
       if (z1n > 0) vor.push(["z1", z1n]); if (z2n > 0) vor.push(["z2", z2n]);
-      T = vor.concat(T.slice(erste));
+      T = vor.concat(T.slice(0, erste).filter((t) => t[0] === "abc"), T.slice(erste));        // lauf-abc-1.0: die Lauf-ABC bleibt nach dem Einlaufen
     }
     return T;
   };
@@ -884,10 +886,10 @@
           : isNum(R.lt2Draussen) ? P / R.lt2Draussen : hf != null ? hf : P / R.lt2;
         tl += h * f * f * 100;
       } else if (e.sport === "lauf") {
-        const R = B.lauf, pace = R ? R.pace[k] : null;
+        const kk = k === "abc" ? "z1" : k, R = B.lauf, pace = R ? R.pace[kk] : null;    // lauf-abc-1.0: Last wie Z1, kaum Strecke
         if (!isNum(pace)) { offen += m; continue; }
-        const hf = R.puls && isNum(R.puls.wert[k]) ? Math.min(1.15, R.puls.wert[k] / R.puls.lthr) : null;   // tl-plan-1.1: nach Puls wie die absolvierte Last
-        tl += h * (hf != null ? hf * hf : Math.pow(R.lt2 / pace, 2)) * 100; km += (m * 60) / pace;
+        const hf = R.puls && isNum(R.puls.wert[kk]) ? Math.min(1.15, R.puls.wert[kk] / R.puls.lthr) : null;   // tl-plan-1.1: nach Puls wie die absolvierte Last
+        tl += h * (hf != null ? hf * hf : Math.pow(R.lt2 / pace, 2)) * 100; if (k !== "abc") km += (m * 60) / pace;
       } else if (e.sport === "schwimm") {
         const R = B.schwimm, q = isNum(B.schwimmStunde) ? B.schwimmStunde : null;
         if (!R && q == null) { offen += m; continue; }
@@ -1138,11 +1140,12 @@
     const flachN = folge.reduce((s, x) => s + (x.wdh ? x.teile.length : 1), 0);
     let pos = 0;
     const schritt = (x, typ) => {
-      const ohne = x.key === "z1" || x.key === "pause" || x.key === "test" || metrik === "rpe";
+      const ohne = x.key === "z1" || x.key === "pause" || x.key === "test" || x.key === "abc" || metrik === "rpe";
       const z = ohne ? null : metrik === "puls" ? V66.garminPuls(x.key, e.sport, skalen) : V66.garminZiel(x.key, e.sport, skalen);
-      if (!z && x.key !== "z1" && x.key !== "pause" && metrik !== "rpe") ohneZiel++;
+      if (!z && x.key !== "z1" && x.key !== "pause" && x.key !== "abc" && metrik !== "rpe") ohneZiel++;
       if (z && z.offen) offen = true;
-      const st = { type: "ExecutableStepDTO", stepOrder: ++nr, stepType: { stepTypeId: GTYP[typ], stepTypeKey: typ }, description: garminText(x.key, e.sport, skalen, metrik),
+      const text = x.key === "abc" ? V64.abcText(e.abc) : garminText(x.key, e.sport, skalen, metrik);   // lauf-abc-1.0: Übungen im Text, ohne Ziel
+      const st = { type: "ExecutableStepDTO", stepOrder: ++nr, stepType: { stepTypeId: GTYP[typ], stepTypeKey: typ }, description: text,
         endCondition: { conditionTypeId: 2, conditionTypeKey: "time" }, endConditionValue: x.s };
       if (!z) st.targetType = KEIN_ZIEL;
       else if (z.art === "watt") Object.assign(st, { targetType: { workoutTargetTypeId: 6, workoutTargetTypeKey: "power.between" }, targetValueOne: z.lo, targetValueTwo: z.hi });
@@ -1151,7 +1154,7 @@
       n++;
       return st;
     };
-    const typVon = (x, erste, letzte) => x.key === "pause" ? "recovery" : (x.key === "z1" || x.key === "z2") && erste && flachN > 1 ? "warmup"
+    const typVon = (x, erste, letzte) => x.key === "pause" ? "recovery" : x.key === "abc" ? "warmup" : (x.key === "z1" || x.key === "z2") && erste && flachN > 1 ? "warmup"
       : x.key === "z1" && letzte && flachN > 1 ? "cooldown" : x.key === "z1" ? "recovery" : "interval";
     const steps = folge.map((x) => {
       if (!x.wdh) { const st = schritt(x, typVon(x, pos === 0, pos === flachN - 1)); pos++; return st; }
@@ -1167,7 +1170,7 @@
     const fassung = V66.fassung(JSON.stringify(kern));
     const ablauf = (e.ablauf || []).join("; ");
     const mt = metrik === "puls" ? "Ziele nach Puls." : metrik === "rpe" ? "Nach Anstrengung (RPE), ohne Ziele auf der Uhr." : "";
-    const besch = [`Ironman Notebook · Mein Plan${o.date ? " · " + o.date : ""}.`, ablauf ? ablauf + "." : "", e.zweck || "", mt].filter(Boolean).join(" ").slice(0, 440) + tag(fassung);
+    const besch = [`Ironman Notebook · Mein Plan${o.date ? " · " + o.date : ""}.`, mt, ablauf ? ablauf + "." : "", e.zweck || ""].filter(Boolean).join(" ").slice(0, 440) + tag(fassung);   // V8.4.1: Metrik vor dem Ablauf, damit sie nie abgeschnitten wird
     return { workout: Object.assign({ workoutName: name, description: besch }, { sportType: sport, workoutSegments: kern.workoutSegments }), fassung, schritte: n, ohneZiel, offen };
   };
   /** Auftrag «An Garmin senden» für einen Tag (Eingabe garmin_senden): modus «senden» (nächstes Nacht-Update), «auto» (am Vortag ab 23 Uhr)

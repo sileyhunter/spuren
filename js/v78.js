@@ -116,7 +116,7 @@
   V78.fokus = function (einheiten) {
     const m = new Map();
     for (const e of einheiten || []) for (const x of (e && e.teile) || []) {
-      if (!Array.isArray(x) || !isNum(x[1]) || x[1] <= 0 || ["pause", "ohne", "offen", "test"].includes(x[0])) continue;
+      if (!Array.isArray(x) || !isNum(x[1]) || x[1] <= 0 || ["pause", "ohne", "offen", "test", "abc"].includes(x[0])) continue;   // Lauf-ABC ohne Zone
       m.set(x[0], (m.get(x[0]) || 0) + x[1]);
     }
     return [...m.entries()].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])));

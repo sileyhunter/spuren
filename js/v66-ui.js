@@ -640,7 +640,7 @@
   }
 
   /* ---------- V7.10 tagesblatt-2.0 / eigene-aktivitaet-1.0: «Eigene Aktivität planen» ---------- */
-  const EIGEN_SP = [["rad", "Rad"], ["lauf", "Laufen"], ["schwimm", "Schwimmen"], ["mobility", "Mobility"], ["andere", "Andere"]];
+  const EIGEN_SP = [["rad", "Rad"], ["lauf", "Laufen"], ["schwimm", "Schwimmen"], ["andere", "Andere"]];       // V8.4.1: ohne Mobility
   const DRAUSSEN_SP = [["skitour", "Skitour", "ski"], ["wandern", "Wandern", "wandern"], ["langlauf", "Langlauf", "ski"], ["trail", "Traillauf", "lauf"]];
   const RPE_WORT = ["", "sehr leicht", "leicht", "moderat", "etwas hart", "hart", "hart", "sehr hart", "sehr hart", "sehr hart", "maximal"];
   M.eigeneAktivitaet = function (ds, zurueck) {
@@ -659,7 +659,7 @@
       <label class="tb-feld" data-eabis hidden><span>bis (höchstens 16 Wochen)</span><input type="date" data-eabisd></label>
       <label class="mp-dauer"><span>Dauer</span><input type="range" min="10" max="360" step="5" value="60" data-eadauer aria-label="Dauer in Minuten"><output data-eadout>1:00 h</output></label>
       <label class="mp-dauer"><span>RPE</span><input type="range" min="1" max="10" step="1" value="3" data-earpe aria-label="Anstrengung RPE 1 bis 10"><output data-earout>3 · moderat</output></label>
-      <p class="hint">Anstrengung auf der Skala 1–10 (CR-10 nach Foster). Daraus die Zone für TL ≈ (${esc(V66().VERSIONS.eigen)}, eigene Festlegung): RPE 1–2 Z1, 3–4 Z2, 5–6 Z3, 7 knapp unter LT2, 8–10 VO2max; Schwimmen ab 7 CSS-Tempo. Mobility und Andere ohne TL ≈.</p>
+      <p class="hint">Anstrengung auf der Skala 1–10 (CR-10 nach Foster). Daraus die Zone für TL ≈ (${esc(V66().VERSIONS.eigen)}, eigene Festlegung): RPE 1–2 Z1, 3–4 Z2, 5–6 Z3, 7 knapp unter LT2, 8–10 VO2max; Schwimmen ab 7 CSS-Tempo. Andere ohne TL ≈.</p>
       <p class="warn-t" data-mpfehler hidden></p>
       ${fuss("data-mpz", `<button type="button" class="btn primary gross" data-eaok>${W.icon("plus", 18)} Planen</button>`)}`;
     const ov = V59().blatt("mp-eigen", html);

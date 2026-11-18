@@ -707,7 +707,7 @@ def verfuegbarkeit_pruefen(v):
 
 
 PLANWOCHE_QUELLEN = ("vorschlag", "eigen", "bibliothek")
-EIGEN_SPORT = ("rad", "lauf", "schwimm", "mobility", "andere")              # V7.10 eigene-aktivitaet-1.0 (wie V66.EIGEN_SPORT)
+EIGEN_SPORT = ("rad", "lauf", "schwimm", "andere")                          # V7.10 eigene-aktivitaet-1.0 (wie V66.EIGEN_SPORT; V8.4.1 ohne Mobility)
 EINHEIT_FELDER = ("uhrzeit", "gesperrt", "metrik", "drinnen", "ein_min", "pausen", "pool")   # V7.5 einheit-felder-1.1: pool
 EINHEIT_METRIKEN = ("leistung", "pace", "puls", "rpe")
 

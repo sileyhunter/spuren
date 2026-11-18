@@ -32,7 +32,7 @@
 
   /* ---------- Zonen: Chips, Farben, Erklärungen (eigene Worte) ---------- */
   const ZCHIP = { z1: ["z1", "Z1·Erholung"], pause: ["z1", "Z1·Erholung"], z2: ["z2", "Z2·Grundlage"], renntempo: ["fatmax", "Z2·Renntempo"], z3: ["z3", "Z3·Tempo"],
-    z3o: ["sweet", "Z3·unter LT2"], css: ["z4", "Z4·CSS"], vo2: ["vo2", "Z5·VO2max"], test: ["offen", "Test"] };
+    z3o: ["sweet", "Z3·unter LT2"], css: ["z4", "Z4·CSS"], vo2: ["vo2", "Z5·VO2max"], test: ["offen", "Test"], abc: ["z1", "Lauf-ABC"] };
   /** Schlüssel der Zonenfarben (V6.ZONEN) eines Schritts: Abschnittsart (Mein Plan) oder Zone des Workouts (Bibliothek). */
   const v6Key = (s) => (s.key ? (ZCHIP[s.key] || ["offen"])[0] : s.zone && V6().ZONEN[s.zone] ? s.zone : "offen");
   const farbe = (k) => (V6().ZONEN[k] || V6().ZONEN.offen).farbe;
@@ -348,8 +348,8 @@
   }
 
   /* ---------- Schritte und Blöcke ---------- */
-  const ART_ICON = { ein: "warm", aus: "kalt", belastung: "intervall", erholung: "runter2", pause: "runter2", bahn: "bahnende", technik: "technik", test: "fokus" };
-  const ART_WORT = { ein: "Einfahren", aus: "Ausfahren", belastung: "Belastung", erholung: "Erholung", pause: "Pause", bahn: "Bahn beenden", technik: "Technik", test: "Test" };
+  const ART_ICON = { ein: "warm", aus: "kalt", belastung: "intervall", erholung: "runter2", pause: "runter2", bahn: "bahnende", technik: "technik", test: "fokus", abc: "technik" };
+  const ART_WORT = { ein: "Einfahren", aus: "Ausfahren", belastung: "Belastung", erholung: "Erholung", pause: "Pause", bahn: "Bahn beenden", technik: "Technik", test: "Test", abc: "Lauf-ABC" };
   const metIcon = (m) => ({ leistung: "energie", pace: "tacho", puls: "herz", rpe: "kopf" }[m] || "energie");
   /** Ziel eines Schritts in der gewählten Metrik (Mein Plan) bzw. laut Workout (Bibliothek). */
   function zielVon(s) {
@@ -367,6 +367,13 @@
   function rpeTeilen(t) { const m = /^(.*?)[,\s]*RPE\s*([\d–-]+)(?:\/10)?\s*$/.exec(String(t || "")); return m ? { rpe: `RPE ${m[2]}`, wort: m[1].trim() } : { rpe: t, wort: "" }; }
   function schrittHTML(s) {
     const D = V73(), k = v6Key(s), f = farbe(k), sw = X.sport === "schwimm";
+    if (s.art === "abc") {                                               // lauf-abc-1.0: Übungen mit Sätzen und eigener Kurzbeschreibung
+      return `<li class="v73-s v73-abc" style="--zc:${f}"><span class="v73-s-ic" title="Lauf-ABC">${ic("technik", 20)}</span>
+        <div class="v73-s-m"><div class="v73-s-z"><b>${esc(D.dauerKurz(s.s))}</b></div><span class="v73-s-t">${esc(s.text)}</span>
+        <ol class="v73-abc-l">${(s.uebungen || []).map((u) => `<li><b>${esc(u.name)}</b> · ${u.saetze}&nbsp;×&nbsp;${esc(u.wert)}<small>${esc(u.text)}</small></li>`).join("")}</ol>
+        <small>Namen und Sätze wie in Enduco, die Beschreibung in eigenen Worten – im Zweifel wie im Enduco-Video.</small></div>
+        <span class="v73-s-r">${chip(s)}</span></li>`;
+    }
     let z = zielVon(s), wort = "";
     if (z && z.icon === "kopf" && sw) { const r = rpeTeilen(z.text); z = { text: r.rpe, icon: "kopf" }; wort = r.wort; }
     const icon = sw && s.art === "pause" ? "leiter" : ART_ICON[s.art] || "intervall";

@@ -19,11 +19,11 @@
 
   /* ---------------- Zonen der Abschnitte ---------------- */
   /** Zone 1–5 je Abschnittsart (Pause = Erholung = Zone 1); Test und «ohne» haben keine Zone. */
-  V73.ZNR = { pause: 1, z1: 1, z2: 2, renntempo: 2, z3: 3, z3o: 3, css: 4, vo2: 5 };
+  V73.ZNR = { pause: 1, z1: 1, z2: 2, renntempo: 2, z3: 3, z3o: 3, css: 4, vo2: 5, abc: 1 };
   /** Farbe/Chip (Schlüssel aus V6.ZONEN) je Abschnittsart, wie profil-1.0 (V64.FARBE). */
   V73.FARBE = Object.assign({ ohne: "offen" }, V64.FARBE);
   const ARBEIT = new Set(["z3", "z3o", "vo2", "css", "renntempo"]);
-  const STUFE = { test: 0, ohne: 0, pause: 0, z1: 1, z2: 2, renntempo: 2.5, z3: 3, z3o: 3.5, css: 4, vo2: 5 };
+  const STUFE = { test: 0, ohne: 0, pause: 0, z1: 1, z2: 2, renntempo: 2.5, z3: 3, z3o: 3.5, css: 4, vo2: 5, abc: 1 };
   /** RPE je Abschnittsart (rpe-zonen-1.0, eigene Festlegung auf der CR-10-Skala nach Foster). */
   V73.RPE = { pause: "RPE 1–2", z1: "RPE 1–2", z2: "RPE 3–4", renntempo: "RPE 4–5", z3: "RPE 5–6", z3o: "RPE 6–7", css: "RPE 7", vo2: "RPE 8–9" };
 
@@ -150,6 +150,10 @@
     };
     baum.forEach((n, i) => {
       if (n.typ === "b") { annotBlock(n); return; }
+      if (n.key === "abc") {                                              // lauf-abc-1.0: eigener Schritt mit den Übungen (Namen wie in Enduco, Texte eigen)
+        const A = V64.LAUF_ABC && V64.LAUF_ABC[e.abc] || null;
+        n.art = "abc"; n.text = A ? A.titel : "Lauf-ABC"; n.uebungen = A ? A.uebungen.map((u) => Object.assign({}, u)) : []; return;
+      }
       let art;
       if (n.key === "test") art = "test";
       else if (ARBEIT.has(n.key)) art = "belastung";

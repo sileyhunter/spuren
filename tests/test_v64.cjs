@@ -244,7 +244,7 @@ test("Wissen: Regel-Liste verweist auf vorhandene Versionen und Kapitel", () => 
 
 test("Wissen 1.2/1.3: Kapitel «aufbau» und «vergleich» mit Quellen und Regeln", () => {
   const WS = require("../js/wissen.js");
-  assert.equal(WS.VERSION, "wissen-1.30");
+  assert.equal(WS.VERSION, "wissen-1.31");
   const k = WS.kapitel("aufbau");
   assert.ok(k, "Kapitel aufbau fehlt");
   const v = WS.verweise(k.text.join(" ") + " " + k.kurz);
@@ -585,4 +585,39 @@ test("abwechslung-1.0 (V8.4): gleicher Reiz in anderer Form, jede dritte Woche d
     const b = V64.BAUSTEINE[id]; assert.ok(b && b.wissen && b.quellen.length, id);
     assert.ok(V66.bereich(id), "Vorlage " + id);
   }
+});
+
+test("lauf-abc-1.0 (V8.4.1): Lauf-ABC nach dem Einlaufen jedes harten Laufs, gleich lang wie geplant; Mobility nicht mehr angeboten", () => {
+  assert.equal(V64.VERSIONS.abc, "lauf-abc-1.0");
+  const V66 = require("../js/v66.js");
+  for (const id of Object.keys(V64.BAUSTEINE)) {
+    const b = V64.BAUSTEINE[id], e = V64.einheit(id, { d: 60, css_s: 110 }), o = V64.einheit(id, { d: 60, css_s: 110, abc: false });
+    const soll = b.sport === "lauf" && b.art === "schluessel";
+    assert.equal(!!e.abc, soll, id);
+    if (!soll) { assert.deepEqual(e.teile, o.teile, id + " ohne Lauf-ABC unverändert"); continue; }
+    assert.equal(e.abc, V64.familieVon(id) === "lauf_vo2" ? "B" : "A", id);
+    const i = e.teile.findIndex((t) => t[0] === "abc");
+    assert.deepEqual(e.teile.slice(0, i).reduce((s, t) => s + t[1], 0), 10, id + ": 10 min einlaufen");
+    assert.equal(e.teile[i][1], V64.LAUF_ABC[e.abc].dauer);
+    assert.ok(Math.abs(e.dauer - o.dauer) <= 1, `${id}: ${e.dauer} statt ${o.dauer} min`);
+    assert.ok(e.teile[e.teile.length - 1][1] >= 5, id + ": Auslaufen mindestens 5 min");
+    assert.equal(e.minuten.hart, o.minuten.hart, id); assert.equal(e.minuten.mittel, o.minuten.mittel, id);
+    assert.ok(e.ablauf.some((z) => /^10 min einlaufen/.test(z)) && e.ablauf.some((z) => /^Lauf-ABC/.test(z)), id);
+    assert.ok(e.quellen.includes("mcgowan2015"));
+  }
+  for (const v of ["A", "B"]) { const A = V64.LAUF_ABC[v]; assert.ok(A.uebungen.length >= 5 && A.uebungen.every((u) => u.name && u.text && u.saetze === 2)); assert.ok(V64.abcText(v).length <= 100); }
+  // Strecke ≈ ohne die Lauf-ABC, TL ≈ vollständig
+  const sk = { lauf_pace: [{ z: "Z1", von: 409, bis: 351 }, { z: "Z2", von: 351, bis: 323 }, { z: "Z3", von: 323, bis: 297 }, { z: "Z4", von: 297, bis: 277 }, { z: "Z5", von: 277, bis: 249 }] };
+  const e = V64.einheit("lauf_vo2", {}), o = V64.einheit("lauf_vo2", { abc: false });
+  assert.ok(V64.kmSchaetzung(e, sk) > 0 && V64.kmSchaetzung(e, sk) < V64.kmSchaetzung(o, sk), "Lauf-ABC zählt nicht als Strecke");
+  // Mobility: nicht mehr in «Training hinzufügen» und «Eigene Aktivität»
+  assert.ok(!V66.SPORTARTEN.some(([k]) => k === "mobility")); assert.ok(!V66.EIGEN_SPORT.includes("mobility"));
+  const py = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "tools", "merge_daily.py"), "utf8").match(/^EIGEN_SPORT = \(([^)]*)\)/m)[1];
+  assert.deepEqual(py.split(",").map((x) => x.trim().replace(/"/g, "")).filter(Boolean), V66.EIGEN_SPORT, "gleich wie merge_daily.py");
+  // Garmin: Lauf-ABC als Einlauf-Schritt ohne Ziel, mit den Übungen im Text
+  const SKH = { lauf_pace: sk.lauf_pace, lauf_hf: [{ z: "Z1", von: 97, bis: 123 }, { z: "Z2", von: 123, bis: 139 }, { z: "Z3", von: 139, bis: 153 }, { z: "Z4", von: 153, bis: 167 }, { z: "Z5", von: 167, bis: 183 }] };
+  const g = V66.garminWorkout(V66.einheit({ uid: "q", vorlage: "lauf_vo2", dauer: 50, quelle: "eigen" }), SKH, { uid: "q" });
+  const st = g.workout.workoutSegments[0].workoutSteps.find((x) => /^Lauf-ABC/.test(x.description || ""));
+  assert.ok(st, "Schritt Lauf-ABC"); assert.equal(st.stepType.stepTypeKey, "warmup"); assert.equal(st.targetType.workoutTargetTypeKey, "no.target"); assert.equal(st.endConditionValue, 450);
+  assert.equal(g.ohneZiel, 0);
 });

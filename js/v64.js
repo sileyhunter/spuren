@@ -23,7 +23,7 @@
   if (root) root.V64 = V64;
 })(typeof window !== "undefined" ? window : null, function (V62) {
   "use strict";
-  const V64 = { VERSIONS: { modell: "modell-1.0", woche: "wochenplan-1.2", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.1", aufbau: "aufbau-1.2", vergleich: "vergleich-1.4", abwechslung: "abwechslung-1.0" } };
+  const V64 = { VERSIONS: { modell: "modell-1.0", woche: "wochenplan-1.2", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.1", aufbau: "aufbau-1.2", vergleich: "vergleich-1.4", abwechslung: "abwechslung-1.0", abc: "lauf-abc-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const T = (iso) => Date.parse(iso + "T12:00:00Z");
   const add = (iso, n) => new Date(T(iso) + n * 864e5).toISOString().slice(0, 10);
@@ -35,13 +35,13 @@
 
   /* ---------------- Drei Bereiche (tid-1.0) ---------------- */
   /** Zone (Schlüssel aus js/v6.js oder eigener Baustein-Schlüssel) → Bereich. Renntempo legt die Seite knapp unter LT1 fest (eigene Festlegung) und zählt es darum als locker. */
-  V64.DREI = { z1: "locker", z2: "locker", fatmax: "locker", pause: "locker", renntempo: "locker",
+  V64.DREI = { z1: "locker", z2: "locker", fatmax: "locker", pause: "locker", renntempo: "locker", abc: "locker",
     z3: "mittel", sweet: "mittel", z3o: "mittel",
     z4: "hart", z5: "hart", vo2: "hart", anaerob: "hart", neuro: "hart", sprint: "hart" };
   /** Eigene Baustein-Schlüssel → Farbe aus V6.ZONEN (nur zum Zeichnen). */
-  V64.FARBE = { z1: "z1", z2: "z2", renntempo: "fatmax", z3: "z3", z3o: "sweet", vo2: "vo2", pause: "pause", css: "z4", test: "offen" };
+  V64.FARBE = { z1: "z1", z2: "z2", renntempo: "fatmax", z3: "z3", z3o: "sweet", vo2: "vo2", pause: "pause", css: "z4", test: "offen", abc: "z1" };
   V64.ZNAME = { z1: "Z1 locker", z2: "Z2 Grundlage", renntempo: "Renntempo (knapp unter LT1)", z3: "Z3 Tempo", z3o: "knapp unter LT2", vo2: "Z5 VO2max",
-    css: "CSS-Tempo", test: "Test", pause: "locker" };
+    css: "CSS-Tempo", test: "Test", pause: "locker", abc: "Lauf-ABC" };
   V64.AUFTEILUNG = { schwimm: 0.2, rad: 0.5, lauf: 0.3 };
 
   /* ---------------- Modelle (modell-1.0) ---------------- */
@@ -297,16 +297,71 @@
     return null;
   };
 
-  /** Einheit aus einem Baustein. o: { d, kurz, phase, css_s }. → { id, sport, titel, dauer, teile, minuten {locker, mittel, hart}, … } */
+  /* ---------------- Lauf-ABC (lauf-abc-1.0, V8.4.1) ----------------
+     Silas' Wunsch vom 18.11.2026: die Lauf-ABC aus Enduco auch bei den harten Läufen. Namen, Sätze und Zeiten wie in seinen Enduco-Einheiten
+     (Bildschirmfotos, nie im Repository), die Ausführung in eigenen Worten. Vor VO2max-Läufen die Koordination (schnelle, dynamische Übungen),
+     vor Tempo- und Schwellenläufen die Beweglichkeit (eigene Festlegung). Ablauf: 10 min einlaufen, Lauf-ABC, Hauptteil; das Auslaufen wird
+     um den Rest kürzer (mindestens 5 min), damit die Einheit so lang bleibt wie geplant. */
+  V64.LAUF_ABC = {
+    A: { titel: "Lauf-ABC · Beweglichkeit", kurz: "Beweglichkeit", dauer: 6, uebungen: [
+      { name: "Wachschütteln", saetze: 2, wert: "15 s", text: "Locker auf der Stelle federn, Arme und Beine ausschütteln." },
+      { name: "Unterer Rücken", uhr: "Rücken", saetze: 2, wert: "20 s halten", text: "Knie leicht gebeugt, den Oberkörper nach vorne hängen lassen; Rücken und Nacken locker." },
+      { name: "Fussgelenksarbeit", uhr: "Fussgelenke", saetze: 2, wert: "15 s", text: "Kleine schnelle Schritte über den Vorfuss abrollen, die Ferse kommt kaum vom Boden." },
+      { name: "Hühnerscheuchen", saetze: 2, wert: "10 Wdh.", text: "Vorgebeugt die Arme locker hin und her schwingen – Schultern und oberen Rücken lösen." },
+      { name: "Hüftgelenksrotation", uhr: "Hüftrotation", saetze: 2, wert: "10 Wdh.", text: "Auf einem Bein stehen, das Knie anheben, im Hüftgelenk nach aussen öffnen und zurückführen; Seite wechseln." }] },
+    B: { titel: "Lauf-ABC · Koordination", kurz: "Koordination", dauer: 7.5, uebungen: [
+      { name: "Wachschütteln", saetze: 2, wert: "15 s", text: "Locker auf der Stelle federn, Arme und Beine ausschütteln." },
+      { name: "Wechselschritte zur Seite", uhr: "Wechselschritte", saetze: 2, wert: "30 s (15 s je Seite)", text: "Seitwärts laufen, das hintere Bein kreuzt abwechselnd vor und hinter dem vorderen, die Hüfte dreht mit." },
+      { name: "Seitgalopp", saetze: 2, wert: "30 s (15 s je Seite)", text: "Seitwärts galoppieren, die Füsse kommen kurz zusammen, die Arme schwingen über den Kopf mit." },
+      { name: "Hohe Knie", saetze: 2, wert: "20 s", text: "Kurze schnelle Schritte, die Knie bis etwa Hüfthöhe, aufrecht bleiben." },
+      { name: "A-Skip", saetze: 2, wert: "20 s", text: "Hüpfend vorwärts, abwechselnd ein Knie hoch, der Fuss setzt unter dem Körper auf, die Arme gegengleich." },
+      { name: "Glut Kicks", saetze: 2, wert: "20 s", text: "Anfersen: die Ferse kommt locker Richtung Gesäss, kurze schnelle Bodenkontakte." }] },
+  };
+  /** Welche Lauf-ABC zu einem Baustein gehört: harte Läufe (Schlüssel) ja, VO2max mit Koordination (B), sonst Beweglichkeit (A); Tests und lockere Läufe nie. */
+  V64.abcVon = function (id) {
+    const b = B[id]; if (!b || b.sport !== "lauf" || b.art !== "schluessel") return null;
+    return V64.familieVon && V64.familieVon(id) === "lauf_vo2" ? "B" : "A";
+  };
+  /** Teile mit Lauf-ABC: Einlaufen auf 10 min, dann die ABC, dann der Hauptteil; das Auslaufen trägt den Rest (mindestens 5 min). */
+  V64.mitAbc = function (teile, v) {
+    const A = V64.LAUF_ABC[v], i = Array.isArray(teile) ? teile.findIndex((t) => t[0] !== "z1" && t[0] !== "z2") : -1;
+    if (!A || i < 1) return teile;
+    const ein = teile.slice(0, i).map((t) => t.slice()), rest = teile.slice(i).map((t) => t.slice());
+    let summe = ein.reduce((x, t) => x + t[1], 0), weg = 0;
+    for (let k = ein.length - 1; k >= 0 && summe > 10; k--) { const w = Math.min(ein[k][1], summe - 10); ein[k][1] -= w; summe -= w; weg += w; }
+    const L = rest[rest.length - 1], zusatz = A.dauer - weg;
+    if (zusatz > 0 && L && L[0] === "z1" && rest.length > 1) L[1] -= Math.min(zusatz, Math.max(0, L[1] - 5));
+    return ein.filter((t) => t[1] > 0).concat([["abc", A.dauer]], rest.filter((t) => t[1] > 0));
+  };
+  /** Kurztext für die Uhr (höchstens 100 Zeichen, nie mitten im Wort abgeschnitten). */
+  V64.abcText = function (v) {
+    const A = V64.LAUF_ABC[v]; if (!A) return "Lauf-ABC";
+    const t = `Lauf-ABC: ${A.uebungen.map((u) => u.uhr || u.name).join(", ")} (je ${A.uebungen[0].saetze}×)`;
+    return t.length <= 100 ? t : `Lauf-ABC ${A.kurz}: ${A.uebungen.length} Übungen, je ${A.uebungen[0].saetze}×`;
+  };
+
+  /** Einheit aus einem Baustein. o: { d, kurz, phase, css_s, abc }. → { id, sport, titel, dauer, teile, minuten {locker, mittel, hart}, … }
+   *  lauf-abc-1.0: harte Läufe mit Lauf-ABC nach dem Einlaufen (o.abc === false: ohne). */
   V64.einheit = function (id, o) {
     const b = B[id]; if (!b) return null;
     const oo = Object.assign({}, o || {}); if (b.fix && !isNum(oo.d)) oo.d = b.fix;
     let teile = b.teile.call(b, oo).filter((t) => t[1] > 0);
+    let ablauf = b.ablauf.call(b, oo);
+    const abc = oo.abc === false ? null : V64.abcVon(id);
+    if (abc) {
+      teile = V64.mitAbc(teile, abc);
+      const A = V64.LAUF_ABC[abc], j = ablauf.findIndex((x) => /^15 min einlaufen/.test(x));
+      const zeile = `${A.titel} (${A.dauer === Math.round(A.dauer) ? A.dauer + " min" : Math.floor(A.dauer) + ":30 min"}, ${A.uebungen.length} Übungen, je ${A.uebungen[0].saetze} Sätze)`;
+      if (j >= 0) ablauf = ablauf.slice(0, j).concat([ablauf[j].replace(/^15 min/, "10 min"), zeile], ablauf.slice(j + 1));
+      else ablauf = [zeile].concat(ablauf);
+    }
     const dauer = teile.reduce((s, t) => s + t[1], 0);
     const minuten = { locker: 0, mittel: 0, hart: 0 };
     if (b.sport === "rad" || b.sport === "lauf") for (const [k, m] of teile) { const z = V64.DREI[k]; if (z) minuten[z] += m; }
-    return { id, sport: b.sport, titel: b.titel, art: b.art, dauer: Math.round(dauer), teile, minuten, ablauf: b.ablauf.call(b, oo), zweck: b.zweck,
+    const e = { id, sport: b.sport, titel: b.titel, art: b.art, dauer: Math.round(dauer), teile, minuten, ablauf, zweck: b.zweck,
       quellen: b.quellen.slice(), wissen: b.wissen, kurz: !!oo.kurz, schluessel: b.art === "schluessel" };
+    if (abc) { e.abc = abc; if (!e.quellen.includes("mcgowan2015")) e.quellen.push("mcgowan2015"); }
+    return e;
   };
 
   /* ---------------- Ziele aus dem aktiven Zonenprofil ---------------- */
@@ -597,7 +652,7 @@
     const P = { z1: z2.von, pause: z2.von, z2: p2, renntempo: z3ok ? z3.von * 1.015 : null, z3: z3ok ? (z3.von + z3.bis) / 2 : null, z3o: z3ok ? z3.bis : null,
       vo2: z5 && isNum(z5.von) ? z5.von : null };
     let km = 0;
-    for (const [k, m] of e.teile) { const p = P[k]; if (!isNum(p) || p <= 0) return null; km += (m * 60) / p; }
+    for (const [k, m] of e.teile) { if (k === "abc") continue; const p = P[k]; if (!isNum(p) || p <= 0) return null; km += (m * 60) / p; }   // Lauf-ABC: kaum Strecke
     return km;
   };
   /** Distanz eines geplanten Laufs (TR.workout): Distanzschritte plus Zeitschritte mit Pace-Ziel (Mitte). Offene Schritte → vollst false. */

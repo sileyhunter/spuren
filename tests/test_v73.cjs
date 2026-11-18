@@ -153,7 +153,7 @@ test("einheit-anpassen-1.0: Einfahren und Intervall-Intensität ändern nur die 
   const e = V64.einheit("lauf_vo2", {});
   const a = V66.teileAnpassen(e.teile, { ein_min: 20 });
   assert.deepEqual(a.slice(0, 2), [["z1", 5], ["z2", 15]]);
-  assert.deepEqual(V66.teileAnpassen(e.teile, { ein_min: 5 }).slice(0, 2), [["z1", 5], ["vo2", 4]]);
+  assert.deepEqual(V66.teileAnpassen(e.teile, { ein_min: 5 }).slice(0, 3), [["z1", 5], ["abc", 7.5], ["vo2", 4]], "lauf-abc-1.0: die Lauf-ABC bleibt nach dem Einlaufen");
   const kurz = V66.teileAnpassen(e.teile, { pausen: 100 }), lang = V66.teileAnpassen(e.teile, { pausen: 0 });
   const trab = (T) => T.filter(([k], i) => k === "z1" && i > 2 && i < T.length - 1).map((t) => t[1]);
   assert.deepEqual(trab(kurz), [1.5, 1.5, 1.5]); assert.deepEqual(trab(lang), [4.5, 4.5, 4.5]);
@@ -324,4 +324,14 @@ test("bilder-1.0: Bild verschlüsselt (SPS2, auf 64 KiB aufgefüllt), Name aus d
   assert.match(sw, /\(serien\|bilder\)/, "Service Worker übernimmt verschlüsselte Bilder wie Reihen");
   const ui = fs.readFileSync(path.join(__dirname, "..", "js", "v73-ui.js"), "utf8");
   assert.match(ui, /SPUREN_DEMO/, "die Demo zeigt keine Fotos");
+});
+
+test("lauf-abc-1.0 (V8.4.1): die Lauf-ABC ist auf der Einheit-Seite ein eigener Schritt mit den Übungen und zählt als Z1", () => {
+  const e = V64.einheit("lauf_vo2", {}), baum = V73.ausTeilen(e), abc = baum.find((n) => n.art === "abc");
+  assert.ok(abc, "Schritt Lauf-ABC"); assert.equal(abc.s, 450); assert.equal(abc.uebungen.length, 6); assert.match(abc.text, /Koordination/);
+  assert.equal(baum[0].art, "ein"); assert.equal(baum[baum.indexOf(abc) + 1].typ, "b", "danach die Intervalle");
+  const t = V64.einheit("lauf_tempo", {}), a2 = V73.ausTeilen(t).find((n) => n.art === "abc");
+  assert.match(a2.text, /Beweglichkeit/); assert.equal(a2.uebungen.length, 5);
+  const Zz = V73.zonenZeiten(baum, null); assert.equal(Zz.total, e.dauer * 60);
+  assert.ok(!V73.fokus(baum).some((f) => f.key === "abc"), "kein Fokus");
 });

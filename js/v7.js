@@ -70,7 +70,7 @@
     let t = 0; const lang = {};
     for (const [key0, min] of teile) {
       if (!isNum(min) || min <= 0) continue;
-      const key = key0 === "ohne" ? "offen" : key0, Z = ZONEN && ZONEN[key], s = min * 60;
+      const key = key0 === "ohne" ? "offen" : key0 === "abc" ? "z1" : key0, Z = ZONEN && ZONEN[key], s = min * 60;   // lauf-abc-1.0: wie Z1
       const stufe = Z ? Z.stufe : 0;
       out.balken.push({ x0: t, w: s, d: s, h: Math.max(0.12, Math.min(1, 0.1 + 0.9 * (stufe / 5))), key: Z ? key : "offen", ohneDauer: false });
       t += s;

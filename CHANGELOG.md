@@ -1,5 +1,12 @@
 # Änderungen
 
+## V8.4.1 Teil 2 · 18.11.2026 · Lauf-ABC statt Mobility (lauf-abc-1.0), wissen-1.31
+- **Lauf-ABC in jedem harten Lauf:** nach 10 min Einlaufen die Lauf-ABC aus deinen Enduco-Einheiten – vor VO2max-Läufen die Koordination (Hohe Knie, A-Skip, Anfersen …),
+  vor Tempo- und Schwellenläufen die Beweglichkeit. Auf der Einheit-Seite als eigener Schritt mit allen Übungen, auf der Uhr als Einlauf-Schritt mit den Übungen im Text.
+  Die Einheit bleibt gleich lang (Auslaufen kürzer).
+- **Mobility** ist bei «Training hinzufügen» und «Eigene Aktivität» weg.
+- Die Lauf-ABC kommt nicht über Garmin: In keinem der Enduco-Workouts aus Garmin steht eine; die Übungen stammen aus deinen Bildschirmfotos (Namen und Sätze wie dort, Texte eigen).
+
 ## V8.4.1 · 18.11.2026 · Ältere Browser (kompat-1.0)
 - **Älterer Mac:** Die Seite lief in älteren Safari-Versionen nicht mehr (logische Zuweisung «||=» erst ab Safari 14, «inset» erst ab 14.1, gzip-Entpacken erst ab 16.4).
   Neu lädt `js/kompat.js` vor allem anderen: Ersatz für `at`, `Object.hasOwn` und `Blob.arrayBuffer`, ein eigener gzip-Dekoder für Explorer und Eingang

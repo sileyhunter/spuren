@@ -25,7 +25,7 @@
   const tagText = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("de-CH", { weekday: "long", day: "numeric", month: "long" });
   const SPORT_WORT = { rad: "Rad", lauf: "Laufen", schwimm: "Schwimmen", wandern: "Wandern", ski: "Ski", kraft: "Kraft", andere: "Training" };
   const spFarbe = (sp) => `var(--sp-${["rad", "lauf", "schwimm", "wandern", "ski"].includes(sp) ? sp : "andere"})`;
-  const ZKURZ = { z1: "Z1", z2: "Z2", renntempo: "Renntempo", z3: "Z3 Tempo", z3o: "unter LT2", vo2: "VO2max", css: "CSS", test: "Test" };
+  const ZKURZ = { z1: "Z1", z2: "Z2", renntempo: "Renntempo", z3: "Z3 Tempo", z3o: "unter LT2", vo2: "VO2max", css: "CSS", test: "Test", abc: "Lauf-ABC" };
   const STUFE = { test: 0, pause: 0, z1: 1, z2: 2, renntempo: 2.5, z3: 3, z3o: 3.5, css: 4, vo2: 5 };
   const POS = { pause: 0.25, z1: 0.5, z2: 1.5, renntempo: 1.9, z3: 2.5, z3o: 2.9, css: 3.6, vo2: 4.3, test: 2.2 };
   const FARB3 = { locker: "--zc-z2", mittel: "--zc-z3", hart: "--zc-z5" };

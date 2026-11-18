@@ -1502,3 +1502,6 @@ table.t.v82-t td small { display: block; font-size: 11px; }
 .co-zurueck { padding: 6px 12px; min-height: 0; font-size: 13px; white-space: nowrap; flex-shrink: 0; }
 .co-tag { margin: 8px 0; }
 .co-geprueft { margin: 8px 0 0; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+/* V8.4.1 lauf-abc-1.0: Übungen der Lauf-ABC auf der Einheit-Seite */
+.v73-abc-l { margin: 6px 0 4px; padding-left: 20px; display: grid; gap: 6px; font-size: 13px; }
+.v73-abc-l small { display: block; color: var(--muted); }

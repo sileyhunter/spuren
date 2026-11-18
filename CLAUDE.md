@@ -106,6 +106,12 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   Probelauf bis `config.enduco_bis`), `tools/tagescoach.py` (Prüfung der Entscheide wie die Seite), `tests/test_v83.cjs`; `V66.aendern` Art «ersetzen» (gleiche Kennung) und
   «hinzufuegen» mit freier Kennung beim Zurückholen, `V66UI.aendernFolge` (mehrere Änderungen, einmal gespeichert); ampel-plan-1.2 in `js/v74.js` (Nachholen nur als Vorschlag,
   `ampel.nachholen[].vorschlag`); basis-1.2 in `js/v75.js` (`V75.datenBis`: Tage nach den letzten Garmin-Daten zählen nicht als Ruhetage). Der Coach ändert nie selbst etwas.
+- **V8.4.1 Lauf-ABC (lauf-abc-1.0, Silas am 18.11.2026: «lösche bei Trainings Mobility, ergänze dafür die Lauf-ABC von Enduco – auch bei den Schwellen/VO2max-Einheiten»):**
+  `V64.LAUF_ABC` (zwei Formen aus seinen Enduco-Bildschirmfotos, nie im Repository: A Beweglichkeit 6 min, B Koordination 7:30 min; Namen, Sätze und Zeiten wie dort, Texte eigen),
+  `V64.abcVon` (harte Läufe: VO2max-Familie B, sonst A; Tests und lockere Läufe nie), `V64.mitAbc` (10 min einlaufen, Lauf-ABC, Hauptteil; Auslaufen trägt den Rest, mind. 5 min),
+  `V64.abcText` (Uhr, ≤ 100 Zeichen); Abschnitt `abc` = locker wie Z1, ohne Strecke (`V64.kmSchaetzung`, `V66.schaetzung`), bleibt bei «Einfahren» (`V66.teileAnpassen`), auf Garmin
+  ein Einlauf-Schritt ohne Ziel mit den Übungen im Text, auf der Einheit-Seite ein Schritt `art` «abc» mit der Übungsliste (`V73.ausTeilen`, `js/v73-ui.js`), Profil wie Z1, nicht im Fokus.
+  Mobility wird nicht mehr angeboten (`V66.SPORTARTEN`, `V66.EIGEN_SPORT`, `merge_daily.EIGEN_SPORT`); die Vorlage bleibt nur für ältere Einträge. Wissen Kapitel «intervalle» (McGowan et al. 2015).
 - **V8.4.1 (ältere Browser, kompat-1.0, Silas' älterer Mac vom 18.11.2026):** `js/kompat.js` (vor allen anderen Skripten geladen, absichtlich ES5: Ersatz für `at`,
   `Object.hasOwn`, `Blob.arrayBuffer`; `KOMPAT.gunzip` = eigener gzip-Dekoder, wo `DecompressionStream` fehlt (Explorer, Eingang); Hinweis «Browser zu alt» ohne `?.`/`??` und
   Skriptfehler der ersten 20 s mit Browser und Version), `tests/test_kompat.cjs` (Dekoder gegen zlib, Ersatz in frischer Umgebung, nur ES2020-Syntax = Safari 13.1, keine
@@ -469,7 +475,7 @@ V6.6: `garmin_senden` (Auftrag «An Garmin senden» je Tag → `garmin_senden_ad
 ID «gs-<Datum>», modus senden/auto/aus, Tag vom Erstellen bis eine Woche voraus, Workouts nur Rad/Laufen/Schwimmen (1.1) mit bekannten Feldern; abgelehnte mit
 Grund in `garmin_abgelehnt`; dieselbe oder ältere Fassung wird nie nochmals offen). `planwoche` (Mein Plan einer Woche → `planwoche_add` → `plan_woche`, eigenplan-1.0; `merge_daily.planwoche_pruefen`: Montag, ID «wo-<Montag>»,
 Tage in der Woche, eindeutige Einheiten, Quelle vorschlag/eigen/bibliothek, Dauer 5–600 min, Tage vor der Änderung und gesperrte Tage unverändert
-gegenüber dem Stand davor; gleiche Woche ersetzt mit Audit; V7.10 eigene-aktivitaet-1.0: Vorlage «eigen» mit `titel` 1–60 Zeichen, `sport` rad/lauf/schwimm/mobility/andere, `rpe` 1–10). V6.2.2: `zonen` (auf der Seite bestätigte Zonenprofile → `zonen_add`, geprüft wie oben). V7.2: `verfuegbarkeit` (Zeit und Sportarten je Tag
+gegenüber dem Stand davor; gleiche Woche ersetzt mit Audit; V7.10 eigene-aktivitaet-1.0: Vorlage «eigen» mit `titel` 1–60 Zeichen, `sport` rad/lauf/schwimm/andere (bis V8.4 auch mobility), `rpe` 1–10). V6.2.2: `zonen` (auf der Seite bestätigte Zonenprofile → `zonen_add`, geprüft wie oben). V7.2: `verfuegbarkeit` (Zeit und Sportarten je Tag
 «vf-JJJJ-MM-TT» oder je Wochentag «vf-wt-1…7», `entfernt` = zurücksetzen → `verfuegbarkeit_add` → `plan_verfuegbarkeit`; `merge_daily.verfuegbarkeit_pruefen`;
 gleiche ID ersetzt mit Audit). V7.4: `ampel` (Entscheid der Ampel je Tag «aa-JJJJ-MM-TT» mit Ampel-Stand, Gründen, Morgenwerte ja/nein, Quelle seite/morgen-update
 und optional `trotzdem` {an, am} → `ampel_add` → `ampel_anpassung`; `merge_daily.ampel_pruefen` wie `V74.pruefen`; je Tag ein Eintrag: Entscheid aus der neueren
@@ -822,7 +828,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   Entwurf je Woche, ↶/↷, ✕ verwirft (mit Rückfrage), ✓ speichert alle geänderten Wochen und führt offene Garmin-Aufträge nach. Ziehen nur innerhalb der Woche (sonst Griff antippen:
   Tag wählen); Tests, Kurs, Aktivitäten draussen und nachgeholte Einheiten bleiben. Solange der Entwurf offen ist: nichts an Garmin, kein Draussen planen, keine Planeinstellungen.
   **V7.10 Tagesblatt (tagesblatt-2.0):** Kopf Fitness, Ermüdung, Status, Form mit Veränderung zum Vortag (Erklärung hinter «i»), Einheiten wie im Kalender, «Training hinzufügen ›»,
-  «Eigene Aktivität planen ›» (eigene-aktivitaet-1.0: Titel, Sportart Rad/Laufen/Schwimmen/Mobility/Andere, Datum, Uhrzeit, jede Woche bis höchstens 16 Wochen, Dauer 10–360 min,
+  «Eigene Aktivität planen ›» (eigene-aktivitaet-1.0: Titel, Sportart Rad/Laufen/Schwimmen/Andere (seit V8.4.1 ohne Mobility), Datum, Uhrzeit, jede Woche bis höchstens 16 Wochen, Dauer 10–360 min,
   RPE 1–10 → Zone für TL ≈: 1–2 Z1, 3–4 Z2, 5–6 Z3, 7 knapp unter LT2, 8–10 VO2max, Schwimmen ab 7 CSS; Skitour, Wandern, Langlauf, Traillauf öffnen «Draussen planen»),
   Verfügbarkeit des Tages im Blatt (Sportarten als Symbol, antippen = Chips; Regler 0–8 h in 15-min-Schritten, ganz rechts «offen»; sofort gespeichert als «vf-<Datum>», gleich wie
   der Wochentag = Tageseintrag weg; danach wie bisher festhalten bzw. «Woche anpassen»), Krafttraining, unten klein «Tag sperren» und Garmin.
@@ -870,6 +876,9 @@ Laufen nach Puls, Schwimmen Last pro Bewegungsstunde der letzten acht Wochen) si
   Ähnliche Zeit im Bereich wie die Vergleichseinheit (Test in `tests/test_v64.cjs`); Varianten erben `V64.STUFE_BAUSTEIN` und `V64.ERSATZ`. Gilt nur für den Vorschlag; gespeicherte
   Wochen und Mein Plan behalten ihre Einheiten. Formen ausser 30/15, 4 × 5 und 4 × 4 und die Reihenfolge sind eigene Festlegungen (Wissen, Kapitel «intervalle»). Regel ändern = Version
   in `V64.VERSIONS`, Wissen und Tests nachführen.
+- **Lauf-ABC `lauf-abc-1.0` (V8.4.1):** jeder harte Lauf (Schlüssel: VO2max, Tempo, Schwelle mit Laktat) mit Lauf-ABC nach 10 min Einlaufen – vor VO2max die Koordination (B), sonst
+  die Beweglichkeit (A); Einheit gleich lang (Auslaufen kürzer, mind. 5 min, sonst höchstens 1 min länger). Nicht in Tests, lockeren, langen und Koppelläufen, nie beim Rad. Regel ändern =
+  Version in `V64.VERSIONS`, Wissen (Kapitel «intervalle») und `tests/test_v64.cjs`.
 - **Intensität je Sportart `intensitaet-1.1` (V6.4.2; 1.1 = Titel-Regel mit Neuro und locker, V6.4.3, Version nachgeführt in V6.4.4; `V64.kappen`, `V64.planStufe`):** je Sportart «nur locker», «bis Schwelle» (Tempo, knapp unter
   LT2, CSS; keine VO2max-Intervalle) oder «alles» (Standard). Gespeichert im Eintrag «modell» (`intensitaet` = {schwimm, rad, lauf}, `vi`;
   `merge_daily.modell_pruefen` lehnt unbekannte Sportarten oder Stufen ab). Der Vorschlag ersetzt eine Schlüsseleinheit über der Wahl durch die nächst
@@ -911,7 +920,7 @@ Laufen nach Puls, Schwimmen Last pro Bewegungsstunde der letzten acht Wochen) si
 - **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
   Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
   Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
-- **Wissen `wissen-1.30` (`js/wissen.js`; 1.30 = V8.4 Abwechslung im Kapitel «intervalle»; 1.29 = V8.4 Ampel readiness-3.0, Verpflegung kurz, Coach 1.1; 1.28 = V8.3 Kapitel «coach», ampel-plan-1.2 und basis-1.2; 1.27 = V8.2 Kapitel «reaktionen»; 1.26 = V8.1.1 Kapitel «verpflegung»; 1.25 = V8.1 TL ≈ mit den Bezugsgrössen, Abweichung, Anstieg,
+- **Wissen `wissen-1.31` (`js/wissen.js`; 1.31 = V8.4.1 Lauf-ABC im Kapitel «intervalle»; 1.30 = V8.4 Abwechslung im Kapitel «intervalle»; 1.29 = V8.4 Ampel readiness-3.0, Verpflegung kurz, Coach 1.1; 1.28 = V8.3 Kapitel «coach», ampel-plan-1.2 und basis-1.2; 1.27 = V8.2 Kapitel «reaktionen»; 1.26 = V8.1.1 Kapitel «verpflegung»; 1.25 = V8.1 TL ≈ mit den Bezugsgrössen, Abweichung, Anstieg,
   Nach dem Training, Puls zur Leistung; 1.24 = V8.1 harte Einheiten an Land nie an zwei Tagen hintereinander; 1.23 = V7.10 Tagesblatt und eigene Aktivität nach RPE im Kapitel «modelle»; 1.22 = V7.9 Fitness voraus im Kapitel «last», Zyklus und Bearbeiten im Kapitel «modelle»; 1.21 = V7.8 Trainingsstatus im Kapitel «last»; 1.20 = V7.7 Kapitel «draussen»; 1.19 = V7.6.2 Schwimmkurs, aufbau-1.2, Kurzcheck nach Puls; 1.18 = V7.6.1 Abstimmung ums Krafttraining, Tag automatisch, Tage für lange Einheiten, Form ohne Krafttraining; 1.17 = V7.6 Kapitel «kraft» (Rønnestad & Mujika 2014, Rønnestad et al. 2010, Doma et al. 2017, Lauersen et al. 2014, Foster et al. 2001); 1.16 = V7.5.2 Basis-Fitness Variante A; 1.15 = V7.5.1 Planeinstellungen als Blatt-Folge, Basis-Regel offen, Anfänger-Modus, Stile auf der Uhr; 1.14 = V7.5 Kapitel «planeinstellungen», 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.13 = V7.4 Ampel passt das Training an (Kapitel «erholung», Düking 2021, Manresa-Rocamora 2021), 1.12 = V7.3.2 Übungen aus der Enduco-Liste, 1.11 = V7.3 Etappe 2 Schwimmen,
   Puls und RPE an Garmin im Kapitel «modelle», 1.10 = V7.3 Einheit als
   Schritte, Einfahren und Intervall-Intensität, RPE je Abschnitt im Kapitel «intervalle»; 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
