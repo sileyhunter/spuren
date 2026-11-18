@@ -12,7 +12,7 @@ Gebaut wird Etappe für Etappe, jede erst nach Silas' Okay.
 | 1 | Einheit wie Trainingsbriefing, mit allen Schritten (`schritte-1.0`, `einheit-2.0`, `einheit-felder-1.0`, `einheit-anpassen-1.0`, `rpe-zonen-1.0`) | V7.3 |
 | 2 | Schwimm-Einheiten mit Technikübungen an Garmin (`garmin-senden-1.1`); Puls- und RPE-Ziele auf der Uhr | V7.3.1 (auf der Uhr noch nicht geprüft) |
 | 3 | Planeinstellungen: Basis-Fitness je Sportart, Steigerung (ein Regler für alle drei Sportarten), Indoor-Phase, Schwimm-Equipment, Bahnlänge, Anfänger-Modus, Stile | V7.5, V7.5.1, V7.5.2 (Basis-Fitness Variante A, 20/50/30 wählbar) |
-| 4 | Kalender mit Zwei-Wochen-Raster und durchlaufender Liste, Zyklus, Bearbeiten-Modus, Tagesblatt; Aktivitäten draussen im Voraus planen (`aktivitaet-plan-1.0`) | offen |
+| 4 | Kalender mit Zwei-Wochen-Raster und durchlaufender Liste, Zyklus, Bearbeiten-Modus, Tagesblatt; Aktivitäten draussen im Voraus planen (`aktivitaet-plan-1.0`) | V7.7 (draussen), V7.8 (`kalender-4.0`, `trainingsstatus-1.0`), V7.9 (`zyklus-1.0`, `fitness-prognose-1.0`, `bearbeiten-1.0`), V7.10 (`tagesblatt-2.0`, `eigene-aktivitaet-1.0`) |
 | 5 | Heute, Navigation, Training planen mit Kategorien | offen |
 | 6 | Ampel passt das Training des Tages automatisch an (`ampel-plan-1.0`): bei «vorsichtig» keine harten oder mittleren Abschnitte, Nachholen in der Woche, «Trotzdem wie geplant» | V7.4 (Garmin-Ersatz am Morgen auf der Uhr noch nicht geprüft) |
 | 7 | Krafttraining als feste Zusatzeinheit je Woche (`kraft-plan-1.0`), Woche darauf abgestimmt | V7.6 Teil 1 (Termin, Anzeige, RPE); V7.6.1 Teil 2 (Abstimmung der Woche, Tag automatisch, `kraft-plan-1.1`), dazu Planeinstellungen «Allgemein» |

@@ -1,5 +1,13 @@
 # Änderungen
 
+## V7.10 · 18.11.2026 · Tagesblatt wie die Vorlage (tagesblatt-2.0), eigene Aktivität nach RPE (eigene-aktivitaet-1.0), wissen-1.23
+- **Tagesblatt** (Etappe 4, Teil 3): oben Fitness, Ermüdung, Status und Form mit der Veränderung zum Vortag, die Erklärung hinter «i»; die Einheiten wie im Kalender
+  (mit Mini-Profil); Zeilen «Training hinzufügen ›» und «Eigene Aktivität planen ›»; die Verfügbarkeit des Tages direkt im Blatt – Sportarten antippen, Zeit mit dem
+  Regler (0–8 h, ganz rechts «offen»), sofort gespeichert; danach Krafttraining und unten klein «Tag sperren» und Garmin.
+- **Eigene Aktivität planen:** Titel, Sportart, Datum, Uhrzeit, auf Wunsch jede Woche (bis 16 Wochen), Dauer und Anstrengung (RPE 1–10). Aus der Anstrengung die Zone
+  für TL ≈ (Umkehrung von rpe-zonen-1.0); Skitour, Wandern, Langlauf und Traillauf öffnen «Draussen planen». Eigene Aktivitäten bleiben beim Anpassen an ihrem Tag.
+- Etappe 4 ist damit vollständig (V7.7–V7.10).
+
 ## V7.9 · 18.11.2026 · Zyklus (zyklus-1.0), Fitness voraus (fitness-prognose-1.0), Bearbeiten als Modus (bearbeiten-1.0), wissen-1.22
 - **Zyklus** (Etappe 4, Teil 2): oben je Woche eine Zeile «Phase | Wochenart · Stunden · TL» (Griff zieht den Monat auf), darunter vier Karten der gewählten Woche –
   Gesamtumfang (TL ≈ von Mein Plan und absolviert gegen den Bereich des Wochenvorschlags ± 7,5 %, Trainingsverfügbarkeit mit Hinweis, wenn die Zeit knapp wird),

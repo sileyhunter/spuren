@@ -345,3 +345,28 @@ test("formPrognose: Fitness und Ermüdung mit der geplanten Last fortgeschrieben
   assert.equal(V66.formPrognose({ ctl: 50, atl: 60 }, "2026-11-18", "2026-11-18", () => 0).offen, 0, "gleicher Tag: Stand zu Tagesbeginn");
   assert.equal(V66.formPrognose(null, "2026-11-18", "2026-11-19"), null);
 });
+
+test("eigene-aktivitaet-1.0: Titel, Sportart und RPE → Zone, TL ≈ wie jede Einheit, nur über das eigene Blatt", () => {
+  assert.equal(V66.VERSIONS.eigen, "eigene-aktivitaet-1.0");
+  assert.deepEqual([1, 2, 3, 4, 5, 6, 7, 8, 10].map((r) => V66.rpeZone(r, "rad")), ["z1", "z1", "z2", "z2", "z3", "z3", "z3o", "vo2", "vo2"]);
+  assert.deepEqual([2, 4, 6, 7, 10].map((r) => V66.rpeZone(r, "schwimm")), ["z1", "z2", "z3", "css", "css"]);
+  assert.deepEqual([V66.rpeZone(5, "mobility"), V66.rpeZone(0, "rad"), V66.rpeZone(11, "lauf"), V66.rpeZone(3.5, "rad")], [null, null, null, null]);
+  const s = { uid: "e-1", quelle: "eigen", vorlage: "eigen", titel: "Velo zur Arbeit", sport: "rad", dauer: 40, rpe: 4, uhrzeit: "07:15" };
+  assert.equal(V66.einheitPruefen(s), null);
+  for (const [k, v, f] of [["titel", "  ", "Titel"], ["titel", "x".repeat(61), "Titel"], ["sport", "ski", "Sportart"], ["rpe", 0, "RPE"], ["rpe", 2.5, "RPE"], ["dauer", 5, "Dauer"]])
+    assert.match(V66.einheitPruefen(Object.assign({}, s, { [k]: v })), new RegExp(f), `${k} = ${v}`);
+  const e = V66.einheit(s);
+  assert.deepEqual([e.sport, e.titel, e.art, e.dauer, e.metrik, e.uhrzeit], ["rad", "Velo zur Arbeit", "eigen", 40, "rpe", "07:15"]);
+  assert.deepEqual(e.teile, [["z2", 40]]);
+  assert.deepEqual(e.minuten, { locker: 40, mittel: 0, hart: 0 }, "zählt in tid-1.0 wie jede Rad-Einheit");
+  const m = V66.einheit(Object.assign({}, s, { sport: "mobility", rpe: 2 }));
+  assert.deepEqual([m.teile, m.metrik], [[["ohne", 40]], undefined], "Mobility ohne Zone, ohne TL ≈");
+  assert.ok(!V66.vorlagen("rad").some((v) => v.id === "eigen"), "nicht in den Vorlagen von «Training hinzufügen»");
+  // in Mein Plan: hinzufügen, eigene Einheiten bleiben beim Verteilen an ihrem Tag
+  const w = woche({}), ctx = ctxFuer(w, "2026-11-17");
+  const r = V66.aendern(null, { art: "hinzufuegen", date: "2026-11-19", einheit: { vorlage: "eigen", titel: "Velo zur Arbeit", sport: "rad", dauer: 40, rpe: 4 } }, ctx);
+  assert.equal(r.fehler, undefined);
+  const t = V66.meinPlan(w, r.eintrag, {}).tage.find((x) => x.date === "2026-11-19");
+  assert.ok(t.einheiten.some((x) => x.art === "eigen" && x.titel === "Velo zur Arbeit" && x.quelle === "eigen"));
+  assert.match(V66.aendern(null, { art: "hinzufuegen", date: "2026-11-19", einheit: { vorlage: "eigen", titel: "", sport: "rad", dauer: 40, rpe: 4 } }, ctx).fehler, /Titel/);
+});

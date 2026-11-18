@@ -987,6 +987,11 @@ _bad = [dict(_WO, id="wo-2026-03-03", montag="2026-03-03"), dict(_WO, id="wo-202
         dict(_WO, tage={"2026-03-05": {"gesperrt": False, "einheiten": [{"uid": "x", "dauer": 30, "quelle": "bibliothek", "sport": "rad"}]}})]
 check("Mein Plan: falscher Montag, falsche ID, Tag ausserhalb, Dauer, Quelle und Bibliothek ohne Workout abgelehnt",
       all(merge_daily.planwoche_pruefen(w, None) for w in _bad), str([merge_daily.planwoche_pruefen(w, None) for w in _bad]))
+# V7.10 eigene-aktivitaet-1.0: eigene Aktivität mit Titel, Sportart und RPE
+_eig = lambda **k: dict(_WO, tage={"2026-03-05": {"gesperrt": False, "einheiten": [dict({"uid": "e-9", "vorlage": "eigen", "dauer": 45, "quelle": "eigen", "titel": "Velo zur Arbeit", "sport": "rad", "rpe": 3}, **k)]}})
+check("Eigene Aktivität: gültig übernommen, ohne Titel, fremde Sportart oder RPE ausserhalb 1–10 abgelehnt",
+      merge_daily.planwoche_pruefen(_eig(), None) is None and all(merge_daily.planwoche_pruefen(_eig(**k), None) for k in ({"titel": " "}, {"titel": "x" * 61}, {"sport": "ski"}, {"rpe": 0}, {"rpe": 11}, {"rpe": True}, {"rpe": 3.5})),
+      str([merge_daily.planwoche_pruefen(_eig(**k), None) for k in ({"titel": " "}, {"sport": "ski"}, {"rpe": 0})]))
 _gesp = dict(_WO, geaendert="2026-03-05T08:00:00Z", tage=dict(_WO["tage"], **{"2026-03-07": {"gesperrt": True, "einheiten": []}}))
 _zur = dict(_WO, geaendert="2026-03-06T08:00:00Z", tage=dict(_WO["tage"], **{"2026-03-05": {"gesperrt": False, "einheiten": []}}))
 _ent = dict(_WO, geaendert="2026-03-05T08:00:00Z", tage=dict(_WO["tage"], **{"2026-03-07": {"gesperrt": False, "einheiten": []}}))

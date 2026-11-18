@@ -189,6 +189,48 @@
       <span class="mo-sp" style="--sp:${spFarbe(e.sport)}">${W.sportIcon(e.sport, 16)}</span>
       <span class="mo-et"><b>${e.gesperrt ? `<span class="mp-schloss" title="Einheit gesperrt">${W.icon("schloss", 13)}</span>` : ""}${esc(e.titel)}</b><small>${esc(teile.join(" · "))} · ${q}</small></span>${hk ? P().chip(hk) : ""}</button>`;
   }
+  /** V7.10 tagesblatt-2.0: Einheit wie im Kalender (Symbol, Titel, «Dauer · ≈ km · TL ≈», Quelle, Mini-Profil); antippen öffnet die Einheit-Seite. */
+  function zeileEinheit(e, K, ds) {
+    const W = V6(), S = V66().schaetzung(e, bezug(K));
+    let st = null; try { const A = ds ? auftrag(ds) : null; st = ds ? V66().garminStand(e, ds, skalen(), gesendet(), A && (A.lokal ? Object.assign({ status: "offen" }, A.a) : A.a), swOpt(ds, K)) : null; } catch (err) { console.error(err); }
+    const q = e.kraft_plan ? (e.kraft_auto ? "Tag automatisch" : "fester Termin") : e.art === "draussen" ? "draussen" : e.art === "eigen" ? `eigen · RPE ${e.rpe}` : e.quelle === "eigen" ? "eigen" : e.quelle === "bibliothek" ? "Bibliothek" : "Vorschlag";
+    let prof = ""; try { prof = e.teile && e.teile.length && e.teile[0][0] !== "ohne" && P().profil ? W.profilSVG(P().profil(e), { h: 30 }) : ""; } catch (err) { prof = ""; }
+    const z = [e.uhrzeit, window.V78 ? window.V78.zeile(e.dauer, S) : W.dauerText(e.dauer * 60), st ? STAND_WORT[st] : null].filter(Boolean).join(" · ");
+    return `<button type="button" class="k4-e tb-e${e.quelle === "eigen" ? " eigen" : ""}" data-mpe="${esc(e.uid)}">
+      <span class="mo-sp" style="--sp:${spFarbe(e.sport)}">${W.sportIcon(e.sport, 16)}</span>
+      <span class="k4-et"><b>${e.gesperrt ? `<span class="mp-schloss" title="Einheit gesperrt">${W.icon("schloss", 12)}</span>` : ""}${esc(e.titel)}</b><small>${esc(z)} · <span class="k4-q">${esc(q)}</span></small></span>
+      <span class="k4-prof">${prof}</span></button>`;
+  }
+  /** V7.10 tagesblatt-2.0 (Vorlage): Verfügbarkeit des Tages direkt im Blatt – Sportarten als Symbol (antippen: je Sportart ein Chip) und Regler 0–8 h in
+   *  15-min-Schritten, ganz rechts «offen». Sofort gespeichert als Eintrag des Tages (gleich wie der Wochentag = Tageseintrag weg); die Woche passt sich
+   *  an wie bisher (verfuegbarkeit-1.0). */
+  let TB_RE = null;
+  function vfInline(ds, K) {
+    const verf = K.verf || (P().verfuegbarkeit ? P().verfuegbarkeit() : null), v = verf ? verf(ds) : null, W = V6(), SP = V66().VF_SPORT;
+    if (P().entwurf && P().entwurf.aktiv()) {                          // V7.9 bearbeiten-1.0: Verfügbarkeit erst nach dem Speichern ändern
+      return `<div class="tb-vf"><div class="tb-vf-k"><span class="abschnitt">${W.icon("kalender", 14)}Verfügbarkeit</span><b>${esc(v ? V66().vfText(v) : "nicht festgelegt")}</b></div>
+        <p class="hint">Ändern geht nach dem Speichern (✓) bzw. ohne Bearbeiten-Modus.</p></div>`;
+    }
+    const kein = !!v && (v.min === 0 || (Array.isArray(v.sport) && !v.sport.length));
+    const sp = v && Array.isArray(v.sport) && v.sport.length ? SP.filter((x) => v.sport.includes(x)) : SP.slice();
+    const offenI = Math.max(32, v && isNum(v.min) ? Math.ceil(v.min / 15) : 0) + 1, idx = !v || v.min == null ? offenI : kein ? 0 : Math.round(v.min / 15);
+    const quelle = !v ? "nicht festgelegt – der Vorschlag plant frei" : v.quelle === "tag" ? "nur an diesem Tag" : `wie jeden ${WT_LANG[V66().wtNr(ds) - 1]}`;
+    const text = idx >= offenI ? "offen" : idx === 0 ? "Kein Training" : W.dauerText(idx * 15 * 60);
+    let re = "";
+    if (TB_RE === ds) {
+      TB_RE = null;
+      const E = P().planEintrag(montag(ds));
+      re = E && E.ganz ? `<div class="tb-vf-re" role="status"><span>Gespeichert. Diese Woche ist festgehalten und bleibt, wie sie ist – «Woche anpassen» verteilt sie ab heute neu.</span><button type="button" class="btn klein" data-tbvfanp>${W.icon("funken", 14)} Woche anpassen</button></div>`
+        : `<div class="tb-vf-re" role="status"><span>Gespeichert – die Woche verteilt sich danach.</span></div>`;
+    }
+    return `<div class="tb-vf" data-tbvf data-offen="${offenI}">
+      <div class="tb-vf-k"><span class="abschnitt">${W.icon("kalender", 14)}Verfügbarkeit</span><small>${esc(quelle)}</small></div>
+      <div class="tb-vf-z"><button type="button" class="tb-vf-sp" data-tbvfsp aria-expanded="false" aria-label="Sportarten: ${esc(sp.map((x) => VW_SPW[x]).join(", "))} – ändern">${sp.map((x) => `<i style="--sp:${spFarbe(x)}">${W.sportIcon(x, 15)}</i>`).join("")}</button>
+        <input type="range" min="0" max="${offenI}" step="1" value="${idx}" data-tbvfmin aria-label="Trainingszeit an diesem Tag, ganz rechts offen" aria-valuetext="${esc(text)}">
+        <output data-tbvfout>${esc(text)}</output></div>
+      <div class="tb-vf-chips" data-tbvfchips hidden>${SP.map((x) => `<button type="button" class="chip" data-tbvfc="${x}" aria-pressed="${sp.includes(x)}"><span class="mo-sp" style="--sp:${spFarbe(x)}">${W.sportIcon(x, 14)}</span>${esc(VW_SPW[x])}</button>`).join("")}</div>
+      ${re}<button type="button" class="mp-vf-woche" data-mpvfw>${W.icon("kalender", 14)}Trainingsverfügbarkeit der ganzen Woche ${W.icon("weiter", 14)}</button></div>`;
+  }
   /** Abschnitt «Mein Plan» im Tagesblatt (Einheiten, Sperre, Aktionen). */
   M.tagSektion = function (ds) {
     if (!bereit()) return "";
@@ -196,19 +238,24 @@
     const x = tagVon(ds); if (!x) return "";
     const { K, t } = x, W = V6();
     const karten = t.rennen ? `<p class="mp-leer">${W.icon("flagge", 16)} ${esc(t.rennen.name)}</p>`
-      : t.einheiten.length ? t.einheiten.map((e) => karte(e, K, ds)).join("") : `<p class="mp-leer">${esc(t.notiz || "frei")}</p>`;
+      : t.einheiten.length ? t.einheiten.map((e) => zeileEinheit(e, K, ds)).join("") : `<p class="mp-leer">${esc(t.notiz || "frei")}</p>`;
     const status = t.gesperrt ? `<span class="mp-tag">${W.icon("schloss", 13)}gesperrt</span>` : t.bearbeitet ? `<span class="mp-tag">bearbeitet</span>` : "";
     const mo = montag(ds), art = M.wochenart(mo);
     const woche = `<p class="sub mp-wo">KW ${W.isoWoche(mo)}${K.w.phase ? " · " + esc(K.w.phase) : ""}${art ? " · " + esc(art.text) : ""}</p>`;
     const aufbau = t.einheiten.filter((e) => e.sport === "lauf").map((e) => aufbauText(e, ds, V66().schaetzung(e, bezug(K)).km)).filter(Boolean)
       .map((a) => `<p class="warn-t">Aufbau: ${esc(a)}</p>`).join("");
-    const akt = ds < heute() ? `<p class="hint">Vergangene Tage nur lesen.</p>`
-      : `<div class="row mp-akt">${t.gesperrt ? "" : `<button type="button" class="btn primary" data-mpadd>${W.icon("plus", 16)} Training hinzufügen</button>`}
-         <button type="button" class="btn" data-mplock aria-pressed="${t.gesperrt}">${W.icon("schloss", 15)} ${t.gesperrt ? "Entsperren" : "Tag sperren"}</button></div>
-         ${t.gesperrt ? `<p class="hint">Gesperrt: nicht bearbeitbar; «Woche leeren», «Anpassen» und «Neu berechnen» lassen ihn stehen.</p>` : ""}`;
+    // V7.10 tagesblatt-2.0 (Vorlage): Zeilen «Training hinzufügen ›» und «Eigene Aktivität planen ›»; «Tag sperren» klein und weiter unten
+    const vorbei = ds < heute();
+    const zeilen = vorbei || t.gesperrt || t.rennen ? "" : `<div class="tb-zeilen">
+        <button type="button" class="mp-zeile" data-mpadd><span>${W.icon("plus", 18)} Training hinzufügen</span>${W.icon("weiter", 16)}</button>
+        <button type="button" class="mp-zeile" data-mpeigen><span>${W.icon("stift", 18)} Eigene Aktivität planen</span>${W.icon("weiter", 16)}</button></div>`;
+    const akt = vorbei ? `<p class="hint">Vergangene Tage nur lesen.</p>`
+      : `<div class="tb-sperre"><button type="button" class="btn klein" data-mplock aria-pressed="${t.gesperrt}">${W.icon("schloss", 14)} ${t.gesperrt ? "Entsperren" : "Tag sperren"}</button>
+         <small>${t.gesperrt ? "Gesperrt: «Woche leeren», «Anpassen» und «Neu berechnen» lassen ihn stehen." : "Einheiten und Tage sperrst du auch im Kalender unter «Bearbeiten»."}</small></div>`;
     // V7.4 ampel-plan-1.0: Anpassung durch die Ampel (Gründe, ursprüngliche Einheit, «Trotzdem wie geplant») und «Woche anpassen?»
     let ampel = ""; try { ampel = window.V74UI ? window.V74UI.banner(ds, t) + window.V74UI.erholungKarte(ds, K) : ""; } catch (err) { console.error(err); }
-    return `${woche}${formHTML(ds)}${vfHTML(ds, K)}${kraftHTML(ds, K)}<h3 class="abschnitt mp-kopf">Mein Plan ${status}</h3>${ampel}<div class="mp-liste">${karten}</div>${aufbau}${akt}${garminHTML(ds, t)}<p class="warn-t" data-mpfehler hidden></p>`;
+    return `${woche}${formHTML(ds)}${ampel}<h3 class="abschnitt mp-kopf">Mein Plan ${status}</h3><div class="mp-liste tb-liste4">${karten}</div>${aufbau}${zeilen}
+      ${vorbei ? "" : vfInline(ds, K)}${kraftHTML(ds, K)}<div class="tb-unten">${akt}${garminHTML(ds, t)}</div><p class="warn-t" data-mpfehler hidden></p>`;
   };
 
   /* ---------- V7.2: Form zu Tagesbeginn und Verfügbarkeit im Tagesblatt ---------- */
@@ -274,22 +321,13 @@
     let v = null; try { v = formTag(add(ds, -1)); } catch (e) { v = null; }
     const D8 = window.V78, ts = D8 ? D8.status(f.fitness, f.ermuedung) : null, tv = D8 && v ? D8.status(v.fitness, v.ermuedung) : null, stu = D8 ? D8.stufe(ts) : null;
     const dl = (a, b2, n) => { const x = D8 && v ? D8.delta(a, b2, n) : null; return x ? ` <small class="mp-dl">(${x.text})</small>` : ""; };
-    return `<div class="kv ek-kv mp-form mp-form4"><div><b>${pre}${f.fitness}${dl(f.fitness, v && v.fitness)}</b><span>Fitness</span></div><div><b>${pre}${f.ermuedung}${dl(f.ermuedung, v && v.ermuedung)}</b><span>Ermüdung</span></div>
+    return `<div class="tb-kopf"><button type="button" class="tb-i" data-tbi aria-expanded="false" aria-label="Erklärung zu Fitness, Ermüdung, Status und Form">i</button><div class="kv ek-kv mp-form mp-form4"><div><b>${pre}${f.fitness}${dl(f.fitness, v && v.fitness)}</b><span>Fitness</span></div><div><b>${pre}${f.ermuedung}${dl(f.ermuedung, v && v.ermuedung)}</b><span>Ermüdung</span></div>
       ${ts != null ? `<div><b>${pre}${String(ts).replace(".", ",")}${dl(ts, tv, 2)}</b><span>Status · ${esc(stu.text)}</span><i class="mp-skala" aria-hidden="true"><i style="left:${(stu.anteil * 100).toFixed(0)}%"></i></i></div>` : ""}
       <div><b>${pre}${f.form > 0 ? "+" : ""}${f.form}</b><span>Form${st ? ` · <i class="st-farbe" style="--stc:${st.farbe}">${esc(st.name)}</i>` : ""}</span></div></div>
-      ${ts != null ? `<p class="hint">Status = Ermüdung ÷ Fitness (${esc(D8.VERSIONS.status)}): unter 0,8 wenig Last, bis 1,3 üblich, darüber hoch – eine Orientierung, kein Grenzwert; in Klammern die Veränderung zum Vortag.</p>` : ""}
-      ${f.prognose ? `<p class="hint">Zu Tagesbeginn, fortgeschrieben mit der geplanten Last von Mein Plan (TL ≈ aus deinem Zonenprofil)${f.stunde && f.stunde.length ? `; ohne TL ≈ mit deiner Last pro Stunde der Sportart: ${esc(f.stunde.slice(0, 3).join(", "))}${f.stunde.length > 3 ? " …" : ""}` : ""}${f.ohne && f.ohne.length ? `; ohne Schätzung nicht gezählt: ${esc(f.ohne.slice(0, 3).join(", "))}` : ""}${f.offen ? `; ${f.offen} Renntag${f.offen === 1 ? "" : "e"} als 0` : ""}; Krafttraining zählt nicht – ein Modell, keine Messung (${window.FK ? window.FK.VERSIONS.pmc : "pmc"}).</p>` : ""}`;
+      <div class="tb-erkl" data-tberkl hidden>${ts != null ? `<p class="hint">Status = Ermüdung ÷ Fitness (${esc(D8.VERSIONS.status)}): unter 0,8 wenig Last, bis 1,3 üblich, darüber hoch – eine Orientierung, kein Grenzwert; in Klammern die Veränderung zum Vortag.</p>` : ""}
+      ${f.prognose ? `<p class="hint">Zu Tagesbeginn, fortgeschrieben mit der geplanten Last von Mein Plan (TL ≈ aus deinem Zonenprofil)${f.stunde && f.stunde.length ? `; ohne TL ≈ mit deiner Last pro Stunde der Sportart: ${esc(f.stunde.slice(0, 3).join(", "))}${f.stunde.length > 3 ? " …" : ""}` : ""}${f.ohne && f.ohne.length ? `; ohne Schätzung nicht gezählt: ${esc(f.ohne.slice(0, 3).join(", "))}` : ""}${f.offen ? `; ${f.offen} Renntag${f.offen === 1 ? "" : "e"} als 0` : ""}; Krafttraining zählt nicht – ein Modell, keine Messung (${window.FK ? window.FK.VERSIONS.pmc : "pmc"}).</p>` : ""}</div></div>`;
   }
   const WT_LANG = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
-  function vfHTML(ds, K) {
-    const verf = K.verf || (P().verfuegbarkeit ? P().verfuegbarkeit() : null), v = verf ? verf(ds) : null;
-    const quelle = !v ? "nicht festgelegt – der Vorschlag plant frei" : v.quelle === "tag" ? "nur an diesem Tag" : `jeden ${WT_LANG[V66().wtNr(ds) - 1]}`;
-    const sp = v && v.sport ? v.sport : null, W = V6();
-    return `<div class="mp-vf"><div class="mp-vf-t"><span class="abschnitt">${W.icon("kalender", 14)}Verfügbarkeit</span><b>${esc(v ? V66().vfText(v) : "–")}</b><small>${esc(quelle)}</small></div>
-      ${v && sp && sp.length ? `<span class="mp-vf-sp">${sp.map((x) => `<i style="--sp:${spFarbe(x)}">${W.sportIcon(x, 14)}</i>`).join("")}</span>` : ""}
-      ${ds >= heute() ? `<button type="button" class="btn" data-mpvf>Ändern</button>` : ""}</div>
-      <button type="button" class="mp-vf-woche" data-mpvfw>${W.icon("kalender", 14)}Trainingsverfügbarkeit der ganzen Woche ${W.icon("weiter", 14)}</button>`;
-  }
   /** V7.6 kraft-plan-1.1: Krafttraining aus den Planeinstellungen (Tag automatisch oder fest) und was daraus in dieser Woche wurde; änderbar aus dem Tagesblatt. */
   function kraftHTML(ds, KW) {
     if (!window.V76 || !window.V75UI || !window.V75UI.kraft) return "";
@@ -502,6 +540,12 @@
     const fehler = (f) => { const p = ov.querySelector("[data-mpfehler]"); if (p) { p.textContent = f; p.hidden = !f; } };
     ov.querySelectorAll("[data-mpe]").forEach((b) => (b.onclick = () => M.einheit(ds, b.dataset.mpe, { zurueck })));
     ov.querySelectorAll("[data-mpadd]").forEach((b) => (b.onclick = () => M.hinzufuegen(ds, zurueck)));
+    ov.querySelectorAll("[data-mpeigen]").forEach((b) => (b.onclick = () => M.eigeneAktivitaet(ds, zurueck)));      // V7.10 tagesblatt-2.0
+    ov.querySelectorAll("[data-tbi]").forEach((b) => (b.onclick = () => {                                          // Erklärung hinter «i»
+      const x = b.closest(".tb-kopf") && b.closest(".tb-kopf").querySelector("[data-tberkl]"); if (!x) return;
+      x.hidden = !x.hidden; b.setAttribute("aria-expanded", String(!x.hidden));
+    }));
+    vfBinden(ov, ds, zurueck, fehler);
     ov.querySelectorAll("[data-mpvf]").forEach((b) => (b.onclick = () => M.verfuegbarkeitBlatt(ds, zurueck)));
     ov.querySelectorAll("[data-mpvfw]").forEach((b) => (b.onclick = () => M.verfuegbarkeitWoche(zurueck)));   // V7.6.1 verfuegbarkeit-1.1
     ov.querySelectorAll("[data-mpkraft]").forEach((b) => (b.onclick = () => window.V75UI.kraft({ zurueck: zurueck || (() => V59().schliessen()) })));   // V7.6
@@ -519,6 +563,102 @@
       const f = await garminAuftragSpeichern(ds, c.checked ? "auto" : "aus");
       if (f) fehler(f); else if (zurueck) zurueck();
     }));
+  };
+
+  /** V7.10 tagesblatt-2.0: Verfügbarkeit im Blatt – Regler und Sportarten speichern sofort (nach kurzer Pause); danach das Tagesblatt an derselben Stelle neu. */
+  function vfBinden(ov, ds, zurueck, fehler) {
+    const vf = ov.querySelector("[data-tbvf]"); if (!vf) return;
+    const W = V6(), sl = vf.querySelector("[data-tbvfmin]"), out = vf.querySelector("[data-tbvfout]"), offenI = +vf.dataset.offen;
+    const text = (i) => (i >= offenI ? "offen" : i === 0 ? "Kein Training" : W.dauerText(i * 15 * 60));
+    const sports = () => [...vf.querySelectorAll("[data-tbvfc]")].filter((b) => b.getAttribute("aria-pressed") === "true").map((b) => b.dataset.tbvfc);
+    const neuHalten = () => {
+      const b = ov.querySelector(".te-box"), y = b ? b.scrollTop : 0;
+      if (zurueck) zurueck(); else V59().schliessen();
+      const b2 = document.querySelector("#v59-ov .te-box"); if (b2) b2.scrollTop = y;
+    };
+    let t = null;
+    const speichern = () => {
+      clearTimeout(t);
+      t = setTimeout(async () => {
+        const i = +sl.value, s = sports(), wert = { min: i >= offenI ? null : i * 15, sport: s.length === V66().VF_SPORT.length ? null : s };
+        const K = kontext(montag(ds)), verf = K && K.verf, wt = verf && verf.eintrag ? verf.eintrag("vf-wt-" + V66().wtNr(ds)) : null, tg = verf && verf.eintrag ? verf.eintrag("vf-" + ds) : null;
+        const wtW = wt && !wt.entfernt ? { min: wt.min == null ? null : wt.min, sport: wt.sport == null ? null : wt.sport } : { min: null, sport: null };
+        const gleich = wtW.min === wert.min && JSON.stringify(wtW.sport) === JSON.stringify(wert.sport);
+        let f = null;
+        if (gleich) { if (!(tg && !tg.entfernt)) return; f = await vfSpeichern(ds, { date: ds }, null); }   // wie der Wochentag: Eintrag des Tages weg
+        else f = await vfSpeichern(ds, { date: ds }, wert);
+        if (f) { fehler(f); return; }
+        TB_RE = ds; neuHalten();
+      }, 450);
+    };
+    sl.oninput = () => { out.textContent = text(+sl.value); sl.setAttribute("aria-valuetext", out.textContent); };
+    sl.onchange = speichern;
+    vf.querySelector("[data-tbvfsp]").onclick = (e) => { const c = vf.querySelector("[data-tbvfchips]"); c.hidden = !c.hidden; e.currentTarget.setAttribute("aria-expanded", String(!c.hidden)); };
+    vf.querySelectorAll("[data-tbvfc]").forEach((b) => (b.onclick = () => {
+      const an = b.getAttribute("aria-pressed") !== "true";
+      if (!an && sports().length <= 1) { fehler("Mindestens eine Sportart – für keinen Sport den Regler ganz nach links."); return; }
+      b.setAttribute("aria-pressed", String(an)); fehler(""); speichern();
+    }));
+    const a = vf.querySelector("[data-tbvfanp]");
+    if (a) a.onclick = async () => { const f = await aendern(montag(ds), { art: "anpassen" }); if (f) fehler(f); else neuHalten(); };
+  }
+
+  /* ---------- V7.10 tagesblatt-2.0 / eigene-aktivitaet-1.0: «Eigene Aktivität planen» ---------- */
+  const EIGEN_SP = [["rad", "Rad"], ["lauf", "Laufen"], ["schwimm", "Schwimmen"], ["mobility", "Mobility"], ["andere", "Andere"]];
+  const DRAUSSEN_SP = [["skitour", "Skitour", "ski"], ["wandern", "Wandern", "wandern"], ["langlauf", "Langlauf", "ski"], ["trail", "Traillauf", "lauf"]];
+  const RPE_WORT = ["", "sehr leicht", "leicht", "moderat", "etwas hart", "hart", "hart", "sehr hart", "sehr hart", "sehr hart", "maximal"];
+  M.eigeneAktivitaet = function (ds, zurueck) {
+    if (!bereit()) return;
+    const W = V6(), h = heute(), d0 = ds < h ? h : ds;
+    const html = `<div class="blatt-titel"><h2 id="v59-ov-h" tabindex="-1">Eigene Aktivität planen</h2><p class="sub">${esc(tagText(d0))}</p></div>
+      <label class="tb-feld"><span>Titel</span><input type="text" maxlength="60" data-eatitel placeholder="z. B. Velo zur Arbeit" autocomplete="off"></label>
+      <h3 class="abschnitt">Sportart</h3>
+      <div class="row mp-vf-wahl" role="radiogroup" aria-label="Sportart">${EIGEN_SP.map(([k, n], i) => `<button type="button" class="chip" role="radio" data-easp="${k}" aria-checked="${i === 0}" aria-pressed="${i === 0}"><span class="mo-sp" style="--sp:${spFarbe(k)}">${W.sportIcon(k, 14)}</span>${esc(n)}</button>`).join("")}</div>
+      <div class="row mp-vf-wahl" aria-label="Draussen">${DRAUSSEN_SP.map(([k, n, s]) => `<button type="button" class="chip" data-eadr="${k}"><span class="mo-sp" style="--sp:${spFarbe(s)}">${W.sportIcon(s, 14)}</span>${esc(n)} ${W.icon("weiter", 12)}</button>`).join("")}</div>
+      <p class="hint">Skitour, Wandern, Langlauf und Traillauf haben ein eigenes Blatt: Dauer und Zone nach Puls, der Tag gehört dann der Aktivität (aktivitaet-plan-1.0).</p>
+      <div class="tb-2"><label class="tb-feld"><span>Datum</span><input type="date" data-eadatum min="${h}" value="${d0}"></label>
+        <label class="tb-feld"><span>Uhrzeit</span><input type="time" step="300" data-eazeit></label></div>
+      <h3 class="abschnitt">Wiederholen</h3>
+      <div class="row mp-vf-wahl" role="radiogroup" aria-label="Wiederholen"><button type="button" class="chip" role="radio" data-eaw="nie" aria-checked="true" aria-pressed="true">Nie</button><button type="button" class="chip" role="radio" data-eaw="woche" aria-checked="false" aria-pressed="false">Jede Woche</button></div>
+      <label class="tb-feld" data-eabis hidden><span>bis (höchstens 16 Wochen)</span><input type="date" data-eabisd></label>
+      <label class="mp-dauer"><span>Dauer</span><input type="range" min="10" max="360" step="5" value="60" data-eadauer aria-label="Dauer in Minuten"><output data-eadout>1:00 h</output></label>
+      <label class="mp-dauer"><span>RPE</span><input type="range" min="1" max="10" step="1" value="3" data-earpe aria-label="Anstrengung RPE 1 bis 10"><output data-earout>3 · moderat</output></label>
+      <p class="hint">Anstrengung auf der Skala 1–10 (CR-10 nach Foster). Daraus die Zone für TL ≈ (${esc(V66().VERSIONS.eigen)}, eigene Festlegung): RPE 1–2 Z1, 3–4 Z2, 5–6 Z3, 7 knapp unter LT2, 8–10 VO2max; Schwimmen ab 7 CSS-Tempo. Mobility und Andere ohne TL ≈.</p>
+      <p class="warn-t" data-mpfehler hidden></p>
+      ${fuss("data-mpz", `<button type="button" class="btn primary gross" data-eaok>${W.icon("plus", 18)} Planen</button>`)}`;
+    const ov = V59().blatt("mp-eigen", html);
+    const $q = (s) => ov.querySelector(s), fehler = (f) => { const p = $q("[data-mpfehler]"); p.textContent = f || ""; p.hidden = !f; };
+    $q("[data-mpz]").onclick = () => (zurueck ? zurueck() : V59().schliessen());
+    const wahl = (sel, b) => ov.querySelectorAll(sel).forEach((x) => { x.setAttribute("aria-pressed", String(x === b)); x.setAttribute("aria-checked", String(x === b)); });
+    ov.querySelectorAll("[data-easp]").forEach((b) => (b.onclick = () => wahl("[data-easp]", b)));
+    ov.querySelectorAll("[data-eadr]").forEach((b) => (b.onclick = () => { if (window.V77UI && window.V77UI.blatt) window.V77UI.blatt($q("[data-eadatum]").value || d0, b.dataset.eadr, zurueck); }));
+    const bisL = $q("[data-eabis]"), bis = $q("[data-eabisd]");
+    const bisGrenzen = () => { const d = $q("[data-eadatum]").value || d0; bis.min = add(d, 7); bis.max = add(d, 7 * 16); if (!bis.value || bis.value < bis.min || bis.value > bis.max) bis.value = add(d, 7 * 4); };
+    ov.querySelectorAll("[data-eaw]").forEach((b) => (b.onclick = () => { wahl("[data-eaw]", b); bisL.hidden = b.dataset.eaw !== "woche"; bisGrenzen(); }));
+    $q("[data-eadatum]").onchange = bisGrenzen;
+    const du = $q("[data-eadauer]"), rp = $q("[data-earpe]");
+    du.oninput = () => { $q("[data-eadout]").textContent = W.dauerText(+du.value * 60); };
+    rp.oninput = () => { $q("[data-earout]").textContent = `${rp.value} · ${RPE_WORT[+rp.value]}`; };
+    $q("[data-eaok]").onclick = async () => {
+      const sport = (ov.querySelector('[data-easp][aria-pressed="true"]') || {}).dataset.easp || "rad";
+      const name = (EIGEN_SP.find((x) => x[0] === sport) || [0, "Aktivität"])[1];
+      const titel = ($q("[data-eatitel]").value || "").trim() || `${name} nach Gefühl`;
+      const datum = $q("[data-eadatum]").value || d0;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(datum) || datum < h) return fehler("Datum ab heute wählen.");
+      let uhr = $q("[data-eazeit]").value || null;
+      if (uhr) { const [hh, mm] = uhr.split(":").map(Number); const m5 = Math.min(55, Math.round(mm / 5) * 5); uhr = `${String(hh).padStart(2, "0")}:${String(m5).padStart(2, "0")}`; }
+      const tage = [datum];
+      if (ov.querySelector('[data-eaw="woche"]').getAttribute("aria-pressed") === "true") {
+        const b = bis.value; if (!b || b < add(datum, 7)) return fehler("Bis-Datum mindestens eine Woche nach dem ersten Tag.");
+        for (let d = add(datum, 7); d <= b && tage.length < 17; d = add(d, 7)) tage.push(d);
+      }
+      const einheit = Object.assign({ vorlage: "eigen", titel, sport, dauer: +du.value, rpe: +rp.value }, uhr ? { uhrzeit: uhr } : {});
+      const nicht = [];
+      for (const d of tage) { const f = await aendern(montag(d), { art: "hinzufuegen", date: d, einheit }); if (f) nicht.push(`${dkurz(d)}: ${f}`); }
+      if (nicht.length === tage.length) return fehler(nicht.slice(0, 3).join(" · "));
+      if (nicht.length) { fehler(`${tage.length - nicht.length} von ${tage.length} geplant – nicht: ${nicht.slice(0, 3).join(" · ")}${nicht.length > 3 ? " …" : ""}`); $q("[data-eaok]").disabled = true; return; }
+      if (zurueck) zurueck(); else V59().schliessen();
+    };
   };
 
   /* ---------- Einheit: Blatt mit Ändern, Verschieben, Entfernen ---------- */

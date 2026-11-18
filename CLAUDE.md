@@ -71,6 +71,9 @@ Alle Trainingsdaten liegen verschlüsselt in `data.enc.json`. Das Passwort steht
   Ziehen, ✨ «Woche anpassen?», ↶/↷); Entwurf in `js/v64-ui.js` (`V64UI.entwurf`, `planEintrag` liefert im Bearbeiten-Modus den Entwurf), `V66UI.aendern` schreibt dann nur in den
   Entwurf, `V66UI.entwurfSpeichern` (✓), `V66UI.entwurfSperre` (Draussen planen, Planeinstellungen und Verfügbarkeit der Woche warten), Garmin gesperrt; geplante Last für Fitness,
   Ermüdung und Form ≈ `V66UI.lastGeplant` (ohne TL ≈ Dauer × Last pro Stunde der Sportart), Status je Tag `V66UI.formReihe`
+- **V7.10 (Etappe 4, Teil 3, tagesblatt-2.0, eigene-aktivitaet-1.0):** Tagesblatt in `js/v66-ui.js` (`tagSektion`: Kopf mit «i», Einheiten wie im Kalender `zeileEinheit`,
+  Zeilen «Training hinzufügen ›» und «Eigene Aktivität planen ›» `V66UI.eigeneAktivitaet`, Verfügbarkeit im Blatt `vfInline`/`vfBinden`, unten klein «Tag sperren» und Garmin);
+  eigene Aktivität in `js/v66.js` (Vorlage «eigen» mit Titel, Sportart `V66.EIGEN_SPORT`, RPE → Zone `V66.rpeZone`), geprüft in `merge_daily.planwoche_pruefen`
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
 - `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)
@@ -402,7 +405,7 @@ V6.6: `garmin_senden` (Auftrag «An Garmin senden» je Tag → `garmin_senden_ad
 ID «gs-<Datum>», modus senden/auto/aus, Tag vom Erstellen bis eine Woche voraus, Workouts nur Rad/Laufen/Schwimmen (1.1) mit bekannten Feldern; abgelehnte mit
 Grund in `garmin_abgelehnt`; dieselbe oder ältere Fassung wird nie nochmals offen). `planwoche` (Mein Plan einer Woche → `planwoche_add` → `plan_woche`, eigenplan-1.0; `merge_daily.planwoche_pruefen`: Montag, ID «wo-<Montag>»,
 Tage in der Woche, eindeutige Einheiten, Quelle vorschlag/eigen/bibliothek, Dauer 5–600 min, Tage vor der Änderung und gesperrte Tage unverändert
-gegenüber dem Stand davor; gleiche Woche ersetzt mit Audit). V6.2.2: `zonen` (auf der Seite bestätigte Zonenprofile → `zonen_add`, geprüft wie oben). V7.2: `verfuegbarkeit` (Zeit und Sportarten je Tag
+gegenüber dem Stand davor; gleiche Woche ersetzt mit Audit; V7.10 eigene-aktivitaet-1.0: Vorlage «eigen» mit `titel` 1–60 Zeichen, `sport` rad/lauf/schwimm/mobility/andere, `rpe` 1–10). V6.2.2: `zonen` (auf der Seite bestätigte Zonenprofile → `zonen_add`, geprüft wie oben). V7.2: `verfuegbarkeit` (Zeit und Sportarten je Tag
 «vf-JJJJ-MM-TT» oder je Wochentag «vf-wt-1…7», `entfernt` = zurücksetzen → `verfuegbarkeit_add` → `plan_verfuegbarkeit`; `merge_daily.verfuegbarkeit_pruefen`;
 gleiche ID ersetzt mit Audit). V7.4: `ampel` (Entscheid der Ampel je Tag «aa-JJJJ-MM-TT» mit Ampel-Stand, Gründen, Morgenwerte ja/nein, Quelle seite/morgen-update
 und optional `trotzdem` {an, am} → `ampel_add` → `ampel_anpassung`; `merge_daily.ampel_pruefen` wie `V74.pruefen`; je Tag ein Eintrag: Entscheid aus der neueren
@@ -677,6 +680,11 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
   (tid-1.0) und Fokus (Minuten je Zone). **Bearbeiten (bearbeiten-1.0):** Modus statt Aktionsblatt, Leiste unten aus; jede Änderung (auch aus Tagesblatt und Einheit-Seite) geht in den
   Entwurf je Woche, ↶/↷, ✕ verwirft (mit Rückfrage), ✓ speichert alle geänderten Wochen und führt offene Garmin-Aufträge nach. Ziehen nur innerhalb der Woche (sonst Griff antippen:
   Tag wählen); Tests, Kurs, Aktivitäten draussen und nachgeholte Einheiten bleiben. Solange der Entwurf offen ist: nichts an Garmin, kein Draussen planen, keine Planeinstellungen.
+  **V7.10 Tagesblatt (tagesblatt-2.0):** Kopf Fitness, Ermüdung, Status, Form mit Veränderung zum Vortag (Erklärung hinter «i»), Einheiten wie im Kalender, «Training hinzufügen ›»,
+  «Eigene Aktivität planen ›» (eigene-aktivitaet-1.0: Titel, Sportart Rad/Laufen/Schwimmen/Mobility/Andere, Datum, Uhrzeit, jede Woche bis höchstens 16 Wochen, Dauer 10–360 min,
+  RPE 1–10 → Zone für TL ≈: 1–2 Z1, 3–4 Z2, 5–6 Z3, 7 knapp unter LT2, 8–10 VO2max, Schwimmen ab 7 CSS; Skitour, Wandern, Langlauf, Traillauf öffnen «Draussen planen»),
+  Verfügbarkeit des Tages im Blatt (Sportarten als Symbol, antippen = Chips; Regler 0–8 h in 15-min-Schritten, ganz rechts «offen»; sofort gespeichert als «vf-<Datum>», gleich wie
+  der Wochentag = Tageseintrag weg; danach wie bisher festhalten bzw. «Woche anpassen»), Krafttraining, unten klein «Tag sperren» und Garmin.
 - **Kalender und Mein Plan (V7 kalender-3.0, eigenplan-1.0):** «Woche · Monat» (Standard Woche, `sf.kal.ansicht`); Titel = Monat und Jahr (antippen:
   Monat wählen), «Heute» rechts. Woche = Tagesleiste, Wochenauswertung (Mein Plan gegenüber absolviert, je Sportart, Zeit in Zonen nach Puls, TL) und
   die Tage mit erledigten Garmin-Aktivitäten und Mein Plan; im Monat öffnet «KW» die Woche (`TABS.kalender.zurWoche`, auch `APP.kalenderWoche`).
@@ -755,7 +763,7 @@ ohne `skala`) bleiben unverändert; gerechnet wird mit dem Anteil auf der eigene
 - **Verteilung `tid-1.0`:** locker (Z1–Z2, Renntempo) · mittel (Z3) · hart (Z4–Z5); Muster nach Treff et al. 2019 (PI > 2,00 = polarisiert, ohne
   Mitte nicht berechenbar), Abgleich mit dem Modell (`V64.pruefen`; Erholung/Taper «nur locker» ok, Rennwoche nicht beurteilt). Vorschlag und
   Enduco-Plan (Workout-Schritte, profil-1.0) nach den Zielen der Abschnitte, Absolviertes nach Puls (letzte 4 Wochen, `FK.zoneSummary`).
-- **Wissen `wissen-1.22` (`js/wissen.js`; 1.22 = V7.9 Fitness voraus im Kapitel «last», Zyklus und Bearbeiten im Kapitel «modelle»; 1.21 = V7.8 Trainingsstatus im Kapitel «last»; 1.20 = V7.7 Kapitel «draussen»; 1.19 = V7.6.2 Schwimmkurs, aufbau-1.2, Kurzcheck nach Puls; 1.18 = V7.6.1 Abstimmung ums Krafttraining, Tag automatisch, Tage für lange Einheiten, Form ohne Krafttraining; 1.17 = V7.6 Kapitel «kraft» (Rønnestad & Mujika 2014, Rønnestad et al. 2010, Doma et al. 2017, Lauersen et al. 2014, Foster et al. 2001); 1.16 = V7.5.2 Basis-Fitness Variante A; 1.15 = V7.5.1 Planeinstellungen als Blatt-Folge, Basis-Regel offen, Anfänger-Modus, Stile auf der Uhr; 1.14 = V7.5 Kapitel «planeinstellungen», 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.13 = V7.4 Ampel passt das Training an (Kapitel «erholung», Düking 2021, Manresa-Rocamora 2021), 1.12 = V7.3.2 Übungen aus der Enduco-Liste, 1.11 = V7.3 Etappe 2 Schwimmen,
+- **Wissen `wissen-1.23` (`js/wissen.js`; 1.23 = V7.10 Tagesblatt und eigene Aktivität nach RPE im Kapitel «modelle»; 1.22 = V7.9 Fitness voraus im Kapitel «last», Zyklus und Bearbeiten im Kapitel «modelle»; 1.21 = V7.8 Trainingsstatus im Kapitel «last»; 1.20 = V7.7 Kapitel «draussen»; 1.19 = V7.6.2 Schwimmkurs, aufbau-1.2, Kurzcheck nach Puls; 1.18 = V7.6.1 Abstimmung ums Krafttraining, Tag automatisch, Tage für lange Einheiten, Form ohne Krafttraining; 1.17 = V7.6 Kapitel «kraft» (Rønnestad & Mujika 2014, Rønnestad et al. 2010, Doma et al. 2017, Lauersen et al. 2014, Foster et al. 2001); 1.16 = V7.5.2 Basis-Fitness Variante A; 1.15 = V7.5.1 Planeinstellungen als Blatt-Folge, Basis-Regel offen, Anfänger-Modus, Stile auf der Uhr; 1.14 = V7.5 Kapitel «planeinstellungen», 1.8 = V7.1 Kapitel «vergleichbar», 1.9 = V7.2 Schwimm-Einheit, Übungen und Verfügbarkeit, 1.13 = V7.4 Ampel passt das Training an (Kapitel «erholung», Düking 2021, Manresa-Rocamora 2021), 1.12 = V7.3.2 Übungen aus der Enduco-Liste, 1.11 = V7.3 Etappe 2 Schwimmen,
   Puls und RPE an Garmin im Kapitel «modelle», 1.10 = V7.3 Einheit als
   Schritte, Einfahren und Intervall-Intensität, RPE je Abschnitt im Kapitel «intervalle»; 1.1: Kapitel «Sportarten verteilen und Umfang aufbauen», 1.2: Intensität je Sportart und Aufbau-Check,
   1.3: Kapitel «Vorschlag und Enduco vergleichen», 1.4: Prüfung der Quellen – Formulierungen nicht stärker als die Studien, eigene Festlegungen

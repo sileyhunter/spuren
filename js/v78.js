@@ -17,7 +17,11 @@
    bearbeiten-1.0 (V7.9, Vorlage «Bearbeiten»): Bearbeiten als Modus. Jede Änderung (V66.aendern) geht in einen Entwurf je Woche (V64UI.entwurf) mit
    Verlauf für ↶/↷; gespeichert wird erst mit ✓, ✕ verwirft. Einheiten am Griff auf einen anderen Tag derselben Woche ziehen (oder den Griff antippen
    und den Tag wählen); Schloss je Einheit und je Tag; ✨ «Woche anpassen?» verteilt um die gesperrten herum neu (V66 «anpassen»). Nie an Garmin,
-   solange der Entwurf offen ist; Werkzeuge, die direkt speichern (Draussen planen, Planeinstellungen, Verfügbarkeit der Woche), warten bis danach. */
+   solange der Entwurf offen ist; Werkzeuge, die direkt speichern (Draussen planen, Planeinstellungen, Verfügbarkeit der Woche), warten bis danach.
+
+   tagesblatt-2.0 (V7.10, Vorlage «Tagesblatt», Oberfläche in js/v66-ui.js): Kopf mit Fitness, Ermüdung, Status und Form (Erklärung hinter «i»), die Einheiten wie im
+   Kalender, Zeilen «Training hinzufügen ›» und «Eigene Aktivität planen ›» (eigene-aktivitaet-1.0 in js/v66.js), Verfügbarkeit des Tages direkt im Blatt (Sportarten
+   und Regler 0–8 h, ganz rechts «offen», sofort gespeichert), Krafttraining, unten klein «Tag sperren» und Garmin. */
 (function (root, factory) {
   const node = typeof module === "object" && module.exports;
   const V78 = factory();
@@ -25,7 +29,7 @@
   if (root) root.V78 = V78;
 })(typeof window !== "undefined" ? window : null, function () {
   "use strict";
-  const V78 = { VERSIONS: { kalender: "kalender-4.0", status: "trainingsstatus-1.0", zyklus: "zyklus-1.0", prognose: "fitness-prognose-1.0", bearbeiten: "bearbeiten-1.0" } };
+  const V78 = { VERSIONS: { kalender: "kalender-4.0", status: "trainingsstatus-1.0", zyklus: "zyklus-1.0", prognose: "fitness-prognose-1.0", bearbeiten: "bearbeiten-1.0", tagesblatt: "tagesblatt-2.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const pd = (s) => new Date(s + "T12:00:00Z");
   const iso = (d) => d.toISOString().slice(0, 10);

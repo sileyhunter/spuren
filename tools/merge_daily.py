@@ -681,6 +681,7 @@ def verfuegbarkeit_pruefen(v):
 
 
 PLANWOCHE_QUELLEN = ("vorschlag", "eigen", "bibliothek")
+EIGEN_SPORT = ("rad", "lauf", "schwimm", "mobility", "andere")              # V7.10 eigene-aktivitaet-1.0 (wie V66.EIGEN_SPORT)
 EINHEIT_FELDER = ("uhrzeit", "gesperrt", "metrik", "drinnen", "ein_min", "pausen", "pool")   # V7.5 einheit-felder-1.1: pool
 EINHEIT_METRIKEN = ("leistung", "pace", "puls", "rpe")
 
@@ -758,6 +759,15 @@ def planwoche_pruefen(w, vorher=None):
                     return f"{d}: Bibliothek ohne Workout oder Sportart"
             elif not re.fullmatch(r"[a-z0-9_]{1,40}", str(e.get("vorlage") or "")):
                 return f"{d}: unbekannte Vorlage"
+            if e.get("vorlage") == "eigen":                                  # V7.10 eigene-aktivitaet-1.0 (wie V66.einheitPruefen)
+                t = e.get("titel")
+                if not isinstance(t, str) or not t.strip() or len(t) > 60:
+                    return f"{d}: Titel mit 1–60 Zeichen"
+                if e.get("sport") not in EIGEN_SPORT:
+                    return f"{d}: unbekannte Sportart"
+                r = e.get("rpe")
+                if isinstance(r, bool) or not isinstance(r, int) or not 1 <= r <= 10:
+                    return f"{d}: RPE 1–10"
     alt = (vorher or {}).get("tage") or {}
     for d in set(tage) | set(alt):
         try:

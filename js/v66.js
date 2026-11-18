@@ -22,7 +22,7 @@
 })(typeof window !== "undefined" ? window : null, function (V64) {
   "use strict";
   const V66 = { VERSIONS: { eigenplan: "eigenplan-1.2", vorlagen: "vorlagen-1.0", tl: "tl-plan-1.0", wochenblatt: "wochenblatt-1.0", kalender: "kalender-2.0",
-    verfuegbarkeit: "verfuegbarkeit-1.1", felder: "einheit-felder-1.1", anpassen: "einheit-anpassen-1.0" } };
+    verfuegbarkeit: "verfuegbarkeit-1.1", felder: "einheit-felder-1.1", anpassen: "einheit-anpassen-1.0", eigen: "eigene-aktivitaet-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const add = (iso, n) => V64.addDays(iso, n);
 
@@ -39,6 +39,17 @@
     wandern: { sport: "wandern", titel: "Wandern", art: "draussen", draussen: true, zweck: "Wanderung nach Puls im Grundlagenbereich. Ersetzt Rad-Stunden der Woche; am Vortag und am Tag danach keine harte Einheit an Land." },
     langlauf: { sport: "ski", titel: "Langlauf", art: "draussen", draussen: true, zweck: "Langlauf nach Puls im Grundlagenbereich. Ersetzt Rad-Stunden der Woche; am Vortag und am Tag danach keine harte Einheit an Land." },
     trail: { sport: "lauf", titel: "Traillauf", art: "draussen", draussen: true, zweck: "Traillauf nach Puls im Grundlagenbereich. Ersetzt Lauf-Stunden der Woche und zählt im Aufbau-Check als Lauf; am Vortag und am Tag danach keine harte Einheit an Land." },
+    // V7.10 eigene-aktivitaet-1.0 (Tagesblatt «Eigene Aktivität planen»): Titel und Sportart von dir, Anstrengung als RPE; nur über dieses Blatt
+    eigen: { sport: null, titel: "Eigene Aktivität", art: "eigen", eigen: true, zweck: "Deine eigene Aktivität nach Gefühl (RPE)." },
+  };
+  /** eigene-aktivitaet-1.0: Sportarten und RPE (CR-10 nach Foster) → Zone, umgekehrt zu rpe-zonen-1.0 (js/v73.js; eigene Festlegung). Für Rad und Laufen:
+   *  1–2 Z1, 3–4 Z2, 5–6 Z3, 7 knapp unter LT2, 8–10 VO2max; Schwimmen: 1–2 Z1, 3–4 Z2, 5–6 Z3, 7–10 CSS-Tempo; andere ohne Zone (zählt nicht in TL ≈). */
+  V66.EIGEN_SPORT = ["rad", "lauf", "schwimm", "mobility", "andere"];
+  V66.rpeZone = function (rpe, sport) {
+    if (!Number.isInteger(rpe) || rpe < 1 || rpe > 10) return null;
+    if (sport === "rad" || sport === "lauf") return rpe <= 2 ? "z1" : rpe <= 4 ? "z2" : rpe <= 6 ? "z3" : rpe === 7 ? "z3o" : "vo2";
+    if (sport === "schwimm") return rpe <= 2 ? "z1" : rpe <= 4 ? "z2" : rpe <= 6 ? "z3" : "css";
+    return null;
   };
   // Vorlage → [Art, min, max, Standard] in Minuten; ohne Zahlen: Schlüsseleinheit (min = kurze Fassung, Standard = volle, max = volle + 60)
   const ZU = {
@@ -49,6 +60,7 @@
     schwimm_locker: ["grundlage", 20, 90, 45], schwimm_css: ["schwelle"], schwimm_kurs: ["technik", 30, 90, 60], test_css: ["test"],
     kraft: ["kraft", 15, 180, 90], mobility: ["mobility", 10, 60, 20],             // V7.6 kraft-plan-1.0: Standard 1:30 h, bis 3 h
     skitour: ["draussen", 60, 600, 300], wandern: ["draussen", 60, 600, 240], langlauf: ["draussen", 60, 600, 120], trail: ["draussen", 60, 600, 120],   // V7.7 aktivitaet-plan-1.0
+    eigen: ["eigen", 10, 600, 60],                                                  // V7.10 eigene-aktivitaet-1.0
   };
   const DYN = new Set(["locker", "lang", "kurs", "koppel"]);    // Bausteine, deren Dauer frei ist (V64: o.d)
   const r5 = (x) => Math.round(x / 5) * 5;
@@ -67,7 +79,7 @@
     const basis = String(sportKey || "").replace("_drinnen", "");
     const out = [];
     for (const id of Object.keys(ZU)) {
-      const b = EXTRA[id] || V64.BAUSTEINE[id]; if (!b || b.sport !== basis || b.draussen) continue;     // V7.7: Draussen nur über «Draussen planen»
+      const b = EXTRA[id] || V64.BAUSTEINE[id]; if (!b || b.sport !== basis || b.draussen || b.eigen) continue;     // V7.7: Draussen nur über «Draussen planen»; V7.10: eigene nur über ihr Blatt
       if (sportKey.endsWith("_drinnen") && ["lang", "renntempo", "koppel"].includes(ZU[id][0])) continue;   // drinnen keine langen Einheiten und kein Koppellauf
       out.push(Object.assign({ id, sport: b.sport, art: ZU[id][0], titel: b.titel }, V66.bereich(id)));
     }
@@ -96,6 +108,12 @@
       return Object.assign({ id: s.vorlage, sport: X.sport, titel: `${X.titel} ${z.toUpperCase()}`, art: "draussen", draussen: s.vorlage, zone: z, dauer: s.dauer, teile: [[z, s.dauer]],
         minuten: { locker: s.dauer, mittel: 0, hart: 0 }, ablauf: [`${s.dauer} min in ${z.toUpperCase()} nach Puls`], zweck: X.zweck, quellen: [], wissen: "draussen", metrik: "puls",
         spec: Object.assign({}, s) }, mehr, { metrik: "puls" });
+    }
+    if (X && X.eigen) {                                                // V7.10 eigene-aktivitaet-1.0: ein Abschnitt in der Zone zur RPE, Metrik RPE
+      const sp = V66.EIGEN_SPORT.includes(s.sport) ? s.sport : "andere", z = V66.rpeZone(s.rpe, sp), dauer = s.dauer;
+      const minuten = { locker: 0, mittel: 0, hart: 0 }, b3 = z && (sp === "rad" || sp === "lauf") ? V64.DREI[z] : null; if (b3) minuten[b3] = dauer;
+      return Object.assign({ id: "eigen", sport: sp, titel: String(s.titel || X.titel).slice(0, 60), art: "eigen", eigen: true, rpe: s.rpe, dauer, teile: [[z || "ohne", dauer]], minuten,
+        ablauf: [`${dauer} min nach Gefühl, RPE ${s.rpe} von 10`], zweck: X.zweck, quellen: [], wissen: "modelle", spec: Object.assign({}, s) }, mehr, z ? { metrik: "rpe" } : {});
     }
     if (X) return Object.assign({ id: s.vorlage, sport: X.sport, titel: X.titel, art: X.art, dauer: s.dauer, teile: [["ohne", s.dauer]], minuten: { locker: 0, mittel: 0, hart: 0 },
       ablauf: [`${s.dauer} min`], zweck: X.zweck, quellen: [], wissen: null }, mehr);
@@ -145,7 +163,7 @@
   const ARBEIT_K = new Set(["z3", "z3o", "vo2", "css", "renntempo"]);
   const GESPERRT_E = "Einheit gesperrt – zuerst entsperren";
   /** Sportart einer gespeicherten Einheit (Vorlage bzw. Bibliothek). */
-  const sportVon = (s) => (s && s.quelle === "bibliothek" ? s.sport : ((EXTRA[s && s.vorlage] || V64.BAUSTEINE[s && s.vorlage] || {}).sport || null));
+  const sportVon = (s) => (s && (s.quelle === "bibliothek" || s.vorlage === "eigen") ? s.sport : ((EXTRA[s && s.vorlage] || V64.BAUSTEINE[s && s.vorlage] || {}).sport || null));
   /** einheit-anpassen-1.0 (eigene Festlegung): Abschnitte [key, min] anpassen. ein_min = Dauer vor dem ersten Belastungsabschnitt (zuerst Z1 wie
    *  bisher, höchstens ein_min, Rest Z2); pausen = Intervall-Intensität 0–100 % (50 = wie die Vorlage): Erholungen zwischen dem ersten und dem
    *  letzten Belastungsabschnitt und jede kurze Pause nach dem ersten (auch die der letzten Wiederholung) × (1,5 − pausen/100), unter 1 min
@@ -235,6 +253,11 @@
     for (const k of Object.keys(V66.FELDER)) if (s[k] != null) { const f = V66.feldPruefen(k, s[k]); if (f) return f; }   // V7.3
     if (s.quelle === "bibliothek") return isNum(s.wid) && ["rad", "lauf", "schwimm"].includes(s.sport) ? null : "Bibliothek ohne Workout oder Sportart";
     const B = V66.bereich(s.vorlage); if (!B) return "unbekannte Vorlage";
+    if (s.vorlage === "eigen") {                                       // V7.10 eigene-aktivitaet-1.0 (gleiche Regeln wie merge_daily.planwoche_pruefen)
+      if (typeof s.titel !== "string" || !s.titel.trim() || s.titel.length > 60) return "Titel mit 1–60 Zeichen";
+      if (!V66.EIGEN_SPORT.includes(s.sport)) return "unbekannte Sportart";
+      if (!Number.isInteger(s.rpe) || s.rpe < 1 || s.rpe > 10) return "RPE 1–10";
+    }
     if (EXTRA[s.vorlage] && EXTRA[s.vorlage].draussen && s.zone != null && !["z1", "z2"].includes(s.zone)) return "Intensität Z1 oder Z2";   // V7.7
     if (s.quelle === "eigen" && (s.dauer < B.min || s.dauer > B.max)) return `Dauer ${B.min}–${B.max} min`;
     return null;
