@@ -319,3 +319,12 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 129. **verteilung-1.1:** Mit wenigen Blöcken kann schon die Wahl der Blockgrenzen einen Zusammenhang erzeugen; seit V8.5 zählt er erst, wenn ihn mindestens 3 der 4 Einteilungen
      zeigen. Was «Deine Reaktionen» vorher als klar zeigte, kann darum jetzt «kein klarer» heissen. Laufen bleibt mangels vergleichbarer Läufe je Block offen (Punkt 115).
 130. **Mehr als zwei harte Einheiten an Land** plant «Automatisch» nie; eine dritte (z. B. Renntempo-Block in der langen Ausfahrt zählt als locker) wäre eine neue Regel mit Silas' Okay.
+
+## Nach V9.0 Etappe 0 (20.11.2026, Anleitung gekürzt)
+131. **CLAUDE.md aufgeteilt:** Kern (~7 kB) + `docs/anleitung/*.md` je Thema, `docs/changelog-alt.md` (alles vor V7.0). Vorher/nachher-Abgleich aller
+     Versionskennungen in `docs/versionsliste-v9.0.md` – keine Regel oder Freigabe verloren. Künftige Etappen: zu Beginn nur den Kern und die
+     Themen-Datei(en) lesen, die die Etappe braucht (Tabelle im Kern).
+132. **Verfügbarkeit je Tag (Silas' Nachricht 20.11.2026):** Er möchte Zeit und Sportarten je einzeln angeklicktem Tag individuell einstellen bzw.
+     eine Sportart abwählen können, mit dem Wochentag als Richtwert. Laut Anleitung (verfuegbarkeit-1.0/1.1) ist das schon so gebaut (Tagesblatt
+     überschreibt den Wochentag-Richtwert); in der nächsten Session mit Silas live prüfen, ob es auf der Seite wirklich so funktioniert, v. a. ob
+     eine Sportart an einem Tag ganz abwählbar ist.
