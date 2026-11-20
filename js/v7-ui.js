@@ -75,14 +75,15 @@
       <button type="button" class="ek-auf" data-v7ek="${esc(ds)}|${esc(e.uid)}" aria-label="Einheit öffnen: ${esc(e.titel)}"></button></div>`;
   };
   /** Karte einer absolvierten Garmin-Aktivität (erledigt). */
-  M.aktKarte = function (a) {
+  M.aktKarte = function (a, plan) {
+    // V9.1 zusammen-1.0: passt die Aktivität zu einer geplanten Einheit (V91.zuordnen), steht die Einheit nicht mehr daneben – nur noch «Passt zu: …»
     const W = V6(), sp = ["rad", "lauf", "schwimm", "wandern", "ski"].includes(a.sport) ? a.sport : "andere";
     const z = [[dt(isNum(a.mv) ? a.mv : a.dur), "Dauer"]];
     if (isNum(a.km) && a.km > 0) z.push([`${String(Math.round(a.km * 10) / 10).replace(".", ",")} km`, "Distanz"]);
     if (isNum(a.tss) && a.tss > 0) z.push([String(Math.round(a.tss)), "TL"]);
     return `<div class="card ek-karte v7-akt">
       <div class="ek-oben"><span class="ek-sport voll" style="--sp:${spVar(sp)}">${W.sportIcon(a.sport, 22)}</span>
-        <div class="ek-titel"><b>${esc(a.name || SPW[sp])}</b><span>${esc(SPW[sp] || "Training")} · Garmin</span></div>
+        <div class="ek-titel"><b>${esc(a.name || SPW[sp])}</b><span>${esc(SPW[sp] || "Training")} · Garmin${plan ? ` · Passt zu: ${esc(plan.titel)} (Mein Plan)` : ""}</span></div>
         <span class="v7-erledigt">${W.icon("check", 14)}erledigt</span></div>
       <div class="ek-zahlen">${z.map(([w, l]) => `<div><b>${esc(w)}</b><span>${esc(l)}</span></div>`).join("")}</div>
       <button type="button" class="ek-auf" data-ex="${esc(a.id)}" aria-label="Aktivität analysieren: ${esc(a.name || "")}"></button></div>`;

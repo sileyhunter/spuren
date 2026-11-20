@@ -7,7 +7,7 @@ const ROOT = path.resolve(__dirname, "..", "..");
 /** Reihenfolge wie in index.html (nur, was Planen, Ampel und Last braucht). */
 const MODULE = ["js/formkurve.js", "js/v61.js", "js/v62.js", "js/v59-logik.js", "js/training-route.js", "js/analyse.js", "js/v56.js", "js/v59.js", "js/v6.js", "js/v64.js",
   "js/wissen.js", "js/schwimmen.js", "js/v64-ui.js", "js/v65.js", "js/v66.js", "js/v66-ui.js", "js/v7.js", "js/v73.js", "js/v74.js", "js/v74-ui.js", "js/v75.js",
-  "js/v75-ui.js", "js/v76.js", "js/v77.js", "js/v78.js", "js/v81.js", "js/verpflegung.js", "js/v82.js", "js/v83.js", "js/v83-ui.js", "js/v85.js", "js/v85-ui.js"];
+  "js/v75-ui.js", "js/v76.js", "js/v77.js", "js/v78.js", "js/v81.js", "js/verpflegung.js", "js/v82.js", "js/v83.js", "js/v83-ui.js", "js/v85.js", "js/v85-ui.js", "js/v91.js"];
 
 function element() {
   const e = { style: {}, dataset: {}, children: [], hidden: false, innerHTML: "", textContent: "", value: "",

@@ -1,5 +1,20 @@
 # Änderungen
 
+## V9.1 Etappe 1 · 20.11.2026 · Geplant und absolviert als eine Einheit (zusammen-1.0)
+Auftrag V9 (`docs/auftrag-v9.md`), Etappe 1. Neues Modul `js/v91.js` (`V91`, Version `zusammen-1.0`), Test `tests/test_v91.cjs` (10 Tests).
+- **Eine Zuordnung für alle Stellen:** `V91.zuordnen(plan, akt, {sportVon})` ordnet absolvierte Aktivitäten den geplanten Einheiten desselben Tages und derselben
+  Sportart zu (kleinster Dauerunterschied zuerst, jede Einheit und jede Aktivität nur einmal). Dieselbe Zuordnung nutzen Heute, Liste, Tagesblatt, Wochenansicht
+  und die Einheit-Seite (vorher stand die «erste Einheit gleicher Sportart» an sieben Stellen einzeln im Code).
+- **Kalender, Tagesblatt, Heute, Liste:** Eine absolvierte Aktivität, die zu einer geplanten Einheit passt, erscheint nur noch einmal (Aktivitätsname, Haken, «Passt zu:
+  <Einheit> (Mein Plan)»). Nicht erledigte Einheiten bleiben sichtbar. Im Bearbeiten-Modus der Liste bleiben alle Einheiten sichtbar.
+- **Aktivitäts-Seite:** «Passt zu: <Einheit> (Mein Plan)» mit Vergleich geplant gegen absolviert (Dauer, TL ≈); ohne passende Einheit «Vorschlag der Seite wäre: …»
+  (Wochenvorschlag ohne deine Änderungen) bzw. ein Hinweis, dass nichts Passendes geplant war.
+- **Heute-Begrüssung:** zählt nur offene Einheiten; am Abend «Heute ist alles erledigt.», dazwischen «Heute steht noch …». Die Ampel-Empfehlung entfällt, wenn alles erledigt ist.
+- Monatspunkte (Kalender-Monat), `js/v6.js`, `js/v7.js`, `js/v83.js` bleiben bewusst bei ihrer eigenen Zählung (Summen, keine Doppeleinträge).
+- `sw.js`: v91.js im Shell, Cache `notebook-v91-zusammen-2026-11-20`; `tests/sim/umgebung.cjs` und Demo (`demo.html`) nachgeführt.
+- Alle Node-Tests und `tests/test_tools.py` bestanden. Leck-Prüfung mit echten Daten konnte ohne `SPUREN_PW` nicht laufen; es wurden keine echten Werte eingefügt.
+- Offen: Entwurf «Heute entrümpeln» (Mockup 390 px) wartet auf deine Freigabe, gebaut ist noch nichts.
+
 ## V9.0 Etappe 0 · 20.11.2026 · Anleitung gekürzt (anleitung-kurz-1.0)
 Auftrag V9 (`docs/auftrag-v9.md`), Etappe 0: Keine Verhaltensänderung an der Seite, reine Reorganisation der Dokumentation.
 - `CLAUDE.md` (170 kB) aufgeteilt: kurzer Kern (~7 kB, Dateien im Überblick, Prüfen vor dem Push, Datenschutz, Verweistabelle) + neun Themen-Dateien

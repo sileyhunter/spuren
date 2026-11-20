@@ -31,9 +31,12 @@
     for (let i = 0; i < 7; i++) {
       const ds = add(mo, i), t = K ? K.w.tage.find((x) => x.date === ds) : null;
       const plan = gilt && t && !t.rennen ? t.einheiten : [], akt = ist.filter((a) => a.date === ds);
-      const frei = akt.map((a) => (V6().sportVon ? V6().sportVon(a) : a.sport));
-      const erl = plan.map((e) => { const j = frei.indexOf(e.sport); if (j >= 0) { frei.splice(j, 1); return true; } return false; });
-      tage.set(ds, { ds, t, plan, erl, akt, tests: tests.filter((x) => x.date === ds), rennen: t && t.rennen ? t.rennen : null, v: K && K.verf && ds >= heute() ? K.verf(ds) : null });
+      // V9.1 zusammen-1.0: eine passende absolvierte Aktivität ersetzt die geplante Einheit (ein Eintrag mit Haken); nicht zugeordnete Pläne bleiben sichtbar
+      const Z = window.V91 ? window.V91.zuordnen(plan, akt, { sportVon: V6().sportVon }) : null;
+      let erl;
+      if (Z) erl = plan.map((e) => Z.zu.has(e.uid));
+      else { const frei = akt.map((a) => (V6().sportVon ? V6().sportVon(a) : a.sport)); erl = plan.map((e) => { const j = frei.indexOf(e.sport); if (j >= 0) { frei.splice(j, 1); return true; } return false; }); }
+      tage.set(ds, { ds, t, plan, erl, Z, akt, tests: tests.filter((x) => x.date === ds), rennen: t && t.rennen ? t.rennen : null, v: K && K.verf && ds >= heute() ? K.verf(ds) : null });
     }
     const w = { mo, K, gilt, kopf, bz, tage };
     ST.KC.set(mo, w);
@@ -109,14 +112,16 @@
   function tagHTML(d, w) {
     const W = V6(), h = heute(), sek = (a) => (isNum(a.mv) ? a.mv : a.dur || 0);
     const akt = d.akt.map((a) => `<button type="button" class="k4-e ist" data-ex="${esc(a.id)}"><span class="mo-sp voll" style="--sp:${SPF(V6().sportVon ? V6().sportVon(a) : a.sport)}">${W.sportIcon(V6().sportVon ? V6().sportVon(a) : a.sport, 16)}</span>
-      <span class="k4-et"><b>${esc(a.name || "Aktivität")} <span class="k4-haken">${W.icon("haken", 13)}</span></b><small>${esc([W.dauerText(sek(a)), isNum(a.km) && a.km > 0 ? `${String(Math.round(a.km * 10) / 10).replace(".", ",")} km` : null, isNum(a.tss) && a.tss > 0 ? `TL ${Math.round(a.tss)}` : null].filter(Boolean).join(" · "))} · <span class="k4-q">absolviert</span></small></span></button>`).join("");
-    const plan = d.plan.map((e, i) => einheitHTML(e, d, w, d.erl[i])).join("");
+      <span class="k4-et"><b>${esc(a.name || "Aktivität")} <span class="k4-haken">${W.icon("haken", 13)}</span></b><small>${esc([W.dauerText(sek(a)), isNum(a.km) && a.km > 0 ? `${String(Math.round(a.km * 10) / 10).replace(".", ",")} km` : null, isNum(a.tss) && a.tss > 0 ? `TL ${Math.round(a.tss)}` : null].filter(Boolean).join(" · "))} · <span class="k4-q">absolviert${d.Z && d.Z.von.get(a.id) ? ` · Passt zu: ${esc(d.Z.von.get(a.id).titel)}` : ""}</span></small></span></button>`).join("");
+    // V9.1: zugeordnete Einheiten stehen nicht mehr daneben (nur im Bearbeiten-Modus, wo sie gezogen oder gesperrt werden)
+    const sichtbar = d.plan.map((e, i) => ({ e, i })).filter((x) => ST.edit || !d.erl[x.i]);
+    const plan = sichtbar.map((x) => einheitHTML(x.e, d, w, d.erl[x.i])).join("");
     const NAME = { stufentest: "Stufentest", check: "Laktat-Kurzcheck", css: "CSS-Test" };
     const tests = d.plan.some((e) => e.art === "test" || e.test) ? "" : d.tests.map((x) => `<p class="k4-zeile test"><i class="c-test"></i>${esc(NAME[x.kind] || x.kind)}${x.done ? " ✓" : x.status === "vorschlag" ? " · Vorschlag" : ""}</p>`).join("");
     const renn = d.rennen ? `<p class="k4-zeile renn">${W.icon("flagge", 15)} ${esc(d.rennen.name || "Rennen")}</p>` : "";
     const L = !akt && !plan && !tests && !renn ? V78().leer(d.v, d.ds < h) : null;
     const leer = L ? `<p class="k4-zeile ${L.art}">${L.art === "kein" ? "✕" : L.art === "ruhe" ? "☾" : "–"} ${esc(L.text)}</p>` : "";
-    const n = d.plan.length + d.akt.length;
+    const n = sichtbar.length + d.akt.length;
     const amp = window.V74UI && w.gilt && d.t ? window.V74UI.kurz(d.t) : "";
     const gesp = !!(d.t && d.t.gesperrt);
     let rechts = n ? `<small>${n} ${n === 1 ? "Einheit" : "Einheiten"}</small>` : "";

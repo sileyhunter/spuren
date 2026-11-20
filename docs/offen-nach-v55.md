@@ -328,3 +328,6 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
      eine Sportart abwählen können, mit dem Wochentag als Richtwert. Laut Anleitung (verfuegbarkeit-1.0/1.1) ist das schon so gebaut (Tagesblatt
      überschreibt den Wochentag-Richtwert); in der nächsten Session mit Silas live prüfen, ob es auf der Seite wirklich so funktioniert, v. a. ob
      eine Sportart an einem Tag ganz abwählbar ist.
+133. **Etappe 1 zusammen-1.0 (V9.1, 20.11.2026):** Geplant und absolviert erscheinen als eine Einheit (Kalender/Tagesblatt/Heute/Liste/Einheit-Seite über `V91.zuordnen`).
+     Silas bitte prüfen: (a) Tag mit zwei gleichen Sportarten (z. B. zwei Läufe), (b) Tag mit Aktivität ohne Plan, (c) Abendbegrüssung «Heute ist alles erledigt.»,
+     (d) «Passt zu:» auf der Aktivitäts-Seite. Offen: Monatspunkte und `v6.js`/`v7.js`/`v83.js` zählen weiter einzeln; Heute-Mockup wartet auf Freigabe.

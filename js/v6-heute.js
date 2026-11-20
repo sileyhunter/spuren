@@ -111,8 +111,10 @@
     const D = C.D, day = heuteISO(), st = L().standText(D.updated, day, D.updated_lauf), U = window.V7UI;
     const X = U ? U.meinTag(day) : null, rennen = X && X.t.rennen, E = X && !rennen ? X.t.einheiten : [];
     const A = (D.activities || []).filter((a) => a && a.date === day);
-    const frei = A.map((a) => (V6().sportVon ? V6().sportVon(a) : a.sport));      // eine erfasste Aktivität derselben Sportart erledigt eine geplante Einheit (V7.6: Krafttraining)
-    const karten = E.map((e) => { const k = frei.indexOf(e.sport); if (k >= 0) frei.splice(k, 1); return { e, erledigt: k >= 0 }; });
+    // V9.1 zusammen-1.0: eine erfasste Aktivität derselben Sportart erledigt eine geplante Einheit (V7.6: Krafttraining) – die Einheit steht dann nicht mehr
+    // daneben, die Aktivität zeigt «Passt zu: …»; nicht zugeordnete Einheiten bleiben sichtbar
+    const Z = window.V91 ? window.V91.zuordnen(E, A, { sportVon: V6().sportVon }) : null;
+    const karten = Z ? Z.offen.map((e) => ({ e, erledigt: false })) : E.map((e) => ({ e, erledigt: false }));
     const leer = !A.length && !E.length && !rennen;
     // V7.4 ampel-plan-1.0: Anpassung durch die Ampel (Gründe, ursprüngliche Einheit, «Trotzdem wie geplant») und «Woche anpassen?»
     let ampel = ""; try { ampel = window.V74UI && X ? window.V74UI.banner(day, X.t) + window.V74UI.erholungKarte(day, X.K) : ""; } catch (e) { console.error(e); }
@@ -120,7 +122,7 @@
         <button type="button" class="btn" data-v6="optionen">Optionen ${V6().icon("plus", 18)}</button></div>
       ${ampel}
       ${rennen ? `<div class="card ek-test v7-rennen">${V6().icon("flagge", 18)}<b>${esc(rennen.name)}</b><small>Renntag</small></div>` : ""}
-      ${U ? A.map((a) => U.aktKarte(a) + (window.V81UI ? window.V81UI.zeile(a) : "")).join("") : ""}
+      ${U ? A.map((a) => U.aktKarte(a, Z ? Z.von.get(a.id) : null) + (window.V81UI ? window.V81UI.zeile(a) : "")).join("") : ""}
       ${U ? karten.map((k) => k.erledigt ? U.einheitKarte(k.e, day, true).replace('class="card ek-karte v7-ek klein"', 'class="card ek-karte v7-ek klein v7-erl"') : U.einheitKarte(k.e, day) + (window.VPUI ? window.VPUI.zeile(day, k.e) : "")).join("") : ""}
       ${leer ? `<div class="card ek-leer"><p>${X && X.t.gesperrt ? "Heute ist gesperrt – kein Training geplant." : X && X.t.ampel && X.t.ampel.status === "krank" && !X.t.ampel.trotzdem ? "Heute Ruhetag (Krankheitszeichen)." : "Für heute ist nichts geplant."}</p>
         ${X && !X.t.gesperrt ? `<button type="button" class="btn" data-v7add>${V6().icon("plus", 16)} Training hinzufügen</button>` : ""}</div>` : ""}

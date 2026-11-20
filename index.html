@@ -1757,6 +1757,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <script src="js/v83.js"></script>
 <script src="js/v83-ui.js"></script>
 <script src="js/v85.js"></script>
+<script src="js/v91.js"></script>
 <script src="js/v85-ui.js"></script>
 <script>
 (() => {
@@ -3784,12 +3785,15 @@ const TABS = {
     blatt(ds) {
       if (!window.V59) return;
       const ev = calEvents(ds), W6 = window.V6, H6 = window.V6H;
+      // V9.1 zusammen-1.0: passt eine absolvierte Aktivität zu einer geplanten Einheit von Mein Plan, steht die Einheit oben nicht mehr (V66UI.tagSektion) – hier «Passt zu: …»
+      let Z91 = null; try { const X91 = window.V7UI && window.V91 ? window.V7UI.meinTag(ds) : null; Z91 = X91 ? window.V91.zuordnen(X91.t.einheiten, D.activities.filter((x) => x && x.date === ds), { sportVon: W6 ? W6.sportVon : null }) : null; } catch (e) { console.error(e); }
       const route = (e) => e.p && ["rad", "lauf", "wandern"].includes(e.p.sport) && window.TRUI && ds >= iso(addDays(today, -1)) ? ` <button class="btn ex-btn" data-str="${esc(ds)}|${e.pi}">Passende Route finden</button>` : "";
       const zeile = (e) => {
         if (e.a) {
           const a = e.a, sp = ["rad", "lauf", "schwimm", "wandern", "ski"].includes(a.sport) ? a.sport : "andere";
           return `<div class="cd-akt">${W6 ? `<span class="ek-sport" style="--sp:var(--sp-${sp})">${W6.sportIcon(a.sport, 20)}</span>` : `<span class="dot" style="background:${e.c}"></span>`}
             <div class="cd-t"><b>${esc(a.name)}</b><small>${fmt(a.km, 1)} km · ${fmt(a.hm)} hm · ${hmm(effS(a))} h${Number.isFinite(a.mv) && a.dur - a.mv >= 300 ? ` (Timer ${hmm(a.dur)})` : ""}${a.hr ? " · Ø " + a.hr + " bpm" : ""}${a.watt ? " · " + a.watt + " W" : ""} · TL ${fmt(a.tss)}${a._lt2vor ? " (LT2 des ersten Tests)" : ""}</small>
+            ${Z91 && Z91.von.get(a.id) ? `<small>Passt zu: ${esc(Z91.von.get(a.id).titel)} (Mein Plan)</small>` : ""}
             ${a.wk ? `<small>Plan «${esc(a.wk.name || "")}»: ${a.wk.plan_s ? hmm(a.wk.plan_s) + " h" : a.wk.plan_m ? (a.wk.plan_m >= 2000 ? fmt(a.wk.plan_m / 1000, 1) + " km" : a.wk.plan_m + " m") : "Dauer offen"} geplant, ${hmm(a.wk.ist_s)} h absolviert${a.wk.im_ziel != null ? ` · <b class="cd-ziel">${a.wk.im_ziel} % im Ziel</b>` : ""}</small>` : ""}</div>
             <button class="btn ex-btn" data-ex="${esc(a.id)}">Analysieren</button></div>${window.V81UI ? V81UI.zeile(a) : ""}`;
         }

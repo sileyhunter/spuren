@@ -272,8 +272,13 @@
     if (window.V7UI && !window.V7UI.planGilt(montag(ds))) return "";      // V7: frühere Wochen ohne gespeicherten Plan zeigen keinen nachgerechneten Vorschlag
     const x = tagVon(ds); if (!x) return "";
     const { K, t } = x, W = V6();
+    // V9.1 zusammen-1.0: eine passende absolvierte Aktivität (steht unten unter «Absolviert») ersetzt die geplante Einheit; nicht zugeordnete bleiben sichtbar
+    const Z = window.V91 && !(P().entwurf && P().entwurf.aktiv()) ? window.V91.zuordnen(t.einheiten, (C.D.activities || []).filter((a) => a && a.date === ds), { sportVon: W.sportVon }) : null;
+    const offen = Z ? Z.offen : t.einheiten, erledigt = Z ? Z.zu.size : 0;
     const karten = t.rennen ? `<p class="mp-leer">${W.icon("flagge", 16)} ${esc(t.rennen.name)}</p>`
-      : t.einheiten.length ? t.einheiten.map((e) => zeileEinheit(e, K, ds)).join("") : `<p class="mp-leer">${esc(t.notiz || "frei")}</p>`;
+      : offen.length ? offen.map((e) => zeileEinheit(e, K, ds)).join("")
+      : erledigt ? `<p class="mp-leer">${W.icon("check", 15)} ${erledigt === 1 ? "Die geplante Einheit ist erledigt" : "Alle geplanten Einheiten sind erledigt"} (unten bei «Absolviert»).</p>`
+      : `<p class="mp-leer">${esc(t.notiz || "frei")}</p>`;
     const status = t.gesperrt ? `<span class="mp-tag">${W.icon("schloss", 13)}gesperrt</span>` : t.bearbeitet ? `<span class="mp-tag">bearbeitet</span>` : "";
     const mo = montag(ds), art = M.wochenart(mo);
     const woche = `<p class="sub mp-wo">KW ${W.isoWoche(mo)}${K.w.phase ? " · " + esc(K.w.phase) : ""}${art ? " · " + esc(art.text) : ""}</p>`;
@@ -997,9 +1002,9 @@
       const ia = ist.filter((a) => a.date === t.date), tt = tests.filter((x) => x.date === t.date);
       const done = ia.map((a) => `<button type="button" class="kw-akt" data-ex="${esc(a.id)}" aria-label="${esc(a.name || "Aktivität")} analysieren"><span class="mo-sp voll" style="--sp:${spFarbe(a.sport)}">${W.sportIcon(a.sport, 15)}</span>
           <span class="mo-et"><b>${esc(a.name || "Aktivität")}</b><small>${esc(W.dauerText(sek(a)))}${isNum(a.km) && a.km > 0 ? ` · ${komma(Math.round(a.km * 10) / 10)} km` : ""}${isNum(a.tss) && a.tss > 0 ? ` · TL ${Math.round(a.tss)}` : ""}</small></span><span class="kw-ok">${W.icon("check", 14)}</span></button>`).join("");
-      const frei = ia.map((a) => (V6().sportVon ? V6().sportVon(a) : a.sport));          // erledigt (V7.6: Garmin-Krafttraining = kraft): eine Aktivität derselben Sportart am selben Tag (wie die Tagesleiste)
-      const meins = t.rennen ? `<p class="mp-leer">${W.icon("flagge", 15)} ${esc(t.rennen.name)}</p>` : t.einheiten.map((e) => { const j = frei.indexOf(e.sport); if (j >= 0) frei.splice(j, 1);
-        const kk = karte(e, K, t.date); return j >= 0 ? kk.replace('class="mo-e mp-e', 'class="mo-e mp-e erl') : kk; }).join("");
+      // V9.1 zusammen-1.0 (erledigt, V7.6: Garmin-Krafttraining = kraft): eine Aktivität derselben Sportart am selben Tag ersetzt die geplante Einheit (die Aktivität steht oben mit Haken)
+      const Z = window.V91 ? window.V91.zuordnen(t.einheiten, ia, { sportVon: V6().sportVon }) : null;
+      const meins = t.rennen ? `<p class="mp-leer">${W.icon("flagge", 15)} ${esc(t.rennen.name)}</p>` : (Z ? Z.offen : t.einheiten).map((e) => karte(e, K, t.date)).join("");
       const tx = tt.map((x) => `<p class="kw-test"><i class="c-test"></i>${esc(NAME[x.kind] || x.kind)}${x.done ? " ✓" : x.status === "vorschlag" ? " (Vorschlag)" : ""}</p>`).join("");
       return `<li class="kw-tag${t.date === h ? " heute" : ""}${t.gesperrt ? " gesperrt" : ""}${t.date < h ? " vorbei" : ""}">
         <button type="button" class="kw-tk" data-kwtag="${t.date}" aria-label="${esc(tagText(t.date))}${t.gesperrt ? ", gesperrt" : ""}: Tagesblatt öffnen"><b>${wt(t.date)}</b><small>${esc(dkurz(t.date))}</small>${t.gesperrt ? W.icon("schloss", 13) : ""}</button>

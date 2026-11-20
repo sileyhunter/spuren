@@ -47,12 +47,19 @@
     // V7 heute-7.0: geplant = Mein Plan (eigene Einheiten), nicht mehr der Garmin-Kalender (Enduco)
     const r = UI() && UI().lastReadiness, X = window.V7UI ? window.V7UI.meinTag(heuteISO()) : null;
     if (X && X.t.rennen) return esc(`Heute ist Renntag: «${X.t.rennen.name}».`);
-    const E = X ? X.t.einheiten.map((e) => ({ p: { title: e.titel, sport: e.sport } })) : [];
+    // V9.1 zusammen-1.0: gezählt werden nur die noch nicht erledigten Einheiten («Heute ist alles erledigt» am Abend)
+    let plan = X ? X.t.einheiten : [], erl = 0;
+    if (window.V91 && X) {
+      const A = (C.D.activities || []).filter((a) => a && a.date === heuteISO()), Z = window.V91.zuordnen(plan, A, { sportVon: window.V6 ? window.V6.sportVon : null });
+      plan = Z.offen; erl = Z.zu.size;
+    }
+    const E = plan.map((e) => ({ p: { title: e.titel, sport: e.sport } }));
     const titel = (p) => `«${p.title || SPORT_WORT[p.sport] || "Training"}»`;
-    const teil1 = E.length === 1 ? `Heute steht ${titel(E[0].p)} an (${SPORT_WORT[E[0].p.sport] || E[0].p.sport || "Training"}).`
+    const teil1 = !E.length && erl ? "Heute ist alles erledigt." : erl && E.length === 1 ? `Heute steht noch ${titel(E[0].p)} an (${SPORT_WORT[E[0].p.sport] || E[0].p.sport || "Training"}).`
+      : erl && E.length > 1 ? `Heute stehen noch ${E.length} Einheiten an: ${E.map((e) => titel(e.p)).join(" und ")}.` : E.length === 1 ? `Heute steht ${titel(E[0].p)} an (${SPORT_WORT[E[0].p.sport] || E[0].p.sport || "Training"}).`
       : E.length > 1 ? `Heute stehen ${E.length} Einheiten an: ${E.map((e) => titel(e.p)).join(" und ")}.` : "Heute ist nichts geplant.";
     let teil2 = "";
-    if (r) teil2 = E.length ? r.empfehlung : { bereit: "Die Morgenwerte sehen gut aus.", normal: "Die Morgenwerte liegen im üblichen Bereich.",
+    if (r && !(erl && !E.length)) teil2 = E.length ? r.empfehlung : { bereit: "Die Morgenwerte sehen gut aus.", normal: "Die Morgenwerte liegen im üblichen Bereich.",
       vorsichtig: r.empfehlung, "nicht beurteilbar": "Für eine Einschätzung fehlen Morgenwerte." }[r.status] || "";
     return esc(teil1) + (teil2 ? " " + esc(teil2) : "");
   }

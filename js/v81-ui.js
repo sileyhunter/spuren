@@ -26,11 +26,35 @@
       const K = P().kontextFuer(V64().montag(a.date)), t = K && K.w ? K.w.tage.find((x) => x.date === a.date) : null;
       const L = t ? (t.einheiten || []).filter((e) => e.sport === a.sport) : [];
       if (!L.length) return null;
-      const mv = (isNum(a.mv) ? a.mv : a.dur || 0) / 60, e = L.slice().sort((x, y) => Math.abs((x.dauer || 0) - mv) - Math.abs((y.dauer || 0) - mv))[0];
+      // V9.1 zusammen-1.0: dieselbe Zuordnung wie Kalender, Tagesblatt und Heute (V91.zuordnen); ohne das Modul wie bisher die nächste Dauer
+      const mv = (isNum(a.mv) ? a.mv : a.dur || 0) / 60;
+      const Z = window.V91 && t ? window.V91.zuordnen(t.einheiten || [], (C.D.activities || []).filter((x) => x && x.date === a.date), { sportVon: V6().sportVon }) : null;
+      const e = Z ? Z.von.get(a.id) : L.slice().sort((x, y) => Math.abs((x.dauer || 0) - mv) - Math.abs((y.dauer || 0) - mv))[0];
+      if (!e) return null;
       const bz = V66().bezug(K.skalen, K.css ? K.css.s : null), q = M() && M().lastGeplant ? M().lastGeplant(e, bz) : V66().schaetzung(e, bz);
       return { e, tl: isNum(q.tl) ? q.tl : null, stufe: e.minuten ? (e.minuten.hart > 0 ? "hart" : e.minuten.mittel > 0 ? "mittel" : "locker") : null };
     } catch (err) { console.error(err); return null; }
   }
+  /** V9.1 zusammen-1.0: Aktivitäts-Seite (Explorer) – «Passt zu: … (Mein Plan)» mit Vergleich geplant gegen absolviert; ohne passende Einheit
+   *  «Vorschlag der Seite wäre: …» (der Wochenvorschlag ohne deine Änderungen), sonst nichts. Nur Anzeige. */
+  N.passtZu = function (a) {
+    try {
+      if (!bereit() || !a || !window.V91 || (window.FK && FK().zaehlt && !FK().zaehlt(a))) return "";
+      const G = geplant(a);
+      if (G) {
+        const Vg = window.V91.vergleich(G.e, a), AB = G.tl != null ? V81().abweichung(G.tl, a) : null;
+        const teile = [Vg ? `Dauer ${dauer((Vg.dauerPlan != null ? Vg.dauerPlan : 0) * 60)} geplant, ${dauer(Vg.dauerIst * 60)} absolviert (${Vg.text})` : "",
+          AB ? `TL ≈ ${AB.plan} geplant, ${AB.ist} absolviert (${AB.urteil})` : ""].filter(Boolean);
+        return `<p class="hint v91-passt keep"><b>Passt zu: ${esc(G.e.titel)} (Mein Plan)</b>${teile.length ? "<br>" + teile.map(esc).join("<br>") : ""}</p>`;
+      }
+      if (!P() || !P().kontextFuer || !window.V7UI || !window.V7UI.planGilt || !window.V7UI.planGilt(V64().montag(a.date))) return "";
+      const K = P().kontextFuer(V64().montag(a.date)), W0 = K && (K.w0 || K.w0roh), t0 = W0 && W0.tage ? W0.tage.find((x) => x.date === a.date) : null;
+      const L = t0 ? (t0.einheiten || []).filter((e) => e.sport === (V6().sportVon ? V6().sportVon(a) : a.sport)) : [];
+      if (!L.length) return `<p class="hint v91-passt keep">Zu dieser Aktivität gibt es keine geplante Einheit in Mein Plan.</p>`;
+      const mv = (isNum(a.mv) ? a.mv : a.dur || 0) / 60, e = L.slice().sort((x, y) => Math.abs((x.dauer || 0) - mv) - Math.abs((y.dauer || 0) - mv))[0], Vg = window.V91.vergleich(e, a);
+      return `<p class="hint v91-passt keep"><b>Vorschlag der Seite wäre: ${esc(e.titel)}</b>${Vg && Vg.dauerPlan != null ? `<br>${esc(`Dauer ${dauer(Vg.dauerPlan * 60)} im Vorschlag, ${dauer(Vg.dauerIst * 60)} absolviert (${Vg.text})`)}` : ""}</p>`;
+    } catch (err) { console.error(err); return ""; }
+  };
   /** Zeile unter einer erledigten Aktivität (Heute, Tagesblatt): was schon da ist und was fehlt. */
   N.zeile = function (a) {
     if (!bereit() || !a || !["rad", "lauf", "schwimm", "wandern", "ski", "andere"].includes(a.sport) || window.FK && !FK().zaehlt(a)) return "";
