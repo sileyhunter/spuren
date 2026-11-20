@@ -13,6 +13,9 @@ Auftrag V9 (`docs/auftrag-v9.md`), Etappe 1. Neues Modul `js/v91.js` (`V91`, Ver
 - Monatspunkte (Kalender-Monat), `js/v6.js`, `js/v7.js`, `js/v83.js` bleiben bewusst bei ihrer eigenen Zählung (Summen, keine Doppeleinträge).
 - `sw.js`: v91.js im Shell, Cache `notebook-v91-zusammen-2026-11-20`; `tests/sim/umgebung.cjs` und Demo (`demo.html`) nachgeführt.
 - Alle Node-Tests und `tests/test_tools.py` bestanden. Leck-Prüfung mit echten Daten konnte ohne `SPUREN_PW` nicht laufen; es wurden keine echten Werte eingefügt.
+- **Nachtrag alles-neu-1.0 (Silas 20.11.2026):** Neue Wahl «Alles neu verteilen» (nach der Verfügbarkeit und unter «Woche bearbeiten»): wie «Neu berechnen», gibt aber auch
+  gesperrte Tage und Einheiten ab heute frei (zweites Antippen nötig). «Woche anpassen» verschiebt weiter nur, was nicht zur Verfügbarkeit passt (bewusst); passt alles, steht
+  jetzt «Es musste nichts verschoben werden». Test in `tests/test_v66.cjs`.
 - Offen: Entwurf «Heute entrümpeln» (Mockup 390 px) wartet auf deine Freigabe, gebaut ist noch nichts.
 
 ## V9.0 Etappe 0 · 20.11.2026 · Anleitung gekürzt (anleitung-kurz-1.0)

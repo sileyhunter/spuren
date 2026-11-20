@@ -371,7 +371,13 @@
       }
       case "sperren": f = !inWoche(a.date) ? "nicht in dieser Woche" : a.date < ctx.heute ? "vergangen – nur lesen" : null; if (!f) tag(a.date).gesperrt = true; break;
       case "entsperren": f = !inWoche(a.date) ? "nicht in dieser Woche" : null; if (!f) tag(a.date).gesperrt = false; break;
-      case "verwerfen": case "neuberechnen": f = neuBerechnen(E, ctx, tag); break;
+      case "verwerfen": case "neuberechnen":
+        // V9.1 alles-neu-1.0 (Silas 20.11.2026): «Alles neu» gibt ab heute auch gesperrte Tage und gesperrte Einheiten frei, danach wie «Neu berechnen»
+        if (a.art === "neuberechnen" && a.alles) for (const d of Object.keys(E.tage)) if (d >= ctx.heute && E.tage[d]) {
+          E.tage[d].gesperrt = false;
+          if (Array.isArray(E.tage[d].einheiten)) E.tage[d].einheiten = E.tage[d].einheiten.map((x) => (x && x.gesperrt ? Object.assign({}, x, { gesperrt: false }) : x));
+        }
+        f = neuBerechnen(E, ctx, tag); break;
       case "leeren": for (let i = 0; i < 7; i++) { const d = add(E.montag, i); if (d >= ctx.heute && !(E.tage[d] && E.tage[d].gesperrt)) tag(d).einheiten = []; } break;
       case "festhalten": festhalten(); break;
       case "anpassen": festhalten(); f = anpassen(E, ctx); break;

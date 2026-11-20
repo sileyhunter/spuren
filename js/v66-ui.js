@@ -526,6 +526,7 @@
       <ul class="mp-wahl">
         <li><button type="button" class="mp-zeile" data-mpre="anpassen"><span class="mp-vt"><b>Woche anpassen</b><small>KW ${V6().isoWoche(mo)} ab heute neu verteilen; gesperrte Tage und deine eigenen Einheiten bleiben.</small></span>${W.icon("weiter", 18)}</button></li>
         <li><button type="button" class="mp-zeile" data-mpre="neu"><span class="mp-vt"><b>Neu berechnen</b><small>Diese und alle folgenden Wochen wieder nach dem Vorschlag mit deiner Verfügbarkeit; nur gesperrte Tage bleiben.</small></span>${W.icon("weiter", 18)}</button></li>
+        <li><button type="button" class="mp-zeile" data-mpre="alles"><span class="mp-vt"><b>Alles neu verteilen</b><small>Wie «Neu berechnen», aber auch gesperrte Tage und Einheiten werden freigegeben und neu verteilt.</small></span>${W.icon("weiter", 18)}</button></li>
         <li><button type="button" class="mp-zeile" data-mpre="nichts"><span class="mp-vt"><b>Nur speichern</b><small>Wochen ohne eigene Änderungen folgen der Verfügbarkeit von selbst; bearbeitete bleiben.</small></span>${W.icon("weiter", 18)}</button></li></ul>
       <p class="warn-t" data-mpfehler hidden></p>${fuss("data-mpz")}`;
     const ov = V59().blatt("mp-vf", html);
@@ -535,16 +536,20 @@
       const art = b.dataset.mpre; let f = null;
       if (art === "anpassen") f = await aendern(mo, { art: "anpassen" });
       if (art === "neu") f = await neuAlle(mo);
+      if (art === "alles") {
+        if (b.dataset.sicher !== "1") { b.dataset.sicher = "1"; b.querySelector("small").textContent = "Tippe nochmals: auch gesperrte Tage und Einheiten fallen weg."; return; }
+        f = await neuAlle(mo, true);
+      }
       if (f) { const p = ov.querySelector("[data-mpfehler]"); p.textContent = f; p.hidden = false; return; }
       weiter();
     }));
   };
   /** «Neu berechnen»: diese Woche (ab heute) und alle späteren Wochen mit eigenem Plan wieder nach dem Vorschlag; gesperrte Tage bleiben. */
-  async function neuAlle(mo) {
+  async function neuAlle(mo, alles) {
     const ab = mo < montag(heute()) ? montag(heute()) : mo;
     const ids = new Set([...(C.D.plan_woche || []), ...((UI().Inbox.data || {}).planwoche || [])].filter((w) => w && w.montag >= ab).map((w) => w.montag));
     ids.add(ab);
-    for (const m of [...ids].sort()) { if (m === ab || P().planEintrag(m)) { const f = await aendern(m, { art: "neuberechnen" }); if (f && m === ab) return f; } }
+    for (const m of [...ids].sort()) { if (m === ab || P().planEintrag(m)) { const f = await aendern(m, alles ? { art: "neuberechnen", alles: true } : { art: "neuberechnen" }); if (f && m === ab) return f; } }
     return null;
   }
   /** Abschnitt «Garmin» im Tagesblatt: Stand des Auftrags, «An Garmin senden», «am Vortag um 23 Uhr automatisch». */
@@ -891,6 +896,7 @@
       ${ganzVorbei ? `<p class="hint">Vergangene Wochen nur lesen.</p>` : `<ul class="mp-wahl">
         <li><button type="button" class="mp-zeile" data-mpwa="anpassen"><span class="mp-vt"><b>Woche anpassen</b><small>Ab heute nach deiner Verfügbarkeit neu verteilen; gesperrte Tage und eigene Einheiten bleiben.</small></span></button></li>
         <li><button type="button" class="mp-zeile" data-mpwa="neu"><span class="mp-vt"><b>Neu berechnen</b><small>Diese und alle folgenden Wochen wieder nach dem Vorschlag (mit deiner Verfügbarkeit); nur gesperrte Tage bleiben.</small></span></button></li>
+        <li><button type="button" class="mp-zeile" data-mpwa="alles"><span class="mp-vt"><b>Alles neu verteilen</b><small>Wie «Neu berechnen», aber auch gesperrte Tage und Einheiten werden freigegeben und neu verteilt.</small></span>${W.icon("weiter", 18)}</button></li>
         <li><button type="button" class="mp-zeile" data-mpwa="verwerfen" ${K.w.bearbeitet ? "" : "disabled"}><span class="mp-vt"><b>Änderungen verwerfen</b><small>Nur diese Woche: ab heute wieder der Vorschlag; gesperrte Tage bleiben.</small></span></button></li>
         <li><button type="button" class="mp-zeile" data-mpwa="leeren"><span class="mp-vt"><b>Woche leeren</b><small>Ab heute alle Tage frei, zum selbst Planen; gesperrte Tage bleiben.</small></span></button></li>
         <li><button type="button" class="mp-zeile" data-mpwgs ${wocheGarminTage(mo, K).length ? "" : "disabled"}><span class="mp-vt"><b>Woche an Garmin senden</b><small>Rad und Laufen ab morgen bis eine Woche voraus, mit dem nächsten Nacht-Update (${esc(V66().VERSIONS.garmin)}).</small></span></button></li></ul>
@@ -913,9 +919,10 @@
     ov.querySelectorAll("[data-mpwa]").forEach((b) => (b.onclick = async () => {
       const art = b.dataset.mpwa, frage = ov.querySelector("[data-mpfrage]");
       const FRAGE = { leeren: "Alle künftigen Tage der Woche leeren?", verwerfen: "Alle Änderungen dieser Woche ab heute verwerfen?", anpassen: "Den Rest der Woche nach deiner Verfügbarkeit neu verteilen?",
-        neu: "Diese und alle folgenden Wochen neu berechnen? Eigene Einheiten an nicht gesperrten Tagen fallen weg." };
+        neu: "Diese und alle folgenden Wochen neu berechnen? Eigene Einheiten an nicht gesperrten Tagen fallen weg.",
+        alles: "Alles neu verteilen? Diese und alle folgenden Wochen, auch gesperrte Tage und gesperrte Einheiten fallen weg." };
       if (offen !== art) { offen = art; frage.innerHTML = `${FRAGE[art]} <button type="button" class="btn primary" data-mpja>Ja</button>`; frage.hidden = false;
-        frage.querySelector("[data-mpja]").onclick = async () => { const f = art === "neu" ? await neuAlle(mo) : await aendern(mo, { art }); if (f) { const p = ov.querySelector("[data-mpfehler]"); p.textContent = f; p.hidden = false; } else if (zurueck) zurueck(); else V59().schliessen(); }; return; }
+        frage.querySelector("[data-mpja]").onclick = async () => { const f = art === "neu" ? await neuAlle(mo) : art === "alles" ? await neuAlle(mo, true) : await aendern(mo, { art }); if (f) { const p = ov.querySelector("[data-mpfehler]"); p.textContent = f; p.hidden = false; } else if (zurueck) zurueck(); else V59().schliessen(); }; return; }
     }));
   };
 
@@ -923,7 +930,8 @@
   function verteilHTML(mo, K) {
     const E = P().planEintrag ? P().planEintrag(mo) : null;
     const L = E && E.ganz ? (E.verteilung && E.verteilung.meldungen) || [] : K.w.verteilung ? V66().verteilText(K.w.verteilung) : [];
-    if (!L.length) return "";
+    if (!L.length) return E && E.ganz && E.verteilung && E.verteilung.art === "anpassen"
+      ? `<p class="hint kw-vt">Zuletzt angepasst: Es musste nichts verschoben werden, alle Einheiten passen schon zu deiner Verfügbarkeit. Für eine ganz neue Verteilung: «Neu berechnen» oder «Alles neu verteilen».</p>` : "";
     const titel = E && E.ganz ? (E.verteilung && E.verteilung.art === "neu" ? "Zuletzt neu berechnet" : "Zuletzt angepasst") : "Nach deiner Verfügbarkeit verteilt";
     return `<details class="kw-vt"><summary class="hint">${esc(titel)}: ${L.length} ${L.length === 1 ? "Meldung" : "Meldungen"}</summary><ul class="mo-ablauf">${L.slice(0, 12).map((x) => `<li>${esc(x)}</li>`).join("")}</ul></details>`;
   }

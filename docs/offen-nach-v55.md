@@ -331,3 +331,6 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 133. **Etappe 1 zusammen-1.0 (V9.1, 20.11.2026):** Geplant und absolviert erscheinen als eine Einheit (Kalender/Tagesblatt/Heute/Liste/Einheit-Seite über `V91.zuordnen`).
      Silas bitte prüfen: (a) Tag mit zwei gleichen Sportarten (z. B. zwei Läufe), (b) Tag mit Aktivität ohne Plan, (c) Abendbegrüssung «Heute ist alles erledigt.»,
      (d) «Passt zu:» auf der Aktivitäts-Seite. Offen: Monatspunkte und `v6.js`/`v7.js`/`v83.js` zählen weiter einzeln; Heute-Mockup wartet auf Freigabe.
+134. **Zwei Einheiten derselben Sportart am Tag (Silas 20.11.2026):** Er ist einverstanden, wenn es trainingstechnisch Vorteile bringt (Enduco macht es beim Laufen auch);
+     die Entscheidung liegt bei Claude. Stand: `V66.verteilen` meidet es nur weich (−45), das Modell plant keine gezielten Doppeleinheiten. Offen: für eine spätere Etappe
+     prüfen, ob eine zweite, lockere Einheit (z. B. Lauf oder Schwimmen an knappen Tagen) ins Modell gehört.

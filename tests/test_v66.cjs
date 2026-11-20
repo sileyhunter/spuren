@@ -356,6 +356,13 @@ test("eigenplan-1.1: verteilte Woche wird beim ersten Ändern ganz festgehalten;
   assert.deepEqual(zeig(N)[6], zeig(A)[6], "gesperrter Sonntag bleibt"); assert.ok(!N.tage.some((t) => t.einheiten.some((e) => e.id === "kraft")));
   const n = N.tage.flatMap((t) => t.einheiten.map((e) => e.id));
   assert.equal(n.filter((x) => x === "rad_lang").length, 1, "die lange Ausfahrt nur einmal");
+  // V9.1 alles-neu-1.0: «Alles neu» gibt auch den gesperrten Sonntag frei und verteilt neu
+  const AL = V66.aendern(E, { art: "neuberechnen", alles: true }, Object.assign({}, ctx, { verf: verf2 })).eintrag;
+  assert.ok(!Object.values(AL.tage).some((t) => t && t.gesperrt), "nach «Alles neu» ist nichts mehr gesperrt");
+  const AM = V66.meinPlan(wv, AL, {});
+  assert.ok(!AM.tage.some((t) => t.gesperrt), "auch im angezeigten Plan nicht");
+  assert.deepEqual(zeig(AM).slice(0, 2), zeig(wv).slice(0, 2), "vergangene Tage bleiben");
+  assert.equal(AM.tage.flatMap((t) => t.einheiten.map((e) => e.id)).filter((x) => x === "rad_lang").length, 1, "die lange Ausfahrt nur einmal");
   // künftige Woche ohne Sperren: Neu berechnen → wieder automatisch
   const ctxF = Object.assign({}, ctx, { montag: "2026-11-23", heute: "2026-11-18", vorschlag: () => [] });
   let F = V66.aendern(null, { art: "hinzufuegen", date: "2026-11-25", einheit: { vorlage: "kraft", dauer: 30 } }, ctxF).eintrag;
