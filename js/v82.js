@@ -366,6 +366,7 @@
     for (const a of acts || []) {
       if (!a || a.sport !== "rad" || !isNum(a.np) || !isNum(a.hr) || a.hr < 80 || !isNum(a.watt) || a.watt <= 0 || sekVon(a) < 2400) continue;
       if (a.np / a.watt > 1.10) continue;
+      if (FK && FK.nichtRepraesentativGrund && FK.nichtRepraesentativGrund(a)) continue;   // V9.3.1 analyse-gesund-1.0: krank, kurz danach oder Ruhepuls erhöht
       const q = dreiZonen(a, zonen, stichtag);
       if (q) { const s = q.z[0] + q.z[1] + q.z[2]; if (s > 0 && q.z[2] / s >= 0.05) continue; }
       P.push({ date: a.date, sys: a.indoor ? "drinnen" : "draussen", ef: a.np / a.hr });
@@ -378,7 +379,7 @@
     }
     return out.sort((x, y) => x.date.localeCompare(y.date));
   };
-  /** Lauf-Effizienz: Meter je Pulsschlag aus vergleichbaren Läufen (laufeffizienz-1.1, laufvergleich-1.0). */
+  /** Lauf-Effizienz: Meter je Pulsschlag aus vergleichbaren Läufen (laufeffizienz-1.2, laufvergleich-1.1: ohne kranke Tage, erhöhten Ruhepuls, ungewöhnlichen Puls). */
   V82.laufEffizienz = function (acts) {
     if (!FK || !FK.laufEffizienz) return [];
     const r = FK.laufEffizienz(acts, { n: 100000 });

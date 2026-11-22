@@ -377,3 +377,9 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 146. **Bewusst anders als Enduco:** Minuten als «45 min» statt «45m» (V6.6 Teil 0: «56m» las sich beim Schwimmen wie Meter), eigene Texte und Symbole, keine Kartenbilder und kein
      «52 %»-Abzeichen bei absolvierten Einheiten (dafür fehlen der Seite die Daten bzw. das wäre eine eigene Etappe).
 
+## Nach V9.3.1 (22.11.2026, Analysen ohne kranke oder untypische Einheiten)
+147. **analyse-gesund-1.0:** Kranke Tage (Check-in mit Krankheitszeichen, 3 Tage danach), Morgen mit Ruhepuls ≥ 7 über dem Üblichen und Läufe mit > 10 % ungewöhnlichem Puls zählen nicht
+     für Pace/Puls. **Silas bitte prüfen:** einen Lauf an einem kranken Tag im Explorer öffnen → «nicht vergleichbar: krank (Check-in)». Grenzen: Krankheit zählt nur, wenn sie im
+     Check-in steht (Enduco-Phasen «Krank» kennt die Seite nicht); fehlen Morgenwerte, greift nur der Check-in und der Puls in der Einheit. Die Zahlen sind eigene Festlegungen –
+     wenn zu viel oder zu wenig wegfällt, kurz melden.
+

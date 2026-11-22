@@ -2159,6 +2159,8 @@ for (const a of D.activities) {
   const d = pd(a.date); a._t = d.getTime(); a._wd = d.getDay();
 }
 D.activities.sort((a, b) => a._t - b._t);
+// V9.3.1 analyse-gesund-1.0: kranke Tage, erhöhter Ruhepuls → diese Einheiten zählen nicht für Pace/Puls-Auswertungen (Grund je Einheit sichtbar)
+try { if (window.FK && FK.gesundheitSetzen) FK.gesundheitSetzen(D); } catch (e) { console.error(e); }
 /* Trainingslast: «bisher» = wie geliefert (Rad mit der in Garmin eingestellten FTP),
    «Probe» = Rad mit der geschätzten FTP zum damaligen Zeitpunkt (ftp_e, siehe tools/ftp_model.py).
    Übernommen wird die Probe erst, wenn config.load_model = "ftp_est" gesetzt ist. */
@@ -4121,9 +4123,9 @@ const TABS = {
         { label: "Mittel über 10 Läufe", data: ef.map((_, i) => { const w = ef.slice(Math.max(0, i - 9), i + 1); return +(w.reduce((s, p) => s + p.y, 0) / w.length).toFixed(3); }), borderColor: css("--fg"), borderWidth: 1.5, pointRadius: 0, tension: 0.3 }] },
         options: { scales: { x: { ticks: { maxTicksLimit: innerWidth < 560 ? 5 : 10 } }, y: { ticks: { maxTicksLimit: 5 }, title: { display: true, text: "m pro Herzschlag" } } }, plugins: { ...legendBottom,
           tooltip: { callbacks: { label: (c) => { const p = ef[c.dataIndex].p; return c.datasetIndex ? `Mittel: ${fmt(c.raw, 2)} m/Schlag` : `${fmt(p.y, 2)} m/Schlag = ${fmt(p.mpm)} m/min ÷ ${p.hr} Schläge/min`; },
-            footer: () => { const e = LE.ausgeschlossen, n = e.tempo + e.puls + e.ausreisser; return n ? `${n} Läufe entfernt: ${e.tempo} Tempo/GPS, ${e.puls} Puls, ${e.ausreisser} Ausreisser` : "keine Läufe entfernt"; } } } } } });
+            footer: () => { const e = LE.ausgeschlossen, n = e.tempo + e.puls + e.ausreisser + (e.puls_hoch || 0) + (e.puls_tief || 0); return n ? `${n} Läufe entfernt: ${e.tempo} Tempo/GPS, ${e.puls} Puls, ${e.puls_hoch || 0} Puls ungewöhnlich hoch, ${e.puls_tief || 0} Puls ungewöhnlich tief, ${e.ausreisser} Ausreisser` : "keine Läufe entfernt"; } } } } } });
       const e = LE.ausgeschlossen;
-      document.getElementById("ef-note").textContent = `${LE.punkte.length} von ${LE.n} vergleichbaren Läufen (letzte 60, über 4 km; ${LE.vergleichText}). Entfernt: ${e.tempo} wegen Tempo/GPS, ${e.puls} wegen Puls, ${e.ausreisser} Ausreisser (mehr als 3 MAD vom Median). Regel ${LE.v}.`;
+      document.getElementById("ef-note").textContent = `${LE.punkte.length} von ${LE.n} vergleichbaren Läufen (letzte 60, über 4 km; ${LE.vergleichText}). Entfernt: ${e.tempo} wegen Tempo/GPS, ${e.puls} wegen Puls, ${e.puls_hoch || 0} mit ungewöhnlich hohem und ${e.puls_tief || 0} mit ungewöhnlich tiefem Puls (mehr als 10 % gegen die 8 Wochen davor), ${e.ausreisser} Ausreisser (mehr als 3 MAD vom Median). Kranke Tage (Check-in, 3 Tage danach) und Morgen mit erhöhtem Ruhepuls zählen nicht (${FK.VERSIONS.gesund}). Regel ${LE.v}.`;
       this.hr();
       if (window.V5UI) V5_READY.then(() => { V5UI.eta(); V5UI.aero(); if (window.V55) V55.trend(V5UI.C); });
     },

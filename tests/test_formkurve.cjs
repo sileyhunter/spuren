@@ -653,7 +653,7 @@ test("Entwicklung: Guards – Hitze, Höhe, Drift, Ausreisser, Vorschau, Mindest
   const P = [139, 140, 141, 139, 140].map((h, i) => blk(`2026-05-0${i + 1}`, h))
     .concat([blk("2026-05-10", 150, { wx: 29 }), blk("2026-05-11", 150, { alt: 1800 }), blk("2026-05-12", 150, { dhr: 12 }), blk("2026-05-13", 170), blk("2026-05-14", 150, { status: "vorschau" })]);
   const r = FK.entwicklung("rad200", R.concat(P), per("2026-01-01", "2026-12-31"), per("2025-01-01", "2025-12-31"));
-  assert.deepEqual(r.ausgeschlossen, { hitze: 1, hoehe: 1, drift: 1, vorschau: 1, ausreisser: 1 });
+  assert.deepEqual(r.ausgeschlossen, { hitze: 1, hoehe: 1, drift: 1, vorschau: 1, ausreisser: 1, krank: 0 });   // V9.3.1 entwicklung-1.1: dazu «krank»
   assert.equal(r.n.P, 5); assert.equal(r.status, "stabil");
   const k = FK.entwicklung("rad200", R.slice(0, 2).concat(P.slice(0, 5)), per("2026-01-01", "2026-12-31"), per("2025-01-01", "2025-12-31"));
   assert.equal(k.status, "nicht beurteilbar"); assert.match(k.text, /keine ausreichenden vergleichbaren Daten/);
@@ -678,9 +678,9 @@ test("Lauf-Effizienz: Einheit m/Schlag, Ausreisser und Fehler werden entfernt un
   const r = (i, o) => ({ id: "l" + i, sport: "lauf", typ: "Laufen", date: FK.addDays("2026-03-01", i), km: 10, hm: 50, dur: 3300, mv: 3300, hr: 150, tss: 50, ...o });
   const acts = [0, 1, 2, 3, 4, 5].map((i) => r(i, { hr: 148 + i })).concat([r(7, { mv: 900, dur: 900, tss: 10 }), r(8, { hr: 60 }), r(9, { hr: 120 }), r(10, { typ: "Trail" }), r(11, { indoor: true })]);
   const L = FK.laufEffizienz(acts);
-  assert.equal(L.einheit, "m/Schlag"); assert.equal(L.v, "laufeffizienz-1.1");
+  assert.equal(L.einheit, "m/Schlag"); assert.equal(L.v, "laufeffizienz-1.2");
   assert.equal(L.n, 8);                                                // 1.1: Trail, Laufband und der 15-min-Lauf sind nach laufvergleich-1.0 nicht vergleichbar
-  assert.deepEqual(L.ausgeschlossen, { tempo: 0, puls: 1, ausreisser: 1, nicht_vergleichbar: 3 });
+  assert.deepEqual(L.ausgeschlossen, { tempo: 0, puls: 1, ausreisser: 0, nicht_vergleichbar: 3, puls_hoch: 0, puls_tief: 1 });   // 1.2: der Lauf mit Puls 120 ist jetzt «Puls ungewöhnlich tief» (gegen die Läufe davor) statt Ausreisser
   const p = L.punkte[0];                                               // 10 km in 55 min = 181.8 m/min; / 148 = 1.2285 m/Schlag
   assert.equal(p.y, 1.229); assert.equal(p.mpm, 181.8);
 });
@@ -689,7 +689,7 @@ test("Lauf-Effizienz: Einheit m/Schlag, Ausreisser und Fehler werden entfernt un
 test("laufvergleich-1.0: flach und gleichmässig ja; hügelig, Intervalle, Trail, Laufband, Hitze, ungleichmässig, Koppellauf nein", () => {
   const r = (o) => ({ id: "x", sport: "lauf", typ: "Laufen", name: "Laufen 10 km", date: "2026-03-01", start: "18:00", km: 10, hm: 40, dur: 3300, mv: 3300, hr: 150, tss: 55,
     dr: { x1: 10.9, x2: 11.0 }, wx: { temperature: 12 }, ...o });
-  assert.equal(FK.VERSIONS.laufvergleich, "laufvergleich-1.0");
+  assert.equal(FK.VERSIONS.laufvergleich, "laufvergleich-1.1");
   const ok = FK.laufVergleichbar(r({}), { acts: [] });
   assert.equal(ok.ok, true); assert.deepEqual(ok.gruende, []); assert.deepEqual(ok.ungeprueft, []);
   const grund = (o, ctx) => FK.laufVergleichbar(r(o), ctx || { acts: [] }).gruende.join(" | ");
@@ -805,3 +805,50 @@ test("Ringe (Audit V6.4 D6): Tag ohne eingespielte Einheiten → Belastung offen
   assert.equal(mit[1].belastung, null); assert.equal(mit[1].belastungOffen, true); assert.equal(mit[1].tss, null);
   assert.equal(mit[0].belastung, ohne[0].belastung, "Vortag unverändert");
 });
+
+/* ---------- V9.3.1 analyse-gesund-1.0: kranke Tage, erhöhter Ruhepuls und ungewöhnlicher Puls zählen nicht für Pace/Puls (erfundene Werte) ---------- */
+test("analyse-gesund-1.0: krank im Check-in samt 3 Tagen danach, Ruhepuls ≥ 7 über dem Median der 28 Tage davor", () => {
+  assert.equal(FK.VERSIONS.gesund, "analyse-gesund-1.0");
+  const days = Array.from({ length: 30 }, (_, i) => ({ date: FK.addDays("2026-02-01", i), rhr: 48 + (i % 3) }));
+  days.push({ date: "2026-03-03", rhr: 57 }, { date: "2026-03-04", rhr: 54 });
+  const D = { befinden: [{ date: "2026-03-10", krank: ["Halsweh"] }, { date: "2026-03-20", krank: [] }], days, activities: [] };
+  const G = FK.gesundheit(D);
+  assert.equal(G.krank.get("2026-03-10"), "krank (Check-in)");
+  assert.ok(G.krank.has("2026-03-13") && !G.krank.has("2026-03-14"), "3 Tage danach, nicht länger");
+  assert.ok(!G.krank.has("2026-03-20"), "Check-in ohne Krankheitszeichen zählt nicht");
+  assert.deepEqual(G.rhr.get("2026-03-03"), { wert: 57, basis: 49, plus: 8 });
+  assert.ok(!G.rhr.has("2026-03-04"), "+5 ist noch üblich");
+  assert.equal(FK.nichtRepraesentativ({ date: "2026-03-10" }, G), "krank (Check-in)");
+  assert.match(FK.nichtRepraesentativ({ date: "2026-03-12" }, G), /^kurz nach Krankheit/);
+  assert.match(FK.nichtRepraesentativ({ date: "2026-03-03" }, G), /^Ruhepuls am Morgen erhöht \(\+8/);
+  assert.equal(FK.nichtRepraesentativ({ date: "2026-03-05" }, G), null);
+});
+
+test("analyse-gesund-1.0: Lauf am kranken Tag ist nicht vergleichbar (mit Grund), Effizienz und Entwicklung lassen ihn weg – auch in Teillisten", () => {
+  const r = (i, o) => ({ id: "g" + i, sport: "lauf", typ: "Laufen", name: "Laufen", date: FK.addDays("2026-04-01", i), km: 10, hm: 40, dur: 3300, mv: 3300, hr: 150, tss: 50,
+    dr: { x1: 10.9, x2: 11.0 }, wx: { temperature: 12 }, ...o });
+  const acts = Array.from({ length: 8 }, (_, i) => r(i, { hr: 148 + (i % 3) }));
+  acts.push(r(9, { hr: 166 }), r(10, { hr: 149 }));                     // Tag 9: Check-in «krank»
+  const D = { befinden: [{ date: FK.addDays("2026-04-01", 9), krank: ["Fieber"] }], days: [], activities: acts };
+  FK.gesundheitSetzen(D);
+  const v = FK.laufVergleichbar(acts[8], { acts });
+  assert.equal(v.ok, false); assert.ok(v.gruende.includes("krank (Check-in)"), JSON.stringify(v.gruende));
+  assert.ok(FK.laufVergleichbar(acts[9], { acts }).gruende.some((g) => /^kurz nach Krankheit/.test(g)), "der Tag danach ebenso");
+  const L = FK.laufEffizienz(acts.slice());                               // Teilliste: der Grund hängt an der Einheit
+  assert.ok(!L.punkte.some((p) => p.id === "g9" || p.id === "g10"), "kranker Tag und Tag danach nicht in der Effizienz");
+  const E = FK.entwicklung("lauf330", [{ date: "2026-04-01", v: 150, q: { nicht: "krank (Check-in)" } }, { date: "2026-04-02", v: 149, q: {} }], { von: "2026-04-01", bis: "2026-04-30" }, { von: "2026-03-01", bis: "2026-03-31" });
+  assert.equal(E.ausgeschlossen.krank, 1, "Entwicklung zählt den kranken Punkt als ausgeschlossen");
+  FK.gesundheitSetzen(null);
+});
+
+test("analyse-gesund-1.0: ungewöhnlich hoher Puls in der Einheit (Effizienz > 10 % unter den 8 Wochen davor) zählt nicht – mit Grund", () => {
+  const r = (i, o) => ({ id: "h" + i, sport: "lauf", typ: "Laufen", name: "Laufen", date: FK.addDays("2026-05-01", i * 2), km: 10, hm: 40, dur: 3300, mv: 3300, hr: 150, tss: 50,
+    dr: { x1: 10.9, x2: 11.0 }, wx: { temperature: 12 }, ...o });
+  const acts = Array.from({ length: 6 }, (_, i) => r(i, { hr: 149 + (i % 2) })).concat([r(6, { hr: 172 }), r(7, { hr: 150 })]);
+  FK.gesundheitSetzen(null);
+  const L = FK.laufEffizienz(acts);
+  assert.equal(L.ausgeschlossen.puls_hoch, 1);
+  assert.ok(L.ungewoehnlich.some((p) => p.id === "h6" && /ungewöhnlich hoch/.test(p.aus)), JSON.stringify(L.ungewoehnlich));
+  assert.ok(L.punkte.some((p) => p.id === "h7"), "der nächste normale Lauf zählt wieder");
+});
+

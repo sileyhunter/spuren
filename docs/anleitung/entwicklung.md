@@ -3,6 +3,11 @@
   zulässt (draussen, ab 20 min und 3 km, ≤ 10 Hm/km, keine Intervalle/Tempo laut Titel oder Workout, 2. Hälfte ≤ 8 % anders, TL ≤ 95 je Stunde, < 25 °C,
   kein Trail/Laufband/Koppellauf); Gründe immer sichtbar. Gilt auch für Lauf-Vergleiche im Chat und in den Aufträgen. Effektive Zeit = Bewegungszeit
   (`zeit-1.1`: auch Navigieren, Tracker, Jagen u. a. draussen mit GPS; nicht im Wasser).
+- **Kranke oder untypische Einheiten `analyse-gesund-1.0` (V9.3.1, Silas' Wunsch 22.11.2026):** Pace/Puls-Auswertungen lassen Einheiten weg, die nicht repräsentativ sind –
+  Check-in «krank» (Krankheitszeichen) samt den 3 Tagen danach, Ruhepuls am Morgen ≥ 7 Schläge über dem Median der 28 Tage davor (≥ 10 Morgenwerte), in der Lauf-Effizienz
+  dazu Meter je Herzschlag > 10 % unter/über dem Median der vergleichbaren Läufe der 8 Wochen davor (≥ 4). Grund immer sichtbar (laufvergleich-1.1, laufeffizienz-1.2,
+  entwicklung-1.1 «krank»). `FK.gesundheit(D)`, `FK.nichtRepraesentativ`, `FK.gesundheitSetzen(D)` (beim Laden der Seite), `FK.nichtRepraesentativGrund(a)`. Zahlen = eigene Festlegungen
+  (`FK.GESUND`); ändern = Version erhöhen, `tests/test_formkurve.cjs` nachführen.
 - Vergleiche nur aus `eb`-Blöcken (Rad 190–210 W je System Rolle/Rennrad/MTB, Laufen 5:20–5:40/km flach), Urteil `entwicklung-1.0`
   (mind. 3 je Zeitraum, Bootstrap-Intervall, Guards Hitze/Höhe/Drift/Ausreisser). Laktat zählt erst bestätigt (B1), CSS nur aus Tests.
 - Form `pmc-2.1` (Fitness − Ermüdung desselben Tages; 2.1 = ohne Krafttraining, Silas' Wunsch vom 17.11.2026; «Heute» zeigt seit status-1.1 die Form zu Tagesbeginn), Zonen `zonenverteilung-2.0` (je Sportart, Zonen je Datum, Garmin-Zonen nicht beurteilt).

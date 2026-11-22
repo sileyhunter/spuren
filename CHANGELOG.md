@@ -1,5 +1,17 @@
 # Änderungen
 
+## V9.3.1 · 22.11.2026 · Analysen ohne kranke oder untypische Einheiten (analyse-gesund-1.0)
+Silas' Wunsch vom 22.11.2026: Einheiten, bei denen er krank war oder der Puls ungewöhnlich hoch ist, verfälschen Pace/Puls-Auswertungen und sollen nicht zählen.
+- **Regel (eigene Festlegungen, `FK.GESUND`):** nicht repräsentativ ist eine Einheit an einem Tag mit Check-in «krank» (Krankheitszeichen) und an den 3 Tagen danach, oder an einem Morgen
+  mit Ruhepuls mindestens 7 Schläge über dem Median der 28 Tage davor (mindestens 10 Morgenwerte). In der Lauf-Effizienz zusätzlich: Meter je Herzschlag mehr als 10 % unter (Puls
+  ungewöhnlich hoch) oder über (Puls ungewöhnlich tief, oft der Sensor) dem Median der vergleichbaren Läufe der 8 Wochen davor (mindestens 4).
+- **Wo:** `FK.laufVergleichbar` (laufvergleich-1.1: Grund «krank (Check-in)», «kurz nach Krankheit», «Ruhepuls am Morgen erhöht» – sichtbar im Explorer und bei jedem Lauf),
+  `FK.laufEffizienz` (laufeffizienz-1.2: gezählt als «Puls ungewöhnlich hoch/tief», Liste `ungewoehnlich`), `FK.entwicklungPunkte`/`FK.entwicklung` (entwicklung-1.1: Puls bei 200 W
+  bzw. 5:30/km ohne diese Tage, gezählt als «krank»), «Deine Reaktionen» (Rad-Effizienz, `js/v82.js`). Die Seite meldet ihre Daten nach dem Laden an (`FK.gesundheitSetzen`), der
+  Grund hängt an der Einheit – auch in Teillisten. Notiz unter der Lauf-Effizienz nennt die neuen Gründe.
+- Tests: `tests/test_formkurve.cjs` (+3; Versionen und Zählung der bestehenden Tests nachgeführt: der Lauf mit sehr tiefem Puls ist jetzt «Puls ungewöhnlich tief» statt Ausreisser),
+  `tests/test_v64.cjs` (wissen-1.36). `sw.js` Cache `notebook-v931-analyse-gesund-2026-11-22`.
+
 ## V9.3 · 22.11.2026 · «Woche wie Enduco» Etappe W2: Aussehen (woche-look-1.0, kugel-1.0)
 Auftrag `docs/auftrag-enduco-woche.md`, Etappe W2 (W2a und W2b in einer Sitzung) nach Silas' Enduco-Screenshots vom 22.11.2026. Neues Modul `js/v93.js` (`V93`, ohne DOM),
 Test `tests/test_v93.cjs` (9 Tests). Nur Aussehen, keine Rechenlogik.

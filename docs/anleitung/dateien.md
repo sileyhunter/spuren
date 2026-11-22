@@ -151,6 +151,9 @@
 - **V9.3 (Auftrag «Woche wie Enduco», Etappe W2; 22.11.2026):** `js/v93.js` (neu, ohne DOM: `V93.kugel`, `V93.kugelStil`, `V93.balkenAnteil`, `V93.anzahl`, `V93.zeile`, `V93.zeichen`),
   `js/v78-ui.js` (Raster, Tageskopf, Einheit, Wochenkopf, Wochenleiste, Wochenkarte mit Statuskurve), `js/v6.js` (Zonenfarben, Symbole `kalenderfrei`, `mond`), `js/v59.js` (`data-art`),
   `css/v6.css` (Abschnitt V9.3), `index.html`, `sw.js`, `tests/sim/umgebung.cjs`; Test `tests/test_v93.cjs`
+- **V9.3.1 (Analysen ohne kranke oder untypische Einheiten, analyse-gesund-1.0; 22.11.2026):** `js/formkurve.js` (`FK.GESUND`, `FK.gesundheit`, `FK.nichtRepraesentativ`,
+  `FK.gesundheitSetzen`, `FK.nichtRepraesentativGrund`; laufvergleich-1.1, laufeffizienz-1.2, entwicklung-1.1), `js/v82.js` (Rad-Effizienz), `index.html` (Anmeldung beim Laden, Notiz
+  Lauf-Effizienz), `js/wissen.js` (1.36)
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
 - `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)

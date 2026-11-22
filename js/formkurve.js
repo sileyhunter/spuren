@@ -10,8 +10,8 @@
   FK.VERSIONS = {
     cockpit: "cockpit-1.0", readiness: "readiness-3.0", ampel_pruefung: "ampel-pruefung-1.1", langfahrt: "langfahrt-2.0", koppel: "koppel-1.1",
     fueling: "fueling-1.0", eta: "eta-1.0", cda: "cda-1.0", fit: "fit-js-1.0", wetter: "wetter-1.0",
-    pmc: "pmc-2.1", zonen: "zonenverteilung-2.0", orientierung: "langfahrt-orientierung-1.0", entwicklung: "entwicklung-1.0", laufeffizienz: "laufeffizienz-1.1",
-    laufvergleich: "laufvergleich-1.0",
+    pmc: "pmc-2.1", zonen: "zonenverteilung-2.0", orientierung: "langfahrt-orientierung-1.0", entwicklung: "entwicklung-1.1", laufeffizienz: "laufeffizienz-1.2",
+    laufvergleich: "laufvergleich-1.1", gesund: "analyse-gesund-1.0",
     ringe: "ringe-1.1", laktat_drift: "laktat-drift-1.0",
   };
   const DAY = 864e5;
@@ -840,9 +840,10 @@
     const A = (D && D.activities) || [];
     if (art === "rad200") return A.filter((a) => a.sport === "rad" && a.eb && a.eb.art === "rad200" && (!opt.sys || FK.bikeSys(a) === opt.sys))
       .map((a) => ({ date: a.date, v: a.eb.hr, id: a.id, name: a.name, x: a.eb.w, q: { wx: a.wx && isNum(a.wx.temperature) ? a.wx.temperature : null,
-        alt: FK.bikeSys(a) === "indoor" ? null : a.eb.alt ?? null, dhr: a.eb.dhr ?? null, n: a.eb.n } }));     // Rolle: virtuelle Höhe zählt nicht
+        alt: FK.bikeSys(a) === "indoor" ? null : a.eb.alt ?? null, dhr: a.eb.dhr ?? null, n: a.eb.n, nicht: FK.nichtRepraesentativGrund(a, opt) } }));     // Rolle: virtuelle Höhe zählt nicht
     if (art === "lauf330") return A.filter((a) => a.sport === "lauf" && a.eb && a.eb.art === "lauf330" && runSys(a) === "strasse")
-      .map((a) => ({ date: a.date, v: a.eb.hr, id: a.id, name: a.name, x: a.eb.pace, q: { wx: a.wx && isNum(a.wx.temperature) ? a.wx.temperature : null, alt: a.eb.alt ?? null, dhr: a.eb.dhr ?? null, n: a.eb.n } }));
+      .map((a) => ({ date: a.date, v: a.eb.hr, id: a.id, name: a.name, x: a.eb.pace, q: { wx: a.wx && isNum(a.wx.temperature) ? a.wx.temperature : null, alt: a.eb.alt ?? null, dhr: a.eb.dhr ?? null, n: a.eb.n,
+        nicht: FK.nichtRepraesentativGrund(a, opt) } }));
     if (art === "laktat") return FK.lactateData(D).tests.filter((t) => t.protokoll === opt.protokoll).map((t) => ({ date: t.datum, v: FK.laInterp(t.punkte, opt.x), id: t.id, name: t.id, x: opt.x,
       q: { status: t.datenstatus === "bestätigt" ? "bestätigt" : "vorschau" } })).filter((p) => isNum(p.v));
     if (art === "css") return ((D && D.css_tests) || []).concat(opt.lokal || []).filter((t) => isNum(FK.css(t.t400, t.t200)))
@@ -865,9 +866,10 @@
   FK.entwicklung = function (metricId, punkte, P, R, opt) {
     opt = Object.assign({}, EW, opt || {});
     const M = FK.EW_METRIKEN[metricId] || { name: metricId, unit: "", besser: "tiefer", schwelle: 0, dec: 0 };
-    const ex = { hitze: 0, hoehe: 0, drift: 0, vorschau: 0, ausreisser: 0 };
+    const ex = { hitze: 0, hoehe: 0, drift: 0, vorschau: 0, ausreisser: 0, krank: 0 };
     const keep = (p) => {
       if (p.q && p.q.status === "vorschau") { ex.vorschau++; return false; }
+      if (p.q && p.q.nicht) { ex.krank++; return false; }                       // V9.3.1 entwicklung-1.1: krank, kurz danach oder Ruhepuls erhöht
       if (p.q && isNum(p.q.wx) && p.q.wx >= opt.hitze) { ex.hitze++; return false; }
       if (p.q && isNum(p.q.alt) && p.q.alt >= opt.hoehe) { ex.hoehe++; return false; }
       if (p.q && isNum(p.q.dhr) && Math.abs(p.q.dhr) > opt.dhrMax) { ex.drift++; return false; }
@@ -926,9 +928,48 @@
    */
   FK.LV = { minS: 1200, minKm: 3, hmKm: 10, gleich: 0.08, tlH: 95, hitze: 25, koppelMin: 30 };
   const LV_WORT = /intervall|vo\s*2|vo₂|schwelle|threshold|tempo|sprint|neuro|steiger|fartlek|pyramid|hügel|huegel|\bberg|hill|\btest|wettkampf|rennen|\brace\b|vorbelast|priming|sweet\s*spot|renntempo|über[- ]?unter|\b\d+\s*[x×]\s*\d/i;
+  /* ---------- V9.3.1 analyse-gesund-1.0 (Silas 22.11.2026: «wenn ich krank bin oder der Puls ungewöhnlich hoch ist, die Einheiten nicht für die Analysen
+     werten – sie sind nicht repräsentativ»). Eigene Festlegungen: krank = Check-in mit Krankheitszeichen, dazu die 3 Tage danach (der Puls bleibt nach einem
+     Infekt einige Tage erhöht); Ruhepuls am Morgen mindestens 7 Schläge über dem Median der 28 Tage davor (mindestens 10 Morgenwerte); in der Einheit:
+     Effizienz (Meter je Herzschlag) mehr als 10 % unter bzw. über dem Median der vergleichbaren Läufe der 8 Wochen davor (mindestens 4). ---------- */
+  FK.GESUND = { nachKrank: 3, rhrPlus: 7, rhrTage: 28, rhrMin: 10, effAbw: 0.10, effTage: 56, effMin: 4 };
+  /** Tage, an denen Einheiten für Pace/Puls nicht zählen → { v, krank: Map(Datum → Text), rhr: Map(Datum → { wert, basis, plus }) }. */
+  FK.gesundheit = function (D) {
+    const G = FK.GESUND, krank = new Map(), rhr = new Map();
+    const tage = [...new Set(((D && D.befinden) || []).filter((b) => b && b.date && Array.isArray(b.krank) && b.krank.length).map((b) => b.date))].sort();
+    for (const d of tage) krank.set(d, "krank (Check-in)");
+    for (const d of tage) for (let i = 1; i <= G.nachKrank; i++) { const n = FK.addDays(d, i); if (!krank.has(n)) krank.set(n, `${i} ${i === 1 ? "Tag" : "Tage"} nach «krank» im Check-in`); }
+    const days = ((D && D.days) || []).filter((x) => x && x.date && isNum(x.rhr) && x.rhr > 25).sort((a, b) => a.date.localeCompare(b.date));
+    let j = 0;
+    for (let i = 0; i < days.length; i++) {
+      const von = FK.addDays(days[i].date, -G.rhrTage);
+      while (j < i && days[j].date < von) j++;
+      if (i - j < G.rhrMin) continue;
+      const m = median(days.slice(j, i).map((x) => x.rhr));
+      if (days[i].rhr - m >= G.rhrPlus) rhr.set(days[i].date, { wert: days[i].rhr, basis: Math.round(m), plus: Math.round(days[i].rhr - m) });
+    }
+    return { v: FK.VERSIONS.gesund, krank, rhr };
+  };
+  /** Grund, warum eine Einheit für Pace/Puls nicht zählt (krank, kurz danach, Ruhepuls erhöht), sonst null. */
+  FK.nichtRepraesentativ = function (a, G) {
+    if (!a || !G) return null;
+    const k = G.krank.get(a.date); if (k) return k === "krank (Check-in)" ? k : `kurz nach Krankheit (${k})`;
+    const r = G.rhr.get(a.date); if (r) return `Ruhepuls am Morgen erhöht (+${r.plus} Schläge über dem Üblichen)`;
+    return null;
+  };
+  /** Die Seite meldet ihre Daten einmal an (nach dem Laden); danach kennt jede Auswertung den Grund je Einheit – auch in Teillisten. */
+  let GES = null;
+  FK.gesundheitSetzen = function (D) {
+    const G = FK.gesundheit(D), W = new WeakMap();
+    for (const a of (D && D.activities) || []) { const r = FK.nichtRepraesentativ(a, G); if (r) W.set(a, r); }
+    GES = { G, W };
+    return G;
+  };
+  FK.nichtRepraesentativGrund = (a, ctx) => (ctx && ctx.gesund ? FK.nichtRepraesentativ(a, ctx.gesund) : GES && a && typeof a === "object" ? GES.W.get(a) || null : null);
   FK.laufVergleichbar = function (a, ctx) {
     const L = FK.LV, gr = [], ung = [];
     if (!a || a.sport !== "lauf") return { ok: false, gruende: ["kein Lauf"], ungeprueft: [], v: FK.VERSIONS.laufvergleich };
+    const nr = FK.nichtRepraesentativGrund(a, ctx); if (nr) gr.push(nr);                 // V9.3.1 laufvergleich-1.1: krank oder Ruhepuls erhöht
     const typ = String(a.typ || "");
     if (a.indoor || /laufband|treadmill|indoor|virtu/i.test(typ)) gr.push("Laufband oder drinnen (Tempo nicht vergleichbar)");
     if (/trail|ultra|berg/i.test(typ)) gr.push("Trail (Gelände)");
@@ -991,12 +1032,26 @@
       if (a.hr < 90 || a.hr > 195) { ex.puls++; continue; }          // Pulsaussetzer, Kadenz statt Puls
       pts.push({ date: a.date, id: a.id, name: a.name, y: +((v * 60) / a.hr).toFixed(3), mpm: +(v * 60).toFixed(1), hr: a.hr });
     }
-    let keep = pts;
-    if (pts.length >= 5) {
-      const m = median(pts.map((p) => p.y)), mad = median(pts.map((p) => Math.abs(p.y - m))) * 1.4826;
-      if (mad) { keep = pts.filter((p) => Math.abs(p.y - m) <= 3 * mad); ex.ausreisser = pts.length - keep.length; }
+    // V9.3.1 laufeffizienz-1.2 (analyse-gesund-1.0): Puls in der Einheit ungewöhnlich – Effizienz mehr als 10 % unter (Puls hoch) bzw. über (Puls tief, oft der
+    // Sensor) dem Median der vergleichbaren Läufe der 8 Wochen davor; gemessen an den Läufen, die selbst zählten
+    const G = FK.GESUND, normal = [], liste = [];
+    ex.puls_hoch = 0; ex.puls_tief = 0;
+    for (const p of pts.slice().sort((x, y) => x.date.localeCompare(y.date))) {
+      const von = FK.addDays(p.date, -G.effTage), ref = normal.filter((q) => q.date >= von && q.date < p.date).map((q) => q.y);
+      if (ref.length >= G.effMin) {
+        const m = median(ref);
+        if (p.y < m * (1 - G.effAbw)) { ex.puls_hoch++; p.aus = "Puls ungewöhnlich hoch (mehr als 10 % über dem Üblichen bei diesem Tempo)"; liste.push(p); continue; }
+        if (p.y > m * (1 + G.effAbw)) { ex.puls_tief++; p.aus = "Puls ungewöhnlich tief (Sensor?)"; liste.push(p); continue; }
+      }
+      normal.push(p);
     }
-    return { v: FK.VERSIONS.laufeffizienz, einheit: "m/Schlag", punkte: keep, ausgeschlossen: ex, n: cand.length, vergleich: LV, vergleichText: FK.laufVergleichText(LV) };
+    let keep = normal;
+    if (normal.length >= 5) {
+      const m = median(normal.map((p) => p.y)), mad = median(normal.map((p) => Math.abs(p.y - m))) * 1.4826;
+      if (mad) { keep = normal.filter((p) => Math.abs(p.y - m) <= 3 * mad); ex.ausreisser = normal.length - keep.length; }
+    }
+    keep.sort((x, y) => x.date.localeCompare(y.date));
+    return { v: FK.VERSIONS.laufeffizienz, einheit: "m/Schlag", punkte: keep, ausgeschlossen: ex, ungewoehnlich: liste, n: cand.length, vergleich: LV, vergleichText: FK.laufVergleichText(LV) };
   };
   /** Antwortfelder aus den Ergebnissen: deterministisch, keine Diagnose, keine Trainingsanweisung. */
   FK.entwicklungAntworten = function (ergebnisse) {
