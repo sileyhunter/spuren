@@ -334,3 +334,10 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 134. **Zwei Einheiten derselben Sportart am Tag (Silas 20.11.2026):** Er ist einverstanden, wenn es trainingstechnisch Vorteile bringt (Enduco macht es beim Laufen auch);
      die Entscheidung liegt bei Claude. Stand: `V66.verteilen` meidet es nur weich (−45), das Modell plant keine gezielten Doppeleinheiten. Offen: für eine spätere Etappe
      prüfen, ob eine zweite, lockere Einheit (z. B. Lauf oder Schwimmen an knappen Tagen) ins Modell gehört.
+135. **Vergleich mit Enduco: Anpassen wirkt gleich (V9.1.1, 22.11.2026):** Nach Hinzufügen, Dauer ändern und Löschen springt die Seite jetzt in die Kalender-Liste, und die
+     Verfügbarkeit eines Tages passt die bearbeitete Woche sofort an (`V66UI.vfFolgen`, Meldung im Tagesblatt). Silas bitte prüfen: (a) Einheit hinzufügen → Kalender steht am
+     Tag, (b) Verfügbarkeit eines Tages in einer bearbeiteten Woche kürzen → Plan ändert sich gleich, (c) Löschen auf der Einheit-Seite → Kalender. **Nicht gebaut:**
+     (1) Hat ein Tag mehr Zeit als geplant, verlängert die Seite nichts (Enduco tut es); die Wochenlast ist Sache des Modells, die Verfügbarkeit nur eine Obergrenze. Mögliche
+     spätere Etappe: «Zusatzeinheit vorschlagen» (lockere Einheit am freien Tag, als Vorschlag des Coaches mit Annehmen), Entscheid über die Art liegt bei Claude.
+     (2) Das Blatt «Trainingsverfügbarkeit der ganzen Woche» fragt nach dem Speichern weiter nach der Wahl (Woche anpassen / Neu berechnen / Alles neu verteilen / Nur speichern),
+     statt gleich anzupassen. (3) Die Tonspur der drei Aufnahmen war stumm; gedeutet wurde aus dem Bild – wenn «Kalender wechseln» etwas anderes meinte, bitte kurz sagen.

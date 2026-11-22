@@ -1417,6 +1417,9 @@ div.k4-r-kw { height: auto; }
 .tb-vf-chips .chip[aria-pressed="false"] { color: var(--muted); text-decoration: line-through; }
 .tb-vf-chips .chip[aria-pressed="true"]::after { content: "✓"; font-weight: 700; color: var(--good); }
 .tb-vf-re { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 12px; background: var(--surface); font-size: 13px; border-left: 3px solid var(--good); }
+.tb-vf-re > span { flex: 1 1 100%; }
+.tb-vf-re .tb-vf-ml { margin: 4px 0 0; padding-left: 18px; }
+.tb-vf-re .hint { display: block; margin-top: 4px; }
 .tb-unten { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13px; }
 .tb-unten .abschnitt { font-size: 11px; }
 .tb-sperre { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }

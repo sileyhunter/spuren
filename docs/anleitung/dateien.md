@@ -131,6 +131,12 @@
   `V64.MODELLE`/`V64.REIHE` und `merge_daily.MODELLE`, `V64.woche` opt.`harte` (1 = harter Lauf locker, gleiche Dauer; nur Rad/Laufen ohne zweite Schlüsseleinheit) und `autoGrund`, im
   Plan-Kontext `K.auto`, `K.autoIn` (`js/v64-ui.js`), Hinweis auf der Einheit-Seite (`e.auto`); verteilung-1.1 in `js/v82.js` (klar nur in mindestens 3 der 4 Einteilungen der Blöcke);
   Test C über mehrere Wochen in `tests/test_v80.cjs` (C3, C4)
+- **V9.1 (Auftrag V9, Etappe 1, zusammen-1.0; 20.11.2026):** `js/v91.js` (ohne DOM: `V91.zuordnen` – absolvierte Aktivität gehört zur geplanten Einheit desselben Tages und derselben
+  Sportart, `V91.vergleich`, `V91.heuteSatz`), genutzt von `js/v7-ui.js` (Liste/Wochenansicht), `js/v6-heute.js`, `js/v59.js` (Tagesblatt), `js/v78-ui.js`, `js/v81-ui.js`
+  (Einheit-Seite, «Passt zu: … (Mein Plan)»), `js/explorer.js`; `tests/test_v91.cjs`. Nachträge: alles-neu-1.0 (`V66.aendern` Art «neuberechnen» mit `alles`, `js/v66-ui.js` «Alles neu
+  verteilen», Test in `tests/test_v66.cjs`) und V9.1.1 (22.11.2026) kalender-direkt-1.0 / anpassen-automatisch-1.0: `V66UI.nachAenderung(ds)` (Blatt zu, Kalender-Liste am Tag; in
+  `js/v66-ui.js`, `js/v73-ui.js`, `js/v77-ui.js`), `V66UI.vfFolgen(ds)` (nach der Tages-Verfügbarkeit «Woche anpassen» bei bearbeiteter Woche, ganz festgehalten oder teilweise gespeichert),
+  `tests/test_v911.cjs`
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
 - `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)

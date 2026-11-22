@@ -16,6 +16,19 @@ Auftrag V9 (`docs/auftrag-v9.md`), Etappe 1. Neues Modul `js/v91.js` (`V91`, Ver
 - **Nachtrag alles-neu-1.0 (Silas 20.11.2026):** Neue Wahl «Alles neu verteilen» (nach der Verfügbarkeit und unter «Woche bearbeiten»): wie «Neu berechnen», gibt aber auch
   gesperrte Tage und Einheiten ab heute frei (zweites Antippen nötig). «Woche anpassen» verschiebt weiter nur, was nicht zur Verfügbarkeit passt (bewusst); passt alles, steht
   jetzt «Es musste nichts verschoben werden». Test in `tests/test_v66.cjs`.
+- **Nachtrag kalender-direkt-1.0 / anpassen-automatisch-1.0 (Silas 22.11.2026, Vergleich mit Enduco anhand deiner Bildschirmaufnahmen):**
+  - *Nach einer Änderung gleich in den Kalender (kalender-direkt-1.0):* Wer in der Liste eine Einheit hinzufügt (Vorlage, Bibliothek, eigene Aktivität, Aktivität draussen),
+    ihre Dauer ändert oder sie löscht, landet danach wieder in der Kalender-Liste an diesem Tag (`V66UI.nachAenderung`; vorher blieb ein Blatt offen oder man stand am
+    alten Ort). Gilt im Tagesblatt wie auf der Einheit-Seite («Löschen»). Verfügbarkeit ändern bleibt bewusst im Tagesblatt (Regler, Sportarten-Auswahl bleibt offen).
+  - *Verfügbarkeit eines Tages ändert den Plan gleich (anpassen-automatisch-1.0):* `V66UI.vfFolgen` ruft nach dem Speichern der Tages-Verfügbarkeit «Woche anpassen» selbst
+    auf, wenn die Woche bearbeitet ist (ganz festgehalten **oder** nur teilweise gespeichert – so entsteht sie, wenn man ohne Verfügbarkeit eine Einheit hinzufügt, sie blieb
+    bisher beim unverteilten Vorschlag). Verschoben oder gekürzt wird nur, was nicht mehr passt; gesperrte Tage, Tests, eigene Einheiten und vergangene Tage bleiben.
+    Das Tagesblatt meldet, was sich geändert hat («Woche angepasst: …»), bzw. «Es musste nichts verschoben werden»; Wochen, die der Verfügbarkeit von selbst folgen,
+    zeigen ihre Verteilung. «Neu verteilen …» öffnet die bekannte Wahl (Woche anpassen, Neu berechnen, Alles neu verteilen).
+  - *Bewusst nicht übernommen:* Hat ein Tag mehr Zeit als geplant, bleibt die Wochenlast, wie sie im Plan steht (die Verfügbarkeit ist eine Obergrenze); das Blatt weist darauf hin
+    («Du hast … mehr Zeit als geplant») und verweist auf «Training hinzufügen». Enduco verlängert dann die Einheit – offener Punkt 135.
+  - Test `tests/test_v911.cjs` (4 Tests, Simulator); Ablauf zusätzlich im Demo mit einem Browser durchgespielt (Einheit hinzufügen → Kalender; Verfügbarkeit ändern → Plan und
+    Meldung; Löschen → Kalender). Leck-Prüfung mit echten Daten konnte ohne `SPUREN_PW` nicht laufen; es wurden keine echten Werte eingefügt.
 - Offen: Entwurf «Heute entrümpeln» (Mockup 390 px) wartet auf deine Freigabe, gebaut ist noch nichts.
 
 ## V9.0 Etappe 0 · 20.11.2026 · Anleitung gekürzt (anleitung-kurz-1.0)

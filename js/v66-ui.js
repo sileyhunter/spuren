@@ -27,6 +27,16 @@
   const spFarbe = (sp) => `var(--sp-${["rad", "lauf", "schwimm", "wandern", "ski"].includes(sp) ? sp : "andere"})`;
   const bereit = () => { C = UI() && UI().C; return !!(C && V64() && V66() && V6() && P() && P().kontextFuer); };
   const kontext = (mo) => { try { return P().kontextFuer(mo); } catch (e) { console.error(e); return null; } };
+  /** V9.1.1 kalender-direkt-1.0 (Vorbild Enduco, Silas 22.11.2026): nach einer Änderung an Einheiten (hinzufügen, ändern, entfernen) gleich in den Kalender –
+   *  Blatt zu, Liste am Tag der Änderung – statt erst zurück ins Tagesblatt. Steht die Seite nicht im Kalender (z. B. unter «Heute»), bleibt es beim Schliessen des Blatts. */
+  function nachAenderung(ds) {
+    V59().schliessen();
+    try {
+      const sec = document.getElementById("view-kalender"), L = window.V78UI;
+      if (sec && !sec.hidden && L && L.zu) requestAnimationFrame(() => { try { L.zu(ds, true); } catch (e) { console.error(e); } });
+    } catch (e) { console.error(e); }
+  }
+  M.nachAenderung = nachAenderung;
   function tagVon(ds) { const K = kontext(montag(ds)); const t = K ? K.w.tage.find((x) => x.date === ds) : null; return t ? { K, t } : null; }
   const bezug = (K) => V66().bezug(TR() ? TR().zonen(C.D.zonen).skalen : null, K && K.css ? K.css.s : null);
   // V8.1 tl-plan-1.1: TL ≈ geplant mit den Bezugsgrössen der absolvierten Last (config.last_ref, config.lthr) – für jeden Aufruf von V66.bezug auf der Seite
@@ -239,7 +249,22 @@
   /** V7.10 tagesblatt-2.0 (Vorlage): Verfügbarkeit des Tages direkt im Blatt – Sportarten als Symbol (antippen: je Sportart ein Chip) und Regler 0–8 h in
    *  15-min-Schritten, ganz rechts «offen». Sofort gespeichert als Eintrag des Tages (gleich wie der Wochentag = Tageseintrag weg); die Woche passt sich
    *  an wie bisher (verfuegbarkeit-1.0). */
-  let TB_RE = null;
+  let TB_RE = null, TB_CHIPS = false;
+  /** V9.1.1 anpassen-automatisch-1.0 (Vorbild Enduco, Silas 22.11.2026): nach dem Speichern der Verfügbarkeit eines Tages passt sich eine bearbeitete
+   *  Woche gleich an – wie «Woche anpassen», ohne zweiten Knopf: nur was nicht mehr passt, wird verschoben oder gekürzt (gemeldet); gesperrte Tage,
+   *  Tests, eigene Einheiten und vergangene Tage bleiben. «Bearbeitet» heisst: ganz festgehalten (E.ganz) oder nur teilweise gespeichert (eigene
+   *  Einheiten, aber noch nicht nach der Verfügbarkeit verteilt – so entsteht sie, wenn man ohne Verfügbarkeit eine Einheit hinzufügt; sie bliebe
+   *  sonst beim unverteilten Vorschlag, V64UI.kontextFuer «teilweise»). Wochen, die der Verfügbarkeit von selbst folgen, brauchen nichts.
+   *  → { f: Fehlertext oder null, angepasst: ja/nein, meldungen: [...] } */
+  M.vfFolgen = async function (ds) {
+    if (!bereit() || ds < heute()) return { f: null, angepasst: false, meldungen: [] };
+    const mo = montag(ds), E = P().planEintrag(mo);
+    const teilweise = !!(E && !E.ganz && E.tage && Object.values(E.tage).some((t) => t && Array.isArray(t.einheiten)));
+    if (!E || !(E.ganz || teilweise)) return { f: null, angepasst: false, meldungen: [] };
+    const f = await aendern(mo, { art: "anpassen" });
+    const E2 = P().planEintrag(mo);
+    return { f, angepasst: !f, meldungen: !f && E2 && E2.verteilung && Array.isArray(E2.verteilung.meldungen) ? E2.verteilung.meldungen : [] };
+  };
   function vfInline(ds, K) {
     const verf = K.verf || (P().verfuegbarkeit ? P().verfuegbarkeit() : null), v = verf ? verf(ds) : null, W = V6(), SP = V66().VF_SPORT;
     if (P().entwurf && P().entwurf.aktiv()) {                          // V7.9 bearbeiten-1.0: Verfügbarkeit erst nach dem Speichern ändern
@@ -252,18 +277,26 @@
     const quelle = !v ? "nicht festgelegt – der Vorschlag plant frei" : v.quelle === "tag" ? "nur an diesem Tag" : `wie jeden ${WT_LANG[V66().wtNr(ds) - 1]}`;
     const text = idx >= offenI ? "offen" : idx === 0 ? "Kein Training" : W.dauerText(idx * 15 * 60);
     let re = "";
-    if (TB_RE === ds) {
-      TB_RE = null;
-      const E = P().planEintrag(montag(ds));
-      re = E && E.ganz ? `<div class="tb-vf-re" role="status"><span>Gespeichert. Diese Woche ist festgehalten und bleibt, wie sie ist – «Woche anpassen» verteilt sie ab heute neu.</span><button type="button" class="btn klein" data-tbvfanp>${W.icon("funken", 14)} Woche anpassen</button></div>`
-        : `<div class="tb-vf-re" role="status"><span>Gespeichert – die Woche verteilt sich danach.</span></div>`;
+    if (TB_RE && TB_RE.ds === ds) {
+      const R = TB_RE; TB_RE = null;
+      // Zeit, die der Tag über das Geplante hinaus hat: die Wochenlast bleibt, mehr Training nur von Hand (kein stilles Aufstocken)
+      const geplantMin = (K.w.tage.find((x) => x.date === ds) || { einheiten: [] }).einheiten.reduce((a, e) => a + (e.dauer || 0), 0);
+      const mehr = v && isNum(v.min) && v.min > 0 && v.min - geplantMin >= 30 ? v.min - geplantMin : 0;
+      const ml = (L) => `<ul class="tb-vf-ml">${L.slice(0, 4).map((m) => `<li>${esc(m)}</li>`).join("")}${L.length > 4 ? `<li>… und ${L.length - 4} weitere</li>` : ""}</ul>`;
+      const auto = !R.angepasst && K.w && K.w.verteilung ? V66().verteilText(K.w.verteilung) : [];      // Woche, die der Verfügbarkeit von selbst folgt
+      const keinen = "Gespeichert. Es musste nichts verschoben werden – alle Einheiten passen zu deiner Verfügbarkeit.";
+      const kopf = R.angepasst ? (R.meldungen.length ? `Gespeichert. Woche angepasst:${ml(R.meldungen)}` : keinen)
+        : auto.length ? `Gespeichert. So verteilt sich die Woche jetzt:${ml(auto)}`
+        : ds < heute() ? "Gespeichert." : keinen;
+      const zusatz = mehr ? `<span class="hint">Du hast ${esc(W.dauerText(mehr * 60))} mehr Zeit als geplant. Die Wochenlast bleibt, wie sie im Plan steht – mehr Training legst du mit «Training hinzufügen» dazu.</span>` : "";
+      re = `<div class="tb-vf-re" role="status"><span>${kopf}</span>${zusatz}<button type="button" class="btn klein" data-tbvfmehr>${W.icon("funken", 14)} Neu verteilen …</button></div>`;
     }
     return `<div class="tb-vf" data-tbvf data-offen="${offenI}">
       <div class="tb-vf-k"><span class="abschnitt">${W.icon("kalender", 14)}Verfügbarkeit</span><small>${esc(quelle)}</small></div>
-      <div class="tb-vf-z"><button type="button" class="tb-vf-sp" data-tbvfsp aria-expanded="false" aria-label="Sportarten: ${esc(sp.map((x) => VW_SPW[x]).join(", "))} – ändern">${sp.map((x) => `<i style="--sp:${spFarbe(x)}">${W.sportIcon(x, 15)}</i>`).join("")}</button>
+      <div class="tb-vf-z"><button type="button" class="tb-vf-sp" data-tbvfsp aria-expanded="${TB_CHIPS}" aria-label="Sportarten: ${esc(sp.map((x) => VW_SPW[x]).join(", "))} – ändern">${sp.map((x) => `<i style="--sp:${spFarbe(x)}">${W.sportIcon(x, 15)}</i>`).join("")}</button>
         <input type="range" min="0" max="${offenI}" step="1" value="${idx}" data-tbvfmin aria-label="Trainingszeit an diesem Tag, ganz rechts offen" aria-valuetext="${esc(text)}">
         <output data-tbvfout>${esc(text)}</output></div>
-      <div class="tb-vf-chips" data-tbvfchips hidden>${SP.map((x) => `<button type="button" class="chip" data-tbvfc="${x}" aria-pressed="${sp.includes(x)}"><span class="mo-sp" style="--sp:${spFarbe(x)}">${W.sportIcon(x, 14)}</span>${esc(VW_SPW[x])}</button>`).join("")}</div>
+      <div class="tb-vf-chips" data-tbvfchips${TB_CHIPS ? "" : " hidden"}>${SP.map((x) => `<button type="button" class="chip" data-tbvfc="${x}" aria-pressed="${sp.includes(x)}"><span class="mo-sp" style="--sp:${spFarbe(x)}">${W.sportIcon(x, 14)}</span>${esc(VW_SPW[x])}</button>`).join("")}</div>
       ${re}<button type="button" class="mp-vf-woche" data-mpvfw>${W.icon("kalender", 14)}Trainingsverfügbarkeit der ganzen Woche ${W.icon("weiter", 14)}</button></div>`;
   }
   /** Abschnitt «Mein Plan» im Tagesblatt (Einheiten, Sperre, Aktionen). */
@@ -634,7 +667,11 @@
         if (gleich) { if (!(tg && !tg.entfernt)) return; f = await vfSpeichern(ds, { date: ds }, null); }   // wie der Wochentag: Eintrag des Tages weg
         else f = await vfSpeichern(ds, { date: ds }, wert);
         if (f) { fehler(f); return; }
-        TB_RE = ds; neuHalten();
+        const R = await M.vfFolgen(ds);                                  // V9.1.1 anpassen-automatisch-1.0: festgehaltene Woche gleich anpassen
+        if (R.f) { fehler(R.f); return; }
+        TB_RE = { ds, angepasst: R.angepasst, meldungen: R.meldungen };
+        TB_CHIPS = !vf.querySelector("[data-tbvfchips]").hidden;         // geöffnete Sportarten-Auswahl bleibt offen (wie bei Enduco)
+        neuHalten();
       }, 450);
     };
     sl.oninput = () => { out.textContent = text(+sl.value); sl.setAttribute("aria-valuetext", out.textContent); };
@@ -645,8 +682,9 @@
       if (!an && sports().length <= 1) { fehler("Mindestens eine Sportart – für keinen Sport den Regler ganz nach links."); return; }
       b.setAttribute("aria-pressed", String(an)); fehler(""); speichern();
     }));
-    const a = vf.querySelector("[data-tbvfanp]");
-    if (a) a.onclick = async () => { const f = await aendern(montag(ds), { art: "anpassen" }); if (f) fehler(f); else neuHalten(); };
+    const mehr = vf.querySelector("[data-tbvfmehr]");
+    if (mehr) mehr.onclick = () => M.reaktionBlatt(ds, zurueck, `Verfügbarkeit ${tagText(ds)}: Wie soll sich der Plan neu verteilen?`);
+    TB_CHIPS = false;
   }
 
   /* ---------- V7.10 tagesblatt-2.0 / eigene-aktivitaet-1.0: «Eigene Aktivität planen» ---------- */
@@ -677,7 +715,7 @@
     $q("[data-mpz]").onclick = () => (zurueck ? zurueck() : V59().schliessen());
     const wahl = (sel, b) => ov.querySelectorAll(sel).forEach((x) => { x.setAttribute("aria-pressed", String(x === b)); x.setAttribute("aria-checked", String(x === b)); });
     ov.querySelectorAll("[data-easp]").forEach((b) => (b.onclick = () => wahl("[data-easp]", b)));
-    ov.querySelectorAll("[data-eadr]").forEach((b) => (b.onclick = () => { if (window.V77UI && window.V77UI.blatt) window.V77UI.blatt($q("[data-eadatum]").value || d0, b.dataset.eadr, zurueck); }));
+    ov.querySelectorAll("[data-eadr]").forEach((b) => (b.onclick = () => { if (window.V77UI && window.V77UI.blatt) { const dd = $q("[data-eadatum]").value || d0; window.V77UI.blatt(dd, b.dataset.eadr, zurueck, () => nachAenderung(dd)); } }));
     const bisL = $q("[data-eabis]"), bis = $q("[data-eabisd]");
     const bisGrenzen = () => { const d = $q("[data-eadatum]").value || d0; bis.min = add(d, 7); bis.max = add(d, 7 * 16); if (!bis.value || bis.value < bis.min || bis.value > bis.max) bis.value = add(d, 7 * 4); };
     ov.querySelectorAll("[data-eaw]").forEach((b) => (b.onclick = () => { wahl("[data-eaw]", b); bisL.hidden = b.dataset.eaw !== "woche"; bisGrenzen(); }));
@@ -703,7 +741,7 @@
       for (const d of tage) { const f = await aendern(montag(d), { art: "hinzufuegen", date: d, einheit }); if (f) nicht.push(`${dkurz(d)}: ${f}`); }
       if (nicht.length === tage.length) return fehler(nicht.slice(0, 3).join(" · "));
       if (nicht.length) { fehler(`${tage.length - nicht.length} von ${tage.length} geplant – nicht: ${nicht.slice(0, 3).join(" · ")}${nicht.length > 3 ? " …" : ""}`); $q("[data-eaok]").disabled = true; return; }
-      if (zurueck) zurueck(); else V59().schliessen();
+      nachAenderung(datum);                                           // V9.1.1 kalender-direkt-1.0
     };
   };
 
@@ -770,11 +808,11 @@
         if (sl && +sl.value !== e.dauer) f = await aendern(mo, { art: "dauer", date: ds, uid, dauer: +sl.value });
         const nach = ov.querySelector("[data-mpnach]").value;
         if (!f && nach) f = await aendern(mo, { art: "verschieben", date: ds, uid, nach });
-        if (f) fehler(f); else if (zurueck) zurueck(); else V59().schliessen();
+        if (f) fehler(f); else nachAenderung(nach || ds);             // V9.1.1 kalender-direkt-1.0
       };
       ov.querySelector("[data-mpweg]").onclick = async () => {
         const f = await aendern(mo, { art: "entfernen", date: ds, uid });
-        if (f) fehler(f); else if (zurueck) zurueck(); else V59().schliessen();
+        if (f) fehler(f); else nachAenderung(ds);                     // V9.1.1 kalender-direkt-1.0
       };
     };
     if (e.quelle === "bibliothek" || !e.teile || !e.teile.length || e.teile[0][0] === "ohne") einfachBlatt(e, ds, extra, nachher);
@@ -800,7 +838,7 @@
     ov.querySelector("[data-mpz]").onclick = () => (zurueck ? zurueck() : V59().schliessen());
     ov.querySelectorAll("[data-mpsp]").forEach((b) => (b.onclick = () => vorlagenBlatt(ds, b.dataset.mpsp, zurueck)));
     // V7.7 aktivitaet-plan-1.0: Skitour, Wandern, Langlauf, Traillauf – eigenes Blatt (js/v77-ui.js), zurück hierher
-    ov.querySelectorAll("[data-akneu]").forEach((b) => (b.onclick = () => window.V77UI.blatt(ds, b.dataset.akneu, () => (zurueck ? zurueck() : V59().schliessen()))));
+    ov.querySelectorAll("[data-akneu]").forEach((b) => (b.onclick = () => window.V77UI.blatt(ds, b.dataset.akneu, () => (zurueck ? zurueck() : V59().schliessen()), () => nachAenderung(ds))));
   };
   function vorlagenBlatt(ds, sp, zurueck) {
     const W = V6(), x = tagVon(ds); if (!x) return;
@@ -858,7 +896,7 @@
       const sport = sp.replace("_drinnen", ""), dw = (sport === "rad" || sport === "lauf") && window.V75UI ? window.V75UI.drinnenFeld(sport, ds, drinnen) : (drinnen || null);
       const f = await aendern(montag(ds), { art: "hinzufuegen", date: ds, einheit: Object.assign({ vorlage: id, dauer: sl ? +sl.value : B.std }, dw != null ? { drinnen: dw } : {}) });
       if (f) { const p = ov.querySelector("[data-mpfehler]"); p.textContent = f; p.hidden = false; return; }
-      if (zurueck) zurueck(); else V59().schliessen();
+      nachAenderung(ds);                                              // V9.1.1 kalender-direkt-1.0
     };
   }
   function bibBlatt(ds, sp, zurueck) {
@@ -880,7 +918,7 @@
         const e = E.find((x) => String(x.wid) === b.dataset.mpw); if (!e) return;
         const f = await aendern(montag(ds), { art: "hinzufuegen", date: ds, einheit: { quelle: "bibliothek", wid: +e.wid, sport: basis, titel: e.titel, dauer: Math.max(5, Math.round(e.dauer_s / 60)) } });
         if (f) { const p = ov.querySelector("[data-mpfehler]"); p.textContent = f; p.hidden = false; return; }
-        if (zurueck) zurueck(); else V59().schliessen();
+        nachAenderung(ds);                                            // V9.1.1 kalender-direkt-1.0
       }));
     };
     ov.querySelector("[data-mpq]").oninput = (ev) => liste(ev.target.value); liste("");

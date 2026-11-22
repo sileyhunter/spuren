@@ -586,7 +586,10 @@
     if (f) { melden(f); return f; }
     if (a.art === "verschieben") Z.ds = a.nach;
     if (V59()._ovArt) V59().schliessen();
-    if (a.art === "entfernen") { M.schliessen(); return null; }
+    if (a.art === "entfernen") {                                   // V9.1.1 kalender-direkt-1.0: nach dem Entfernen gleich in den Kalender
+      if (U66() && U66().nachAenderung) { M.schliessen({ still: true }); U66().nachAenderung(ds); } else M.schliessen();
+      return null;
+    }
     zeichnen();
     if (ok) melden(ok, true);
     return null;

@@ -51,7 +51,8 @@
 
   /* ---------------- Blatt «Draussen planen» ---------------- */
   /** Blatt für Tag ds; art = vorgewählte Aktivität (ohne: die schon geplante oder Skitour); zurueck() führt zurück (z. B. «Training hinzufügen»). */
-  N.blatt = function (ds, art, zurueck) {
+  /** nach (V9.1.1 kalender-direkt-1.0, optional): wird nach dem Speichern oder Entfernen statt zurueck aufgerufen (z. B. gleich in den Kalender). */
+  N.blatt = function (ds, art, zurueck, nach) {
     if (!bereit() || (window.V66UI && window.V66UI.entwurfSperre && window.V66UI.entwurfSperre())) return;   // V7.9: speichert direkt – nicht im Bearbeiten-Modus
     const W = V6(), D = V77(), alt = N.am(ds);
     const w = { art: art || (alt && alt.art) || "skitour", min: alt ? alt.min : D.ARTEN[art || "skitour"].std, zone: alt ? alt.zone : "z2", uhrzeit: alt && alt.uhrzeit ? alt.uhrzeit : "", notiz: alt && alt.notiz ? alt.notiz : "" };
@@ -96,10 +97,10 @@
       const g = await N.speichern(e, alt);
       if (g) { fehler(g); return; }
       V59().schliessen();
-      if (zurueck) zurueck();
+      if (nach) nach(); else if (zurueck) zurueck();
     };
     const wb = q("[data-akweg]");
-    if (wb) wb.onclick = async () => { const g = await N.entfernen(ds); if (g) { fehler(g); return; } V59().schliessen(); if (zurueck) zurueck(); };
+    if (wb) wb.onclick = async () => { const g = await N.entfernen(ds); if (g) { fehler(g); return; } V59().schliessen(); if (nach) nach(); else if (zurueck) zurueck(); };
   };
   /** Speichern: Eintrag ins Gerät («Direkt speichern»); eine schon gespeicherte Woche gleich anpassen. → null oder Fehlertext. */
   N.speichern = async function (e, alt) {
