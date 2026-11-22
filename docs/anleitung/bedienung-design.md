@@ -101,3 +101,24 @@ Laufen nach Puls, Schwimmen Last pro Bewegungsstunde der letzten acht Wochen) si
 - **Bericht** (`#kal-bericht` im Kalenderkopf unter `#kal-meldung`, `.k4-bericht`): Kopfzeile «Woche neu geplant · KW · TL vorher → nachher · Stunden» mit ✕ zum Wegwischen, bis drei
   Zeilen (Rest in «Details»), «Fehlt: …» in Warnfarbe, Knöpfe «Rückgängig», «Mehr Zeit erlauben …», «Ausgleichen», «Details». Nicht im Bearbeiten-Modus (dort steht die fehlende
   Zeit in der Wochenkarte, `.k4-wkk-f`). Im Tagesblatt dieselbe Meldung unter der Verfügbarkeit (`.tb-vf-re`). Das Aussehen wie Enduco kommt mit Etappe W2.
+
+## V9.3 Woche wie Enduco – Aussehen (Auftrag «Woche wie Enduco» Etappe W2: woche-look-1.0, kugel-1.0; `js/v93.js`, Abschnitt am Ende von `css/v6.css`)
+- **Farben:** Zonen `--zc-…` aus dem Screenshot der Vorlage gemessen (Z1 #5445da, Z2 #5365f6, FatMax/Renntempo #82aff6, Z3 #5bbbd5, Sweet Spot/knapp unter LT2 #88e6e7, Z4 und CSS #88e1a7,
+  VO2max #f5c347, Neuro #d6533c); `js/v6.js` (`V6.ZONEN`) hat dieselben Vorgaben. Unsere Bausteine fallen so auf die Farben der Vorlage: Z1/Lauf-ABC → Z1, Z2 → Z2, Renntempo → Z2 hell,
+  Z3 → Z3, knapp unter LT2 → Z3 hell, CSS → Z4, VO2max → Z5 gelb (Festlegung in `V64.FARBE`, unverändert). Woche: `--wk-seite`, `--wk-panel` (#161617), `--wk-pille` (#27292d),
+  `--wk-umriss`, `--wk-griff` (#4d4d4d), `--wk-text`/`--wk-text2` (#b2b2b2), `--wk-x` (#484b52), `--wk-ok`, `--wk-fab`, `--wk-tl` (#6d70dd), `--wk-tl-ber` (#3d3f42), `--wk-band` (#95e39c),
+  `--wk-leer` (#42331a); hell mit eigenen Werten.
+- **Kugel (kugel-1.0, `V93.kugel`):** Teile ohne Einfahren und Auslaufen (erster/letzter Teil, wenn locker und mindestens drei Teile) und ohne Pausen; je Zone ein senkrechter Streifen,
+  links die höchste (Rang rot · gelb · grün · türkis · cyan · hellblau · blau · lila), Breite = Zeitanteil, mindestens 20 %, höchstens vier; nur Pausen → Zone des längsten Teils.
+  Absolvierte Aktivität ohne Plan: graue Kugel; Test ohne Ziel: Ring.
+- **Raster (`V78UI`):** sieben Spalten; Woche des gewählten Tags in einer Pille (`.k4-r-w.sel::before`); Tagespille `.k4-r-p` (vergangen `.voll`, sonst Umriss), weisse Symbole
+  (je Einheit, höchstens zwei), Kugeln (höchstens drei); freier Tag `kalenderfrei`. Zustand: gesperrt = Schloss in der Pille, von Hand = Strich unter der Zahl (`.k4-r-t.hand`).
+- **Liste:** Wochenleiste und Wochenkopf «Phase | Wochenart» + Zeitraum (Stunden/TL ≈ im Tooltip, im Zyklus und in der Wochenkarte); Tageskopf mit Punkt (gewählter Tag), Zahl ab zwei
+  Einträgen (`V93.anzahl`), gesetzte Zeit in Grau (`.k4-hand`), kleiner weisser «…»; Einheit: Titelzeile über die ganze Breite, darunter Zahlen (`V93.zeile`, Klasse `.k4-ez`) und Profil
+  (120 pt, Höhe h' = 0,35 + 0,65 × h); Quelle nur im Tagesblatt. Dauer bleibt «1:30 h» / «45 min» (V6.6 Teil 0).
+- **Bearbeiten:** Reihenfolge Kopf-Panel (Wochenkarte), Raster, Griff mit ✕/✓ (`#kal-ebar`, CSS `order`), Liste; Werkzeugleiste aus. Wochenkarte: zwei Spalten (`.k4-wkk-g`), Verlauf
+  locker → Z3–Z5 über `--lo`, Zonengruppen `.k4-zg` (leer abgedunkelt), TL-Balken mit Bereich, Statuskurve `.k4-sk` (Ende jedes Tags aus `V66UI.formReihe`, Band 0,8–1,3).
+  Mini-Balken am Tag: `V93.balkenAnteil` (Status ÷ 2,1).
+- **Tagesblatt:** `#v59-ov[data-art="tag"]` – Titel mittig, Kennzahlen-Kachel drei Spalten (Form darunter), Zeilen mit Haarlinien, Sportart-Pille weiss.
+- Regel ändern = Version in `V93.VERSIONS` und `tests/test_v93.cjs` nachführen. Offen (W2c): Zyklus, Monat, Heute, Plan im selben Look – erst nach Silas' Okay.
+

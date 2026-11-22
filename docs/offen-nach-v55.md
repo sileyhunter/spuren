@@ -367,3 +367,13 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
      Montag danach ohne harte Einheit an Land; Läufe im Aufbau-Fenster). **Silas bitte prüfen:** eine harte Einheit auf den Sonntag legen → der Bericht nennt «Nächste Woche: …».
      Nicht nachgeholt wird fehlende Last (eigene Festlegung). Offen, falls gewünscht: wie Enduco die Folgewoche bei weniger Zeit ändert (Silas bietet ein Video an).
 
+## Nach V9.3 (22.11.2026, «Woche wie Enduco» W2: Aussehen)
+143. **Aussehen wie Enduco (woche-look-1.0, kugel-1.0):** Raster, Liste, Bearbeiten und Tagesblatt nach den Screenshots. **Silas bitte prüfen:** (a) Kalender-Liste neben Enduco:
+     Pillen mit weissen Symbolen und Kugeln, Tageskopf, Einheitszeilen; (b) Bearbeiten: Kopf-Panel, ✕/✓, ✨ ↶ ↷; (c) Tagesblatt; (d) helles Thema. Was noch anders aussieht: bitte mit
+     Screenshot melden.
+144. **W2c offen:** Zyklus, Monat, Heute und Plan im selben Look – erst nach Silas' Okay (Auftrag). Die Screenshots (Analyse, Profil, Planeinstellungen, Training planen) liegen vor.
+145. **Zustand im Raster und in der Liste (schlichte Fassung):** In den Screenshots kommt kein gesperrter oder von Hand verkürzter Tag in Leiste und Liste vor. Gebaut: Schloss in der Pille,
+     Strich unter der Zahl und gesetzte Zeit in Grau. Mit einem Enduco-Screenshot eines solchen Tags gleicht Claude ab.
+146. **Bewusst anders als Enduco:** Minuten als «45 min» statt «45m» (V6.6 Teil 0: «56m» las sich beim Schwimmen wie Meter), eigene Texte und Symbole, keine Kartenbilder und kein
+     «52 %»-Abzeichen bei absolvierten Einheiten (dafür fehlen der Seite die Daten bzw. das wäre eine eigene Etappe).
+

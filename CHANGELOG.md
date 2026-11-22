@@ -1,5 +1,27 @@
 # Änderungen
 
+## V9.3 · 22.11.2026 · «Woche wie Enduco» Etappe W2: Aussehen (woche-look-1.0, kugel-1.0)
+Auftrag `docs/auftrag-enduco-woche.md`, Etappe W2 (W2a und W2b in einer Sitzung) nach Silas' Enduco-Screenshots vom 22.11.2026. Neues Modul `js/v93.js` (`V93`, ohne DOM),
+Test `tests/test_v93.cjs` (9 Tests). Nur Aussehen, keine Rechenlogik.
+- **Raster:** sieben Spalten (die Wochenspalte mit dem Kalender-Symbol entfällt – der Zyklus bleibt über ◎ erreichbar); die Woche des gewählten Tags liegt in einer dunklen Pille;
+  heute orange, gewählter Tag weiss mit schwarzer Zahl; je Tag eine Pille mit **weissen** Sportsymbolen (je Einheit eines, höchstens zwei) und je Einheit einer **Kugel**;
+  vergangene Tage gefüllt, kommende mit Umriss; freier Tag = Kalender-✕ ohne Pille. Monat, Wochentage und Raster auf einem Panel (unten gerundet).
+- **Kugel (kugel-1.0):** senkrechte Streifen je Zone des Hauptteils (Einfahren, Auslaufen und Pausen zählen nicht), links die höchste, Breite = Zeitanteil, mindestens 20 %,
+  höchstens vier Streifen (`V93.kugel`, `V93.kugelStil`).
+- **Liste:** Wochenleiste «Phase | Wochenart» mit Zeitraum (Stunden und TL ≈ stehen im Zyklus und in der Wochenkarte); Tageskopf «• Wochentag, 12. Nov.» (Punkt = gewählter Tag,
+  heute orange), rechts die Zahl der Einträge ab zwei und ein kleiner weisser «…»-Knopf; Einheit mit Schloss und weissem Symbol vor dem Titel, darunter Dauer, Distanz ≈ und
+  TL ≈ mit Abstand (ohne «Vorschlag» – die Quelle steht im Tagesblatt), rechts das Profil (120 pt, flacher abgestuft wie die Vorlage; vorher eine dünne Linie, weil die Höhe
+  fehlte); «Kein Training» bzw. «Ruhetag» mit Kreis-Symbol.
+- **Bearbeiten:** Kopf-Panel in zwei Spalten (locker · Z3–Z5 mit Verlauf und Strichmarke, Zonen als Gruppen Z1–Z5, TL ≈ gegen den Bereich, Status je Tag als Kurve mit grünem Band
+  «üblich» 0,8–1,3); darunter Griff mit ✕ und ✓; Tageskopf mit Status und Mini-Balken (Füllung = Status ÷ 2,1); schwebend ✨ links, ↶ ↷ rechts (56 × 56, Radius 16).
+- **Tagesblatt:** Titel mittig, Kennzahlen-Kachel Fitness · Ermüdung · Status (Form darunter), Zeilen mit Haarlinien, Sportart-Pille weiss.
+- **Zustand eines Tages:** gesperrt = Schloss in der Pille und am Tagesnamen; von Hand gesetzt = Strich unter der Zahl im Raster und die gesetzte Zeit in Grau am Tageskopf
+  (schlichte Fassung – die Screenshots zeigen keinen gesperrten oder von Hand verkürzten Tag in Leiste und Liste).
+- **Farben:** Zonen auf die gemessenen Werte (Z1 #5445da, Z2 #5365f6/#82aff6, Z3 #5bbbd5/#88e6e7, Z4 #88e1a7, Z5 #f5c347/#d6533c; überall dieselbe Zone = dieselbe Farbe), dazu
+  `--wk-…` für Seite, Panel, Pillen, Griff, Text, ✕, ✓, TL, Band (dunkel und hell). Neue Symbole `kalenderfrei`, `mond` (`js/v6.js`). `js/v59.js`: Blatt trägt `data-art`.
+- **Bewusst nicht übernommen:** «54m» für Minuten (V6.6 Teil 0: nie «m» für Minuten), Enduco-Texte und -Symbole, Kartenbild und «52 %»-Abzeichen bei absolvierten Einheiten.
+- `sw.js` Cache `notebook-v93-woche-look-2026-11-22`, `index.html`, `tests/sim/umgebung.cjs`, Demo nachgeführt; Playwright-Bilder (dunkel und hell, 390 × 844) ohne Fehler.
+
 ## V9.2.1 · 22.11.2026 · Folgewoche (umplanen-1.1)
 Silas' Wunsch vom 22.11.2026 (nach V9.2): Ändert er die Zeit eines Tages, soll auch die Woche danach angepasst werden, «wenn es einen Einfluss hat».
 - **Der Sonntag davor bindet den Montag:** `V66.verteilen` kennt den letzten Tag der Woche davor (`opt.vorher`). Steht dort eine harte Einheit an Land, ein

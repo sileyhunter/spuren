@@ -12,18 +12,18 @@
 
   /* ---------------- Zonen: eine Zone, eine Farbe (Werte wie --zc-… in css/v6.css) ---------------- */
   V6.ZONEN = {
-    z1: { kurz: "Z1", name: "Erholung", farbe: "#5a49e2", stufe: 1, css: "--zc-z1" },
-    z2: { kurz: "Z2", name: "Grundlage", farbe: "#4f69f8", stufe: 2, css: "--zc-z2" },
-    fatmax: { kurz: "Z2", name: "FatMax", farbe: "#7ab4fa", stufe: 2.5, css: "--zc-fatmax" },
-    z3: { kurz: "Z3", name: "Tempo", farbe: "#27bdd8", stufe: 3, css: "--zc-z3" },
-    sweet: { kurz: "Z3", name: "Sweet Spot", farbe: "#69e4e6", stufe: 3.5, css: "--zc-sweet" },
-    z4: { kurz: "Z4", name: "Schwelle", farbe: "#6ce0a4", stufe: 4, css: "--zc-z4" },
-    z5: { kurz: "Z5", name: "Intensiv", farbe: "#fdc22b", stufe: 5, css: "--zc-z5" },
-    vo2: { kurz: "Z5", name: "VO2max", farbe: "#fdc22b", stufe: 5, css: "--zc-z5" },
+    z1: { kurz: "Z1", name: "Erholung", farbe: "#5445da", stufe: 1, css: "--zc-z1" },
+    z2: { kurz: "Z2", name: "Grundlage", farbe: "#5365f6", stufe: 2, css: "--zc-z2" },
+    fatmax: { kurz: "Z2", name: "FatMax", farbe: "#82aff6", stufe: 2.5, css: "--zc-fatmax" },
+    z3: { kurz: "Z3", name: "Tempo", farbe: "#5bbbd5", stufe: 3, css: "--zc-z3" },
+    sweet: { kurz: "Z3", name: "Sweet Spot", farbe: "#88e6e7", stufe: 3.5, css: "--zc-sweet" },
+    z4: { kurz: "Z4", name: "Schwelle", farbe: "#88e1a7", stufe: 4, css: "--zc-z4" },
+    z5: { kurz: "Z5", name: "Intensiv", farbe: "#f5c347", stufe: 5, css: "--zc-z5" },
+    vo2: { kurz: "Z5", name: "VO2max", farbe: "#f5c347", stufe: 5, css: "--zc-z5" },
     anaerob: { kurz: "Z5", name: "Anaerob", farbe: "#f9a71a", stufe: 5.3, css: "--zc-anaerob" },
-    neuro: { kurz: "Z5", name: "Neuro", farbe: "#d6573f", stufe: 5.5, css: "--zc-neuro" },
+    neuro: { kurz: "Z5", name: "Neuro", farbe: "#d6533c", stufe: 5.5, css: "--zc-neuro" },
     sprint: { kurz: "Z5", name: "Sprint", farbe: "#dc3f8d", stufe: 5.7, css: "--zc-sprint" },
-    pause: { kurz: "", name: "Pause", farbe: "#5a49e2", stufe: 0.5, css: "--zc-z1" },
+    pause: { kurz: "", name: "Pause", farbe: "#5445da", stufe: 0.5, css: "--zc-z1" },
     offen: { kurz: "", name: "ohne Ziel", farbe: "#6e6e74", stufe: 0, css: "--zc-offen" },
   };
   /** Farben einmal aus den CSS-Variablen lesen (Design ändert sie an einer Stelle). */
@@ -337,6 +337,9 @@
     leiter: '<path d="M8 3.5v17M16 3.5v17M8 8h8M8 12.5h8M8 17h8"/>',
     technik: '<path d="M4 17.5c2.6-6.4 6-9.5 10-9.5 2.3 0 4.2 1.2 5.6 3"/><path d="m20.3 7.2-.6 4-3.9-.9"/><circle cx="6.5" cy="7" r="1.6"/>',
     uhr: '<circle cx="12" cy="13" r="7.5"/><path d="M12 9v4l2.6 1.6M9.5 3h5M12 3v2.5"/>',
+    // V9.3 woche-look-1.0: freier Tag im Raster (Kalender mit Kreuz) und Ruhetag in der Liste
+    kalenderfrei: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4M9.5 12.5l5 5M14.5 12.5l-5 5"/>',
+    mond: '<path d="M19 14.5A7.5 7.5 0 1 1 9.5 5a6 6 0 0 0 9.5 9.5z"/>',
     herz: '<path d="M12 20s-7.5-4.5-7.5-10.1A4.2 4.2 0 0 1 12 7.3a4.2 4.2 0 0 1 7.5 2.6C19.5 15.5 12 20 12 20z"/>',
     tacho: '<path d="M4.5 16.5a7.5 7.5 0 1 1 15 0"/><path d="m12 16.5 3.4-4.8M7 16.5h.5M16.5 16.5h.5"/>',
     draussen: '<path d="m2.5 19.5 6.5-11 4.2 7 2.3-3.5 6 7.5z"/><circle cx="17.5" cy="5.5" r="2"/>',

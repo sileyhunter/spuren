@@ -268,7 +268,7 @@
     if (m.vorher && m.vorher !== document.body && document.contains(m.vorher) && typeof m.vorher.focus === "function") { try { m.vorher.focus({ preventScroll: true }); } catch (e) {} }
   };
   function oeffne(art, html) {
-    const ov = $("v59-ov"); V._ovArt = art;
+    const ov = $("v59-ov"); V._ovArt = art; ov.dataset.art = String(art || "");   // V9.3: Aussehen je Blatt (z. B. Tagesblatt)
     ov.innerHTML = `<div class="te-box" role="dialog" aria-modal="true" aria-labelledby="v59-ov-h">${html}</div>`;
     ov.hidden = false; document.body.classList.add("noscroll"); V.modalAuf(ov);
     ov.querySelectorAll("[data-x]").forEach((b) => (b.onclick = V.schliessen));

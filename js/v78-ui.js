@@ -51,20 +51,48 @@
     return lang && Z[lang[0]] ? Z[lang[0]].farbe : "var(--muted)";
   }
 
+  /** V9.3 kugel-1.0: Kugel einer Einheit – senkrechte Streifen je Zone des Hauptteils (V93.kugel), links die höchste. */
+  function kugelHTML(e) {
+    const V = window.V93, Z = V6().ZONEN || {};
+    let st = "";
+    try { const S = V ? V.kugel(e.teile, window.V64 ? window.V64.FARBE : null) : []; st = S.length ? V.kugelStil(S, (z) => (Z[z] ? Z[z].farbe : null)) : ""; } catch (err) { st = ""; }
+    return `<i class="k4-kugel" style="background:${st || zonenFarbe(e)}"></i>`;
+  }
+  /** V9.3 woche-look-1.0: Zustand eines Tages (Standard · von Hand gesetzt · gesperrt) wie in «Woche einstellen» (V92.zustand). */
+  function zustandVon(d, w) {
+    if (!d || d.ds < heute()) return "standard";
+    if (d.t && d.t.gesperrt) return "gesperrt";
+    try { return window.V92 && w && w.K ? (window.V92.zustand(w.K.verf, d.ds, null) === "hand" ? "hand" : "standard") : "standard"; } catch (e) { return "standard"; }
+  }
+  /** Zeit, die an einem von Hand gesetzten Tag gilt («1:30 h», «kein Training», «offen»). */
+  function handZeit(d) {
+    const v = d && d.v; if (!v) return "";
+    if (v.min === 0 || (Array.isArray(v.sport) && !v.sport.length)) return "kein Training";
+    return v.min == null ? "offen" : v.min >= 60 ? `${Math.floor(v.min / 60)}:${String(v.min % 60).padStart(2, "0")} h` : `${v.min} min`;
+  }
+
   /* ---------------- Raster ---------------- */
   function rasterHTML() {
     const W = V6(), h = heute(), R = ST.edit ? V78().raster(V78().montag(ST.sel) < ST.editMo ? ST.editMo : V78().montag(ST.sel), 1) : ST.offen ? V78().monatsRaster(ST.sel) : V78().raster(ST.sel, 2), mon = new Date(ST.sel + "T12:00:00Z").getUTCMonth();
-    const kopf = `<div class="k4-r-kw"></div>${WT.map((t) => `<div class="k4-r-wt">${t}</div>`).join("")}`;
-    const zeilen = R.map((wk) => `<button type="button" class="k4-r-kw" data-k4kw="${wk.montag}" aria-label="KW ${W.isoWoche(wk.montag)}: Woche im Zyklus öffnen">${W.icon("kalender", 15)}</button>` + wk.tage.map((ds) => {
+    // V9.3 woche-look-1.0 (Vorlage): sieben Spalten, die Woche des gewählten Tags in einer dunklen Pille; je Tag eine Pille mit weissen Sportsymbolen
+    // (je Einheit eines, höchstens zwei) und je Einheit einer Kugel; vergangene Tage gefüllt, kommende mit Umriss; freier Tag = Kalender-✕ ohne Pille
+    const kopf = `<div class="k4-r-kopf">${WT.map((t) => `<div class="k4-r-wt">${t}</div>`).join("")}</div>`, selMo = V78().montag(ST.sel);
+    const zeilen = R.map((wk) => `<div class="k4-r-w${wk.montag === selMo ? " sel" : ""}" data-k4rw="${wk.montag}">` + wk.tage.map((ds) => {
       let d = null; try { d = tagDaten(ds); } catch (e) { d = null; }
-      const sp = []; if (d) { for (const a of d.akt) { const s = V6().sportVon ? V6().sportVon(a) : a.sport; if (!sp.includes(s)) sp.push(s); } for (const e of d.plan) if (!sp.includes(e.sport)) sp.push(e.sport); }
-      const pkt = d ? d.plan.slice(0, 4).map((e) => `<i style="background:${zonenFarbe(e)}"></i>`).join("") : "";
-      const leer = d && !sp.length && !(d.tests || []).length && !d.rennen;
+      const syms = [], kug = [];
+      if (d) {
+        for (const a of d.akt) { if (d.Z && d.Z.von && d.Z.von.has(a.id)) continue; syms.push(V6().sportVon ? V6().sportVon(a) : a.sport); kug.push(`<i class="k4-kugel ist"></i>`); }
+        for (const e of d.plan) { syms.push(e.sport); kug.push(kugelHTML(e)); }
+      }
+      const leer = d && !syms.length && !(d.tests || []).length && !d.rennen;
       const aus = ST.offen && new Date(ds + "T12:00:00Z").getUTCMonth() !== mon;
-      return `<button type="button" class="k4-r-t${ds === h ? " heute" : ""}${ds === ST.sel ? " sel" : ""}${aus ? " aus" : ""}" data-k4r="${ds}" aria-label="${esc(V78().tagText(ds))}">
-        <span class="k4-r-d">${+ds.slice(8)}</span>${d && d.rennen ? `<span class="k4-r-p renn">${W.icon("flagge", 12)}</span>` : sp.length ? `<span class="k4-r-p">${sp.slice(0, 2).map((s) => `<i style="--sp:${SPF(s)}">${W.sportIcon(s, 11)}</i>`).join("")}</span>` : `<span class="k4-r-p leer">${leer ? "·" : ""}</span>`}
-        <span class="k4-r-z">${pkt}${d && d.tests.length ? `<i class="test"></i>` : ""}</span></button>`;
-    }).join("")).join("");
+      const zs = d ? zustandVon(d, woche(V78().montag(ds))) : "standard";
+      const pille = d && d.rennen ? `<span class="k4-r-p renn">${W.icon("flagge", 13)}</span>`
+        : syms.length || (d && d.tests.length) ? `<span class="k4-r-p${ds < h ? " voll" : ""}${zs === "gesperrt" ? " gesp" : ""}">${zs === "gesperrt" ? `<i class="k4-r-lock">${W.icon("schloss", 10)}</i>` : ""}${syms.slice(0, 2).map((x) => `<i class="k4-r-ic">${W.sportIcon(x, 13)}</i>`).join("")}<span class="k4-r-k">${kug.slice(0, 3).join("")}${d && d.tests.length ? `<i class="k4-kugel test"></i>` : ""}</span></span>`
+        : `<span class="k4-r-frei${leer ? "" : " leer"}"${zs === "hand" ? ` title="von Hand gesetzt"` : ""}>${leer ? W.icon("kalenderfrei", 17) : ""}</span>`;
+      return `<button type="button" class="k4-r-t${ds === h ? " heute" : ""}${ds === ST.sel ? " sel" : ""}${aus ? " aus" : ""}${zs === "hand" ? " hand" : ""}" data-k4r="${ds}" aria-label="${esc(V78().tagText(ds))}${zs === "gesperrt" ? ", gesperrt" : zs === "hand" ? ", Zeit von Hand gesetzt" : ""}">
+        <span class="k4-r-d">${+ds.slice(8)}</span>${pille}</button>`;
+    }).join("") + `</div>`).join("");
     return `<div class="k4-r-gitter" role="group" aria-label="Kalender">${kopf}${zeilen}</div>`;
   }
   /** kalender-4.1: Griff in der Leiste unter dem Raster (wie die Vorlage), sonst unter dem Raster. */
@@ -85,7 +113,8 @@
     const el = document.getElementById("kal-wbar"); if (!el || el.hidden || ST.edit) return;
     const mo = V78().montag(ds), w = woche(mo), Z = wochenZahlen(w, heute());
     const titel = V78().wochenTitel(w.K && w.K.w ? w.K.w.phase : null, w.kopf ? w.kopf.art : null);
-    el.innerHTML = `<b>${esc(titel)}</b><span class="k4-wbar-z">${Z ? `<span title="${esc(Z.was)}">${esc(Z.h)} ${V6().icon("uhr", 13)}</span><span title="TL ≈ ${esc(Z.was)}">${esc(Z.tl)} ${V6().icon("funken", 13)}</span>` : ""}<small>${esc(V78().bereichText(mo))}</small></span>`;
+    // V9.3 woche-look-1.0: wie die Vorlage «Phase | Wochenart» und der Zeitraum; Stunden und TL ≈ stehen im Zyklus und in der Wochenkarte
+    el.innerHTML = `<b>${esc(titel)}</b><span class="k4-wbar-z"${Z ? ` title="${esc(`${Z.h} · TL ≈ ${Z.tl} (${Z.was})`)}"` : ""}><span>${esc(V78().bereichText(mo))}</span></span>`;
   }
 
   /* ---------------- Liste ---------------- */
@@ -95,10 +124,16 @@
   function einheitHTML(e, d, w, erl) {
     const W = V6(), S = V66().schaetzung(e, w.bz);
     const q = e.kraft_plan ? "Krafttraining" : e.art === "draussen" ? "draussen" : e.quelle === "eigen" ? "eigen" : e.quelle === "bibliothek" ? "Bibliothek" : "Vorschlag";
-    let prof = ""; try { prof = e.teile && e.teile.length && e.teile[0][0] !== "ohne" && P().profil ? W.profilSVG(P().profil(e), { h: 32 }) : ""; } catch (err) { prof = ""; }
-    const inhalt = `<span class="mo-sp" style="--sp:${SPF(e.sport)}">${W.sportIcon(e.sport, 16)}</span>
-      <span class="k4-et"><b>${e.gesperrt ? `<span class="mp-schloss">${W.icon("schloss", 12)}</span>` : ""}${esc(e.titel)}${erl ? ` <span class="k4-haken" title="erledigt">${W.icon("haken", 13)}</span>` : ""}</b>
-        <small>${esc([e.uhrzeit, V78().zeile(e.dauer, S)].filter(Boolean).join(" · "))} · <span class="k4-q">${esc(q)}</span></small></span>`;
+    let prof = ""; try {
+      // V9.3 woche-look-1.0: in der Liste flacher abgestuft wie die Vorlage (lockere Teile nicht als dünne Linie): h' = 0,35 + 0,65 × h
+      const pr = e.teile && e.teile.length && e.teile[0][0] !== "ohne" && P().profil ? P().profil(e) : null;
+      prof = pr ? W.profilSVG(Object.assign({}, pr, { balken: pr.balken.map((b) => Object.assign({}, b, { h: 0.35 + 0.65 * b.h })) }), { h: 28 }) : "";
+    } catch (err) { prof = ""; }
+    // V9.3 woche-look-1.0: Schloss und weisses Sportsymbol vor dem Titel, darunter Dauer, Distanz ≈ und TL ≈ mit Abstand; die Quelle steht im Tagesblatt
+    const dt = isNum(e.dauer) ? (e.dauer >= 60 ? `${Math.floor(e.dauer / 60)}:${String(Math.round(e.dauer % 60)).padStart(2, "0")} h` : `${Math.round(e.dauer)} min`) : "";
+    const Z = window.V93 ? window.V93.zeile(dt, S && S.km, S && S.tl, { uhrzeit: e.uhrzeit }) : [V78().zeile(e.dauer, S)];
+    const inhalt = `<span class="k4-et"><b>${e.gesperrt ? `<span class="mp-schloss">${W.icon("schloss", 13)}</span>` : ""}<span class="k4-ic" aria-hidden="true">${W.sportIcon(e.sport, 17)}</span>${esc(e.titel)}${erl ? ` <span class="k4-haken" title="erledigt">${W.icon("haken", 13)}</span>` : ""}</b>
+        <small class="k4-ez">${Z.map((x) => `<span>${esc(x)}</span>`).join("")}<span class="k4-q">${esc(q)}</span></small></span>`;
     if (ST.edit && d.ds >= heute() && !(d.t && d.t.gesperrt) && !(e.ampel && e.ampel.nachgeholt)) {
       const zieh = beweglich(e, d);
       return `<div class="k4-e k4-e-ed${e.gesperrt ? " gesperrt" : ""}" data-k4e="${esc(e.uid)}" data-k4d="${d.ds}">
@@ -111,8 +146,8 @@
   }
   function tagHTML(d, w) {
     const W = V6(), h = heute(), sek = (a) => (isNum(a.mv) ? a.mv : a.dur || 0);
-    const akt = d.akt.map((a) => `<button type="button" class="k4-e ist" data-ex="${esc(a.id)}"><span class="mo-sp voll" style="--sp:${SPF(V6().sportVon ? V6().sportVon(a) : a.sport)}">${W.sportIcon(V6().sportVon ? V6().sportVon(a) : a.sport, 16)}</span>
-      <span class="k4-et"><b>${esc(a.name || "Aktivität")} <span class="k4-haken">${W.icon("haken", 13)}</span></b><small>${esc([W.dauerText(sek(a)), isNum(a.km) && a.km > 0 ? `${String(Math.round(a.km * 10) / 10).replace(".", ",")} km` : null, isNum(a.tss) && a.tss > 0 ? `TL ${Math.round(a.tss)}` : null].filter(Boolean).join(" · "))} · <span class="k4-q">absolviert${d.Z && d.Z.von.get(a.id) ? ` · Passt zu: ${esc(d.Z.von.get(a.id).titel)}` : ""}</span></small></span></button>`).join("");
+    const akt = d.akt.map((a) => `<button type="button" class="k4-e ist" data-ex="${esc(a.id)}">
+      <span class="k4-et"><b><span class="k4-ic" aria-hidden="true">${W.sportIcon(V6().sportVon ? V6().sportVon(a) : a.sport, 17)}</span>${esc(a.name || "Aktivität")} <span class="k4-haken">${W.icon("haken", 13)}</span></b><small>${esc([W.dauerText(sek(a)), isNum(a.km) && a.km > 0 ? `${String(Math.round(a.km * 10) / 10).replace(".", ",")} km` : null, isNum(a.tss) && a.tss > 0 ? `TL ${Math.round(a.tss)}` : null].filter(Boolean).join(" · "))} · <span class="k4-q">absolviert${d.Z && d.Z.von.get(a.id) ? ` · Passt zu: ${esc(d.Z.von.get(a.id).titel)}` : ""}</span></small></span></button>`).join("");
     // V9.1: zugeordnete Einheiten stehen nicht mehr daneben (nur im Bearbeiten-Modus, wo sie gezogen oder gesperrt werden)
     const sichtbar = d.plan.map((e, i) => ({ e, i })).filter((x) => ST.edit || !d.erl[x.i]);
     const plan = sichtbar.map((x) => einheitHTML(x.e, d, w, d.erl[x.i])).join("");
@@ -120,18 +155,21 @@
     const tests = d.plan.some((e) => e.art === "test" || e.test) ? "" : d.tests.map((x) => `<p class="k4-zeile test"><i class="c-test"></i>${esc(NAME[x.kind] || x.kind)}${x.done ? " ✓" : x.status === "vorschlag" ? " · Vorschlag" : ""}</p>`).join("");
     const renn = d.rennen ? `<p class="k4-zeile renn">${W.icon("flagge", 15)} ${esc(d.rennen.name || "Rennen")}</p>` : "";
     const L = !akt && !plan && !tests && !renn ? V78().leer(d.v, d.ds < h) : null;
-    const leer = L ? `<p class="k4-zeile ${L.art}">${L.art === "kein" ? "✕" : L.art === "ruhe" ? "☾" : "–"} ${esc(L.text)}</p>` : "";
+    const leer = L ? `<p class="k4-zeile k4-frei ${L.art}"><span class="k4-frei-x" aria-hidden="true">${L.art === "ruhe" ? W.icon("mond", 15) : W.icon("schliessen", 15)}</span>${esc(L.text)}</p>` : "";
     const n = sichtbar.length + d.akt.length;
     const amp = window.V74UI && w.gilt && d.t ? window.V74UI.kurz(d.t) : "";
     const gesp = !!(d.t && d.t.gesperrt);
-    let rechts = n ? `<small>${n} ${n === 1 ? "Einheit" : "Einheiten"}</small>` : "";
+    const zs = zustandVon(d, w), anz = window.V93 ? window.V93.anzahl(n) : n > 1 ? String(n) : "";
+    const hand = zs === "hand" ? `<small class="k4-hand" title="Zeit von Hand gesetzt">${W.icon("uhr", 12)}${esc(handZeit(d))}</small>` : "";
+    let rechts = `${hand}${anz ? `<span class="k4-anz" aria-label="${n} Einträge">${anz}</span>` : ""}`;
     if (ST.edit) {                                                             // V7.9 bearbeiten-1.0: Trainingsstatus je Tag (zu Tagesbeginn) und Tag sperren
       const f = ST.form ? ST.form.get(d.ds) : null, ts = f ? V78().status(f.fitness, f.ermuedung) : null, stu = V78().stufe(ts);
-      rechts = `${ts != null ? `<span class="k4-st" title="Trainingsstatus zu Tagesbeginn (Ermüdung ÷ Fitness)">${f.prognose ? "≈ " : ""}${String(ts).replace(".", ",")}<i class="k4-st-b k4-st-${stu.k}" aria-hidden="true"><i style="width:${Math.round(stu.anteil * 100)}%"></i></i></span>` : ""}
+      const bal = window.V93 ? window.V93.balkenAnteil(ts) : stu ? stu.anteil : 0;
+      rechts = `${hand}${ts != null ? `<span class="k4-st" title="Trainingsstatus zu Tagesbeginn (Ermüdung ÷ Fitness)">${f.prognose ? "≈ " : ""}${String(ts).replace(".", ",")}<i class="k4-st-b k4-st-${stu.k}" aria-hidden="true"><i style="width:${Math.round(bal * 100)}%"></i></i></span>` : ""}
         ${d.ds >= h && !d.rennen ? `<button type="button" class="btn rp-ib k4-tlock" data-k4tlock="${d.ds}" aria-pressed="${gesp}" aria-label="${esc(V78().tagText(d.ds))}: ${gesp ? "entsperren" : "Tag sperren"}">${W.icon("schloss", 16)}</button>` : ""}`;
     }
     return `<div class="k4-tag${d.ds === h ? " heute" : ""}${d.ds < h ? " vorbei" : ""}${gesp ? " gesperrt" : ""}" id="k4-${d.ds}" data-k4tag="${d.ds}">
-      <div class="k4-tk"><b>${esc(V78().tagText(d.ds))}${d.ds === h ? ` <span class="k4-heute">heute</span>` : ""}${gesp && !ST.edit ? ` ${W.icon("schloss", 12)}` : ""}</b>
+      <div class="k4-tk"><b>${d.ds === ST.sel ? `<i class="k4-punkt" aria-hidden="true"></i>` : ""}${esc(V78().tagText(d.ds))}${d.ds === h ? ` <span class="k4-heute sr-only">heute</span>` : ""}${gesp && !ST.edit ? ` <span class="k4-tlk" title="Tag gesperrt">${W.icon("schloss", 13)}</span>` : ""}</b>
         <span>${rechts}<button type="button" class="btn rp-ib k4-mehr" data-k4blatt="${d.ds}" aria-label="${esc(V78().tagText(d.ds))}: Tagesblatt öffnen">${W.icon("mehr", 18)}</button></span></div>
       ${amp}${renn}${akt}${plan}${tests}${leer}</div>`;
   }
@@ -141,7 +179,7 @@
     const zahlen = k ? [w.gilt && k.planMin ? `Plan ${hm(k.planMin)}` : null, w.gilt && k.planTl ? `TL ≈ ${k.tlOffen ? "mind. " : ""}${k.planTl}` : null, k.istMin ? `absolviert ${hm(k.istMin)}` : null].filter(Boolean).join(" · ") : "";
     const tage = Array.from({ length: 7 }, (_, i) => tagHTML(w.tage.get(add(mo, i)), w)).join("");
     return `<section class="k4-woche" data-k4mo="${mo}">
-      <div class="k4-wk"><div><b>${esc(titel)}</b>${w.K && w.K.w && w.K.w.bearbeitet ? `<small> · bearbeitet</small>` : ""}<span>KW ${W.isoWoche(mo)} · ${esc(V78().bereichText(mo))}</span>${zahlen ? `<small>${esc(zahlen)}</small>` : ""}</div>
+      <div class="k4-wk"><div><b>${esc(titel)}</b><span title="${esc(zahlen)}">${esc(V78().bereichText(mo))}</span></div>
         ${mo >= V78().montag(heute()) ? `<button type="button" class="btn rp-ib" data-k4wakt="${mo}" aria-label="KW ${W.isoWoche(mo)} bearbeiten">${W.icon("mehr", 20)}</button>` : ""}</div>
       ${w.gilt ? "" : `<p class="hint">Für diese Woche war kein eigener Plan gespeichert – gezeigt wird, was du absolviert hast.</p>`}${tage}</section>`;
   }
@@ -302,7 +340,7 @@
     bar.querySelector("[data-k4ex]").onclick = abbrechen;
     bar.querySelector("[data-k4eok]").onclick = speichern;
     karte.innerHTML = wochenKarte(mo);
-    fab.innerHTML = `<button type="button" class="btn k4-fab-a" data-k4anp>${W.icon("funken", 18)} Woche anpassen</button>
+    fab.innerHTML = `<button type="button" class="btn rp-ib k4-fab-a" data-k4anp aria-label="Woche anpassen" title="Woche anpassen">${W.icon("funken", 22)}</button>
       <button type="button" class="btn rp-ib" data-k4zur aria-label="Rückgängig"${E && E.kannZurueck() ? "" : " disabled"}>${W.icon("rueckgaengig", 20)}</button>
       <button type="button" class="btn rp-ib" data-k4vor aria-label="Wiederholen"${E && E.kannVor() ? "" : " disabled"}>${W.icon("vor", 20)}</button>`;
     fab.querySelector("[data-k4anp]").onclick = () => anpassenBlatt(mo);
@@ -316,12 +354,35 @@
     let d = null; try { d = zyklusDaten(mo); } catch (e) { console.error(e); }
     if (!d) return "";
     const W = V6(), A = d.drei.anteil, titel = V78().wochenTitel(d.w.K && d.w.K.w ? d.w.K.w.phase : null, d.k.art || null);
-    const lo = A ? Math.round(A.locker * 100) : null, F = d.fokus, fs = F.reduce((s2, x) => s2 + x[1], 0);
+    const lo = A ? Math.round(A.locker * 100) : null, F = d.fokus;
     const tl = d.plan ? d.plan.tl : 0, max = Math.max(1, tl, d.bereich ? d.bereich[1] : 0) * 1.12, p = (x) => Math.max(0, Math.min(100, (100 * x) / max)).toFixed(1);
-    return `<div class="k4-wkk"><div class="k4-wkk-t"><b>${esc(titel)}</b><small>KW ${W.isoWoche(mo)} · ${esc(V78().bereichText(mo))}</small></div>
-      <div class="k4-wkk-z"><span>locker · Z3–Z5</span>${A ? `<span class="k4-wkk-v" aria-hidden="true"><i style="left:${lo}%"></i></span><b>${lo} % · ${100 - lo} %</b>` : `<b>–</b>`}</div>
-      <div class="k4-wkk-z"><span>Zonen</span>${fs ? `<span class="v7-stapel k4-stapel">${F.map(([kk, m]) => `<i style="flex:${m};background:${ZFARBE(kk)}"></i>`).join("")}</span>` : `<b>–</b>`}</div>
-      ${fehltZeile(mo)}<div class="k4-wkk-z"><span>TL ≈</span><span class="k4-bal" aria-hidden="true">${d.bereich ? `<span class="k4-bal-ber" style="left:${p(d.bereich[0])}%;width:${(p(d.bereich[1]) - p(d.bereich[0])).toFixed(1)}%"></span>` : ""}<span class="k4-bal-w plan" style="width:${p(tl)}%"></span></span><b>${d.plan && d.plan.offen ? "mind. " : ""}${tl}${d.bereich ? ` <small>(${d.bereich[0]}–${d.bereich[1]})</small>` : ""}</b></div></div>`;
+    // V9.3 woche-look-1.0 (Vorlage «Reg vs. HIT», «HIT Zones», «Training Load»): zwei Spalten – links locker gegen Z3–Z5 und TL ≈ gegen den Bereich,
+    // rechts die Zonen als Gruppen Z1–Z5 (Breite ∝ Zeitanteil, leere Zone abgedunkelt) und der Status je Tag (Ermüdung ÷ Fitness am Tagesende, ≈ mit Mein Plan)
+    const GR = [["z1", ["z1"]], ["z2", ["z2", "fatmax"]], ["z3", ["z3", "sweet"]], ["z4", ["z4"]], ["z5", ["vo2", "z5", "anaerob", "neuro", "sprint"]]];
+    const zk = (k) => (window.V64 && window.V64.FARBE && window.V64.FARBE[k]) || k, sum = new Map(); let ges = 0;
+    for (const [k, m] of F) { const z = zk(k); if (z === "pause" || z === "offen" || !isNum(m)) continue; sum.set(z, (sum.get(z) || 0) + m); ges += m; }
+    const zonen = ges ? GR.map(([g, keys]) => {
+      const t = keys.reduce((s2, k) => s2 + (sum.get(k) || 0), 0), seg = keys.filter((k) => sum.get(k)).map((k) => `<i style="flex:${sum.get(k)};background:${ZFARBE(k)}"></i>`).join("");
+      return `<span class="k4-zg${t ? "" : " leer"}" style="flex:${Math.max(0.1, t / ges).toFixed(3)};--zc:var(--zc-${g})" title="${esc(g.toUpperCase())}: ${Math.round((100 * t) / ges)} %">${seg}</span>`;
+    }).join("") : "";
+    return `<div class="k4-wkk"><div class="k4-wkk-t"><b>${esc(titel)}</b><small>${esc(V78().bereichText(mo))}</small></div>
+      <div class="k4-wkk-g">
+        <div class="k4-wkk-c"><div class="k4-wkk-l"><span>locker · Z3–Z5</span><b>${A ? `${lo} % · ${100 - lo} %` : "–"}</b></div>${A ? `<span class="k4-wkk-v" style="--lo:${lo}%" aria-hidden="true"><i style="left:${lo}%"></i></span>` : ""}</div>
+        <div class="k4-wkk-c"><div class="k4-wkk-l"><span>Zonen</span></div>${zonen ? `<span class="k4-zgr" aria-hidden="true">${zonen}</span>` : `<b>–</b>`}</div>
+        <div class="k4-wkk-c"><div class="k4-wkk-l"><span>TL ≈</span><b>${d.plan && d.plan.offen ? "mind. " : ""}${tl}</b></div><span class="k4-bal" aria-hidden="true">${d.bereich ? `<span class="k4-bal-ber" style="left:${p(d.bereich[0])}%;width:${(p(d.bereich[1]) - p(d.bereich[0])).toFixed(1)}%"></span>` : ""}<span class="k4-bal-w plan" style="width:${p(tl)}%"></span></span>${d.bereich ? `<small class="k4-wkk-b">Bereich ${d.bereich[0]}–${d.bereich[1]}</small>` : ""}</div>
+        <div class="k4-wkk-c">${statusKurve(mo)}</div>
+      </div>${fehltZeile(mo)}</div>`;
+  }
+  /** V9.3: Status (Ermüdung ÷ Fitness) am Ende jedes Tags der Woche als kleine Kurve; grünes Band = üblich (0,8–1,3, trainingsstatus-1.0), gewählter Tag gross. */
+  function statusKurve(mo) {
+    if (!ST.form) return "";
+    const pts = []; for (let i = 0; i < 7; i++) { const ds = add(mo, i), f = ST.form.get(add(ds, 1)), s2 = f ? V78().status(f.fitness, f.ermuedung) : null; if (isNum(s2)) pts.push({ i, ds, s: s2 }); }
+    if (pts.length < 2) return "";
+    const Wd = 300, Hd = 64, lo = 0.4, hi = 1.8, y = (v) => (Hd - 4 - ((Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo)) * (Hd - 8)).toFixed(1), x = (i) => (6 + (i / 6) * (Wd - 12)).toFixed(1);
+    const band = `<rect x="0" y="${y(1.3)}" width="${Wd}" height="${(y(0.8) - y(1.3)).toFixed(1)}" class="k4-sk-band"/>`;
+    const linie = `<polyline points="${pts.map((q) => `${x(q.i)},${y(q.s)}`).join(" ")}" class="k4-sk-l"/>`;
+    const punkte = pts.map((q, k) => `<circle cx="${x(q.i)}" cy="${y(q.s)}" r="${q.ds === ST.sel ? 6.5 : 4}" class="k4-sk-p${k === 0 ? " erst" : ""}"><title>${esc(V78().tagText(q.ds))}: ${String(q.s).replace(".", ",")}</title></circle>`).join("");
+    return `<svg class="k4-sk" viewBox="0 0 ${Wd} ${Hd}" role="img" aria-label="Status am Ende jedes Tags (Ermüdung ÷ Fitness), grün = üblich">${band}${linie}${punkte}</svg>`;
   }
   /** V9.2 fehlt-zeit-1.0: im Bearbeiten-Modus steht die fehlende Zeit live in der Wochenkarte (die Frage kommt erst mit ✓). */
   function fehltZeile(mo) {
