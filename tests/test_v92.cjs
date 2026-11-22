@@ -24,9 +24,9 @@ const E = (sim, mo) => sim.win.V64UI.planEintrag(mo);
 const txt = (x) => JSON.stringify(x);
 
 test("Versionen W1", () => {
-  assert.equal(V66.VERSIONS.umplanen, "umplanen-1.0"); assert.equal(V66.VERSIONS.grenzen, "grenzen-1.0");
+  assert.equal(V66.VERSIONS.umplanen, "umplanen-1.1"); assert.equal(V66.VERSIONS.grenzen, "grenzen-1.0");
   assert.equal(V66.VERSIONS.eigenplan, "eigenplan-1.3"); assert.equal(V66.VERSIONS.verfuegbarkeit, "verfuegbarkeit-1.3");
-  assert.deepEqual(V92.VERSIONS, { umplanen: "umplanen-1.0", woche: "woche-einstellen-1.0", fehlt: "fehlt-zeit-1.0" });
+  assert.deepEqual(V92.VERSIONS, { umplanen: "umplanen-1.1", woche: "woche-einstellen-1.0", fehlt: "fehlt-zeit-1.0" });
 });
 
 test("Abnahme 1: Dienstag Zeit 0 → seine Einheiten stehen an anderen Tagen, Wochenlast gleich; ein Vorschlags-Ruhetag nimmt Last auf", async () => {
@@ -361,4 +361,60 @@ test("V92.vorschlaege: kleinstes Mehr je Tag in 5-min-Schritten, nie grösser al
   assert.equal(V92.vorschlaege(kand, 40, probe).length, 0, "reicht das Fehlende nirgends, gibt es keinen Vorschlag (nie mehr als das Fehlende)");
   assert.equal(V92.kandidaten([{ date: "2026-12-13", min: 60 }, { date: "2026-12-15", min: 0 }, { date: "2026-12-16", min: null }, { date: "2026-12-17", min: 60, fest: true },
     { date: "2026-12-18", min: 60 }], "2026-12-14").map((k) => k.date).join(), "2026-12-18");
+});
+
+/* ---------- V9.2.1 umplanen-1.1: die Folgewoche (Silas 22.11.2026: «die Woche darauf auch, wenn es einen Einfluss hat») ---------- */
+test("V9.2.1 Kern: der Sonntag davor bindet den Montag – harte Einheit an Land oder Krafttraining am Sonntag → keine harte Einheit an Land am Montag", () => {
+  const MO = "2026-12-28", d = (i) => addDays(MO, i);
+  const tage = () => Array.from({ length: 7 }, (_, i) => ({ date: d(i), wt: "", ruhetag: i !== 0, einheiten: i === 0 ? [V64.einheit("lauf_vo2", {})] : [] }));
+  const verf = () => ({ min: 120, sport: null });
+  const ohne = V66.verteilen(tage(), verf, {});
+  assert.ok(ohne.tage[0].einheiten.some((e) => e.id === "lauf_vo2"), "ohne Vortag bleibt die harte Einheit am Montag");
+  for (const vor of [[V64.einheit("rad_vo2", {})], [{ id: "kraft", sport: "kraft", dauer: 45, titel: "Krafttraining" }]]) {
+    const r = V66.verteilen(tage(), verf, { vorher: vor, vorherDatum: d(-1) });
+    assert.ok(!r.tage[0].einheiten.some((e) => V66.hart(e)), "Montag ohne harte Einheit an Land: " + txt(r.tage.map((t) => t.einheiten.map((e) => e.id))));
+    assert.ok(r.tage.some((t, i) => i > 0 && t.einheiten.some((e) => e.id === "lauf_vo2")), "sie steht an einem anderen Tag der Woche");
+    assert.ok(r.protokoll.verschoben.some((x) => x.titel === V64.einheit("lauf_vo2", {}).titel), "als Verschiebung gemeldet");
+  }
+  assert.equal(V66.vortagBindet([V64.einheit("lauf_lang", { d: 90 })]), false, "ein langer, lockerer Lauf am Sonntag bindet den Montag nicht");
+  const w = { tage: tage(), stunden: 1 }, wv = V66.wocheVerteilt(w, null, { vorher: [V64.einheit("rad_vo2", {})], vorherDatum: d(-1) });
+  assert.ok(!wv.tage[0].einheiten.some((e) => V66.hart(e)), "auch eine Woche ohne Verfügbarkeit folgt dem Sonntag davor");
+});
+
+/** Woche danach vorbereiten: Montag 2 h, Dienstag 0, Donnerstag nur Schwimmen → eine harte Einheit an Land steht am Montag. */
+async function folgeVorbereiten(sim) {
+  const U = sim.win.V66UI, W5 = addDays(W3, 14);
+  assert.equal(await U.planen(W5, { vf: [vf(sim, W5, 120), vf(sim, addDays(W5, 1), 0), vf(sim, addDays(W5, 3), 150, ["schwimm"])] }), null); sim.S.neu();
+  const h = plan(sim, W5).find((e) => V66.hart(e) && (e.sport === "lauf" || e.sport === "rad"));
+  assert.ok(h, "Vorbereitung: harte Einheit an Land am Montag der Woche danach: " + zeig(sim, W5));
+  return h;
+}
+
+test("V9.2.1 Folgewoche: eigene harte Einheit am Sonntag → der Montag der Woche danach wird umgeplant, im Bericht gemeldet, ↶ nimmt beides zurück", async () => {
+  const sim = await neu(); sim.S.tag(W3, "07:00");
+  const U = sim.win.V66UI, W4 = addDays(W3, 7), W5 = addDays(W3, 14), so4 = addDays(W4, 6);
+  const hart5 = await folgeVorbereiten(sim), W5vor = zeig(sim, W5);
+  assert.equal(await U.aendern(W4, { art: "hinzufuegen", date: so4, einheit: { vorlage: "rad_vo2", dauer: 75 } }), null); sim.S.neu();
+  assert.ok(plan(sim, so4).some((e) => e.id === "rad_vo2"), "die eigene Einheit steht am Sonntag");
+  assert.ok(!plan(sim, W5).some((e) => V66.hart(e) && (e.sport === "lauf" || e.sport === "rad")), "Montag danach ohne harte Einheit an Land: " + zeig(sim, W5));
+  assert.ok(tageW(W5).some((d) => d !== W5 && plan(sim, d).some((e) => e.id === hart5.id)), "sie steht an einem anderen Tag der Woche danach (nicht entfallen)");
+  const B = U.bericht();
+  assert.ok(B.zeilen.some((z) => /^Nächste Woche: «.+» Mo → \S+ \(harte Einheit am Sonntag davor\)$/.test(z)), "der Bericht nennt die Folgewoche mit Grund: " + txt(B.zeilen));
+  assert.equal(await U.rueckgaengig(), null); sim.S.neu();
+  assert.ok(!plan(sim, so4).some((e) => e.id === "rad_vo2"), "↶: Sonntag wie vorher");
+  assert.equal(zeig(sim, W5), W5vor, "↶: die Woche danach ebenso");
+});
+
+test("V9.2.1 Folgewoche: eine gespeicherte Woche danach (Tag gesperrt) wird mit umgeplant – Gesperrtes bleibt, der Rest folgt dem neuen Sonntag", async () => {
+  const sim = await neu(); sim.S.tag(W3, "07:00");
+  const U = sim.win.V66UI, W4 = addDays(W3, 7), W5 = addDays(W3, 14), so4 = addDays(W4, 6), sa5 = addDays(W5, 5);
+  await folgeVorbereiten(sim);
+  assert.equal(await U.aendern(W5, { art: "sperren", date: sa5 }), null); sim.S.neu();
+  const E5 = E(sim, W5); assert.ok(E5 && E5.tage[sa5] && E5.tage[sa5].gesperrt, "Woche danach gespeichert, Samstag gesperrt");
+  const sa5vor = txt(plan(sim, sa5).map((e) => e.uid));
+  assert.ok(plan(sim, W5).some((e) => V66.hart(e)), "harte Einheit am Montag danach");
+  assert.equal(await U.aendern(W4, { art: "hinzufuegen", date: so4, einheit: { vorlage: "lauf_vo2", dauer: 50 } }), null); sim.S.neu();
+  assert.ok(!plan(sim, W5).some((e) => V66.hart(e) && (e.sport === "lauf" || e.sport === "rad")), "gespeicherte Woche danach umgeplant: " + zeig(sim, W5));
+  assert.equal(txt(plan(sim, sa5).map((e) => e.uid)), sa5vor, "der gesperrte Samstag bleibt, wie er ist");
+  assert.ok(E(sim, W5).tage[sa5].gesperrt, "Sperre bleibt gespeichert");
 });

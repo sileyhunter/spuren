@@ -30,7 +30,7 @@
   "use strict";
   const V66 = { VERSIONS: { eigenplan: "eigenplan-1.3", vorlagen: "vorlagen-1.0", tl: "tl-plan-1.1", wochenblatt: "wochenblatt-1.0", kalender: "kalender-2.0",
     verfuegbarkeit: "verfuegbarkeit-1.3", felder: "einheit-felder-1.1", anpassen: "einheit-anpassen-1.0", eigen: "eigene-aktivitaet-1.0",
-    umplanen: "umplanen-1.0", grenzen: "grenzen-1.0" } };
+    umplanen: "umplanen-1.1", grenzen: "grenzen-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const add = (iso, n) => V64.addDays(iso, n);
 
@@ -497,6 +497,8 @@
   const istEigen = (e) => !!e && (e.quelle === "eigen" || e.quelle === "bibliothek" || !!e.gesperrt || !!e.anker);   // V7.3: gesperrte Einheit bleibt am Tag; V9.2: Anker auch
   const hart = (e) => !!e && (!!e.schluessel || e.art === "schluessel_s");
   V66.hart = hart;
+  /** V9.2.1 umplanen-1.1: bindet der letzte Tag der Woche davor den Montag (harte Einheit an Land, Krafttraining, Aktivität draussen ab 2 h)? */
+  V66.vortagBindet = (L) => Array.isArray(L) && L.some((x) => x && ((hart(x) && (x.sport === "rad" || x.sport === "lauf")) || x.sport === "kraft" || (x.art === "draussen" && (x.dauer || 0) >= 120)));
   /** V7.6 verfuegbarkeit-1.1: bevorzugte Tage für lange Einheiten (Planeinstellungen «pe-lang») → Liste der Wochentage oder null (keine Wahl). */
   const langTage = (opt, sport) => { const L = opt && opt.lang && opt.lang[sport]; return Array.isArray(L) && L.length ? L : null; };
   const PRIO = (e) => (hart(e) ? 0 : e.art === "lang" ? 1 : e.art === "koppel" ? 3 : 2);
@@ -554,6 +556,11 @@
     const erlaubt = (i, sport) => !V[i] || !V[i].sport || !V66.VF_SPORT.includes(sport) || V[i].sport.includes(sport);
     const kap = (i) => (V[i] && V[i].min != null ? V[i].min : Infinity);
     const belegt = T.map(() => []), pool = [], verbraucht = (opt.verbraucht || []).slice(), ORD = new Map(), testTag = new Set();
+    // V9.2.1 umplanen-1.1 (Folgewoche): der letzte Tag der Woche davor zählt als fester Nachbar des Montags (harte Einheit an Land, Krafttraining,
+    // lange Aktivität draussen) – so plant eine Woche nie gegen den Sonntag davor; B(-1) = dieser Tag, sonst belegt[i]
+    const VOR = Array.isArray(opt.vorher) ? opt.vorher.filter(Boolean) : [];
+    const B = (i) => (i === -1 ? VOR : i >= 0 && i < T.length ? belegt[i] : null);
+    const datum = (i) => (i === -1 ? opt.vorherDatum || add(T[0].date, -1) : T[i].date);
     T.forEach((t, i) => t.einheiten.forEach((e, j) => ORD.set(e, i * 100 + j)));    // Reihenfolge am Tag: wie vorher, Dazugekommenes danach
     const summe = (i) => belegt[i].reduce((s, x) => s + (x.dauer || 0), 0), rest = (i) => kap(i) - summe(i);
     T.forEach((t, i) => {
@@ -582,14 +589,15 @@
     // die übliche Woche (Do). Lange Einheiten an Land vertragen keine harte am selben Tag.
     const land = (x) => x.sport === "rad" || x.sport === "lauf";
     const stoert = (a, b) => hart(a) && hart(b) && (a.sport === b.sport || (land(a) && land(b)));
-    const hartAm = (i, e) => i >= 0 && i < T.length && belegt[i].some((x) => stoert(x, e));
+    const hartAm = (i, e) => !!B(i) && B(i).some((x) => stoert(x, e));
     const ruheOk = (i) => !T[i].ruhetag || !!(V[i] && V[i].min !== 0 && (!V[i].sport || V[i].sport.length));
     // V7.6 kraft-plan-1.1: am Tag nach einem Krafttraining keine harte Einheit an Land; V7.7 aktivitaet-plan-1.0: ebenso am Vortag und am Tag nach
     // einer Aktivität draussen ab 2 h, und am Tag der Aktivität selbst keine andere Einheit des Vorschlags (der Tag gehört ihr)
-    const aktLang = (j) => j >= 0 && j < T.length && belegt[j].some((x) => x.art === "draussen" && (x.dauer || 0) >= 120);
+    const aktLang = (j) => !!B(j) && B(j).some((x) => x.art === "draussen" && (x.dauer || 0) >= 120);
     const aktTag = (j) => j >= 0 && j < T.length && belegt[j].some((x) => x.art === "draussen");
-    const nachKraft = (e, i) => hart(e) && land(e) && ((i > 0 && belegt[i - 1].some((x) => x.sport === "kraft")) || aktLang(i - 1) || aktLang(i + 1));
-    const schonGrund = (i) => (i > 0 && belegt[i - 1].some((x) => x.sport === "kraft") ? "Tag nach dem Krafttraining" : "neben einer langen Aktivität draussen");
+    const kraftAm = (j) => !!B(j) && B(j).some((x) => x.sport === "kraft");
+    const nachKraft = (e, i) => hart(e) && land(e) && (kraftAm(i - 1) || aktLang(i - 1) || aktLang(i + 1));
+    const schonGrund = (i) => (kraftAm(i - 1) ? "Tag nach dem Krafttraining" : "neben einer langen Aktivität draussen");
     const wt = (i) => V66.wtNr(T[i].date), langOk = (e, i) => { const L = e.art === "lang" ? langTage(opt, e.sport) : null; return !L || L.includes(wt(i)); };
     // verfuegbarkeit-1.1: eine lange Einheit verlässt ihren Tag für einen gewählten nur, wenn dort die Sportart geht und Zeit ist – sonst bleibt sie
     const langFrei = (p) => T.some((t, j) => !t.fest && j !== p.von && langOk(p.e, j) && erlaubt(j, p.e.sport) && rest(j) >= p.e.dauer
@@ -598,7 +606,7 @@
     // am Tag −60, hart neben hart −20 je Seite (an Land −100 seit verfuegbarkeit-1.2), hart und lang an Land am selben Tag −120 (bis verfuegbarkeit-1.0
     // −40; seit 1.1 stärker als der Vorteil eines gewählten Tags für lange Einheiten +80), zwei lange am Tag −50, Ruhetag ohne eingetragene Zeit −30.
     const hartLand = (x) => hart(x) && land(x);
-    const neben = (i, e) => (land(e) && i >= 0 && i < T.length && belegt[i].some((x) => x !== e && hartLand(x)) ? 100 : hartAm(i, e) ? 20 : 0);
+    const neben = (i, e) => (land(e) && !!B(i) && B(i).some((x) => x !== e && hartLand(x)) ? 100 : hartAm(i, e) ? 20 : 0);
     const score = (p, i) => {
       const B = belegt[i], e = p.e; let s = -5 * Math.abs(i - p.von) - 10 * B.length - (B.length >= 2 ? 25 : 0);
       if (B.some((x) => x.sport === e.sport)) s -= 45;
@@ -667,11 +675,11 @@
     }
     // verfuegbarkeit-1.2: zwei harte Einheiten an Land an Tagen hintereinander – eine davon (zuerst die, die schon verschoben wurde) auf den besten Tag ohne
     // harte Einheit an Land daneben und ohne lange Einheit an Land am selben Tag; geht das für keine der beiden, bleibt es und wird gemeldet
-    const hartNebenan = (j, ohne) => [j - 1, j + 1].some((k) => k >= 0 && k < T.length && belegt[k].some((x) => x !== ohne && hartLand(x)));
+    const hartNebenan = (j, ohne) => [j - 1, j + 1].some((k) => !!B(k) && B(k).some((x) => x !== ohne && hartLand(x)));
     for (let runde = 0; runde < 4; runde++) {
       let paar = null;
-      for (let i = 0; i + 1 < T.length && !paar; i++) {
-        const a = belegt[i].find(hartLand), b = belegt[i + 1].find(hartLand);
+      for (let i = VOR.length ? -1 : 0; i + 1 < T.length && !paar; i++) {
+        const a = B(i).find(hartLand), b = B(i + 1).find(hartLand);
         if (a && b) paar = [[i, a], [i + 1, b]];
       }
       if (!paar) break;
@@ -690,8 +698,8 @@
       }
       if (!best) {
         const [[i, a], [, b]] = paar;
-        P.hinweise.push(`Harte Einheiten an zwei Tagen hintereinander: «${a.titel}» (${wtK(T[i].date)}) und «${b.titel}» (${wtK(T[i + 1].date)}) – kein anderer Tag passte (Zeit, Sportart oder lange Einheit)`);
-        P.zweiHart.push({ von: T[i].date, bis: T[i + 1].date, a: a.titel, b: b.titel });
+        P.hinweise.push(`Harte Einheiten an zwei Tagen hintereinander: «${a.titel}» (${wtK(datum(i))}${i === -1 ? ", Woche davor" : ""}) und «${b.titel}» (${wtK(datum(i + 1))}) – kein anderer Tag passte (Zeit, Sportart oder lange Einheit)`);
+        P.zweiHart.push({ von: datum(i), bis: datum(i + 1), a: a.titel, b: b.titel });
         break;
       }
       belegt[best.i].splice(belegt[best.i].indexOf(best.e), 1);
@@ -769,9 +777,11 @@
     // V7.6: auch ohne eingetragene Verfügbarkeit, wenn lange Tage gewählt sind oder ein Krafttraining in der Woche steht (dann ohne Zeitgrenzen)
     const mitVerf = !!(verf && !verf.leer && w.tage.some((t) => verf(t.date)));
     // V7.7: ebenso mit einer Aktivität draussen (ihr Tag und die Nachbartage)
-    const zwingt = !!((ctx && ctx.lang && (langTage(ctx, "rad") || langTage(ctx, "lauf"))) || w.tage.some((t) => (t.einheiten || []).some((e) => e.sport === "kraft" || e.art === "draussen")));
+    const zwingt = !!((ctx && ctx.lang && (langTage(ctx, "rad") || langTage(ctx, "lauf"))) || w.tage.some((t) => (t.einheiten || []).some((e) => e.sport === "kraft" || e.art === "draussen"))
+      || V66.vortagBindet(ctx && ctx.vorher));
     if (!mitVerf && !zwingt) return w;
-    const r = V66.verteilen(w.tage.map((t) => Object.assign({}, t, { fest: false })), mitVerf ? verf : () => null, { o: bausteinO(w, ctx), lang: ctx && ctx.lang, ctxE: ctx && ctx.ctxE });
+    const r = V66.verteilen(w.tage.map((t) => Object.assign({}, t, { fest: false })), mitVerf ? verf : () => null, { o: bausteinO(w, ctx), lang: ctx && ctx.lang, ctxE: ctx && ctx.ctxE,
+      vorher: ctx && ctx.vorher, vorherDatum: ctx && ctx.vorherDatum });
     if (!r.geaendert) return w;
     const out = Object.assign({}, w, { tage: r.tage.map((t) => { const c = Object.assign({}, t); delete c.fest; return c; }),
       verteilung: Object.assign({ v: V66.VERSIONS.verfuegbarkeit }, r.protokoll), hinweise: (w.hinweise || []).concat(V66.verteilText(r.protokoll)) });
@@ -894,7 +904,7 @@
     const T = tageW.map((d, i) => ({ date: d, wt: wtK(d), ruhetag: !rohAm(d).length, fest: fest(d),
       einheiten: bleibt[i].map(bau).filter(Boolean).concat(fest(d) ? [] : pool.filter((p) => !p.weg && p.i === i).map((p) => Object.assign({}, p.e))) }));
     const extra = pool.filter((p) => !p.weg && fest(tageW[p.i]) && !istOrtsfest(p.e)).map((p) => ({ e: Object.assign({}, p.e), von: p.i }));
-    const r = V66.verteilen(T, verf, { o: ctx.o || {}, lang: ctx.lang, ctxE: ctx.ctxE, extra, tl: ctx.tl, heute: ctx.heute });
+    const r = V66.verteilen(T, verf, { o: ctx.o || {}, lang: ctx.lang, ctxE: ctx.ctxE, extra, tl: ctx.tl, heute: ctx.heute, vorher: ctx.vorher, vorherDatum: ctx.vorherDatum });
     let tageR = r.tage;
     if (typeof ctx.abstimmen === "function") { try { tageR = ctx.abstimmen(tageR) || tageR; } catch (err) { tageR = r.tage; } }   // kraft-plan-1.1 Regel 2
     // Kennungen: eine Vorschlags-Einheit behält die Kennung (und Uhrzeit, Metrik, Bahnlänge) ihrer Vorgängerin derselben Vorlage – am selben Tag zuerst

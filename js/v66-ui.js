@@ -148,6 +148,7 @@
     const BZ = bezug(K), h = heute(), heuteFest = (C.D.activities || []).some((x) => x && x.date === h && (!window.FK || !window.FK.zaehlt || window.FK.zaehlt(x)));
     const abstimmen = window.V76 && window.V76.abstimmen && K.w0roh && K.w0roh.kraft ? (tage) => { const w = window.V76.abstimmen({ kraft: K.w0roh.kraft, tage, hinweise: [] }, { ctxE: K.ctxE }); return w && w.tage ? w.tage : tage; } : null;
     return { heute: h, montag: mo, vorschlag, roh, verf: K.verf || null, verteilt: !!K.verteilt, ctxE: K.ctxE, lang: K.lang || null, heuteFest, abstimmen,
+      vorher: K.vorher || null, vorherDatum: K.vorherDatum || null,                     // V9.2.1 umplanen-1.1: Sonntag davor bindet den Montag
       tl: (e) => { try { return V66().schaetzung(e, BZ).tl; } catch (err) { return null; } },
       o: { phase: K.w.phase, css_s: K.css ? K.css.s : null, kurz: !!(K.w.taper || K.w.erholung) }, jetzt: new Date().toISOString(),
       erholung: K.erh || null, grund: a && a.art === "erholung" ? "Ampel: mehrere Tage «vorsichtig» (ampel-plan-1.0)" : null,
@@ -227,6 +228,31 @@
     }
   }
   const leerE = (E) => !E || (!Object.keys(E.tage || {}).length && !(E.gestrichen && E.gestrichen.length) && !E.erholung);
+  /** V9.2.1 umplanen-1.1 (Folgewoche, Silas 22.11.2026: «die Woche darauf auch, wenn es einen Einfluss hat»): nach einer gespeicherten Änderung an Woche mo
+   *  auch die Woche danach neu planen – ihr Montag hängt am neuen Sonntag (harte Einheit an Land, Krafttraining, lange Aktivität draussen), die Läufe im
+   *  Aufbau-Fenster zählen mit (aufbau-1.2). Gespeicherte Wochen über umplanen (Eigenes, Sperren, Streichungen bleiben), Wochen ohne Eigenes folgen von selbst;
+   *  die Garmin-Aufträge ihrer Tage werden nachgeführt. Last wird nicht in die Folgewoche nachgeholt (eigene Festlegung, plan.md). → Zeilen für den Bericht */
+  async function folgeWoche(mo, vorFolge) {
+    const m1 = add(mo, 7);
+    if (P().projLeeren) P().projLeeren();                                     // der Sonntag dieser Woche ist neu
+    const E1 = P().planEintrag(m1), gespeichert = !!(E1 && (Object.keys(E1.tage || {}).length || (E1.gestrichen && E1.gestrichen.length)));
+    if (!gespeichert && !wochenTage(m1).some((d) => garminFenster(d))) return folgeZeilen(m1, vorFolge);
+    const f = await planen(m1, { still: true, vor: vorFolge, ohneFolge: true });
+    if (f) { console.error(f); return []; }
+    return folgeZeilen(m1, vorFolge);
+  }
+  function folgeZeilen(m1, vorFolge) {
+    if (!V92() || !vorFolge) return [];
+    const nach = stand(m1); if (!nach) return [];
+    const K1 = kontext(m1), E1 = P().planEintrag(m1);
+    const mel = (E1 && E1.verteilung && E1.verteilung.meldungen) || (K1 && K1.w && K1.w.verteilung ? V66().verteilText(K1.w.verteilung) : []);
+    const D = V92().diff(vorFolge.liste, nach.liste), g = V92().grundAus(mel), VOR = (K1 && K1.vorher) || [];
+    // vom Montag weg, weil der Sonntag davor ihn bindet: dieser Grund zuerst
+    const sonntag = V66().vortagBindet(VOR) ? (VOR.some((x) => x.sport === "kraft") ? "Krafttraining am Sonntag davor" : VOR.some((x) => x.art === "draussen") ? "lange Aktivität am Sonntag davor"
+      : "harte Einheit am Sonntag davor") : null;
+    const grund = (titel, nachD) => (sonntag && D.verschoben.some((x) => x.titel === titel && x.nach === nachD && x.von === m1) ? sonntag : g(titel, nachD));
+    return V92().zeilen(D, grund).map((z) => "Nächste Woche: " + z);
+  }
   /**
    * Zentral für alle Auslöser (umplanen-1.0): Verfügbarkeit (opt.vf, Einträge wie V66.vfEintrag) und Änderungen (opt.aktionen) anwenden, danach EINMAL die
    * ganze Woche neu (V66 «umplanen»), speichern – im Bearbeiten-Modus in den Entwurf (nichts an Garmin, keine Frage) –, Garmin-Aufträge der sieben Tage
@@ -238,7 +264,14 @@
     opt = opt || {};
     const EN = P().entwurf, imEnt = !!(EN && EN.aktiv()), I = UI().Inbox;
     const vor = opt.vor || stand(mo);
-    if (imEnt) { if (!EN.schritte().length) ENT_LISTE.clear(); if (vor && !ENT_LISTE.has(mo)) ENT_LISTE.set(mo, vor.liste); }
+    if (imEnt) {
+      if (!EN.schritte().length) ENT_LISTE.clear();
+      if (vor && !ENT_LISTE.has(mo)) ENT_LISTE.set(mo, vor.liste);
+      const m1 = add(mo, 7);                                                   // V9.2.1: die Folgewoche, wie sie vor dem Entwurf war (Garmin-Zuordnung mit ✓)
+      if (!ENT_LISTE.has(m1)) { const f = stand(m1); if (f) ENT_LISTE.set(m1, f.liste); }
+    }
+    // V9.2.1 umplanen-1.1 (Folgewoche): Stand der Woche danach vor der Änderung (Bericht, Garmin-Zuordnung, ↶)
+    const vorFolge = !imEnt && !opt.ohneFolge && !(add(mo, 13) < heute()) ? stand(add(mo, 7)) : null;
     const verf0 = (kontext(mo) || {}).verf || (P().verfuegbarkeit ? P().verfuegbarkeit() : null);
     const vf = (opt.vf || []).filter(Boolean);
     for (const e of vf) { const f = V66().vfPruefen(e); if (f) return f; }
@@ -272,11 +305,14 @@
     }
     if (!imEnt) { try { await auftraegeWoche(mo, vor ? vor.auswahl : null, vor ? vor.liste : null); } catch (e) { console.error(e); } }
     // jede Woche so (Wochentag-Standard): auch spätere gespeicherte Wochen folgen der neuen Grenze
-    if (!imEnt && vf.some((e) => e.art === "wochentag")) {
+    const wt = !imEnt && vf.some((e) => e.art === "wochentag");
+    if (wt) {
       const ids = new Set([...(C.D.plan_woche || []), ...((I.data || {}).planwoche || [])].filter((w) => w && w.montag > mo && w.ganz).map((w) => w.montag));
-      for (const m of [...ids].sort()) { try { await planen(m, { still: true }); } catch (e) { console.error(e); } }
+      for (const m of [...ids].sort()) { try { await planen(m, { still: true, ohneFolge: true }); } catch (e) { console.error(e); } }
     }
-    if (!opt.still) BERICHT = berichtBauen(mo, vor, stand(mo), P().planEintrag(mo), { vfAlt, grund: opt.grund, bestaetigt: opt.bestaetigt, entwurf: imEnt });
+    let folge = [];
+    if (vorFolge && !wt) { try { folge = await folgeWoche(mo, vorFolge); } catch (e) { console.error(e); } }
+    if (!opt.still) BERICHT = berichtBauen(mo, vor, stand(mo), P().planEintrag(mo), { vfAlt, grund: opt.grund, bestaetigt: opt.bestaetigt, entwurf: imEnt, folge, vorFolge });
     neuZeichnen();
     return null;
   }
@@ -288,11 +324,12 @@
     const D = V92().diff(vor.liste, nach.liste), V = E && E.verteilung ? E.verteilung : null;
     const zeilen = V92().zeilen(D, V92().grundAus(V ? V.meldungen : []));
     for (const b of (o && o.bestaetigt) || []) zeilen.unshift(`${V92().tag(b.date)}: ${V92().dauer(b.min)} – auf deine Bestätigung`);
+    for (const z of (o && o.folge) || []) zeilen.push(z);                         // V9.2.1: was sich in der Woche danach geändert hat
     const hinweise = (V && V.meldungen ? V.meldungen : []).filter((m) => / mehr geplant als verfügbar | passt nicht zu deiner Verfügbarkeit|Rennwoche/.test(m));
     try { const h = heute(); if (h >= mo && h <= add(mo, 6)) { const x = tagVon(h), L = x ? uhrNochListe(h, x.t) : []; if (L.length) hinweise.unshift(`Auf der Uhr steht noch ${L.map((y) => `«${y}»`).join(", ")} – heute nicht mehr im Plan (die Uhr wird für heute nicht automatisch geändert).`); } } catch (e) { console.error(e); }
     return { mo, am: Date.now(), zeilen, hinweise, leer: D.leer && !zeilen.length, vorher: { tl: vor.tl, min: vor.min }, nachher: { tl: nach.tl, min: nach.min, offen: nach.tlOffen },
       fehlt: V && V.fehlt ? V.fehlt : null, meldungen: V && V.meldungen ? V.meldungen.slice() : [], grund: (o && o.grund) || null, entwurf: !!(o && o.entwurf),
-      gestrichen: !!(E && E.gestrichen && E.gestrichen.length), undo: { E: vor.E, vf: (o && o.vfAlt) || [], daten: C.D } };
+      gestrichen: !!(E && E.gestrichen && E.gestrichen.length), undo: { E: vor.E, vf: (o && o.vfAlt) || [], daten: C.D, folge: !!(o && o.vorFolge) } };
   }
   /** Letzter Bericht (für die Liste im Kalender und das Tagesblatt) bzw. null; weg() wischt ihn weg. */
   M.bericht = () => BERICHT;
@@ -303,7 +340,7 @@
     // nur, solange die Daten seither nicht eingespielt wurden (sonst wären vergangene Tage schon fest – die Prüfung im Nacht-Update lehnte es ab)
     if (C.D !== B.undo.daten) return "Zurücknehmen geht nicht mehr – die Daten wurden inzwischen neu geladen.";
     const I = UI().Inbox; if (!I || !I.data) return "Speicher auf diesem Gerät nicht verfügbar";
-    const vor = stand(B.mo), jetzt = new Date().toISOString();
+    const vor = stand(B.mo), vorF = B.undo.folge ? stand(add(B.mo, 7)) : null, jetzt = new Date().toISOString();
     if (!Array.isArray(I.data.verfuegbarkeit)) I.data.verfuegbarkeit = [];
     for (const x of B.undo.vf || []) {
       const ziel = /^vf-wt-(\d)$/.exec(x.id) ? { wt: +x.id.slice(6) } : { date: x.id.slice(3) };
@@ -312,6 +349,7 @@
     if (!Array.isArray(I.data.planwoche)) I.data.planwoche = [];
     await I.upsert("planwoche", B.undo.E ? Object.assign({}, B.undo.E, { geaendert: jetzt }) : Object.assign(V66().leer(B.mo), { geaendert: jetzt }));
     try { await auftraegeWoche(B.mo, vor ? vor.auswahl : null, vor ? vor.liste : null); } catch (e) { console.error(e); }
+    if (B.undo.folge) { try { await folgeWoche(B.mo, vorF); } catch (e) { console.error(e); } }   // V9.2.1: die Woche danach folgt wieder
     BERICHT = { mo: B.mo, am: Date.now(), zeilen: ["Zurückgenommen: Woche und Verfügbarkeit wie vorher."], hinweise: [], leer: false, vorher: B.nachher, nachher: B.vorher, fehlt: null, meldungen: [], undo: null, rueck: true };
     neuZeichnen();
     return null;
@@ -389,6 +427,15 @@
     const L = EN.aenderungen(), VF = EN.vf(), I = UI().Inbox;
     if ((L.length || VF.length) && (!I || !I.data)) return "Speicher auf diesem Gerät nicht verfügbar";
     const vor = new Map(L.map((x) => [x.mo, auswahlWoche(x.mo)])), vorL = new Map(L.map((x) => [x.mo, ENT_LISTE.get(x.mo) || null]));
+    // V9.2.1 umplanen-1.1: Folgewochen, die nicht selbst im Entwurf stehen – ihr Stand vor dem Entwurf (Liste, Auswahl, Eintrag)
+    const geaendert = new Set(L.map((x) => x.mo)), folgen = [];
+    for (const x of L) {
+      const m1 = add(x.mo, 7);
+      if (geaendert.has(m1) || add(m1, 6) < heute() || folgen.some((f) => f.mo === x.mo)) continue;
+      const lst = ENT_LISTE.get(m1); if (!lst) continue;
+      const E1 = P().planEintrag(m1);                                       // nicht im Entwurf: der gespeicherte Stand
+      folgen.push({ mo: x.mo, vorFolge: { mo: m1, E: E1 ? JSON.parse(JSON.stringify(E1)) : null, liste: lst, auswahl: auswahlWoche(m1) } });
+    }
     ENT_LISTE.clear();
     // V9.2 woche-einstellen-1.0: die Verfügbarkeit des Entwurfs mit der Woche zusammen speichern
     if (VF.length) { if (!Array.isArray(I.data.verfuegbarkeit)) I.data.verfuegbarkeit = []; for (const e of VF) await I.upsert("verfuegbarkeit", e); }
@@ -401,6 +448,7 @@
       const fertig = new Set(L.map((x) => x.mo)), ids = new Set([...(C.D.plan_woche || []), ...(I.data.planwoche || [])].filter((w) => w && w.ganz && w.montag >= montag(heute()) && !fertig.has(w.montag)).map((w) => w.montag));
       for (const m of [...ids].sort()) { try { await planen(m, { still: true }); } catch (e) { console.error(e); } }
     }
+    for (const f of folgen) { try { await folgeWoche(f.mo, f.vorFolge); } catch (e) { console.error(e); } }   // V9.2.1: die Woche danach
     neuZeichnen();
     for (const x of L) if (!(add(x.mo, 6) < heute()) && M.frageWennNoetig(x.mo)) break;   // fehlt-zeit-1.0: die Frage kommt mit ✓
     return null;

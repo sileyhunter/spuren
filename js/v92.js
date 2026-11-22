@@ -15,7 +15,7 @@
   if (root) root.V92 = V92;
 })(typeof window !== "undefined" ? window : null, function () {
   "use strict";
-  const V92 = { VERSIONS: { umplanen: "umplanen-1.0", woche: "woche-einstellen-1.0", fehlt: "fehlt-zeit-1.0" } };
+  const V92 = { VERSIONS: { umplanen: "umplanen-1.1", woche: "woche-einstellen-1.0", fehlt: "fehlt-zeit-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const TAG = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
   const KURZ = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];

@@ -146,6 +146,8 @@
   `js/v64-ui.js` (Verfügbarkeit mit Entwurf), `js/v78-ui.js` (Bericht `#kal-bericht`, ✨ = umplanen, fehlende Zeit in der Wochenkarte), `js/v59.js` (`V59.nachSchliessen`),
   `js/v76.js` (Krafttag in der Zeit, nicht an von Hand gesetzten Tagen mit Sportarten), `js/v83.js` (Vorschläge ohne Toleranz), `js/v75-ui.js`, `js/wissen.js` (1.34),
   `tools/merge_daily.py` (gestrichen, anker, statt), `css/v6.css`, `index.html`, `sw.js`, `tests/sim/umgebung.cjs`; Test `tests/test_v92.cjs`; Auftrag `docs/auftrag-enduco-woche.md`
+- **V9.2.1 (Folgewoche, umplanen-1.1; 22.11.2026):** `js/v66.js` (`V66.verteilen` opt.`vorher`/`vorherDatum`, `V66.vortagBindet`, `V66.wocheVerteilt` mit Vortag),
+  `js/v64-ui.js` (`vortag`, `K.vorher`, `V64UI.projLeeren`), `js/v66-ui.js` (`folgeWoche`, `folgeZeilen`, Bericht «Nächste Woche», ↶ und ✓ mit Folgewoche), `js/wissen.js` (1.35)
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
 - `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)

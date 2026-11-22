@@ -362,3 +362,8 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 141. **Leck-Prüfung in der W1-Sitzung:** Ohne `SPUREN_PW` im Auftrag konnte `tools/leck_pruefen.py` nicht über die entschlüsselten Daten laufen (wie in V9.0, V9.1 und V9.1.1 vermerkt; der datenunabhängige Teil, E-Mail-Adressen, ist bestanden);
      geändert wurden nur Code, Tests und Doku mit erfundenen Werten, `data.enc.json` blieb unverändert. Beim nächsten Daten-Update oder in der nächsten Sitzung mit Passwort nachholen.
 
+## Nach V9.2.1 (22.11.2026, Folgewoche)
+142. **Folgewoche (umplanen-1.1):** Eine Änderung plant auch die Woche danach, wenn sie dort wirkt (harte Einheit, Krafttraining oder lange Aktivität am Sonntag →
+     Montag danach ohne harte Einheit an Land; Läufe im Aufbau-Fenster). **Silas bitte prüfen:** eine harte Einheit auf den Sonntag legen → der Bericht nennt «Nächste Woche: …».
+     Nicht nachgeholt wird fehlende Last (eigene Festlegung). Offen, falls gewünscht: wie Enduco die Folgewoche bei weniger Zeit ändert (Silas bietet ein Video an).
+

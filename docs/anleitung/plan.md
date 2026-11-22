@@ -317,4 +317,12 @@
 - **Bericht:** `V92.diff` über Kennung, sonst Vorlage (gleicher Tag, dann nächster): verschoben (mit Grund aus dem Planer), gekürzt, länger, entfällt, neu; Wochenlast vorher → nachher
   (TL ≈, Stunden wie im Wochenkopf). ↶ stellt Woche und Verfügbarkeit von vorher her (nur bis die Seite neu geladen wird). «Ausgleichen» erscheint, wenn gestrichen ist und die
   geplante Last unter 92,5 % des Vorschlags liegt (Bereich wie zyklus-1.0); es vergisst die Streichungen und plant innerhalb der Grenzen neu.
+- **Folgewoche (V9.2.1, umplanen-1.1, Silas 22.11.2026 «die Woche darauf auch, wenn es einen Einfluss hat»):** Der letzte Tag der Woche davor ist fester
+  Nachbar des Montags (`V66.verteilen` opt.`vorher`, `V66.vortagBindet`): harte Einheit an Land, Krafttraining oder Aktivität draussen ab 2 h am Sonntag → am
+  Montag keine harte Einheit an Land (Paar über die Wochengrenze wie zwei harte Tage in der Woche; geht kein anderer Tag, bleibt sie und die Woche meldet es).
+  `V64UI.kontextFuer` gibt den Sonntag davor als `K.vorher` (zwischengespeichert je Durchgang, neu bei «meinplan»; `V64UI.projLeeren`). Nach jeder gespeicherten
+  Änderung an einer Woche (`V66UI.planen`, ↶, ✓) plant `folgeWoche` die Woche danach: gespeichert → umplanen, sonst folgt sie von selbst; Garmin-Aufträge ihrer
+  Tage im Fenster werden nachgeführt; Bericht «Nächste Woche: …». Nicht bei «jede Woche so» (dort planen alle späteren gespeicherten Wochen ohnehin neu).
+  **Eigene Festlegung:** Was in einer Woche fehlt, holt die Folgewoche nicht nach (verpasste Last nachzujagen erhöht das Risiko; die Wochenlast folgt dem Aufbau,
+  die Ermüdung fliesst über Ampel und «Automatisch» ein). Auch die Läufe im Aufbau-Fenster (aufbau-1.2) wirken so in die Folgewochen.
 - Regel ändern = Version in `V66.VERSIONS` (umplanen, grenzen) bzw. `V92.VERSIONS` (woche-einstellen, fehlt-zeit), Wissen (Kapitel «modelle») und `tests/test_v92.cjs` nachführen.

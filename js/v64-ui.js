@@ -89,7 +89,9 @@
     // V7.6 kraft-plan-1.1 (js/v76.js): das Krafttraining aus den Planeinstellungen am passenden Tag. Den Tag wählt es an der schon verteilten Woche
     // (so steht jede Einheit an ihrem Tag); passt es dort (V76.passt), bleibt diese Woche, sonst wird mit dem Krafttraining neu verteilt (es belegt seine
     // Zeit, am Tag danach keine harte Einheit an Land). Regel 2 danach (V76.abstimmen). → { roh: unverteilt mit Krafttraining, v: verteilt }
-    const verteilt = (w) => (!vorbei && window.V66 && window.V66.wocheVerteilt ? window.V66.wocheVerteilt(w, verf, { css_s: css ? css.s : null, lang, ctxE }) : w);
+    // V9.2.1 umplanen-1.1 (Folgewoche): der letzte Tag der Woche davor bindet den Montag (harte Einheit an Land, Krafttraining, lange Aktivität draussen)
+    const vorher = vorbei ? null : vortag(offset), vorherDatum = V.addDays(mo, -1);
+    const verteilt = (w) => (!vorbei && window.V66 && window.V66.wocheVerteilt ? window.V66.wocheVerteilt(w, verf, { css_s: css ? css.s : null, lang, ctxE, vorher, vorherDatum }) : w);
     const mitKraft = (roh) => {
       const D76 = window.V76;
       if (!D76 || !E75) return { roh, v: verteilt(roh) };
@@ -139,6 +141,7 @@
       return ((wErh.tage.find((t) => t.date === d) || {}).einheiten) || [];
     };
     return { w: wa, wPlan: w, w0: basis, w0roh: w0, verteilt: !teilweise && !!(w0v && w0v.verteilung), verf, lang, ctxE, wahl, S, css, vg, ausSaison, vorbei, offset, erh, E75, basis75: ba, rampe: R, skalen: sk,
+      vorher, vorherDatum,
       sportart: SA, aufteilung75: AUF, auto, autoIn, modell };
   }
   /** aufbau-1.2 (V7.6.2): geplante Läufe ab heute aus den Wochen vor der Woche «offset» (was dort gilt: Mein Plan mit Verteilung und Ampel), Distanz
@@ -146,6 +149,24 @@
    *  (zwischengespeichert: neu bei «meinplan», neuen Daten, neuem Tag, spätestens nach 3 s). */
   let PROJ = null;
   document.addEventListener("meinplan", () => { PROJ = null; });
+  M.projLeeren = () => { PROJ = null; };                                     // V9.2.1: nach einer gespeicherten Woche, bevor die Folgewoche rechnet
+  /** V9.2.1 umplanen-1.1 (Folgewoche): Einheiten am letzten Tag der Woche vor «offset» (was dort gilt: Mein Plan mit Verteilung und Ampel) – für den
+   *  Montag der Woche «offset». Zwischengespeichert wie geplanteLaeufe (je Durchgang einmal je Woche, neu bei «meinplan»). */
+  function vortag(offset) {
+    const h = heuteISO(), jetzt = Date.now();
+    if (!PROJ || PROJ.D !== C.D || PROJ.h !== h || jetzt - PROJ.zeit > 3000) PROJ = { D: C.D, h, zeit: jetzt, wochen: new Map() };
+    const P = PROJ; if (!P.vortag) P.vortag = new Map();
+    if (P.vortag.has(offset)) return P.vortag.get(offset);
+    P.vortag.set(offset, []);                                                  // gegen Wiederholung
+    let L = [];
+    try {
+      const K = kontext(offset - 1), d = V64().addDays(V64().addDays(V64().montag(h), 7 * offset), -1);
+      const t = K && K.w ? K.w.tage.find((x) => x.date === d) : null;
+      L = t && !t.rennen ? (t.einheiten || []).slice() : [];
+    } catch (err) { console.error(err); L = []; }
+    P.vortag.set(offset, L);
+    return L;
+  }
   function geplanteLaeufe(offset) {
     const V = V64(), h = heuteISO(), jetzt = Date.now();
     if (!PROJ || PROJ.D !== C.D || PROJ.h !== h || jetzt - PROJ.zeit > 3000) PROJ = { D: C.D, h, zeit: jetzt, wochen: new Map() };

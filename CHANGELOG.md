@@ -1,5 +1,17 @@
 # Änderungen
 
+## V9.2.1 · 22.11.2026 · Folgewoche (umplanen-1.1)
+Silas' Wunsch vom 22.11.2026 (nach V9.2): Ändert er die Zeit eines Tages, soll auch die Woche danach angepasst werden, «wenn es einen Einfluss hat».
+- **Der Sonntag davor bindet den Montag:** `V66.verteilen` kennt den letzten Tag der Woche davor (`opt.vorher`). Steht dort eine harte Einheit an Land, ein
+  Krafttraining oder eine Aktivität draussen ab 2 h, plant die Woche am Montag keine harte Einheit an Land (dieselben Regeln wie innerhalb der Woche:
+  verfuegbarkeit-1.2, kraft-plan-1.1, aktivitaet-plan-1.0). `V66.vortagBindet`; `V64UI` liefert den Sonntag je Woche (zwischengespeichert wie die geplanten Läufe).
+- **Folgewoche:** Nach jeder gespeicherten Änderung (auch ↶ und ✓ im Bearbeiten-Modus) wird die Woche danach neu geplant: gespeicherte Wochen über umplanen
+  (Eigenes, Sperren, Streichungen bleiben), Wochen ohne Eigenes folgen von selbst; die Garmin-Aufträge ihrer Tage werden nachgeführt. Der Bericht nennt es
+  («Nächste Woche: «…» Mo → Fr (harte Einheit am Sonntag davor)»), ↶ nimmt beides zurück.
+- **Eigene Festlegung:** Fehlende Last wird nicht in die Folgewoche nachgeholt – die Wochenlast folgt weiter dem Aufbau (plan.md «Umplanen»).
+- Tests: `tests/test_v92.cjs` (+3: Kern, Folgewoche automatisch mit ↶, gespeicherte Folgewoche mit gesperrtem Tag; 23 Tests), `tests/test_v64.cjs` (wissen-1.35).
+- `sw.js` Cache `notebook-v921-folgewoche-2026-11-22`, Wissen 1.35.
+
 ## V9.2 · 22.11.2026 · «Woche wie Enduco» Etappe W1: Umplanen (umplanen-1.0, grenzen-1.0, woche-einstellen-1.0, fehlt-zeit-1.0)
 Auftrag `docs/auftrag-enduco-woche.md` (neu im Repo), Etappe W1. Neue Module `js/v92.js` (`V92`: Bericht, Frage, Einträge von «Woche einstellen»), `js/v92-ui.js` (`V92UI`),
 Test `tests/test_v92.cjs` (20 Tests, Abnahme 1–15). Versionen: `eigenplan-1.3`, `verfuegbarkeit-1.3`, `wissen-1.34`.
