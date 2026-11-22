@@ -383,3 +383,16 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
      Check-in steht (Enduco-Phasen «Krank» kennt die Seite nicht); fehlen Morgenwerte, greift nur der Check-in und der Puls in der Einheit. Die Zahlen sind eigene Festlegungen –
      wenn zu viel oder zu wenig wegfällt, kurz melden.
 
+## Nach V9.3.2 (22.11.2026, Bearbeiten-Woche, Griff ziehen, Feinschliff, eigene Markierung)
+148. **Bearbeiten am Sonntag (bearbeiten-1.1):** Am Sonntag beginnt Bearbeiten mit der nächsten Woche; den heutigen Tag ändert das Tagesblatt. **Silas bitte prüfen:** Sonntagabend
+     Kalender → Bearbeiten → oben steht die nächste Woche; «Woche einstellen» und ✨ gelten für sie. Wer im Zyklus oder in der Liste eine spätere Woche gewählt hat, bearbeitet diese.
+149. **Griff ziehen (kalender-4.2):** **Silas bitte prüfen:** Griff unter dem Raster nach unten ziehen → zwei Wochen → Monat; nach oben → zwei Wochen → eine Woche (Liste und Zyklus);
+     antippen wechselt zwischen zwei Wochen und Monat. Fühlt sich der Weg (44 px je Stufe) zu kurz oder zu lang an: melden.
+150. **Noch anders als Enduco (Stand V9.3.2):** «⊖» im Tageskopf des Bearbeitens (Bedeutung in den Bildern nicht erkennbar – die Seite hat dort «…» mit dem Tagesblatt); Wochen-Pille im
+     Zyklus mit «h:mm h» statt «7h 23m»; Kartenbilder und «76 %»-Abzeichen bei absolvierten Einheiten (siehe 146); Analyse, Heute/Home und Plan im Enduco-Look = W2c (eigene Sitzung).
+151. **Eigene Markierung (analyse-gesund-1.1):** «nicht werten» im Namen, in der Notiz der Uhr oder in «Nach dem Training» lässt eine Einheit aus Pace/Puls-Auswertungen weg;
+     Krankheitszeichen gelten für den Tag und 3 Tage danach. **Silas bitte prüfen:** die Einheit, die du mit «nicht werten» benannt hast, im Explorer öffnen → «nicht vergleichbar: krank
+     (von dir markiert)» bzw. «von dir als «nicht werten» markiert». Grenze: Notizen der Uhr kommen mit dem Nacht-Update; «Nach dem Training» auf der Seite zählt nach dem nächsten Laden.
+152. **W4 «Zeit als Ziel» entschieden (22.11.):** ja, trainingstechnisch begrenzt (längste lockere Einheit, höchstens Zeit des Tages, nur bis zur Obergrenze des Korridors, nie in
+     Erholungs- und Rennwochen) – Umsetzung in Etappe W4.
+

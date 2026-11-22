@@ -8,6 +8,11 @@
   dazu Meter je Herzschlag > 10 % unter/über dem Median der vergleichbaren Läufe der 8 Wochen davor (≥ 4). Grund immer sichtbar (laufvergleich-1.1, laufeffizienz-1.2,
   entwicklung-1.1 «krank»). `FK.gesundheit(D)`, `FK.nichtRepraesentativ`, `FK.gesundheitSetzen(D)` (beim Laden der Seite), `FK.nichtRepraesentativGrund(a)`. Zahlen = eigene Festlegungen
   (`FK.GESUND`); ändern = Version erhöhen, `tests/test_formkurve.cjs` nachführen.
+- **Eigene Markierung `analyse-gesund-1.1` (V9.3.2, Silas 22.11.2026: «ich habe einfach die Einheit bewertet»):** `FK.markierung(a, D, rpe)` liest den Namen der Aktivität, die Notiz
+  der Uhr (`D.garmin_notizen[gid].text`) und «Nach dem Training» (`rpe.notiz`, `rpe.magen`). Reihenfolge: Krankheitszeichen (`FK.MARKE.krank`: krank, Fieber, Infekt, Grippe,
+  Magen-Darm, Erbrechen, Übelkeit, Durchfall, Covid …) → wie Check-in «krank», der Tag und 3 Tage danach («krank (von dir markiert)»); «nicht werten» (`FK.MARKE.nicht`: nicht werten/
+  zählen/repräsentativ/vergleichbar, ohne Wertung …) → nur diese Einheit; «abgebrochen» nur im Namen → die Einheit; «Magen: starke Beschwerden» → die Einheit. `FK.gesundheit(D, { rpe })`
+  liefert dazu `markiert` (Aktivitäts-ID → Grund); die Seite gibt beim Laden `D.rpe` und die Einträge der Seite mit. Neue Wörter = Version erhöhen und Test nachführen.
 - Vergleiche nur aus `eb`-Blöcken (Rad 190–210 W je System Rolle/Rennrad/MTB, Laufen 5:20–5:40/km flach), Urteil `entwicklung-1.0`
   (mind. 3 je Zeitraum, Bootstrap-Intervall, Guards Hitze/Höhe/Drift/Ausreisser). Laktat zählt erst bestätigt (B1), CSS nur aus Tests.
 - Form `pmc-2.1` (Fitness − Ermüdung desselben Tages; 2.1 = ohne Krafttraining, Silas' Wunsch vom 17.11.2026; «Heute» zeigt seit status-1.1 die Form zu Tagesbeginn), Zonen `zonenverteilung-2.0` (je Sportart, Zonen je Datum, Garmin-Zonen nicht beurteilt).

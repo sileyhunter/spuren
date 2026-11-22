@@ -18,6 +18,12 @@
    Verlauf für ↶/↷; gespeichert wird erst mit ✓, ✕ verwirft. Einheiten am Griff auf einen anderen Tag derselben Woche ziehen (oder den Griff antippen
    und den Tag wählen); Schloss je Einheit und je Tag; ✨ «Woche anpassen?» verteilt um die gesperrten herum neu (V66 «anpassen»). Nie an Garmin,
    solange der Entwurf offen ist; Werkzeuge, die direkt speichern (Draussen planen, Planeinstellungen, Verfügbarkeit der Woche), warten bis danach.
+   bearbeiten-1.1 (V9.3.2, Silas 22.11.: «bearbeiten lässt sich die Woche nicht»): folgt in der laufenden Woche kein Tag mehr (Sonntag), beginnt Bearbeiten
+   mit der Woche danach (V78.bearbeitenAb) – wie die Vorlage am Sonntagabend; den heutigen Tag ändert das Tagesblatt; «Tag sperren» steht im Tagesblatt
+   hinter «…» (kein Schloss mehr im Tageskopf); ✨ fragt «Anpassen oder neu berechnen?» – «Neu» = Stufe 2 von alles-neu-1.0 (nur Gesperrtes bleibt).
+
+   kalender-4.2 (V9.3.2, Vorlage Aufnahme 22.11. 23:06): den Griff unter dem Raster ziehen – nach unten mehr Wochen (1 → 2 → Monat), nach oben weniger;
+   antippen wechselt zwischen zwei Wochen und dem Monat; gilt für Liste und Zyklus. Die Monatsansicht als eigener Knopf entfällt (der Monat ist der Griff).
 
    tagesblatt-2.0 (V7.10, Vorlage «Tagesblatt», Oberfläche in js/v66-ui.js): Kopf mit Fitness, Ermüdung, Status und Form (Erklärung hinter «i»), die Einheiten wie im
    Kalender, Zeilen «Training hinzufügen ›» und «Eigene Aktivität planen ›» (eigene-aktivitaet-1.0 in js/v66.js), Verfügbarkeit des Tages direkt im Blatt (Sportarten
@@ -29,12 +35,20 @@
   if (root) root.V78 = V78;
 })(typeof window !== "undefined" ? window : null, function () {
   "use strict";
-  const V78 = { VERSIONS: { kalender: "kalender-4.1", status: "trainingsstatus-1.0", zyklus: "zyklus-1.0", prognose: "fitness-prognose-1.0", bearbeiten: "bearbeiten-1.0", tagesblatt: "tagesblatt-2.0" } };
+  const V78 = { VERSIONS: { kalender: "kalender-4.2", status: "trainingsstatus-1.0", zyklus: "zyklus-1.0", prognose: "fitness-prognose-1.0", bearbeiten: "bearbeiten-1.1", tagesblatt: "tagesblatt-2.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const pd = (s) => new Date(s + "T12:00:00Z");
   const iso = (d) => d.toISOString().slice(0, 10);
   const add = (s, n) => { const d = pd(s); d.setUTCDate(d.getUTCDate() + n); return iso(d); };
   V78.montag = (s) => add(s, -((pd(s).getUTCDay() + 6) % 7));
+  /** bearbeiten-1.1: Montag der Woche, mit der Bearbeiten beginnt – die gewünschte (frühestens die laufende); folgt in der laufenden nach heute kein Tag
+   *  mehr (Sonntag: zu verschieben gibt es dort nichts, den heutigen Tag ändert das Tagesblatt), die Woche danach. wunsch = Tag oder Montag. */
+  V78.bearbeitenAb = function (wunsch, heute) {
+    const m0 = V78.montag(heute);
+    let m = V78.montag(wunsch || heute); if (m < m0) m = m0;
+    if (m === m0 && add(m0, 6) <= heute) m = add(m, 7);
+    return m;
+  };
   const TAG = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
   const MON = ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."];
   const MONAT = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];

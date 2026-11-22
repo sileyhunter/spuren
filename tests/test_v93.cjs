@@ -1,4 +1,4 @@
-/* V9.3 Auftrag «Woche wie Enduco», Etappe W2 (docs/auftrag-enduco-woche.md): woche-look-1.0, kugel-1.0.
+/* V9.3 Auftrag «Woche wie Enduco», Etappe W2 (docs/auftrag-enduco-woche.md): woche-look-1.0, kugel-1.0; V9.3.2 woche-look-1.1, kalender-4.2, bearbeiten-1.1.
    Kugel-Streifen aus den Zonen, Zonenfarben und Farben der Woche wie gemessen, Mini-Balken-Skala, Zahl am Tageskopf, Zeile einer Einheit,
    Zustandszeichen, freie Tage. Alles erfunden. */
 "use strict";
@@ -11,7 +11,7 @@ const CSS = fs.readFileSync(path.join(__dirname, "..", "css", "v6.css"), "utf8")
 const V6SRC = fs.readFileSync(path.join(__dirname, "..", "js", "v6.js"), "utf8");
 
 test("Versionen W2", () => {
-  assert.deepEqual(V93.VERSIONS, { look: "woche-look-1.0", kugel: "kugel-1.0" });
+  assert.deepEqual(V93.VERSIONS, { look: "woche-look-1.1", kugel: "kugel-1.0" });
 });
 
 test("Kugel: Einfahren, Auslaufen und Pausen zählen nicht – Intervalle allein ergeben eine einfarbige Kugel", () => {
@@ -82,3 +82,60 @@ test("Zustandszeichen und freie Tage: gesperrt und von Hand gesetzt bekommen ein
   assert.ok(UI.includes('k4-hand') && UI.includes('Zeit von Hand gesetzt'), "Liste: gesetzte Zeit in Grau am Tageskopf");
   assert.ok(!/k4-r-kw" data-k4kw/.test(UI), "keine Wochenspalte mehr im Raster (sieben Spalten wie die Vorlage)");
 });
+
+/* ---------- V9.3.2 (Silas 22.11., 18 Bilder und Aufnahme 23:06): Bearbeiten-Woche, Griff ziehen, Zyklus-Raster, ✨ mit «Neu» ---------- */
+const V78 = require("../js/v78.js");
+const UI2 = () => fs.readFileSync(path.join(__dirname, "..", "js", "v78-ui.js"), "utf8");
+const HTML = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+
+test("bearbeiten-1.1: Bearbeiten beginnt mit der Woche, in der nach heute noch Tage folgen – am Sonntag mit der nächsten", () => {
+  assert.equal(V78.VERSIONS.bearbeiten, "bearbeiten-1.1");
+  const SO = "2030-03-17", MO = "2030-03-11", MO2 = "2030-03-18";                       // erfundene Woche: Montag 11.3. bis Sonntag 17.3.2030
+  assert.equal(V78.bearbeitenAb(SO, SO), MO2, "Sonntag → nächste Woche (wie die Vorlage am Sonntagabend)");
+  assert.equal(V78.bearbeitenAb(null, SO), MO2, "ohne Wunsch ebenso");
+  assert.equal(V78.bearbeitenAb(null, "2030-03-16"), MO, "Samstag: der Sonntag lässt sich noch verschieben");
+  assert.equal(V78.bearbeitenAb(null, "2030-03-13"), MO, "Mittwoch: laufende Woche");
+  assert.equal(V78.bearbeitenAb("2030-03-04", "2030-03-13"), MO, "vergangene Woche gewünscht → frühestens die laufende");
+  assert.equal(V78.bearbeitenAb("2030-03-04", SO), MO2, "… und am Sonntag die nächste");
+  assert.equal(V78.bearbeitenAb("2030-03-27", "2030-03-13"), "2030-03-25", "eine spätere Woche bleibt, wie gewählt");
+  const UI = UI2();
+  assert.ok(UI.includes("V78().bearbeitenAb(mo || ST.sel || h, h)"), "N.bearbeiten nutzt die Regel");
+  assert.ok(!UI.includes("data-k4tlock"), "kein Schloss mehr im Tageskopf – «Tag sperren» steht im Tagesblatt hinter «…»");
+  assert.ok(UI.includes('${gesp ? ` <span class="k4-tlk"'), "ein gesperrter Tag zeigt das Schloss am Namen, auch im Bearbeiten");
+});
+
+test("kalender-4.2: Griff ziehen – nach unten mehr Wochen (1 → 2 → Monat), nach oben weniger; Liste und Zyklus teilen den Zustand", () => {
+  assert.equal(V78.VERSIONS.kalender, "kalender-4.2");
+  const UI = UI2();
+  assert.ok(UI.includes('const ZEILEN = [1, 2, "monat"]'), "drei Stufen");
+  assert.ok(/addEventListener\("pointerdown"/.test(UI) && /addEventListener\("pointermove"/.test(UI) && UI.includes("Math.trunc(dy / 44)"), "Ziehen mit dem Zeiger, je 44 px eine Stufe");
+  assert.ok(UI.includes("ST.zeilen === 1 ? 1 : 2"), "eine oder zwei Wochen im Raster");
+  assert.ok(UI.includes("function zeilenSetzen(z) { ST.zeilen = z; ST.offen = z === \"monat\"; ZS.offen = ST.offen; }"), "ein Zustand für Liste und Zyklus");
+  assert.ok(UI.includes("const rasterNeu = () =>"), "Zyklus: der Griff zeichnet nur das Raster neu, die Karten bleiben");
+  assert.ok(/\.kal-v7\.k4 \.k4-griff \{ touch-action: none;/.test(CSS), "der Finger zieht den Griff, die Seite scrollt dabei nicht");
+  assert.ok(HTML.includes(`if (this.ansicht === "monat") this.ansicht = "liste"; const mb = document.querySelector('[data-kalans="monat"]'); if (mb) mb.hidden = true;`),
+    "nur Zyklus und Liste als Knöpfe – den Monat zeigt der Griff");
+});
+
+test("woche-look-1.1: Zyklus-Raster wie die Vorlage – Zahlen mit Kreis, dunkle Pille ohne Umriss, kein Panel im Panel; «Heute» umrandet, ohne KW-Zeile", () => {
+  const UI = UI2();
+  assert.ok(UI.includes('data-k4zt="${ds}"') && UI.includes('${ds === selTag ? " sel" : ""}'), "Tag im Zyklus-Raster antippbar, gewählter Tag mit Kreis");
+  assert.ok(UI.includes('class="k4-zgp'), "Zonen-Gruppen der Wochenkarte mit eigener Klasse");
+  assert.ok(!/^\.k4-zg \{ display: flex; gap: 2px; padding: 2px;/m.test(CSS) && /^\.k4-zgp \{/m.test(CSS), "k4-zg (Zyklus-Raster) bekommt kein Panel der Zonen-Gruppen mehr");
+  assert.ok(/\.kal-v7\.k4 \.k4-zg \.k4-zw, \.kal-v7\.k4 \.k4-zg \.k4-zw\.sel \{[^}]*border: 0;[^}]*background: var\(--wk-pille\)/.test(CSS), "Pille dunkel, ohne Umriss – auch die gewählte Woche");
+  assert.ok(/\.kal-v7\.k4 \.kal-heute \{ background: transparent; border: 1\.5px solid var\(--wk-text\)/.test(CSS), "«Heute» umrandet");
+  assert.ok(HTML.includes('document.getElementById("cal-sub").hidden = !!(liste || zyklus);'), "keine Zeile «KW …» in Liste und Zyklus");
+  assert.ok(HTML.includes('document.getElementById("kal-wbar").hidden = !(liste || zyklus);') && UI.includes("wbarZeichnen(ZS.mo)"), "Zyklus: «Phase | Wochenart · Zeitraum» über den Karten");
+  assert.ok(!/\.k4-r-t\.hand \.k4-r-d::after/.test(CSS), "keine Striche «von Hand» unter den Tageszahlen");
+});
+
+test("woche-look-1.1: absolvierte Zeile wie die geplanten, Trenner als Leiste, ✨ «Anpassen oder neu berechnen?» mit «Neu»", () => {
+  const UI = UI2();
+  assert.ok(UI.includes('<small class="k4-ez">${[W.dauerText(sek(a)), km, tl]') && UI.includes('<span class="sr-only">absolviert'), "Zahlen mit Abstand, «absolviert» und «Passt zu» nur für Screenreader");
+  assert.ok(UI.includes('k4-trenner k4-trenner2"><i aria-hidden="true">↓</i><span>Nächste Woche</span>'), "Trenner «Nächste Woche» mit Pfeilen");
+  assert.ok(UI.includes("Anpassen oder neu berechnen?") && UI.includes('data-k4neu>Neu') && UI.includes('aktionen: [{ art: "neuberechnen" }], ohneUmplanen: true'),
+    "✨: «Neu» rechnet die Woche neu (alles-neu-1.0 Stufe 2), «Anpassen» plant um (umplanen)");
+  assert.ok(/--wk-neu: #f39b3b;/.test(CSS.slice(0, CSS.indexOf("V7 navigation-7.0"))), "Orange für «Neu» als Variable vor dem V7-Abschnitt");
+  assert.ok(/\.k4-anp-f \.k4-neu \{ background: var\(--wk-neu\)/.test(CSS));
+});
+

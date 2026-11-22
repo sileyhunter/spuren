@@ -808,7 +808,7 @@ test("Ringe (Audit V6.4 D6): Tag ohne eingespielte Einheiten → Belastung offen
 
 /* ---------- V9.3.1 analyse-gesund-1.0: kranke Tage, erhöhter Ruhepuls und ungewöhnlicher Puls zählen nicht für Pace/Puls (erfundene Werte) ---------- */
 test("analyse-gesund-1.0: krank im Check-in samt 3 Tagen danach, Ruhepuls ≥ 7 über dem Median der 28 Tage davor", () => {
-  assert.equal(FK.VERSIONS.gesund, "analyse-gesund-1.0");
+  assert.equal(FK.VERSIONS.gesund, "analyse-gesund-1.1");                     // V9.3.2: dazu die eigene Markierung
   const days = Array.from({ length: 30 }, (_, i) => ({ date: FK.addDays("2026-02-01", i), rhr: 48 + (i % 3) }));
   days.push({ date: "2026-03-03", rhr: 57 }, { date: "2026-03-04", rhr: 54 });
   const D = { befinden: [{ date: "2026-03-10", krank: ["Halsweh"] }, { date: "2026-03-20", krank: [] }], days, activities: [] };
@@ -850,5 +850,40 @@ test("analyse-gesund-1.0: ungewöhnlich hoher Puls in der Einheit (Effizienz > 1
   assert.equal(L.ausgeschlossen.puls_hoch, 1);
   assert.ok(L.ungewoehnlich.some((p) => p.id === "h6" && /ungewöhnlich hoch/.test(p.aus)), JSON.stringify(L.ungewoehnlich));
   assert.ok(L.punkte.some((p) => p.id === "h7"), "der nächste normale Lauf zählt wieder");
+});
+
+/* ---------- V9.3.2 analyse-gesund-1.1: eigene Markierung im Namen, in der Notiz der Uhr oder in «Nach dem Training» (erfundene Namen und Werte) ---------- */
+test("analyse-gesund-1.1: «nicht werten» lässt nur diese Einheit weg, Krankheitszeichen den Tag und 3 Tage danach, «abgebrochen» und Magen stark die Einheit", () => {
+  const r = (i, o) => ({ id: "m" + i, gid: "g90" + i, sport: "lauf", typ: "Laufen", name: "Laufen", date: FK.addDays("2026-06-01", i), km: 10, hm: 40, dur: 3300, mv: 3300,
+    hr: 150, tss: 50, dr: { x1: 10.9, x2: 11.0 }, wx: { temperature: 12 }, ...o });
+  const acts = [r(0, { name: "Lauf locker – nicht werten" }), r(1), r(2, { name: "Intervalle abgebrochen" }), r(3), r(4), r(5), r(6), r(7), r(8, { name: "Lauf (nicht gezählt)" })];
+  const D = { activities: acts, days: [], befinden: [],
+    garmin_notizen: { g903: { text: "Beispiel-Notiz: Magen ok, Gel nach 40 min" }, g904: { text: "Beispiel: leichtes Fieber am Abend" } },
+    rpe: [{ id: "m6", rpe: 6, magen: "stark" }, { id: "m7", rpe: 4, notiz: "Beispiel: nicht repräsentativ, Uhr falsch getragen" }] };
+  const G = FK.gesundheit(D);
+  assert.equal(G.markiert.get("m0"), "von dir als «nicht werten» markiert");
+  assert.ok(!G.krank.has(acts[0].date) && !G.krank.has(acts[1].date), "«nicht werten» ohne Krankheitszeichen gilt nur für die Einheit");
+  assert.equal(G.markiert.get("m2"), "abgebrochen (laut Name)");
+  assert.equal(G.markiert.has("m3"), false, "«Magen ok» in der Notiz ist keine Markierung");
+  assert.equal(G.krank.get(acts[4].date), "krank (von dir markiert)", "Fieber in der Notiz der Uhr = krank");
+  assert.match(G.krank.get(acts[5].date), /^1 Tag nach «krank» \(von dir markiert\)/);
+  assert.ok(G.krank.has(acts[7].date) && !G.krank.has(acts[8].date), "3 Tage danach, nicht länger");
+  assert.equal(G.markiert.get("m6"), "starke Magenbeschwerden (Nach dem Training)", "die eigene Markierung der Einheit geht als Grund vor");
+  assert.equal(FK.nichtRepraesentativ(acts[0], G), "von dir als «nicht werten» markiert");
+  assert.equal(FK.nichtRepraesentativ(acts[6], G), "starke Magenbeschwerden (Nach dem Training)");
+  assert.match(FK.nichtRepraesentativ(acts[5], G), /^kurz nach Krankheit/);
+  assert.equal(FK.nichtRepraesentativ(acts[8], G), "von dir als «nicht werten» markiert");
+  assert.equal(FK.nichtRepraesentativ(acts[1], G), null);
+  // starke Magenbeschwerden in «Nach dem Training» an einem sonst gesunden Tag; «nicht repräsentativ» in der Notiz der Seite
+  const G2 = FK.gesundheit({ activities: [r(20, { id: "n1" }), r(21, { id: "n2" })], rpe: [{ id: "n1", magen: "stark" }, { id: "n2", magen: "leicht", notiz: "Beispiel: nicht repräsentativ" }] });
+  assert.equal(G2.markiert.get("n1"), "starke Magenbeschwerden (Nach dem Training)");
+  assert.equal(G2.markiert.get("n2"), "von dir als «nicht werten» markiert");
+  // Einträge der Seite (opt.rpe) gehen vor D.rpe; über gesundheitSetzen kennt laufVergleichbar den Grund
+  FK.gesundheitSetzen({ activities: acts, days: [], rpe: [] }, { rpe: [{ id: "m1", notiz: "Beispiel: bitte nicht werten" }] });
+  const v = FK.laufVergleichbar(acts[1], { acts });
+  assert.equal(v.ok, false); assert.ok(v.gruende.includes("von dir als «nicht werten» markiert"), JSON.stringify(v.gruende));
+  FK.gesundheitSetzen(null);
+  // Namen, die nur ähnlich klingen, zählen nicht
+  for (const n of ["Nicht übel, gutes Gefühl", "Lauf zum Spital (Besuch)", "Locker – Magen ok"]) assert.equal(FK.markierung({ id: "x", name: n }, {}, null), null, n);
 });
 

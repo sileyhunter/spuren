@@ -122,3 +122,15 @@ Laufen nach Puls, Schwimmen Last pro Bewegungsstunde der letzten acht Wochen) si
 - **Tagesblatt:** `#v59-ov[data-art="tag"]` – Titel mittig, Kennzahlen-Kachel drei Spalten (Form darunter), Zeilen mit Haarlinien, Sportart-Pille weiss.
 - Regel ändern = Version in `V93.VERSIONS` und `tests/test_v93.cjs` nachführen. Offen (W2c): Zyklus, Monat, Heute, Plan im selben Look – erst nach Silas' Okay.
 
+## V9.3.2 Woche wie Enduco – Feinschliff nach Silas' 18 Bildern und der Aufnahme vom 22.11. abends (woche-look-1.1, kalender-4.2, bearbeiten-1.1)
+- **Griff (kalender-4.2):** `#kal-griff .k4-griff` ziehen – nach unten mehr Wochen, nach oben weniger, Stufen `[1, 2, "monat"]` je 44 px (`ST.zeilen`, `zeilenSetzen` hält `ST.offen`
+  und `ZS.offen` gleich); antippen = zwei Wochen ↔ Monat. Derselbe Knopf bleibt beim Neuzeichnen stehen (sonst risse das Ziehen ab), `touch-action: none`. Im Zyklus zeichnet der Griff
+  nur das Raster neu. Knopf «Monat» in der Leiste ausgeblendet, gespeichertes «monat» → Liste (die alte Monatsansicht bleibt nur ohne `V78UI`).
+- **Kopf:** «Heute» umrandet (`.kal-v7.k4 .kal-heute`); `#cal-sub` («KW …») in Liste und Zyklus aus; `#kal-wbar` auch im Zyklus (Klasse `.kal-v7.k4zy`, ohne Panel).
+- **Zyklus-Raster:** Zahlen in `<i>` mit Kreis (heute `--race`, gewählter Tag `--wk-sel`; `data-k4zt` antippen wählt Tag und Woche), Wochen-Pille `--wk-pille` ohne Umriss, «mind.» als «≥».
+  Die Zonen-Gruppen der Wochenkarte heissen `.k4-zgp` (vorher `.k4-zg` = auch das Zyklus-Raster → Panel im Panel).
+- **Liste:** absolvierte Aktivität mit `.k4-ez` wie die geplanten, «absolviert · Passt zu» nur `sr-only`; kein Strich «von Hand» unter den Tageszahlen mehr (Zeit grau am Tageskopf bleibt).
+- **Bearbeiten:** Griff der Leiste absolut in der Mitte, ✕ ✓ in Spalte 2 und 3; kein Schloss im Tageskopf (Tagesblatt «Tag sperren»; gesperrt = Schloss am Namen `.k4-tlk`); Trenner
+  `.k4-trenner2` «↓ Nächste Woche ↓» als graue Leiste; ✨-Blatt `#v59-ov[data-art="k4-anp"]` «Anpassen oder neu berechnen?» mit `.k4-neu` (`--wk-neu` Orange, Schrift schwarz) und
+  `.k4-anp-ok` (weiss).
+

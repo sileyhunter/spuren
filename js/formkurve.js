@@ -11,7 +11,7 @@
     cockpit: "cockpit-1.0", readiness: "readiness-3.0", ampel_pruefung: "ampel-pruefung-1.1", langfahrt: "langfahrt-2.0", koppel: "koppel-1.1",
     fueling: "fueling-1.0", eta: "eta-1.0", cda: "cda-1.0", fit: "fit-js-1.0", wetter: "wetter-1.0",
     pmc: "pmc-2.1", zonen: "zonenverteilung-2.0", orientierung: "langfahrt-orientierung-1.0", entwicklung: "entwicklung-1.1", laufeffizienz: "laufeffizienz-1.2",
-    laufvergleich: "laufvergleich-1.1", gesund: "analyse-gesund-1.0",
+    laufvergleich: "laufvergleich-1.1", gesund: "analyse-gesund-1.1",
     ringe: "ringe-1.1", laktat_drift: "laktat-drift-1.0",
   };
   const DAY = 864e5;
@@ -933,12 +933,42 @@
      Infekt einige Tage erhöht); Ruhepuls am Morgen mindestens 7 Schläge über dem Median der 28 Tage davor (mindestens 10 Morgenwerte); in der Einheit:
      Effizienz (Meter je Herzschlag) mehr als 10 % unter bzw. über dem Median der vergleichbaren Läufe der 8 Wochen davor (mindestens 4). ---------- */
   FK.GESUND = { nachKrank: 3, rhrPlus: 7, rhrTage: 28, rhrMin: 10, effAbw: 0.10, effTage: 56, effMin: 4 };
-  /** Tage, an denen Einheiten für Pace/Puls nicht zählen → { v, krank: Map(Datum → Text), rhr: Map(Datum → { wert, basis, plus }) }. */
-  FK.gesundheit = function (D) {
-    const G = FK.GESUND, krank = new Map(), rhr = new Map();
+  /* V9.3.2 analyse-gesund-1.1 (Silas 22.11.: «ich habe einfach die Einheit bewertet»): deine eigene Markierung zählt – im Namen der Aktivität, in der Notiz
+     auf der Uhr (Garmin) oder in «Nach dem Training». «nicht werten» (und ähnlich) lässt nur diese Einheit weg; Krankheitszeichen (krank, Fieber, Infekt,
+     Magen-Darm, Erbrechen …) gelten wie «krank» im Check-in für den ganzen Tag und die 3 Tage danach; «abgebrochen» im Namen und starke Magenbeschwerden
+     in «Nach dem Training» lassen die Einheit weg. */
+  FK.MARKE = {
+    nicht: /nicht\s+(?:werten|gewertet|zählen|zaehlen|gezählt|gezaehlt|repräsentativ|repraesentativ|vergleichbar)|ohne\s+wertung|zählt\s+nicht|zaehlt\s+nicht|nicht\s+für\s+(?:die\s+)?(?:analyse|auswertung)|\bignorieren\b/i,
+    krank: /\bkrank|kränk|erkält|erkaelt|fieber|infekt|grippe|magen[\s-]*darm|erbroch|erbrech|übelkeit|uebelkeit|durchfall|covid|corona/i,
+    abbruch: /abgebrochen|\babbruch\b/i,
+  };
+  /** Eigene Markierung einer Aktivität → { art: "nicht" | "krank" | "abbruch" | "magen", text } oder null. D für Notiz (Garmin) und «Nach dem Training» (rpe). */
+  FK.markierung = function (a, D, rpe) {
+    if (!a) return null;
+    const M = FK.MARKE, name = String(a.name || ""), g = a.gid && D && D.garmin_notizen ? D.garmin_notizen[a.gid] : null, notiz = `${g && g.text ? g.text : ""}\n${rpe && rpe.notiz ? rpe.notiz : ""}`;
+    if (M.krank.test(name) || M.krank.test(notiz)) return { art: "krank", text: "krank (von dir markiert)" };   // vor «nicht werten»: gilt dann für den ganzen Tag und 3 Tage danach
+    if (M.nicht.test(name) || M.nicht.test(notiz)) return { art: "nicht", text: "von dir als «nicht werten» markiert" };
+    if (M.abbruch.test(name)) return { art: "abbruch", text: "abgebrochen (laut Name)" };
+    if (rpe && rpe.magen === "stark") return { art: "magen", text: "starke Magenbeschwerden (Nach dem Training)" };
+    return null;
+  };
+  /** Tage, an denen Einheiten für Pace/Puls nicht zählen → { v, krank: Map(Datum → Text), rhr: Map(Datum → { wert, basis, plus }), markiert: Map(Aktivitäts-ID → Text) }.
+   *  opt.rpe: Einträge «Nach dem Training» (sonst D.rpe). */
+  FK.gesundheit = function (D, opt) {
+    const G = FK.GESUND, krank = new Map(), rhr = new Map(), markiert = new Map();
+    const RP = new Map(); for (const r of (opt && Array.isArray(opt.rpe) ? opt.rpe : (D && D.rpe) || [])) if (r && r.id != null) RP.set(String(r.id), r);
+    const krankAkt = [];
+    for (const a of (D && D.activities) || []) {
+      if (!a || !a.date) continue;
+      const m = FK.markierung(a, D, RP.get(String(a.id)) || null); if (!m) continue;
+      if (m.art === "krank") krankAkt.push(a.date); else markiert.set(String(a.id), m.text);
+    }
     const tage = [...new Set(((D && D.befinden) || []).filter((b) => b && b.date && Array.isArray(b.krank) && b.krank.length).map((b) => b.date))].sort();
     for (const d of tage) krank.set(d, "krank (Check-in)");
-    for (const d of tage) for (let i = 1; i <= G.nachKrank; i++) { const n = FK.addDays(d, i); if (!krank.has(n)) krank.set(n, `${i} ${i === 1 ? "Tag" : "Tage"} nach «krank» im Check-in`); }
+    for (const d of [...new Set(krankAkt)].sort()) if (!krank.has(d)) krank.set(d, "krank (von dir markiert)");
+    for (const d of [...new Set(tage.concat(krankAkt))].sort()) for (let i = 1; i <= G.nachKrank; i++) {
+      const n = FK.addDays(d, i); if (!krank.has(n)) krank.set(n, `${i} ${i === 1 ? "Tag" : "Tage"} nach «krank»${tage.includes(d) ? " im Check-in" : " (von dir markiert)"}`);
+    }
     const days = ((D && D.days) || []).filter((x) => x && x.date && isNum(x.rhr) && x.rhr > 25).sort((a, b) => a.date.localeCompare(b.date));
     let j = 0;
     for (let i = 0; i < days.length; i++) {
@@ -948,19 +978,20 @@
       const m = median(days.slice(j, i).map((x) => x.rhr));
       if (days[i].rhr - m >= G.rhrPlus) rhr.set(days[i].date, { wert: days[i].rhr, basis: Math.round(m), plus: Math.round(days[i].rhr - m) });
     }
-    return { v: FK.VERSIONS.gesund, krank, rhr };
+    return { v: FK.VERSIONS.gesund, krank, rhr, markiert };
   };
   /** Grund, warum eine Einheit für Pace/Puls nicht zählt (krank, kurz danach, Ruhepuls erhöht), sonst null. */
   FK.nichtRepraesentativ = function (a, G) {
     if (!a || !G) return null;
-    const k = G.krank.get(a.date); if (k) return k === "krank (Check-in)" ? k : `kurz nach Krankheit (${k})`;
+    const mk = G.markiert && a.id != null ? G.markiert.get(String(a.id)) : null; if (mk) return mk;
+    const k = G.krank.get(a.date); if (k) return k.startsWith("krank (") ? k : `kurz nach Krankheit (${k})`;
     const r = G.rhr.get(a.date); if (r) return `Ruhepuls am Morgen erhöht (+${r.plus} Schläge über dem Üblichen)`;
     return null;
   };
   /** Die Seite meldet ihre Daten einmal an (nach dem Laden); danach kennt jede Auswertung den Grund je Einheit – auch in Teillisten. */
   let GES = null;
-  FK.gesundheitSetzen = function (D) {
-    const G = FK.gesundheit(D), W = new WeakMap();
+  FK.gesundheitSetzen = function (D, opt) {
+    const G = FK.gesundheit(D, opt), W = new WeakMap();
     for (const a of (D && D.activities) || []) { const r = FK.nichtRepraesentativ(a, G); if (r) W.set(a, r); }
     GES = { G, W };
     return G;

@@ -1,7 +1,8 @@
 # Auftrag V9 – «Woche wie Enduco»: Verhalten und Aussehen (Silas, 22.11.2026, geschärft um 19:26 und 20:00)
 
 > **Stand 22.11.2026:** Etappe W1 gebaut in V9.2 (umplanen-1.0, grenzen-1.0, woche-einstellen-1.0, fehlt-zeit-1.0; CHANGELOG V9.2, Regeln in `docs/anleitung/plan.md`
-> «Umplanen»; V9.2.1 Folgewoche). W2 (W2a und W2b) gebaut in V9.3 (woche-look-1.0, kugel-1.0) nach Silas' Screenshots vom 22.11.; offen: W2c, W3–W5. Zahlen aus Bildschirmfotos und Aufnahmen sind in dieser Fassung durch erfundene ersetzt, sonst ist der Auftrag unverändert
+> «Umplanen»; V9.2.1 Folgewoche). W2 (W2a und W2b) gebaut in V9.3 (woche-look-1.0, kugel-1.0) nach Silas' Screenshots vom 22.11.; V9.3.2 Feinschliff nach seinen 18 Bildern
+> und der Aufnahme 23:06 (Bearbeiten-Woche, Griff ziehen 1/2 Wochen/Monat, Zyklus-Raster, ✨ «Anpassen oder neu berechnen?»); W4 «Zeit als Ziel» entschieden (siehe W4); offen: W2c, W3–W5. Zahlen aus Bildschirmfotos und Aufnahmen sind in dieser Fassung durch erfundene ersetzt, sonst ist der Auftrag unverändert
 > (gleich im Repo als `docs/auftrag-enduco-woche.md` und im Projekt als `claude/auftrag-v9-enduco-woche.md`).
 
 Repo: sileyhunter/spuren. Es gilt CLAUDE.md. Passwort nur als SPUREN_PW, nie ins Repo.
@@ -187,7 +188,7 @@ bleibt, Bericht sagt, was fehlt. (h) Tage, die er nicht angefasst hat, liegen ni
 1. Zustand des Tags sichtbar → kleines Zeichen in «Woche einstellen» (W1), in Leiste, Liste und Tagesblatt wie Enduco (W2).
 2. «Zeit fehlt»-Vorschlag zum Eintragen → **entfällt**; ersetzt durch die Frage in W1 (die Seite trägt nichts selbst ein).
 3. Wochenend-Wächter → **entfällt**; ersetzt durch Intensität als Hebel (W4). Im Normalfall ist die Zeit da.
-4. Zeit als Ziel → W4.
+4. Zeit als Ziel → W4; **entschieden am 22.11. abends** (Silas: «das muss trainingstechnisch Sinn machen … falls das so Sinn macht, dann ja»): ja, siehe W4.
 5. Automatisch senden → W5, nicht gestartet.
 
 ## Etappe W2 – Aussehen «Woche wie Enduco» (woche-look-1.0, kugel-1.0 · V9.3)
@@ -279,6 +280,10 @@ Nach W1 (W2 und W3 nicht nötig). Beides immer **innerhalb der Maximalzeit** ein
   Korridors, verlängert die Seite dort die längste **lockere** Einheit (innerhalb ihres Bereichs) – **höchstens bis zur Zeit des Tages** und nur, bis die Wochenlast im Korridor liegt.
   Nie in Erholungs- und Rennwochen, nie auf gesperrten Tagen, nie an Einheiten, die Silas selbst gesetzt hat. Steht im Bericht («Donnerstag: Rad + 25 min, die Zeit war da»).
   (Aus der Aufnahme 20-17-01: Enduco legte bei viel Zeit am Mittwoch zusätzlich einen Lauf zur Ausfahrt.)
+  **Entscheid (Claude, 22.11.2026 – Silas überlässt es der Trainingslehre):** ja, genau so begrenzt. Begründung: Für die Langdistanz ist zusätzlicher Umfang im lockeren Bereich der
+  wirksamste und am wenigsten riskante Reiz; die Wochenlast bleibt im Korridor der Periodisierung (keine Lastsprünge, Erholungs- und Rennwochen bleiben, was sie sind), mehr Zeit wird nie
+  zu mehr Intensität. Eine zusätzliche Einheit (wie Enduco den Lauf zur Ausfahrt) nur, wenn die längste lockere Einheit schon an ihrem Bereich anstösst und der Tag mindestens 45 min
+  übrig hat – dann eine lockere Einheit der Sportart mit dem grössten Rückstand zur Wochenverteilung, nie eine zweite harte.
 ### Abnahme W4 (`tests/test_v95.cjs`, erfundene Daten)
 Verdichten: knappe Woche → Einheit kürzer und eine Stufe höher, TL ± 10 %, höchstens zwei je Woche; kein Verdichten in Erholungs-/Rennwoche, bei Ampel «vorsichtig», bei Eigenem und
 Gesperrtem; reicht es nicht, kommt die Frage. Zeit als Ziel: Tag mit viel Zeit → längste lockere Einheit länger, nie über die Zeit des Tages, Wochenlast ≤ Obergrenze des Korridors;

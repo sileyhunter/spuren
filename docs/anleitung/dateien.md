@@ -154,6 +154,10 @@
 - **V9.3.1 (Analysen ohne kranke oder untypische Einheiten, analyse-gesund-1.0; 22.11.2026):** `js/formkurve.js` (`FK.GESUND`, `FK.gesundheit`, `FK.nichtRepraesentativ`,
   `FK.gesundheitSetzen`, `FK.nichtRepraesentativGrund`; laufvergleich-1.1, laufeffizienz-1.2, entwicklung-1.1), `js/v82.js` (Rad-Effizienz), `index.html` (Anmeldung beim Laden, Notiz
   Lauf-Effizienz), `js/wissen.js` (1.36)
+- **V9.3.2 (Bearbeiten-Woche, Griff ziehen, Feinschliff, eigene Markierung; 22.11.2026):** `js/v78.js` (`V78.bearbeitenAb`, kalender-4.2, bearbeiten-1.1), `js/v78-ui.js` (Griff ziehen
+  `griffZiehen`/`zeilenSetzen`, Zyklus-Raster, absolvierte Zeile, Tageskopf ohne Schloss, ✨ «Anpassen oder neu berechnen?»), `js/v93.js` (woche-look-1.1), `js/formkurve.js`
+  (`FK.MARKE`, `FK.markierung`, analyse-gesund-1.1), `index.html` (Monat-Knopf aus, KW-Zeile aus, Wochenzeile im Zyklus, «Nach dem Training» an `FK.gesundheitSetzen`), `css/v6.css`
+  (Abschnitt V9.3.2, `--wk-neu`), `js/wissen.js` (1.37), `tests/test_v93.cjs`, `tests/test_formkurve.cjs`
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
 - `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)

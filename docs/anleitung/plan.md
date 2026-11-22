@@ -308,6 +308,9 @@
   **Stufen:** 1 = «Woche anpassen» (umplanen, läuft bei jeder Einstellung von selbst), 2 = «Neu berechnen» (vergisst Anker und Streichungen; jetzt derselbe Kern, darum geht eine
   Einheit, deren Tag schon vorbei war, nicht mehr verloren), 3 = «Alles neu» (dazu Sperren); Silas' Zeiten bleiben immer. «Jede Woche so» (Wochentag-Standard) plant auch alle
   späteren gespeicherten Wochen neu. Ein Planerlauf legt nie einen `vf-…`-Eintrag an und ändert nie einen.
+  **✨ im Bearbeiten (V9.3.2, bearbeiten-1.1):** fragt «Anpassen oder neu berechnen?» – «Anpassen» = Stufe 1, «Neu» (orange) = Stufe 2 über `V66UI.planen` (aktionen
+  `neuberechnen`, ohne zusätzliches Umplanen: Bericht und Folgewoche wie jede Änderung). **Welche Woche Bearbeiten zeigt (`V78.bearbeitenAb`):** die gewählte, frühestens die laufende;
+  folgt in der laufenden nach heute kein Tag mehr (Sonntag), die nächste – den heutigen Tag ändert das Tagesblatt.
 - **Frage (fehlt-zeit-1.0, Silas' Punkt 6):** Fehlt Last (`E.verteilung.fehlt`, ohne Ortsfestes wie den Kurs), fragt die Seite nach einer eigenen Änderung. Kandidaten: Tage ab heute,
   nicht fest, nicht «kein Training», mit Zeitgrenze. Je Tag das kleinste Mehr in 5-min-Schritten (binäre Suche mit dem echten Planer, `V66UI.probe`; höchstens das Fehlende, höchstens
   12 h am Tag); liegt das beste Mehr über `V92.GROSS` = 60 min (eigene Festlegung) oder reicht kein Tag allein, dazu «verteilt»: gleich viel auf zwei der Tage mit der meisten Zeit,

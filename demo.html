@@ -2159,8 +2159,9 @@ for (const a of D.activities) {
   const d = pd(a.date); a._t = d.getTime(); a._wd = d.getDay();
 }
 D.activities.sort((a, b) => a._t - b._t);
-// V9.3.1 analyse-gesund-1.0: kranke Tage, erhöhter Ruhepuls → diese Einheiten zählen nicht für Pace/Puls-Auswertungen (Grund je Einheit sichtbar)
-try { if (window.FK && FK.gesundheitSetzen) FK.gesundheitSetzen(D); } catch (e) { console.error(e); }
+// V9.3.1 analyse-gesund-1.0: kranke Tage, erhöhter Ruhepuls → diese Einheiten zählen nicht für Pace/Puls-Auswertungen (Grund je Einheit sichtbar);
+// V9.3.2 analyse-gesund-1.1: dazu deine Markierung im Namen, in der Notiz der Uhr oder in «Nach dem Training» («nicht werten», krank, abgebrochen …)
+try { if (window.FK && FK.gesundheitSetzen) FK.gesundheitSetzen(D, { rpe: (D.rpe || []).concat((window.V5UI && V5UI.Inbox && V5UI.Inbox.data && V5UI.Inbox.data.rpe) || []) }); } catch (e) { console.error(e); }
 /* Trainingslast: «bisher» = wie geliefert (Rad mit der in Garmin eingestellten FTP),
    «Probe» = Rad mit der geschätzten FTP zum damaligen Zeitpunkt (ftp_e, siehe tools/ftp_model.py).
    Übernommen wird die Probe erst, wenn config.load_model = "ftp_est" gesetzt ist. */
@@ -3665,7 +3666,9 @@ const TABS = {
     init() {
       this.month = new Date(today.getFullYear(), today.getMonth(), 1);
       // V7.8 kalender-4.0: Liste mit Raster (Standard), Zyklus (bisher «Woche») oder Monat
-      { const a = store.get("sf.kal.ansicht4", "liste"); this.ansicht = ["liste", "woche", "monat"].includes(a) && (a !== "liste" || window.V78UI) ? a : window.V78UI ? "liste" : "woche"; }
+      { const a = store.get("sf.kal.ansicht4", "liste"); this.ansicht = ["liste", "woche", "monat"].includes(a) && (a !== "liste" || window.V78UI) ? a : window.V78UI ? "liste" : "woche";
+        // V9.3.2 woche-look-1.1: wie die Vorlage nur Zyklus und Liste – den Monat zeigt der Griff (nach unten ziehen); die alte Monatsansicht bleibt ohne V78UI
+        if (window.V78UI) { if (this.ansicht === "monat") this.ansicht = "liste"; const mb = document.querySelector('[data-kalans="monat"]'); if (mb) mb.hidden = true; } }
       this.woche = iso(mondayOf(today));
       // kalender-4.1 (Silas am 18.11.2026, Vorlage enduco): Ansicht als Symbole unter dem Raster – Zyklus (Wochen mit Stunden und Last), Liste, Monat
       if (window.V6) document.querySelectorAll("[data-kalans]").forEach((b) => { b.innerHTML = V6.icon({ woche: "fokus", liste: "ablauf", monat: "kalender" }[b.dataset.kalans], 20); });
@@ -3683,7 +3686,7 @@ const TABS = {
         this.month = n == null ? new Date(today.getFullYear(), today.getMonth(), 1) : new Date(this.month.getFullYear(), this.month.getMonth() + n, 1); this.draw(); };
       document.getElementById("cal-prev").addEventListener("click", () => go(-1));
       document.getElementById("cal-next").addEventListener("click", () => go(1));
-      document.getElementById("cal-today").addEventListener("click", () => { this.sel = iso(today); if (this.ansicht === "liste" && window.V78UI) { V78UI.heute(); return; } go(null); });
+      document.getElementById("cal-today").addEventListener("click", () => { this.sel = iso(today); if (this.ansicht === "liste" && window.V78UI) { V78UI.heute(); return; } if (window.V78UI && V78UI.waehle) V78UI.waehle(iso(today)); go(null); });
       { const tit = document.getElementById("cal-title"), mp = document.createElement("input");   // V7 kalender-3.0: Monat und Jahr direkt wählen
         mp.type = "month"; mp.className = "kal-monat"; mp.setAttribute("aria-label", "Monat und Jahr wählen"); mp.tabIndex = -1; tit.after(mp);
         tit.setAttribute("role", "button"); tit.tabIndex = 0; tit.title = "Monat und Jahr wählen";
@@ -3709,9 +3712,9 @@ const TABS = {
       const liste = this.ansicht === "liste" && window.V78UI && window.V5UI && V5UI.C;            // V7.8 kalender-4.0
       const zyklus = this.ansicht === "woche" && window.V78UI && window.V66UI && window.V5UI && V5UI.C;   // V7.9 zyklus-1.0: Raster je Woche und vier Karten
       document.getElementById("kal-liste").hidden = !liste; document.getElementById("kal-raster").hidden = !(liste || zyklus);
-      document.getElementById("cal-pfeile").hidden = !!(liste || zyklus); document.querySelector(".kal-v7").classList.toggle("k4", !!(liste || zyklus));
+      document.getElementById("cal-pfeile").hidden = !!(liste || zyklus); document.querySelector(".kal-v7").classList.toggle("k4", !!(liste || zyklus)); document.querySelector(".kal-v7").classList.toggle("k4zy", !!zyklus);
       document.getElementById("kal-griff").hidden = !(liste || zyklus); if (!(liste || zyklus)) document.getElementById("kal-griff").innerHTML = "";
-      document.getElementById("kal-wbar").hidden = !liste; document.getElementById("cal-sub").hidden = !!liste;
+      document.getElementById("kal-wbar").hidden = !(liste || zyklus); document.getElementById("cal-sub").hidden = !!(liste || zyklus);   // V9.3.2: ohne «KW …» wie die Vorlage
       document.getElementById("kal-bearb").hidden = !(liste || zyklus);
       if (!zyklus) this._zykWo = null;
       if (liste) {

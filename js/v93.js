@@ -7,7 +7,7 @@
   if (root) root.V93 = V93;
 })(typeof window !== "undefined" ? window : null, function () {
   "use strict";
-  const V93 = { VERSIONS: { look: "woche-look-1.0", kugel: "kugel-1.0" } };
+  const V93 = { VERSIONS: { look: "woche-look-1.1", kugel: "kugel-1.0" } };   // 1.1 = V9.3.2 Zyklus-Raster, «Heute», Trenner, ✨ «Neu», absolvierte Zeile
   const isNum = (x) => typeof x === "number" && isFinite(x);
 
   /** Reihenfolge der Zonen in der Kugel: links die höchste (eigene Festlegung nach der Vorlage: rot · gelb · grün · türkis · cyan · hellblau · blau · lila). */

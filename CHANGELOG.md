@@ -1,5 +1,27 @@
 # Änderungen
 
+## V9.3.2 · 22.11.2026 · Woche wie Enduco: Bearbeiten-Woche, Griff ziehen, Feinschliff; eigene Markierung «nicht werten» (bearbeiten-1.1, kalender-4.2, woche-look-1.1, analyse-gesund-1.1)
+Silas' Rückmeldung vom 22.11.2026 abends (18 Bilder Enduco neben der Seite, Aufnahme 23:06): «bearbeiten lässt sich die Woche nicht», «bei Enduco lässt sich der horizontale Balken
+verwenden, um das Fenster nach oben oder unten zu ziehen», «ich habe einfach die Einheit bewertet», «ganz viel Sachen sind noch nicht gleich wie bei Enduco».
+- **Bearbeiten (bearbeiten-1.1):** Folgt in der laufenden Woche kein Tag mehr (Sonntag), beginnt Bearbeiten mit der nächsten Woche (`V78.bearbeitenAb`) – vorher zeigte es am
+  Sonntagabend die fast vergangene Woche, und «Woche einstellen» und ✨ bezogen sich auf sie (alles «Vergangen – nur lesen»). Kein Schloss mehr im Tageskopf (wie die Vorlage):
+  «Tag sperren» steht im Tagesblatt hinter «…», ein gesperrter Tag zeigt das Schloss am Namen. ✨ fragt «Anpassen oder neu berechnen?»: «Anpassen» plant um (umplanen-1.1, ändert so
+  wenig wie möglich), «Neu» (orange) rechnet die Woche neu aus dem Vorschlag (alles-neu-1.0 Stufe 2: nur Gesperrtes bleibt), mit Bericht und Folgewoche.
+- **Griff ziehen (kalender-4.2):** Den Balken unter dem Raster nach unten ziehen zeigt mehr Wochen (1 → 2 → Monat), nach oben weniger (je 44 px eine Stufe); antippen wechselt wie
+  bisher zwischen zwei Wochen und Monat. Liste und Zyklus teilen den Zustand; im Zyklus ändert der Griff nur das Raster. Die Monatsansicht als eigener Knopf entfällt (eine gespeicherte
+  Wahl «Monat» öffnet die Liste; ohne `V78UI` bleibt die alte Monatsansicht).
+- **Aussehen (woche-look-1.1):** «Heute» umrandet; keine Zeile «KW …» mehr. Zyklus-Raster wie die Vorlage: Zahlen mit Kreis (heute orange, gewählter Tag weiss, Tag antippbar), je
+  Woche eine dunkle Pille ohne Umriss («mind.» dort als «≥»), darüber die Wochenzeile «Phase | Wochenart · Zeitraum». Fehler behoben: Zonen-Gruppen der Wochenkarte und Zyklus-Raster
+  teilten die Klasse `k4-zg` (Panel im Panel) – jetzt `k4-zgp`. Absolvierte Aktivitäten in der Liste wie die geplanten (Dauer, km, TL mit Abstand; «absolviert» und «Passt zu» nur noch
+  für Screenreader); keine Striche «von Hand» unter den Tageszahlen; Trenner «Nächste Woche» als graue Leiste mit Pfeilen; Griff der Bearbeiten-Leiste in der Mitte, ✕ ✓ rechts.
+- **Analysen (analyse-gesund-1.1):** Es zählt auch die eigene Markierung – im Namen der Aktivität, in der Notiz der Uhr (Garmin) oder in «Nach dem Training»: «nicht werten» (auch
+  «nicht zählen», «nicht repräsentativ» …) lässt diese Einheit weg; Krankheitszeichen (krank, Fieber, Infekt, Magen-Darm, Erbrechen …) gelten wie «krank» im Check-in – der Tag und
+  die 3 Tage danach; «abgebrochen» im Namen und starke Magenbeschwerden in «Nach dem Training» lassen die Einheit weg (`FK.MARKE`, `FK.markierung`, Grund je Einheit wie bisher).
+  `index.html` gibt die Einträge «Nach dem Training» der Seite mit. wissen-1.37.
+- **Entscheid W4 «Zeit als Ziel»** (Silas: «das muss trainingstechnisch Sinn machen … falls das so Sinn macht, dann ja»): ja, in der Form des Auftrags – freie Zeit verlängert die
+  längste lockere Einheit, höchstens bis zur Zeit des Tages und nur bis zur Obergrenze des Wochenkorridors, nie in Erholungs- und Rennwochen. Gebaut wird es in W4 (eigene Sitzung).
+- Tests: `tests/test_v93.cjs` (+4), `tests/test_formkurve.cjs` (+1), Versionen in `tests/test_v78.cjs` und `tests/test_v64.cjs`. `sw.js` Cache `notebook-v932-woche-2026-11-22`.
+
 ## V9.3.1 · 22.11.2026 · Analysen ohne kranke oder untypische Einheiten (analyse-gesund-1.0)
 Silas' Wunsch vom 22.11.2026: Einheiten, bei denen er krank war oder der Puls ungewöhnlich hoch ist, verfälschen Pace/Puls-Auswertungen und sollen nicht zählen.
 - **Regel (eigene Festlegungen, `FK.GESUND`):** nicht repräsentativ ist eine Einheit an einem Tag mit Check-in «krank» (Krankheitszeichen) und an den 3 Tagen danach, oder an einem Morgen

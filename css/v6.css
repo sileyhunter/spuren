@@ -730,11 +730,13 @@ section.view:has(> nav.unter) * { scroll-margin-top: 66px; }
   --wk-seite: #000000; --wk-panel: #161617; --wk-pille: #27292d; --wk-umriss: #2f3135; --wk-griff: #4d4d4d; --wk-text: #ffffff; --wk-text2: #b2b2b2;
   --wk-x: #484b52; --wk-ok: #ffffff; --wk-ok-fg: #000000; --wk-fab: rgba(106, 106, 107, .55); --wk-linie: rgba(255, 255, 255, .08);
   --wk-sel: #ffffff; --wk-sel-fg: #000000; --wk-tl: #6d70dd; --wk-tl-ber: #3d3f42; --wk-band: #95e39c; --wk-leer: #42331a;
+  --wk-neu: #f39b3b; --wk-neu-fg: #000000;
 }
 :root[data-theme="light"] {
   --wk-seite: #f2f2f7; --wk-panel: #ffffff; --wk-pille: #ebebf0; --wk-umriss: #d6d6dc; --wk-griff: #c7c7cc; --wk-text: #000000; --wk-text2: #5f5f66;
   --wk-x: #e3e3e8; --wk-ok: #000000; --wk-ok-fg: #ffffff; --wk-fab: rgba(120, 120, 128, .22); --wk-linie: rgba(0, 0, 0, .09);
   --wk-sel: #000000; --wk-sel-fg: #ffffff; --wk-tl: #5b5fd6; --wk-tl-ber: #d9d9e0; --wk-band: #7fd889; --wk-leer: #eadfca;
+  --wk-neu: #f39b3b; --wk-neu-fg: #000000;
 }
 /* ======================================================================================================================
    V7 navigation-7.0, analyse-start-1.0, planvergleich-1.0, kalender-3.0 (Auftrag V7 vom 14.11.2026, Vorlage enduco):
@@ -1590,7 +1592,6 @@ table.t.v82-t td small { display: block; font-size: 11px; }
 .k4-r-t.sel:not(.heute) .k4-r-d { background: var(--wk-sel); color: var(--wk-sel-fg); }
 .k4-r-t.heute.sel .k4-r-d { background: var(--race); color: var(--wk-weiss); }
 .k4-r-t.aus .k4-r-d { color: var(--faint); }
-.k4-r-t.hand .k4-r-d::after { content: ""; position: absolute; left: 50%; bottom: -3px; width: 10px; height: 2px; margin-left: -5px; border-radius: 1px; background: var(--wk-text2); }
 .k4-r-p { display: inline-flex; align-items: center; justify-content: center; gap: 3px; width: calc(100% - 4px); max-width: 60px; height: 26px; min-height: 26px; padding: 0 4px;
   border-radius: 999px; border: 1.5px solid var(--wk-umriss); background: none; color: var(--wk-text); overflow: hidden; }
 .k4-r-p.voll { background: var(--wk-pille); border-color: var(--wk-pille); }
@@ -1670,9 +1671,9 @@ body.k4-edit .kal-v7.k4 #kal-meldung, body.k4-edit .kal-v7.k4 #kal-bericht { ord
   var(--wk-reg-4) calc(var(--lo, 80%) * .75), var(--wk-reg-5) var(--lo, 80%), var(--wk-hit-1) var(--lo, 80%), var(--wk-hit-2) calc(var(--lo, 80%) + (100% - var(--lo, 80%)) / 2), var(--wk-hit-3) 100%); }
 .kal-v7.k4 .k4-wkk-v i { top: -3px; width: 3px; height: 23px; margin-left: -1px; border-radius: 1px; background: var(--wk-weiss); }
 .k4-zgr { display: flex; gap: 4px; height: 19px; }
-.k4-zg { display: flex; gap: 2px; padding: 2px; border-radius: 6px; background: color-mix(in srgb, var(--zc, var(--muted)) 16%, var(--wk-panel)); min-width: 12px; }
-.k4-zg.leer { background: color-mix(in srgb, var(--zc, var(--muted)) 22%, var(--wk-schwarz)); }
-.k4-zg i { display: block; border-radius: 4px; min-width: 3px; }
+.k4-zgp { display: flex; gap: 2px; padding: 2px; border-radius: 6px; background: color-mix(in srgb, var(--zc, var(--muted)) 16%, var(--wk-panel)); min-width: 12px; }
+.k4-zgp.leer { background: color-mix(in srgb, var(--zc, var(--muted)) 22%, var(--wk-schwarz)); }
+.k4-zgp i { display: block; border-radius: 4px; min-width: 3px; }
 .kal-v7.k4 .k4-wkk-c .k4-bal { position: relative; display: block; height: 17px; border-radius: 8px; background: var(--wk-pille); overflow: hidden; }
 .kal-v7.k4 .k4-wkk-c .k4-bal-w.plan { background: var(--wk-tl); }
 .kal-v7.k4 .k4-wkk-c .k4-bal-ber { background: var(--wk-tl-ber); border-left: 2px solid var(--wk-weiss); border-right: 2px solid var(--wk-weiss); z-index: 1; opacity: .9; }
@@ -1745,3 +1746,43 @@ body.k4-edit .kal-v7.k4 .kal-leiste { display: none; }
 body.k4-edit .kal-v7.k4 .k4-r-kopf { display: none; }
 :root[data-theme="light"] .k4-fab .rp-ib, :root[data-theme="light"] .k4-fab .k4-fab-a { color: var(--wk-schwarz); }
 :root[data-theme="light"] .k4-zg.leer { background: color-mix(in srgb, var(--zc, var(--muted)) 22%, var(--wk-weiss)); }
+
+/* ======================================================================================================================
+   V9.3.2 woche-look-1.1 (Silas 22.11., 18 Bilder und Aufnahme 23:06): Griff ziehen, Zyklus-Raster, «Heute», Trenner, Bearbeiten-Leiste, ✨-Blatt
+   ====================================================================================================================== */
+/* «Heute» umrandet wie die Vorlage */
+.kal-v7.k4 .kal-heute { background: transparent; border: 1.5px solid var(--wk-text); color: var(--wk-text); box-shadow: none; min-height: 34px; padding: 4px 14px; font-size: 15px; font-weight: 600; }
+/* Griff: ziehen (nach unten mehr Wochen, nach oben weniger) – Finger nicht vom Scrollen abfangen lassen */
+.kal-v7.k4 .k4-griff { touch-action: none; cursor: ns-resize; }
+/* Zyklus-Raster: Zahlen wie in der Liste (heute orange, gewählter Tag weiss), darunter je Woche eine dunkle Pille ohne Umriss */
+.kal-v7.k4 .k4-zg { gap: 4px; padding: 0; background: none; border-radius: 0; }
+.kal-v7.k4 .k4-zg-wt { border-bottom: 1px solid var(--wk-linie); margin: 0 -12px 4px; padding: 0 12px 6px; }
+.kal-v7.k4 .k4-zg-wt span { font-size: 13px; font-weight: 600; color: var(--wk-text2); }
+.kal-v7.k4 .k4-zg-d:not(.k4-zg-wt) span { display: grid; place-items: center; padding: 0; cursor: pointer; color: var(--wk-text); }
+.kal-v7.k4 .k4-zg-d span i { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-style: normal; font-size: 15px; font-weight: 500; }
+.kal-v7.k4 .k4-zg-d span.heute i { background: var(--race); color: var(--wk-weiss); font-weight: 600; }
+.kal-v7.k4 .k4-zg-d span.sel:not(.heute) i { background: var(--wk-sel); color: var(--wk-sel-fg); }
+.kal-v7.k4 .k4-zg-d span.aus i { color: var(--faint); }
+.kal-v7.k4 .k4-zg .k4-zw, .kal-v7.k4 .k4-zg .k4-zw.sel { min-height: 30px; padding: 4px 12px; margin-bottom: 6px; border: 0; border-radius: 999px; background: var(--wk-pille); color: var(--wk-text); }
+.kal-v7.k4 .k4-zg .k4-zw { gap: 8px; }
+.kal-v7.k4 .k4-zg .k4-zw b { font-size: 13px; font-weight: 600; color: var(--wk-text); }
+.kal-v7.k4 .k4-zg .k4-zw-z { color: var(--wk-text); font-size: 13px; font-weight: 500; }
+/* Zyklus: Wochenzeile «Phase | Wochenart · Zeitraum» ohne Panel über den Karten */
+.kal-v7.k4zy .k4-wbar { background: none; border: 0; border-radius: 0; margin: 4px 0 0; padding: 10px 4px 4px; }
+/* Bearbeiten-Leiste: Griff in der Mitte, ✕ und ✓ rechts */
+.kal-v7.k4 .k4-ebar { position: relative; }
+.kal-v7.k4 .k4-ebar .k4-eb-t { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.kal-v7.k4 .k4-ebar .k4-eb-x { grid-column: 2; }
+.kal-v7.k4 .k4-ebar .k4-eb-ok { grid-column: 3; }
+/* Trenner zur nächsten Woche: graue Leiste mit Pfeilen (Vorlage «Nächster Zyklus») */
+.kal-v7.k4 .k4-trenner2 { justify-content: space-between; gap: 8px; margin: 0 -4px; padding: 9px 18px; background: var(--wk-pille); color: var(--wk-text); font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.kal-v7.k4 .k4-trenner2::before, .kal-v7.k4 .k4-trenner2::after { content: none; }
+.kal-v7.k4 .k4-trenner2 i { font-style: normal; color: var(--wk-text2); font-size: 15px; }
+/* ✨-Blatt «Anpassen oder neu berechnen?»: Titel mittig, «Neu» orange links, «Anpassen» weiss rechts */
+#v59-ov[data-art="k4-anp"] .blatt-titel { text-align: center; }
+#v59-ov[data-art="k4-anp"] .blatt-titel h2 { font-size: 22px; }
+.k4-anp-l { margin: 2px 0 10px; padding-left: 20px; }
+.k4-anp-f { justify-content: space-between; }
+.k4-anp-f .k4-neu, .k4-anp-f .k4-anp-ok { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 22px; border: 0; border-radius: 999px; font-size: 16px; font-weight: 600; box-shadow: none; }
+.k4-anp-f .k4-neu { background: var(--wk-neu); color: var(--wk-neu-fg); }
+.k4-anp-f .k4-anp-ok { background: var(--wk-ok); color: var(--wk-ok-fg); }

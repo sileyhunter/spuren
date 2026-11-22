@@ -12,7 +12,7 @@
   const SPF = (sp) => `var(--sp-${["rad", "lauf", "schwimm", "wandern", "ski"].includes(sp) ? sp : "andere"})`;
   const WT = ["M", "D", "M", "D", "F", "S", "S"];
   let C = null;
-  const ST = { von: null, bis: null, sel: null, offen: false, box: null, raster: null, titel: null, sub: null, KC: new Map(), lauf: 0 };
+  const ST = { von: null, bis: null, sel: null, offen: false, zeilen: 2, box: null, raster: null, titel: null, sub: null, KC: new Map(), lauf: 0 };
   const bereit = () => { C = UI() && UI().C; return !!(C && C.D && V78() && V66() && V6() && P() && P().kontextFuer && M()); };
   const heute = () => C.iso(C.today);
   const add = (s, n) => { const d = new Date(s + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
@@ -73,7 +73,7 @@
 
   /* ---------------- Raster ---------------- */
   function rasterHTML() {
-    const W = V6(), h = heute(), R = ST.edit ? V78().raster(V78().montag(ST.sel) < ST.editMo ? ST.editMo : V78().montag(ST.sel), 1) : ST.offen ? V78().monatsRaster(ST.sel) : V78().raster(ST.sel, 2), mon = new Date(ST.sel + "T12:00:00Z").getUTCMonth();
+    const W = V6(), h = heute(), R = ST.edit ? V78().raster(V78().montag(ST.sel) < ST.editMo ? ST.editMo : V78().montag(ST.sel), 1) : ST.offen ? V78().monatsRaster(ST.sel) : V78().raster(ST.sel, ST.zeilen === 1 ? 1 : 2), mon = new Date(ST.sel + "T12:00:00Z").getUTCMonth();
     // V9.3 woche-look-1.0 (Vorlage): sieben Spalten, die Woche des gewählten Tags in einer dunklen Pille; je Tag eine Pille mit weissen Sportsymbolen
     // (je Einheit eines, höchstens zwei) und je Einheit einer Kugel; vergangene Tage gefüllt, kommende mit Umriss; freier Tag = Kalender-✕ ohne Pille
     const kopf = `<div class="k4-r-kopf">${WT.map((t) => `<div class="k4-r-wt">${t}</div>`).join("")}</div>`, selMo = V78().montag(ST.sel);
@@ -96,11 +96,36 @@
     return `<div class="k4-r-gitter" role="group" aria-label="Kalender">${kopf}${zeilen}</div>`;
   }
   /** kalender-4.1: Griff in der Leiste unter dem Raster (wie die Vorlage), sonst unter dem Raster. */
-  const griffHTML = (offen, attr) => `<button type="button" class="k4-griff" ${attr} aria-expanded="${offen}" aria-label="${offen ? "Raster zuklappen" : "Ganzen Monat zeigen"}"><span></span></button>`;
-  function griffSetzen(raster, html, onclick) {
+  const griffHTML = (offen, attr) => `<button type="button" class="k4-griff" ${attr} aria-expanded="${offen}" aria-label="${offen ? "Raster zuklappen" : "Ganzen Monat zeigen"} – nach oben oder unten ziehen"><span></span></button>`;
+  /** V9.3.2 woche-look-1.1 (Vorlage, Aufnahme 22.11. 23:06): den Griff ziehen – nach unten mehr Wochen (1 → 2 → Monat), nach oben weniger (Monat → 2 → 1);
+   *  antippen wechselt wie bisher zwischen zwei Wochen und dem Monat. Gilt für Liste und Zyklus (ein Zustand). */
+  const ZEILEN = [1, 2, "monat"];
+  function zeilenSetzen(z) { ST.zeilen = z; ST.offen = z === "monat"; ZS.offen = ST.offen; }
+  function griffZiehen(g) {
+    if (g._zieh) return; g._zieh = true;
+    let y0 = null, i0 = 1, bewegt = false;
+    g.addEventListener("pointerdown", (ev) => { y0 = ev.clientY; i0 = Math.max(0, ZEILEN.indexOf(ST.zeilen)); bewegt = false; try { g.setPointerCapture(ev.pointerId); } catch (e) { /* ohne Capture */ } });
+    g.addEventListener("pointermove", (ev) => {
+      if (y0 == null) return;
+      const dy = ev.clientY - y0; if (Math.abs(dy) > 8) bewegt = true;
+      const i = Math.max(0, Math.min(ZEILEN.length - 1, i0 + Math.trunc(dy / 44)));          // je 44 px eine Stufe
+      if (bewegt && ZEILEN[i] !== ST.zeilen && typeof g._neu === "function") { zeilenSetzen(ZEILEN[i]); g._neu(); }
+    });
+    const ende = () => { y0 = null; };
+    g.addEventListener("pointerup", ende); g.addEventListener("pointercancel", ende);
+    g.addEventListener("click", (ev) => { if (bewegt) { bewegt = false; ev.preventDefault(); ev.stopImmediatePropagation(); return; } if (typeof g._klick === "function") g._klick(); });
+  }
+  /** Griff in der Leiste (kalender-4.1) oder unter dem Raster; derselbe Knopf bleibt beim Neuzeichnen stehen (sonst risse das Ziehen ab). neu = Ansicht neu zeichnen. */
+  function griffSetzen(raster, html, onclick, neu) {
     const platz = document.getElementById("kal-griff");
-    if (platz && !platz.hidden) { platz.innerHTML = html; const g = platz.firstElementChild; if (g) g.onclick = onclick; return; }
-    if (raster) { raster.insertAdjacentHTML("beforeend", html); const g = raster.lastElementChild; if (g) g.onclick = onclick; }
+    let g = platz && !platz.hidden ? platz.querySelector(".k4-griff") : null;
+    if (platz && !platz.hidden) { if (!g) { platz.innerHTML = html; g = platz.firstElementChild; } }
+    else if (raster) { raster.insertAdjacentHTML("beforeend", html); g = raster.lastElementChild; }
+    if (!g) return;
+    g.setAttribute("aria-expanded", String(ST.offen));
+    g.setAttribute("aria-label", `${ST.offen ? "Raster zuklappen" : "Ganzen Monat zeigen"} – nach oben oder unten ziehen: ${ST.zeilen === "monat" ? "Monat" : ST.zeilen === 1 ? "eine Woche" : "zwei Wochen"}`);
+    g._klick = onclick; g._neu = neu || onclick; g.onclick = null;
+    griffZiehen(g);
   }
   /** kalender-4.1: Wochenleiste über der Liste – Phase | Wochenart, Tage, Stunden und Last der Woche, die gerade oben steht (Vorlage enduco). */
   function wochenZahlen(w, h) {
@@ -146,8 +171,9 @@
   }
   function tagHTML(d, w) {
     const W = V6(), h = heute(), sek = (a) => (isNum(a.mv) ? a.mv : a.dur || 0);
-    const akt = d.akt.map((a) => `<button type="button" class="k4-e ist" data-ex="${esc(a.id)}">
-      <span class="k4-et"><b><span class="k4-ic" aria-hidden="true">${W.sportIcon(V6().sportVon ? V6().sportVon(a) : a.sport, 17)}</span>${esc(a.name || "Aktivität")} <span class="k4-haken">${W.icon("haken", 13)}</span></b><small>${esc([W.dauerText(sek(a)), isNum(a.km) && a.km > 0 ? `${String(Math.round(a.km * 10) / 10).replace(".", ",")} km` : null, isNum(a.tss) && a.tss > 0 ? `TL ${Math.round(a.tss)}` : null].filter(Boolean).join(" · "))} · <span class="k4-q">absolviert${d.Z && d.Z.von.get(a.id) ? ` · Passt zu: ${esc(d.Z.von.get(a.id).titel)}` : ""}</span></small></span></button>`).join("");
+    const akt = d.akt.map((a) => { const km = isNum(a.km) && a.km > 0 ? `${String(Math.round(a.km * 10) / 10).replace(".", ",")} km` : null, tl = isNum(a.tss) && a.tss > 0 ? `${Math.round(a.tss)} TL` : null, zu = d.Z && d.Z.von.get(a.id);
+      return `<button type="button" class="k4-e ist" data-ex="${esc(a.id)}">
+      <span class="k4-et"><b><span class="k4-ic" aria-hidden="true">${W.sportIcon(V6().sportVon ? V6().sportVon(a) : a.sport, 17)}</span>${esc(a.name || "Aktivität")} <span class="k4-haken">${W.icon("haken", 13)}</span></b><small class="k4-ez">${[W.dauerText(sek(a)), km, tl].filter(Boolean).map((x) => `<span>${esc(x)}</span>`).join("")}<span class="sr-only">absolviert${zu ? ` · Passt zu: ${esc(zu.titel)}` : ""}</span></small></span></button>`; }).join("");
     // V9.1: zugeordnete Einheiten stehen nicht mehr daneben (nur im Bearbeiten-Modus, wo sie gezogen oder gesperrt werden)
     const sichtbar = d.plan.map((e, i) => ({ e, i })).filter((x) => ST.edit || !d.erl[x.i]);
     const plan = sichtbar.map((x) => einheitHTML(x.e, d, w, d.erl[x.i])).join("");
@@ -162,14 +188,13 @@
     const zs = zustandVon(d, w), anz = window.V93 ? window.V93.anzahl(n) : n > 1 ? String(n) : "";
     const hand = zs === "hand" ? `<small class="k4-hand" title="Zeit von Hand gesetzt">${W.icon("uhr", 12)}${esc(handZeit(d))}</small>` : "";
     let rechts = `${hand}${anz ? `<span class="k4-anz" aria-label="${n} Einträge">${anz}</span>` : ""}`;
-    if (ST.edit) {                                                             // V7.9 bearbeiten-1.0: Trainingsstatus je Tag (zu Tagesbeginn) und Tag sperren
+    if (ST.edit) {                                                             // V7.9 bearbeiten-1.0: Trainingsstatus je Tag (zu Tagesbeginn); V9.3.2: «Tag sperren» im Tagesblatt
       const f = ST.form ? ST.form.get(d.ds) : null, ts = f ? V78().status(f.fitness, f.ermuedung) : null, stu = V78().stufe(ts);
       const bal = window.V93 ? window.V93.balkenAnteil(ts) : stu ? stu.anteil : 0;
-      rechts = `${hand}${ts != null ? `<span class="k4-st" title="Trainingsstatus zu Tagesbeginn (Ermüdung ÷ Fitness)">${f.prognose ? "≈ " : ""}${String(ts).replace(".", ",")}<i class="k4-st-b k4-st-${stu.k}" aria-hidden="true"><i style="width:${Math.round(bal * 100)}%"></i></i></span>` : ""}
-        ${d.ds >= h && !d.rennen ? `<button type="button" class="btn rp-ib k4-tlock" data-k4tlock="${d.ds}" aria-pressed="${gesp}" aria-label="${esc(V78().tagText(d.ds))}: ${gesp ? "entsperren" : "Tag sperren"}">${W.icon("schloss", 16)}</button>` : ""}`;
+      rechts = `${hand}${ts != null ? `<span class="k4-st" title="Trainingsstatus zu Tagesbeginn (Ermüdung ÷ Fitness)">${f.prognose ? "≈ " : ""}${String(ts).replace(".", ",")}<i class="k4-st-b k4-st-${stu.k}" aria-hidden="true"><i style="width:${Math.round(bal * 100)}%"></i></i></span>` : ""}`;
     }
     return `<div class="k4-tag${d.ds === h ? " heute" : ""}${d.ds < h ? " vorbei" : ""}${gesp ? " gesperrt" : ""}" id="k4-${d.ds}" data-k4tag="${d.ds}">
-      <div class="k4-tk"><b>${d.ds === ST.sel ? `<i class="k4-punkt" aria-hidden="true"></i>` : ""}${esc(V78().tagText(d.ds))}${d.ds === h ? ` <span class="k4-heute sr-only">heute</span>` : ""}${gesp && !ST.edit ? ` <span class="k4-tlk" title="Tag gesperrt">${W.icon("schloss", 13)}</span>` : ""}</b>
+      <div class="k4-tk"><b>${d.ds === ST.sel ? `<i class="k4-punkt" aria-hidden="true"></i>` : ""}${esc(V78().tagText(d.ds))}${d.ds === h ? ` <span class="k4-heute sr-only">heute</span>` : ""}${gesp ? ` <span class="k4-tlk" title="Tag gesperrt">${W.icon("schloss", 13)}</span>` : ""}</b>
         <span>${rechts}<button type="button" class="btn rp-ib k4-mehr" data-k4blatt="${d.ds}" aria-label="${esc(V78().tagText(d.ds))}: Tagesblatt öffnen">${W.icon("mehr", 18)}</button></span></div>
       ${amp}${renn}${akt}${plan}${tests}${leer}</div>`;
   }
@@ -198,7 +223,7 @@
     const t0 = Date.now();
     if (ST.edit) {
       try { ST.form = M().formReihe ? M().formReihe(ST.von, add(ST.bis, 6)) : null; } catch (e) { console.error(e); ST.form = null; }
-      box.innerHTML = wochen.map((m, i) => (i ? `<p class="k4-trenner"><span>Nächste Woche · KW ${V6().isoWoche(m)}</span></p>` : "") + wocheHTML(m)).join("") +
+      box.innerHTML = wochen.map((m, i) => (i ? `<p class="k4-trenner k4-trenner2"><i aria-hidden="true">↓</i><span>Nächste Woche</span><i aria-hidden="true">↓</i></p>` : "") + wocheHTML(m)).join("") +
         `<p class="hint">Bearbeiten (${esc(V78().VERSIONS.bearbeiten)}): Einheit am Griff auf einen anderen Tag derselben Woche ziehen oder den Griff antippen; das Schloss hält eine Einheit oder einen Tag fest, wenn du die Woche anpasst. Gespeichert wird erst mit ✓; ↶ und ↷ gehen Schritte zurück und vor. Rechts der Trainingsstatus zu Tagesbeginn (${esc(V78().VERSIONS.status)}).</p>`;
     } else {
       ST.form = null;
@@ -215,7 +240,9 @@
     ST.raster.innerHTML = rasterHTML();
     ST.raster.querySelectorAll("[data-k4r]").forEach((b) => (b.onclick = () => N.zu(b.dataset.k4r)));
     ST.raster.querySelectorAll("[data-k4kw]").forEach((b) => (b.onclick = () => window.APP && window.APP.kalenderWoche && window.APP.kalenderWoche(b.dataset.k4kw)));
-    if (!ST.edit) griffSetzen(ST.raster, griffHTML(ST.offen, "data-k4griff"), () => { ST.offen = !ST.offen; rasterZeichnen(); });
+    if (!ST.edit) griffSetzen(ST.raster, griffHTML(ST.offen, "data-k4griff"), () => { zeilenSetzen(ST.zeilen === "monat" ? 2 : "monat"); rasterZeichnen(); }, () => rasterZeichnen());
+    const kopf = ST.raster.closest(".k4-kopf");                                 // V9.3.2: Raster ändert die Höhe (Griff) → Abstand beim Scrollen zum Tag nachführen
+    if (kopf && ST.box) ST.box.style.setProperty("--k4-oben", `${Math.round(kopf.getBoundingClientRect().height) + 8}px`);
   }
   function kopfText(ds) {
     if (ST.titel) ST.titel.textContent = V78().monatText(ds);
@@ -252,7 +279,6 @@
       const z = r.querySelector("[data-k4zieh]");
       if (z) { z.addEventListener("pointerdown", (ev) => ziehen(z, r, ev)); z.addEventListener("click", (ev) => { if (ev.detail === 0) verschiebenBlatt(ds, uid); }); }   // Tastatur: Tag wählen
     });
-    B.querySelectorAll("[data-k4tlock]").forEach((b) => (b.onclick = () => schritt(V78().montag(b.dataset.k4tlock), { art: b.getAttribute("aria-pressed") === "true" ? "entsperren" : "sperren", date: b.dataset.k4tlock })));
     B.querySelectorAll("[data-k4wakt]").forEach((b) => (b.onclick = () => M().wocheAktionen(b.dataset.k4wakt, null)));
     const f = B.querySelector("[data-k4frueher]"); if (f) f.onclick = () => { const top = ST.sel; ST.von = add(ST.von, -28); N.zeichnen(ST.box, ST.raster, ST.titel, ST.sub, { ziel: top }); };
     const s = B.querySelector("[data-k4spaeter]"); if (s) s.onclick = () => { ST.bis = add(ST.bis, 28); const sc = scroller(), y = sc.scrollTop; N.zeichnen(ST.box, ST.raster, ST.titel, ST.sub); sc.scrollTop = y; };
@@ -274,6 +300,7 @@
   /** Nach einer Änderung (Ereignis «meinplan») neu zeichnen und die Stelle halten. */
   N.neu = function () { if (!ST.box || !ST.box.isConnected) return; const sc = scroller(), y = sc.scrollTop; N.zeichnen(ST.box, ST.raster, ST.titel, ST.sub); sc.scrollTop = y; };
   N.heute = function () { if (!bereit()) return; N.zu(heute()); };
+  N.waehle = function (ds) { if (ds) ST.sel = ds; };
 
   /* ---------------- Bearbeiten (V7.9 bearbeiten-1.0, Vorlage «Bearbeiten») ---------------- */
   const EN = () => (P() && P().entwurf) || null;
@@ -282,8 +309,9 @@
   /** Bearbeiten beginnen: die Woche oben in der Liste (frühestens die laufende) und die nächste; Leiste unten aus (body.k4-edit). */
   N.bearbeiten = function (mo) {
     if (!bereit() || !ST.box || ST.edit || !EN()) return;
-    const h = heute(), m0 = V78().montag(h);
-    let m = V78().montag(mo || ST.sel || h); if (m < m0) m = m0;
+    const h = heute();
+    // bearbeiten-1.1 (V9.3.2): am Sonntag folgt in der laufenden Woche kein Tag mehr → gleich die Woche danach, wie die Vorlage
+    const m = V78().bearbeitenAb(mo || ST.sel || h, h);
     EN().starten();
     ST.alt = { von: ST.von, bis: ST.bis, offen: ST.offen };
     Object.assign(ST, { edit: true, editMo: m, von: m, bis: add(m, 7), offen: false });
@@ -363,7 +391,7 @@
     for (const [k, m] of F) { const z = zk(k); if (z === "pause" || z === "offen" || !isNum(m)) continue; sum.set(z, (sum.get(z) || 0) + m); ges += m; }
     const zonen = ges ? GR.map(([g, keys]) => {
       const t = keys.reduce((s2, k) => s2 + (sum.get(k) || 0), 0), seg = keys.filter((k) => sum.get(k)).map((k) => `<i style="flex:${sum.get(k)};background:${ZFARBE(k)}"></i>`).join("");
-      return `<span class="k4-zg${t ? "" : " leer"}" style="flex:${Math.max(0.1, t / ges).toFixed(3)};--zc:var(--zc-${g})" title="${esc(g.toUpperCase())}: ${Math.round((100 * t) / ges)} %">${seg}</span>`;
+      return `<span class="k4-zgp${t ? "" : " leer"}" style="flex:${Math.max(0.1, t / ges).toFixed(3)};--zc:var(--zc-${g})" title="${esc(g.toUpperCase())}: ${Math.round((100 * t) / ges)} %">${seg}</span>`;
     }).join("") : "";
     return `<div class="k4-wkk"><div class="k4-wkk-t"><b>${esc(titel)}</b><small>${esc(V78().bereichText(mo))}</small></div>
       <div class="k4-wkk-g">
@@ -391,20 +419,33 @@
     return `<p class="k4-wkk-f warn-t">Es fehlen ${esc(window.V92 ? window.V92.dauer(F.min) : F.min + " min")}${isNum(F.tl) ? ` (${F.tl} TL)` : ""}: ${esc(F.einheiten.map((x) => x.titel).join(", "))} – mit ✓ fragt die Seite.</p>`;
   }
   /** ✨ «Woche anpassen?» (Vorlage): was passiert, wie man Einheiten behält, Tipps; Anpassen = V66 «umplanen» in den Entwurf (V9.2). */
+  /** ✨ (Vorlage «Adaptieren oder Neuberechnen?», V9.3.2): «Anpassen» ändert so wenig wie möglich (Anker, eigene und verschobene Einheiten bleiben),
+   *  «Neu» rechnet alle Einheiten der Woche neu aus dem Vorschlag (alles-neu-1.0 Stufe 2: nur gesperrte Tage und Einheiten bleiben). */
   function anpassenBlatt(mo) {
     const W = V6();
-    const ov = window.V59.blatt("k4-anp", `<div class="blatt-titel">${W.icon("funken", 30)}<h2 id="v59-ov-h" tabindex="-1">Woche anpassen?</h2><p class="sub">KW ${W.isoWoche(mo)} · ${esc(V78().bereichText(mo))}</p></div>
-      <h3 class="abschnitt">Was passiert</h3><p>Die ganze Woche wird aus dem Vorschlag, deinen Zeiten und Sportarten neu gerechnet – um gesperrte Tage und Einheiten herum. Tests, Schwimmkurs, deine eigenen und von Hand verschobenen Einheiten bleiben, wo sie sind; Gelöschtes bleibt gelöscht. Das passiert auch bei jeder Einstellung von selbst.</p>
-      <h3 class="abschnitt">Einheiten behalten</h3><p>Sperre eine Einheit (Schloss an der Einheit) oder den ganzen Tag (Schloss neben dem Datum), dann bleibt sie, wie sie ist.</p>
-      <h3 class="abschnitt">Tipps</h3><p>Trage genug Zeit ein und sperre nur, was wirklich fest ist – sonst bleibt der Verteilung wenig Spielraum. Gekürzt oder weggelassen wird nur mit Meldung, nie still.</p>
+    const ov = window.V59.blatt("k4-anp", `<div class="blatt-titel">${W.icon("funken", 30)}<h2 id="v59-ov-h" tabindex="-1">Anpassen oder neu berechnen?</h2><p class="sub">${esc(V78().bereichText(mo))}</p></div>
+      <p>Du kannst die Woche entweder anpassen oder neu berechnen. Beim Anpassen ändert die Seite deine bestehenden Einheiten so wenig wie möglich – deine eigenen,
+        verschobenen und gesperrten bleiben, wo sie sind. Eine Neuberechnung erstellt alle Einheiten der Woche neu aus dem Vorschlag; nur gesperrte Tage und Einheiten bleiben.</p>
+      <p>Wenn die Anpassung die Ziele der Woche nicht erreicht – zum Beispiel die richtige Trainingslast –, ist eine Neuberechnung oft die bessere Wahl.</p>
+      <h3 class="abschnitt">Bestimmte Einheiten behalten</h3><p>Sperre eine Einheit (Schloss an der Einheit) oder den ganzen Tag (Tagesblatt hinter «…»), dann bleibt sie bei beidem, wie sie ist.</p>
+      <h3 class="abschnitt">Training optimieren</h3><p>Je mehr Freiheit die Seite hat, desto besser erreicht sie die Ziele der Woche:</p>
+      <ul class="k4-anp-l"><li>genügend Trainingszeit einstellen</li><li>so wenige Einheiten wie möglich sperren</li></ul>
       ${window.V92UI ? `<button type="button" class="mp-zeile" data-k4we><span>${W.icon("kalender", 18)} Woche einstellen – Zeiten, Sportarten, Sperren</span>${W.icon("weiter", 16)}</button>` : ""}
-      <div class="blatt-fuss"><button type="button" class="btn" data-x>${W.icon("schliessen", 16)} Abbrechen</button><button type="button" class="btn primary" data-k4anpok>${W.icon("funken", 16)} Anpassen</button></div>`);
+      <div class="blatt-fuss k4-anp-f"><button type="button" class="btn k4-neu" data-k4neu>Neu ${W.icon("loeschen", 16)}</button><button type="button" class="btn primary k4-anp-ok" data-k4anpok>Anpassen ${W.icon("funken", 16)}</button></div>`);
     const we = ov.querySelector("[data-k4we]"); if (we) we.onclick = () => window.V92UI.wocheEinstellen(mo, {});
-    ov.querySelector("[data-k4anpok]").onclick = async () => {
-      window.V59.schliessen(); await schritt(mo, { art: "umplanen" });
-      const B = M().bericht ? M().bericht() : null;                       // V9.2: sagt auch, wenn es nichts zu ändern gab
-      if (B && B.mo === mo) meldung(B.leer ? "Es musste nichts verschoben werden – alle Einheiten passen zu deiner Verfügbarkeit." : `Woche neu geplant: ${B.zeilen.length} ${B.zeilen.length === 1 ? "Änderung" : "Änderungen"}${B.fehlt ? ` · es fehlen ${window.V92 ? window.V92.dauer(B.fehlt.min) : B.fehlt.min + " min"}` : ""}.`, !B.fehlt);
+    ov.querySelector("[data-k4anpok]").onclick = async () => { window.V59.schliessen(); await schritt(mo, { art: "umplanen" }); nachUmplanen(mo, "Woche angepasst"); };
+    ov.querySelector("[data-k4neu]").onclick = async () => {
+      window.V59.schliessen();
+      let f = null; try { f = M().planen ? await M().planen(mo, { aktionen: [{ art: "neuberechnen" }], ohneUmplanen: true, grund: "neu" }) : await M().aendern(mo, { art: "neuberechnen" }); } catch (e) { console.error(e); f = "Neu berechnen nicht möglich"; }
+      if (f) { meldung(f); return; }
+      nachUmplanen(mo, "Woche neu berechnet");
     };
+  }
+  /** Meldung nach ✨: was sich geändert hat (V9.2: sagt auch, wenn es nichts zu ändern gab). */
+  function nachUmplanen(mo, was) {
+    const B = M().bericht ? M().bericht() : null;
+    if (!B || B.mo !== mo) return;
+    meldung(B.leer ? "Es musste nichts verschoben werden – alle Einheiten passen zu deiner Verfügbarkeit." : `${was}: ${B.zeilen.length} ${B.zeilen.length === 1 ? "Änderung" : "Änderungen"}${B.fehlt ? ` · es fehlen ${window.V92 ? window.V92.dauer(B.fehlt.min) : `${B.fehlt.min} min`}` : ""}.`, !B.fehlt);
   }
   /** Griff antippen (oder Tastatur): Tag derselben Woche wählen. */
   function verschiebenBlatt(ds, uid) {
@@ -576,12 +617,13 @@
     return k1 + k2 + k3 + k4;
   }
   function zyklusRaster() {
-    const W = V6(), h = heute(), R = ZS.offen ? V78().monatsRaster(ZS.mo) : V78().raster(ZS.mo, 2), mon = new Date(ZS.mo + "T12:00:00Z").getUTCMonth();
+    const W = V6(), h = heute(), R = ZS.offen ? V78().monatsRaster(ZS.mo) : V78().raster(ZS.mo, ST.zeilen === 1 ? 1 : 2), mon = new Date(ZS.mo + "T12:00:00Z").getUTCMonth();
+    const selTag = ST.sel && V78().montag(ST.sel) === ZS.mo ? ST.sel : V78().montag(h) === ZS.mo ? h : ZS.mo;
     const zeilen = R.map((wk) => {
       const w = woche(wk.montag), k = w.kopf || {}, titel = V78().wochenTitel(w.K && w.K.w ? w.K.w.phase : null, k.art || null), Z = wochenZahlen(w, h);
-      const tage = wk.tage.map((ds) => `<span class="${ds === h ? "heute" : ""}${ZS.offen && new Date(ds + "T12:00:00Z").getUTCMonth() !== mon ? " aus" : ""}">${+ds.slice(8)}</span>`).join("");
-      return `<div class="k4-zg-d" aria-hidden="true">${tage}</div><button type="button" class="k4-zw${wk.montag === ZS.mo ? " sel" : ""}${wk.montag === V78().montag(h) ? " jetzt" : ""}" data-k4zw="${wk.montag}" aria-pressed="${wk.montag === ZS.mo}"
-        aria-label="KW ${W.isoWoche(wk.montag)}: ${esc(titel)}${Z ? `, ${esc(Z.was)} ${esc(Z.h)}, TL ${esc(Z.tl)}` : ""}"><b>${esc(titel)}</b>${Z ? `<span class="k4-zw-z">${esc(Z.h)} ${W.icon("uhr", 13)}</span><span class="k4-zw-z">${esc(Z.tl)} ${W.icon("funken", 13)}</span>` : `<span class="k4-zw-z">–</span>`}</button>`;
+      const tage = wk.tage.map((ds) => `<span data-k4zt="${ds}" class="${ds === h ? "heute" : ""}${ds === selTag ? " sel" : ""}${ZS.offen && new Date(ds + "T12:00:00Z").getUTCMonth() !== mon ? " aus" : ""}"><i>${+ds.slice(8)}</i></span>`).join("");
+      return `<div class="k4-zg-d${wk.montag === ZS.mo ? " sel" : ""}" aria-hidden="true">${tage}</div><button type="button" class="k4-zw${wk.montag === ZS.mo ? " sel" : ""}${wk.montag === V78().montag(h) ? " jetzt" : ""}" data-k4zw="${wk.montag}" aria-pressed="${wk.montag === ZS.mo}"
+        aria-label="KW ${W.isoWoche(wk.montag)}: ${esc(titel)}${Z ? `, ${esc(Z.was)} ${esc(Z.h)}, TL ${esc(Z.tl)}` : ""}"><b>${esc(titel)}</b>${Z ? `<span class="k4-zw-z">${esc(Z.h)} ${W.icon("uhr", 13)}</span><span class="k4-zw-z">${esc(Z.tl.replace(/^mind\. /, "≥ "))} ${W.icon("funken", 13)}</span>` : `<span class="k4-zw-z">–</span>`}</button>`;
     }).join("");
     return `<div class="k4-zg" role="group" aria-label="Wochen"><div class="k4-zg-d k4-zg-wt" aria-hidden="true">${WT.map((t) => `<span>${t}</span>`).join("")}</div>${zeilen}</div>`;
   }
@@ -589,11 +631,17 @@
   N.zyklus = function (box, raster, titel, sub, mo, neu) {
     if (!bereit()) { box.innerHTML = `<p class="hint">Kalender wird geladen …</p>`; return; }
     ST.KC = new Map(); ZS.PR = null; ZS.mo = V78().montag(mo || heute());
-    raster.innerHTML = zyklusRaster();
-    raster.querySelectorAll("[data-k4zw]").forEach((b) => (b.onclick = () => { if (window.APP && window.APP.kalenderWoche) window.APP.kalenderWoche(b.dataset.k4zw); }));
-    griffSetzen(raster, griffHTML(ZS.offen, "data-k4zgriff"), () => { ZS.offen = !ZS.offen; N.zyklus(box, raster, titel, sub, ZS.mo, neu); });
+    // V9.3.2: Griff ändert nur das Raster (1 Woche, 2 Wochen, Monat) – die Karten darunter bleiben stehen
+    const rasterNeu = () => {
+      raster.innerHTML = zyklusRaster();
+      raster.querySelectorAll("[data-k4zw]").forEach((b) => (b.onclick = () => { if (window.APP && window.APP.kalenderWoche) window.APP.kalenderWoche(b.dataset.k4zw); }));
+      raster.querySelectorAll("[data-k4zt]").forEach((t) => (t.onclick = () => { ST.sel = t.dataset.k4zt; if (window.APP && window.APP.kalenderWoche) window.APP.kalenderWoche(V78().montag(ST.sel)); }));
+      griffSetzen(raster, griffHTML(ZS.offen, "data-k4zgriff"), () => { zeilenSetzen(ST.zeilen === "monat" ? 2 : "monat"); rasterNeu(); }, rasterNeu);
+    };
+    rasterNeu();
     if (titel) titel.textContent = V78().monatText(ZS.mo);
     if (sub) sub.textContent = `KW ${V6().isoWoche(ZS.mo)} · ${V78().bereichText(ZS.mo)}`;
+    try { wbarZeichnen(ZS.mo); } catch (e) { console.error(e); }
     let ausw = ""; try { ausw = M().wocheHTML(ZS.mo, { nurAuswertung: true }); } catch (e) { console.error(e); }
     box.innerHTML = `${zyklusKarten(ZS.mo)}<h3 class="abschnitt k4-z-ab">Plan und absolviert</h3>${ausw}
       <button type="button" class="btn k4-inliste" data-k4inliste>${V6().icon("kalender", 16)} Tage dieser Woche in der Liste</button>`;

@@ -20,7 +20,7 @@ test("trainingsstatus-1.0: Ermüdung ÷ Fitness, Stufen, Veränderung zum Vortag
 });
 
 test("kalender-4.0: Wochen der Liste, Raster zwei Wochen oder Monat, Texte wie die Vorlage", () => {
-  assert.equal(V78.VERSIONS.kalender, "kalender-4.1");
+  assert.equal(V78.VERSIONS.kalender, "kalender-4.2");                        // V9.3.2: Griff ziehen (1 · 2 Wochen · Monat)
   assert.equal(V78.montag("2026-11-18"), "2026-11-16");
   assert.equal(V78.montag("2026-11-22"), "2026-11-16");
   assert.deepEqual(V78.wochen("2026-11-18", 1, 2), ["2026-11-09", "2026-11-16", "2026-11-23", "2026-11-30"]);
@@ -78,7 +78,7 @@ test("fitness-prognose-1.0: Wochenlast aus Stunden × Last pro Stunde, Fitness T
 });
 
 test("bearbeiten-1.0: Entwurf je Woche, ↶/↷, Änderungen gegen das Gespeicherte", () => {
-  assert.equal(V78.VERSIONS.bearbeiten, "bearbeiten-1.0");
+  assert.equal(V78.VERSIONS.bearbeiten, "bearbeiten-1.1");                    // V9.3.2: Woche, in der noch etwas änderbar ist
   const gesp = { "2026-11-16": { id: "wo-2026-11-16", n: 1 } };
   let leer = 0;
   const E = V78.entwurf((mo) => gesp[mo] || null, () => leer++);
