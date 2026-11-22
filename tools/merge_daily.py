@@ -756,6 +756,20 @@ def planwoche_pruefen(w, vorher=None):
         ge = dt.date.fromisoformat(str(w.get("geaendert") or "")[:10])
     except ValueError:
         return "ohne Zeitpunkt der Änderung"
+    # V9.2 umplanen-1.0 (eigenplan-1.3): Streichungen = bewusst gelöschte Einheiten des Vorschlags (Vorlage und Tag), höchstens 40
+    g = w.get("gestrichen")
+    if g is not None:
+        if not isinstance(g, list) or len(g) > 40:
+            return "Streichungen ungültig"
+        for x in g:
+            if not isinstance(x, dict) or not re.fullmatch(r"[a-z0-9_]{1,40}", str(x.get("vorlage") or "")):
+                return "Streichung ohne Vorlage"
+            try:
+                gd = dt.date.fromisoformat(str(x.get("date")))
+            except ValueError:
+                return "Streichung ohne Datum"
+            if not mo <= gd <= mo + dt.timedelta(days=6):
+                return "Streichung nicht in dieser Woche"
     for d, t in tage.items():
         try:
             dd = dt.date.fromisoformat(str(d))
@@ -783,6 +797,10 @@ def planwoche_pruefen(w, vorher=None):
                 f = einheit_feld_pruefen(k, e.get(k))
                 if f:
                     return f"{d}: {f}"
+            if e.get("anker") is not None and e.get("anker") is not True:   # V9.2 umplanen-1.0: von Hand verschoben
+                return f"{d}: Anker ja oder nichts"
+            if e.get("statt") is not None and not re.fullmatch(r"[a-z0-9_]{1,40}", str(e.get("statt"))):
+                return f"{d}: ersetzte Vorlage ungültig"
             if e["quelle"] == "bibliothek":
                 if isinstance(e.get("wid"), bool) or not isinstance(e.get("wid"), int) or e.get("sport") not in ("rad", "lauf", "schwimm"):
                     return f"{d}: Bibliothek ohne Workout oder Sportart"

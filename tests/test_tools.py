@@ -1025,6 +1025,18 @@ check("Mein Plan: vergangenen Tag einfrieren geht einmal, danach unveränderlich
       and "zurück" in (merge_daily.planwoche_pruefen(dict(_EF, tage=dict(_EF["tage"], **{"2026-03-03": {"gesperrt": False, "einheiten": []}})), _ent) or ""),
       str([merge_daily.planwoche_pruefen(_EF, _ent), merge_daily.planwoche_pruefen(_EF2, _EF)]))
 
+# ---------- V9.2 umplanen-1.0 (eigenplan-1.3): Streichungen, Anker, ersetzte Vorlage ----------
+_ST = dict(_WO, gestrichen=[{"vorlage": "rad_locker", "date": "2026-03-05"}], tage={"2026-03-05": {"gesperrt": False, "einheiten": [
+    {"uid": "v-2026-03-05-0", "vorlage": "rad_schwelle", "dauer": 80, "quelle": "vorschlag", "anker": True},
+    {"uid": "v-2026-03-05-1", "vorlage": "rad_locker", "dauer": 60, "quelle": "eigen", "statt": "rad_vo2"}]}})
+_st_bad = [dict(_ST, gestrichen=[{"vorlage": "Rad Locker", "date": "2026-03-05"}]), dict(_ST, gestrichen=[{"vorlage": "rad_locker", "date": "2026-03-12"}]),
+           dict(_ST, gestrichen=[{"vorlage": "rad_locker"}]), dict(_ST, gestrichen=[{"vorlage": "rad_locker", "date": "2026-03-05"}] * 41), dict(_ST, gestrichen="rad_locker"),
+           dict(_ST, tage={"2026-03-05": {"gesperrt": False, "einheiten": [{"uid": "x", "vorlage": "rad_locker", "dauer": 60, "quelle": "vorschlag", "anker": "ja"}]}}),
+           dict(_ST, tage={"2026-03-05": {"gesperrt": False, "einheiten": [{"uid": "x", "vorlage": "rad_locker", "dauer": 60, "quelle": "eigen", "statt": "Rad VO2"}]}})]
+check("V9.2 Mein Plan: Streichungen, Anker und ersetzte Vorlage gültig; falsche Vorlage, Tag ausserhalb, ohne Datum, zu viele, kein Anker-Ja, ersetzte Vorlage ungültig abgelehnt",
+      merge_daily.planwoche_pruefen(_ST, None) is None and all(merge_daily.planwoche_pruefen(w, None) for w in _st_bad),
+      str([merge_daily.planwoche_pruefen(_ST, None)] + [merge_daily.planwoche_pruefen(w, None) for w in _st_bad]))
+
 # ---------- V7.3 Felder je Einheit (einheit-felder-1.0) ----------
 _F_OK = {"uid": "v-2026-03-05-0", "vorlage": "rad_schwelle", "dauer": 80, "quelle": "eigen", "uhrzeit": "06:30", "gesperrt": True,
          "metrik": "puls", "drinnen": False, "ein_min": 20, "pausen": 30}

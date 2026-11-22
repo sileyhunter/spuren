@@ -126,8 +126,10 @@
   /** gespeichert(mo) → gespeicherter Eintrag der Woche (oder null); geaendert() wird nach jeder Änderung des Entwurfs gerufen (Zwischenspeicher leeren).
    *  Solange aktiv, gilt für jede Woche mit Entwurf dessen Stand (hat/eintrag); neu() verwirft Schritte nach einem ↶. */
   V78.entwurf = function (gespeichert, geaendert) {
-    const S = { aktiv: false, wochen: new Map(), verlauf: [], pos: 0 }, fertig = () => { if (geaendert) geaendert(); };
-    const leer = () => { S.wochen = new Map(); S.verlauf = []; S.pos = 0; fertig(); };
+    // V9.2 woche-einstellen-1.0: dazu eine Überlagerung der Verfügbarkeit (vf-…-Einträge), die nur im Entwurf gilt, mit ✓ gespeichert und mit ✕ verworfen
+    // wird; jeder Schritt hält sie vorher und nachher fest (↶/↷ nehmen Woche und Verfügbarkeit zusammen zurück)
+    const S = { aktiv: false, wochen: new Map(), verlauf: [], pos: 0, vf: new Map() }, fertig = () => { if (geaendert) geaendert(); };
+    const leer = () => { S.wochen = new Map(); S.verlauf = []; S.pos = 0; S.vf = new Map(); fertig(); };
     const gleich = (a, b) => JSON.stringify(a == null ? null : a) === JSON.stringify(b == null ? null : b);
     return {
       aktiv: () => S.aktiv,
@@ -135,20 +137,27 @@
       beenden() { leer(); S.aktiv = false; },
       hat: (mo) => S.aktiv && S.wochen.has(mo),
       eintrag: (mo) => (S.wochen.has(mo) ? S.wochen.get(mo) : gespeichert(mo)),
-      neu(mo, E, a) {
+      /** Schritt: Woche mo hat jetzt E (a = Aktion). vfVor (Map, von vfSetzen) = Verfügbarkeit vor diesem Schritt, sonst unverändert. */
+      neu(mo, E, a, vfVor) {
         if (!S.aktiv) return false;
         const vor = S.wochen.has(mo) ? S.wochen.get(mo) : gespeichert(mo);
-        S.verlauf.length = S.pos; S.verlauf.push({ mo, vor, nach: E, a: a || null }); S.pos = S.verlauf.length; S.wochen.set(mo, E); fertig();
+        S.verlauf.length = S.pos; S.verlauf.push({ mo, vor, nach: E, a: a || null, vfVor: new Map(vfVor || S.vf), vfNach: new Map(S.vf) }); S.pos = S.verlauf.length; S.wochen.set(mo, E); fertig();
         return true;
       },
-      zurueck() { if (!S.aktiv || !S.pos) return null; const x = S.verlauf[--S.pos]; S.wochen.set(x.mo, x.vor); fertig(); return x; },
-      vor() { if (!S.aktiv || S.pos >= S.verlauf.length) return null; const x = S.verlauf[S.pos++]; S.wochen.set(x.mo, x.nach); fertig(); return x; },
+      zurueck() { if (!S.aktiv || !S.pos) return null; const x = S.verlauf[--S.pos]; S.wochen.set(x.mo, x.vor); S.vf = new Map(x.vfVor || S.vf); fertig(); return x; },
+      vor() { if (!S.aktiv || S.pos >= S.verlauf.length) return null; const x = S.verlauf[S.pos++]; S.wochen.set(x.mo, x.nach); S.vf = new Map(x.vfNach || S.vf); fertig(); return x; },
       kannZurueck: () => S.aktiv && S.pos > 0,
       kannVor: () => S.aktiv && S.pos < S.verlauf.length,
       /** Wochen, deren Entwurf vom Gespeicherten abweicht → [{ mo, E }], nach Montag */
       aenderungen: () => [...S.wochen.entries()].filter(([mo, E]) => !gleich(E, gespeichert(mo))).sort((x, y) => x[0].localeCompare(y[0])).map(([mo, E]) => ({ mo, E })),
       /** die gültigen Schritte bis zur Stelle von ↶/↷ */
       schritte: () => S.verlauf.slice(0, S.pos),
+      /** V9.2: Verfügbarkeit im Entwurf – Einträge (wie V66.vfEintrag) setzen, ohne Schritt; → Stand davor (für neu(…, vfVor)) */
+      vfSetzen(L) { const vor = new Map(S.vf); if (!S.aktiv) return vor; for (const e of L || []) if (e && e.id) S.vf.set(e.id, e); fertig(); return vor; },
+      /** Stand zurück (z. B. wenn das Umplanen danach scheitert) */
+      vfZurueck(vor) { S.vf = new Map(vor || []); fertig(); },
+      /** Einträge der Überlagerung (gelten nur im Entwurf; die Seite legt sie über die gespeicherten) */
+      vf: () => (S.aktiv ? [...S.vf.values()] : []),
     };
   };
 

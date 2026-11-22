@@ -310,7 +310,7 @@
   const okKnopf = () => `<button type="button" class="btn primary" data-peok>Übernehmen ${ic("haken", 18)}</button>`;
   function unterBlatt(art, sport, i) {
     if (!bereit()) return;
-    if (art === "verf") { if (U66() && U66().verfuegbarkeitWoche) U66().verfuegbarkeitWoche(() => seite(i)); return; }   // V7.6.1 verfuegbarkeit-1.1
+    if (art === "verf") { if (U66() && U66().verfuegbarkeitWoche) U66().verfuegbarkeitWoche(() => seite(i), null, { standard: true }); return; }   // V7.6.1 verfuegbarkeit-1.1; V9.2 «Woche einstellen», jede Woche so
     if (art === "tests") { V59().schliessen(); if (window.APP && window.APP.showTab) window.APP.showTab("plan-tests"); else location.hash = "#plan-tests"; return; }
     const ov = art === "basis" ? basisBlatt(sport, i) : art === "indoor" ? indoorBlatt(sport, i) : art === "equipment" ? equipmentBlatt(i) : art === "pool" ? poolBlatt(i) : art === "stile" ? stileBlatt(i)
       : art === "kraft" ? kraftBlatt(i) : art === "kraftwoche" ? kraftWocheBlatt(sport, i) : art === "lang" ? langBlatt(i) : art === "kurs" ? kursBlatt(i)

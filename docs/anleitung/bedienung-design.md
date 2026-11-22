@@ -66,7 +66,7 @@
   «Eigene Aktivität planen ›» (eigene-aktivitaet-1.0: Titel, Sportart Rad/Laufen/Schwimmen/Andere (seit V8.4.1 ohne Mobility), Datum, Uhrzeit, jede Woche bis höchstens 16 Wochen, Dauer 10–360 min,
   RPE 1–10 → Zone für TL ≈: 1–2 Z1, 3–4 Z2, 5–6 Z3, 7 knapp unter LT2, 8–10 VO2max, Schwimmen ab 7 CSS; Skitour, Wandern, Langlauf, Traillauf öffnen «Draussen planen»),
   Verfügbarkeit des Tages im Blatt (Sportarten als Symbol, antippen = Chips; Regler 0–8 h in 15-min-Schritten, ganz rechts «offen»; sofort gespeichert als «vf-<Datum>», gleich wie
-  der Wochentag = Tageseintrag weg; danach wie bisher festhalten bzw. «Woche anpassen»), Krafttraining, unten klein «Tag sperren» und Garmin.
+  der Wochentag = Tageseintrag weg; danach wie bisher festhalten bzw. «Woche anpassen»; **seit V9.2** auch im Bearbeiten-Modus, umgeplant wird die ganze Woche, siehe unten), Krafttraining, unten klein «Tag sperren» und Garmin.
 - **Kalender und Mein Plan (V7 kalender-3.0, eigenplan-1.0):** «Woche · Monat» (Standard Woche, `sf.kal.ansicht`); Titel = Monat und Jahr (antippen:
   Monat wählen), «Heute» rechts. Woche = Tagesleiste, Wochenauswertung (Mein Plan gegenüber absolviert, je Sportart, Zeit in Zonen nach Puls, TL) und
   die Tage mit erledigten Garmin-Aktivitäten und Mein Plan; im Monat öffnet «KW» die Woche (`TABS.kalender.zurWoche`, auch `APP.kalenderWoche`).
@@ -88,4 +88,16 @@ Laufen nach Puls, Schwimmen Last pro Bewegungsstunde der letzten acht Wochen) si
 - Die Seite schreibt selbst nie nach Garmin oder Enduco: keine Knöpfe zum Verschieben, Starten oder Löschen von Workouts. Einzige Ausnahme
   (V6.6, Entscheid E3): «An Garmin senden» legt einen Auftrag an, den das Nacht-Update ausführt (Abschnitt «An Garmin senden»).
 
-
+## V9.2 Woche einstellen, Frage, Bericht (Auftrag «Woche wie Enduco» Etappe W1; `js/v92-ui.js`, Klassen in `css/v6.css` am Ende)
+- **«Woche einstellen»** (`V92UI.wocheEinstellen(mo, { zurueck, standard })`, Klassen `.we-*`): Titel mit KW, Umschalter «nur diese Woche · jede Woche so» (Chips), je Tag eine Zeile
+  mit Wochentag und Datum, Zustandszeichen (Standard · von Hand · gesperrt, `.we-zst`), Wert rechts, Schloss (`.we-lock`), Sportart-Schalter (`.vw-chip` wie bisher) und Zeitregler
+  (`.we-r`, 0 = kein Training bis 5 h in 15-min-Schritten, länger, wenn schon eingestellt; ganz rechts «offen»); «Zurück auf Standard» nur bei von Hand gesetzten Tagen. Vergangene
+  Tage und Renntage nur lesen. Unten «Abbrechen» und «Speichern ✓» (im Bearbeiten-Modus «Übernehmen»). Erreichbar aus dem Tagesblatt («Woche einstellen – Zeiten, Sportarten,
+  Sperren ›»), aus «Woche bearbeiten», aus ✨, aus dem Zyklus («Trainingsverfügbarkeit») und aus den Planeinstellungen («jede Woche so» vorgewählt). Ersetzt das Blatt
+  «Trainingsverfügbarkeit der ganzen Woche».
+- **Frage** (`V92UI.frage`): Blatt «Die Woche geht nicht auf» mit dem Fehlenden, je Vorschlag eine Zeile «Ja: Samstag auf 5 h 40 (+ 40 min)» und «Nein, so lassen»; die Vorschläge
+  werden nach dem Öffnen gerechnet («Rechne die Vorschläge durch …»). Kommt nach dem Schliessen des Tagesblatts über `V59.nachSchliessen(key, fn)` (einmal nach dem nächsten
+  `V59.schliessen`), nach «Woche einstellen», nach ✓ und nach ✨.
+- **Bericht** (`#kal-bericht` im Kalenderkopf unter `#kal-meldung`, `.k4-bericht`): Kopfzeile «Woche neu geplant · KW · TL vorher → nachher · Stunden» mit ✕ zum Wegwischen, bis drei
+  Zeilen (Rest in «Details»), «Fehlt: …» in Warnfarbe, Knöpfe «Rückgängig», «Mehr Zeit erlauben …», «Ausgleichen», «Details». Nicht im Bearbeiten-Modus (dort steht die fehlende
+  Zeit in der Wochenkarte, `.k4-wkk-f`). Im Tagesblatt dieselbe Meldung unter der Verfügbarkeit (`.tb-vf-re`). Das Aussehen wie Enduco kommt mit Etappe W2.

@@ -174,7 +174,9 @@
   /** V7.2 verfuegbarkeit-1.0: Verfügbarkeit aus den Daten, darüber die noch nicht eingespielten Eingaben auf diesem Gerät. */
   function verfuegbarkeit() {
     if (!window.V66 || !window.V66.verfuegbarkeit) return null;
-    return window.V66.verfuegbarkeit(C.D.plan_verfuegbarkeit || [], ((UI() && UI().Inbox && UI().Inbox.data) || {}).verfuegbarkeit || []);
+    // V9.2 woche-einstellen-1.0: im Bearbeiten-Modus gilt darüber die Verfügbarkeit des Entwurfs (erst mit ✓ gespeichert)
+    const e = ENT && ENT.aktiv() ? ENT.vf() : [];
+    return window.V66.verfuegbarkeit(C.D.plan_verfuegbarkeit || [], ((UI() && UI().Inbox && UI().Inbox.data) || {}).verfuegbarkeit || [], e);
   }
   M.verfuegbarkeit = () => { C = C || (UI() && UI().C); return C ? verfuegbarkeit() : null; };
   /** V6.6 eigenplan-1.0: Mein Plan einer Woche (Daten, darüber die noch nicht eingespielte Fassung auf diesem Gerät). */

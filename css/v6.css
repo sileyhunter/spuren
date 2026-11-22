@@ -1519,3 +1519,37 @@ table.t.v82-t td small { display: block; font-size: 11px; }
 .v85-g { display: grid; grid-template-columns: 16px 1fr; gap: 6px; font-size: 13px; line-height: 1.4; color: var(--fg); overflow-wrap: anywhere; }
 .v85-s { font-weight: 700; text-align: center; color: var(--muted); }
 .v85-weniger .v85-s, .v85-pyramidal .v85-s { color: var(--accent-text); }
+
+/* ---------- V9.2 Auftrag «Woche wie Enduco», Etappe W1: Woche einstellen (woche-einstellen-1.0), Frage (fehlt-zeit-1.0), Bericht (umplanen-1.0) ---------- */
+.we-modus { display: flex; gap: 8px; margin: 2px 0 6px; flex-wrap: wrap; }
+.we-liste { list-style: none; margin: 4px 0 0; padding: 0; }
+.we-tag { padding: 10px 0 10px; border-bottom: 1px solid var(--line); }
+.we-tag:last-child { border-bottom: 0; }
+.we-tag.vorbei { opacity: .6; }
+.we-kopf { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 8px; }
+.we-kopf b { font-size: 16px; }
+.we-kopf b small { color: var(--muted); font-weight: 600; font-size: 13px; }
+.we-kopf em { font-style: normal; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 62px; text-align: right; }
+.we-tag.aus .we-kopf em { color: var(--muted); font-weight: 600; }
+.we-zst { font-size: 11px; font-weight: 700; letter-spacing: .02em; color: var(--muted); border: 1px solid var(--line-2); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+.we-lock { width: 36px; height: 36px; min-height: 36px; padding: 0; display: grid; place-items: center; border-radius: 10px; border: 1.5px solid var(--line-2); background: var(--surface); color: var(--muted); cursor: pointer; }
+.we-lock[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.we-lock:disabled { opacity: .45; cursor: default; }
+.we-zeile { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.we-sp { display: flex; gap: 6px; }
+.we-sp .vw-chip { min-width: 44px; min-height: 36px; }
+.we-sp .vw-chip:disabled { opacity: .45; }
+.we-r { flex: 1 1 140px; min-width: 120px; accent-color: var(--good); }
+.we-std { margin-top: 6px; }
+.we-hint { margin: 4px 0 0; }
+.fz-wahl .mp-zeile b { font-variant-numeric: tabular-nums; }
+.k4-bericht-box { margin: 6px 0 0; }
+.k4-bericht { padding: 8px 10px 8px 12px; border-radius: 12px; background: var(--surface-2); border-left: 3px solid var(--good); font-size: 13px; }
+.k4-b-kopf { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.k4-b-kopf small { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.k4-b-kopf .k4-b-x { width: 32px; height: 32px; min-height: 32px; padding: 0; display: grid; place-items: center; }
+.k4-b-t, .k4-b-f, .k4-b-h { margin: 4px 0 0; }
+.k4-b-f { color: var(--warn-text, var(--fg)); font-weight: 600; }
+.k4-b-l { margin: 4px 0 0; padding-left: 18px; }
+.k4-b-k { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.k4-wkk-f { margin: 2px 0 0; font-size: 12px; }

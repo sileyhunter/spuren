@@ -1,5 +1,43 @@
 # Änderungen
 
+## V9.2 · 22.11.2026 · «Woche wie Enduco» Etappe W1: Umplanen (umplanen-1.0, grenzen-1.0, woche-einstellen-1.0, fehlt-zeit-1.0)
+Auftrag `docs/auftrag-enduco-woche.md` (neu im Repo), Etappe W1. Neue Module `js/v92.js` (`V92`: Bericht, Frage, Einträge von «Woche einstellen»), `js/v92-ui.js` (`V92UI`),
+Test `tests/test_v92.cjs` (20 Tests, Abnahme 1–15). Versionen: `eigenplan-1.3`, `verfuegbarkeit-1.3`, `wissen-1.34`.
+- **Jede Einstellung rechnet die ganze Woche neu:** Die Woche ist eine Funktion ihrer Eingaben (Vorschlag, Zeit und Sportarten je Tag, Festes). Neu `V66.aendern { art: "umplanen" }`:
+  aus dem unverteilten Vorschlag, nicht aus dem gespeicherten Stand. Vergangene Tage, gesperrte Tage (auch Tage mit gesperrter Einheit) und – sobald heute schon trainiert wurde – heute
+  bleiben; deine eigenen, geänderten, ersetzten und von Hand verschobenen Einheiten bleiben an ihrem Tag (Anker); Gelöschtes bleibt gestrichen (`E.gestrichen`). Gleiche Eingaben ergeben
+  dieselbe Woche, egal in welcher Reihenfolge: Zeit auf 0 und wieder zurück gibt die Ausgangswoche (gekürzte Einheiten wachsen zurück). Wochen ohne Eigenes folgen wieder von selbst.
+- **Die Last fliesst dorthin, wo Zeit ist:** auch auf Tage, die im Vorschlag frei waren; mehrere Einheiten an einem Tag, wenn es nicht anders geht. Einheiten, deren Tag fest ist
+  (z. B. vorbei, aber noch nicht gemacht, weil sie verschoben waren), plant der Kern auf die übrigen Tage (`V66.verteilen` opt.`extra`).
+- **Harte Grenzen (grenzen-1.0):** Die Zeit eines Tages – Standard des Wochentags oder von Hand gesetzt – überschreitet die Seite nie: Planer, automatischer Krafttrainings-Tag (`js/v76.js`:
+  nur Tage, an denen das Krafttraining mit dem Festen in die Zeit passt, nie an einem von Hand gesetzten Tag mit gewählten Sportarten), Coach (`js/v83.js`: Tauschen und Nachholen ohne die
+  5 min Toleranz, Rad statt Laufen nie über die Zeit), «Ausgleichen». Ampel-Ersatz geprüft (gleiche Sportart, nie länger – unverändert). Über der Zeit steht nur, was du selbst fest
+  gesetzt hast, mit Meldung («Mittwoch: 30 min mehr geplant als verfügbar (deine eigene Einheit)»).
+- **Geht es nicht auf, fragt die Seite (fehlt-zeit-1.0):** «Die Woche geht nicht auf: Es fehlen … Darf an einem Tag mehr trainiert werden?» – je Tag das kleinste nötige Mehr
+  (mit dem Planer durchgerechnet, 5-min-Schritte, nie mehr als das Fehlende), bei mehr als 1 h auch auf zwei Tage verteilt. «Ja» setzt die Zeit wie am Regler (von Hand), «Nein» lässt
+  alles; die Frage kommt erst nach deiner nächsten Änderung wieder. Nur nach eigenen Änderungen (Tagesblatt schliessen, «Woche einstellen», ✓, ✨), nie beim Öffnen, nie in der
+  Rennwoche, nie für vergangene Wochen, im Bearbeiten-Modus erst mit ✓.
+- **«Woche einstellen» (woche-einstellen-1.0):** ein Blatt für Zeiten (0 = kein Training bis 5 h, ganz rechts offen), Sportarten und Sperren aller Tage, mit Zustand je Tag (Standard ·
+  von Hand · gesperrt), «Zurück auf Standard» und «nur diese Woche · jede Woche so». Ersetzt «Trainingsverfügbarkeit der ganzen Woche» (Tagesblatt, Zyklus, Planeinstellungen, ✨,
+  Woche bearbeiten). «Jede Woche so» plant auch die späteren gespeicherten Wochen neu.
+- **Bearbeiten-Modus:** Zeiten und Sportarten gehen jetzt auch im Entwurf (Tagesblatt und «Woche einstellen»): Überlagerung der Verfügbarkeit (`V78.entwurf`: `vfSetzen`, `vf`), mit ✓
+  zusammen mit der Woche gespeichert, mit ✕ verworfen, ↶/↷ Schritt für Schritt. Die Woche rechnet nach jeder Änderung live; die fehlende Zeit steht in der Wochenkarte.
+- **Bericht oben im Kalender** (bleibt bis zum Wegwischen): was sich geändert hat (mit Grund), Wochenlast vorher → nachher (TL ≈, Stunden), was fehlt («Mehr Zeit erlauben …»),
+  ↶ Rückgängig (Woche **und** Verfügbarkeit, solange die Seite nicht neu geladen wurde), Details, «Ausgleichen» bei gestrichenen Einheiten unter dem Wochenbereich. Im Tagesblatt
+  dieselbe Meldung unter der Verfügbarkeit.
+- **Garmin:** Nach jedem Umplanen werden die offenen Aufträge aller sieben Tage nachgeführt; eine gewählte Einheit bleibt gewählt – mit ihrem Modus auch an ihrem neuen Tag. Unveränderte
+  Aufträge bleiben, heute nie. Steht eine gesendete Einheit von heute nicht mehr im Plan: «Auf der Uhr steht noch …».
+- **Stufen:** 1 «Woche anpassen» (= umplanen, läuft bei jeder Einstellung von selbst), 2 «Neu berechnen» (vergisst Anker und Streichungen; jetzt über denselben Kern – eine Einheit, deren Tag
+  schon vorbei war, geht nicht mehr verloren), 3 «Alles neu verteilen» (auch Sperren weg; deine Zeiten bleiben). «Nur speichern» entfällt. «Woche leeren» merkt die Einheiten als gestrichen.
+- **Datenformat (nur optionale Felder):** `gestrichen` [{ vorlage, date }] je Woche, `anker` und `statt` je Einheit, `verteilung.fehlt` / `verteilung.frage`; geprüft in
+  `tools/merge_daily.py` (`planwoche_pruefen`, Test in `tests/test_tools.py`).
+- **Umgeschriebene Tests (nichts gelöscht):** `tests/test_v66.cjs` (Version eigenplan-1.3; «anpassen» meldet jetzt `art: "umplanen"`), `tests/test_v74.cjs` (Version), `tests/test_v911.cjs`
+  Test 4 («nur teilweise gespeichert» entsteht nicht mehr – jetzt: Hinzufügen hält die Woche ganz fest, Verfügbarkeit plant gleich neu), `tests/test_v64.cjs` (wissen-1.34).
+- `sw.js` Cache `notebook-v92-umplanen-2026-11-22`, `tests/sim/umgebung.cjs`, `index.html` (Module, `#kal-bericht`), `js/v59.js` (`V59.nachSchliessen`), Demo nachgeführt.
+- Demo im Browser durchgespielt (Playwright, CDN-Stub, 390 × 844): Dienstag Zeit 0 im Tagesblatt → Woche neu, Bericht oben, «Woche einstellen», ↶ gibt die Ausgangswoche – ohne Fehler.
+- Alle Node-Tests und `tests/test_tools.py` bestanden. Leck-Prüfung: der datenunabhängige Teil (E-Mail-Adressen) bestanden; mit echten Daten konnte sie ohne
+  `SPUREN_PW` nicht laufen – es wurden keine echten Werte eingefügt, Zahlen aus den Aufnahmen sind im Auftrag durch erfundene ersetzt.
+
 ## V9.1 Etappe 1 · 20.11.2026 · Geplant und absolviert als eine Einheit (zusammen-1.0)
 Auftrag V9 (`docs/auftrag-v9.md`), Etappe 1. Neues Modul `js/v91.js` (`V91`, Version `zusammen-1.0`), Test `tests/test_v91.cjs` (10 Tests).
 - **Eine Zuordnung für alle Stellen:** `V91.zuordnen(plan, akt, {sportVon})` ordnet absolvierte Aktivitäten den geplanten Einheiten desselben Tages und derselben

@@ -14,7 +14,13 @@
    - V7.4 eigenplan-1.2 (ampel-plan-1.0, js/v74.js): «Woche anpassen?» rechnet auf deinen Knopfdruck den Rest der Woche wie eine Erholungswoche
      (Aktion «erholung»); die Ampel-Schicht selbst ändert Mein Plan nie. Zu jeder Einheit trägt der Garmin-Auftrag die lockere Fassung mit.
    - V7.5 einheit-felder-1.1 (Planeinstellungen, js/v75.js): Bahnlänge je Schwimm-Einheit (pool 25/50, sonst der Standard); drinnen = false bleibt
-     gespeichert (ausdrücklich draussen in einer Indoor-Phase), true = ausdrücklich drinnen; ohne Feld gilt die Indoor-Phase. */
+     gespeichert (ausdrücklich draussen in einer Indoor-Phase), true = ausdrücklich drinnen; ohne Feld gilt die Indoor-Phase.
+   - V9.2 umplanen-1.0 (Auftrag «Woche wie Enduco», Etappe W1, docs/auftrag-enduco-woche.md): die Woche ist eine Funktion ihrer Eingaben –
+     Woche = Planer(Vorschlag, Grenzen je Tag, Festes). Jede Einstellung rechnet die ganze Woche aus dem unverteilten Vorschlag (ctx.roh) neu, nicht aus
+     dem gespeicherten Stand: vergangene und gesperrte Tage bleiben, Anker (von Hand gesetzt, verschoben, geändert, ersetzt) bleiben an ihrem Tag,
+     Streichungen (E.gestrichen) bleiben gestrichen. eigenplan-1.3: neue optionale Felder gestrichen, anker, statt, verteilung.fehlt/frage.
+     grenzen-1.0: die Zeit eines Tages (Standard des Wochentags oder von Hand gesetzt) ist für alles, was die Seite selbst setzt, eine harte Obergrenze;
+     an von Hand gesetzten Tagen auch die Sportarten. verfuegbarkeit-1.3: V66.verteilen nimmt auch Einheiten, deren Tag fest ist (opt.extra). */
 (function (root, factory) {
   const node = typeof module === "object" && module.exports;
   const V66 = factory(node ? require("./v64.js") : root && root.V64);
@@ -22,8 +28,9 @@
   if (root) root.V66 = V66;
 })(typeof window !== "undefined" ? window : null, function (V64) {
   "use strict";
-  const V66 = { VERSIONS: { eigenplan: "eigenplan-1.2", vorlagen: "vorlagen-1.0", tl: "tl-plan-1.1", wochenblatt: "wochenblatt-1.0", kalender: "kalender-2.0",
-    verfuegbarkeit: "verfuegbarkeit-1.2", felder: "einheit-felder-1.1", anpassen: "einheit-anpassen-1.0", eigen: "eigene-aktivitaet-1.0" } };
+  const V66 = { VERSIONS: { eigenplan: "eigenplan-1.3", vorlagen: "vorlagen-1.0", tl: "tl-plan-1.1", wochenblatt: "wochenblatt-1.0", kalender: "kalender-2.0",
+    verfuegbarkeit: "verfuegbarkeit-1.3", felder: "einheit-felder-1.1", anpassen: "einheit-anpassen-1.0", eigen: "eigene-aktivitaet-1.0",
+    umplanen: "umplanen-1.0", grenzen: "grenzen-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const add = (iso, n) => V64.addDays(iso, n);
 
@@ -100,6 +107,7 @@
     if (!s) return null;
     const mehr = { uid: s.uid, quelle: s.quelle || "eigen", vorlage: s.vorlage || null, drinnen: !!s.drinnen };
     if (typeof s.drinnen === "boolean") mehr.drinnen_fest = true;      // V7.5: ausdrücklich gewählt – die Indoor-Phase (indoor-phase-1.0) ändert nichts
+    if (s.anker === true) mehr.anker = true;                             // V9.2 umplanen-1.0: von Hand verschoben – bleibt an diesem Tag
     // V7.3 einheit-felder-1.0: Uhrzeit, Sperre und Metrik je Einheit (nur übernommen, wenn gültig); 1.1: Bahnlänge je Schwimm-Einheit
     for (const k of ["uhrzeit", "gesperrt", "metrik", "pool"]) if (s[k] != null && s[k] !== false && !V66.feldPruefen(k, s[k])) mehr[k] = s[k];
     if (s.quelle === "bibliothek") {
@@ -301,10 +309,20 @@
         const vorhanden = (d) => (Array.isArray((E.tage[d] || {}).einheiten) ? E.tage[d].einheiten : vorschlagGespeichert(d, ctx.vorschlag ? ctx.vorschlag(d) : []));
         const frei = typeof a.uid === "string" && a.uid && !wochenTage().some((d) => vorhanden(d).some((x) => x.uid === a.uid));
         const s = Object.assign({ quelle: "eigen" }, a.einheit, { uid: frei ? a.uid : (ctx.neuId || neuId)() });
-        f = V66.einheitPruefen(s); if (!f) liste(a.date).push(s);
+        f = V66.einheitPruefen(s); if (f) break;
+        liste(a.date).push(s);
+        if (frei) streichungWeg(E, s, a.date);                         // V9.2: zurückgeholte Einheit (gleiche Kennung) ist nicht mehr gestrichen
         break;
       }
-      case "entfernen": { f = darf(a.date); if (f) break; const i = finde(a.date, a.uid); if (i < 0) f = "Einheit nicht gefunden"; else if (liste(a.date)[i].gesperrt) f = GESPERRT_E; else liste(a.date).splice(i, 1); break; }
+      case "entfernen": {
+        f = darf(a.date); if (f) break;
+        const i = finde(a.date, a.uid); if (i < 0) { f = "Einheit nicht gefunden"; break; }
+        if (liste(a.date)[i].gesperrt) { f = GESPERRT_E; break; }
+        const [x] = liste(a.date).splice(i, 1);
+        const id = stehtFuer(x);                                           // V9.2 umplanen-1.0: bewusst gelöscht – bleibt gestrichen (kein heimlicher Ersatz)
+        if (id) { if (!Array.isArray(E.gestrichen)) E.gestrichen = []; if (E.gestrichen.length < 40) E.gestrichen.push({ vorlage: id, date: a.date }); }
+        break;
+      }
       case "dauer": {
         f = darf(a.date); if (f) break;
         const L = liste(a.date), i = finde(a.date, a.uid); if (i < 0) { f = "Einheit nicht gefunden"; break; }
@@ -319,7 +337,7 @@
         f = darf(a.date) || darf(a.nach) || (a.date === a.nach ? "gleicher Tag" : null); if (f) break;
         const i = finde(a.date, a.uid); if (i < 0) { f = "Einheit nicht gefunden"; break; }
         if (liste(a.date)[i].gesperrt) { f = GESPERRT_E; break; }
-        const [x] = liste(a.date).splice(i, 1); liste(a.nach).push(x);
+        const [x] = liste(a.date).splice(i, 1); liste(a.nach).push(Object.assign({}, x, { anker: true }));   // V9.2: von Hand verschoben = Anker am neuen Tag
         break;
       }
       case "einheit": {                                                // V7.3 einheit-felder-1.0: Uhrzeit, Sperre, Metrik, drinnen, Einfahren, Pausen
@@ -346,8 +364,10 @@
         const L = liste(a.date), i = finde(a.date, a.uid); if (i < 0) { f = "Einheit nicht gefunden"; break; }
         if (L[i].gesperrt) { f = GESPERRT_E; break; }
         const s = Object.assign({ quelle: "eigen" }, a.einheit || {}, { uid: a.uid });
-        delete s.gesperrt;
+        delete s.gesperrt; delete s.statt;
         f = V66.einheitPruefen(s); if (f) break;
+        // V9.2 umplanen-1.0: die neue Einheit steht weiter für die ersetzte Vorschlags-Einheit (sonst käme diese beim Umplanen zurück)
+        const war = stehtFuer(L[i]); if (war && war !== s.vorlage) s.statt = war;
         L[i] = s;
         break;
       }
@@ -360,7 +380,8 @@
         for (const d of wochenTage()) if (E.tage[d] && Array.isArray(E.tage[d].einheiten)) E.tage[d].einheiten = E.tage[d].einheiten.filter((x) => x.uid !== s.uid);   // bisherige Fassung
         liste(a.date).unshift(s);
         if (typeof ctx.ersetzen === "function") ctx.ersetzen(E, a);   // Ersatz von Rad- bzw. Lauf-Einheiten ab heute (V77.ersetzenGespeichert)
-        if (ctx.verf) f = anpassen(E, ctx);                           // der Tag gehört der Aktivität, Vortag und Tag danach ohne harte Einheit an Land
+        // der Tag gehört der Aktivität, Vortag und Tag danach ohne harte Einheit an Land; V9.2: umplanen statt anpassen (mit Vorschlag), sonst wie bisher
+        if (ctx.verf) f = typeof ctx.roh === "function" ? umplanen(E, ctx) : anpassen(E, ctx);
         break;
       }
       case "aktivitaet_weg": {                                         // V7.7: Aktivität aus der gespeicherten Woche nehmen (Ersetztes kommt mit «Neu berechnen» zurück)
@@ -378,9 +399,20 @@
           if (Array.isArray(E.tage[d].einheiten)) E.tage[d].einheiten = E.tage[d].einheiten.map((x) => (x && x.gesperrt ? Object.assign({}, x, { gesperrt: false }) : x));
         }
         f = neuBerechnen(E, ctx, tag); break;
-      case "leeren": for (let i = 0; i < 7; i++) { const d = add(E.montag, i); if (d >= ctx.heute && !(E.tage[d] && E.tage[d].gesperrt)) tag(d).einheiten = []; } break;
+      case "leeren":
+        // V9.2: was aus dem Vorschlag kam, gilt als gestrichen – sonst füllte das nächste Umplanen die Tage wieder (zurück mit «Neu berechnen» oder «Ausgleichen»)
+        for (let i = 0; i < 7; i++) {
+          const d = add(E.montag, i); if (d < ctx.heute || (E.tage[d] && E.tage[d].gesperrt)) continue;
+          for (const s of liste(d)) { const id = stehtFuer(s); if (id) { if (!Array.isArray(E.gestrichen)) E.gestrichen = []; if (E.gestrichen.length < 40) E.gestrichen.push({ vorlage: id, date: d }); } }
+          tag(d).einheiten = [];
+        }
+        break;
       case "festhalten": festhalten(); break;
-      case "anpassen": festhalten(); f = anpassen(E, ctx); break;
+      // V9.2 umplanen-1.0: «anpassen» (V9.1.1) entfällt – beide rechnen die ganze Woche aus ihren Eingaben neu; ohne Vorschlag (ctx.roh) wie bisher
+      case "umplanen": case "anpassen":
+        festhalten();
+        f = typeof ctx.roh === "function" ? umplanen(E, ctx, { ausgleichen: !!a.ausgleichen }) : anpassen(E, ctx);
+        break;
       case "erholung": festhalten(); f = erholungRest(E, ctx, tag); break;   // V7.4 eigenplan-1.2: «Woche anpassen?» nach mehreren Tagen «vorsichtig»
       default: f = "unbekannte Aktion";
     }
@@ -462,13 +494,14 @@
   /* ---------------- Verteilen nach der Verfügbarkeit (verfuegbarkeit-1.0) ---------------- */
   const ORTSFEST = new Set(["schwimm_kurs", "aktivierung", "test_rad", "test_lauf", "test_css"]);
   const istOrtsfest = (e) => !!e && (ORTSFEST.has(e.id) || e.art === "test" || !!e.test || e.art === "kraft" || e.art === "draussen");   // V7.6 Kraft, V7.7 Aktivität draussen bleiben am Tag
-  const istEigen = (e) => !!e && (e.quelle === "eigen" || e.quelle === "bibliothek" || !!e.gesperrt);   // V7.3: gesperrte Einheit bleibt am Tag
+  const istEigen = (e) => !!e && (e.quelle === "eigen" || e.quelle === "bibliothek" || !!e.gesperrt || !!e.anker);   // V7.3: gesperrte Einheit bleibt am Tag; V9.2: Anker auch
   const hart = (e) => !!e && (!!e.schluessel || e.art === "schluessel_s");
   V66.hart = hart;
   /** V7.6 verfuegbarkeit-1.1: bevorzugte Tage für lange Einheiten (Planeinstellungen «pe-lang») → Liste der Wochentage oder null (keine Wahl). */
   const langTage = (opt, sport) => { const L = opt && opt.lang && opt.lang[sport]; return Array.isArray(L) && L.length ? L : null; };
   const PRIO = (e) => (hart(e) ? 0 : e.art === "lang" ? 1 : e.art === "koppel" ? 3 : 2);
   const TAGW = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+  const TAG_LANG = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
   const wtK = (iso) => TAGW[V66.wtNr(iso) - 1];
   /** Kürzeste sinnvolle Dauer: lockere und lange Einheiten bis zur kürzesten Vorlage, Schlüsseleinheiten in der kurzen Fassung. */
   function minDauer(e) {
@@ -514,8 +547,10 @@
       T.forEach((t, i) => { const v = V[i], d = t.einheiten.reduce((x, e) => x + (e.dauer || 0), 0);
         if (!t.fest && v && t.einheiten.length && ((v.min != null && d > v.min) || t.einheiten.some((e) => v.sport && V66.VF_SPORT.includes(e.sport) && !v.sport.includes(e.sport))))
           P.hinweise.push(`Rennwoche: am ${wtK(t.date)} passt der Plan nicht zu deiner Verfügbarkeit – in der Rennwoche wird nichts verschoben, bitte selbst anpassen`); });
+      for (const x of opt.extra || []) P.weg.push({ titel: x.e.titel, date: T[x.von] ? T[x.von].date : null, grund: "Rennwoche: es wird nichts verschoben", id: x.e.id, dauer: x.e.dauer, sport: x.e.sport, ortsfest: true });
       return { tage: T, protokoll: P, geaendert: P.hinweise.length > 0 };
     }
+    const tlVon = (e) => { if (typeof opt.tl !== "function") return null; try { const x = opt.tl(e); return isNum(x) ? x : null; } catch (err) { return null; } };
     const erlaubt = (i, sport) => !V[i] || !V[i].sport || !V66.VF_SPORT.includes(sport) || V[i].sport.includes(sport);
     const kap = (i) => (V[i] && V[i].min != null ? V[i].min : Infinity);
     const belegt = T.map(() => []), pool = [], verbraucht = (opt.verbraucht || []).slice(), ORD = new Map(), testTag = new Set();
@@ -526,7 +561,7 @@
       for (const e of t.einheiten) {
         if (istEigen(e) || istOrtsfest(e)) {
           if (e.id === "schwimm_kurs" && (!erlaubt(i, "schwimm") || kap(i) < Math.min(30, e.dauer))) {
-            P.weg.push({ titel: e.titel, date: t.date, grund: erlaubt(i, "schwimm") ? "keine Zeit" : "Schwimmen an diesem Tag nicht möglich" }); continue;
+            P.weg.push({ titel: e.titel, date: t.date, grund: erlaubt(i, "schwimm") ? "keine Zeit" : "Schwimmen an diesem Tag nicht möglich", id: e.id, dauer: e.dauer, sport: "schwimm", ortsfest: true }); continue;
           }
           if (e.art === "test" && (!erlaubt(i, e.sport) || kap(i) < e.dauer)) { testTag.add(i); P.hinweise.push(`${e.titel} am ${wtK(t.date)} passt nicht zu deiner Verfügbarkeit – den Termin im Testkalender verschieben`); }
           else if (istEigen(e) && !erlaubt(i, e.sport)) P.hinweise.push(`«${e.titel}» am ${wtK(t.date)}: eigene Einheit an einem Tag ohne diese Sportart (bleibt stehen)`);
@@ -537,6 +572,7 @@
         pool.push({ e, von: i });
       }
     });
+    for (const x of opt.extra || []) if (x && x.e && T[x.von]) { ORD.set(x.e, x.von * 100 + 50); pool.push({ e: x.e, von: x.von }); }   // V9.2: Tag fest – kommt woanders hin
     for (const p of pool) if (p.e.art === "lang" && p.e.sport === "rad") {                // Koppellauf gehört zur langen Ausfahrt
       const k = pool.find((q) => q.e.art === "koppel" && q.von === p.von && !q.dran);
       if (k) { p.koppel = k.e; k.dran = true; }
@@ -582,7 +618,7 @@
       belegt[i].push(e);
       if (p.koppel) {
         if (mitK) belegt[i].push(p.koppel);
-        else P.weg.push({ titel: p.koppel.titel, date: T[i].date, grund: erlaubt(i, "lauf") ? "keine Zeit nach der Ausfahrt" : "Laufen an diesem Tag nicht möglich" });
+        else P.weg.push({ titel: p.koppel.titel, date: T[i].date, grund: erlaubt(i, "lauf") ? "keine Zeit nach der Ausfahrt" : "Laufen an diesem Tag nicht möglich", id: p.koppel.id, dauer: p.koppel.dauer, sport: p.koppel.sport, tl: tlVon(p.koppel) });
       }
     };
     const kurz = (p, i) => { const n = kuerzer(p.e, Math.min(p.e.dauer, rest(i)), opt.o || {}); if (n && ORD.has(p.e)) ORD.set(n, ORD.get(p.e)); return n && n.dauer < p.e.dauer && n.dauer <= rest(i) ? n : null; };
@@ -590,8 +626,8 @@
     const offen = [];
     for (const p of L) {
       const i = p.von, sp = p.e.sport, k = p.koppel;
-      if (!erlaubt(i, sp) || aktTag(i) || nachKraft(p.e, i) || (!langOk(p.e, i) && langFrei(p))) {
-        p.grund = !erlaubt(i, sp) ? "Verfügbarkeit" : aktTag(i) ? "Tag der Aktivität draussen" : nachKraft(p.e, i) ? schonGrund(i) : "Tag für lange Einheiten";   // V7.6.1: Grund in der Meldung
+      if (T[i].fest || !erlaubt(i, sp) || aktTag(i) || nachKraft(p.e, i) || (!langOk(p.e, i) && langFrei(p))) {
+        p.grund = T[i].fest ? (T[i].date < (opt.heute || "") ? "Tag vorbei" : "Tag fest") : !erlaubt(i, sp) ? "Verfügbarkeit" : aktTag(i) ? "Tag der Aktivität draussen" : nachKraft(p.e, i) ? schonGrund(i) : "Tag für lange Einheiten";   // V7.6.1: Grund in der Meldung
         offen.push(p); continue;
       }
       if (k && erlaubt(i, "lauf") && rest(i) >= p.e.dauer + k.dauer) { setzen(p, i, p.e, true); continue; }
@@ -613,7 +649,7 @@
       const n = i != null ? kurz(p, i) : null;
       if (n) { setzen(p, i, n, false); continue; }
       // kraft-plan-1.1: eine harte Einheit, die nur wegen des Krafttrainings am Vortag nirgends Platz hat, wird an ihrem Tag locker
-      if (nachKraft(p.e, p.von) && !aktTag(p.von) && erlaubt(p.von, sp) && rest(p.von) >= p.e.dauer) {
+      if (!T[p.von].fest && nachKraft(p.e, p.von) && !aktTag(p.von) && erlaubt(p.von, sp) && rest(p.von) >= p.e.dauer) {
         const l = V66.einheit({ uid: p.e.uid || "kraft-locker-" + T[p.von].date, vorlage: sp === "rad" ? "rad_locker" : "lauf_locker", dauer: p.e.dauer, quelle: "vorschlag" }, opt.ctxE || {});
         if (l) {
           if (ORD.has(p.e)) ORD.set(l, ORD.get(p.e));
@@ -621,12 +657,13 @@
           const g = schonGrund(p.von);
           P.hinweise.push(g === "Tag nach dem Krafttraining" ? `«${p.e.titel}» am ${wtK(T[p.von].date)}: am Tag nach dem Krafttraining locker statt hart (kraft-plan-1.1)`
             : `«${p.e.titel}» am ${wtK(T[p.von].date)}: neben einer langen Aktivität draussen locker statt hart (aktivitaet-plan-1.0)`);
-          if (k) { if (erlaubt(p.von, "lauf") && rest(p.von) >= k.dauer) belegt[p.von].push(k); else P.weg.push({ titel: k.titel, date: T[p.von].date, grund: "gehört zur langen Ausfahrt" }); }
+          if (k) { if (erlaubt(p.von, "lauf") && rest(p.von) >= k.dauer) belegt[p.von].push(k); else P.weg.push({ titel: k.titel, date: T[p.von].date, grund: "gehört zur langen Ausfahrt", id: k.id, dauer: k.dauer, sport: k.sport, tl: tlVon(k) }); }
           continue;
         }
       }
-      P.weg.push({ titel: p.e.titel, date: T[p.von].date, grund: V66.VF_SPORT.includes(sp) && !T.some((t, j) => !t.fest && erlaubt(j, sp)) ? "diese Sportart ist an keinem freien Tag erlaubt" : "an keinem freien Tag genug Zeit" });
-      if (k) P.weg.push({ titel: k.titel, date: T[p.von].date, grund: "gehört zur langen Ausfahrt" });
+      P.weg.push({ titel: p.e.titel, date: T[p.von].date, grund: V66.VF_SPORT.includes(sp) && !T.some((t, j) => !t.fest && erlaubt(j, sp)) ? "diese Sportart ist an keinem freien Tag erlaubt" : "an keinem freien Tag genug Zeit",
+        id: p.e.id, dauer: p.e.dauer, sport: sp, tl: tlVon(p.e) });
+      if (k) P.weg.push({ titel: k.titel, date: T[p.von].date, grund: "gehört zur langen Ausfahrt", id: k.id, dauer: k.dauer, sport: k.sport, tl: tlVon(k) });
     }
     // verfuegbarkeit-1.2: zwei harte Einheiten an Land an Tagen hintereinander – eine davon (zuerst die, die schon verschoben wurde) auf den besten Tag ohne
     // harte Einheit an Land daneben und ohne lange Einheit an Land am selben Tag; geht das für keine der beiden, bleibt es und wird gemeldet
@@ -676,7 +713,13 @@
         else if (j !== p.von) { const n = { titel: e.titel, von: T[p.von].date, nach: T[j].date }; P.verschoben.push(n); WEG.set(e, n); }
       } else belegt[i].push(e);
     }
-    T.forEach((t, i) => { if (!t.fest && !testTag.has(i) && isFinite(kap(i)) && rest(i) < 0) P.hinweise.push(`${wtK(t.date)}: ${-rest(i)} min mehr geplant als verfügbar (feste Einheiten)`); });
+    // grenzen-1.0: über der Zeit steht nur, was fest ist (eigene Einheit, gesperrt, Test, Kurs, Kraft, Aktivität draussen) – mit Meldung, nie still
+    T.forEach((t, i) => {
+      if (t.fest || testTag.has(i) || !isFinite(kap(i)) || rest(i) >= 0) return;
+      const eig = belegt[i].filter((e) => istEigen(e)), art = eig.length && eig.length === belegt[i].length ? (eig.length === 1 ? "deine eigene Einheit" : "deine eigenen Einheiten")
+        : eig.length ? "deine eigenen und feste Einheiten" : "feste Einheiten";
+      P.hinweise.push(`${TAG_LANG[V66.wtNr(t.date) - 1]}: ${-rest(i)} min mehr geplant als verfügbar (${art})`);
+    });
     // verfuegbarkeit-1.1: eine lange Einheit, die an keinem deiner Tage für lange Einheiten Platz hatte, wird gemeldet (Empfehlung, nie still)
     for (let i = 0; i < T.length; i++) for (const e of belegt[i]) {
       const LT = e.art === "lang" && !T[i].fest ? langTage(opt, e.sport) : null;
@@ -758,10 +801,18 @@
   const festTag = (t) => !!t && (!!t.gesperrt || (Array.isArray(t.einheiten) && t.einheiten.some((s) => s && s.gesperrt)));
   function neuBerechnen(E, ctx, tag) {
     const tageW = Array.from({ length: 7 }, (_, i) => add(E.montag, i));
+    delete E.gestrichen;                                                  // V9.2: Stufe 2 vergisst Streichungen (und Anker, siehe unten)
     const gesperrt = tageW.filter((d) => festTag(E.tage[d])), vorbei = tageW.filter((d) => d < ctx.heute && E.tage[d] && Array.isArray(E.tage[d].einheiten));
     if (!E.ganz) { for (const d of Object.keys(E.tage)) if (d >= ctx.heute && !festTag(E.tage[d])) E.tage[d].einheiten = null; return null; }
     if (!gesperrt.length && !vorbei.length) { E.tage = {}; delete E.ganz; delete E.verteilung; return null; }        // ganz neu: wieder automatisch
     if (!ctx.roh) return "Vorschlag nicht bekannt";
+    // V9.2 umplanen-1.0: ohne Anker an den freien Tagen, dann derselbe Kern wie jedes Umplanen (vergangene und gesperrte Tage bleiben)
+    if (ctx.verf || ctx.vorschlag) {
+      for (const d of tageW) if (!(d < ctx.heute || festTag(E.tage[d]))) tag(d).einheiten = [];
+      const f = umplanen(E, ctx, {});
+      if (!f && E.verteilung) E.verteilung.art = "neu";
+      return f;
+    }
     // Was an festen Tagen (vergangen, gesperrt) über deren eigenen Vorschlag hinaus steht, wurde dorthin verschoben: nicht nochmals verteilen
     const verbraucht = [];
     for (const d of tageW) {
@@ -774,11 +825,116 @@
       const einheiten = fest ? (t.einheiten || []).map((s) => V66.einheit(s, ctx.ctxE || {})).filter(Boolean) : (ctx.roh(d) || []).map((e) => Object.assign({}, e));
       return { date: d, wt: wtK(d), ruhetag: !einheiten.length, einheiten, fest };
     });
-    const r = ctx.verf ? V66.verteilen(tage, ctx.verf, { o: ctx.o || {}, verbraucht }) : { tage, protokoll: null };
+    const r = { tage, protokoll: null };
     for (const t of r.tage) if (!t.fest) tag(t.date).einheiten = t.einheiten.map((e, i) => spezVon(e, `v-${t.date}-${i}`));
-    E.verteilung = r.protokoll ? { v: V66.VERSIONS.verfuegbarkeit, art: "neu", am: ctx.jetzt || new Date().toISOString(), meldungen: V66.verteilText(r.protokoll).slice(0, 20) } : undefined;
+    E.verteilung = undefined;
     return null;
   }
+
+  /* ---------------- V9.2 umplanen-1.0 (Auftrag «Woche wie Enduco», Etappe W1) ---------------- */
+  /** Vorlagen, die an ihrem Tag bleiben und darum auch als gespeicherte Einheit für ihre Einheit im Vorschlag stehen. */
+  const ORTSFEST_V = new Set(["schwimm_kurs", "aktivierung", "test_rad", "test_lauf", "test_css", "kraft"]);
+  /** Für welche Einheit des Vorschlags steht eine gespeicherte Einheit (Vorlagen-Kennung) – oder für keine (eigene, dazugefügte)?
+   *  Vorschlags-Einheiten, von Hand geänderte oder verschobene (Kennung «v-…»), ersetzte (statt) und alles Ortsfeste (Kraft, Tests, Kurs, Aktivierung,
+   *  Aktivitäten draussen). Was dafür steht, verbraucht beim Umplanen die passende Einheit des Vorschlags – so steht nichts doppelt. */
+  function stehtFuer(s) {
+    if (!s) return null;
+    if (typeof s.statt === "string" && s.statt) return s.statt;
+    if (s.quelle === "bibliothek" || !s.vorlage) return null;
+    if (s.quelle === "vorschlag" || /^v-/.test(String(s.uid || "")) || ORTSFEST_V.has(s.vorlage) || (EXTRA[s.vorlage] && EXTRA[s.vorlage].draussen)) return s.vorlage;
+    return null;
+  }
+  V66.stehtFuer = stehtFuer;
+  /** Anker: was Silas selbst gesetzt hat (eigene oder Bibliothek, Dauer oder Inhalt geändert, ersetzt, Coach angenommen, verschoben) oder gesperrt ist. */
+  const istAnkerSpec = (s) => !!s && (s.quelle === "eigen" || s.quelle === "bibliothek" || !!s.gesperrt || s.anker === true);
+  V66.istAnker = istAnkerSpec;
+  /** Zurückgeholte Einheit: die passende Streichung (gleiche Vorlage, am nächsten Tag) fällt weg. */
+  function streichungWeg(E, s, d) {
+    const id = stehtFuer(s); if (!id || !Array.isArray(E.gestrichen) || !E.gestrichen.length) return;
+    let best = -1;
+    E.gestrichen.forEach((x, i) => { if (x && x.vorlage === id && (best < 0 || Math.abs(tageAbstand(x.date, d)) < Math.abs(tageAbstand(E.gestrichen[best].date, d)))) best = i; });
+    if (best >= 0) E.gestrichen.splice(best, 1);
+    if (!E.gestrichen.length) delete E.gestrichen;
+  }
+  const tageAbstand = (a, b) => (typeof a === "string" && typeof b === "string" ? Math.round((Date.parse(a + "T12:00:00Z") - Date.parse(b + "T12:00:00Z")) / 864e5) : 99);
+  const FELD_MIT = ["uhrzeit", "metrik", "pool"];                         // Festlegungen, die eine Vorschlags-Einheit beim Umplanen behält (gleiche Kennung)
+  /**
+   * Die ganze Woche aus ihren Eingaben neu (umplanen-1.0, grenzen-1.0): Vorschlag ctx.roh(d) (unverteilt, mit Kraft, Tests, Kurs, Aktivitäten draussen),
+   * Grenzen ctx.verf (Zeit = harte Obergrenze, Sportarten), Festes: vergangene Tage, gesperrte Tage und Tage mit gesperrter Einheit (ganz), heute, wenn
+   * schon trainiert (ctx.heuteFest), Anker an den übrigen Tagen, Streichungen E.gestrichen. Was bleibt, verbraucht seine Einheit im Vorschlag; der Rest
+   * des Vorschlags (auch was an festen Tagen nicht steht) wird mit V66.verteilen verteilt: ganz verschieben → kürzen (nie unter die Mindestdauer) → bleibt
+   * etwas übrig, steht es in E.verteilung.fehlt (die Seite fragt, sie überzieht nie selbst). Gleiche Eingaben ergeben dieselbe Woche (der gespeicherte Stand
+   * zählt nur an festen Tagen und für die Kennungen). Ohne Eigenes (kein Anker, keine Sperre, keine Streichung) und mit vergangenen Tagen wie im
+   * automatischen Vorschlag (ctx.vorschlag) folgt die Woche wieder von selbst (E.tage = {}). opt.ausgleichen: Streichungen vergessen («Ausgleichen»).
+   * ctx = { heute, roh, vorschlag, verf, o, lang, ctxE, erholung, heuteFest, abstimmen(tage) → tage, tl(e) → TL ≈ oder null, jetzt }. → Fehlertext oder null
+   */
+  function umplanen(E, ctx, opt) {
+    opt = opt || {};
+    if (typeof ctx.roh !== "function") return "Vorschlag nicht bekannt";
+    const tageW = Array.from({ length: 7 }, (_, i) => add(E.montag, i));
+    const verf = ctx.verf || (() => null);
+    if (opt.ausgleichen) delete E.gestrichen;
+    const fest = (d) => d < ctx.heute || (!!ctx.heuteFest && d === ctx.heute) || festTag(E.tage[d]);
+    // Feste Tage ohne eigene Liste: so, wie sie gezeigt werden (automatischer Vorschlag), vergangene «eingefroren»
+    for (const d of tageW) {
+      const t = (E.tage[d] = E.tage[d] || { gesperrt: false, einheiten: null });
+      if (!Array.isArray(t.einheiten)) { t.einheiten = fest(d) ? vorschlagGespeichert(d, ctx.vorschlag ? ctx.vorschlag(d) : []) : []; if (d < ctx.heute) t.eingefroren = true; }
+    }
+    const bau = (s) => { const e = V66.einheit(s, ctx.ctxE || {}); return e ? Object.assign(e, { spec: s }) : null; };
+    const bleibt = tageW.map((d) => (fest(d) ? E.tage[d].einheiten.slice() : E.tage[d].einheiten.filter(istAnkerSpec)));
+    // Vorschlag der Woche (ab dem Start einer Erholungswoche nach der Ampel deren Einheiten, eigenplan-1.2)
+    const erh = E.erholung && E.erholung.ab && typeof ctx.erholung === "function" ? E.erholung.ab : null;
+    const rohAm = (d) => (erh && d >= erh ? ctx.erholung(d) : ctx.roh(d)) || [];
+    const pool = [];
+    tageW.forEach((d, i) => rohAm(d).forEach((e) => pool.push({ e, i, weg: false })));
+    const naechste = (id, i) => { let best = null; for (const p of pool) if (!p.weg && p.e.id === id && (!best || Math.abs(p.i - i) < Math.abs(best.i - i))) best = p; return best; };
+    bleibt.forEach((L, i) => L.forEach((s) => { const id = stehtFuer(s), p = id ? naechste(id, i) : null; if (p) p.weg = true; }));
+    for (const x of Array.isArray(E.gestrichen) ? E.gestrichen : []) { const p = x && naechste(x.vorlage, Math.max(0, tageW.indexOf(x.date))); if (p) p.weg = true; }
+    // Eingänge für den Rechenkern: feste Tage ganz, sonst Anker und der Vorschlag des Tages; was vom Vorschlag an festen Tagen übrig ist, kommt dazu
+    const T = tageW.map((d, i) => ({ date: d, wt: wtK(d), ruhetag: !rohAm(d).length, fest: fest(d),
+      einheiten: bleibt[i].map(bau).filter(Boolean).concat(fest(d) ? [] : pool.filter((p) => !p.weg && p.i === i).map((p) => Object.assign({}, p.e))) }));
+    const extra = pool.filter((p) => !p.weg && fest(tageW[p.i]) && !istOrtsfest(p.e)).map((p) => ({ e: Object.assign({}, p.e), von: p.i }));
+    const r = V66.verteilen(T, verf, { o: ctx.o || {}, lang: ctx.lang, ctxE: ctx.ctxE, extra, tl: ctx.tl, heute: ctx.heute });
+    let tageR = r.tage;
+    if (typeof ctx.abstimmen === "function") { try { tageR = ctx.abstimmen(tageR) || tageR; } catch (err) { tageR = r.tage; } }   // kraft-plan-1.1 Regel 2
+    // Kennungen: eine Vorschlags-Einheit behält die Kennung (und Uhrzeit, Metrik, Bahnlänge) ihrer Vorgängerin derselben Vorlage – am selben Tag zuerst
+    const vergeben = new Set(), alt = [];
+    tageW.forEach((d, i) => { bleibt[i].forEach((s) => vergeben.add(s.uid)); if (!fest(d)) E.tage[d].einheiten.forEach((s) => { if (!istAnkerSpec(s) && s.uid) alt.push({ s, i, frei: true }); }); });
+    const altFuer = (id, i) => { let best = null; for (const x of alt) if (x.frei && !vergeben.has(x.s.uid) && (x.s.vorlage || "") === id && (!best || Math.abs(x.i - i) < Math.abs(best.i - i))) best = x; return best; };
+    const neuUid = (d, k) => { let u = `v-${d}-${k}`, n = 1; while (vergeben.has(u)) u = `v-${d}-${k}-${n++}`; return u; };
+    tageR.forEach((t, i) => {
+      if (t.fest) return;
+      E.tage[t.date].einheiten = t.einheiten.map((e, k) => {
+        if (e.spec && bleibt[i].includes(e.spec)) return e.spec;                                    // Anker bleibt, wie er ist
+        const s = Object.assign({}, e.spec || {}, { vorlage: e.id, dauer: e.dauer, quelle: e.spec && e.spec.quelle ? e.spec.quelle : "vorschlag" });
+        delete s.uid;
+        const v = altFuer(e.id, i);
+        if (v) { v.frei = false; s.uid = v.s.uid; for (const k2 of FELD_MIT) if (v.s[k2] != null && s[k2] == null) s[k2] = v.s[k2]; }
+        else s.uid = e.spec && e.spec.uid && !vergeben.has(e.spec.uid) ? e.spec.uid : neuUid(t.date, k);
+        vergeben.add(s.uid);
+        return s;
+      });
+    });
+    // Was nirgends in die Grenzen passt (ohne Ortsfestes wie den Schwimmkurs): fehlt – die Seite fragt, statt zu überziehen
+    const fehltL = r.protokoll.weg.filter((x) => !x.ortsfest && isNum(x.dauer));
+    const fehlt = fehltL.length ? { min: fehltL.reduce((s, x) => s + x.dauer, 0), tl: null, einheiten: fehltL.map((x) => ({ titel: x.titel, vorlage: x.id || null, sport: x.sport || null, dauer: x.dauer, date: x.date, tl: x.tl == null ? null : x.tl })) } : null;
+    if (fehlt && fehltL.every((x) => isNum(x.tl))) fehlt.tl = Math.round(fehltL.reduce((s, x) => s + x.tl, 0));
+    const frage = E.verteilung && E.verteilung.frage ? E.verteilung.frage : null;
+    E.verteilung = { v: V66.VERSIONS.verfuegbarkeit, art: "umplanen", am: ctx.jetzt || new Date().toISOString(), meldungen: V66.verteilText(r.protokoll).slice(0, 20) };
+    if (fehlt) E.verteilung.fehlt = fehlt;
+    if (frage) E.verteilung.frage = frage;
+    if (!E.gestrichen || !E.gestrichen.length) delete E.gestrichen;
+    E.ganz = true;
+    // Ohne Eigenes folgt die Woche wieder von selbst (dieselben Regeln, derselbe Kern) – nur wenn die festen Tage genau so stehen wie im automatischen Vorschlag
+    const eigenes = !!E.gestrichen || !!E.erholung || tageW.some((d) => { const t = E.tage[d]; return !!t.gesperrt || t.einheiten.some(istAnkerSpec); });
+    const wieAuto = !!ctx.vorschlag && tageW.filter(fest).every((d) => JSON.stringify(E.tage[d].einheiten.map(kern)) === JSON.stringify(vorschlagGespeichert(d, ctx.vorschlag(d)).map(kern)));
+    if (!eigenes && !fehlt && wieAuto && ctx.vorschlag && !opt.behalten) {
+      const zuvor = E.verteilung; E.tage = {}; delete E.ganz; E.verteilung = Object.assign({}, zuvor, { auto: true });
+    }
+    return null;
+  }
+  V66.umplanenRein = umplanen;                                            // für Tests und die Frage (V92): ändert E
+
   /** V7.4 eigenplan-1.2 («Woche anpassen?», ampel-plan-1.0): Rest der Woche ab heute wie eine Erholungswoche – die Tage bekommen die Einheiten
    *  des Vorschlags mit Erholung (ctx.erholung(date), nach der Verfügbarkeit verteilt); gesperrte Tage und Tage mit gesperrter Einheit bleiben,
    *  vergangene Tage auch. Nur auf deinen Knopfdruck, nie von selbst. */

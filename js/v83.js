@@ -47,7 +47,10 @@
   // ohne Pulsverteilung zählt eine Last ab 75 pro Stunde (Intensität um 0,87 der Schwelle) als hart.
   V83.LAST = { faktor: 1.3, min: 15, hart_tl_h: 75, hart_min: 30 };
   V83.KURZ_MIN = 20;                                                     // kürzer als 20 min wird keine Kurzfassung vorgeschlagen
-  V83.TOLERANZ = 5;                                                      // Minuten über der Verfügbarkeit, die noch passen
+  // V9.2 grenzen-1.0: Vorschläge des Coaches halten die Zeit eines Tages hart ein (keine Toleranz mehr). Die 5 min gelten nur noch beim Bewerten
+  // bestehender Pläne (Anlass «zeit»: ein Tag gilt erst ab 5 min über seiner Zeit als knapp) – so meldet der Coach keine Kleinigkeiten aus Rundungen
+  // oder deinen eigenen Einheiten; was die Seite selbst setzt, liegt nie darüber (Entscheid in docs/anleitung/plan.md).
+  V83.TOLERANZ = 5;
   const LOCKER = { rad: "rad_locker", lauf: "lauf_locker", schwimm: "schwimm_locker" };
   V83.LOCKER = LOCKER;
   const ANLASS = ["schmerz", "morgen", "last", "ausgefallen", "zeit", "nachholen", "umfang"];
@@ -166,8 +169,8 @@
       if (nachbarHart) continue;
       const vj = z.verf, vi = t.verf;
       if (vj && Array.isArray(vj.sport) && !vj.sport.includes(U.sport)) continue;
-      if (vj && isNum(vj.min) && summe(z.einheiten) - X.dauer + U.dauer > vj.min + V83.TOLERANZ) continue;
-      if (vi && isNum(vi.min) && summe(t.einheiten) - U.dauer + X.dauer > vi.min + V83.TOLERANZ) continue;
+      if (vj && isNum(vj.min) && summe(z.einheiten) - X.dauer + U.dauer > vj.min) continue;                 // grenzen-1.0: hart, ohne Toleranz
+      if (vi && isNum(vi.min) && summe(t.einheiten) - U.dauer + X.dauer > vi.min) continue;
       const a = bewegen(t, z, U), b = bewegen(z, t, X), naechste = z.mo !== t.mo ? " (nächste Woche)" : "";
       return { art: "tauschen", titel: `«${U.titel}» auf ${V83.wt(z.date)}${naechste} – dafür «${X.titel}» (${dauerT(X.dauer)}) ${t.date === heute ? "heute" : "am " + V83.wt(t.date)}`,
         aktionen: a.hin.concat(b.hin), rueck: a.rueck.concat(b.rueck),
@@ -247,7 +250,7 @@
       if (hartNahe(T, j, U, X)) continue;
       const vz = z.verf;
       if (vz && Array.isArray(vz.sport) && !vz.sport.includes(U.sport)) continue;
-      if (vz && isNum(vz.min) && summe(z.einheiten) - X.dauer + U.dauer > vz.min + V83.TOLERANZ) continue;
+      if (vz && isNum(vz.min) && summe(z.einheiten) - X.dauer + U.dauer > vz.min) continue;                 // grenzen-1.0: hart, ohne Toleranz
       const sp = Object.assign(V83.spec(U), { uid: X.uid });
       if (X.uhrzeit && !sp.uhrzeit) sp.uhrzeit = X.uhrzeit;
       if (V66.einheitPruefen(sp)) continue;
@@ -339,7 +342,8 @@
             opts.push({ art: "weglassen", titel: `«${U.titel}» weglassen`, aktionen: [{ art: "entfernen", date: t.date, uid: U.uid }],
               rueck: [{ art: "hinzufuegen", date: t.date, uid: U.uid, einheit: V83.spec(U) }], markiert: [] });
             const vr = t.verf, d = Math.max(20, r5(U.dauer)), sp = neueSpec(U, "rad_locker", d);
-            if ((!vr || !Array.isArray(vr.sport) || vr.sport.includes("rad")) && !V66.einheitPruefen(sp) && V66.bereich("rad_locker") && d >= V66.bereich("rad_locker").min)
+            const zeitOk = !(vr && isNum(vr.min) && summe(t.einheiten) - U.dauer + d > vr.min);                 // grenzen-1.0: nie über die Zeit des Tages
+            if ((!vr || !Array.isArray(vr.sport) || vr.sport.includes("rad")) && zeitOk && !V66.einheitPruefen(sp) && V66.bereich("rad_locker") && d >= V66.bereich("rad_locker").min)
               opts.push({ art: "rad", titel: `Rad locker ${dauerT(d)} statt «${U.titel}»`, aktionen: [{ art: "ersetzen", date: t.date, uid: U.uid, einheit: sp }],
                 rueck: [{ art: "ersetzen", date: t.date, uid: U.uid, einheit: V83.spec(U) }], markiert: [{ date: t.date, uid: U.uid, vorher: `statt «${U.titel}» (Schmerzen)` }] });
           } else {

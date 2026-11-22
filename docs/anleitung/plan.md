@@ -51,7 +51,7 @@
   Rad → Schwimmen → Krafttraining → Trainingsumfang). «Trainingsverfügbarkeit»: alle sieben Wochentage in einem Blatt (`V66UI.verfuegbarkeitWoche`, auch aus dem Tagesblatt
   «Trainingsverfügbarkeit der ganzen Woche»): Schalter Kein Training, Sportarten (mindestens eine), Zeit in 15-min-Schritten bis 10 h, ganz rechts «offen»; «Fertig» speichert
   je geänderten Wochentag «vf-wt-N» (offen mit allen Sportarten = entfernt), die laufende Woche wird vorher einmal festgehalten, danach wie im Tagesblatt «Anpassen»,
-  «Neu berechnen» oder «Nur speichern». «Tage für lange Einheiten» (`pe-lang`, ab der nächsten Woche): Empfehlung beim Verteilen (+80 am gewählten Tag, −20 an anderen);
+  «Neu berechnen» oder «Nur speichern» (**seit V9.2** ersetzt durch «Woche einstellen», aus den Planeinstellungen mit «jede Woche so» vorgewählt – siehe «Umplanen» unten). «Tage für lange Einheiten» (`pe-lang`, ab der nächsten Woche): Empfehlung beim Verteilen (+80 am gewählten Tag, −20 an anderen);
   eine lange Einheit verlässt ihren Tag nur, wenn ein gewählter Tag Sportart, Zeit und keine harte Einheit an Land hat, sonst bleibt sie und die Woche meldet es; hart und
   lang an Land am selben Tag −120 (bis 1.0 −40). Verschieben trägt einen Grund (Verfügbarkeit, Tag für lange Einheiten, Tag nach dem Krafttraining).
   **verfuegbarkeit-1.2 (V8.1, Silas am 18.11.2026: «entscheide, was trainingstechnisch mehr Sinn macht»):** harte Einheiten an Land (Rad, Laufen) nie an zwei Tagen
@@ -281,4 +281,40 @@
   und ab `config.planvergleich_ab` (falls gesetzt; sonst erste ganze Woche nach dem ersten Kalendereintrag). Sonst «teil» bzw. «nur-uhr», sichtbar.
   Regel ändern = Version in `V7.VERSIONS` erhöhen und `tests/test_v7.cjs` nachführen.
 
-
+## Umplanen (V9.2, Auftrag «Woche wie Enduco» Etappe W1: umplanen-1.0, grenzen-1.0, woche-einstellen-1.0, fehlt-zeit-1.0; Silas' Antworten vom 22.11.2026)
+- **Grundsatz:** Woche = Planer(Vorschlag, Grenzen je Tag, Festes). `V66.aendern { art: "umplanen" }` (intern `umplanen` in `js/v66.js`; «anpassen» ist ein Alias) rechnet die ganze
+  Woche aus dem unverteilten Vorschlag (`ctx.roh`; ab dem Start einer Erholungswoche nach der Ampel deren Einheiten) neu, nie aus dem gespeicherten Stand. **Fest** bleiben:
+  vergangene Tage, gesperrte Tage und Tage mit gesperrter Einheit (ganz), heute, sobald heute schon eine Aktivität gezählt ist (`ctx.heuteFest`, eigene Festlegung: was schon
+  trainiert ist, verschiebt die Seite nicht), und an den übrigen Tagen die **Anker** (`V66.istAnker`: Quelle «eigen» oder «bibliothek», gesperrt, `anker: true` = von Hand
+  verschoben; Dauer oder Felder von Hand geändert, ersetzt und vom Coach angenommen machen die Einheit zur eigenen). Was bleibt und für eine Einheit des Vorschlags steht
+  (`V66.stehtFuer`: Vorschlags-Einheit mit Kennung «v-…», `statt` nach «ersetzen», Kraft, Tests, Kurs, Aktivierung, Aktivitäten draussen), verbraucht diese im Pool (gleicher Tag
+  zuerst, sonst der nächste) – nichts steht doppelt. **Streichungen** `E.gestrichen` [{ vorlage, date }] (aus «entfernen» und «Woche leeren», höchstens 40) nehmen je Eintrag die
+  nächste passende Einheit aus dem Pool; dieselbe Einheit wieder hinzufügen hebt die Streichung auf. Der Rest des Pools geht an `V66.verteilen` (der Kern bleibt; neu nur
+  `opt.extra` für Einheiten, deren Tag fest ist, und `P.weg` mit Vorlage, Dauer, Sportart, TL ≈). Danach Regel 2 des Krafttrainings (`ctx.abstimmen` = `V76.abstimmen`).
+- **Kennungen:** Eine Vorschlags-Einheit behält Kennung, Uhrzeit, Metrik und Bahnlänge ihrer Vorgängerin derselben Vorlage (gleicher Tag zuerst) – so bleiben Garmin-Auswahl und
+  Bericht stabil. **Ohne Eigenes** (kein Anker, keine Sperre, keine Streichung, keine Erholungswoche, nichts fehlt) und mit festen Tagen genau wie im automatischen Vorschlag wird
+  die Woche nicht gespeichert (`E.tage = {}`): Sie folgt wieder von selbst (`wocheVerteilt`). Darum gibt «Zeit zurück» exakt die Ausgangswoche (Pfadunabhängigkeit).
+- **Harte Grenzen (grenzen-1.0, Silas 22.11.2026 «nicht überziehen»):** Die Zeit eines Tages (Standard `vf-wt-N` oder von Hand `vf-<Datum>`) ist für alles, was die Seite setzt, eine
+  harte Obergrenze; an von Hand gesetzten Tagen auch die Sportarten. Geprüft und geschlossen: Planer (`V66.verteilen` setzt Einheiten nur in den Rest des Tages; über der Zeit steht
+  nur Festes, gemeldet «<Tag>: n min mehr geplant als verfügbar (deine eigene Einheit)»), automatischer Krafttrainings-Tag (`V76.einplanen`: Kraft und das Feste des Tages müssen in
+  die Zeit passen; nie an einem von Hand gesetzten Tag mit gewählten Sportarten, ausser dem Kurs; ein fester Tag aus den Planeinstellungen bleibt Silas' Wahl und wird über der Zeit
+  gemeldet), Coach (`js/v83.js`: Tauschen und Nachholen ohne Toleranz, Kurzfassung und Verlängern in 5-min-Schritten abgerundet, «Rad statt Laufen» nur, wenn es in die Zeit passt),
+  Ampel-Ersatz (`V74.locker`: gleiche Sportart und nie länger; das Nachholen der Ampel prüfte Zeit und Sportart schon hart – unverändert), «Ausgleichen» (= umplanen).
+  **Entscheid `V83.TOLERANZ` (5 min):** gilt nur noch beim Bewerten bestehender Pläne (Anlass «zeit»: ein Tag gilt erst ab 5 min über seiner Zeit als knapp), damit der Coach nicht
+  wegen Rundungen oder Silas' eigener Einheiten meldet; für Vorschläge gilt sie nirgends mehr.
+- **Auslöser** (alle über `V66UI.planen`: Änderungen, dann einmal umplanen, speichern bzw. in den Entwurf, Garmin, Bericht): Verfügbarkeit eines Tages oder Wochentags, Sperren,
+  Hinzufügen, Löschen, Dauer, Verschieben, Felder einer Einheit, Ersetzen, Aktivität draussen, vom Coach angenommene Änderung, ✨. Im Tagesblatt nach 450 ms Pause wie bisher; die
+  Frage kommt beim Schliessen des Blatts (`V59.nachSchliessen`). Eigene Regeln behalten: «Woche leeren», «Neu berechnen», «Alles neu», «Woche anpassen?» der Ampel.
+  **Stufen:** 1 = «Woche anpassen» (umplanen, läuft bei jeder Einstellung von selbst), 2 = «Neu berechnen» (vergisst Anker und Streichungen; jetzt derselbe Kern, darum geht eine
+  Einheit, deren Tag schon vorbei war, nicht mehr verloren), 3 = «Alles neu» (dazu Sperren); Silas' Zeiten bleiben immer. «Jede Woche so» (Wochentag-Standard) plant auch alle
+  späteren gespeicherten Wochen neu. Ein Planerlauf legt nie einen `vf-…`-Eintrag an und ändert nie einen.
+- **Frage (fehlt-zeit-1.0, Silas' Punkt 6):** Fehlt Last (`E.verteilung.fehlt`, ohne Ortsfestes wie den Kurs), fragt die Seite nach einer eigenen Änderung. Kandidaten: Tage ab heute,
+  nicht fest, nicht «kein Training», mit Zeitgrenze. Je Tag das kleinste Mehr in 5-min-Schritten (binäre Suche mit dem echten Planer, `V66UI.probe`; höchstens das Fehlende, höchstens
+  12 h am Tag); liegt das beste Mehr über `V92.GROSS` = 60 min (eigene Festlegung) oder reicht kein Tag allein, dazu «verteilt»: gleich viel auf zwei der Tage mit der meisten Zeit,
+  zusammen höchstens das Fehlende. «Ja» = `vf-<Datum>` mit der neuen Zeit (Sportarten wie bisher; Zustand «von Hand»), «Nein» = `E.verteilung.frage` { fp, antwort } – gilt, bis
+  sich der Fingerabdruck der Eingaben ändert (`V92.fingerabdruck`: Grenzen, Sperren, Anker, Streichungen). Keine Frage in Rennwochen (dort wird nichts verschoben, nur gemeldet), für
+  vergangene Wochen, im Bearbeiten-Modus (erst mit ✓). Trainingstechnisch ist ein sehr voller Tag die Ausnahme («im Normalfall ist die Zeit da»); Verdichten kommt mit W4.
+- **Bericht:** `V92.diff` über Kennung, sonst Vorlage (gleicher Tag, dann nächster): verschoben (mit Grund aus dem Planer), gekürzt, länger, entfällt, neu; Wochenlast vorher → nachher
+  (TL ≈, Stunden wie im Wochenkopf). ↶ stellt Woche und Verfügbarkeit von vorher her (nur bis die Seite neu geladen wird). «Ausgleichen» erscheint, wenn gestrichen ist und die
+  geplante Last unter 92,5 % des Vorschlags liegt (Bereich wie zyklus-1.0); es vergisst die Streichungen und plant innerhalb der Grenzen neu.
+- Regel ändern = Version in `V66.VERSIONS` (umplanen, grenzen) bzw. `V92.VERSIONS` (woche-einstellen, fehlt-zeit), Wissen (Kapitel «modelle») und `tests/test_v92.cjs` nachführen.

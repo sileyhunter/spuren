@@ -169,7 +169,7 @@
       <p class="hint">Mein Plan (${esc(V66().VERSIONS.eigenplan)}) mit Absolviertem aus Garmin; TL ≈ und Distanz ≈ sind Schätzungen aus deinem Zonenprofil (${esc(V66().VERSIONS.tl)}). Enduco erscheint hier nicht (${esc(V78().VERSIONS.kalender)}).</p>`;
     }
     ST.ms = Date.now() - t0;
-    rasterZeichnen(); kopfText(ST.sel); binden(); editZeichnen();
+    rasterZeichnen(); kopfText(ST.sel); binden(); editZeichnen(); berichtZeichnen();
     if (opt.ziel) requestAnimationFrame(() => N.zu(opt.ziel, true));
   };
   function rasterZeichnen() {
@@ -225,6 +225,13 @@
     }
     const kopf = ST.raster ? ST.raster.closest(".k4-kopf") : null;
     if (kopf) B.style.setProperty("--k4-oben", `${Math.round(kopf.getBoundingClientRect().height) + 8}px`);
+  }
+  /** V9.2 umplanen-1.0: Bericht nach dem Umplanen oben im Kalender (bleibt bis zum Wegwischen; js/v92-ui.js). */
+  function berichtZeichnen() {
+    const el = $("kal-bericht"); if (!el) return;
+    let h = ""; try { h = !ST.edit && window.V92UI && window.V92UI.berichtHTML ? window.V92UI.berichtHTML() : ""; } catch (e) { console.error(e); h = ""; }
+    el.innerHTML = h; el.hidden = !h;
+    if (h) window.V92UI.berichtBinden(el);
   }
   /** Nach einer Änderung (Ereignis «meinplan») neu zeichnen und die Stelle halten. */
   N.neu = function () { if (!ST.box || !ST.box.isConnected) return; const sc = scroller(), y = sc.scrollTop; N.zeichnen(ST.box, ST.raster, ST.titel, ST.sub); sc.scrollTop = y; };
@@ -314,17 +321,29 @@
     return `<div class="k4-wkk"><div class="k4-wkk-t"><b>${esc(titel)}</b><small>KW ${W.isoWoche(mo)} · ${esc(V78().bereichText(mo))}</small></div>
       <div class="k4-wkk-z"><span>locker · Z3–Z5</span>${A ? `<span class="k4-wkk-v" aria-hidden="true"><i style="left:${lo}%"></i></span><b>${lo} % · ${100 - lo} %</b>` : `<b>–</b>`}</div>
       <div class="k4-wkk-z"><span>Zonen</span>${fs ? `<span class="v7-stapel k4-stapel">${F.map(([kk, m]) => `<i style="flex:${m};background:${ZFARBE(kk)}"></i>`).join("")}</span>` : `<b>–</b>`}</div>
-      <div class="k4-wkk-z"><span>TL ≈</span><span class="k4-bal" aria-hidden="true">${d.bereich ? `<span class="k4-bal-ber" style="left:${p(d.bereich[0])}%;width:${(p(d.bereich[1]) - p(d.bereich[0])).toFixed(1)}%"></span>` : ""}<span class="k4-bal-w plan" style="width:${p(tl)}%"></span></span><b>${d.plan && d.plan.offen ? "mind. " : ""}${tl}${d.bereich ? ` <small>(${d.bereich[0]}–${d.bereich[1]})</small>` : ""}</b></div></div>`;
+      ${fehltZeile(mo)}<div class="k4-wkk-z"><span>TL ≈</span><span class="k4-bal" aria-hidden="true">${d.bereich ? `<span class="k4-bal-ber" style="left:${p(d.bereich[0])}%;width:${(p(d.bereich[1]) - p(d.bereich[0])).toFixed(1)}%"></span>` : ""}<span class="k4-bal-w plan" style="width:${p(tl)}%"></span></span><b>${d.plan && d.plan.offen ? "mind. " : ""}${tl}${d.bereich ? ` <small>(${d.bereich[0]}–${d.bereich[1]})</small>` : ""}</b></div></div>`;
   }
-  /** ✨ «Woche anpassen?» (Vorlage): was passiert, wie man Einheiten behält, Tipps; Anpassen = V66 «anpassen» in den Entwurf. */
+  /** V9.2 fehlt-zeit-1.0: im Bearbeiten-Modus steht die fehlende Zeit live in der Wochenkarte (die Frage kommt erst mit ✓). */
+  function fehltZeile(mo) {
+    const E = P() && P().planEintrag ? P().planEintrag(mo) : null, F = E && E.verteilung && E.verteilung.fehlt;
+    if (!F || !(F.min > 0)) return "";
+    return `<p class="k4-wkk-f warn-t">Es fehlen ${esc(window.V92 ? window.V92.dauer(F.min) : F.min + " min")}${isNum(F.tl) ? ` (${F.tl} TL)` : ""}: ${esc(F.einheiten.map((x) => x.titel).join(", "))} – mit ✓ fragt die Seite.</p>`;
+  }
+  /** ✨ «Woche anpassen?» (Vorlage): was passiert, wie man Einheiten behält, Tipps; Anpassen = V66 «umplanen» in den Entwurf (V9.2). */
   function anpassenBlatt(mo) {
     const W = V6();
     const ov = window.V59.blatt("k4-anp", `<div class="blatt-titel">${W.icon("funken", 30)}<h2 id="v59-ov-h" tabindex="-1">Woche anpassen?</h2><p class="sub">KW ${W.isoWoche(mo)} · ${esc(V78().bereichText(mo))}</p></div>
-      <h3 class="abschnitt">Was passiert</h3><p>Alle Einheiten ab heute werden nach deiner Trainingsverfügbarkeit neu auf die Woche verteilt – um gesperrte Tage und Einheiten herum. Tests, Schwimmkurs und eigene Einheiten bleiben, wo sie sind.</p>
+      <h3 class="abschnitt">Was passiert</h3><p>Die ganze Woche wird aus dem Vorschlag, deinen Zeiten und Sportarten neu gerechnet – um gesperrte Tage und Einheiten herum. Tests, Schwimmkurs, deine eigenen und von Hand verschobenen Einheiten bleiben, wo sie sind; Gelöschtes bleibt gelöscht. Das passiert auch bei jeder Einstellung von selbst.</p>
       <h3 class="abschnitt">Einheiten behalten</h3><p>Sperre eine Einheit (Schloss an der Einheit) oder den ganzen Tag (Schloss neben dem Datum), dann bleibt sie, wie sie ist.</p>
       <h3 class="abschnitt">Tipps</h3><p>Trage genug Zeit ein und sperre nur, was wirklich fest ist – sonst bleibt der Verteilung wenig Spielraum. Gekürzt oder weggelassen wird nur mit Meldung, nie still.</p>
+      ${window.V92UI ? `<button type="button" class="mp-zeile" data-k4we><span>${W.icon("kalender", 18)} Woche einstellen – Zeiten, Sportarten, Sperren</span>${W.icon("weiter", 16)}</button>` : ""}
       <div class="blatt-fuss"><button type="button" class="btn" data-x>${W.icon("schliessen", 16)} Abbrechen</button><button type="button" class="btn primary" data-k4anpok>${W.icon("funken", 16)} Anpassen</button></div>`);
-    ov.querySelector("[data-k4anpok]").onclick = async () => { window.V59.schliessen(); await schritt(mo, { art: "anpassen" }); };
+    const we = ov.querySelector("[data-k4we]"); if (we) we.onclick = () => window.V92UI.wocheEinstellen(mo, {});
+    ov.querySelector("[data-k4anpok]").onclick = async () => {
+      window.V59.schliessen(); await schritt(mo, { art: "umplanen" });
+      const B = M().bericht ? M().bericht() : null;                       // V9.2: sagt auch, wenn es nichts zu ändern gab
+      if (B && B.mo === mo) meldung(B.leer ? "Es musste nichts verschoben werden – alle Einheiten passen zu deiner Verfügbarkeit." : `Woche neu geplant: ${B.zeilen.length} ${B.zeilen.length === 1 ? "Änderung" : "Änderungen"}${B.fehlt ? ` · es fehlen ${window.V92 ? window.V92.dauer(B.fehlt.min) : B.fehlt.min + " min"}` : ""}.`, !B.fehlt);
+    };
   }
   /** Griff antippen (oder Tastatur): Tag derselben Woche wählen. */
   function verschiebenBlatt(ds, uid) {
@@ -518,7 +537,7 @@
     box.innerHTML = `${zyklusKarten(ZS.mo)}<h3 class="abschnitt k4-z-ab">Plan und absolviert</h3>${ausw}
       <button type="button" class="btn k4-inliste" data-k4inliste>${V6().icon("kalender", 16)} Tage dieser Woche in der Liste</button>`;
     try { M().wocheBinden(box, ZS.mo, neu); } catch (e) { console.error(e); }
-    const v = box.querySelector("[data-k4vf]"); if (v) v.onclick = () => M().verfuegbarkeitWoche && M().verfuegbarkeitWoche(null);
+    const v = box.querySelector("[data-k4vf]"); if (v) v.onclick = () => M().verfuegbarkeitWoche && M().verfuegbarkeitWoche(null, ZS.mo);   // V9.2: «Woche einstellen» dieser Woche
     const l = box.querySelector("[data-k4inliste]"); if (l) l.onclick = () => window.APP && window.APP.kalenderListe && window.APP.kalenderListe(ZS.mo);
   };
   N.stand = () => ({ von: ST.von, bis: ST.bis, sel: ST.sel, offen: ST.offen, ms: ST.ms });

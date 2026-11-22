@@ -66,32 +66,27 @@ test("Woche, die der Verfügbarkeit von selbst folgt, und vergangene Tage brauch
   assert.ok(sportMin(sim.plan(doN).einheiten) <= 30, "die nächste Woche folgt der Verfügbarkeit von selbst");
 });
 
-test("nur teilweise gespeicherte Woche (Einheit ohne Verfügbarkeit hinzugefügt): Verfügbarkeit ändern passt sie gleich an", async () => {
-  // eine künftige Woche: vfSpeichern hält nur die laufende Woche fest, hier entscheidet allein vfFolgen
+// V9.2 umplanen-1.0: «nur teilweise gespeichert» entsteht nicht mehr – jede Änderung (auch Hinzufügen) rechnet die ganze Woche neu und hält sie fest.
+// Umgeschrieben statt gelöscht (CHANGELOG V9.2): Einheit hinzufügen → Woche ganz gespeichert; Verfügbarkeit ändern → gleich neu geplant, die eigene Einheit bleibt.
+test("V9.2: Einheit hinzufügen hält die Woche ganz fest; Verfügbarkeit ändern plant sie gleich neu, die eigene Einheit bleibt", async () => {
   const sim = simulator({ start: START }); await sim.tage(START, 14);                        // ohne Planeinstellungen: nichts zwingt eine Verteilung
   const W4 = addDays(W3, 7), mi = addDays(W4, 2), don = addDays(W4, 3);
-  let teilweise = false, ganzVorher = null, R = null, nachMin = null, vorDo = null, mitteEigen = null;
+  let ganz = null, R = null, nachMin = null, vorDo = null, mitteEigen = null;
   await sim.tage(W3, 3, {
     vorher: async (d) => {
       if (d !== addDays(W3, 1)) return;
       assert.equal(await sim.aendern(W4, { art: "hinzufuegen", date: mi, einheit: { vorlage: "kraft", dauer: 30 } }), null);
-      const E = sim.win.V64UI.planEintrag(W4);
-      teilweise = !!(E && !E.ganz && Object.values(E.tage).some((t) => Array.isArray(t.einheiten)));
+      ganz = !!(sim.win.V64UI.planEintrag(W4) || {}).ganz;
       vorDo = sportMin(sim.plan(don).einheiten);
       assert.ok(vorDo > 30, "Donnerstag hat vor der Änderung mehr als 30 min: " + vorDo);
       assert.equal(await sim.verfuegbarkeit({ date: don }, { min: 30, sport: null }), null);
-      ganzVorher = !!(sim.win.V64UI.planEintrag(W4) || {}).ganz;
-      sim.S.neu();
-      assert.ok(sportMin(sim.plan(don).einheiten) > 30, "teilweise gespeichert: ohne «Anpassen» bleibt der unverteilte Vorschlag (bisheriges Verhalten)");
       R = await sim.win.V66UI.vfFolgen(don); sim.S.neu();
       nachMin = sportMin(sim.plan(don).einheiten);
       mitteEigen = sim.plan(mi).einheiten.some((e) => e.quelle === "eigen");
     },
   });
-  assert.ok(teilweise, "die Woche war nur teilweise gespeichert (nicht ganz festgehalten)");
-  assert.equal(ganzVorher, false);
-  assert.equal(R.f, null); assert.equal(R.angepasst, true, "auch eine nur teilweise gespeicherte Woche wird angepasst");
+  assert.equal(ganz, true, "nach dem Hinzufügen ist die Woche ganz gespeichert (umgeplant)");
+  assert.equal(R.f, null); assert.equal(R.angepasst, true);
   assert.ok(nachMin <= 30, `Donnerstag passt jetzt zu 30 min: ${nachMin} (vorher ${vorDo})`);
   assert.ok(mitteEigen, "die eigene Einheit am Mittwoch bleibt");
-  assert.equal(!!sim.win.V64UI.planEintrag(W4).ganz, true, "danach ist die Woche festgehalten (bearbeitet), wie nach «Woche anpassen»");
 });

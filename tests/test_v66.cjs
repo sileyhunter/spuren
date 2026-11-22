@@ -44,7 +44,7 @@ test("eigenplan-1.0: hinzufügen, Dauer, verschieben, entfernen – vergangene u
   const w = woche(), ctx = ctxFuer(w, "2026-11-18");                     // heute = Mittwoch
   let r = V66.aendern(null, { art: "hinzufuegen", date: "2026-11-19", einheit: { vorlage: "kraft", dauer: 30 } }, ctx);
   assert.ok(!r.fehler, r.fehler); let E = r.eintrag;
-  assert.equal(E.id, "wo-" + MO); assert.equal(E.v, "eigenplan-1.2");
+  assert.equal(E.id, "wo-" + MO); assert.equal(E.v, "eigenplan-1.3");                         // V9.2: eigenplan-1.3 (gestrichen, anker, statt)
   const vorDo = w.tage.find((t) => t.date === "2026-11-19").einheiten.length;
   assert.equal(E.tage["2026-11-19"].einheiten.length, vorDo + 1, "Vorschlag des Tages übernommen, eigene dazu");
   assert.ok(E.tage["2026-11-19"].einheiten.slice(0, vorDo).every((s) => s.quelle === "vorschlag"));
@@ -348,7 +348,7 @@ test("eigenplan-1.1: verteilte Woche wird beim ersten Ändern ganz festgehalten;
   assert.deepEqual(zeig(A).slice(0, 2), zeig(wv).slice(0, 2), "Montag und Dienstag (vorbei) unverändert");
   const ids = A.tage.flatMap((t) => t.einheiten.map((e) => e.id)).sort(), vorher = wv.tage.flatMap((t) => t.einheiten.map((e) => e.id)).concat(["kraft"]).sort();
   assert.deepEqual(ids, vorher, "Anpassen verschiebt nur");
-  assert.equal(E.verteilung.art, "anpassen"); assert.ok(E.verteilung.meldungen.length >= 1);
+  assert.equal(E.verteilung.art, "umplanen", "V9.2 umplanen-1.0: «anpassen» rechnet die Woche neu"); assert.ok(E.verteilung.meldungen.length >= 1);
   // Sonntag sperren, Neu berechnen: Gesperrtes bleibt, eigene Einheit an anderen Tagen fällt weg, nichts doppelt
   E = V66.aendern(E, { art: "sperren", date: "2026-11-22" }, ctx).eintrag;
   E = V66.aendern(E, { art: "neuberechnen" }, Object.assign({}, ctx, { verf: verf2 })).eintrag;

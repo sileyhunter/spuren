@@ -214,7 +214,7 @@ test("ampel-plan-1.0: Serie von Tagen «vorsichtig»; Eintrag, Prüfung und Zusa
 
 /* ---------------- Woche anpassen (eigenplan-1.2) und Garmin ---------------- */
 test("eigenplan-1.2: «Woche anpassen?» – Rest der Woche als Erholungswoche, vergangene und gesperrte Tage bleiben", () => {
-  assert.equal(V66.VERSIONS.eigenplan, "eigenplan-1.2");
+  assert.ok(["eigenplan-1.2", "eigenplan-1.3"].includes(V66.VERSIONS.eigenplan), "seit V9.2 eigenplan-1.3 (gestrichen, anker, statt) – «Woche anpassen?» unverändert");
   const w = V64.woche({ woche: MO, phase: "Grundlage", stunden: 9, modell: "polarisiert" });
   const erh = V64.woche({ woche: MO, phase: "Grundlage", stunden: 6, modell: "polarisiert", erholung: true });
   const E0 = { id: "wo-" + MO, montag: MO, tage: { [SA]: { gesperrt: true, einheiten: null } } };

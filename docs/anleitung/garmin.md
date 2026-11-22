@@ -77,6 +77,11 @@ und (V6.5) unverändert im privaten Archiv ablegen (Abschnitt «Archiv», Art `g
 - Nie: Enduco-Workouts ändern oder löschen, Kalendereinträge ohne eigenen Vermerk austragen, Bibliotheks-Workouts löschen, Zonen oder die CSS
   nach Garmin schreiben, etwas senden, das nicht in `work/garmin_plan.json` steht. Das Morgen-Update sendet nur im Schritt «Ampel» (Entscheid A7 vom
   16.11.2026, seit V7.4): bei «vorsichtig» oder Krankheitszeichen die eigene harte Einheit des Tages durch ihre lockere Fassung ersetzen.
+- **V9.2 umplanen-1.0 (Etappe W1):** Umplanen ändert Einheiten an bis zu sieben Tagen. Danach führt `V66UI.planen` die offenen Aufträge **aller sieben Tage** nach
+  (`auftraegeWoche`): Auswahl vorher = Einheiten in den offenen Aufträgen (Momentaufnahme), über `V92.zuordnung` (Kennung, sonst Vorlage und nächster Tag) auf die neue Woche
+  übertragen; Tag mit offenem Auftrag → neue Fassung nur, wenn sie sich ändert (gleicher Modus; mit «teil» nur die gewählten, die noch dort stehen); gewählte Einheit an einem Tag
+  ohne Auftrag → neuer Auftrag mit ihrem Modus und «teil»; nicht mehr am Tag → fällt aus dem Auftrag (das Nacht-Update trägt sie aus). Heute nie (Nacht-Update «verpasst»); steht
+  eine gesendete Einheit von heute nicht mehr im Plan, sagen Tagesblatt und Bericht «Auf der Uhr steht noch …». Im Bearbeiten-Modus nichts, erst mit ✓.
 - **V7.4 lockere Fassung (ampel-plan-1.0):** jede Einheit im Auftrag mit harten, mittleren oder langen Abschnitten trägt `ampel` = { titel, fassung,
   workout } (aus `V74.locker`, Titel «… (Ampel)», gleiche Uhrzeit und Metrik); `pruefen` prüft sie wie jedes Workout. `garmin_senden.py ampel` ersetzt
   nur Vermerke von heute, deren Fassung im Auftrag steht; die neue trägt in `plan_garmin` `ampel: true` und wird nie zurückgesetzt («Trotzdem wie

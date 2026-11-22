@@ -341,3 +341,24 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
      spätere Etappe: «Zusatzeinheit vorschlagen» (lockere Einheit am freien Tag, als Vorschlag des Coaches mit Annehmen), Entscheid über die Art liegt bei Claude.
      (2) Das Blatt «Trainingsverfügbarkeit der ganzen Woche» fragt nach dem Speichern weiter nach der Wahl (Woche anpassen / Neu berechnen / Alles neu verteilen / Nur speichern),
      statt gleich anzupassen. (3) Die Tonspur der drei Aufnahmen war stumm; gedeutet wurde aus dem Bild – wenn «Kalender wechseln» etwas anderes meinte, bitte kurz sagen.
+
+## Nach V9.2 (22.11.2026, «Woche wie Enduco» Etappe W1: Umplanen)
+136. **Umplanen (umplanen-1.0, grenzen-1.0, woche-einstellen-1.0, fehlt-zeit-1.0):** Jede Einstellung rechnet die ganze Woche aus dem Vorschlag neu; Zeit ist harte Obergrenze;
+     fehlt Last, fragt die Seite. Punkt 135 (2) erledigt («Woche einstellen» plant gleich um, «Nur speichern» entfällt). **Silas bitte auf dem iPhone prüfen** (Auftrag
+     `docs/auftrag-enduco-woche.md`, Abnahme W1): (a) Bearbeiten → Dienstag Zeit 0 → ✓: Dienstags-Einheiten stehen an anderen Tagen, Bericht oben. (b) Mittwoch Schwimmen abwählen:
+     Schwimmen wandert, Mittwoch bleibt nicht leer, wenn dort Rad oder Laufen erlaubt sind. (c) Zeit zurücksetzen: Woche wie vorher. (d) Tag sperren: bleibt, wie er ist. (e) Mo–Fr Zeit 0,
+     Sa/So je 5 h: alles liegt am Wochenende, keiner der Tage über 5 h. (f) Ein Tag nur «Laufen»: dort steht nie etwas anderes. (g) Mo–Fr Zeit 0, Sa/So je 3 h: die Frage erscheint mit
+     Vorschlägen; «Ja» → Wochenende länger, nichts fehlt, ↶ → zurück; «Nein» → bleibt, Bericht sagt, was fehlt. (h) Tage, die er nicht angefasst hat, liegen nie über der Standardzeit.
+137. **Eigene Festlegungen in W1 (trainingstechnisch, Silas' Freigabe vom 22.11.):** heute ist fest, sobald heute schon trainiert wurde; «verteilt» als zweiter Vorschlag ab 60 min Mehr
+     (`V92.GROSS`); `V83.TOLERANZ` nur noch fürs Bewerten bestehender Pläne; «Ausgleichen» erscheint unter 92,5 % der vorgeschlagenen Last; der automatische Krafttrainings-Tag meidet
+     von Hand gesetzte Tage mit gewählten Sportarten. Wenn eine davon im Alltag stört: kurz melden.
+138. **Grenzen von W1:** ↶ «Rückgängig» gilt nur, bis die Seite neu geladen wird (Zustand im Speicher, nicht gespeichert). Die Frage rechnet die Vorschläge mit dem Planer durch;
+     bei vielen gesperrten Tagen kann es sein, dass kein Tag Platz hat – dann bleibt nur «Nein, so lassen» (und von Hand mehr Zeit geben). Die Garmin-Auftragsübernahme verschobener
+     Einheiten stützt sich auf die Kennung bzw. Vorlage; zwei gleiche Vorlagen in einer Woche werden dem nächsten Tag zugeordnet.
+139. **Vorlagen für W2:** Screenshot IMG_0093 und die Aufnahmen vom 22.11. (18-19-06, 18-14-10, 17-31-12, 17-33-57) lagen in der W1-Sitzung nicht bei (nur 20-17-01 und 20-22-00);
+     für W2 bitte wieder anhängen, dazu einen Enduco-Screenshot mit einem gesperrten und einem von Hand verkürzten Tag (Leiste und Liste).
+140. **TrainingPeaks:** Silas exportiert heute je Einheit über Enduco («Starten / Export» → Garmin Connect, TrainingPeaks, PDF); die Einheiten stehen auch in seinem Outlook-Kalender.
+     Ein direkter Versand der Seite an TrainingPeaks oder ein Kalender-Export (z. B. .ics) wäre eine eigene Etappe – nur, wenn er es will.
+141. **Leck-Prüfung in der W1-Sitzung:** Ohne `SPUREN_PW` im Auftrag konnte `tools/leck_pruefen.py` nicht über die entschlüsselten Daten laufen (wie in V9.0, V9.1 und V9.1.1 vermerkt; der datenunabhängige Teil, E-Mail-Adressen, ist bestanden);
+     geändert wurden nur Code, Tests und Doku mit erfundenen Werten, `data.enc.json` blieb unverändert. Beim nächsten Daten-Update oder in der nächsten Sitzung mit Passwort nachholen.
+

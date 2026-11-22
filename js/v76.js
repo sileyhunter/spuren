@@ -130,11 +130,17 @@
       // kraft-plan-1.2: opt.nurPassend = nur Tage, an denen nichts umziehen muss (wie V76.passt: Zeit reicht, am Tag danach keine harte Einheit an Land)
       const passtAm = (k) => { const n = w.tage[k + 1], v = opt.verf ? opt.verf(w.tage[k].date) : null;
         return !(n && (n.einheiten || []).some((e) => hart(e) && land(e))) && !(v && isNum(v.min) && tagMin(w.tage[k].einheiten || []) + dauer > v.min); };
+      // V9.2 grenzen-1.0: die Zeit eines Tages ist eine harte Obergrenze – das Krafttraining (mit dem, was dort fest steht) muss hineinpassen; an einem
+      // von Hand gesetzten Tag mit gewählten Sportarten setzt die Seite kein Krafttraining (es wäre eine andere Sportart als die gewählten)
+      const fixMin = (k) => (w.tage[k].einheiten || []).filter((e) => istTest(e) || e.id === "schwimm_kurs" || e.art === "draussen" || e.id === "aktivierung" || e.gesperrt).reduce((x, e) => x + (e.dauer || 0), 0);
+      const grenzeOk = (k) => { const v = opt.verf ? opt.verf(w.tage[k].date) : null; if (!v) return true;
+        if (v.quelle === "tag" && !v.kurs && Array.isArray(v.sport)) return false;
+        return !(isNum(v.min) && fixMin(k) + dauer > v.min); };
       const K = w.tage.map((x, k) => k).filter((k) => t.tage.includes(wtNr(w.tage[k].date)) && moeglich(k) && !keinTraining(opt.verf ? opt.verf(w.tage[k].date) : null)
-        && (!opt.nurPassend || passtAm(k)));
+        && grenzeOk(k) && (!opt.nurPassend || passtAm(k)));
       let best = -Infinity;
       for (const k of K) { const s = V76.bewerten(w, k, dauer, opt.verf); if (s > best) { best = s; i = k; } }
-      if (i < 0) { hinweise.push("Krafttraining: in dieser Woche kein möglicher Tag (Tests, Verfügbarkeit oder Taper) – fällt aus"); return fertig("weg", "kein Tag"); }
+      if (i < 0) { hinweise.push("Krafttraining: in dieser Woche kein möglicher Tag (Tests, Verfügbarkeit – Zeit oder gewählte Sportarten – oder Taper) – fällt aus"); return fertig("weg", "kein Tag"); }
     } else {
       const k0 = w.tage.findIndex((x) => x.date === t.date);
       if (k0 < 0) return w;

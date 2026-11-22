@@ -277,7 +277,13 @@
     return ov;
   }
   V.blatt = oeffne;                  // V6.0.1: Blätter für Check-in, Einheit, Optionen, Bereitschaft (js/v6-heute.js)
-  V.schliessen = function () { const ov = $("v59-ov"); ov.hidden = true; ov.innerHTML = ""; V._ovArt = null; document.body.classList.remove("noscroll"); V.modalZu(ov); };
+  // V9.2 umplanen-1.0: einmal nach dem nächsten Schliessen (z. B. die Frage «Darf an einem Tag mehr trainiert werden?» beim Verlassen des Tagesblatts)
+  const NACH_ZU = new Map();
+  V.nachSchliessen = function (key, fn) { if (typeof fn === "function") NACH_ZU.set(String(key), fn); };
+  V.schliessen = function () {
+    const ov = $("v59-ov"); if (ov) { ov.hidden = true; ov.innerHTML = ""; } V._ovArt = null; document.body.classList.remove("noscroll"); if (ov) V.modalZu(ov);
+    if (NACH_ZU.size) { const L = [...NACH_ZU.values()]; NACH_ZU.clear(); setTimeout(() => { for (const f of L) { try { f(); } catch (e) { console.error(e); } } }, 0); }
+  };
 
   /* ----- Einstellungen: Direkt speichern, ausgeblendete Karten ----- */
   const AUS_KEY = "sf.eingeblendet";

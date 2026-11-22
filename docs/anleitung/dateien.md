@@ -137,6 +137,15 @@
   verteilen», Test in `tests/test_v66.cjs`) und V9.1.1 (22.11.2026) kalender-direkt-1.0 / anpassen-automatisch-1.0: `V66UI.nachAenderung(ds)` (Blatt zu, Kalender-Liste am Tag; in
   `js/v66-ui.js`, `js/v73-ui.js`, `js/v77-ui.js`), `V66UI.vfFolgen(ds)` (nach der Tages-Verfügbarkeit «Woche anpassen» bei bearbeiteter Woche, ganz festgehalten oder teilweise gespeichert),
   `tests/test_v911.cjs`
+- **V9.2 (Auftrag «Woche wie Enduco», Etappe W1; 22.11.2026):** `js/v66.js` (umplanen-1.0, grenzen-1.0, eigenplan-1.3, verfuegbarkeit-1.3: `V66.aendern` Art «umplanen»
+  (Alias «anpassen»), `V66.stehtFuer`, `V66.istAnker`, `V66.umplanenRein`, «Neu berechnen» über denselben Kern, Streichungen aus «entfernen»/«leeren», `anker` beim Verschieben,
+  `statt` beim Ersetzen, `V66.verteilen` opt.`extra`), `js/v92.js` (neu, ohne DOM: `V92.diff`, `V92.zuordnung`, `V92.zeilen`, `V92.fingerabdruck`, `V92.fragen`, `V92.kandidaten`,
+  `V92.vorschlaege`, `V92.eintraege`, `V92.zustand`), `js/v92-ui.js` (neu: `V92UI.wocheEinstellen`, `V92UI.frage`, `V92UI.berichtHTML`/`berichtBinden`/`berichtDetails`),
+  `js/v66-ui.js` (`V66UI.planen`, `stand`, `bericht`, `berichtWeg`, `rueckgaengig`, `ausgleichen`, `frageDaten`, `probe`, `frageJa`, `frageNein`, `frageWennNoetig`, `vfSpeichern`;
+  Garmin `auftraegeWoche`, «Auf der Uhr steht noch …»; Tagesblatt-Verfügbarkeit auch im Entwurf), `js/v78.js` (Entwurf mit Verfügbarkeit: `vfSetzen`, `vfZurueck`, `vf`),
+  `js/v64-ui.js` (Verfügbarkeit mit Entwurf), `js/v78-ui.js` (Bericht `#kal-bericht`, ✨ = umplanen, fehlende Zeit in der Wochenkarte), `js/v59.js` (`V59.nachSchliessen`),
+  `js/v76.js` (Krafttag in der Zeit, nicht an von Hand gesetzten Tagen mit Sportarten), `js/v83.js` (Vorschläge ohne Toleranz), `js/v75-ui.js`, `js/wissen.js` (1.34),
+  `tools/merge_daily.py` (gestrichen, anker, statt), `css/v6.css`, `index.html`, `sw.js`, `tests/sim/umgebung.cjs`; Test `tests/test_v92.cjs`; Auftrag `docs/auftrag-enduco-woche.md`
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
 - `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)
