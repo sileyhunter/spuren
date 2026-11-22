@@ -1,5 +1,13 @@
 # Änderungen
 
+## V9.7 · 22.11.2026 · Tag-Update: Belastung tagsüber aktuell (tag-update-1.0)
+Silas' Wunsch vom 22.11.2026 (Widget aufs iPhone, Belastung soll tagsüber stimmen): bisher stand die Belastung bis zum Nacht-Update auf «offen».
+- **Neuer Lauf «Tag-Update»** (`docs/anleitung/updates.md`): 13, 15, 17, 19 und 21 Uhr, nur lesend auf Garmin, ohne «Ampel», ohne Eingaben vom Handy. Spielt die Einheiten von heute
+  ohne FIT-Sekundenwerte und die Tageswerte ein; das Nacht-Update ergänzt dieselben Einheiten danach (gleiche Garmin-ID, nichts doppelt).
+- `tools/merge_daily.py`: `"lauf": "tag"` setzt den Stand «Tag-Update». `FK.aktivitaetenBis` (`js/formkurve.js`): beim Tag-Update gelten die Einheiten bis heute als eingespielt.
+  Ring Belastung (`js/v55.js`): «Bisher heute: Tageslast …» statt «offen»; der Hinweis bei fehlenden Einheiten nennt «das nächste Update».
+- Tests: `tests/test_tools.py` (+2: Tag-Update ohne FIT, danach Nacht-Update ohne Doppelung), `tests/test_formkurve.cjs` (+1).
+- Noch offen aus demselben Auftrag (`claude/auftrag-widget.md` im Projekt): T2 Widget-Ansicht, T3 Bild im privaten Archiv, T4 Scriptable-Skript, T5 Food-Shortcut prüfen.
 ## V9.3.2 · 22.11.2026 · Woche wie Enduco: Bearbeiten-Woche, Griff ziehen, Feinschliff; eigene Markierung «nicht werten» (bearbeiten-1.1, kalender-4.2, woche-look-1.1, analyse-gesund-1.1)
 Silas' Rückmeldung vom 22.11.2026 abends (18 Bilder Enduco neben der Seite, Aufnahme 23:06): «bearbeiten lässt sich die Woche nicht», «bei Enduco lässt sich der horizontale Balken
 verwenden, um das Fenster nach oben oder unten zu ziehen», «ich habe einfach die Einheit bewertet», «ganz viel Sachen sind noch nicht gleich wie bei Enduco».

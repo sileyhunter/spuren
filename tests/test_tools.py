@@ -636,6 +636,25 @@ check("Nacht-Update danach: gleiche Tage und Workouts ersetzt, nicht ergänzt",
       [d["date"] for d in _n10["days"]] == ["2026-11-09", "2026-11-10"] and _n10["days"][1]["kcalOut"] == 2750
       and [p["title"] for p in _n10["planned"]] == ["Alt", "Lauf locker", "Rad"] and len(_n10["workouts_neu"]) == 1 and _n10.get("updated_lauf") == "Nacht-Update")
 
+# ---------- V9.7 Tag-Update (tag-update-1.0): Einheiten bis jetzt ohne FIT-Daten; das Nacht-Update danach ergänzt dieselbe Einheit, nichts doppelt ----------
+_t11 = tempfile.mkdtemp()
+json.dump({"activities": [], "days": [], "config": {}}, open(os.path.join(_t11, "d.json"), "w"))
+_akt = {"garmin_id": 4711, "type": "running", "name": "Lauf am Mittag", "start_local": "2026-11-10 12:05:00", "duration_s": 3600,
+        "distance_m": 10500, "avg_hr": 150, "hr_zones_s": [300, 3000, 300, 0, 0]}
+json.dump({"lauf": "tag", "activities": [_akt], "days": [{"date": "2026-11-10", "hrv": 66, "rhr": 51}]}, open(os.path.join(_t11, "t.json"), "w"))
+merge_daily.main(os.path.join(_t11, "d.json"), os.path.join(_t11, "t.json"))
+_tg = json.load(open(os.path.join(_t11, "d.json")))
+check("Tag-Update: Einheit von heute mit Last da (ohne FIT), Stand «Tag-Update»",
+      len(_tg["activities"]) == 1 and _tg["activities"][0]["id"] == "g4711" and _tg["activities"][0]["tss"] > 0 and "mv" not in _tg["activities"][0]
+      and _tg.get("updated_lauf") == "Tag-Update")
+json.dump({"lauf": "tag", "activities": [_akt]}, open(os.path.join(_t11, "t2.json"), "w"))
+merge_daily.main(os.path.join(_t11, "d.json"), os.path.join(_t11, "t2.json"))
+json.dump({"lauf": "nacht", "activities": [_akt]}, open(os.path.join(_t11, "n.json"), "w"))
+merge_daily.main(os.path.join(_t11, "d.json"), os.path.join(_t11, "n.json"))
+_tn = json.load(open(os.path.join(_t11, "d.json")))
+check("Tag-Update zweimal und Nacht-Update danach: dieselbe Einheit, nicht doppelt, Last unverändert",
+      len(_tn["activities"]) == 1 and _tn["activities"][0]["tss"] == _tg["activities"][0]["tss"] and _tn.get("updated_lauf") == "Nacht-Update")
+
 # ---------- V5.9.6 Laktat-Einzelmessungen über die Zeit (laktat-drift-1.0, erfundene Sekundenreihe) ----------
 import series as SER14  # noqa: E402
 import laktat_vorschau as LV14  # noqa: E402

@@ -998,8 +998,8 @@ def main(data_path, new_path, fit_path=None):
     # «Daten vom …» = letzter Abruf aus Garmin: Einspielen ohne Garmin-Daten (nur config, Laktat, Eingaben) lässt den Stand stehen
     if fit_path or any(N.get(k) for k in GARMIN_KEYS) or not D.get("updated"):
         D["updated"] = dt.datetime.now(ZRH).strftime("%d.%m.%Y %H:%M")
-    if N.get("lauf") in ("morgen", "nacht"):              # V5.9.2 morgen-1.0: welcher Lauf zuletzt (Stand auf «Heute»)
-        D["updated_lauf"] = "Morgen-Update" if N["lauf"] == "morgen" else "Nacht-Update"
+    if N.get("lauf") in ("morgen", "nacht", "tag"):       # V5.9.2 morgen-1.0, V9.7 tag-update-1.0: welcher Lauf zuletzt (Stand auf «Heute»)
+        D["updated_lauf"] = {"morgen": "Morgen-Update", "nacht": "Nacht-Update", "tag": "Tag-Update"}[N["lauf"]]
     json.dump(D, open(data_path, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
     print(f"Aktivitäten neu: {added}, ergänzt: {updated}, gesamt: {len(acts)} | Tage: {len(D['days'])} | Gewichte: {len(D.get('weights', []))}"
           f" | geplant: {len(D.get('planned', []))} | Laktat: {len(D.get('lactate', []))}")

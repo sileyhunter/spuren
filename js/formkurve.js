@@ -256,7 +256,7 @@
     const m = D && typeof D.updated === "string" ? /^(\d{2})\.(\d{2})\.(\d{4})/.exec(D.updated) : null;
     if (!m || !D.updated_lauf) return null;
     const tag = `${m[3]}-${m[2]}-${m[1]}`;
-    return D.updated_lauf === "Nacht-Update" ? tag : FK.addDays(tag, -1);
+    return D.updated_lauf === "Nacht-Update" || D.updated_lauf === "Tag-Update" ? tag : FK.addDays(tag, -1);   // V9.7 tag-update-1.0: das Tag-Update bringt die Einheiten bis jetzt
   };
   /** Erholung der Nacht (ringe-1.1, seit readiness-3.0 auch in der Ampel): HRV (ln) und Ruhepuls dieser einen Nacht gegen die 60 Tage davor
    *  (mindestens 14 Werte), z = (z_HRV − z_Ruhepuls)/2, Erholung = Φ(z) in %. byDate = Map Datum → Tag. */

@@ -798,6 +798,7 @@ test("Readiness (Audit V6.4 D1): HRV leicht unter Referenz → kein zweiter Grun
 test("Ringe (Audit V6.4 D6): Tag ohne eingespielte Einheiten → Belastung offen, nicht 0 % «Ruhetag»", () => {
   assert.equal(FK.aktivitaetenBis({ updated: "13.11.2026 08:39", updated_lauf: "Morgen-Update" }), "2026-11-12");
   assert.equal(FK.aktivitaetenBis({ updated: "12.11.2026 23:00", updated_lauf: "Nacht-Update" }), "2026-11-12");
+  assert.equal(FK.aktivitaetenBis({ updated: "13.11.2026 15:02", updated_lauf: "Tag-Update" }), "2026-11-13", "V9.7 tag-update-1.0: Einheiten bis jetzt sind eingespielt");
   assert.equal(FK.aktivitaetenBis({ updated: "12.11.2026 23:00" }), null, "ohne Angabe keine Einschränkung");
   const days = base(), acts = ACTS.slice(0, 69);   // letzter Tag ohne Einheit
   const ohne = FK.ringeVerlauf(days, acts, D70, 2), mit = FK.ringeVerlauf(days, acts, D70, 2, { aktBis: FK.addDays(D70, -1) });

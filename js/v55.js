@@ -254,8 +254,9 @@
     const e = r.erholung, sE = e == null ? (r.hrv == null && r.rhr == null ? "keine Morgenwerte" : "zu wenig Referenz (unter 14 Tage)") : `${r.hrv != null ? `HRV ${C.fmt(r.hrv, 0)} ms` : "HRV fehlt"} · ${r.rhr != null ? `Ruhepuls ${C.fmt(r.rhr, 0)}` : "Ruhepuls fehlt"}<br>gegen deine 60 Tage${r.quelleE && /nur/.test(r.quelleE) ? ` (${C.esc(r.quelleE)})` : ""}`;
     const sS = r.schlaf == null ? "Nacht fehlt – keine andere Nacht eingesetzt" : `Garmin-Schlafwert${r.sleepH != null ? ` · ${C.fmt(r.sleepH, 1)} h` : ""}`;
     // V6.4.4 (D6, D13): Tag noch nicht eingespielt → offen; «Fitness am Vortag», weil die Kennzahlen oben die Fitness von heute zeigen
-    const sB = r.belastungOffen ? "noch offen – die Einheiten des Tages kommen mit dem Nacht-Update" : r.belastung == null ? "zu wenig Daten für die Fitness"
-      : `Tageslast ${C.fmt(r.tss, 0)} bei Fitness ${C.fmt(r.ctl, 0)} (Vortag)<br>${r.tss ? "50 % = so viel wie deine Fitness" : "Ruhetag"}`;
+    const teil = D.updated_lauf === "Tag-Update" && r.date === heute;   // V9.7 tag-update-1.0: der Tag läuft noch, gezählt sind die Einheiten bis zum letzten Update
+    const sB = r.belastungOffen ? "noch offen – die Einheiten des Tages kommen mit dem nächsten Update" : r.belastung == null ? "zu wenig Daten für die Fitness"
+      : `${teil ? "Bisher heute: " : ""}Tageslast ${C.fmt(r.tss, 0)} bei Fitness ${C.fmt(r.ctl, 0)} (Vortag)<br>${r.tss ? "50 % = so viel wie deine Fitness" : teil ? "noch keine Einheit" : "Ruhetag"}`;
     box.innerHTML = ring(e, col[F.ringFarbe(e)], "Erholung", sE) + ring(r.schlaf, C.css("--sleep"), "Schlaf", sS) + ring(r.belastung, C.css("--strain"), "Belastung", sB, r.belastungOffen ? "offen" : null);
     $("ringe-sub").textContent = tag === heute ? `Heute, ${C.dateCH(tag)}` : `Stand ${C.dateCH(tag)} – die Morgenwerte von heute kommen mit dem Garmin-Update in der Nacht`;
     const labs = T.map((x) => C.dLabel(x.date));

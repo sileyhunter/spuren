@@ -183,6 +183,27 @@ Enduco-Workouts werden nie geändert. Jeder Abruf, der fehlschlägt, wird weggel
    kurz informieren. Klappt alles: keine Nachricht.
 Das Nacht-Update danach ersetzt dieselben Tage, Workouts und `workouts_neu` (nichts doppelt).
 
+## Tag-Update (V9.7, tag-update-1.0, Silas 22.11.2026: Belastung tagsüber aktuell; täglich 13, 15, 17, 19 und 21 Uhr; nur lesend auf Garmin)
+Zweck: die Ringe (Erholung, Schlaf, Belastung) und das Widget tagsüber aktuell halten. Bis V9.6 stand die Belastung bis zum Nacht-Update auf «offen».
+Das Tag-Update spielt die Einheiten von heute **ohne FIT-Sekundenwerte** ein (Dauer, Distanz, Höhenmeter, Puls, Leistung, Zonen, daraus die Last); das
+Nacht-Update danach ergänzt dieselben Einheiten (gleiche Garmin-ID, nichts doppelt) mit FIT, Wetter und Ernährung. **Nach Garmin wird nichts geschrieben**,
+auch nicht der Schritt «Ampel» (der gehört zum Morgen-Update), und es gibt keine Eingaben vom Handy (`eingang/` bleibt für Morgen- und Nacht-Update liegen).
+Jeder Abruf, der fehlschlägt, wird weggelassen: kein Abbruch.
+1. `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json data.json`
+2. Über die Garmin-Verbindung, Zuordnung der Felder wie im Nacht-Update:
+   - `get_activities_by_date` von heute bis heute (alle Seiten); je Einheit `get_activity` (Leistung, NP, Höhenmeter, Dauer, `description` als `notiz`, `workout_rpe`,
+     `workout_feel`) und `get_activity_hr_in_timezones` (Zeit in Zone 1–5). Keine FIT-Daten, kein Wetter, keine Ernährung.
+   - Tageswerte wie im Morgen-Update: `get_sleep_summary_range` gestern bis heute, `get_morning_training_readiness(heute)`, `get_user_summary(heute)` (nur `bodyBattery`,
+     `bbSleep`), `get_sleep_data(heute)` als Datei → `python3 -I tools/wellness.py nacht <pfad>`.
+3. `work/new.json` mit `"lauf": "tag"` und nur diesen Feldern schreiben, dann `python3 -I tools/merge_daily.py data.json work/new.json` (ohne fit.jsonl). Die Seite zeigt
+   «Stand hh:mm (Tag-Update)», die Belastung als «Bisher heute» (der Tag läuft noch) statt «offen».
+4. `SPUREN_PW=… node tools/crypt.mjs encrypt data.json data.enc.json`. Commit «Tag-Update JJJJ-MM-TT hh:mm» mit **nur** `data.enc.json`, auf `main` pushen. Scheitert der Push:
+   einmal `git pull --rebase`, erneut pushen; bei einem Konflikt in `data.enc.json` wie beim Morgen-Update (`git rebase --abort`, `git reset --hard origin/main`, Schritte 1, 3
+   und 4 mit dem schon geschriebenen `work/new.json` wiederholen).
+5. Fehler: nichts committen (`data.enc.json` bleibt unverändert); das nächste Tag-Update holt nach. Eine kurze Nachricht an Silas nur beim Lauf um 21 Uhr und nur, wenn
+   Entschlüsseln, Einspielen oder der zweite Push dabei scheitert. Klappt alles: keine Nachricht.
+Das Morgen-Update am nächsten Tag und das Nacht-Update ersetzen dieselben Tage und Einheiten (nichts doppelt).
+
 ## Monatlicher Garmin-Export (FIT, volle Genauigkeit inkl. GPS-Spuren)
 Silas lädt `UploadedFiles_0-_Part*.zip` hoch. Jedes ZIP in einen eigenen, leeren Ordner ausserhalb des Repos entpacken und (V6.5) unverändert
 im privaten Archiv ablegen (Abschnitt «Archiv», Art `garmin-export`).
