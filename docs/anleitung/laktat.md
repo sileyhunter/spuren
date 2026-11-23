@@ -5,14 +5,17 @@
 - Nach jeder Änderung an Laktatwerten: `python3 -I tools/migrate_v5.py data.json` (rechnet `schwellen`, legt fehlende V5-Listen an, Sicherung in
   `work/backup/`, Rückweg mit `--rollback <datei>`). `check_referenz.py` prüft die Schwellen gegen `referenz.schwellen_soll`.
 - Zonenprofile (`zonen`) sind versioniert und werden **nie** ohne Silas' Freigabe aus LT1/LT2 gesetzt. Neue Version nur über `"zonen_add"` mit
-  `freigabe.datum`; die alte wird «ersetzt». Aktiv: «Zonen vom 23.10.2026» (in Garmin eingetragen).
+  `freigabe.datum`; die alte wird «ersetzt». Aktiv: «zonen-2026-11-23».
+  **Ändern von Zonen durch Claude (Regel seit 23.11.2026):** nur auf Silas' ausdrücklichen Auftrag («kontrolliere/korrigiere meine Zonen»), nie von sich aus. Dann: Werte im Profil ändern, `freigabe.nachtrag`
+  (Datum, Auftrag), `vorher` (Alt-Werte im Profil), Audit-Eintrag mit Alt-Werten, Rücklesung der entschlüsselten Datei, und im Chat die Alt- und Neu-Werte nennen.
+  Stand der Laufzonen: vorläufig, bis ein ausbelasteter Lauf-Stufentest vorliegt (Test-Workout `IN · Lauf-Stufentest`, `tools/workouts.py`); danach das Profil nach dem Zonen-Vorschlag erneuern.
 - **V6.2.2 Zonen-Vorschlag (zonenvorschlag-1.0, `js/v62.js`):** aus dem neuesten Stufentest je Sportart: Z2/Z3 = LT1, Z3/Z4 = LT2 (Mitte der
   gültigen Methoden oder gewählte Methode, Puls an der Schwelle aus FIT); Z1/Z2 und Z4/Z5 im Verhältnis der Skala nach Tønnessen et al. 2024
   (0,81/1,07 × bei Leistung und Tempo, 0,88/1,06 × beim Puls). Bestätigen nur bei bestätigtem Test (B1): die Seite legt ein Profil mit Freigabe
   an (`Inbox.data.zonen` → «Direkt speichern» → `zonen_add`). `merge_daily.py` prüft es (`zonen_pruefen`: Freigabe, lückenlose und geordnete
   Grenzen, Test in `schwellen.tests` bestätigt); Ablehnungen mit Grund in `zonen_abgelehnt` (die Seite zeigt sie). Nach einer Übernahme
   Silas daran erinnern, die Grenzen in Garmin/enduco einzutragen, und die Zonen in den Aufträgen Morgen-Briefing und Abend-Check nachführen.
-  Nie Zonen nach Garmin schreiben.
+  Zonen nach Garmin schreiben (`set_heart_rate_zones`) nur auf ausdrücklichen Auftrag («Garmin ja»), mit Rücklesung und den Alt-Werten im Chat; Pulszonen trägt sonst Silas selbst ein.
 - Zonenverteilung «Mache ich das Richtige?» nutzt die Pulsgrenzen des aktiven Profils (ab dessen Gültigkeit), davor die Garmin-Zonen.
 
 
