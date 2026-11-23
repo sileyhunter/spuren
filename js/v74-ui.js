@@ -139,7 +139,7 @@
     const V = A && A.status === "vorsichtig" && A.offen && ds === h ? M.vorschau(ds) : null;
     const zuTun = !!(V && ((V.geaendert || []).length || (V.weg || []).length));
     if (A && A.status === "vorsichtig" && A.offen && ds === h && !zuTun) {
-      html += `<p class="hint aa-hinweis">${W.icon("ampel", 14)} Ampel: Vorsicht – heute ist nichts Hartes mehr geplant.</p>`;   // nichts zu ändern: keine Frage
+      // nichts zu ändern: keine Frage und keine Zeile (die Ampel-Kachel zeigt den Stand; V9.9 heute-einfach-1.0)
     } else if (A && A.status === "vorsichtig" && A.offen && ds === h) {
       // checkin-anpassung-1.0 (V9.8, wie Enduco): Vorschlag mit Grund – «Ignorieren» oder «Überprüfen» (dort «Akzeptieren»); Mein Plan bleibt, bis du akzeptierst
       html += `<div class="card aa-banner aa-vorschlag" role="status"><div class="aa-kopf">${W.icon("funken", 16)}<b>Heute lieber locker?</b></div>

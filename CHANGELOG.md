@@ -1,5 +1,15 @@
 # Änderungen
 
+## V9.9 · 23.11.2026 · Heute schlicht (heute-einfach-1.0)
+Silas (23.11.): «Es soll möglichst einfach aussehen und sich einfach handhaben.» Punkt «Heute entrümpeln» der offenen Liste (frühere Bedingung «erst Mockup» mit Silas' Freigabe vom 23.11.
+«ohne mich andauernd zu fragen» ersetzt).
+- Begrüssung = eine Antwort auf «Was mache ich heute?»: «Heute: «Lauf locker» · 50 min.», «Heute noch: …», «Heute erledigt: Schwimmen 51 min.», «Heute ist alles erledigt.», «Heute frei.».
+- Fehler behoben: Eine absolvierte Aktivität ohne Einheit in Mein Plan ergab «Heute ist nichts geplant» und die Ampel-Empfehlung dazu.
+- Die Ampel-Empfehlung steht nicht mehr unter der Begrüssung (Kachel und Vorschlag zeigen sie), ausser bei Krankheitszeichen oder deutlichen Schmerzen.
+- Nach dem Check-in eine Zeile «Check-in erledigt · Ändern» statt aller Werte (Schmerzen und Krankheitszeichen bleiben sichtbar).
+- Ampel «vorsichtig» ohne harte Einheit: keine zusätzliche Zeile. «Je Sportart» in Diese Woche mit Pfeil (war nicht als aufklappbar erkennbar).
+- `js/v91.js`, `js/v59.js`, `js/v74-ui.js`, `css/v6.css`; Test `tests/test_v99.cjs` (neu, 4).
+
 ## V9.8 · 23.11.2026 · Check-in passt an wie Enduco (checkin-anpassung-1.0, ampel-plan-1.3)
 Silas (23.11., Aufnahmen 12:27/12:29): «Bei Enduco kommt die Anpassung mit dem Check-in. Dann zeigt er, was er streicht und was er hinzufügt.» Entscheid: wie Enduco, mit Ausnahme.
 - Ampel «vorsichtig» ändert heute nicht mehr von selbst: Karte «Heute lieber locker?» mit Grund, «Ignorieren» / «Überprüfen ✨» → Blatt mit «Geändert» (harte Einheit

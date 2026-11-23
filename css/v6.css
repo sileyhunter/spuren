@@ -1806,3 +1806,13 @@ body.k4-edit .kal-v7.k4 .k4-r-kopf { display: none; }
 .aa-pl li small { color: var(--muted); white-space: nowrap; }
 .aa-pl .aa-alt { text-decoration: line-through; color: var(--muted); }
 .aa-hinweis .btn.klein { margin-left: 6px; padding: 2px 10px; min-height: 0; font-size: 13px; }
+
+/* ---------- V9.9 heute-einfach-1.0: Heute schlicht ---------- */
+.gruss .ci-kurz { display: flex; align-items: center; gap: 10px; }
+.gruss .ci-kurz > div { flex: 1; min-width: 0; }
+.gruss .ci-kurz .btn.klein { padding: 6px 14px; min-height: 0; }
+.gr-hinweis { color: var(--warn); }
+.wl-je summary { list-style: none; display: flex; align-items: center; gap: 6px; }
+.wl-je summary::-webkit-details-marker { display: none; }
+.wl-je summary::after { content: "›"; font-size: 16px; line-height: 1; transition: transform .2s; }
+.wl-je[open] summary::after { transform: rotate(90deg); }

@@ -162,6 +162,8 @@
   `V66.dichtTeile`/`dichtMax`/`dichtAnwenden`, `V66.zielText`/`zielZeilen`, `V66.zielFp`/`zielAusGilt`; `V66.einheit` mit `dicht`/`zusatz`), `js/v64-ui.js` (`K.ziel`,
   `K.w0vorZiel`), `js/v66-ui.js` (`ctx.ziel`, Bericht), `js/v78-ui.js` (Zyklus-Bereich), `js/v92.js` (`V92.zielBericht`), `tools/merge_daily.py` (`dicht`, `zusatz`, `zielAus`),
   `js/wissen.js` (1.38), `tests/test_v95.cjs`, `tests/test_tools.py`
+- **V9.9 (Heute schlicht, heute-einfach-1.0; 23.11.2026):** `js/v91.js` (`V91.heuteAntwort`, `V91.dauerText`), `js/v59.js` (Begrüssung, Check-in-Zeile), `js/v74-ui.js`, `css/v6.css`,
+  `tests/test_v99.cjs`
 - **V9.8 (Check-in passt an, checkin-anpassung-1.0 / ampel-plan-1.3; 23.11.2026):** `js/v74.js` (`V74.wirkung`, `angenommen` in `eintrag`/`pruefen`/`zusammen`), `js/v74-ui.js`
   (Karte `aa-vorschlag`, `V74UI.vorschau`, `V74UI.ueberpruefen`, «Ignorieren»/«Doch anpassen»/«Rückgängig»), `js/v64-ui.js` (Ampel-Hinweis), `js/wissen.js` (1.39), `css/v6.css`,
   `tools/ampel_heute.mjs`, `tools/merge_daily.py`, `tools/garmin_senden.py`, `tests/sim/lauf.cjs` (Haken `ampel`), `tests/test_v98.cjs`, `tests/test_tools.py`

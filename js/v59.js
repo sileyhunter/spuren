@@ -48,20 +48,22 @@
     const r = UI() && UI().lastReadiness, X = window.V7UI ? window.V7UI.meinTag(heuteISO()) : null;
     if (X && X.t.rennen) return esc(`Heute ist Renntag: «${X.t.rennen.name}».`);
     // V9.1 zusammen-1.0: gezählt werden nur die noch nicht erledigten Einheiten («Heute ist alles erledigt» am Abend)
-    let plan = X ? X.t.einheiten : [], erl = 0;
+    const A = (C.D.activities || []).filter((a) => a && a.date === heuteISO());
+    let plan = X ? X.t.einheiten : [], erl = 0, frei = A;
     if (window.V91 && X) {
-      const A = (C.D.activities || []).filter((a) => a && a.date === heuteISO()), Z = window.V91.zuordnen(plan, A, { sportVon: window.V6 ? window.V6.sportVon : null });
-      plan = Z.offen; erl = Z.zu.size;
+      const Z = window.V91.zuordnen(plan, A, { sportVon: window.V6 ? window.V6.sportVon : null });
+      plan = Z.offen; erl = Z.zu.size; frei = Z.frei || [];
     }
-    const E = plan.map((e) => ({ p: { title: e.titel, sport: e.sport } }));
-    const titel = (p) => `«${p.title || SPORT_WORT[p.sport] || "Training"}»`;
-    const teil1 = !E.length && erl ? "Heute ist alles erledigt." : erl && E.length === 1 ? `Heute steht noch ${titel(E[0].p)} an (${SPORT_WORT[E[0].p.sport] || E[0].p.sport || "Training"}).`
-      : erl && E.length > 1 ? `Heute stehen noch ${E.length} Einheiten an: ${E.map((e) => titel(e.p)).join(" und ")}.` : E.length === 1 ? `Heute steht ${titel(E[0].p)} an (${SPORT_WORT[E[0].p.sport] || E[0].p.sport || "Training"}).`
-      : E.length > 1 ? `Heute stehen ${E.length} Einheiten an: ${E.map((e) => titel(e.p)).join(" und ")}.` : "Heute ist nichts geplant.";
-    let teil2 = "";
-    if (r && !(erl && !E.length)) teil2 = E.length ? r.empfehlung : { bereit: "Die Morgenwerte sehen gut aus.", normal: "Die Morgenwerte liegen im üblichen Bereich.",
-      vorsichtig: r.empfehlung, "nicht beurteilbar": "Für eine Einschätzung fehlen Morgenwerte." }[r.status] || "";
-    return esc(teil1) + (teil2 ? " " + esc(teil2) : "");
+    // V9.9 heute-einfach-1.0: eine Antwort «Was mache ich heute?» (Einheit · Dauer); absolvierte Aktivitäten ohne Plan zählen als erledigt;
+    // die Ampel steht in ihrer Kachel und im Vorschlag – hier nur, was die Sicherheit betrifft (Krankheitszeichen, deutliche Schmerzen).
+    const sv = (a) => (window.V6 && window.V6.sportVon ? window.V6.sportVon(a) : a.sport);
+    const bef = befHeute(), ind = r && r.indikatoren;
+    const ant = window.V91 ? window.V91.heuteAntwort({
+      offen: plan.map((e) => ({ titel: e.titel, sport: e.sport, dauer: e.dauer })), erledigt: erl,
+      frei: frei.map((a) => ({ sport: sv(a), min: window.V91.minuten(a) })), wort: (s) => SPORT_WORT[s] || "Training",
+      ampel: r && { status: r.status, empfehlung: r.empfehlung, krank: !!(bef && bef.krank), schmerz: !!(ind && ind.schmerz && ind.schmerz.status === "deutlich") },
+    }) : { text: "", hinweis: "" };
+    return esc(ant.text) + (ant.hinweis ? `<span class="gr-hinweis"> ${esc(ant.hinweis)}</span>` : "");
   }
   V.checkin = function () {
     const box = $("checkin"); if (!box || !C || !L()) return;
@@ -70,9 +72,9 @@
     const h = new Date().getHours(), gruss = window.V6 ? window.V6.gruss(h) : "Guten Morgen";
     const karte = $("checkin-card"); if (karte) karte.classList.toggle("ci-fertig", !!b);
     let unten;
-    if (b) unten = `<div class="ci-done" role="status"><span class="ci-ok" aria-hidden="true">✓</span><div><b>Befinden heute</b> ${F.filter((f) => isNum(b[f.k])).map((f) => `${f.label} <b>${b[f.k]}/${L().skalaVon(b)}</b><small> ${esc(L().wortVon(b, f))}</small>`).join(" · ")}${b.schmerz ? ` · <b class="${b.schmerz.stufe === "deutlich" ? "down" : "warn-t"}">Schmerzen ${esc(b.schmerz.stufe)}${b.schmerz.ort && b.schmerz.ort.length ? ": " + esc(b.schmerz.ort.join(", ")) : ""}</b>` : ""}${b.krank ? ` · <b class="down">${esc(b.krank.join(", "))}</b>` : ""}${b.notiz ? ` · «${esc(b.notiz)}»` : ""}
-        <div class="ci-meta">${syncText(b)}</div></div></div>
-      <div class="gr-knoepfe"><button class="btn" type="button" data-ci="blatt">Ändern</button></div>`;
+    // V9.9 heute-einfach-1.0: nach dem Check-in eine Zeile (die Werte stehen im Blatt «Ändern»); nur Schmerzen und Krankheitszeichen bleiben sichtbar
+    if (b) unten = `<div class="ci-done ci-kurz" role="status"><span class="ci-ok" aria-hidden="true">✓</span><div><b>Check-in erledigt</b>${b.schmerz ? ` · <b class="${b.schmerz.stufe === "deutlich" ? "down" : "warn-t"}">Schmerzen ${esc(b.schmerz.stufe)}${b.schmerz.ort && b.schmerz.ort.length ? ": " + esc(b.schmerz.ort.join(", ")) : ""}</b>` : ""}${b.krank ? ` · <b class="down">${esc(b.krank.join(", "))}</b>` : ""}
+        <div class="ci-meta">${syncText(b)}</div></div><button class="btn klein" type="button" data-ci="blatt">Ändern</button></div>`;
     else if (lsGet("sf.ci.aus") === day) unten = `<p class="gr-zeile">Check-in heute übersprungen.</p><div class="gr-knoepfe"><button class="btn" type="button" data-ci="neu">Doch eintragen</button></div>`;
     else unten = `<div class="gr-knoepfe"><button class="btn gross" type="button" data-ci="aus">Heute nicht</button><button class="btn primary gross" type="button" data-ci="blatt">${ico("check", 20)} Check-in</button></div>`;
     box.innerHTML = `<div class="gruss"><h2>${esc(gruss)}</h2><p class="gr-lage">${lageSatz()}</p>${unten}${wartenHinweis()}</div>`;

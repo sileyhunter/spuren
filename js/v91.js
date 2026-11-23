@@ -6,7 +6,7 @@
 (function () {
   "use strict";
   const isNum = (x) => typeof x === "number" && Number.isFinite(x);
-  const V91 = { VERSIONS: { zusammen: "zusammen-1.0" } };
+  const V91 = { VERSIONS: { zusammen: "zusammen-1.0", heute: "heute-einfach-1.0" } };
 
   /** Bewegungszeit der Aktivität in Minuten (mv, sonst Timer-Dauer). */
   V91.minuten = (a) => ((isNum(a && a.mv) ? a.mv : a && isNum(a.dur) ? a.dur : 0) / 60);
@@ -67,6 +67,29 @@
       offen: o.length, erledigt: n,
       text: o.length === 1 ? `Heute steht${rest} ${t(o[0])} an.` : `Heute stehen${rest} ${o.length} Einheiten an: ${o.map(t).join(" und ")}.`,
     };
+  };
+
+  /** «1 h 30» / «50 min» (Minuten). */
+  V91.dauerText = (min) => {
+    if (!isNum(min) || min <= 0) return "";
+    const m = Math.round(min), h = Math.floor(m / 60), r = m % 60;
+    return h ? (r ? `${h} h ${String(r).padStart(2, "0")}` : `${h} h`) : `${m} min`;
+  };
+  /** V9.9 heute-einfach-1.0 (Silas 23.11.: «möglichst einfach»): eine Antwort auf «Was mache ich heute?».
+     o = { offen: [{titel, sport, dauer}], erledigt: n (geplant und erledigt), frei: [{sport, min}] (absolviert ohne Plan), rennen, ampel: {status, empfehlung, krank, schmerz}, wort: sport → Wort }
+     → { text, hinweis } – hinweis nur, wenn er die Sicherheit betrifft (Krankheitszeichen, deutliche Schmerzen); der Rest steht in der Ampel-Kachel bzw. im Ampel-Vorschlag. */
+  V91.heuteAntwort = function (o) {
+    o = o || {};
+    const wort = o.wort || ((s) => s || "Training"), offen = o.offen || [], frei = o.frei || [], n = (o.erledigt || 0) + frei.length;
+    const einh = (e) => `«${e.titel || wort(e.sport)}»${isNum(e.dauer) && e.dauer > 0 ? " · " + V91.dauerText(e.dauer) : ""}`;
+    let text;
+    if (o.rennen) text = `Heute ist Renntag: «${o.rennen}».`;
+    else if (offen.length) text = `Heute${n ? " noch" : ""}: ${offen.slice(0, 3).map(einh).join(" und ")}.`;
+    else if (frei.length) text = `Heute erledigt: ${frei.slice(0, 2).map((a) => `${wort(a.sport)}${isNum(a.min) && a.min > 0 ? " " + V91.dauerText(a.min) : ""}`).join(" und ")}.`;
+    else if (n) text = "Heute ist alles erledigt.";
+    else text = "Heute frei.";
+    const A = o.ampel, hinweis = A && A.status === "vorsichtig" && (A.krank || A.schmerz) && A.empfehlung ? A.empfehlung : "";
+    return { text, hinweis };
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = V91;

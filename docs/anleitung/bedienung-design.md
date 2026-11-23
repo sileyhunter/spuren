@@ -35,6 +35,11 @@
 - **Heute (V7 heute-7.0):** nur Kacheln, Begrüssung mit Check-in, Heutiges Training und Diese Woche. Heutiges Training = erledigte Garmin-Aktivitäten von
   heute und die Einheiten aus Mein Plan (Balkenprofil aus ihren Teilen, profil-teile-1.0); keine Enduco-Workouts, kein «Neu von Enduco». Die übrigen
   Karten (Ringe, Bereitschaft, Gefühl, Verlauf) stehen unter Analyse → Belastung und Erholung (`#erholung`).
+- **heute-einfach-1.0 (V9.9, Silas 23.11.2026: «möglichst einfach aussehen und einfach handhaben»):** Die Begrüssung antwortet mit einem Satz auf «Was mache ich heute?»
+  (`V91.heuteAntwort`): «Heute: «Titel» · Dauer.» (bis drei Einheiten, «noch», wenn schon etwas erledigt ist), «Heute erledigt: Schwimmen 51 min.» (absolviert ohne Plan –
+  vorher hiess das fälschlich «nichts geplant»), «Heute ist alles erledigt.», «Heute frei.», Renntag. Die Ampel-Empfehlung steht nicht mehr darunter (Kachel und Vorschlag
+  zeigen sie); nur bei Krankheitszeichen oder deutlichen Schmerzen bleibt der Sicherheitssatz. Nach dem Check-in eine Zeile «Check-in erledigt» mit «Ändern» (Schmerzen und
+  Krankheitszeichen bleiben sichtbar, die Werte stehen im Blatt). Ampel «vorsichtig» ohne harte Einheit: keine Zeile mehr. «Je Sportart» in Diese Woche mit Pfeil.
 - Heute (V6.0.1): Kacheln Ampel/Status/Check-in, Begrüssung mit Check-in-Blatt, Heutiges Training (Karten mit Zonen-Chips und Balkenprofil,
   Einheit als Blatt), Wochenleiste. Balkenprofil `profil-1.0`: Breite = Dauer, Höhe = Lage im aktiven Zonenprofil, Farbe = Zone (Unterzonen
   aus dem Text der Zone, z. B. «FatMax a–b»); ohne Zielbereich grau, ohne Dauer blass. Fokus = Zeitanteile der aktiven Schritte ohne

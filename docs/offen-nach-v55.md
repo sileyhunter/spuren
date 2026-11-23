@@ -415,4 +415,5 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
      **Gebaut in V9.8 (23.11., checkin-anpassung-1.0 / ampel-plan-1.3).** Offen: Coach und Ampel in eine Karte (Auftrag Punkt 6, zurückgestellt). Auf dem iPhone prüfen: nach einem
      müden Check-in an einem Tag mit harter Einheit erscheint «Heute lieber locker?»; «Überprüfen» zeigt die harte Einheit durchgestrichen und die lockere; «Akzeptieren» ändert den
      Tag, «Rückgängig» stellt ihn zurück; «Ignorieren» lässt den Plan und die Karte kommt nicht wieder; mit Krankheitszeichen wird der Tag ohne Frage Ruhetag.
-
+157. **Heute schlicht (V9.9, heute-einfach-1.0, 23.11.):** gebaut (Begrüssung als eine Antwort «Was mache ich heute?», Check-in als eine Zeile, Ampel-Empfehlung nur noch bei
+     Krankheitszeichen/Schmerzen). Auf dem iPhone prüfen: Satz oben passt zum Tag (geplant, erledigt, frei); nach dem Check-in nur eine Zeile. Weiter vereinfachen nach Rückmeldung.
