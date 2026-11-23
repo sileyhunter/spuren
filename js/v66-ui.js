@@ -402,13 +402,17 @@
   };
   /** Planer zur Probe (fehlt-zeit-1.0): mehr = { Datum → neue Minuten } → fehlende Minuten danach (0 = alles passt). Gleicher Kern, nichts gespeichert. */
   M.probe = function (mo) {
-    const K = kontext(mo); if (!K) return () => Infinity;
+    const K = kontext(mo); if (!K) { const f0 = () => Infinity; f0.info = () => null; return f0; }
     const ctx = aendernCtx(K, mo, null), E0 = P().planEintrag(mo);
-    return (mehr) => {
+    const lauf = (mehr) => {
       const verf = (d) => { const v = K.verf ? K.verf(d) : null; return mehr && mehr[d] != null ? Object.assign({ quelle: "tag", id: "vf-" + d }, v || { sport: null }, { min: mehr[d] }) : v; };
-      const r = V66().aendern(E0, { art: "umplanen" }, Object.assign({}, ctx, { verf }));
-      return r.fehler ? Infinity : r.eintrag.verteilung && r.eintrag.verteilung.fehlt ? r.eintrag.verteilung.fehlt.min : 0;
+      return V66().aendern(E0, { art: "umplanen" }, Object.assign({}, ctx, { verf }));
     };
+    const f = (mehr) => { const r = lauf(mehr); return r.fehler ? Infinity : r.eintrag.verteilung && r.eintrag.verteilung.fehlt ? r.eintrag.verteilung.fehlt.min : 0; };
+    // V9.11 tagesregel-1.0: was ein Vorschlag sonst noch auslöst – Werktage mit mehr als 2 Einheiten (Zeit von Hand gesetzt), zusammengelegtes Schwimmen
+    f.info = (mehr) => { const r = lauf(mehr); if (r.fehler) return null; const v = r.eintrag.verteilung || {};
+      return { fehlt: v.fehlt ? v.fehlt.min : 0, dritte: (v.dritte || []).slice(), zusammen: (v.zusammen || []).slice() }; };
+    return f;
   };
   /** «Ja»: die Zeit der gewählten Tage wie am Regler gesetzt (von Hand), umplanen, Bericht «… – auf deine Bestätigung»; ↶ nimmt beides zurück. */
   M.frageJa = async function (mo, vorschlag) {

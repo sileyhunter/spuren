@@ -36,7 +36,7 @@
   "use strict";
   const V66 = { VERSIONS: { eigenplan: "eigenplan-1.3", vorlagen: "vorlagen-1.0", tl: "tl-plan-1.1", wochenblatt: "wochenblatt-1.0", kalender: "kalender-2.0",
     verfuegbarkeit: "verfuegbarkeit-1.3", felder: "einheit-felder-1.1", anpassen: "einheit-anpassen-1.0", eigen: "eigene-aktivitaet-1.0",
-    umplanen: "umplanen-1.1", grenzen: "grenzen-1.0", ziel: "zeit-intensitaet-1.0" } };
+    umplanen: "umplanen-1.1", grenzen: "grenzen-1.0", ziel: "zeit-intensitaet-1.0", tagesregel: "tagesregel-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const add = (iso, n) => V64.addDays(iso, n);
 
@@ -511,6 +511,9 @@
   /** V7.6 verfuegbarkeit-1.1: bevorzugte Tage für lange Einheiten (Planeinstellungen «pe-lang») → Liste der Wochentage oder null (keine Wahl). */
   const langTage = (opt, sport) => { const L = opt && opt.lang && opt.lang[sport]; return Array.isArray(L) && L.length ? L : null; };
   const PRIO = (e) => (hart(e) ? 0 : e.art === "lang" ? 1 : e.art === "koppel" ? 3 : 2);
+  V66.LANG_UMBENENNEN = 0.5;                                           // V9.11: darunter wird eine lange Einheit nicht still zu «Grundlage», dann fragt die Seite
+  V66.LANG_ANTEIL = 0.75;                                              // V9.11: eine lange Einheit wird höchstens um ein Viertel gekürzt
+  V66.TAGESMAX = 2;                                                    // V9.11 tagesregel-1.0: Mo–Fr höchstens 2 Einheiten am Tag
   const TAGW = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
   const TAG_LANG = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
   const wtK = (iso) => TAGW[V66.wtNr(iso) - 1];
@@ -519,6 +522,8 @@
     const B = V66.bereich(e.vorlage || e.id);
     if (!B || B.fest || istEigen(e)) return e.dauer;
     if (e.art === "schluessel") return Math.min(e.dauer, V64.einheit(e.id, { kurz: true }).dauer);
+    // V9.11 tagesregel-1.0: eine lange Einheit bleibt lang – nicht unter drei Viertel ihrer Dauer (Aufnahme 22:36: «Lange Ausfahrt» von 3:40 auf 1:30 gekürzt)
+    if (e.art === "lang") return Math.min(e.dauer, Math.max(B.min, Math.ceil((V66.LANG_ANTEIL * e.dauer) / 5) * 5));
     return Math.min(e.dauer, B.min);
   }
   /** Einheit kürzer neu bauen (gleiche Vorlage, Merkmale bleiben); null, wenn das nicht geht. */
@@ -550,7 +555,7 @@
    */
   V66.verteilen = function (tage, verf, opt) {
     opt = opt || {};
-    const P = { verschoben: [], gekuerzt: [], weg: [], hinweise: [], zweiHart: [] };
+    const P = { verschoben: [], gekuerzt: [], weg: [], hinweise: [], zweiHart: [], zusammen: [], dritte: [] };
     const T = (tage || []).map((t) => Object.assign({}, t, { einheiten: (t.einheiten || []).slice() }));
     if (!verf) return { tage: T, protokoll: P, geaendert: false };
     const V = T.map((t) => verf(t.date));
@@ -611,6 +616,19 @@
     // verfuegbarkeit-1.1: eine lange Einheit verlässt ihren Tag für einen gewählten nur, wenn dort die Sportart geht und Zeit ist – sonst bleibt sie
     const langFrei = (p) => T.some((t, j) => !t.fest && j !== p.von && langOk(p.e, j) && erlaubt(j, p.e.sport) && rest(j) >= p.e.dauer
       && !(land(p.e) && belegt[j].some((x) => hart(x) && land(x))));
+    // V9.11 tagesregel-1.0 (Silas 23.11.2026, Aufnahmen 22:18–22:36): Mo–Fr höchstens 2 Einheiten am Tag (Koppellauf zählt zur Ausfahrt; Sa/So und Tage, deren
+    // Zeit du von Hand gesetzt hast, ausgenommen – dort entscheidest du; die Seite meldet es), nie zweimal Schwimmen am Tag, nie zwei harte am Tag.
+    // Gilt für alles, was der Planer setzt (alle Runden, Verdichten, Reparatur harter Tage); Festes (Kurs, Kraft, Eigenes, Tests) bleibt, wie es ist.
+    const zaehl = (i) => belegt[i].filter((x) => x.art !== "koppel").length;
+    const handTag = (i) => !!V[i] && V[i].quelle === "tag";
+    const werktag = (i) => V66.wtNr(T[i].date) <= 5;
+    const regelGrund = (i, e, hartOk) => {
+      if (!e || e.art === "koppel") return null;
+      if (e.sport === "schwimm" && belegt[i].some((x) => x.sport === "schwimm")) return "nie zweimal Schwimmen am Tag";
+      if (!hartOk && hart(e) && belegt[i].some((x) => stoert(x, e))) return "nicht zwei harte Einheiten am Tag";       // wie bisher: gleiche Sportart oder beide an Land; CSS neben hartem Rad ist die übliche Woche
+      if (werktag(i) && !handTag(i) && zaehl(i) >= V66.TAGESMAX) return "höchstens 2 Einheiten am Tag";
+      return null;
+    };
     // Gewichte (eigene Festlegung): je Tag Abstand −5, je Einheit am Tag −10 (ab der dritten −25 mehr), gleiche Sportart am Tag −45, zwei harte
     // am Tag −60, hart neben hart −20 je Seite (an Land −100 seit verfuegbarkeit-1.2), hart und lang an Land am selben Tag −120 (bis verfuegbarkeit-1.0
     // −40; seit 1.1 stärker als der Vorteil eines gewählten Tags für lange Einheiten +80), zwei lange am Tag −50, Ruhetag ohne eingetragene Zeit −30.
@@ -643,8 +661,8 @@
     const offen = [];
     for (const p of L) {
       const i = p.von, sp = p.e.sport, k = p.koppel;
-      if (T[i].fest || !erlaubt(i, sp) || aktTag(i) || nachKraft(p.e, i) || (!langOk(p.e, i) && langFrei(p))) {
-        p.grund = T[i].fest ? (T[i].date < (opt.heute || "") ? "Tag vorbei" : "Tag fest") : !erlaubt(i, sp) ? "Verfügbarkeit" : aktTag(i) ? "Tag der Aktivität draussen" : nachKraft(p.e, i) ? schonGrund(i) : "Tag für lange Einheiten";   // V7.6.1: Grund in der Meldung
+      if (T[i].fest || !erlaubt(i, sp) || aktTag(i) || nachKraft(p.e, i) || regelGrund(i, p.e) || (!langOk(p.e, i) && langFrei(p))) {
+        p.grund = T[i].fest ? (T[i].date < (opt.heute || "") ? "Tag vorbei" : "Tag fest") : !erlaubt(i, sp) ? "Verfügbarkeit" : aktTag(i) ? "Tag der Aktivität draussen" : nachKraft(p.e, i) ? schonGrund(i) : regelGrund(i, p.e) || "Tag für lange Einheiten";   // V7.6.1: Grund in der Meldung
         offen.push(p); continue;
       }
       if (k && erlaubt(i, "lauf") && rest(i) >= p.e.dauer + k.dauer) { setzen(p, i, p.e, true); continue; }
@@ -655,18 +673,65 @@
     }
     // 2. Runde: die übrigen auf den besten anderen erlaubten Tag mit genug Zeit; sonst gekürzt; sonst entfällt sie
     for (const p of offen) {
-      const sp = p.e.sport, k = p.koppel, frei = (j) => erlaubt(j, sp) && !aktTag(j) && !nachKraft(p.e, j);
-      const eigen = !langOk(p.e, p.von) && erlaubt(p.von, sp) && !aktTag(p.von) && !nachKraft(p.e, p.von);   // wegen eines gewählten Tags unterwegs: der eigene Tag bleibt möglich
+      const sp = p.e.sport, k = p.koppel, frei = (j) => erlaubt(j, sp) && !aktTag(j) && !nachKraft(p.e, j) && !regelGrund(j, p.e);
+      const eigen = !langOk(p.e, p.von) && erlaubt(p.von, sp) && !aktTag(p.von) && !nachKraft(p.e, p.von) && !regelGrund(p.von, p.e);   // wegen eines gewählten Tags unterwegs: der eigene Tag bleibt möglich
       let i = k ? waehle(p, (j) => frei(j) && erlaubt(j, "lauf") && rest(j) >= p.e.dauer + k.dauer, eigen) : null;
       if (i != null) { setzen(p, i, p.e, true); continue; }
       i = waehle(p, (j) => frei(j) && rest(j) >= p.e.dauer, eigen);
       if (i != null) { setzen(p, i, p.e, false); continue; }
+      // V9.11: eine Schlüsseleinheit geht vor «nicht zwei harte am Tag» – lieber zwei harte an einem Tag (gemeldet) als gar keine; die übrigen Regeln gelten weiter
+      if (hart(p.e)) {
+        const frei2 = (j) => erlaubt(j, sp) && !aktTag(j) && !nachKraft(p.e, j) && !regelGrund(j, p.e, true);
+        const i2 = waehle(p, (j) => frei2(j) && rest(j) >= p.e.dauer, eigen);
+        if (i2 != null) {
+          setzen(p, i2, p.e, false);
+          P.hinweise.push(`«${p.e.titel}» am ${wtK(T[i2].date)}: zwei harte Einheiten an einem Tag – sonst hätte sie keinen Platz (Zeit, Sportart oder Tagesregel)`);
+          continue;
+        }
+      }
       const m = minDauer(p.e);
       i = m < p.e.dauer ? waehle(p, (j) => frei(j) && rest(j) >= m, true) : null;
       const n = i != null ? kurz(p, i) : null;
       if (n) { setzen(p, i, n, false); continue; }
+      // V9.11 tagesregel-1.0 «zusammenlegen»: nie zweimal Schwimmen am Tag – eine lockere Schwimmeinheit, die nur dort Platz hätte, wo schon Schwimmen steht,
+      // wird mit der lockeren Schwimmeinheit des Tages zu einer längeren (höchstens bis zum Bereich der Vorlage, nur mit der Zeit des Tages)
+      if (sp === "schwimm" && p.e.id === "schwimm_locker" && !istEigen(p.e)) {
+        const Bs = V66.bereich("schwimm_locker"); let wz = null;
+        T.forEach((t, j) => {
+          if (t.fest || !erlaubt(j, sp) || aktTag(j)) return;
+          const h = belegt[j].find((x) => x.id === "schwimm_locker" && !istEigen(x) && !istOrtsfest(x));
+          if (!h || !Bs || h.dauer + p.e.dauer > Bs.max || p.e.dauer > rest(j)) return;
+          const sc = score(p, j); if (!wz || sc > wz.sc) wz = { j, h, sc };
+        });
+        if (wz) {
+          const l = V66.einheit({ uid: wz.h.uid || "schwimm-" + T[wz.j].date, vorlage: "schwimm_locker", dauer: wz.h.dauer + p.e.dauer, quelle: "vorschlag" }, opt.ctxE || {});
+          if (l) {
+            for (const k2 of ["uid", "quelle", "vorlage", "spec"]) if (wz.h[k2] != null) l[k2] = wz.h[k2];
+            belegt[wz.j][belegt[wz.j].indexOf(wz.h)] = l;
+            if (ORD.has(wz.h)) ORD.set(l, ORD.get(wz.h)); VON.set(l, VON.has(wz.h) ? VON.get(wz.h) : wz.j);
+            P.zusammen.push({ titel: p.e.titel, date: T[wz.j].date, von: wz.h.dauer, nach: l.dauer, vonDatum: T[p.von].date });
+            continue;
+          }
+        }
+      }
+      // V9.11 tagesregel-1.0 «umbenennen»: eine lange Einheit, die nirgends zu drei Vierteln Platz hat, wird nicht kürzer «lang» genannt – sie heisst dann
+      // «Grundlage» (lockere Einheit derselben Sportart) in der Länge, die der beste Tag hergibt; die Frage kommt erst, wenn auch dafür kein Platz ist
+      if (p.e.art === "lang" && !istEigen(p.e) && (sp === "rad" || sp === "lauf")) {
+        const lk = sp === "rad" ? "rad_locker" : "lauf_locker", Bk = V66.bereich(lk);
+        const jj = Bk ? waehle(p, (j) => frei(j) && rest(j) >= Bk.min, true) : null;
+        if (jj != null) {
+          const d = Math.min(p.e.dauer, Math.floor(rest(jj) / 5) * 5);
+          const l = d >= V66.LANG_UMBENENNEN * p.e.dauer ? V66.einheit({ uid: p.e.uid || "lang-locker-" + T[p.von].date, vorlage: lk, dauer: d, quelle: "vorschlag" }, opt.ctxE || {}) : null;       // darunter fragt die Seite lieber (grosse Lücke)
+          if (l && l.dauer <= rest(jj)) {
+            if (ORD.has(p.e)) ORD.set(l, ORD.get(p.e));
+            setzen(p, jj, l, false); KURZ.delete(l);
+            P.gekuerzt[P.gekuerzt.length - 1].umbenannt = l.titel;
+            continue;
+          }
+        }
+      }
       // kraft-plan-1.1: eine harte Einheit, die nur wegen des Krafttrainings am Vortag nirgends Platz hat, wird an ihrem Tag locker
-      if (!T[p.von].fest && nachKraft(p.e, p.von) && !aktTag(p.von) && erlaubt(p.von, sp) && rest(p.von) >= p.e.dauer) {
+      if (!T[p.von].fest && nachKraft(p.e, p.von) && !aktTag(p.von) && erlaubt(p.von, sp) && rest(p.von) >= p.e.dauer && !regelGrund(p.von, p.e)) {
         const l = V66.einheit({ uid: p.e.uid || "kraft-locker-" + T[p.von].date, vorlage: sp === "rad" ? "rad_locker" : "lauf_locker", dauer: p.e.dauer, quelle: "vorschlag" }, opt.ctxE || {});
         if (l) {
           if (ORD.has(p.e)) ORD.set(l, ORD.get(p.e));
@@ -699,7 +764,7 @@
         belegt[i].splice(belegt[i].indexOf(e), 1);
         const p = { e, von: VON.get(e) };
         T.forEach((t, j) => {
-          if (t.fest || j === i || !erlaubt(j, e.sport) || aktTag(j) || nachKraft(e, j) || rest(j) < e.dauer || hartNebenan(j, e)
+          if (t.fest || j === i || !erlaubt(j, e.sport) || aktTag(j) || nachKraft(e, j) || rest(j) < e.dauer || hartNebenan(j, e) || regelGrund(j, e)
             || belegt[j].some((x) => hartLand(x) || (x.art === "lang" && land(x)))) return;
           const s = score(p, j) + (VON.get(e) !== i ? 1 : 0);              // bei Gleichstand die schon verschobene
           if (!best || s > best.s) best = { e, i, j, s, von: p.von };
@@ -723,7 +788,7 @@
       if (T[i].fest || PRIO(e) !== 2 || !VON.has(e)) continue;
       const p = { e, von: VON.get(e) };
       belegt[i].splice(belegt[i].indexOf(e), 1);
-      const jetzt = score(p, i), j = waehle(p, (k) => erlaubt(k, e.sport) && !aktTag(k) && rest(k) >= e.dauer, true);
+      const jetzt = score(p, i), j = waehle(p, (k) => erlaubt(k, e.sport) && !aktTag(k) && rest(k) >= e.dauer && !regelGrund(k, e), true);
       if (j != null && j !== i && score(p, j) > jetzt + 20) {
         belegt[j].push(e);
         const r = WEG.get(e);
@@ -762,7 +827,7 @@
         let wahl = null;
         if (k.art === "kurz") { if (ruhig(k.i)) { const f = finden(k.o0, k.e.dauer, k.t0); if (f) wahl = { j: k.i, f }; } }
         else T.forEach((t, j) => {
-          if (!ruhig(j) || !erlaubt(j, k.o0.sport)) return;
+          if (!ruhig(j) || !erlaubt(j, k.o0.sport) || regelGrund(j, k.o0)) return;
           const top = Math.min(Math.floor(rest(j) / 5) * 5, k.o0.dauer - 5), unten = minDauer(k.o0);
           for (let d = top; d >= unten; d -= 5) {
             const f = finden(k.o0, d, k.t0); if (!f) continue;
@@ -787,6 +852,10 @@
         zahl++;
       }
     }
+    // V9.11 tagesregel-1.0: ein Werktag, an dem du die Zeit von Hand gesetzt hast, darf mehr als 2 Einheiten haben – die Seite sagt es (nie still)
+    T.forEach((t, i) => { if (t.fest || !werktag(i) || !handTag(i) || zaehl(i) <= V66.TAGESMAX || !belegt[i].some((x) => VON.has(x))) return;
+      P.dritte.push({ date: t.date, n: zaehl(i) });
+      P.hinweise.push(`${TAG_LANG[V66.wtNr(t.date) - 1]}: ${zaehl(i)} Einheiten an einem Tag (du hast die Zeit dieses Tages selbst gesetzt; sonst höchstens ${V66.TAGESMAX} an Werktagen)`); });
     // grenzen-1.0: über der Zeit steht nur, was fest ist (eigene Einheit, gesperrt, Test, Kurs, Kraft, Aktivität draussen) – mit Meldung, nie still
     T.forEach((t, i) => {
       if (t.fest || testTag.has(i) || !isFinite(kap(i)) || rest(i) >= 0) return;
@@ -818,7 +887,9 @@
     if (!P) return [];
     const out = [];
     for (const x of P.verschoben) out.push(`«${x.titel}» von ${wtK(x.von)} auf ${wtK(x.nach)} verschoben (${x.grund || "Verfügbarkeit"})`);
-    for (const x of P.gekuerzt) if (!x.dicht) out.push(`«${x.titel}» am ${wtK(x.date)} ${x.nach} statt ${x.von} min (Verfügbarkeit)`);
+    for (const x of P.gekuerzt) if (!x.dicht) out.push(x.umbenannt ? `«${x.titel}» am ${wtK(x.date)} als «${x.umbenannt}» ${x.nach} statt ${x.von} min (für eine lange Einheit zu kurz – tagesregel-1.0)`
+      : `«${x.titel}» am ${wtK(x.date)} ${x.nach} statt ${x.von} min (Verfügbarkeit)`);
+    for (const x of P.zusammen || []) out.push(`«${x.titel}» (${wtK(x.vonDatum)}) mit dem Schwimmen am ${wtK(x.date)} zusammengelegt: ${x.nach} statt ${x.von} min (nie zweimal Schwimmen am Tag)`);
     for (const x of P.weg) out.push(`«${x.titel}» (${wtK(x.date)}) entfällt: ${x.grund}`);
     for (const x of P.dicht || []) out.push(V66.zielText("dicht", x));          // V9.5 zeit-intensitaet-1.0
     return out.concat(P.hinweise);
@@ -1018,6 +1089,8 @@
     E.verteilung = { v: V66.VERSIONS.verfuegbarkeit, art: "umplanen", am: ctx.jetzt || new Date().toISOString(), meldungen: zText.concat(V66.verteilText(r.protokoll)).slice(0, 20) };
     if (zp.laenger.length || zp.zusatz.length || zp.dicht.length) E.verteilung.ziel = Object.assign({ v: V66.VERSIONS.ziel }, zp);
     if (fehlt) E.verteilung.fehlt = fehlt;
+    if (r.protokoll.dritte && r.protokoll.dritte.length) E.verteilung.dritte = r.protokoll.dritte;          // V9.11 tagesregel-1.0
+    if (r.protokoll.zusammen && r.protokoll.zusammen.length) E.verteilung.zusammen = r.protokoll.zusammen;
     if (frage) E.verteilung.frage = frage;
     if (!E.gestrichen || !E.gestrichen.length) delete E.gestrichen;
     E.ganz = true;

@@ -1,5 +1,12 @@
 # Änderungen
 
+## V9.11.0 · 23.11.2026 · Planer: Tagesregel (tagesregel-1.0, Auftrag 3.4)
+Silas (Aufnahmen 22:18–22:36): Mittwoch mit 3 Einheiten und 2× Schwimmen, «Lange Ausfahrt» von 3:40 auf 1:30 gekürzt, der Dialog «Die Woche geht nicht auf» sagte nichts dazu.
+- `V66.verteilen`: Mo–Fr höchstens 2 Einheiten am Tag (Ausnahme: Zeit von Hand gesetzt – mit Meldung), nie 2× Schwimmen am Tag (lockere Schwimmeinheiten werden zusammengelegt),
+  nicht zwei störende harte am Tag (Schlüsseleinheit geht vor, gemeldet). «Lange Ausfahrt» höchstens um ein Viertel gekürzt, sonst «Grundlage» (ab der Hälfte) oder Frage.
+- Dialog: `M.probe(...).info` und `V92.hinweise` – «Achtung: Mittwoch hätte dann 3 Einheiten»; Vorschläge ohne so etwas zuerst. Regeln und Begründung in `docs/anleitung/plan.md`.
+- Test `tests/test_v9110.cjs` (neu, 13). Bestehende Tests unverändert grün.
+
 ## V9.10.0 · 23.11.2026 · Test-Workouts Lauf und Schwimmen (Auftrag 3.2, test-workouts-2.0)
 Silas (23.11.): «ja du kannst das alles machen» – Stufentest wie im Dezember 2025, diesmal bis zur Ausbelastung; CSS-Test 400/200 m.
 - `tools/workouts.py`: neu **Lauf-Stufentest bis Ausbelastung** (Start 10,3 km/h, +1 km/h, 270 s je Stufe, 9 Stufen bis 18,3 km/h, Tempobereich `pace.zone` in m/s ±0,06, Pause zum Laktat mit Tastenende, je 10 min Ein-/Auslaufen)

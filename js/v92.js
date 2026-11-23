@@ -168,6 +168,19 @@
     }
     return out.slice(0, 8);
   };
+  /** V9.11 tagesregel-1.0: Minuten der Tage eines Vorschlags als { Datum → neue Minuten } (für den Planer zur Probe). */
+  V92.mehrVon = (v) => { const o = {}; for (const t of (v && v.tage) || []) o[t.date] = t.min; return o; };
+  /**
+   * V9.11 tagesregel-1.0: was ein Vorschlag ausser dem Unterbringen auslöst, gegenüber dem Stand ohne Vorschlag (info und basis = Ergebnis von probe.info):
+   * Werktage mit mehr als 2 Einheiten, zusammengelegtes Schwimmen. → [Texte]; leer = nichts Besonderes
+   */
+  V92.hinweise = function (info, basis) {
+    if (!info) return [];
+    const b = basis || { dritte: [], zusammen: [] }, out = [];
+    for (const x of info.dritte || []) if (!(b.dritte || []).some((y) => y.date === x.date && y.n === x.n)) out.push(`${V92.tag(x.date)} hätte dann ${x.n} Einheiten`);
+    for (const x of info.zusammen || []) if (!(b.zusammen || []).some((y) => y.date === x.date && y.titel === x.titel)) out.push(`«${x.titel}» wird am ${V92.tag(x.date)} mit dem Schwimmen zusammengelegt (${V92.dauer(x.nach)})`);
+    return out;
+  };
   /** Text eines Vorschlags: «Samstag auf 5 h 40 (+ 40 min)», «Samstag und Sonntag je + 1 h». */
   V92.vorschlagText = function (v) {
     if (!v || !v.tage || !v.tage.length) return "";

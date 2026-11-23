@@ -399,3 +399,21 @@
 - **Datenformat:** nur optionale Felder (eigenplan-1.3 bleibt): Einheit `dicht` { z3: 10–40 in 10er-Schritten }, `zusatz: true`; Woche `zielAus` { fp «zf-…», am }. Geprüft in
   `merge_daily.planwoche_pruefen`. Ändert Silas die Dauer einer verdichteten Einheit, bleibt das Tempo, solange es in die neue Dauer passt (sonst die gewöhnliche Fassung).
 - Regel ändern = `V66.VERSIONS.ziel`, `V66.ZIEL`, Wissen (Kapitel «modelle»), `tests/test_v95.cjs` nachführen.
+
+## Tagesregel (tagesregel-1.0, V9.11.0, 23.11.2026)
+Anlass: Silas' Aufnahmen 22:18–22:36 (Mittwoch 25.11.: Rad Grundlage + CSS 200er + Schwimmen locker = 3 Einheiten und 2× Schwimmen, der Dialog «Die Woche geht nicht auf» sagte es
+nicht; «Lange Ausfahrt» von 3:40 auf 1:30 h gekürzt). Gilt in `V66.verteilen` für **alles, was der Planer setzt** (Runde 1–3, Verdichten, Reparatur harter Tage); Festes (Kurs, Kraft,
+Tests, Eigenes, Gesperrtes) bleibt, wie es ist. Entschieden von Claude nach «ja du kannst das alles machen» (Silas 23.11.).
+- **Mo–Fr höchstens 2 Einheiten am Tag** (`V66.TAGESMAX`; der Koppellauf zählt zur Ausfahrt, Krafttraining und Schwimmkurs zählen mit). Sa und So sind ausgenommen. Ausnahme: ein Werktag, dessen Zeit
+  Silas **von Hand gesetzt** hat (`verf.quelle === "tag"`, auch durch «Ja» im Dialog): dort darf der Planer mehr unterbringen – die Seite sagt es (Meldung «Mittwoch: 3 Einheiten an einem
+  Tag …», `E.verteilung.dritte`). Ohne diese Ausnahme fehlt die dritte Einheit, und die Seite fragt (Frage «Die Woche geht nicht auf»).
+- **Nie zweimal Schwimmen am Tag** (auch auf von Hand gesetzten Tagen). «Zusammenlegen»: geht eine **lockere** Schwimmeinheit nur dort unter, wo schon geschwommen wird, wird sie mit der lockeren
+  Schwimmeinheit des Tages zu einer längeren (höchstens bis zum Bereich der Vorlage, 90 min; `E.verteilung.zusammen`, Meldung). Eine CSS-Einheit wird nicht zusammengelegt (sie wandert oder fehlt).
+- **Nicht zwei harte am Tag** wie bisher definiert (`stoert`: gleiche Sportart oder beide an Land; CSS im Wasser neben hartem Rad ist die übliche Woche und bleibt erlaubt). Eine
+  **Schlüsseleinheit geht vor** dieser Regel: findet sie sonst nirgends Platz, kommt sie als letzte Möglichkeit zu einer anderen harten (Meldung «zwei harte Einheiten an einem Tag»), statt zu fehlen.
+- **«Lange Ausfahrt» bleibt lang** (`V66.LANG_ANTEIL` = 0,75): eine lange Einheit wird höchstens um ein Viertel gekürzt (`minDauer`), nie auf das Minimum der Vorlage (Rad 90 min). Hat sie nirgends
+  zu drei Vierteln Platz, heisst sie **«Grundlage»** (lockere Einheit derselben Sportart) in der Länge, die der beste Tag hergibt – aber nur ab der Hälfte ihrer Dauer (`V66.LANG_UMBENENNEN` = 0,5);
+  darunter fragt die Seite, statt still viel Umfang zu verlieren. Meldung ««Lange Ausfahrt» am Sa als «Grundlage» 120 statt 220 min». Der Koppellauf entfällt dann mit Meldung.
+- **Dialog:** `M.probe(mo).info(mehr)` rechnet einen Vorschlag mit dem echten Planer und liefert, was er auslöst (`dritte`, `zusammen`); `V92.hinweise` stellt das gegen den Stand ohne Vorschlag.
+  Der Dialog zeigt «Achtung: Mittwoch hätte dann 3 Einheiten» und nennt Vorschläge ohne so etwas zuerst.
+- Regel ändern = `V66.VERSIONS.tagesregel`, `V66.TAGESMAX`/`LANG_ANTEIL`/`LANG_UMBENENNEN`, `tests/test_v9110.cjs` nachführen.

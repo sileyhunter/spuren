@@ -137,9 +137,14 @@
     ov.querySelector("[data-fznein]").onclick = async () => { const f = await M().frageNein(mo, D.fp); if (f) { fehler(f); return; } V59().schliessen(); };
     setTimeout(() => {
       let L = [];
-      try { L = V92().vorschlaege(D.kand, F.min, M().probe(mo)); } catch (e) { console.error(e); L = []; }
+      try {
+        const pr = M().probe(mo); L = V92().vorschlaege(D.kand, F.min, pr);
+        // V9.11 tagesregel-1.0: was ein Vorschlag sonst auslöst (3. Einheit an einem Werktag, zusammengelegtes Schwimmen) – Vorschläge ohne so etwas zuerst
+        if (pr.info) { const basis = pr.info({}); L.forEach((v) => { try { v.hinweise = V92().hinweise(pr.info(V92().mehrVon(v)), basis); } catch (e) { v.hinweise = []; } });
+          L.sort((a, b) => (a.hinweise.length ? 1 : 0) - (b.hinweise.length ? 1 : 0)); }
+      } catch (e) { console.error(e); L = []; }
       const box = ov.querySelector("[data-fzwahl]"); if (!box || !box.isConnected) return;
-      box.innerHTML = L.length ? L.map((v, i) => `<li><button type="button" class="mp-zeile" data-fzja="${i}"><span class="mp-vt"><b>Ja: ${esc(V92().vorschlagText(v))}</b><small>${v.art === "tag" ? "Dieser Tag allein reicht" : "Auf zwei Tage verteilt"} – danach fehlt nichts mehr.</small></span>${W.icon("weiter", 18)}</button></li>`).join("")
+      box.innerHTML = L.length ? L.map((v, i) => `<li><button type="button" class="mp-zeile" data-fzja="${i}"><span class="mp-vt"><b>Ja: ${esc(V92().vorschlagText(v))}</b><small>${v.art === "tag" ? "Dieser Tag allein reicht" : "Auf zwei Tage verteilt"} – danach fehlt nichts mehr.${v.hinweise && v.hinweise.length ? ` <b>Achtung:</b> ${esc(v.hinweise.join("; "))}.` : ""}</small></span>${W.icon("weiter", 18)}</button></li>`).join("")
         : `<li><p class="hint">Kein Tag kann das allein oder zu zweit aufnehmen (Zeit, Sportart oder gesperrt). Stell die Zeiten in «Woche einstellen» ein.</p>
            <button type="button" class="btn" data-fzwoche>${W.icon("kalender", 16)} Woche einstellen</button></li>`;
       box.querySelectorAll("[data-fzja]").forEach((b) => (b.onclick = async () => {
