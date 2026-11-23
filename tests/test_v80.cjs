@@ -131,7 +131,8 @@ test("B · Spontan 45 statt 120 Minuten Zeit", async (t) => {
     // Verfügbarkeit gespeichert, ohne «Woche anpassen»: der Coach sieht den Tag zu voll und schlägt die Kurzfassung vor; angenommen bleibt der Sonntag, wie er war
     const sim = await vorlauf(), sa = tag(W3, 5), soD = tag(W3, 6);
     let soVorher = null;
-    const kern = (L) => (L || []).map((e) => `${e.sport}:${e.titel}:${e.dauer}`).join(" | ");
+    // V9.5 zeit-intensitaet-1.0: am Sonntag darf Zeit als Ziel eine zusätzliche lockere Einheit setzen (Rad lag nach dem kurzen Samstag zurück) – das Übrige bleibt
+    const kern = (L) => (L || []).filter((e) => !e.zusatz).map((e) => `${e.sport}:${e.titel}:${e.dauer}`).join(" | ");
     await sim.tage(W3, 7, {
       vorher: async (x) => { if (x !== sa) return; soVorher = kern(sim.plan(soD).einheiten); assert.equal(await sim.verfuegbarkeit({ date: sa }, { min: 45, sport: null }), null); },
       coach: (d, V) => (d === sa ? V.filter((p) => p.anlass === "zeit" && p.date === sa).map((p) => p.id) : []),
@@ -142,7 +143,8 @@ test("B · Spontan 45 statt 120 Minuten Zeit", async (t) => {
     assert.ok(s.einheiten.some((e) => e.sport === "rad" && e.dauer >= 30 && e.dauer <= 45), `Samstag: ${kurz(s.einheiten) || "leer"}`);
     assert.ok(sportMin(s.einheiten) <= 45, kurz(s.einheiten));
     assert.ok(so.einheiten.filter((e) => e.art === "lang").length <= 1, `Sonntag: ${kurz(so.einheiten)}`);
-    assert.equal(kern(so.einheiten), soVorher, "Sonntag unverändert");
+    assert.equal(kern(sim.plan(soD).einheiten), soVorher, "Sonntag unverändert (ausser einer zusätzlichen lockeren Einheit, V9.5)");
+    assert.ok(sim.plan(soD).einheiten.filter((e) => e.zusatz).every((e) => !e.schluessel && e.art === "locker"), "höchstens locker dazu");
   });
 });
 

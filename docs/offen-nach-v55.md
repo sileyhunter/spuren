@@ -395,6 +395,15 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 151. **Eigene Markierung (analyse-gesund-1.1):** «nicht werten» im Namen, in der Notiz der Uhr oder in «Nach dem Training» lässt eine Einheit aus Pace/Puls-Auswertungen weg;
      Krankheitszeichen gelten für den Tag und 3 Tage danach. **Silas bitte prüfen:** die Einheit, die du mit «nicht werten» benannt hast, im Explorer öffnen → «nicht vergleichbar: krank
      (von dir markiert)» bzw. «von dir als «nicht werten» markiert». Grenze: Notizen der Uhr kommen mit dem Nacht-Update; «Nach dem Training» auf der Seite zählt nach dem nächsten Laden.
-152. **W4 «Zeit als Ziel» entschieden (22.11.):** ja, trainingstechnisch begrenzt (längste lockere Einheit, höchstens Zeit des Tages, nur bis zur Obergrenze des Korridors, nie in
-     Erholungs- und Rennwochen) – Umsetzung in Etappe W4.
+152. ~~**W4 «Zeit als Ziel» entschieden (22.11.):** ja, trainingstechnisch begrenzt (längste lockere Einheit, höchstens Zeit des Tages, nur bis zur Obergrenze des Korridors, nie in
+     Erholungs- und Rennwochen) – Umsetzung in Etappe W4.~~ **Gebaut in V9.5** (zeit-intensitaet-1.0, mit Verdichten; siehe 153).
+153. **Zeit und Intensität (V9.5, zeit-intensitaet-1.0):** **Silas bitte prüfen (iPhone):** (a) knappe Woche: in «Woche einstellen» den Samstag (lange Ausfahrt) um etwa 30 min
+     kürzer stellen → Bericht «Samstag Rad: … statt …, dafür mit Anteilen Tempo – gleiche Last»; die Einheit heisst «Lange Ausfahrt mit Tempo» und zeigt die Tempo-Blöcke.
+     (b) Tag mit viel Zeit: an einem Tag mit lockerem Rad oder Schwimmen mehr Zeit geben → Bericht «<Tag>: Rad + … min, die Zeit war da»; der Tag bleibt unter seiner Zeit, die
+     Wochenlast im Zyklus unter dem oberen Strich. ↶ nimmt beides zurück. **Zu wissen:** (1) Der Korridor ist schmal (+ 7,5 %): sind deine Standard-Zeiten grosszügig, ist er
+     oft schon durch die Standard-Tage gefüllt – dann bringt mehr Zeit an einem weiteren Tag nichts mehr (so gewollt, keine Lastsprünge). (2) Laufen wird nie länger, verdichtet
+     wird nur Rad und Laufen und vor allem am Wochenende (nicht neben Di/Do hart); Verdichten spart höchstens etwa ein Viertel der Zeit. (3) Schwimmen ohne CSS-Test hat kein
+     TL ≈ und wird darum nicht verlängert. (4) Abweichung: ist der Wochenkopf in der Indoor-Phase (Rad drinnen nach der LT2 der Rolle) etwas anders als das TL ≈ ohne
+     Indoor, kann die Wochenlast um wenige Punkte über dem oberen Strich liegen. (5) «Neu berechnen» schaltet beides für die Woche aus, bis du etwas änderst.
+154. **Prüfung mit echten Daten offen:** Leck-Prüfung und Probelauf V9.2–V9.5 mit `SPUREN_PW` (in dieser Sitzung nicht gesetzt) – nachholen, sobald es in einer Sitzung da ist.
 

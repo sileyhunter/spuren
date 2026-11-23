@@ -510,7 +510,7 @@
   /** Kennzahlen einer Woche für die Karten. */
   function zyklusDaten(mo) {
     const w = woche(mo), K = w.K; if (!K) return null;
-    const h = heute(), k = w.kopf || {}, vor = tlVon((K.w0 || K.w0roh || K.w).tage, w.bz), bereich = V78().bereich(vor.tl);
+    const h = heute(), k = w.kopf || {}, vor = tlVon((K.w0vorZiel || K.w0 || K.w0roh || K.w).tage, w.bz), bereich = V78().bereich(vor.tl);   // V9.5: Korridor ohne die Verlängerungen von Zeit als Ziel
     let vf = 0, offen = 0; const alle = [];
     for (const t of K.w.tage) {
       const v = K.verf ? K.verf(t.date) : null;

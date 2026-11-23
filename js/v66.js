@@ -20,7 +20,13 @@
      dem gespeicherten Stand: vergangene und gesperrte Tage bleiben, Anker (von Hand gesetzt, verschoben, geändert, ersetzt) bleiben an ihrem Tag,
      Streichungen (E.gestrichen) bleiben gestrichen. eigenplan-1.3: neue optionale Felder gestrichen, anker, statt, verteilung.fehlt/frage.
      grenzen-1.0: die Zeit eines Tages (Standard des Wochentags oder von Hand gesetzt) ist für alles, was die Seite selbst setzt, eine harte Obergrenze;
-     an von Hand gesetzten Tagen auch die Sportarten. verfuegbarkeit-1.3: V66.verteilen nimmt auch Einheiten, deren Tag fest ist (opt.extra). */
+     an von Hand gesetzten Tagen auch die Sportarten. verfuegbarkeit-1.3: V66.verteilen nimmt auch Einheiten, deren Tag fest ist (opt.extra).
+   - V9.5 zeit-intensitaet-1.0 (Auftrag «Woche wie Enduco», Etappe W4; Silas' Entscheide vom 22.11.2026, Zahlen eigene Festlegungen in plan.md):
+     Verdichten (in V66.verteilen, opt.ziel): bleibt nach Verschieben und Kürzen Last übrig, dieselbe Last (± 10 % TL) in weniger Zeit mit Anteilen Tempo
+     (Z3, unter LT2), höchstens zwei je Woche. Zeit als Ziel (V66.zeitZiel, nach dem Verteilen): hat ein Tag mehr Zeit, als der Plan braucht, wird die
+     längste lockere Einheit (Rad, Schwimmen) länger – höchstens bis zur Zeit des Tages und bis zur Obergrenze des Korridors (TL ≈ des Wochenvorschlags
+     + 7,5 %); stösst sie an ihren Bereich und bleiben am Tag 45 min, eine zusätzliche lockere Einheit der Sportart mit dem grössten Rückstand.
+     Optionale Felder: Einheit dicht { z3 }, zusatz; Woche zielAus { fp } («Neu berechnen» nimmt beides zurück, bis sich die Eingaben ändern). */
 (function (root, factory) {
   const node = typeof module === "object" && module.exports;
   const V66 = factory(node ? require("./v64.js") : root && root.V64);
@@ -30,7 +36,7 @@
   "use strict";
   const V66 = { VERSIONS: { eigenplan: "eigenplan-1.3", vorlagen: "vorlagen-1.0", tl: "tl-plan-1.1", wochenblatt: "wochenblatt-1.0", kalender: "kalender-2.0",
     verfuegbarkeit: "verfuegbarkeit-1.3", felder: "einheit-felder-1.1", anpassen: "einheit-anpassen-1.0", eigen: "eigene-aktivitaet-1.0",
-    umplanen: "umplanen-1.1", grenzen: "grenzen-1.0" } };
+    umplanen: "umplanen-1.1", grenzen: "grenzen-1.0", ziel: "zeit-intensitaet-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const add = (iso, n) => V64.addDays(iso, n);
 
@@ -155,6 +161,9 @@
       e.ablauf = e.ablauf.concat([[einOk ? `Einfahren angepasst: ${s.ein_min} min` : "", pOk ? `Pausen ${s.pausen < 50 ? "länger" : "kürzer"} (Intervall-Intensität ${s.pausen} %)` : ""].filter(Boolean).join(", ")]);
       mehr.ein_min = einOk ? s.ein_min : null; mehr.pausen = pOk ? s.pausen : 50;
     }
+    // V9.5 zeit-intensitaet-1.0: verdichtete Einheit (Anteile Tempo) und zusätzliche lockere Einheit (Zeit als Ziel) – beides von der Seite gesetzt
+    if (s.dicht && DYN.has(b.art)) dichtAnwenden(e, s.dicht.z3);         // ungültig: bleibt die gewöhnliche Fassung
+    if (s.zusatz === true) mehr.zusatz = true;
     if (s.drinnen) e.titel += " (drinnen)";
     return Object.assign(e, mehr);
   };
@@ -618,9 +627,9 @@
       return s;
     };
     const waehle = (p, bed, mitEigenem) => { let best = null, bs = -Infinity; T.forEach((t, i) => { if (t.fest || (i === p.von && !mitEigenem) || !bed(i)) return; const s = score(p, i); if (s > bs) { bs = s; best = i; } }); return best; };
-    const VON = new Map(), WEG = new Map();
+    const VON = new Map(), WEG = new Map(), KURZ = new Map(), WEGE = new Map();   // V9.5: gekürzt → ursprüngliche Einheit, entfallen → { e, von }
     const setzen = (p, i, e, mitK) => {
-      if (e !== p.e) P.gekuerzt.push({ titel: p.e.titel, date: T[i].date, von: p.e.dauer, nach: e.dauer });
+      if (e !== p.e) { P.gekuerzt.push({ titel: p.e.titel, date: T[i].date, von: p.e.dauer, nach: e.dauer }); KURZ.set(e, p.e); }
       VON.set(e, p.von);
       if (i !== p.von) { const r = { titel: e.titel, von: T[p.von].date, nach: T[i].date, grund: p.grund || "Verfügbarkeit" }; P.verschoben.push(r); WEG.set(e, r); }
       belegt[i].push(e);
@@ -669,8 +678,9 @@
           continue;
         }
       }
-      P.weg.push({ titel: p.e.titel, date: T[p.von].date, grund: V66.VF_SPORT.includes(sp) && !T.some((t, j) => !t.fest && erlaubt(j, sp)) ? "diese Sportart ist an keinem freien Tag erlaubt" : "an keinem freien Tag genug Zeit",
-        id: p.e.id, dauer: p.e.dauer, sport: sp, tl: tlVon(p.e) });
+      const wx = { titel: p.e.titel, date: T[p.von].date, grund: V66.VF_SPORT.includes(sp) && !T.some((t, j) => !t.fest && erlaubt(j, sp)) ? "diese Sportart ist an keinem freien Tag erlaubt" : "an keinem freien Tag genug Zeit",
+        id: p.e.id, dauer: p.e.dauer, sport: sp, tl: tlVon(p.e) };
+      P.weg.push(wx); WEGE.set(wx, { e: p.e, von: p.von });
       if (k) P.weg.push({ titel: k.titel, date: T[p.von].date, grund: "gehört zur langen Ausfahrt", id: k.id, dauer: k.dauer, sport: k.sport, tl: tlVon(k) });
     }
     // verfuegbarkeit-1.2: zwei harte Einheiten an Land an Tagen hintereinander – eine davon (zuerst die, die schon verschoben wurde) auf den besten Tag ohne
@@ -721,6 +731,62 @@
         else if (j !== p.von) { const n = { titel: e.titel, von: T[p.von].date, nach: T[j].date }; P.verschoben.push(n); WEG.set(e, n); }
       } else belegt[i].push(e);
     }
+    // V9.5 zeit-intensitaet-1.0 (Verdichten, Silas' Punkt 3): bleibt nach Verschieben und Kürzen Last übrig, dieselbe Last (TL ± 10 %) in weniger Zeit
+    // mit Anteilen Tempo (Z3, unter LT2) – nur lockere und lange Rad- und Laufeinheiten des Vorschlags, höchstens V66.ZIEL.maxDicht je Woche (mit denen an
+    // festen Tagen), nie am Tag einer harten Einheit an Land oder daneben, nicht am Tag nach dem Krafttraining oder neben einer langen Aktivität draussen.
+    // Nicht mit opt.ziel.aus (Erholungs-, Taper-, Rennwoche, «Neu berechnen») und nicht bei Ampel «vorsichtig» (opt.ziel.vorsichtig). Zuerst die grösste Lücke.
+    P.dicht = [];
+    const Zd = opt.ziel;
+    if (Zd && !Zd.aus && !Zd.vorsichtig && typeof Zd.tl === "function") {
+      const Z = V66.ZIEL, tlZ = (e) => { try { const x = Zd.tl(e); return isNum(x) ? x : null; } catch (err) { return null; } };
+      const dichtbar = (e) => !!e && !!DICHT_TITEL[e.id] && !istEigen(e) && !istOrtsfest(e) && !e.dicht && land(e);
+      const ruhig = (j) => !T[j].fest && !testTag.has(j) && !aktTag(j) && ![j - 1, j, j + 1].some((k) => !!B(k) && B(k).some(hartLand))
+        && !kraftAm(j - 1) && !aktLang(j - 1) && !aktLang(j + 1);
+      // die kleinste Menge Tempo (in Blöcken), mit der die Last wieder bei tl0 ± 10 % liegt
+      const finden = (e, d, tl0) => {
+        for (let z3 = Z.block; z3 <= V66.dichtMax(e.sport, d); z3 += Z.block) {
+          const n = dichtFassung(e, d, z3, opt.o || {}); if (!n) return null;
+          const x = tlZ(n); if (x == null) return null;
+          if (x >= (1 - Z.toleranz) * tl0) return x <= (1 + Z.toleranz) * tl0 ? { n, x } : null;
+        }
+        return null;
+      };
+      let zahl = T.reduce((s, t) => s + (t.fest ? t.einheiten.filter((e) => e && e.dicht).length : 0), 0);
+      const kand = [];
+      T.forEach((t, i) => { if (t.fest) return; for (const e of belegt[i]) { const o0 = KURZ.get(e); if (!o0 || !dichtbar(o0)) continue;
+        const t0 = tlZ(o0), t1 = tlZ(e); if (t0 != null && t1 != null && t1 < (1 - Z.toleranz) * t0) kand.push({ art: "kurz", i, e, o0, t0, von: VON.has(e) ? VON.get(e) : i, verlust: t0 - t1 }); } });
+      for (const x of P.weg) { const w = WEGE.get(x); if (!w || !dichtbar(w.e)) continue; const t0 = tlZ(w.e); if (t0 != null) kand.push({ art: "weg", x, o0: w.e, von: w.von, t0, verlust: t0 }); }
+      kand.sort((a, b) => b.verlust - a.verlust || a.von - b.von);
+      for (const k of kand) {
+        if (zahl >= Z.maxDicht) break;
+        let wahl = null;
+        if (k.art === "kurz") { if (ruhig(k.i)) { const f = finden(k.o0, k.e.dauer, k.t0); if (f) wahl = { j: k.i, f }; } }
+        else T.forEach((t, j) => {
+          if (!ruhig(j) || !erlaubt(j, k.o0.sport)) return;
+          const top = Math.min(Math.floor(rest(j) / 5) * 5, k.o0.dauer - 5), unten = minDauer(k.o0);
+          for (let d = top; d >= unten; d -= 5) {
+            const f = finden(k.o0, d, k.t0); if (!f) continue;
+            const s = score({ e: k.o0, von: k.von }, j);
+            if (!wahl || d > wahl.f.n.dauer || (d === wahl.f.n.dauer && s > wahl.s)) wahl = { j, f, s };
+            break;
+          }
+        });
+        if (!wahl) continue;
+        const n = wahl.f.n, j = wahl.j;
+        if (k.art === "kurz") {
+          belegt[j].splice(belegt[j].indexOf(k.e), 1, n); if (ORD.has(k.e)) ORD.set(n, ORD.get(k.e));
+          const g = P.gekuerzt.find((x) => x.titel === k.o0.titel && x.date === T[j].date && x.nach === k.e.dauer && !x.dicht); if (g) g.dicht = true;
+          const r = WEG.get(k.e); if (r) WEG.set(n, r);
+        } else {
+          belegt[j].push(n); ORD.set(n, k.von * 100 + 60); P.weg.splice(P.weg.indexOf(k.x), 1);
+          if (j !== k.von) { const r = { titel: n.titel, von: T[k.von].date, nach: T[j].date, grund: "verdichtet" }; P.verschoben.push(r); WEG.set(n, r); }
+        }
+        VON.set(n, k.von);
+        P.dicht.push({ titel: k.o0.titel, neu: n.titel, id: k.o0.id, sport: k.o0.sport, date: T[j].date, vonDatum: T[k.von].date, von: k.o0.dauer, nach: n.dauer,
+          z3: n.dicht.z3, tlVor: Math.round(k.t0), tlNach: Math.round(wahl.f.x) });
+        zahl++;
+      }
+    }
     // grenzen-1.0: über der Zeit steht nur, was fest ist (eigene Einheit, gesperrt, Test, Kurs, Kraft, Aktivität draussen) – mit Meldung, nie still
     T.forEach((t, i) => {
       if (t.fest || testTag.has(i) || !isFinite(kap(i)) || rest(i) >= 0) return;
@@ -752,8 +818,9 @@
     if (!P) return [];
     const out = [];
     for (const x of P.verschoben) out.push(`«${x.titel}» von ${wtK(x.von)} auf ${wtK(x.nach)} verschoben (${x.grund || "Verfügbarkeit"})`);
-    for (const x of P.gekuerzt) out.push(`«${x.titel}» am ${wtK(x.date)} ${x.nach} statt ${x.von} min (Verfügbarkeit)`);
+    for (const x of P.gekuerzt) if (!x.dicht) out.push(`«${x.titel}» am ${wtK(x.date)} ${x.nach} statt ${x.von} min (Verfügbarkeit)`);
     for (const x of P.weg) out.push(`«${x.titel}» (${wtK(x.date)}) entfällt: ${x.grund}`);
+    for (const x of P.dicht || []) out.push(V66.zielText("dicht", x));          // V9.5 zeit-intensitaet-1.0
     return out.concat(P.hinweise);
   };
   /** Summen einer Woche neu (wie V64.woche): Minuten je Sportart, Verteilung, Prüfung. */
@@ -781,7 +848,7 @@
       || V66.vortagBindet(ctx && ctx.vorher));
     if (!mitVerf && !zwingt) return w;
     const r = V66.verteilen(w.tage.map((t) => Object.assign({}, t, { fest: false })), mitVerf ? verf : () => null, { o: bausteinO(w, ctx), lang: ctx && ctx.lang, ctxE: ctx && ctx.ctxE,
-      vorher: ctx && ctx.vorher, vorherDatum: ctx && ctx.vorherDatum });
+      vorher: ctx && ctx.vorher, vorherDatum: ctx && ctx.vorherDatum, ziel: ctx && ctx.ziel && mitVerf ? ctx.ziel : null });          // V9.5: Verdichten
     if (!r.geaendert) return w;
     const out = Object.assign({}, w, { tage: r.tage.map((t) => { const c = Object.assign({}, t); delete c.fest; return c; }),
       verteilung: Object.assign({ v: V66.VERSIONS.verfuegbarkeit }, r.protokoll), hinweise: (w.hinweise || []).concat(V66.verteilText(r.protokoll)) });
@@ -812,13 +879,17 @@
   function neuBerechnen(E, ctx, tag) {
     const tageW = Array.from({ length: 7 }, (_, i) => add(E.montag, i));
     delete E.gestrichen;                                                  // V9.2: Stufe 2 vergisst Streichungen (und Anker, siehe unten)
+    // V9.5 zeit-intensitaet-1.0 (Silas 22.11.: «↶ und Neu nehmen beides zurück»): ohne Zeit als Ziel und Verdichten, bis sich die Eingaben ändern
+    delete E.zielAus;
+    const zielAus = () => { if (ctx.ziel) E.zielAus = { fp: V66.zielFp(E, ctx.verf, tageW), am: ctx.jetzt || new Date().toISOString() }; };
     const gesperrt = tageW.filter((d) => festTag(E.tage[d])), vorbei = tageW.filter((d) => d < ctx.heute && E.tage[d] && Array.isArray(E.tage[d].einheiten));
-    if (!E.ganz) { for (const d of Object.keys(E.tage)) if (d >= ctx.heute && !festTag(E.tage[d])) E.tage[d].einheiten = null; return null; }
-    if (!gesperrt.length && !vorbei.length) { E.tage = {}; delete E.ganz; delete E.verteilung; return null; }        // ganz neu: wieder automatisch
+    if (!E.ganz) { for (const d of Object.keys(E.tage)) if (d >= ctx.heute && !festTag(E.tage[d])) E.tage[d].einheiten = null; zielAus(); return null; }
+    if (!gesperrt.length && !vorbei.length) { E.tage = {}; delete E.ganz; delete E.verteilung; zielAus(); return null; }        // ganz neu: wieder automatisch
     if (!ctx.roh) return "Vorschlag nicht bekannt";
     // V9.2 umplanen-1.0: ohne Anker an den freien Tagen, dann derselbe Kern wie jedes Umplanen (vergangene und gesperrte Tage bleiben)
     if (ctx.verf || ctx.vorschlag) {
       for (const d of tageW) if (!(d < ctx.heute || festTag(E.tage[d]))) tag(d).einheiten = [];
+      zielAus();
       const f = umplanen(E, ctx, {});
       if (!f && E.verteilung) E.verteilung.art = "neu";
       return f;
@@ -848,7 +919,7 @@
    *  Vorschlags-Einheiten, von Hand geänderte oder verschobene (Kennung «v-…»), ersetzte (statt) und alles Ortsfeste (Kraft, Tests, Kurs, Aktivierung,
    *  Aktivitäten draussen). Was dafür steht, verbraucht beim Umplanen die passende Einheit des Vorschlags – so steht nichts doppelt. */
   function stehtFuer(s) {
-    if (!s) return null;
+    if (!s || s.zusatz === true) return null;                           // V9.5: zusätzliche Einheit (Zeit als Ziel) steht für keine des Vorschlags
     if (typeof s.statt === "string" && s.statt) return s.statt;
     if (s.quelle === "bibliothek" || !s.vorlage) return null;
     if (s.quelle === "vorschlag" || /^v-/.test(String(s.uid || "")) || ORTSFEST_V.has(s.vorlage) || (EXTRA[s.vorlage] && EXTRA[s.vorlage].draussen)) return s.vorlage;
@@ -884,6 +955,8 @@
     const tageW = Array.from({ length: 7 }, (_, i) => add(E.montag, i));
     const verf = ctx.verf || (() => null);
     if (opt.ausgleichen) delete E.gestrichen;
+    // V9.5 zeit-intensitaet-1.0: «Neu berechnen» nimmt Zeit als Ziel und Verdichten zurück – nur, bis sich die Eingaben ändern (Fingerabdruck)
+    if (E.zielAus && !V66.zielAusGilt(E, ctx.verf)) delete E.zielAus;
     const fest = (d) => d < ctx.heute || (!!ctx.heuteFest && d === ctx.heute) || festTag(E.tage[d]);
     // Feste Tage ohne eigene Liste: so, wie sie gezeigt werden (automatischer Vorschlag), vergangene «eingefroren»
     for (const d of tageW) {
@@ -899,14 +972,22 @@
     tageW.forEach((d, i) => rohAm(d).forEach((e) => pool.push({ e, i, weg: false })));
     const naechste = (id, i) => { let best = null; for (const p of pool) if (!p.weg && p.e.id === id && (!best || Math.abs(p.i - i) < Math.abs(best.i - i))) best = p; return best; };
     bleibt.forEach((L, i) => L.forEach((s) => { const id = stehtFuer(s), p = id ? naechste(id, i) : null; if (p) p.weg = true; }));
-    for (const x of Array.isArray(E.gestrichen) ? E.gestrichen : []) { const p = x && naechste(x.vorlage, Math.max(0, tageW.indexOf(x.date))); if (p) p.weg = true; }
+    for (const x of Array.isArray(E.gestrichen) ? E.gestrichen : []) { const p = x && naechste(x.vorlage, Math.max(0, tageW.indexOf(x.date))); if (p) { p.weg = true; p.gestrichen = true; } }
+    // V9.5 zeit-intensitaet-1.0: Verdichten und Zeit als Ziel (ctx.ziel aus dem Kontext der Woche); nicht in der Erholungswoche der Ampel, nicht nach «Neu berechnen».
+    // Gestrichenes bleibt gestrichen: die Obergrenze sinkt um seine Last, Zeit als Ziel füllt sie nicht heimlich wieder auf.
+    const Zc = ctx.ziel || null;
+    const ZZ = Zc ? Object.assign({}, Zc, { aus: Zc.aus || (E.zielAus ? "neu" : null) || (erh ? "Erholungswoche" : null) }) : null;
+    let tlGestr = 0;
+    if (ZZ && typeof ZZ.tl === "function") for (const p of pool) if (p.gestrichen && (["rad", "lauf", "schwimm"].includes(p.e.sport) || p.e.art === "draussen")) { try { const x = ZZ.tl(p.e); if (isNum(x)) tlGestr += x; } catch (err) { /* ohne Last */ } }
     // Eingänge für den Rechenkern: feste Tage ganz, sonst Anker und der Vorschlag des Tages; was vom Vorschlag an festen Tagen übrig ist, kommt dazu
     const T = tageW.map((d, i) => ({ date: d, wt: wtK(d), ruhetag: !rohAm(d).length, fest: fest(d),
       einheiten: bleibt[i].map(bau).filter(Boolean).concat(fest(d) ? [] : pool.filter((p) => !p.weg && p.i === i).map((p) => Object.assign({}, p.e))) }));
     const extra = pool.filter((p) => !p.weg && fest(tageW[p.i]) && !istOrtsfest(p.e)).map((p) => ({ e: Object.assign({}, p.e), von: p.i }));
-    const r = V66.verteilen(T, verf, { o: ctx.o || {}, lang: ctx.lang, ctxE: ctx.ctxE, extra, tl: ctx.tl, heute: ctx.heute, vorher: ctx.vorher, vorherDatum: ctx.vorherDatum });
+    const r = V66.verteilen(T, verf, { o: ctx.o || {}, lang: ctx.lang, ctxE: ctx.ctxE, extra, tl: ctx.tl, heute: ctx.heute, vorher: ctx.vorher, vorherDatum: ctx.vorherDatum, ziel: ZZ });
     let tageR = r.tage;
     if (typeof ctx.abstimmen === "function") { try { tageR = ctx.abstimmen(tageR) || tageR; } catch (err) { tageR = r.tage; } }   // kraft-plan-1.1 Regel 2
+    let zz = null;                                                                                  // V9.5: Zeit als Ziel nach dem Verteilen
+    if (ZZ) { zz = V66.zeitZiel(tageR, verf, Object.assign({}, ZZ, { tlMax: isNum(ZZ.tlMax) ? ZZ.tlMax - tlGestr : null, o: ctx.o || {} })); tageR = zz.tage; }
     // Kennungen: eine Vorschlags-Einheit behält die Kennung (und Uhrzeit, Metrik, Bahnlänge) ihrer Vorgängerin derselben Vorlage – am selben Tag zuerst
     const vergeben = new Set(), alt = [];
     tageW.forEach((d, i) => { bleibt[i].forEach((s) => vergeben.add(s.uid)); if (!fest(d)) E.tage[d].einheiten.forEach((s) => { if (!istAnkerSpec(s) && s.uid) alt.push({ s, i, frei: true }); }); });
@@ -917,7 +998,9 @@
       E.tage[t.date].einheiten = t.einheiten.map((e, k) => {
         if (e.spec && bleibt[i].includes(e.spec)) return e.spec;                                    // Anker bleibt, wie er ist
         const s = Object.assign({}, e.spec || {}, { vorlage: e.id, dauer: e.dauer, quelle: e.spec && e.spec.quelle ? e.spec.quelle : "vorschlag" });
-        delete s.uid;
+        delete s.uid; delete s.dicht; delete s.zusatz;
+        if (e.dicht && isNum(e.dicht.z3)) s.dicht = { z3: e.dicht.z3 };                          // V9.5: verdichtet bzw. zusätzlich (von der Seite gesetzt)
+        if (e.zusatz === true) s.zusatz = true;
         const v = altFuer(e.id, i);
         if (v) { v.frei = false; s.uid = v.s.uid; for (const k2 of FELD_MIT) if (v.s[k2] != null && s[k2] == null) s[k2] = v.s[k2]; }
         else s.uid = e.spec && e.spec.uid && !vergeben.has(e.spec.uid) ? e.spec.uid : neuUid(t.date, k);
@@ -930,13 +1013,16 @@
     const fehlt = fehltL.length ? { min: fehltL.reduce((s, x) => s + x.dauer, 0), tl: null, einheiten: fehltL.map((x) => ({ titel: x.titel, vorlage: x.id || null, sport: x.sport || null, dauer: x.dauer, date: x.date, tl: x.tl == null ? null : x.tl })) } : null;
     if (fehlt && fehltL.every((x) => isNum(x.tl))) fehlt.tl = Math.round(fehltL.reduce((s, x) => s + x.tl, 0));
     const frage = E.verteilung && E.verteilung.frage ? E.verteilung.frage : null;
-    E.verteilung = { v: V66.VERSIONS.verfuegbarkeit, art: "umplanen", am: ctx.jetzt || new Date().toISOString(), meldungen: V66.verteilText(r.protokoll).slice(0, 20) };
+    const zp = { laenger: zz ? zz.protokoll.laenger : [], zusatz: zz ? zz.protokoll.zusatz : [], dicht: r.protokoll.dicht || [] };
+    const zText = zp.laenger.map((x) => V66.zielText("laenger", x)).concat(zp.zusatz.map((x) => V66.zielText("zusatz", x)));
+    E.verteilung = { v: V66.VERSIONS.verfuegbarkeit, art: "umplanen", am: ctx.jetzt || new Date().toISOString(), meldungen: zText.concat(V66.verteilText(r.protokoll)).slice(0, 20) };
+    if (zp.laenger.length || zp.zusatz.length || zp.dicht.length) E.verteilung.ziel = Object.assign({ v: V66.VERSIONS.ziel }, zp);
     if (fehlt) E.verteilung.fehlt = fehlt;
     if (frage) E.verteilung.frage = frage;
     if (!E.gestrichen || !E.gestrichen.length) delete E.gestrichen;
     E.ganz = true;
     // Ohne Eigenes folgt die Woche wieder von selbst (dieselben Regeln, derselbe Kern) – nur wenn die festen Tage genau so stehen wie im automatischen Vorschlag
-    const eigenes = !!E.gestrichen || !!E.erholung || tageW.some((d) => { const t = E.tage[d]; return !!t.gesperrt || t.einheiten.some(istAnkerSpec); });
+    const eigenes = !!E.gestrichen || !!E.erholung || !!E.zielAus || tageW.some((d) => { const t = E.tage[d]; return !!t.gesperrt || t.einheiten.some(istAnkerSpec); });
     const wieAuto = !!ctx.vorschlag && tageW.filter(fest).every((d) => JSON.stringify(E.tage[d].einheiten.map(kern)) === JSON.stringify(vorschlagGespeichert(d, ctx.vorschlag(d)).map(kern)));
     if (!eigenes && !fehlt && wieAuto && ctx.vorschlag && !opt.behalten) {
       const zuvor = E.verteilung; E.tage = {}; delete E.ganz; E.verteilung = Object.assign({}, zuvor, { auto: true });
@@ -944,6 +1030,177 @@
     return null;
   }
   V66.umplanenRein = umplanen;                                            // für Tests und die Frage (V92): ändert E
+
+  /* ---------------- V9.5 zeit-intensitaet-1.0 (Auftrag «Woche wie Enduco», Etappe W4: Zeit und Intensität als Stellschrauben) ---------------- */
+  /** Festlegungen (eigene, trainingstechnisch begründet in docs/anleitung/plan.md, Abschnitt «Zeit und Intensität»): Korridor ± 7,5 % (wie zyklus-1.0),
+   *  Verdichten mit TL ± 10 %, höchstens 2 je Woche, Tempo in 10-min-Blöcken mit 5 min Z2 dazwischen, höchstens ein Drittel der Einheit (Rad 4, Laufen 3 Blöcke);
+   *  Zeit als Ziel in 5-min-Schritten, zusätzliche Einheit ab 45 min übriger Zeit, höchstens so lang wie die Vorlage im Standard. */
+  V66.ZIEL = { spanne: 0.075, toleranz: 0.1, maxDicht: 2, block: 10, pause: 5, anteil: 1 / 3, bloecke: { rad: 4, lauf: 3 }, zusatzAb: 45, schritt: 5 };
+  const DICHT_TITEL = { rad_locker: "Grundlage mit Tempo", rad_lang: "Lange Ausfahrt mit Tempo", lauf_locker: "Lauf locker mit Tempo", lauf_lang: "Langer Lauf mit Tempo" };
+  /** Zeit als Ziel verlängert nur diese Vorlagen (lockeres Rad und Schwimmen; Laufen nicht – siehe plan.md; Renntempo-Varianten nicht, ihre Blöcke wüchsen mit). */
+  const LAENGER = new Set(["rad_locker", "rad_lang", "schwimm_locker"]);
+  const ZUSATZ = { rad: "rad_locker", schwimm: "schwimm_locker", lauf: "lauf_locker" };
+  const SPW_Z = { schwimm: "Schwimmen", rad: "Rad", lauf: "Laufen" };
+  const zaehltZ = (e) => !!e && (["rad", "lauf", "schwimm"].includes(e.sport) || e.art === "draussen");
+  const dauerT = (m) => { m = Math.round(m || 0); if (m < 60) return `${m} min`; const h = Math.floor(m / 60), r = m % 60; return r ? `${h} h ${String(r).padStart(2, "0")}` : `${h} h`; };
+  /** Abschnitte einer lockeren Einheit mit Anteilen Tempo: Einfahren (Z1) wie die Vorlage, 15 min (Laufen 10 min) Z2, z3/10 Blöcke à 10 min Z3 mit
+   *  5 min Z2 dazwischen, Rest Z2 (mindestens 10 min). → neue Abschnitte oder null (passt nicht). */
+  V66.dichtTeile = function (teile, z3, sport) {
+    const Z = V66.ZIEL, n = Math.round((z3 || 0) / Z.block);
+    if (!Array.isArray(teile) || !teile.length || !(n >= 1) || n * Z.block !== z3) return null;
+    const d = teile.reduce((x, t) => x + t[1], 0), ein = teile[0][0] === "z1" ? teile[0][1] : 0, vor = sport === "lauf" ? 10 : 15;
+    const aus = d - ein - vor - n * Z.block - (n - 1) * Z.pause;
+    if (aus < 10) return null;
+    const T = ein > 0 ? [["z1", ein]] : [];
+    T.push(["z2", vor]);
+    for (let k = 0; k < n; k++) { T.push(["z3", Z.block]); if (k < n - 1) T.push(["z2", Z.pause]); }
+    T.push(["z2", aus]);
+    return T;
+  };
+  /** Höchstens so viel Tempo (min) in einer verdichteten Einheit dieser Dauer: ein Drittel, in ganzen Blöcken, Rad höchstens 4, Laufen 3 Blöcke. */
+  V66.dichtMax = (sport, d) => Math.min((V66.ZIEL.bloecke[sport] || 0) * V66.ZIEL.block, Math.floor((d * V66.ZIEL.anteil) / V66.ZIEL.block) * V66.ZIEL.block);
+  /** Einheit (V64.einheit bzw. V66.einheit) zur verdichteten Fassung machen; false, wenn es nicht geht (sie bleibt dann, wie sie ist). */
+  function dichtAnwenden(e, z3) {
+    const id = e && (DICHT_TITEL[e.id] ? e.id : e.vorlage);
+    if (!DICHT_TITEL[id] || !isNum(z3) || z3 > V66.dichtMax(e.sport, e.dauer)) return false;
+    const T = V66.dichtTeile(e.teile, z3, e.sport); if (!T) return false;
+    const m = { locker: 0, mittel: 0, hart: 0 }; for (const [k, v] of T) { const z = V64.DREI[k]; if (z) m[z] += v; }
+    const ein = T[0][0] === "z1" ? T[0][1] : 0, n = z3 / V66.ZIEL.block, aus = T[T.length - 1][1], rad = e.sport === "rad";
+    Object.assign(e, { teile: T, minuten: m, titel: DICHT_TITEL[id], dicht: { z3 },
+      ablauf: [`${ein ? `${ein} min ${rad ? "einrollen" : "sehr ruhig"}, dann ` : ""}${rad ? 15 : 10} min Z2`,
+        `${n} × ${V66.ZIEL.block} min Z3 (Tempo, unter LT2)${n > 1 ? `, ${V66.ZIEL.pause} min Z2 dazwischen` : ""}`, `${aus} min Z2`,
+        "Verdichtet: weniger Zeit als geplant, darum Anteile Tempo – etwa gleiche Last (zeit-intensitaet-1.0)"],
+      zweck: "Weniger Zeit als geplant: etwa dieselbe Last in kürzerer Zeit, mit Abschnitten im Tempo-Bereich (zwischen LT1 und LT2) statt nur Grundlage. Die Ausnahme, wenn die Woche sonst nicht aufgeht." });
+    return true;
+  }
+  V66.dichtAnwenden = dichtAnwenden;
+  /** Einheit derselben Vorlage mit Dauer d neu bauen (Merkmale bleiben wie bei kuerzer); null, wenn es nicht geht (feste Dauer, Schlüssel, eigene). */
+  function neuBauen(e, d, o) {
+    const b = V64.BAUSTEINE[e.id]; if (!b || b.fix || !DYN.has(b.art) || istEigen(e)) return null;
+    const n = V64.einheit(e.id, Object.assign({}, o, { d: Math.max(5, Math.round(d / 5) * 5) })); if (!n) return null;
+    for (const k of ["check", "gekappt", "uid", "quelle", "vorlage", "drinnen", "drinnen_fest", "vorTest", "spec", "zusatz", "uhrzeit", "metrik", "pool"]) if (e[k] != null) n[k] = e[k];
+    if (e.drinnen && !/drinnen/.test(n.titel)) n.titel += " (drinnen)";
+    return n;
+  }
+  /** Verdichtete Fassung einer Einheit mit Dauer d und z3 min Tempo – oder null. */
+  function dichtFassung(e, d, z3, o) {
+    const n = neuBauen(e, d, o); if (!n || !dichtAnwenden(n, z3)) return null;
+    if (n.drinnen && !/drinnen/.test(n.titel)) n.titel += " (drinnen)";
+    return n;
+  }
+  /** Bericht: eine Zeile je Verlängerung, zusätzlicher Einheit und Verdichtung, mit Grund (Silas' Wortlaut aus dem Auftrag). */
+  V66.zielText = function (art, x) {
+    const tag = TAG_LANG[V66.wtNr(x.date) - 1], sp = SPW_Z[x.sport] || x.titel;
+    if (art === "laenger") return `${tag}: ${sp} + ${dauerT(x.nach - x.von)}, die Zeit war da`;
+    if (art === "zusatz") return `${tag}: zusätzlich ${sp} locker ${dauerT(x.dauer)}, die Zeit war da (${sp} lag hinter der Wochenverteilung)`;
+    if (art === "dicht") return `${tag} ${sp}: ${dauerT(x.nach)} statt ${dauerT(x.von)}, dafür mit Anteilen Tempo – gleiche Last${x.vonDatum && x.vonDatum !== x.date ? ` (vom ${TAG_LANG[V66.wtNr(x.vonDatum) - 1]})` : ""}`;
+    return "";
+  };
+  /** Alle Zeilen eines Protokolls { laenger, zusatz, dicht } → [{ art, date, id, titel, dauer, text }] (für den Bericht, V92.zielBericht). */
+  V66.zielZeilen = function (Z) {
+    if (!Z) return [];
+    const out = [];
+    for (const x of Z.dicht || []) out.push({ art: "dicht", date: x.date, id: x.id, titel: x.neu || x.titel, dauer: x.nach, text: V66.zielText("dicht", x) });
+    for (const x of Z.laenger || []) out.push({ art: "laenger", date: x.date, id: x.id, titel: x.titel, dauer: x.nach, text: V66.zielText("laenger", x) });
+    for (const x of Z.zusatz || []) out.push({ art: "zusatz", date: x.date, id: x.id, titel: x.titel, dauer: x.dauer, text: V66.zielText("zusatz", x) });
+    return out.sort((a, b) => a.date.localeCompare(b.date));
+  };
+  /** Fingerabdruck der Eingaben einer Woche für «Neu berechnen» (zielAus): Grenzen je Tag, Sperren, Anker, Streichungen – wie V92.fingerabdruck, aber ein Tag
+   *  ohne eigene Liste zählt wie einer mit nur Vorschlags-Einheiten (sonst änderte das Umplanen selbst den Abdruck). */
+  V66.zielFp = function (E, verf, tage) {
+    const T = (tage || []).map((d) => { const v = verf ? verf(d) : null, t = E && E.tage ? E.tage[d] : null;
+      return [d, v ? [v.min == null ? null : v.min, v.sport || null] : null, !!(t && t.gesperrt),
+        (t && Array.isArray(t.einheiten) ? t.einheiten : []).filter((x) => x && istAnkerSpec(x)).map((x) => [x.uid, x.vorlage || x.wid || null, x.dauer])]; });
+    const str = JSON.stringify([T, (E && E.gestrichen) || []]);
+    let h = 5381; for (let i = 0; i < str.length; i++) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0;
+    return "zf-" + h.toString(36);
+  };
+  /** Gilt für diese Woche (noch) «Neu berechnen» ohne Zeit als Ziel und Verdichten? Nur, solange sich die Eingaben nicht geändert haben. */
+  V66.zielAusGilt = (E, verf) => !!(E && E.zielAus && E.montag && E.zielAus.fp === V66.zielFp(E, verf, Array.from({ length: 7 }, (_, i) => add(E.montag, i))));
+  /**
+   * Zeit als Ziel (Silas' Punkt 4, Entscheid vom 22.11.2026): nach dem Verteilen. Hat ein Tag mit einer Zeitgrenze mehr Zeit, als seine Einheiten brauchen, wird
+   * dort die längste lockere Einheit (Rad, Schwimmen; nur Einheiten der Seite) in 5-min-Schritten länger – innerhalb ihres Bereichs (V66.bereich), höchstens bis
+   * zur Zeit des Tages und nur, solange die Wochenlast (TL ≈ aller Tage) ≤ Z.tlMax (Obergrenze des Korridors) bleibt; die Tage mit der meisten freien Zeit
+   * zuerst. Stösst die längste an ihren Bereich (oder hat der Tag keine verlängerbare) und bleiben am Tag ≥ 45 min, kommt eine lockere Einheit der Sportart
+   * mit dem grössten Rückstand zur Wochenverteilung dazu (Anteile aus Z.minuten = Minuten je Sportart im Vorschlag; Laufen nie über die Minuten des Vorschlags),
+   * nie dieselbe Sportart zweimal am Tag, nie an einem leeren Tag (Ruhetag bleibt), nie hart. Feste Tage (fest), Rennwochen und Z.aus: nichts.
+   * tage = [{ date, einheiten, fest, rennen }], Z = { tl(e), tlMax, minuten { schwimm, rad, lauf }, o, aus }. → { tage, protokoll { laenger, zusatz, tlVor, tlNach, tlMax }, geaendert }
+   */
+  V66.zeitZiel = function (tage, verf, Z) {
+    const P = { laenger: [], zusatz: [], tlVor: null, tlNach: null, tlMax: Z && isNum(Z.tlMax) ? Z.tlMax : null };
+    const T = (tage || []).map((t) => Object.assign({}, t, { einheiten: (t.einheiten || []).slice() }));
+    const fertig = (g) => ({ tage: g ? T : tage, protokoll: P, geaendert: !!g });
+    if (!Z || Z.aus || typeof Z.tl !== "function" || !isNum(Z.tlMax) || typeof verf !== "function" || T.some((t) => t.rennen)) return fertig(false);
+    // Wochenlast wie der Zyklus (zyklus-1.0): Einheiten ohne TL ≈ (Tests, Schwimmen ohne CSS) zählen nicht mit – so passt sie zum Korridor, gegen den sie
+    // gemessen wird; verlängert oder dazugefügt wird nur, was ein TL ≈ hat (sonst wäre die Wirkung auf die Wochenlast unbekannt)
+    const tlE = (e) => { if (!zaehltZ(e) || e.art === "test") return 0; try { const x = Z.tl(e); return isNum(x) ? x : null; } catch (err) { return null; } };
+    let tl = 0;
+    for (const t of T) for (const e of t.einheiten) tl += tlE(e) || 0;
+    P.tlVor = P.tlNach = Math.round(tl);
+    let raum = Z.tlMax - tl;
+    if (raum <= 0) return fertig(false);
+    const V = T.map((t) => verf(t.date)), o = Z.o || {};
+    const kap = (i) => (V[i] && isNum(V[i].min) ? V[i].min : null);
+    const erlaubt = (i, sp) => !V[i] || !V[i].sport || V[i].sport.includes(sp);
+    const rest = (i) => kap(i) - T[i].einheiten.reduce((x, e) => x + (e.dauer || 0), 0);
+    const offen = (i) => !T[i].fest && kap(i) > 0 && T[i].einheiten.some(zaehltZ);
+    const laengerbar = (e, i) => !!e && LAENGER.has(e.id) && !istEigen(e) && !e.dicht && !e.zusatz && erlaubt(i, e.sport) && !!V66.bereich(e.id) && tlE(e) != null;
+    const Zs = T.map((t, i) => {
+      if (!offen(i)) return null;
+      const L = t.einheiten.filter((e) => laengerbar(e, i)).sort((a, b) => b.dauer - a.dauer || (a.sport === b.sport ? 0 : a.sport === "rad" ? -1 : 1));
+      return { i, e: L[0] || null, e0: L[0] || null, rand: !L.length, zu: false };
+    });
+    for (;;) {
+      let best = null;
+      for (const z of Zs) {
+        if (!z || !z.e || z.zu) continue;
+        const r = rest(z.i), B = V66.bereich(z.e.id);
+        if (r < V66.ZIEL.schritt) { z.zu = true; continue; }
+        if (z.e.dauer + V66.ZIEL.schritt > B.max) { z.zu = true; z.rand = true; continue; }
+        if (!best || r > best.r) best = { z, r };
+      }
+      if (!best) break;
+      const z = best.z, n = neuBauen(z.e, z.e.dauer + V66.ZIEL.schritt, o), a = tlE(z.e), b = n ? tlE(n) : null;
+      if (!n || b == null || b - a > raum + 1e-9) { z.zu = true; continue; }
+      const L = T[z.i].einheiten; L.splice(L.indexOf(z.e), 1, n);
+      raum -= b - a; tl += b - a; z.e = n;
+    }
+    for (const z of Zs) if (z && z.e0 && z.e !== z.e0)
+      P.laenger.push({ date: T[z.i].date, id: z.e.id, titel: z.e.titel, sport: z.e.sport, uid: z.e.uid || null, von: z.e0.dauer, nach: z.e.dauer });
+    // eine zusätzliche lockere Einheit (wie Enduco den Lauf zur Ausfahrt): die längste stösst an ihren Bereich, ≥ 45 min übrig
+    const M = Z.minuten || {}, mSum = ["schwimm", "rad", "lauf"].reduce((x, k) => x + (isNum(M[k]) ? M[k] : 0), 0);
+    const reihe = Zs.filter((z) => z && z.rand && rest(z.i) >= V66.ZIEL.zusatzAb).sort((a, b) => rest(b.i) - rest(a.i) || a.i - b.i);
+    for (const z of reihe) {
+      if (raum <= 0 || !mSum) break;
+      const plan = { schwimm: 0, rad: 0, lauf: 0 };
+      for (const t of T) for (const e of t.einheiten) if (plan[e.sport] != null) plan[e.sport] += e.dauer || 0;
+      const total = plan.schwimm + plan.rad + plan.lauf;
+      const rueck = (sp) => ((isNum(M[sp]) ? M[sp] : 0) / mSum) * total - plan[sp];
+      const L = ["rad", "schwimm", "lauf"].filter((sp) => erlaubt(z.i, sp) && !T[z.i].einheiten.some((e) => e.sport === sp) && rueck(sp) > 0
+        && (sp !== "lauf" || plan.lauf < (M.lauf || 0))).sort((a, b) => rueck(b) - rueck(a));
+      for (const sp of L) {
+        const id = ZUSATZ[sp], B = V66.bereich(id);
+        let d = Math.floor(Math.min(rest(z.i), B.std, sp === "lauf" ? (M.lauf || 0) - plan.lauf : Infinity) / 5) * 5, n = null, x = null;
+        for (; d >= B.min; d -= 5) { n = V64.einheit(id, Object.assign({}, o, { d })); x = n ? tlE(n) : null; if (n && x != null && x <= raum + 1e-9) break; n = null; }
+        if (!n) continue;
+        n.zusatz = true;
+        T[z.i].einheiten.push(n); raum -= x; tl += x;
+        P.zusatz.push({ date: T[z.i].date, id, titel: n.titel, sport: sp, dauer: n.dauer });
+        break;
+      }
+    }
+    P.tlNach = Math.round(tl);
+    return fertig(P.laenger.length > 0 || P.zusatz.length > 0);
+  };
+  /** Zeit als Ziel für eine ganze Woche (V64.woche-Form, nach dem Verteilen): → neue Woche mit `ziel` (Protokoll) und Meldungen, sonst w. */
+  V66.zielWoche = function (w, verf, Z) {
+    if (!w || !Array.isArray(w.tage)) return w;
+    const r = V66.zeitZiel(w.tage, verf, Z);
+    if (!r.geaendert) return w;
+    const out = Object.assign({}, w, { tage: r.tage, ziel: r.protokoll,
+      hinweise: (w.hinweise || []).concat(r.protokoll.laenger.map((x) => V66.zielText("laenger", x)), r.protokoll.zusatz.map((x) => V66.zielText("zusatz", x))) });
+    return summenNeu(out, w);
+  };
 
   /** V7.4 eigenplan-1.2 («Woche anpassen?», ampel-plan-1.0): Rest der Woche ab heute wie eine Erholungswoche – die Tage bekommen die Einheiten
    *  des Vorschlags mit Erholung (ctx.erholung(date), nach der Verfügbarkeit verteilt); gesperrte Tage und Tage mit gesperrter Einheit bleiben,

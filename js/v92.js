@@ -35,8 +35,32 @@
   /** Einheiten einer Woche für den Vergleich: tage = [{ date, einheiten }] → [{ uid, id, titel, dauer, sport, date }] (ohne Krafttraining-Zählung, alles). */
   V92.liste = function (tage) {
     const out = [];
-    for (const t of tage || []) for (const e of t.einheiten || []) out.push({ uid: e.uid || null, id: e.id || e.vorlage || null, titel: e.titel || "Einheit", dauer: isNum(e.dauer) ? e.dauer : 0, sport: e.sport || null, date: t.date });
+    for (const t of tage || []) for (const e of t.einheiten || []) {
+      const x = { uid: e.uid || null, id: e.id || e.vorlage || null, titel: e.titel || "Einheit", dauer: isNum(e.dauer) ? e.dauer : 0, sport: e.sport || null, date: t.date };
+      if (e.dicht) x.dicht = true; if (e.zusatz) x.zusatz = true;                // V9.5 zeit-intensitaet-1.0: von der Seite verdichtet bzw. dazugefügt
+      out.push(x);
+    }
     return out;
+  };
+  /**
+   * V9.5 zeit-intensitaet-1.0: Zeilen mit Grund für Verlängerungen, zusätzliche Einheiten und Verdichtungen (ZL = V66.zielZeilen(E.verteilung.ziel)).
+   * Nur, was mit dieser Änderung neu ist (vorher stand die Einheit nicht so da); die blosse Änderung derselben Einheit fällt aus D weg (kein Doppel).
+   * vor, nach = V92.liste. → { D (ohne diese Einträge), zeilen }
+   */
+  V92.zielBericht = function (D, vor, nach, ZL) {
+    const zeilen = [], weg = { laenger: [], gekuerzt: [], verschoben: [], neu: [] };
+    for (const z of ZL || []) {
+      const schon = (vor || []).some((a) => a.date === z.date && a.id === z.id && a.dauer === z.dauer && (z.art !== "dicht" || a.dicht) && (z.art !== "zusatz" || a.zusatz));
+      if (schon) continue;
+      zeilen.push(z.text);
+      const passt = (x, d) => x.titel === z.titel && d === z.date;
+      if (z.art === "laenger") weg.laenger.push(...D.laenger.filter((x) => passt(x, x.date) && x.nach === z.dauer));
+      if (z.art === "dicht") { weg.gekuerzt.push(...D.gekuerzt.filter((x) => passt(x, x.date) && x.nach === z.dauer)); weg.verschoben.push(...D.verschoben.filter((x) => passt(x, x.nach) && x.dauer === z.dauer)); }
+      if (z.art === "zusatz") weg.neu.push(...D.neu.filter((x) => passt(x, x.date)));
+    }
+    const D2 = Object.assign({}, D);
+    for (const k of Object.keys(weg)) D2[k] = (D[k] || []).filter((x) => !weg[k].includes(x));
+    return { D: D2, zeilen };
   };
   /** Was hat sich zwischen vor und nach (V92.liste) geändert? Zuordnung über die Kennung, sonst über die Vorlage (gleicher Tag zuerst, dann der nächste).
    *  → { verschoben [{titel, von, nach, dauer}], gekuerzt [{titel, date, von, nach}], laenger [...], weg [{titel, date, dauer}], neu [{titel, date, dauer}] } */

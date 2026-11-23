@@ -1056,6 +1056,19 @@ check("V9.2 Mein Plan: Streichungen, Anker und ersetzte Vorlage gültig; falsche
       merge_daily.planwoche_pruefen(_ST, None) is None and all(merge_daily.planwoche_pruefen(w, None) for w in _st_bad),
       str([merge_daily.planwoche_pruefen(_ST, None)] + [merge_daily.planwoche_pruefen(w, None) for w in _st_bad]))
 
+# ---------- V9.5 zeit-intensitaet-1.0: verdichtet (dicht), zusätzlich (zusatz), «Neu berechnen» (zielAus) ----------
+_ZI = dict(_WO, zielAus={"fp": "zf-1a2b3c", "am": "2026-03-04T19:00:00Z"}, tage={"2026-03-05": {"gesperrt": False, "einheiten": [
+    {"uid": "v-2026-03-05-0", "vorlage": "rad_locker", "dauer": 95, "quelle": "vorschlag", "dicht": {"z3": 30}},
+    {"uid": "v-2026-03-05-1", "vorlage": "schwimm_locker", "dauer": 45, "quelle": "vorschlag", "zusatz": True}]}})
+def _zi(**k):
+    return dict(_ZI, tage={"2026-03-05": {"gesperrt": False, "einheiten": [dict({"uid": "x", "vorlage": "rad_locker", "dauer": 95, "quelle": "vorschlag"}, **k)]}})
+_zi_bad = [_zi(dicht={"z3": 35}), _zi(dicht={"z3": 50}), _zi(dicht={"z3": True}), _zi(dicht=30),
+           _zi(zusatz="ja"), _zi(zusatz=False), dict(_ZI, zielAus={"fp": "x"}), dict(_ZI, zielAus="neu")]
+check("V9.5 Mein Plan: verdichtet, zusätzlich (auch nach eigener Änderung) und «Neu berechnen» gültig; falsches Tempo, kein Ja, falscher Fingerabdruck abgelehnt",
+      merge_daily.planwoche_pruefen(_ZI, None) is None and merge_daily.planwoche_pruefen(_zi(dicht={"z3": 20}, quelle="eigen", zusatz=True), None) is None
+      and all(merge_daily.planwoche_pruefen(w, None) for w in _zi_bad),
+      str([merge_daily.planwoche_pruefen(_ZI, None)] + [merge_daily.planwoche_pruefen(w, None) for w in _zi_bad]))
+
 # ---------- V7.3 Felder je Einheit (einheit-felder-1.0) ----------
 _F_OK = {"uid": "v-2026-03-05-0", "vorlage": "rad_schwelle", "dauer": 80, "quelle": "eigen", "uhrzeit": "06:30", "gesperrt": True,
          "metrik": "puls", "drinnen": False, "ein_min": 20, "pausen": 30}

@@ -158,6 +158,10 @@
   `griffZiehen`/`zeilenSetzen`, Zyklus-Raster, absolvierte Zeile, Tageskopf ohne Schloss, ✨ «Anpassen oder neu berechnen?»), `js/v93.js` (woche-look-1.1), `js/formkurve.js`
   (`FK.MARKE`, `FK.markierung`, analyse-gesund-1.1), `index.html` (Monat-Knopf aus, KW-Zeile aus, Wochenzeile im Zyklus, «Nach dem Training» an `FK.gesundheitSetzen`), `css/v6.css`
   (Abschnitt V9.3.2, `--wk-neu`), `js/wissen.js` (1.37), `tests/test_v93.cjs`, `tests/test_formkurve.cjs`
+- **V9.5 (Zeit und Intensität, zeit-intensitaet-1.0; 23.11.2026):** `js/v66.js` (`V66.ZIEL`, `V66.zeitZiel`, `V66.zielWoche`, Verdichten in `V66.verteilen` opt.`ziel`,
+  `V66.dichtTeile`/`dichtMax`/`dichtAnwenden`, `V66.zielText`/`zielZeilen`, `V66.zielFp`/`zielAusGilt`; `V66.einheit` mit `dicht`/`zusatz`), `js/v64-ui.js` (`K.ziel`,
+  `K.w0vorZiel`), `js/v66-ui.js` (`ctx.ziel`, Bericht), `js/v78-ui.js` (Zyklus-Bereich), `js/v92.js` (`V92.zielBericht`), `tools/merge_daily.py` (`dicht`, `zusatz`, `zielAus`),
+  `js/wissen.js` (1.38), `tests/test_v95.cjs`, `tests/test_tools.py`
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
 - `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)

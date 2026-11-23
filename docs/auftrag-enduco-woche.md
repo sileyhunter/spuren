@@ -269,6 +269,8 @@ Aus der Aufnahme 20-17-01: während Enduco umplant, schimmern die Pillen aller T
 Bearbeiten → Dauer ändern → Kopf live · Löschen → Streichung gemerkt. **Silas prüft:** eine Einheit planen und wieder löschen, Dauer ändern und ↶/↷, Ablauf wie in der Enduco-Aufnahme.
 
 ## Etappe W4 – Zeit und Intensität als Stellschrauben (zeit-intensitaet-1.0 · V9.5)
+**Stand 23.11.2026: gebaut in V9.5** (Regeln, Zahlen und Begründungen in `docs/anleitung/plan.md`, «Zeit und Intensität als Stellschrauben»; Abnahme `tests/test_v95.cjs`;
+offener Punkt 153).
 Nach W1 (W2 und W3 nicht nötig). Beides immer **innerhalb der Maximalzeit** eines Tages; nichts davon trägt etwas als «von Hand» ein.
 - **Verdichten (Silas, Punkt 3):** Bleibt nach «Verschieben» und «Kürzen» Last übrig, versucht die Seite vor der Frage (W1), **dieselbe Last in weniger Zeit** unterzubringen: Die Einheit
   wird kürzer und dafür um **eine** Intensitätsstufe höher (z. B. Grundlage → Anteile Tempo). Es ist die Ausnahme («im Normalfall habe ich ja die Zeit»). Bedingungen – Claude legt die Zahlen

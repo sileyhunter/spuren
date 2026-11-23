@@ -316,7 +316,7 @@
   12 h am Tag); liegt das beste Mehr über `V92.GROSS` = 60 min (eigene Festlegung) oder reicht kein Tag allein, dazu «verteilt»: gleich viel auf zwei der Tage mit der meisten Zeit,
   zusammen höchstens das Fehlende. «Ja» = `vf-<Datum>` mit der neuen Zeit (Sportarten wie bisher; Zustand «von Hand»), «Nein» = `E.verteilung.frage` { fp, antwort } – gilt, bis
   sich der Fingerabdruck der Eingaben ändert (`V92.fingerabdruck`: Grenzen, Sperren, Anker, Streichungen). Keine Frage in Rennwochen (dort wird nichts verschoben, nur gemeldet), für
-  vergangene Wochen, im Bearbeiten-Modus (erst mit ✓). Trainingstechnisch ist ein sehr voller Tag die Ausnahme («im Normalfall ist die Zeit da»); Verdichten kommt mit W4.
+  vergangene Wochen, im Bearbeiten-Modus (erst mit ✓). Trainingstechnisch ist ein sehr voller Tag die Ausnahme («im Normalfall ist die Zeit da»); vor der Frage verdichtet die Seite seit V9.5 (siehe «Zeit und Intensität»).
 - **Bericht:** `V92.diff` über Kennung, sonst Vorlage (gleicher Tag, dann nächster): verschoben (mit Grund aus dem Planer), gekürzt, länger, entfällt, neu; Wochenlast vorher → nachher
   (TL ≈, Stunden wie im Wochenkopf). ↶ stellt Woche und Verfügbarkeit von vorher her (nur bis die Seite neu geladen wird). «Ausgleichen» erscheint, wenn gestrichen ist und die
   geplante Last unter 92,5 % des Vorschlags liegt (Bereich wie zyklus-1.0); es vergisst die Streichungen und plant innerhalb der Grenzen neu.
@@ -329,3 +329,52 @@
   **Eigene Festlegung:** Was in einer Woche fehlt, holt die Folgewoche nicht nach (verpasste Last nachzujagen erhöht das Risiko; die Wochenlast folgt dem Aufbau,
   die Ermüdung fliesst über Ampel und «Automatisch» ein). Auch die Läufe im Aufbau-Fenster (aufbau-1.2) wirken so in die Folgewochen.
 - Regel ändern = Version in `V66.VERSIONS` (umplanen, grenzen) bzw. `V92.VERSIONS` (woche-einstellen, fehlt-zeit), Wissen (Kapitel «modelle») und `tests/test_v92.cjs` nachführen.
+
+## Zeit und Intensität als Stellschrauben (V9.5, Auftrag «Woche wie Enduco» Etappe W4: zeit-intensitaet-1.0; Silas' Entscheide vom 22.11.2026, Zahlen und Begründungen von Claude)
+- **Grundsatz:** Die Zeit eines Tages wirkt in beide Richtungen, immer **innerhalb der Maximalzeit** des Tages (grenzen-1.0 bleibt hart). Nichts davon trägt etwas «von Hand» ein (kein
+  `vf-…`-Eintrag); beides ist Teil derselben Funktion der Eingaben wie das Umplanen: gleiche Eingaben, gleiche Woche (Vorschlag ohne Eigenes: `V64UI.kontextFuer` → `V66.wocheVerteilt`
+  + `V66.zielWoche`; gespeicherte Woche: `V66.aendern { art: "umplanen" }` mit `ctx.ziel` → `V66.verteilen` opt.`ziel` + `V66.zeitZiel`). Kontext `K.ziel` = { tl (TL ≈ wie der
+  Wochenkopf, `V66.schaetzung`), tlMax, minuten (je Sportart im Vorschlag), aus, vorsichtig }. Version `V66.VERSIONS.ziel`, Festlegungen `V66.ZIEL`.
+- **Wann nicht (`ziel.aus`):** vergangene Wochen, Rennwochen, Erholungswochen (auch die Erholungswoche der Ampel, `E.erholung`), Taper (Phase «Taper» oder «B-Rennen …») und nach
+  «Neu berechnen» (siehe unten). Verdichten zusätzlich nicht, wenn die Ampel heute auf «vorsichtig» oder Krankheitszeichen steht (nur die laufende Woche; die nächsten Wochen werden
+  ohnehin neu gerechnet, wenn sie kommen). Nie an gesperrten oder vergangenen Tagen, nie an Silas' eigenen, gesperrten, verschobenen oder geänderten Einheiten (Anker).
+- **Zeit als Ziel (Silas' Punkt 4):** nach dem Verteilen (`V66.zeitZiel`). Ein Tag mit Zeitgrenze, der mehr Zeit hat, als seine Einheiten brauchen: dort wird die längste lockere
+  Einheit in 5-min-Schritten länger – innerhalb ihres Bereichs (`V66.bereich`), höchstens bis zur Zeit des Tages und nur, solange die Wochenlast ≤ Obergrenze des Korridors bleibt.
+  Die Tage mit der meisten freien Zeit zuerst. **Korridor** = Bereich des Zyklus (zyklus-1.0, `V78.bereich`): TL ≈ des verteilten Vorschlags ± 7,5 %; die Obergrenze ist
+  `K.ziel.tlMax`. Der Zyklus misst den Bereich weiter am Vorschlag **ohne** Verlängerungen (`K.w0vorZiel`), sonst wanderte er mit. Einheiten ohne TL ≈ (Tests, Schwimmen ohne CSS)
+  zählen wie im Zyklus nicht mit und werden nicht verlängert. Gestrichenes bleibt gestrichen: die Obergrenze sinkt um seine Last (kein heimlicher Ersatz).
+  **Zusätzliche Einheit:** stösst die längste lockere Einheit an ihren Bereich (oder hat der Tag keine verlängerbare) und bleiben am Tag ≥ 45 min (`V66.ZIEL.zusatzAb`), kommt eine
+  lockere Einheit der Sportart mit dem grössten Rückstand zur Wochenverteilung dazu (Anteil der Sportart an den Minuten des Vorschlags × geplante Minuten − ihre Minuten), höchstens so
+  lang wie die Vorlage im Standard (Rad 60, Schwimmen 45, Laufen 45 min), nicht unter ihrem Minimum, nur so lang, wie die Obergrenze erlaubt. Nie dieselbe Sportart zweimal am Tag,
+  nie an einem leeren Tag (ein Ruhetag des Plans bleibt Ruhetag), nie hart. Gespeichert mit `zusatz: true`; sie steht für keine Einheit des Vorschlags (`V66.stehtFuer`).
+  **Entscheide (Claude, Begründung):** (1) Verlängert werden nur lockeres Rad und lockeres Schwimmen (`rad_locker`, `rad_lang`, `schwimm_locker`): mehr Umfang im lockeren Bereich ist für
+  die Langdistanz der wirksamste und am wenigsten riskante Reiz (Seiler 2010); **Laufen nicht** – Laufen belastet Sehnen und Knochen am meisten, sein Umfang folgt der Aufbau-Grenze
+  (aufbau-1.2, 10-%-Regel); eine zusätzliche lockere Laufeinheit nur bis zu den Laufminuten des Vorschlags (also nur, um Ausgefallenes aufzufüllen). Renntempo-Varianten nicht: ihre
+  Blöcke wüchsen mit der Dauer (mehr Zeit würde zu mehr Intensität). (2) Die Obergrenze des Korridors (+ 7,5 %) hält die Woche in der Periodisierung (keine Lastsprünge);
+  Erholungs-, Taper- und Rennwochen bleiben, was sie sind. (3) Leerer Tag bleibt leer: Ruhetage sind Teil der Erholung.
+- **Verdichten (Silas' Punkt 3):** in `V66.verteilen` (opt.`ziel`), nach den drei Runden und der Regel «zwei harte Tage». Bleibt nach Verschieben und Kürzen Last übrig – eine
+  Einheit fällt weg (`P.weg`) oder wurde so gekürzt, dass ihr TL ≈ unter 90 % liegt –, bringt die Seite dieselbe Last in weniger Zeit unter: kürzer und **eine Stufe höher**
+  (Grundlage → Anteile Tempo). **Zahlen (Claude, nach `laktat.md`):** Tempo = Z3 (zwischen LT1 und LT2, nie darüber – Stufe «bis Schwelle» ohne z3o), in Blöcken von 10 min mit 5 min Z2
+  dazwischen, nach dem Einfahren und 15 min (Laufen 10 min) Z2, am Schluss mindestens 10 min Z2 (`V66.dichtTeile`); höchstens ein Drittel der Einheit, Rad höchstens 4, Laufen 3 Blöcke
+  (`V66.dichtMax`). Die kleinste Menge Tempo, mit der das TL ≈ wieder bei ± 10 % (`V66.ZIEL.toleranz`) des ursprünglichen liegt; bei einer weggefallenen Einheit der Tag und die
+  längste Dauer, bei der das gelingt. Nur lockere und lange Rad- und Laufeinheiten des Vorschlags (`rad_locker`, `rad_lang`, `lauf_locker`, `lauf_lang`); nie Eigenes, Gesperrtes, Tests,
+  Rennen, Schwimmkurs, Schlüsseleinheiten, Koppellauf, Schwimmen (sein TL ≈ hängt nicht von der Intensität ab, wenn es aus der Last pro Stunde kommt). Höchstens **zwei** je Woche
+  (`V66.ZIEL.maxDicht`, mit denen an festen Tagen), zuerst die grösste Lücke. Gespeichert als Einheit der Seite mit `dicht: { z3 }` (Titel «Grundlage mit Tempo», «Lange Ausfahrt mit
+  Tempo», «Lauf locker mit Tempo», «Langer Lauf mit Tempo»); kein Anker, die nächste Änderung rechnet sie neu. Reicht es nicht, bleibt die Last in `E.verteilung.fehlt` und die Frage
+  (fehlt-zeit-1.0) kommt.
+  **Entscheide (Claude, Begründung):** (1) Die verdichtete Einheit ist «mittel» (Z3 unter LT2), keine Schlüsseleinheit – im Drei-Bereiche-Modell ist «hart» über LT2; die Zahl harter
+  Einheiten der Phase wird darum nicht überschritten (sie zählt nicht dazu). (2) Weil Tempo aber mehr ermüdet als Grundlage: nie am Tag einer harten Einheit an Land oder am Tag davor
+  oder danach (auch über die Wochengrenze), nicht am Tag nach dem Krafttraining und nicht neben einer langen Aktivität draussen, nicht am Tag eines Tests – im üblichen Wochenmuster
+  (Di und Do hart) also vor allem am Wochenende. (3) Tempo bringt etwa 1,5-mal so viel Last pro Minute wie Grundlage; mit höchstens einem Drittel Tempo und 10 % Spielraum spart das
+  höchstens etwa ein Viertel der Zeit – mehr wäre keine Grundlage mit Anteilen Tempo mehr, sondern eine Tempoeinheit. (4) Schwimmen nicht verdichtet (siehe oben); Renntempo-Varianten und Schlüssel nicht
+  (eine Stufe höher wäre dort über LT2).
+- **Bericht:** `E.verteilung.ziel` = { laenger, zusatz, dicht } (auch in einer Woche, die danach wieder von selbst folgt; der Bericht nimmt das Ergebnis des Umplanens). Zeilen mit
+  Grund zuerst (`V66.zielText`, `V92.zielBericht`): «Donnerstag: Rad + 25 min, die Zeit war da», «Mittwoch: zusätzlich Schwimmen locker 45 min, die Zeit war da (Schwimmen lag
+  hinter der Wochenverteilung)», «Samstag Rad: 2 h 15 statt 2 h 45, dafür mit Anteilen Tempo – gleiche Last». Nur, was mit dieser Änderung neu ist; die blosse Änderung derselben
+  Einheit fällt aus der Liste (keine Doppelzeile). Details nennen alles (`meldungen`).
+- **Rückgängig und «Neu»:** ↶ stellt Woche und Verfügbarkeit von vorher her – damit auch ohne Verlängerung bzw. Verdichtung. «Neu berechnen» (Stufe 2, auch ✨ «Neu» und «Alles
+  neu») speichert `E.zielAus` { fp } = Fingerabdruck der Eingaben (`V66.zielFp`: Grenzen je Tag, Sperren, Anker, Streichungen): solange er gilt (`V66.zielAusGilt`), plant die Woche
+  ohne Zeit als Ziel und ohne Verdichten; die nächste eigene Änderung (andere Eingaben) bringt beides zurück. Folgewoche und Entwurf im Bearbeiten wie bisher.
+- **Datenformat:** nur optionale Felder (eigenplan-1.3 bleibt): Einheit `dicht` { z3: 10–40 in 10er-Schritten }, `zusatz: true`; Woche `zielAus` { fp «zf-…», am }. Geprüft in
+  `merge_daily.planwoche_pruefen`. Ändert Silas die Dauer einer verdichteten Einheit, bleibt das Tempo, solange es in die neue Dauer passt (sonst die gewöhnliche Fassung).
+- Regel ändern = `V66.VERSIONS.ziel`, `V66.ZIEL`, Wissen (Kapitel «modelle»), `tests/test_v95.cjs` nachführen.

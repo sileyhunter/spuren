@@ -1,5 +1,24 @@
 # Änderungen
 
+## V9.5 · 23.11.2026 · Woche wie Enduco W4: Zeit und Intensität als Stellschrauben (zeit-intensitaet-1.0)
+Silas' Anliegen (23.11.2026): «Wenn ich die Zeit eines Tages ändere, soll die Woche angepasst werden. Heute bringt mehr Zeit kein Mehr an Training.» Entscheide vom 22.11.2026
+(Punkte 3 und 4 des Auftrags), Zahlen und Begründungen von Claude in `docs/anleitung/plan.md` («Zeit und Intensität als Stellschrauben»).
+- **Zeit als Ziel (`V66.zeitZiel`, `V66.zielWoche`):** Hat ein Tag mehr Zeit, als der Plan braucht, wird dort die längste lockere Einheit (Rad, Schwimmen) in 5-min-Schritten länger –
+  innerhalb ihres Bereichs, höchstens bis zur Zeit des Tages und bis zur Obergrenze des Korridors (TL ≈ des verteilten Vorschlags + 7,5 %, wie der Zyklus). Stösst sie an ihren Bereich
+  und bleiben ≥ 45 min, kommt eine lockere Einheit der Sportart mit dem grössten Rückstand zur Wochenverteilung dazu. Laufen wird nie länger (Aufbau-Grenze), Ruhetage bleiben leer.
+- **Verdichten (in `V66.verteilen`, opt.`ziel`):** Bleibt nach Verschieben und Kürzen Last übrig, wird eine lockere oder lange Rad- oder Laufeinheit kürzer und bekommt Tempo (Z3, unter
+  LT2, 10-min-Blöcke, höchstens ein Drittel), bis das TL ≈ wieder bei ± 10 % liegt. Höchstens zwei je Woche, nie am Tag einer harten Einheit an Land oder daneben, nicht am Tag nach dem
+  Krafttraining. Reicht es nicht, kommt wie bisher die Frage.
+- **Nie:** in Erholungs-, Taper- und Rennwochen, an gesperrten oder vergangenen Tagen, an eigenen Einheiten; Verdichten nicht bei Ampel «vorsichtig». Nichts wird «von Hand» eingetragen.
+- **Bericht** mit Grund zuerst: «Mittwoch: Rad + 35 min, die Zeit war da», «Samstag Rad: 2 h 15 statt 2 h 45, dafür mit Anteilen Tempo – gleiche Last» (`V92.zielBericht`,
+  `V66.zielZeilen`); ohne gespeicherte Woche nimmt der Bericht das Ergebnis des Umplanens. ↶ nimmt beides zurück; «Neu berechnen» speichert `zielAus` (Fingerabdruck der Eingaben,
+  `V66.zielFp`) und plant ohne beides, bis sich die Eingaben ändern.
+- **Wo:** `js/v66.js` (Kern, `V66.ZIEL`, `V66.dichtTeile`/`dichtMax`/`dichtAnwenden`, `V66.einheit` mit `dicht`/`zusatz`, `V66.stehtFuer`, umplanen und «Neu berechnen»),
+  `js/v64-ui.js` (`K.ziel`, `K.w0vorZiel`; Vorschlag mit Zeit als Ziel), `js/v66-ui.js` (`ctx.ziel`, Bericht, `leerE`), `js/v78-ui.js` (Zyklus-Bereich ohne Verlängerungen),
+  `js/v92.js` (`V92.liste` mit `dicht`/`zusatz`, `V92.zielBericht`), `tools/merge_daily.py` (optionale Felder `dicht`, `zusatz`, `zielAus` geprüft), `js/wissen.js` (1.38).
+- Tests: neu `tests/test_v95.cjs` (14, Simulator und Rechentests, erfunden), `tests/test_tools.py` (+1), `tests/test_v80.cjs` B3 (am Sonntag darf eine zusätzliche lockere Einheit
+  dazukommen, das Übrige bleibt), Version in `tests/test_v64.cjs`. Demo-Durchlauf mit Playwright (demo.html). `sw.js` Cache `notebook-v95-zeit-2026-11-23`.
+
 ## V9.7 · 22.11.2026 · Tag-Update: Belastung tagsüber aktuell (tag-update-1.0)
 Silas' Wunsch vom 22.11.2026 (Widget aufs iPhone, Belastung soll tagsüber stimmen): bisher stand die Belastung bis zum Nacht-Update auf «offen».
 - **Neuer Lauf «Tag-Update»** (`docs/anleitung/updates.md`): 13, 15, 17, 19 und 21 Uhr, nur lesend auf Garmin, ohne «Ampel», ohne Eingaben vom Handy. Spielt die Einheiten von heute

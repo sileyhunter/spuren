@@ -770,6 +770,10 @@ def planwoche_pruefen(w, vorher=None):
                 return "Streichung ohne Datum"
             if not mo <= gd <= mo + dt.timedelta(days=6):
                 return "Streichung nicht in dieser Woche"
+    # V9.5 zeit-intensitaet-1.0: «Neu berechnen» ohne Zeit als Ziel und Verdichten – Fingerabdruck der Eingaben (gilt, bis er sich ändert)
+    za = w.get("zielAus")
+    if za is not None and (not isinstance(za, dict) or not re.fullmatch(r"zf-[0-9a-z]{1,13}", str(za.get("fp") or ""))):
+        return "«Neu berechnen» (zielAus) ungültig"
     for d, t in tage.items():
         try:
             dd = dt.date.fromisoformat(str(d))
@@ -801,6 +805,15 @@ def planwoche_pruefen(w, vorher=None):
                 return f"{d}: Anker ja oder nichts"
             if e.get("statt") is not None and not re.fullmatch(r"[a-z0-9_]{1,40}", str(e.get("statt"))):
                 return f"{d}: ersetzte Vorlage ungültig"
+            # V9.5 zeit-intensitaet-1.0: von der Seite verdichtet (Tempo in 10-min-Blöcken, 10–40 min) bzw. zusätzlich (Zeit als Ziel); bleibt, wenn Silas
+            # die Einheit danach selbst ändert (dann ist sie seine – die Seite rechnet sie nicht mehr neu)
+            dz = e.get("dicht")
+            if dz is not None:
+                z3 = dz.get("z3") if isinstance(dz, dict) else None
+                if isinstance(z3, bool) or not isinstance(z3, int) or not 10 <= z3 <= 40 or z3 % 10:
+                    return f"{d}: verdichtete Einheit ungültig"
+            if e.get("zusatz") is not None and e.get("zusatz") is not True:
+                return f"{d}: zusätzliche Einheit ungültig"
             if e["quelle"] == "bibliothek":
                 if isinstance(e.get("wid"), bool) or not isinstance(e.get("wid"), int) or e.get("sport") not in ("rad", "lauf", "schwimm"):
                     return f"{d}: Bibliothek ohne Workout oder Sportart"

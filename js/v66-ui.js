@@ -149,6 +149,7 @@
     const abstimmen = window.V76 && window.V76.abstimmen && K.w0roh && K.w0roh.kraft ? (tage) => { const w = window.V76.abstimmen({ kraft: K.w0roh.kraft, tage, hinweise: [] }, { ctxE: K.ctxE }); return w && w.tage ? w.tage : tage; } : null;
     return { heute: h, montag: mo, vorschlag, roh, verf: K.verf || null, verteilt: !!K.verteilt, ctxE: K.ctxE, lang: K.lang || null, heuteFest, abstimmen,
       vorher: K.vorher || null, vorherDatum: K.vorherDatum || null,                     // V9.2.1 umplanen-1.1: Sonntag davor bindet den Montag
+      ziel: K.ziel || null,                                                              // V9.5 zeit-intensitaet-1.0: Verdichten und Zeit als Ziel wie im Vorschlag
       tl: (e) => { try { return V66().schaetzung(e, BZ).tl; } catch (err) { return null; } },
       o: { phase: K.w.phase, css_s: K.css ? K.css.s : null, kurz: !!(K.w.taper || K.w.erholung) }, jetzt: new Date().toISOString(),
       erholung: K.erh || null, grund: a && a.art === "erholung" ? "Ampel: mehrere Tage «vorsichtig» (ampel-plan-1.0)" : null,
@@ -227,7 +228,7 @@
       }
     }
   }
-  const leerE = (E) => !E || (!Object.keys(E.tage || {}).length && !(E.gestrichen && E.gestrichen.length) && !E.erholung);
+  const leerE = (E) => !E || (!Object.keys(E.tage || {}).length && !(E.gestrichen && E.gestrichen.length) && !E.erholung && !E.zielAus);   // V9.5: «Neu» ohne Stellschrauben
   /** V9.2.1 umplanen-1.1 (Folgewoche, Silas 22.11.2026: «die Woche darauf auch, wenn es einen Einfluss hat»): nach einer gespeicherten Änderung an Woche mo
    *  auch die Woche danach neu planen – ihr Montag hängt am neuen Sonntag (harte Einheit an Land, Krafttraining, lange Aktivität draussen), die Läufe im
    *  Aufbau-Fenster zählen mit (aufbau-1.2). Gespeicherte Wochen über umplanen (Eigenes, Sperren, Streichungen bleiben), Wochen ohne Eigenes folgen von selbst;
@@ -312,7 +313,8 @@
     }
     let folge = [];
     if (vorFolge && !wt) { try { folge = await folgeWoche(mo, vorFolge); } catch (e) { console.error(e); } }
-    if (!opt.still) BERICHT = berichtBauen(mo, vor, stand(mo), P().planEintrag(mo), { vfAlt, grund: opt.grund, bestaetigt: opt.bestaetigt, entwurf: imEnt, folge, vorFolge });
+    if (!opt.still) BERICHT = berichtBauen(mo, vor, stand(mo), P().planEintrag(mo) || E, {   // V9.5: ohne Eigenes nicht gespeichert – das Protokoll des Umplanens zählt
+       vfAlt, grund: opt.grund, bestaetigt: opt.bestaetigt, entwurf: imEnt, folge, vorFolge });
     neuZeichnen();
     return null;
   }
@@ -321,8 +323,10 @@
   /** Bericht nach dem Umplanen: was sich geändert hat (mit Grund), Wochenlast vorher → nachher, was fehlt, ↶ (Woche und Verfügbarkeit davor). */
   function berichtBauen(mo, vor, nach, E, o) {
     if (!V92() || !vor || !nach) return null;
-    const D = V92().diff(vor.liste, nach.liste), V = E && E.verteilung ? E.verteilung : null;
-    const zeilen = V92().zeilen(D, V92().grundAus(V ? V.meldungen : []));
+    const D0 = V92().diff(vor.liste, nach.liste), V = E && E.verteilung ? E.verteilung : null;
+    // V9.5 zeit-intensitaet-1.0: Verlängerung, zusätzliche Einheit und Verdichtung mit Grund (zuerst), statt der blossen Änderung
+    const ZB = V92().zielBericht ? V92().zielBericht(D0, vor.liste, nach.liste, V && V.ziel && V66().zielZeilen ? V66().zielZeilen(V.ziel) : []) : { D: D0, zeilen: [] }, D = ZB.D;
+    const zeilen = ZB.zeilen.concat(V92().zeilen(D, V92().grundAus(V ? V.meldungen : [])));
     for (const b of (o && o.bestaetigt) || []) zeilen.unshift(`${V92().tag(b.date)}: ${V92().dauer(b.min)} – auf deine Bestätigung`);
     for (const z of (o && o.folge) || []) zeilen.push(z);                         // V9.2.1: was sich in der Woche danach geändert hat
     const hinweise = (V && V.meldungen ? V.meldungen : []).filter((m) => / mehr geplant als verfügbar | passt nicht zu deiner Verfügbarkeit|Rennwoche/.test(m));

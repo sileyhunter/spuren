@@ -91,7 +91,17 @@
     // Zeit, am Tag danach keine harte Einheit an Land). Regel 2 danach (V76.abstimmen). → { roh: unverteilt mit Krafttraining, v: verteilt }
     // V9.2.1 umplanen-1.1 (Folgewoche): der letzte Tag der Woche davor bindet den Montag (harte Einheit an Land, Krafttraining, lange Aktivität draussen)
     const vorher = vorbei ? null : vortag(offset), vorherDatum = V.addDays(mo, -1);
-    const verteilt = (w) => (!vorbei && window.V66 && window.V66.wocheVerteilt ? window.V66.wocheVerteilt(w, verf, { css_s: css ? css.s : null, lang, ctxE, vorher, vorherDatum }) : w);
+    // V9.5 zeit-intensitaet-1.0 (Auftrag «Woche wie Enduco», Etappe W4): Verdichten beim Verteilen, Zeit als Ziel danach – TL ≈ wie der Wochenkopf (V66.schaetzung),
+    // nicht in vergangenen, Renn-, Erholungs- und Taperwochen und nicht, solange «Neu berechnen» gilt (V66.zielAusGilt); Verdichten nicht bei Ampel «vorsichtig» (laufende Woche)
+    const E0 = planEintrag(mo), V66z = window.V66 && window.V66.zeitZiel ? window.V66 : null;
+    const BZ = V66z ? V66z.bezug(sk, css ? css.s : null) : null, tlZ = (e) => { try { return V66z.schaetzung(e, BZ).tl; } catch (err) { return null; } };
+    const taperW = phase === "Taper" || String(phase).startsWith("B-Rennen"), rennW = rennen().some((r) => r && r.date >= mo && r.date <= V.addDays(mo, 6));
+    const ampelV = !vorbei && mo === V.montag(h) && (() => { try { const A = window.V74UI && window.V74UI.stand ? window.V74UI.stand(h) : null;
+      return !!(A && !A.trotzdem && (A.status === "vorsichtig" || A.status === "krank")); } catch (err) { return false; } })();
+    const ziel = V66z ? { v: V66z.VERSIONS.ziel, tl: tlZ, vorsichtig: ampelV,
+      aus: vorbei ? "vergangen" : rennW ? "Rennwoche" : erholung ? "Erholungswoche" : taperW ? "Taper" : V66z.zielAusGilt(E0, verf) ? "neu" : null } : null;
+    const verteilt = (w) => (!vorbei && window.V66 && window.V66.wocheVerteilt ? window.V66.wocheVerteilt(w, verf, { css_s: css ? css.s : null, lang, ctxE, vorher, vorherDatum,
+      ziel: ziel && w && w.erholung ? Object.assign({}, ziel, { aus: "Erholungswoche" }) : ziel }) : w);
     const mitKraft = (roh) => {
       const D76 = window.V76;
       if (!D76 || !E75) return { roh, v: verteilt(roh) };
@@ -120,10 +130,22 @@
     // V7.2 verfuegbarkeit-1.0 / eigenplan-1.1: ab der laufenden Woche nach deiner Verfügbarkeit verteilt (ganze Woche, unabhängig vom heutigen Tag).
     // Wochen ohne eigene Änderungen folgen ihr von selbst; ganz festgehaltene Wochen zeigen das Gespeicherte; ältere, nur teilweise gespeicherte
     // Wochen (eigenplan-1.0) bleiben beim unverteilten Vorschlag, bis du «Anpassen» wählst. w0 = Vorschlag, auf dem Mein Plan aufbaut; w0roh = unverteilt.
-    const E = planEintrag(mo);
+    const E = E0;
     const w0v = X0.v;
     const teilweise = !!(E && !E.ganz && E.tage && Object.values(E.tage).some((t) => t && Array.isArray(t.einheiten)));
-    const basis = abgestimmt(teilweise ? w0 : w0v);
+    const basis0 = abgestimmt(teilweise ? w0 : w0v);
+    // V9.5 Zeit als Ziel: Obergrenze = Korridor der Woche (zyklus-1.0: TL ≈ des verteilten Vorschlags + 7,5 %), Wochenverteilung = Minuten je Sportart im Vorschlag
+    let basis = basis0, zielK = null;
+    if (ziel && !teilweise) {
+      let tlV = 0;                                                            // wie zyklusDaten (js/v78-ui.js): Einheiten ohne TL ≈ zählen nicht mit
+      for (const t of basis0.tage || []) if (!t.rennen) for (const e of t.einheiten || []) if (["rad", "lauf", "schwimm"].includes(e.sport) || e.art === "draussen") { const x = tlZ(e); if (isNum(x)) tlV += x; }
+      tlV = Math.round(tlV);
+      const BR = window.V78 && window.V78.bereich ? window.V78.bereich(tlV) : tlV > 0 ? [Math.round(tlV * 0.925), Math.round(tlV * 1.075)] : null;
+      const minuten = { schwimm: 0, rad: 0, lauf: 0 };
+      for (const t of w0.tage || []) for (const e of t.einheiten || []) if (minuten[e.sport] != null) minuten[e.sport] += e.dauer || 0;
+      zielK = Object.assign({}, ziel, { tlMax: BR ? BR[1] : null, minuten, o: { phase, css_s: css ? css.s : null, kurz: taperW || !!erholung } });
+      basis = V66z.zielWoche(basis0, verf, zielK);
+    }
     const wM = window.V66 ? window.V66.meinPlan(basis, E, ctxE) : basis;
     // V7.5 indoor-phase-1.0: Rad und Laufen in der Indoor-Phase drinnen (ausser ausdrücklich anders gewählt) – vor der Ampel, damit die lockere
     // Fassung und der Garmin-Auftrag drinnen bleiben
@@ -140,7 +162,7 @@
       }
       return ((wErh.tage.find((t) => t.date === d) || {}).einheiten) || [];
     };
-    return { w: wa, wPlan: w, w0: basis, w0roh: w0, verteilt: !teilweise && !!(w0v && w0v.verteilung), verf, lang, ctxE, wahl, S, css, vg, ausSaison, vorbei, offset, erh, E75, basis75: ba, rampe: R, skalen: sk,
+    return { w: wa, wPlan: w, w0: basis, w0vorZiel: basis0, ziel: zielK || ziel, w0roh: w0, verteilt: !teilweise && !!(w0v && w0v.verteilung), verf, lang, ctxE, wahl, S, css, vg, ausSaison, vorbei, offset, erh, E75, basis75: ba, rampe: R, skalen: sk,
       vorher, vorherDatum,
       sportart: SA, aufteilung75: AUF, auto, autoIn, modell };
   }
