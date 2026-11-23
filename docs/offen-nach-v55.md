@@ -388,7 +388,9 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
      Kalender → Bearbeiten → oben steht die nächste Woche; «Woche einstellen» und ✨ gelten für sie. Wer im Zyklus oder in der Liste eine spätere Woche gewählt hat, bearbeitet diese.
 149. **Griff ziehen (kalender-4.2):** **Silas bitte prüfen:** Griff unter dem Raster nach unten ziehen → zwei Wochen → Monat; nach oben → zwei Wochen → eine Woche (Liste und Zyklus);
      antippen wechselt zwischen zwei Wochen und Monat. Fühlt sich der Weg (44 px je Stufe) zu kurz oder zu lang an: melden.
-150. **Noch anders als Enduco (Stand V9.3.2):** «⊖» im Tageskopf des Bearbeitens (Bedeutung in den Bildern nicht erkennbar – die Seite hat dort «…» mit dem Tagesblatt); Wochen-Pille im
+150. **Noch anders als Enduco (Stand V9.3.2):** ~~«⊖» im Tageskopf des Bearbeitens~~ – geklärt mit Silas' Aufnahme vom 23.11. (06:46): es sind drei Punkte «…» (in den kleinen
+     Bildern wie ein Minus gelesen); sie öffnen das Tagesblatt mit «Training hinzufügen» und «Tag sperren» – wie auf der Seite. Enduco zeigt im Bearbeiten nur diese zwei Zeilen, ausserhalb
+     «Training hinzufügen», «Eigene Aktivität planen» und die Verfügbarkeit; die Seite zeigt alles in beiden, weil Silas die Verfügbarkeit auch im Bearbeiten will (W1). Weiter anders: Wochen-Pille im
      Zyklus mit «h:mm h» statt «7h 23m»; Kartenbilder und «76 %»-Abzeichen bei absolvierten Einheiten (siehe 146); Analyse, Heute/Home und Plan im Enduco-Look = W2c (eigene Sitzung).
 151. **Eigene Markierung (analyse-gesund-1.1):** «nicht werten» im Namen, in der Notiz der Uhr oder in «Nach dem Training» lässt eine Einheit aus Pace/Puls-Auswertungen weg;
      Krankheitszeichen gelten für den Tag und 3 Tage danach. **Silas bitte prüfen:** die Einheit, die du mit «nicht werten» benannt hast, im Explorer öffnen → «nicht vergleichbar: krank
