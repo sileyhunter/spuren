@@ -43,7 +43,9 @@
     for (const sk of (akt && akt.skalen) || []) {
       const z3 = (sk.zonen || []).find((z) => z.z === "Z3");
       if (z3 && isNum(z3.von)) out.z3[sk.key] = z3.von;
-      out.skalen[sk.key] = sk.zonen || [];
+      const L = (sk.zonen || []).slice();
+      if (sk.metrik === "puls" && isNum(sk.hfmax) && sk.hfmax > 0) Object.defineProperty(L, "hfmax", { value: sk.hfmax });   // V9.9.2: Z5 «bis Max»
+      out.skalen[sk.key] = L;
     }
     return out;
   };

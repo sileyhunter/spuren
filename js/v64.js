@@ -409,7 +409,11 @@
         const a = z3.von + (2 / 3) * (z3.bis - z3.von);
         return `${band(sport === "rad" ? W5(a) : a, z3.bis)}, nicht über LT2 (${wert(z3.bis)})`;
       }
-      case "vo2": return z5 && isNum(z5.von) ? `${sport === "rad" ? "über" : "schneller als"} ${wert(z5.von)}${puls(h5 && isNum(h5.von) ? `über ${h5.von} (steigt verzögert)` : null)}` : null;
+      case "vo2": {
+        if (!(z5 && isNum(z5.von))) return null;
+        const mx = hf && isNum(hf.hfmax) && h5 && isNum(h5.von) && hf.hfmax > h5.von ? hf.hfmax : null;      // V9.9.2: Z5 «bis Max»
+        return `${sport === "rad" ? "über" : "schneller als"} ${wert(z5.von)}${puls(h5 && isNum(h5.von) ? (mx ? `${h5.von}–${mx} (bis Max, steigt verzögert)` : `über ${h5.von} (steigt verzögert)`) : null)}`;
+      }
       default: return null;
     }
   };

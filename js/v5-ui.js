@@ -454,8 +454,9 @@
   function zonenListe(s, immer) {
     const W = window.V6; if (!W || !LZ || (!immer && LZ.mode !== "aktuell")) return "";
     const pace = s.metrik === "pace", f = (v) => (pace ? FK().pace(v) : num(v)), u = pace ? " /km" : " " + s.unit;
+    const mx = s.metrik === "puls" && typeof s.hfmax === "number" && s.hfmax > 0 ? s.hfmax : null;   // V9.9.2: Z5 «bis Max»
     const bereich = (von, bis) => (von == null && bis == null ? "–" : von == null ? (pace ? `langsamer als ${f(bis)}${u}` : `bis ${f(bis)}${u}`)
-      : bis == null ? (pace ? `schneller als ${f(von)}${u}` : `ab ${f(von)}${u}`) : `${f(von)}–${f(bis)}${u}`);
+      : bis == null ? (mx && von < mx ? `${f(von)}–${f(mx)}${u} (Max)` : pace ? `schneller als ${f(von)}${u} (bis Max)` : `ab ${f(von)}${u} (bis Max)`) : `${f(von)}–${f(bis)}${u}`);
     return `<ul class="zliste">${W.zonenZeilen(s.zonen).map((z) => `<li style="--zc:${W.ZONEN[z.key].farbe}"><span class="zl-n"><b>${esc(z.kurz)}</b> ${esc(z.name)}</span><span class="zl-w">${esc(bereich(z.von, z.bis))}</span></li>`
       + z.unter.map((x) => `<li class="unter" style="--zc:${(W.ZONEN[x.key] || W.ZONEN.offen).farbe}"><span class="zl-n"><i class="zpunkt"></i>${esc(x.name)}</span><span class="zl-w">${esc(f(x.lo))}–${esc(f(x.hi))}${esc(u)}</span></li>`).join("")).join("")}</ul>`;
   }

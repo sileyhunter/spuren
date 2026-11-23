@@ -1,5 +1,16 @@
 # Änderungen
 
+## V9.9.2 · 23.11.2026 · Z5 «bis Max» (zone5-max-1.0)
+Silas (23.11.): «Z5 ohne Obergrenze» – Absicht, «bis Max» nachgeliefert; «ja du kannst das alles machen».
+- Die Pulszone Z5 zeigt die Obergrenze, wenn das Zonenprofil einen Maximalpuls (`hfmax` der Pulsskala) hat: Zonenliste «180–190 bpm (Max)» (Beispielwerte), Pace und Leistung «… (bis Max)»,
+  Briefing-Text «Puls 180–190 (bis Max, steigt verzögert)», «Intensitätszonen» «Puls 180–190 (Max)».
+- Garmin-Pulsziel VO2max: geschlossen bis zum Maximalpuls (statt «über», Obergrenze 1,1 × Untergrenze). Ohne Maximalpuls im Profil ändert sich nichts.
+- `TR.zonen` gibt den Maximalpuls je Pulsskala mit (nicht aufzählbar, Daten unverändert). Test `tests/test_v992.cjs` (neu, 4).
+
+## V9.9.1 · 23.11.2026 · Fehler «W is not defined» im Blatt «Woche bearbeiten» behoben
+Prüfung 23.11. (Stand-Sitzung): das «…» an einer Woche öffnete «Woche bearbeiten» nicht (`V66UI.wocheAktionen`, seit V9.1, von keinem Test erfasst).
+- Behoben: `const W = V6();` in `js/v66-ui.js`. Test `tests/test_v991.cjs` (neu, 2) öffnet das Blatt im Simulator für diese, die nächste und eine vergangene Woche (schlug vorher fehl).
+
 ## V9.3.3 · 23.11.2026 · Enduco-Look für Plan, Heute und Profil (W2c, enduco-look-1.0)
 Silas (23.11.): «W2c kannst du machen» – nach seinen Enduco-Screenshots (Archiv_1.zip, nicht im Repo).
 - Plan: Kopf mit zwei Kacheln «Training» (absolviert / Mein Plan dieser Woche) und «Bis zum Rennen» (Wochen, Tage), Knöpfe «Kalender» und «Plan verwalten».

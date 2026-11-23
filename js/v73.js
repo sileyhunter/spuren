@@ -370,7 +370,7 @@
       case "renntempo": return z3 && isNum(z3.von) ? `Puls bis ${r(z3.von)}` : null;
       case "z3": return ok(z3) ? `Puls ${r(z3.von)}–${r(z3.bis)}` : null;
       case "z3o": return ok(z3) ? `Puls ${r(z3.von + (2 / 3) * (z3.bis - z3.von))}–${r(z3.bis)}` : null;
-      case "vo2": return z5 && isNum(z5.von) ? `Puls über ${r(z5.von)}` : null;
+      case "vo2": return z5 && isNum(z5.von) ? (isNum(L.hfmax) && L.hfmax > z5.von ? `Puls ${r(z5.von)}–${r(L.hfmax)} (Max)` : `Puls über ${r(z5.von)}`) : null;   // V9.9.2: Z5 «bis Max»
       default: return null;
     }
   }
@@ -387,7 +387,7 @@
     if (!z) return null;
     const pace = key === "lauf_pace", fmt = (x) => (pace && mmss ? mmss(x) : String(Math.round(x))), ein = pace ? "/km" : metrik === "puls" ? " bpm" : " W";
     if (!isNum(z.von) && isNum(z.bis)) return `${pace ? "langsamer als" : "unter"} ${fmt(z.bis)}${ein}`;
-    if (isNum(z.von) && !isNum(z.bis)) return `${pace ? "schneller als" : "über"} ${fmt(z.von)}${ein}`;
+    if (isNum(z.von) && !isNum(z.bis)) return metrik === "puls" && isNum(L.hfmax) && L.hfmax > z.von ? `${fmt(z.von)}–${fmt(L.hfmax)}${ein} (Max)` : `${pace ? "schneller als" : "über"} ${fmt(z.von)}${ein}`;   // V9.9.2: Z5 «bis Max»
     if (isNum(z.von) && isNum(z.bis)) return `${fmt(z.von)}–${fmt(z.bis)}${ein}`;
     return null;
   };

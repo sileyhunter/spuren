@@ -1237,7 +1237,7 @@
   /* ---------- Wochenaktionen ---------- */
   M.wocheAktionen = function (mo, zurueck) {
     if (!bereit()) return;
-    const K = kontext(mo); if (!K) return;
+    const W = V6(), K = kontext(mo); if (!K) return;
     const ganzVorbei = add(mo, 6) < heute();
     const html = `<h2 id="v59-ov-h" tabindex="-1">Woche bearbeiten</h2><p class="sub">KW ${V6().isoWoche(mo)} · ${esc(dkurz(mo))}–${esc(dkurz(add(mo, 6)))}</p>
       ${ganzVorbei ? `<p class="hint">Vergangene Wochen nur lesen.</p>` : `<ul class="mp-wahl">

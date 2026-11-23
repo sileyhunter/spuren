@@ -1407,7 +1407,11 @@
       case "z3": return voll(z3) ? p(z3.von, z3.bis) : null;
       case "z3o": return voll(z3) ? p(z3.von + (2 / 3) * (z3.bis - z3.von), z3.bis) : null;
       case "renntempo": return voll(z2) && z3 && isNum(z3.von) ? p(z2.von + (2 / 3) * (z2.bis - z2.von), z3.von) : null;
-      case "vo2": return z5 && isNum(z5.von) ? p(z5.von, isNum(z5.bis) ? z5.bis : z5.von * V66.GARMIN_OFFEN_PULS, !isNum(z5.bis)) : null;
+      case "vo2": {
+        if (!(z5 && isNum(z5.von))) return null;
+        const mx = !isNum(z5.bis) && isNum(L.hfmax) && L.hfmax > z5.von ? L.hfmax : null;                  // V9.9.2: Z5 «bis Max» (Maximalpuls des Profils)
+        return mx ? p(z5.von, mx, false) : p(z5.von, isNum(z5.bis) ? z5.bis : z5.von * V66.GARMIN_OFFEN_PULS, !isNum(z5.bis));
+      }
       default: return null;
     }
   };
