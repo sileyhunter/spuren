@@ -1,8 +1,8 @@
 # Auftrag V9 – «Woche wie Enduco»: Verhalten und Aussehen (Silas, 22.11.2026, geschärft um 19:26 und 20:00)
 
-> **Stand 22.11.2026:** Etappe W1 gebaut in V9.2 (umplanen-1.0, grenzen-1.0, woche-einstellen-1.0, fehlt-zeit-1.0; CHANGELOG V9.2, Regeln in `docs/anleitung/plan.md`
+> **Stand 23.11.2026:** Etappe W1 gebaut in V9.2 (umplanen-1.0, grenzen-1.0, woche-einstellen-1.0, fehlt-zeit-1.0; CHANGELOG V9.2, Regeln in `docs/anleitung/plan.md`
 > «Umplanen»; V9.2.1 Folgewoche). W2 (W2a und W2b) gebaut in V9.3 (woche-look-1.0, kugel-1.0) nach Silas' Screenshots vom 22.11.; V9.3.2 Feinschliff nach seinen 18 Bildern
-> und der Aufnahme 23:06 (Bearbeiten-Woche, Griff ziehen 1/2 Wochen/Monat, Zyklus-Raster, ✨ «Anpassen oder neu berechnen?»); W4 «Zeit als Ziel» entschieden (siehe W4); offen: W2c, W3–W5. Zahlen aus Bildschirmfotos und Aufnahmen sind in dieser Fassung durch erfundene ersetzt, sonst ist der Auftrag unverändert
+> und der Aufnahme 23:06 (Bearbeiten-Woche, Griff ziehen 1/2 Wochen/Monat, Zyklus-Raster, ✨ «Anpassen oder neu berechnen?»); W4 gebaut in V9.5 (zeit-intensitaet-1.0: Verdichten und Zeit als Ziel; Regeln und Zahlen in `docs/anleitung/plan.md` «Zeit und Intensität als Stellschrauben»); offen: W2c, W3, W5. Zahlen aus Bildschirmfotos und Aufnahmen sind in dieser Fassung durch erfundene ersetzt, sonst ist der Auftrag unverändert
 > (gleich im Repo als `docs/auftrag-enduco-woche.md` und im Projekt als `claude/auftrag-v9-enduco-woche.md`).
 
 Repo: sileyhunter/spuren. Es gilt CLAUDE.md. Passwort nur als SPUREN_PW, nie ins Repo.
