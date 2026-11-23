@@ -1841,3 +1841,9 @@ body.k4-edit .kal-v7.k4 .k4-r-kopf { display: none; }
 .mp-mehr summary::-webkit-details-marker { display: none; }
 .mp-mehr summary::after { content: "›"; font-size: 16px; line-height: 1; transition: transform .2s; }
 .mp-mehr[open] summary::after { transform: rotate(90deg); }
+
+/* ---------- V9.6 garmin-auto-1.0: Planeinstellung «Garmin senden» ---------- */
+.pe-feld { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 0; padding: 10px 14px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); }
+.pe-feld[hidden] { display: none; }
+.pe-feld span { font-weight: 600; }
+.pe-feld select { font: inherit; color: var(--fg); background: transparent; border: 0; text-align: right; }

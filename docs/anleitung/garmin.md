@@ -41,7 +41,14 @@ und (V6.5) unverändert im privaten Archiv ablegen (Abschnitt «Archiv», Art `g
 ## An Garmin senden (V6.6, garmin-senden-1.0, Entscheid E3 vom 13.11.2026; 1.1 = V7.3 Etappe 2: Schwimmen, Puls, RPE; 1.2 = V7.5.1: Stil je Schritt)
 - Silas' Wunsch: eigene Einheiten von Hand bis eine Woche voraus an Garmin (Fenix und Edge), automatisch nur am Vortag um 23 Uhr (er passt den
   nächsten Tag bis etwa 23 Uhr an). Die Seite legt dafür nur einen Auftrag an; ausgeführt wird er im Nacht-Update (Schritt 3, als Letztes).
-- Auftrag je Tag (`garmin_auftraege`, ID «gs-<Datum>»): modus «senden» (nächstes Nacht-Update), «auto» (Nacht-Update am Vortag ab 23:00), «aus».
+- **V9.6 garmin-auto-1.0 (Auftrag W5; Silas 23.11.2026: bauen, noch nicht einschalten):** Planeinstellungen → Allgemein → «Garmin senden» (Eingabe `planeinstellung`,
+  ID «pe-garmin» {modus aus | haekchen | alle, ab hh:mm 20:00–23:30 in 15-min-Schritten}; `V75.pruefen` = `merge_daily.planeinstellung_pruefen`). Ohne Eintrag wie bis V9.5
+  («Nur Tage mit Häkchen», 23:00). «Aus»: `garmin_senden.py plan` schliesst offene Aufträge «auto» mit «automatisch senden abgestellt» ab, «senden» von Hand geht weiter; das
+  Tagesblatt zeigt statt des Häkchens «Automatisch senden abgestellt». «Senden ab» ersetzt das feste 23:00 (`einstellung(D)`; das Nacht-Update läuft kurz vor 23 Uhr – eine frühere
+  Uhrzeit ändert nichts, eine spätere verlängert das Update um die Wartezeit). «Alle Tage» (`V66UI.alleTage`, nur wenn Silas es einschaltet): beim Laden und nach jeder Änderung je
+  Tag von morgen bis eine Woche voraus mit sendbaren Einheiten ein Auftrag «auto», erneuert nur bei geänderter Fassung; ein Tag mit «aus» und ein Auftrag «senden» bleiben;
+  Tagesblatt «Automatisch (alle Tage)» mit Häkchen zum Abstellen. Grenze: Aufträge entstehen im Browser – ohne geöffnete Seite bleibt der zuletzt angelegte Stand.
+- Auftrag je Tag (`garmin_auftraege`, ID «gs-<Datum>»): modus «senden» (nächstes Nacht-Update), «auto» (Nacht-Update am Vortag ab «Senden ab», Standard 23:00), «aus».
   Er trägt eine Momentaufnahme je Einheit (`V66.garminAuftrag`): Rad und Laufen als fertiges Workout (`V66.garminWorkout`: Name «IN · …»,
   Ziele in der Metrik der Einheit (`V66.metrikVon`): power.between in Watt bzw. pace.zone in m/s langsam → schnell, 1.1 Puls als heart.rate.zone
   mit eigenem Bereich in bpm (ID 4, ohne zoneNumber; `V66.garminPuls`, Renntempo = oberes Drittel von Z2, eigene Festlegung) oder RPE ohne Ziel

@@ -419,3 +419,6 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
      Krankheitszeichen/Schmerzen). Auf dem iPhone prüfen: Satz oben passt zum Tag (geplant, erledigt, frei); nach dem Check-in nur eine Zeile. Weiter vereinfachen nach Rückmeldung.
 158. **W3 Training planen und bearbeiten wie Enduco (V9.4, planen-fluss-1.0, 23.11.):** gebaut (Sportart → Intensität → Workout → Dauer; «Training bearbeiten» mit Indoor/Draussen;
      Bearbeiten-Modus öffnet es gleich). Auf dem iPhone prüfen: eine Einheit planen und wieder löschen, Dauer ändern und ↶/↷; neben Enduco: was anders aussieht, mit Screenshot.
+159. **W5 Automatisch senden als Einstellung (V9.6, garmin-auto-1.0, 23.11.):** gebaut, **nicht eingeschaltet** (Standard «Nur Tage mit Häkchen» wie bisher). Silas schaltet «Alle Tage» selbst
+     ein (Planeinstellungen → Allgemein → Garmin senden). Auf dem iPhone prüfen: Einstellung sichtbar, Standard «Nur Tage mit Häkchen»; «Aus» zeigt im Tagesblatt «Automatisch senden
+     abgestellt». Später möglich: Aufträge im Nacht-Update erzeugen (ohne geöffnete Seite).

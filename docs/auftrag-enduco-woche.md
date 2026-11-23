@@ -293,6 +293,7 @@ Erholungswoche und gesperrter Tag unverändert. Pfadunabhängigkeit bleibt (glei
 (b) Tag mit viel Zeit → längste lockere Einheit wird länger, nie über seine Zeit.
 
 ## Etappe W5 – Automatisch senden als Einstellung (garmin-auto-1.0 · V9.6)
+**Stand 23.11.2026: gebaut in V9.6, nicht eingeschaltet** (Silas: «bauen, jedoch noch nicht aktivieren»; Regeln in `docs/anleitung/garmin.md`, Abnahme `tests/test_v96.cjs`).
 Silas, 22.11.: Jeder Abend automatisch gesendet – «was wir aber nicht schon jetzt starten». Dazu eine Einstellung, mit der man das automatische Senden **stoppen** und die **Uhrzeit** festlegen
 kann, ab wann gesendet wird (z. B. Vortag 23:00). Baut auf W1 (Aufträge aller Tage nachführen).
 **Heute:** je Tag das Häkchen «Am Vortag um 23 Uhr automatisch senden» (Auftrag `gs-<Datum>`, Modus «auto»); `AB_UHR` = 23:00 fest in `tools/garmin_senden.py`; das Nacht-Update läuft kurz

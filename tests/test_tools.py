@@ -1837,5 +1837,29 @@ _DTC = json.load(open(os.path.join(_tcd, "d.json")))
 check("tagescoach-1.0 (merge_daily): Entscheide nach coach_entscheide, der spätere Zeitpunkt gilt, ungültige abgelehnt",
       [(x["id"], x["status"]) for x in _DTC.get("coach_entscheide") or []] == [(_tce["id"], "angenommen")], json.dumps(_DTC.get("coach_entscheide"))[:300])
 
+# ---------- V9.6 garmin-auto-1.0 (Auftrag W5): Planeinstellung «Garmin senden» – erfundene Daten ----------
+_pg = lambda modus, ab=None, am="2026-03-01T10:00:00Z": dict({"id": "pe-garmin", "v": "planeinstellungen-1.0", "modus": modus, "geaendert": am}, **({"ab": ab} if ab else {}))  # noqa: E731
+_D96 = {"activities": [], "days": [], "garmin_auftraege": [dict(json.loads(json.dumps(_GA["mix"])), status="offen")]}     # Auftrag «auto» für den 5.3.
+_D96a = dict(_D96, plan_einstellungen=[_pg("haekchen", "23:30")])
+_D96b = dict(_D96, plan_einstellungen=[_pg("alle", "23:30"), _pg("aus", None, "2026-03-02T10:00:00Z")])
+_send = dict(_D96["garmin_auftraege"][0], modus="senden")
+_D96c = dict(_D96b, garmin_auftraege=[_send])
+check("V9.6 Garmin senden: ohne Eintrag wie bisher (nur Tage mit Häkchen, 23:00); ungültige Einträge zählen nicht",
+      GS.einstellung(_D96) == ("haekchen", dt_mod.time(23, 0)) and GS.einstellung(dict(_D96, plan_einstellungen=[_pg("alle", "19:00"), _pg("immer")])) == ("haekchen", dt_mod.time(23, 0))
+      and GS.einstellung(_D96b) == ("aus", dt_mod.time(23, 0)), str(GS.einstellung(_D96b)))
+_w1, _w2, _w3 = GS.plan(_D96a, _jz("2026-03-04T22:58")), GS.plan(_D96a, _jz("2026-03-04T23:10")), GS.plan(_D96a, _jz("2026-03-04T23:40"))
+check("V9.6 Garmin senden: «Senden ab» 23:30 – um 22:58 und 23:10 warten bis 23:30, um 23:40 senden; mit 23:00 um 23:10 senden",
+      not _w1["aktionen"] and not _w2["aktionen"] and str(_w2["warten_bis"]).startswith("2026-03-04T23:30") and _w3["aktionen"]
+      and GS.plan(_D96, _jz("2026-03-04T23:10"))["aktionen"], str(_w2)[:200])
+_w4, _w5 = GS.plan(_D96b, _jz("2026-03-04T23:40")), GS.plan(_D96c, _jz("2026-03-04T21:00"))
+check("V9.6 Garmin senden: «Aus» – automatischer Auftrag wird nicht gesendet, sondern mit «automatisch senden abgestellt» abgeschlossen; «senden» von Hand geht",
+      not _w4["aktionen"] and [(x["status"], x["grund"]) for x in _w4["abschluesse"]] == [("aus", "automatisch senden abgestellt")] and not _w4["warten_bis"]
+      and [x["art"] for x in _w5["aktionen"]] == ["hochladen", "einplanen"], str(_w4)[:200] + str(_w5)[:200])
+_pe_f = {k: merge_daily.planeinstellung_pruefen(v) for k, v in {"modus": _pg("immer"), "ab_frueh": _pg("alle", "19:45"), "ab_spaet": _pg("alle", "23:45"),
+                                                                  "ab_schritt": _pg("alle", "22:10"), "ab_typ": _pg("alle", 2300)}.items()}
+check("V9.6 Garmin senden: Eingabe geprüft (merge_daily) – drei Modi, «Senden ab» 20:00–23:30 in 15-min-Schritten",
+      all(merge_daily.planeinstellung_pruefen(_pg(m, ab)) is None for m in ("aus", "haekchen", "alle") for ab in (None, "20:00", "22:45", "23:30"))
+      and all(_pe_f.values()), str(_pe_f))
+
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)

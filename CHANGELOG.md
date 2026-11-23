@@ -1,5 +1,15 @@
 # Änderungen
 
+## V9.6 · 23.11.2026 · Automatisch senden als Einstellung (W5, garmin-auto-1.0) – gebaut, nicht eingeschaltet
+Silas (23.11.): «W5 bauen, jedoch noch nicht aktivieren.»
+- Planeinstellungen → Allgemein → «Garmin senden»: Aus · Nur Tage mit Häkchen (Standard, wie bisher) · Alle Tage; «Senden ab» am Vortag 20:00–23:30 (Standard 23:00).
+  Ohne Eintrag ändert sich nichts.
+- «Aus»: das Nacht-Update schliesst automatische Aufträge mit «automatisch senden abgestellt» ab; «An Garmin senden» von Hand geht weiter; das Tagesblatt sagt es.
+- «Alle Tage» (nur wenn Silas es einschaltet): die Seite legt für morgen bis eine Woche voraus je Tag mit sendbaren Einheiten einen automatischen Auftrag an und erneuert ihn nur bei
+  geänderter Fassung; einzelne Tage lassen sich im Tagesblatt abstellen.
+- `tools/garmin_senden.py` liest die Einstellung (`einstellung`), `merge_daily.py` prüft sie; Texte «um 23 Uhr» zeigen die eingestellte Uhrzeit.
+- Tests `tests/test_v96.cjs` (neu, 5), `tests/test_tools.py` (+4).
+
 ## V9.4 · 23.11.2026 · Training planen und bearbeiten wie Enduco (W3, planen-fluss-1.0)
 Etappe W3 des Auftrags «Woche wie Enduco» (nach V9.9 gebaut; die Nummer V9.4 war für W3 reserviert).
 - «Training planen» statt «Training hinzufügen»: Sportart → **Intensität** (neu: Grundlage · Tempo/Schwelle · VO2max · Test, mit Farbkachel und Kurzsatz; nur, was die Sportart hat)

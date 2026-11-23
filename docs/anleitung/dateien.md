@@ -162,6 +162,9 @@
   `V66.dichtTeile`/`dichtMax`/`dichtAnwenden`, `V66.zielText`/`zielZeilen`, `V66.zielFp`/`zielAusGilt`; `V66.einheit` mit `dicht`/`zusatz`), `js/v64-ui.js` (`K.ziel`,
   `K.w0vorZiel`), `js/v66-ui.js` (`ctx.ziel`, Bericht), `js/v78-ui.js` (Zyklus-Bereich), `js/v92.js` (`V92.zielBericht`), `tools/merge_daily.py` (`dicht`, `zusatz`, `zielAus`),
   `js/wissen.js` (1.38), `tests/test_v95.cjs`, `tests/test_tools.py`
+- **V9.6 (W5 Automatisch senden als Einstellung, garmin-auto-1.0; 23.11.2026, nicht eingeschaltet):** `js/v75.js` (`pe-garmin`, `V75.GARMIN`, `garminZeiten`), `js/v75-ui.js`
+  (Zeile und Blatt «Garmin senden», `V75UI.garmin`), `js/v66-ui.js` (`garminAuto`, `alleTage`, Tagesblatt), `js/v74-ui.js`, `js/v73-ui.js`, `css/v6.css`, `tools/garmin_senden.py`
+  (`einstellung`, «Senden ab», «Aus»), `tools/merge_daily.py` (`pe-garmin` geprüft), `tests/test_v96.cjs`, `tests/test_tools.py`
 - **V9.4 (W3 Training planen und bearbeiten wie Enduco, planen-fluss-1.0; 23.11.2026, nach V9.9 gebaut):** `js/v94.js` (neu: `V94.STUFEN`, `V94.stufeVon`, `V94.stufen`,
   `V94.achse`), `js/v66-ui.js` (`stufenBlatt`, `vorlagenBlatt` je Stufe, `dauerBlatt` neu), `js/v73-ui.js` («Training bearbeiten» mit «Zu Indoor/Draussen ändern», `opt.bearbeiten`),
   `js/v78-ui.js` (Bearbeiten-Modus öffnet gleich «Training bearbeiten»), `js/v6-heute.js`, `js/wissen.js` (1.40), `css/v6.css`, `index.html`, `sw.js`, `tests/test_v94.cjs`

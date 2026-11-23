@@ -24,7 +24,7 @@
   if (root) root.V75 = V75;
 })(typeof window !== "undefined" ? window : null, function (V64) {
   "use strict";
-  const V75 = { VERSIONS: { einstellungen: "planeinstellungen-1.0", basis: "basis-1.2", steigerung: "steigerung-1.0", indoor: "indoor-phase-1.0" } };
+  const V75 = { VERSIONS: { einstellungen: "planeinstellungen-1.0", basis: "basis-1.2", steigerung: "steigerung-1.0", indoor: "indoor-phase-1.0", garmin: "garmin-auto-1.0" } };
   // basis-1.2 (V8.3, Datenstand): Tage nach den letzten Garmin-Daten zählen nicht als Ruhetage – die Fitness gilt dann vom letzten Tag mit Daten
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const T = (iso) => Date.parse(iso + "T12:00:00Z");
@@ -45,7 +45,13 @@
   V75.KRAFT_MODUS = ["auto", "fest"];                                    // kraft-plan-1.1: Tag automatisch (aus den möglichen Tagen) oder fest
   const tageOk = (L) => Array.isArray(L) && L.every((x) => Number.isInteger(x) && x >= 1 && x <= 7) && new Set(L).size === L.length;
   V75.IDS = { start: "pe-start", basis_schwimm: "pe-basis-schwimm", basis_rad: "pe-basis-rad", basis_lauf: "pe-basis-lauf", steigerung: "pe-steigerung",
-    indoor_rad: "pe-indoor-rad", indoor_lauf: "pe-indoor-lauf", schwimm: "pe-schwimm", kraft: "pe-kraft", lang: "pe-lang", sportart: "pe-sportart" };
+    indoor_rad: "pe-indoor-rad", indoor_lauf: "pe-indoor-lauf", schwimm: "pe-schwimm", kraft: "pe-kraft", lang: "pe-lang", sportart: "pe-sportart", garmin: "pe-garmin" };
+  /** V9.6 garmin-auto-1.0 (Auftrag W5, Silas 22.11./23.11.2026: bauen, aber nicht einschalten): automatisch an Garmin senden – «aus» (nichts Automatisches),
+   *  «haekchen» (Standard = Verhalten bis V9.5: nur Tage mit Häkchen), «alle» (jeder Abend; schaltet nur Silas ein). «Senden ab» am Vortag 20:00–23:30 in 15-min-Schritten. */
+  V75.GARMIN = { modi: ["aus", "haekchen", "alle"], ab_min: "20:00", ab_max: "23:30", standard: { modus: "haekchen", ab: "23:00" } };
+  V75.garminAbOk = (s) => typeof s === "string" && /^(2[0-3]):(00|15|30|45)$/.test(s) && s >= V75.GARMIN.ab_min && s <= V75.GARMIN.ab_max;
+  /** Uhrzeiten für die Auswahl «Senden ab». */
+  V75.garminZeiten = () => { const L = []; for (let h = 20; h <= 23; h++) for (const m of ["00", "15", "30", "45"]) { const s = `${h}:${m}`; if (V75.garminAbOk(s)) L.push(s); } return L; };
   /** V8.4.1 sportart-1.0 (Silas' Wunsch vom 18.11.2026): die Seite auch nur für Radrennen oder Laufrennen und das Training dafür. */
   V75.SPORTARTEN = ["triathlon", "rad", "lauf"];
   V75.SPORTART_NAME = { triathlon: "Triathlon", rad: "Rad", lauf: "Laufen" };
@@ -67,7 +73,7 @@
   V75.standard = () => ({ start: "fitness", basis: { schwimm: null, rad: null, lauf: null }, steigerung: V75.STEIGERUNG.standard, indoor: { rad: null, lauf: null },
     schwimm: { hilfsmittel: V75.HILFSMITTEL.slice(), pool: null, stile: ["ruecken"], anfaenger: false, kurs_bis: null, kurs_nur: false },   // V7.6.2 kurs-1.0
     kraft: { aktiv: false, modus: "auto", tage: [1, 2, 3, 4, 5, 6, 7], wt: null, uhrzeit: null, dauer: V75.KRAFT.dauer, notiz: null }, kraftWochen: {},
-    lang: { rad: [], lauf: [] }, sportart: "triathlon", stand: {} });
+    lang: { rad: [], lauf: [] }, sportart: "triathlon", garmin: Object.assign({}, V75.GARMIN.standard), stand: {} });
   const teilmenge = (x, erlaubt) => Array.isArray(x) && x.every((k) => erlaubt.includes(k)) && new Set(x).size === x.length;
   /** Prüft einen Eintrag → Fehlertext oder null (gleiche Regeln wie merge_daily.planeinstellung_pruefen). */
   V75.pruefen = function (e) {
@@ -106,6 +112,10 @@
         return V75.START.includes(e.art) ? null : "Start: Basis-Fitness oder Aufteilung";
       case "pe-sportart":                                                  // sportart-1.0
         return V75.SPORTARTEN.includes(e.art) ? null : "Sportart: Triathlon, Rad oder Laufen";
+      case "pe-garmin":                                                    // V9.6 garmin-auto-1.0
+        if (!V75.GARMIN.modi.includes(e.modus)) return "Automatisch senden: aus, nur Tage mit Häkchen oder alle Tage";
+        if (e.ab != null && !V75.garminAbOk(e.ab)) return "Senden ab: 20:00–23:30 in 15-min-Schritten";
+        return null;
       case "pe-lang":                                                      // verfuegbarkeit-1.1: bevorzugte Tage für lange Einheiten
         for (const k of ["rad", "lauf"]) if (e[k] != null && !tageOk(e[k])) return "Tage für lange Einheiten 1–7, jeder einmal";
         return null;
@@ -179,6 +189,7 @@
     for (const [id, x] of M) {
       if (id === "pe-start") E.start = x.art;
       else if (id === "pe-sportart") E.sportart = x.art;
+      else if (id === "pe-garmin") E.garmin = { modus: x.modus, ab: x.ab || V75.GARMIN.standard.ab };
       else if (id.startsWith("pe-basis-")) E.basis[id.slice(9)] = isNum(x.wert) ? x.wert : null;
       else if (id === "pe-steigerung") E.steigerung = x.wert;
       else if (id === "pe-indoor-rad" || id === "pe-indoor-lauf") E.indoor[id === "pe-indoor-rad" ? "rad" : "lauf"] = x.von && x.bis ? { von: x.von, bis: x.bis } : null;

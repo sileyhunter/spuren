@@ -96,6 +96,7 @@
     try { document.dispatchEvent(new CustomEvent("meinplan")); } catch (e) { console.error(e); }
     // offene Garmin-Aufträge (morgen bis eine Woche voraus) mit dem neuen Stand abgleichen – nur geänderte werden neu gespeichert
     try { if (U66() && U66().auftraegeAbgleichen) { const mo = V64().montag(heute()); await U66().auftraegeAbgleichen(mo); await U66().auftraegeAbgleichen(V64().addDays(mo, 7)); } } catch (e) { console.error(e); }
+    try { if (U66() && U66().alleTage) await U66().alleTage(); } catch (e) { console.error(e); }       // V9.6 garmin-auto-1.0
     return null;
   }
   /** V7.6: speichern von aussen (Einheit-Seite: Ausnahme einer Woche fürs Krafttraining); → Fehlertext oder null. */
@@ -200,7 +201,8 @@
           ${zeile(`data-pe="sportart"`, ic("flagge", 22), "Sportart", sportartText(E))}
           ${zeile(`data-pe="verf"`, ic("kalender", 22), "Trainingsverfügbarkeit", vt || "Höchstens so viel Zeit je Wochentag")}
           ${zeile(`data-pe="lang"`, ic("uhr", 22), "Tage für lange Einheiten", langText(E.lang))}
-          ${zeile(`data-pe="tests"`, ic("tacho", 22), "Leistungstests", "Testkalender – die Seite schlägt die Termine vor")}</ul>
+          ${zeile(`data-pe="tests"`, ic("tacho", 22), "Leistungstests", "Testkalender – die Seite schlägt die Termine vor")}
+          ${zeile(`data-pe="garmin"`, ic("geraet", 22), "Garmin senden", garminText(E))}</ul>
         <p class="hint">Die Verfügbarkeit gilt jede Woche (einen einzelnen Tag änderst du im Tagesblatt); die Tage für lange Einheiten ab der nächsten Woche.
           Beides sind Grenzen und Wünsche für den Vorschlag – was nicht passt, wird gemeldet, nie still verschoben.</p>`;
     } else if (s === "lauf" || s === "rad") {
@@ -314,7 +316,7 @@
     if (art === "tests") { V59().schliessen(); if (window.APP && window.APP.showTab) window.APP.showTab("plan-tests"); else location.hash = "#plan-tests"; return; }
     const ov = art === "basis" ? basisBlatt(sport, i) : art === "indoor" ? indoorBlatt(sport, i) : art === "equipment" ? equipmentBlatt(i) : art === "pool" ? poolBlatt(i) : art === "stile" ? stileBlatt(i)
       : art === "kraft" ? kraftBlatt(i) : art === "kraftwoche" ? kraftWocheBlatt(sport, i) : art === "lang" ? langBlatt(i) : art === "kurs" ? kursBlatt(i)
-      : art === "sportart" ? sportartBlatt(i) : null;
+      : art === "sportart" ? sportartBlatt(i) : art === "garmin" ? garminBlatt(i) : null;
     if (!ov) return;
     ov.querySelectorAll("[data-pe-z]").forEach((b) => (b.onclick = () => seite(i)));
   }
@@ -573,6 +575,43 @@
     return ov;
   }
   /** V8.4.1 sportart-1.0: Triathlon, nur Rad oder nur Laufen. */
+  /* ---------- V9.6 garmin-auto-1.0: Garmin senden (Auftrag W5; «Alle Tage» schaltet nur Silas ein) ---------- */
+  const GARMIN_OPT = [["aus", "Aus", "Nichts automatisch – «An Garmin senden» von Hand bleibt"],
+    ["haekchen", "Nur Tage mit Häkchen", "Wie bisher: du setzt im Tagesblatt das Häkchen «automatisch senden»"],
+    ["alle", "Alle Tage", "Jeden Abend die Einheiten von morgen; einen Tag stellst du im Tagesblatt ab"]];
+  function garminText(E) {
+    const g = (E && E.garmin) || V75().GARMIN.standard;
+    return g.modus === "aus" ? "Automatisch senden aus" : `${GARMIN_OPT.find((o) => o[0] === g.modus)[1]} · ab ${g.ab} Uhr am Vortag`;
+  }
+  M.garmin = function (opt) { return garminBlatt(0, (opt && opt.zurueck) || (() => V59().schliessen())); };
+  function garminBlatt(i, zur) {
+    const E = M.einstellungen(), g = E.garmin || V75().GARMIN.standard;
+    let wahl = g.modus, ab = g.ab;
+    const ov = V59().blatt("pe", `<div class="blatt-titel">${ic("geraet", 34)}<h2 id="v59-ov-h" tabindex="-1">Garmin senden</h2>
+        <p class="sub">Wann deine Einheiten automatisch auf die Uhr gehen.</p></div>
+      <div class="pe-start pe-modus" role="radiogroup" aria-label="Automatisch senden">${GARMIN_OPT.map(([k, t, u]) =>
+        `<button type="button" role="radio" aria-checked="${k === wahl}" data-pega="${k}"><b>${t}</b><small>${u}</small></button>`).join("")}</div>
+      <label class="pe-feld" data-pegab-z${wahl === "aus" ? " hidden" : ""}><span>Senden ab (am Vortag)</span>
+        <select data-pegab>${V75().garminZeiten().map((z) => `<option value="${z}"${z === ab ? " selected" : ""}>${z} Uhr</option>`).join("")}</select></label>
+      <p class="pe-info">${ic("info", 16)}<span>Gesendet wird im Nacht-Update. Es läuft kurz vor 23 Uhr: eine frühere Uhrzeit ändert nichts, eine spätere verlängert das Update um die
+        Wartezeit. Die Zeit des Updates selbst änderst du im Chat.</span></p>
+      <p class="hint" data-pega-alle${wahl === "alle" ? "" : " hidden"}>«Alle Tage»: Die Aufträge entstehen auf der Seite – öffnest du sie tagelang nicht, bleibt der zuletzt angelegte Stand.</p>
+      <p class="hint">${esc(V75().VERSIONS.garmin)}; «Nur Tage mit Häkchen» ist der Standard.</p>
+      <p class="warn-t" data-pef hidden></p>${fuss(okKnopf())}`);
+    const sel = ov.querySelector("[data-pegab]");
+    ov.querySelectorAll("[data-pega]").forEach((b) => (b.onclick = () => {
+      wahl = b.dataset.pega; ov.querySelectorAll("[data-pega]").forEach((x) => x.setAttribute("aria-checked", String(x.dataset.pega === wahl)));
+      ov.querySelector("[data-pegab-z]").hidden = wahl === "aus"; ov.querySelector("[data-pega-alle]").hidden = wahl !== "alle";
+    }));
+    sel.onchange = () => (ab = sel.value);
+    if (zur) ov.querySelectorAll("[data-pe-z]").forEach((b) => (b.onclick = zur));
+    ov.querySelector("[data-peok]").onclick = () => {
+      if (wahl === g.modus && ab === g.ab) { if (zur) zur(); else seite(i); return; }
+      const t = GARMIN_OPT.find((o) => o[0] === wahl)[1];
+      speichernUnd(ov, i, "pe-garmin", { modus: wahl, ab }, wahl === "aus" ? "Automatisch senden ist aus." : `Garmin senden: ${t}, ab ${ab} Uhr am Vortag.`, zur);
+    };
+    return ov;
+  }
   function sportartText(E) {
     const a = E && E.sportart ? E.sportart : "triathlon", B = { triathlon: "Triathlon – Schwimmen, Rad und Laufen", rad: "Nur Rad – Radrennen und das Training dafür", lauf: "Nur Laufen – Laufrennen und das Training dafür" };
     const jetzt = M.einstellungen({ startBis: V64().addDays(V64().montag(heute()), 1), montag: V64().montag(heute()) });

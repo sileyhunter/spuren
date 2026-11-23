@@ -62,6 +62,7 @@
     if (!Array.isArray(I.data.ampel)) I.data.ampel = [];
     await I.upsert("ampel", x);
     try { if (U66() && U66().auftraegeAbgleichen && V64()) await U66().auftraegeAbgleichen(V64().montag(heute())); } catch (e) { console.error(e); }
+    try { if (U66() && U66().alleTage) await U66().alleTage(); } catch (e) { console.error(e); }          // V9.6 garmin-auto-1.0 («Alle Tage», nur wenn eingeschaltet)
     return null;
   }
   /** Ändert sich der Entscheid von heute (Morgenwerte da, Check-in), wird er gespeichert – ohne Knopfdruck. «Trotzdem» bleibt. */
@@ -72,7 +73,10 @@
     if (g ? g.status === e.status : e.status === "wie_geplant") {
       // einmal je Tag: offene Aufträge der Woche mit dem abgleichen, was gilt (z. B. Entscheid vom Morgen-Update mit nachgeholter Einheit,
       // ältere Aufträge ohne lockere Fassung) – nur geänderte werden neu gespeichert
-      if (ABGEGLICHEN !== d && U66() && U66().auftraegeAbgleichen && V64()) { ABGEGLICHEN = d; try { await U66().auftraegeAbgleichen(V64().montag(d)); } catch (err) { console.error(err); } }
+      if (ABGEGLICHEN !== d && U66() && U66().auftraegeAbgleichen && V64()) {
+        ABGEGLICHEN = d;
+        try { await U66().auftraegeAbgleichen(V64().montag(d)); if (U66().alleTage) await U66().alleTage(); } catch (err) { console.error(err); }   // V9.6: «Alle Tage» beim Laden
+      }
       return;
     }
     SPEICHERT = true;

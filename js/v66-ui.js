@@ -78,6 +78,9 @@
     return d ? { a: d, lokal: false } : null;
   }
   const garminFenster = (ds) => ds > heute() && ds <= add(heute(), 7);          // von Hand und automatisch: morgen bis eine Woche voraus
+  /** V9.6 garmin-auto-1.0: Planeinstellung «Automatisch senden» ({ modus: aus | haekchen | alle, ab: "23:00" }); ohne Eintrag wie bis V9.5. */
+  const garminAuto = () => { try { const E = window.V75UI && window.V75UI.einstellungen(); if (E && E.garmin) return E.garmin; } catch (e) { console.error(e); } return { modus: "haekchen", ab: "23:00" }; };
+  M.garminAuto = () => garminAuto();
   /** Lief das Nacht-Update heute schon? Dann geht ein neuer Auftrag für morgen erst in der nächsten Nacht – zu spät (nur noch im Chat). */
   const nachtGelaufen = () => { const m = /^(\d{2})\.(\d{2})\.(\d{4})/.exec(String(C.D.updated || "")); return !!m && C.D.updated_lauf === "Nacht-Update" && `${m[3]}-${m[2]}-${m[1]}` === heute(); };
   const istAktiv = (A) => A && (A.lokal || A.a.status === "offen") && A.a.modus !== "aus";
@@ -112,6 +115,28 @@
     }
   }
   M.auftrag = (ds) => (bereit() ? auftrag(ds) : null);
+  /** V9.6 garmin-auto-1.0, «Alle Tage» (nur wenn Silas es in den Planeinstellungen einschaltet): für jeden Tag von morgen bis eine Woche voraus mit
+   *  sendbaren Einheiten einen Auftrag «auto» anlegen bzw. erneuern – nur, wenn sich die Fassung ändert. Ein Tag mit «aus» bleibt aus, ein Auftrag
+   *  «senden» (von Hand) bleibt, wie er ist. Grenze: Aufträge entstehen im Browser – ohne geöffnete Seite bleibt der zuletzt angelegte Stand. */
+  M.alleTage = async function () {
+    if (!bereit() || garminAuto().modus !== "alle" || (P().entwurf && P().entwurf.aktiv())) return 0;
+    const fp = (L) => (L || []).map((u) => `${u.uid}:${u.fassung}:${(u.ampel && u.ampel.fassung) || ""}`).sort().join("|");
+    let n = 0;
+    for (let i = 1; i <= 7; i++) {
+      const d = add(heute(), i), A = auftrag(d);
+      if (i === 1 && nachtGelaufen()) continue;                                   // für morgen ist es heute zu spät (nur noch im Chat)
+      if (A && (A.lokal || A.a.status === "offen") && A.a.modus !== "auto") continue;   // «aus» bleibt aus, «senden» bleibt
+      const x = tagVon(d); if (!x || x.t.rennen) continue;
+      const uids = A && A.a.modus === "auto" && A.a.teil && (A.lokal || A.a.status === "offen") ? auswahl(A.a) : null;
+      const U = uids ? x.t.einheiten.filter((e) => uids.has(e.uid)) : x.t.einheiten;
+      const neu = V66().garminAuftrag(d, U, skalen(), "auto", "", Object.assign(swOpt(d, x.K), ampelOpt(d, x.K)));
+      if (!(neu.einheiten || []).length) continue;
+      if (A && A.a.modus === "auto" && (A.lokal || A.a.status === "offen") && fp(neu.einheiten) === fp(A.a.einheiten)) continue;
+      if (A && !A.lokal && A.a.status === "erledigt" && fp(neu.einheiten) === fp(A.a.einheiten)) continue;   // schon so gesendet
+      if (!(await garminAuftragSpeichern(d, "auto", uids))) n++;
+    }
+    return n;
+  };
   /** V7.4 ampel-plan-1.0: offene Aufträge einer Woche erneuern, wenn sich die Einheiten durch die Ampel geändert haben (nachgeholte Einheit an einem
    *  kommenden Tag, «Trotzdem wie geplant»). Gleicher Modus, gleiche Auswahl; unveränderte Aufträge bleiben, wie sie sind. */
   M.auftraegeAbgleichen = async function (mo) {
@@ -173,6 +198,7 @@
     await I.upsert("planwoche", r.eintrag);
     const tage = a.date ? [a.date].concat(a.nach ? [a.nach] : []) : Array.from({ length: 7 }, (_, i) => add(mo, i));
     try { await auftraegeNachfuehren(tage.filter((d) => d >= heute()), a); } catch (e) { console.error(e); }
+    try { await M.alleTage(); } catch (e) { console.error(e); }                           // V9.6 garmin-auto-1.0
     neuZeichnen();
     return null;
   }
@@ -850,14 +876,15 @@
   function garminHTML(ds, t) {
     if (ds < heute()) return "";
     if (P().entwurf && P().entwurf.aktiv()) return `<p class="hint mp-garmin-ent">${V6().icon("geraet", 14)} An Garmin senden geht erst nach dem Speichern (✓).</p>`;   // V7.9 bearbeiten-1.0
-    const W = V6(), A = auftrag(ds), a = A && A.a, G = gesendet().filter((g) => g && g.date === ds && !g.entfernt);
+    const W = V6(), A = auftrag(ds), a = A && A.a, G = gesendet().filter((g) => g && g.date === ds && !g.entfernt), GA = garminAuto();
     const U = t.rennen ? [] : t.einheiten, sendbar = U.filter((e) => !V66().garminGrund(e));
     const ohne = U.filter((e) => V66().garminGrund(e)).map((e) => `${esc(e.titel)} (${esc(V66().garminGrund(e))})`);
     const zeit = (iso) => { try { return new Date(iso).toLocaleString("de-CH", { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }); } catch (e) { return iso; } };
     let stand = "";
     if (a && A.lokal) stand = a.modus === "aus" ? "Automatisch senden abgestellt (wird mit dem nächsten Update übernommen)."
-      : a.modus === "auto" ? "Wird am Vortag ab 23 Uhr automatisch gesendet (die Fassung von jetzt; Änderungen hier werden mitgenommen)." : "Wird mit dem nächsten Nacht-Update gesendet (gegen 23 Uhr).";
-    else if (a && a.status === "offen") stand = a.modus === "auto" ? "Wird am Vortag ab 23 Uhr automatisch gesendet." : "Wird mit dem nächsten Nacht-Update gesendet (gegen 23 Uhr).";
+      : a.modus === "auto" ? `Wird am Vortag ab ${GA.ab} Uhr automatisch gesendet (die Fassung von jetzt; Änderungen hier werden mitgenommen).` : "Wird mit dem nächsten Nacht-Update gesendet (gegen 23 Uhr).";
+    else if (a && a.status === "offen") stand = a.modus === "auto" ? `Wird am Vortag ab ${GA.ab} Uhr automatisch gesendet.` : "Wird mit dem nächsten Nacht-Update gesendet (gegen 23 Uhr).";
+    if (GA.modus === "aus" && a && a.modus === "auto" && (A.lokal || a.status === "offen")) stand = "Automatisch senden ist abgestellt (Planeinstellungen) – dieser Tag geht nicht automatisch.";
     else if (a && a.status === "erledigt") stand = `Gesendet ${esc(zeit(a.erledigt))}.`;
     else if (a && a.status === "verpasst") stand = "Nicht gesendet: der Tag war schon da.";
     const fehl = a && !A.lokal && a.status === "fehler" ? `<p class="warn-t">Nicht gesendet: ${esc((a.fehler || []).join("; "))}</p>` : "";
@@ -874,7 +901,9 @@
       ${abgelehnt ? `<p class="warn-t">Abgelehnt: ${esc(abgelehnt.grund)}</p>` : ""}
       ${ohne.length ? `<p class="hint">Nicht gesendet: ${ohne.join(", ")}.</p>` : ""}
       <div class="row mp-akt"><button type="button" class="btn" data-mpgs ${sendbar.length || G.length ? "" : "disabled"}>${W.icon("weiter", 15)} ${sendbar.length || !G.length ? "An Garmin senden" : "Aus Garmin austragen"}</button></div>
-      <label class="mp-auto"><input type="checkbox" data-mpgsauto ${auto ? "checked" : ""} ${sendbar.length || auto ? "" : "disabled"}> Am Vortag um 23 Uhr automatisch senden</label>
+      ${GA.modus === "aus" ? `<p class="hint mp-auto">Automatisch senden abgestellt (Planeinstellungen → Allgemein → Garmin senden).</p>`
+        : GA.modus === "alle" ? `<label class="mp-auto"><input type="checkbox" data-mpgsauto ${a && a.modus === "aus" && (A.lokal || a.status === "offen") ? "" : "checked"} ${sendbar.length ? "" : "disabled"}> Automatisch (alle Tage) – am Vortag ab ${esc(GA.ab)} Uhr</label>`
+        : `<label class="mp-auto"><input type="checkbox" data-mpgsauto ${auto ? "checked" : ""} ${sendbar.length || auto ? "" : "disabled"}> Am Vortag um ${esc(GA.ab)} Uhr automatisch senden</label>`}
       <p class="hint">${esc(V66().VERSIONS.garmin)}: Rad, Laufen und Schwimmen als Workout (Name «IN · ») mit Zielen in der Metrik der Einheit – Leistung bzw. Tempo, Puls oder RPE; Schwimmen mit Bahnen, Übungen und Pausen am Beckenrand. Bibliotheks-Workouts nur eingeplant; aufs Gerät kommen sie beim Synchronisieren (Fenix, Edge nur Rad). Gesendet wird im Nacht-Update; geänderte Einheiten werden ersetzt, Enduco bleibt unberührt.</p>`;
   }
   /** Knöpfe des Abschnitts binden; zurueck() öffnet das Tagesblatt wieder (nach einer Änderung oder aus einem Unterblatt). */

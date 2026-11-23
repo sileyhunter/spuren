@@ -427,6 +427,14 @@ def _pe_datum(s):
         return None
 
 
+PE_GARMIN_MODI = ("aus", "haekchen", "alle")             # V9.6 garmin-auto-1.0
+
+
+def garmin_ab_ok(s):
+    """«Senden ab» am Vortag: hh:mm in 15-min-Schritten von 20:00 bis 23:30."""
+    return isinstance(s, str) and re.fullmatch(r"2[0-3]:(00|15|30|45)", s) is not None and "20:00" <= s <= "23:30"
+
+
 def planeinstellung_pruefen(e):
     """V7.5 planeinstellungen-1.0 (gleiche Regeln wie V75.pruefen): Eintrag je Gruppe → Fehlertext oder None.
     pe-start {art fitness/aufteilung} und pe-basis-schwimm/-rad/-lauf {wert None oder ganze Zahl 0–200} (basis-1.1, Variante A, Silas' Wahl 17.11.2026);
@@ -501,6 +509,12 @@ def planeinstellung_pruefen(e):
         n = e.get("notiz")
         if n is not None and not (isinstance(n, str) and len(n) <= 500):
             return "Notiz höchstens 500 Zeichen"
+        return None
+    if i == "pe-garmin":                                 # V9.6 garmin-auto-1.0 (gleiche Regeln wie V75.pruefen)
+        if e.get("modus") not in PE_GARMIN_MODI:
+            return "Automatisch senden: aus, nur Tage mit Häkchen oder alle Tage"
+        if e.get("ab") is not None and not garmin_ab_ok(e.get("ab")):
+            return "Senden ab: 20:00–23:30 in 15-min-Schritten"
         return None
     if i == "pe-sportart":                               # V8.4.1 sportart-1.0
         return None if e.get("art") in PE_SPORTARTEN else "Sportart: Triathlon, Rad oder Laufen"

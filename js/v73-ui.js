@@ -819,7 +819,7 @@
     else {
       const auto = a && a.modus === "auto" && (A.lokal || a.status === "offen");
       knoepfe = `${stand !== "wartet" || auto ? `<div class="v73-wahl" role="radiogroup" aria-label="Wann senden"><label class="v73-opt"><input type="radio" name="v73g" value="senden" ${auto ? "" : "checked"}><span>${ic("play", 20)}<b>Mit dem nächsten Nacht-Update</b><small>gegen 23 Uhr; aufs Gerät beim Synchronisieren</small></span></label>
-          <label class="v73-opt"><input type="radio" name="v73g" value="auto" ${auto ? "checked" : ""}><span>${ic("uhr", 20)}<b>Am Vortag um 23 Uhr</b><small>Änderungen bis dahin werden mitgenommen</small></span></label></div>` : ""}`;
+          <label class="v73-opt"><input type="radio" name="v73g" value="auto" ${auto ? "checked" : ""}><span>${ic("uhr", 20)}<b>Am Vortag um ${esc(window.V66UI && window.V66UI.garminAuto ? window.V66UI.garminAuto().ab : "23:00")} Uhr</b><small>Änderungen bis dahin werden mitgenommen</small></span></label></div>` : ""}`;
       const [was, cssT] = exportText(e, ds);
       hinweis = `${V.VERSIONS.garmin}: ${was}. Andere Einheiten des Tages bleiben, wie sie in Garmin sind. Enduco bleibt unberührt.`;
       cssHinweis = cssT;

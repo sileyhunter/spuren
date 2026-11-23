@@ -32,7 +32,8 @@ import zoneinfo
 V = "garmin-senden-1.2"
 PREFIX = "IN · "
 TZ = zoneinfo.ZoneInfo("Europe/Zurich")
-AB_UHR = dt.time(23, 0)                   # automatisch frühestens um 23:00 am Vortag (Silas, E3)
+AB_UHR = dt.time(23, 0)                   # automatisch frühestens um 23:00 am Vortag (Silas, E3); seit V9.6 Standard von «Senden ab»
+GARMIN_MODI = ("aus", "haekchen", "alle")  # V9.6 garmin-auto-1.0: Planeinstellung pe-garmin
 MAX_TAGE = 8                              # von Hand bis eine Woche voraus (+1 Tag Spielraum für Mitternacht)
 MAX_SCHRITTE = 50
 SPORTARTEN = {1: "running", 2: "cycling", 4: "swimming"}
@@ -264,9 +265,29 @@ def _jetzt(arg=None):
     return dt.datetime.now(TZ)
 
 
+def einstellung(D):
+    """V9.6 garmin-auto-1.0 (Auftrag W5): neueste gültige Planeinstellung «pe-garmin» → (modus, ab als dt.time).
+    Ohne Eintrag wie bis V9.5: «haekchen» (nur Tage mit Häkchen) und 23:00. «Senden ab» 20:00–23:30 in 15-min-Schritten."""
+    best = None
+    for x in D.get("plan_einstellungen") or []:
+        if not isinstance(x, dict) or x.get("id") != "pe-garmin" or x.get("modus") not in GARMIN_MODI:
+            continue
+        ab = x.get("ab")
+        if ab is not None and not (isinstance(ab, str) and re.fullmatch(r"2[0-3]:(00|15|30|45)", ab) and "20:00" <= ab <= "23:30"):
+            continue
+        if best is None or str(x.get("geaendert") or "") >= str(best.get("geaendert") or ""):
+            best = x
+    if not best:
+        return "haekchen", AB_UHR
+    ab = best.get("ab") or "23:00"
+    return best["modus"], dt.time(int(ab[:2]), int(ab[3:]))
+
+
 def plan(D, jetzt):
-    """Was zu tun ist. → {v, jetzt, aktionen [{nr, art, auftrag, date, uid, …}], abschluesse [{auftrag, status, grund}], warten_bis}"""
+    """Was zu tun ist. → {v, jetzt, aktionen [{nr, art, auftrag, date, uid, …}], abschluesse [{auftrag, status, grund}], warten_bis}
+    V9.6 garmin-auto-1.0: «Senden ab» aus der Planeinstellung (statt fest 23:00); «Aus» schliesst offene automatische Aufträge ab (von Hand «senden» bleibt)."""
     jetzt = jetzt.astimezone(TZ)
+    modus_auto, ab_uhr = einstellung(D)
     heute, morgen = jetzt.date(), jetzt.date() + dt.timedelta(days=1)
     G = [g for g in D.get("plan_garmin") or [] if isinstance(g, dict) and not g.get("entfernt")]
     aktionen, abschluesse, warten = [], [], None
@@ -293,13 +314,13 @@ def plan(D, jetzt):
                 neuester[u["uid"]] = a.get("date")
     def faellig(a):
         d = _datum(a.get("date"))
-        return bool(d) and a.get("modus") in ("senden", "auto") and d > heute and (a["modus"] == "senden" or (d == morgen and jetzt.time() >= AB_UHR))
+        return bool(d) and d > heute and (a.get("modus") == "senden" or (a.get("modus") == "auto" and modus_auto != "aus" and d == morgen and jetzt.time() >= ab_uhr))
     jetzt_dran = {a.get("date") for a in offen if faellig(a)}   # Tage, die in diesem Lauf gesendet werden
     for a in sorted(offen, key=lambda x: x.get("date") or ""):
         d = _datum(a.get("date"))
         if not d:
             continue
-        if a.get("modus") == "aus":
+        if a.get("modus") == "aus" or (a.get("modus") == "auto" and modus_auto == "aus"):
             abschluesse.append({"auftrag": a["id"], "status": "aus", "grund": "automatisch senden abgestellt"})
             continue
         if d <= heute:
@@ -308,8 +329,8 @@ def plan(D, jetzt):
         if a.get("modus") == "auto":
             if d > morgen:
                 continue
-            if jetzt.time() < AB_UHR:
-                warten = dt.datetime.combine(heute, AB_UHR, TZ).isoformat()
+            if jetzt.time() < ab_uhr:
+                warten = dt.datetime.combine(heute, ab_uhr, TZ).isoformat()
                 continue
         ds = d.isoformat()
         U = [u for u in a.get("einheiten") or [] if neuester.get(u["uid"]) == ds]

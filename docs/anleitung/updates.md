@@ -87,7 +87,8 @@
      `cp work/vor_b.json data.json` (die Bestätigung bleibt in `eingang/` liegen) und Silas kurz informieren (Grund aus der Ausgabe, ohne Werte).
    - Meldet `einlesen` «abgelehnt …» (Demo, fremd, nicht entschlüsselbar): nie löschen, Silas kurz informieren.
    **An Garmin senden (V6.6, garmin-senden-1.0, von Silas am 13.11.2026 freigegeben, Entscheid E3; Abschnitt «An Garmin senden»):** als Letztes
-   in Schritt 3. Ist es vor 23:00 Europe/Zurich: bis 23:00 warten. `git fetch origin main`; zeigt `git diff --name-only HEAD origin/main -- eingang/`
+   in Schritt 3. Ist es vor der eingestellten Uhrzeit «Senden ab» (Planeinstellung «pe-garmin», V9.6 garmin-auto-1.0; ohne Eintrag 23:00, höchstens 23:30)
+   Europe/Zurich: bis dahin warten – `plan` nennt sie in `warten_bis`, wenn ein automatischer Auftrag für morgen wartet. `git fetch origin main`; zeigt `git diff --name-only HEAD origin/main -- eingang/`
    neue Dateien: `git pull --ff-only` und den Block «Eingaben vom Handy» oben nochmals (spielt nur Neues ein). Dann
    `python3 -I tools/garmin_senden.py plan data.json > work/garmin_plan.json` und die `aktionen` der Reihe nach ausführen, wie im Abschnitt
    «An Garmin senden» beschrieben; danach `python3 -I tools/garmin_senden.py eintragen data.json work/garmin_plan.json work/garmin_ergebnis.json`
