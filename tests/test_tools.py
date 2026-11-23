@@ -1861,5 +1861,30 @@ check("V9.6 Garmin senden: Eingabe geprüft (merge_daily) – drei Modi, «Sende
       all(merge_daily.planeinstellung_pruefen(_pg(m, ab)) is None for m in ("aus", "haekchen", "alle") for ab in (None, "20:00", "22:45", "23:30"))
       and all(_pe_f.values()), str(_pe_f))
 
+# ---------- V9.10 Test-Workouts Lauf und Schwimmen (tools/workouts.py; Auftrag 23.11.2026, Silas: Stufentest wie 12.12.2025 bis zur Ausbelastung) ----------
+import workouts  # noqa: E402
+_wl = workouts.garmin_lauf(workouts.lauftest("Stufentest Lauf bis Ausbelastung"))
+_sl = _wl["workoutSegments"][0]["workoutSteps"]
+_iv = [s for s in _sl if s["stepType"]["stepTypeKey"] == "interval"]
+check("V9.10 Lauf-Stufentest: Name mit «IN · », Sportart Laufen, Einlaufen – 9 Stufen mit 8 Tastenpausen – Auslaufen",
+      _wl["workoutName"].startswith("IN · ") and _wl["sportType"]["sportTypeKey"] == "running" and len(_iv) == 9
+      and [s["stepType"]["stepTypeKey"] for s in _sl][:3] == ["warmup", "interval", "rest"] and _sl[-1]["stepType"]["stepTypeKey"] == "cooldown"
+      and sum(1 for s in _sl if s["stepType"]["stepTypeKey"] == "rest" and s["endCondition"]["conditionTypeKey"] == "lap.button") == 8, str([s["stepType"]["stepTypeKey"] for s in _sl]))
+check("V9.10 Lauf-Stufentest: wie 12.12.2025 – 270 s je Stufe, Start 10,3 km/h, +1 km/h; Tempoziel in m/s (pace.zone) ± 0,06 um die Stufe, aufsteigend",
+      all(s["endConditionValue"] == 270.0 and s["targetType"]["workoutTargetTypeKey"] == "pace.zone" and s["targetValueOne"] < s["targetValueTwo"] for s in _iv)
+      and [round((s["targetValueOne"] + s["targetValueTwo"]) / 2 * 3.6, 1) for s in _iv] == [10.3, 11.3, 12.3, 13.3, 14.3, 15.3, 16.3, 17.3, 18.3]
+      and [s["stepOrder"] for s in _sl] == list(range(1, len(_sl) + 1)), str([round((s["targetValueOne"] + s["targetValueTwo"]) / 2 * 3.6, 1) for s in _iv]))
+_ws = workouts.garmin_schwimm(workouts.css_test())
+_ss = _ws["workoutSegments"][0]["workoutSteps"]
+_art = [(s["stepType"]["stepTypeKey"], s["endCondition"]["conditionTypeKey"], s.get("endConditionValue")) for s in _ss]
+check("V9.10 CSS-Test: wie das Probe-Workout (400 ein, 4 × 50 m + 15 s, 2 min, TEST 400, Erholung per Taste, TEST 200, 200 aus), Bahn 50 m, 1400 m",
+      _art == [("warmup", "distance", 400.0), ("repeat", "iterations", 4.0), ("rest", "fixed.rest", 120.0), ("interval", "distance", 400.0), ("rest", "lap.button", None),
+               ("interval", "distance", 200.0), ("cooldown", "distance", 200.0)]
+      and [(x["stepType"]["stepTypeKey"], x["endConditionValue"]) for x in _ss[1]["workoutSteps"]] == [("interval", 50.0), ("rest", 15.0)]
+      and _ws["poolLength"] == 50.0 and _ws["workoutName"].startswith("IN · "), str(_art))
+check("V9.10 Rad-Tests: Namen jetzt mit «IN · »; Stufen unverändert (120–300 W, +20 W)",
+      workouts.garmin(dict(workouts.ALL)["stufentest-120-300"])["workoutName"].startswith("IN · ")
+      and [s[2] for s in dict(workouts.ALL)["stufentest-120-300"]["steps"] if s[0] == "interval"] == list(range(120, 301, 20)))
+
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)

@@ -1,5 +1,12 @@
 # Änderungen
 
+## V9.10.0 · 23.11.2026 · Test-Workouts Lauf und Schwimmen (Auftrag 3.2, test-workouts-2.0)
+Silas (23.11.): «ja du kannst das alles machen» – Stufentest wie im Dezember 2025, diesmal bis zur Ausbelastung; CSS-Test 400/200 m.
+- `tools/workouts.py`: neu **Lauf-Stufentest bis Ausbelastung** (Start 10,3 km/h, +1 km/h, 270 s je Stufe, 9 Stufen bis 18,3 km/h, Tempobereich `pace.zone` in m/s ±0,06, Pause zum Laktat mit Tastenende, je 10 min Ein-/Auslaufen)
+  und **CSS-Test 400/200** (Bahn 50 m; gleicher Aufbau wie das Probe-Workout vom 23.11.). Garmin-Namen beginnen jetzt einheitlich mit «IN · » (auch die Rad-Tests).
+- Nichts wird hochgeladen: `upload_workout` nur nach Silas' Freigabe, mit Rücklesung. `V66.garminGrund`/`garminSchwimm` lehnen Tests weiterhin ab (Tests nur über die Test-Workouts).
+- Test: `tests/test_tools.py` (4 neue Prüfungen, erfundene Werte).
+
 ## V9.9.2 · 23.11.2026 · Z5 «bis Max» (zone5-max-1.0)
 Silas (23.11.): «Z5 ohne Obergrenze» – Absicht, «bis Max» nachgeliefert; «ja du kannst das alles machen».
 - Die Pulszone Z5 zeigt die Obergrenze, wenn das Zonenprofil einen Maximalpuls (`hfmax` der Pulsskala) hat: Zonenliste «180–190 bpm (Max)» (Beispielwerte), Pace und Leistung «… (bis Max)»,
