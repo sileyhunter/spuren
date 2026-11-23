@@ -410,5 +410,6 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
      loslassen → rastet auf 1 Woche, 2 Wochen oder Monat ein. Fühlt sich das Einrasten zu früh/spät an oder soll es auch bei 3, 4 Wochen stehen bleiben können: melden.
 156. **Anpassung mit dem Check-in wie Enduco (Silas 23.11., Aufnahmen 12:27 und 12:29):** Enduco prüft nach dem Check-in («Anpassungen prüfen …») und zeigt eine Karte mit Grund
      («Training heute gestrichen – … du bist heute nicht verfügbar»), «Ignorieren» / «Überprüfen» → Blatt «Trainings gelöscht: …» (durchgestrichen, mit Profil) → «Akzeptieren». Die
-     Seite passt heute nach der Ampel von selbst an (ampel-plan-1.0) und der Coach schlägt vor (tagescoach-1.0). Entscheid von Silas offen (siehe Chat 23.11.) – eigene Etappe.
+     Seite passt heute nach der Ampel von selbst an (ampel-plan-1.0) und der Coach schlägt vor (tagescoach-1.0). **Entschieden 23.11.:** wie Enduco (Karte, «Überprüfen», «Akzeptieren»/
+     «Ignorieren»), nur Krankheitszeichen bleiben von selbst Ruhetag. Auftrag `docs/auftrag-checkin-anpassung.md` (V9.8, eigene Sitzung).
 
