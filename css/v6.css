@@ -1791,3 +1791,9 @@ body.k4-edit .kal-v7.k4 .k4-r-kopf { display: none; }
 .k4-auf.zieht { overflow: hidden; will-change: height; }
 .k4-auf.zieht > .k4-auf-in { will-change: transform; }
 .k4-zg-in { display: flex; flex-direction: column; gap: 4px; }
+
+/* ---------- V9.5.2 coach-einfach-1.0: Coach-Karte schlicht ---------- */
+.co-karte .co-grund { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+.co-karte .co-opt { margin: 6px 0 8px; font-weight: 600; }
+.co-ok1 { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0 0; }
+

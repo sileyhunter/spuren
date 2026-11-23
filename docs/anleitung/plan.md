@@ -89,6 +89,9 @@
 - Nie: gesperrte Tage oder Einheiten, Tests, Rennen, Schwimmkurs, vergangene Tage, heute schon absolvierte Sportart; nie härter oder länger als Mein Plan. Abgelehnte und
   zurückgeholte Vorschläge (gleiche ID) kommen nicht wieder. Annehmen = `V66UI.aendernFolge` (Mein Plan, offene Garmin-Aufträge nachgeführt) + Entscheid; Rückgängig = Rückweg,
   solange kein betroffener Tag vorbei ist. Geänderte Einheiten tragen «Coach» (Tagesblatt, Heute, Kalender).
+- **coach-einfach-1.0 (V9.5.2, Silas 23.11.: «möglichst einfach aussehen und einfach handhaben»):** Die Karte auf Heute erscheint nur, wenn es etwas zu entscheiden gibt; je Vorschlag Titel,
+  der erste Grund, was sich ändert, Knöpfe. Keine Liste «Angenommen», kein «Geprüft», kein Erklärtext, kein Probelauf-Hinweis; nach «Annehmen» eine Zeile mit «Rückgängig» (`V83UI.zuletzt`,
+  bis zum nächsten Laden). Das Tagesblatt zeigt die Vorschläge des Tages wie bisher.
 - Probelauf bis `config.enduco_bis` (2026-11-30, Silas trainiert bis Ende November mit Enduco): Hinweis auf der Karte; danach gilt nur noch Mein Plan. Selbst handelt der Coach
   nicht – Automatik erst nach Silas' Okay und nur in Grenzen, die er setzt. Regel ändern = Version in `V83.VERSIONS`, Wissen (Kapitel «coach») und `tests/test_v83.cjs`.
 - **tagescoach-1.1 (V8.4, Silas am 18.11.2026: «lange Einheiten, wenn die Verfügbarkeit reicht – mit der Laufentwicklung aufpassen», «eine Verletzung, die die Laufkilometer

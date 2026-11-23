@@ -141,37 +141,35 @@
 
   /* ---------------- Anzeige ---------------- */
   const wtLang = (iso) => ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"][(new Date(iso + "T12:00:00Z").getUTCDay() + 6) % 7];
+  // V9.5.2 coach-einfach-1.0 (Silas 23.11.: «braucht es diese Infos? … möglichst einfach aussehen und einfach handhaben»): je Vorschlag Titel, ein Grund, was sich ändert, zwei Knöpfe;
+  // die Karte erscheint nur, wenn es etwas zu entscheiden gibt (oder gerade etwas angenommen wurde – dann mit «Rückgängig»). Erklärungen nur noch hinter ⓘ.
   function vorschlagHTML(p) {
     const o2 = p.optionen[1];
     return `<div class="co-v" data-co-id="${esc(p.id)}">
-      <div class="co-kopf"><b>${esc(p.titel)}</b><small>${esc(ANLASS_WORT[p.anlass] || p.anlass)}</small></div>
-      <ul class="co-gruende">${p.grund.map((g) => `<li>${esc(g)}</li>`).join("")}</ul>
-      <p class="co-opt"><span>Vorschlag:</span> ${esc(p.optionen[0].titel)}</p>
+      <div class="co-kopf"><b>${esc(p.titel)}</b></div>
+      ${p.grund && p.grund.length ? `<p class="co-grund">${esc(p.grund[0])}</p>` : ""}
+      <p class="co-opt">${esc(p.optionen[0].titel)}</p>
       <div class="row co-knoepfe"><button type="button" class="btn primary" data-co="an" data-id="${esc(p.id)}" data-o="0">Annehmen</button>
         ${o2 ? `<button type="button" class="btn" data-co="an" data-id="${esc(p.id)}" data-o="1" title="${esc(o2.titel)}">${o2.art === "locker" ? "Lieber locker" : o2.art === "rad" ? "Rad statt Laufen" : "Lieber so"}</button>` : ""}
         <button type="button" class="btn" data-co="ab" data-id="${esc(p.id)}">Ablehnen</button></div>
       <p class="co-fehler warn-t" role="status" hidden></p></div>`;
   }
-  function angenommenHTML(liste) {
-    if (!liste.length) return "";
-    return `<h3 class="abschnitt">Angenommen</h3><ul class="co-ok">${liste.map((e) => `<li><span>✓ ${esc(wtLang(e.date).slice(0, 2))}: ${esc(e.option || e.titel)}</span>
-      ${(e.rueck || []).every((a) => a.date >= heute() && (!a.nach || a.nach >= heute())) ? `<button type="button" class="btn co-zurueck" data-co="zurueck" data-id="${esc(e.id)}">Rückgängig</button>` : ""}</li>`).join("")}</ul>`;
+  /** Zuletzt angenommen (nur bis zum nächsten Laden): eine Zeile mit «Rückgängig». */
+  U.zuletzt = null;
+  function zuletztHTML() {
+    const z = U.zuletzt, e = z ? U.entscheide().get(z) : null;
+    if (!e || e.status !== "angenommen") { U.zuletzt = null; return ""; }
+    const geht = (e.rueck || []).every((a) => a.date >= heute() && (!a.nach || a.nach >= heute()));
+    return `<div class="co-ok1"><span>✓ ${esc(wtLang(e.date))}: ${esc(e.option || e.titel)}</span>${geht ? `<button type="button" class="btn co-zurueck" data-co="zurueck" data-id="${esc(e.id)}">Rückgängig</button>` : ""}</div>`;
   }
-  /** Karte «Coach» auf Heute. */
+  /** Karte «Coach» auf Heute – nur, wenn es etwas zu entscheiden gibt. */
   U.heute = function () {
-    const box = document.getElementById("coach"); if (!box || !bereit()) return;
-    const R = U.pruefen(); if (!R) { box.innerHTML = `<p class="hint">Coach nicht berechenbar.</p>`; return; }
-    const h = heute(), mo = V64().montag(h);
-    const ok = [...U.entscheide().values()].filter((e) => e.status === "angenommen" && (e.woche === mo || e.woche === V64().addDays(mo, 7)) && e.date >= V64().addDays(h, -6))
-      .sort((a, b) => a.date.localeCompare(b.date));
-    const pl = R.probelauf ? `<p class="co-probe keep">Probelauf bis ${esc(C.dateCH ? C.dateCH(C.D.config.enduco_bis) : C.D.config.enduco_bis)}: Du trainierst noch nach Enduco. Die Vorschläge zeigen, wie der Coach arbeitet; Annehmen ändert nur Mein Plan.</p>` : "";
-    const kern = R.vorschlaege.length ? R.vorschlaege.map(vorschlagHTML).join("")
-      : `<p class="verdict keep">Keine Änderung nötig – ${esc(R.morgen && R.morgen.status === "fehlt" ? "Plan und Verfügbarkeit passen; die Morgenwerte von heute fehlen noch" : "Plan, Erholung und Verfügbarkeit passen")}.</p>`;
-    box.innerHTML = `${pl}${kern}${angenommenHTML(ok)}<p id="co-status" class="warn-t" role="status" hidden></p>
-      <p class="co-geprueft keep">Geprüft: ${esc(R.geprueft.join(" · "))}.</p>${R.hinweise.map((h) => `<p class="hint">${esc(h)}</p>`).join("")}
-      <p class="hint">Der Coach prüft nach dem Morgen-Update, nach dem Check-in, nach jeder neuen Einheit und wenn sich deine Zeit ändert. Jede Änderung ist ein Vorschlag:
-        Annehmen ändert Mein Plan, Rückgängig holt den Stand davor zurück (${esc(R.v)}). Gesperrte Tage und Einheiten, Tests und Rennen bleiben immer.</p>`;
-    const card = document.getElementById("coach-card"); if (card) card.hidden = false;
+    const box = document.getElementById("coach"), card = document.getElementById("coach-card"); if (!box || !bereit()) return;
+    const R = U.pruefen();
+    const kern = R && R.vorschlaege.length ? R.vorschlaege.map(vorschlagHTML).join("") : "", ok = zuletztHTML();
+    if (!kern && !ok) { box.innerHTML = ""; if (card) card.hidden = true; return; }
+    box.innerHTML = `${kern}${ok}<p id="co-status" class="warn-t" role="status" hidden></p>`;
+    if (card) card.hidden = false;
   };
   /** Vorschläge eines Tages im Tagesblatt. */
   U.tag = function (ds) {
@@ -190,6 +188,7 @@
     catch (e) { console.error(e); f = "Ging nicht – bitte nochmals versuchen."; }
     b.disabled = false;
     if (f) { const st = fe || document.getElementById("co-status"); if (st) { st.textContent = f; st.hidden = false; } else console.error(f); return; }
+    U.zuletzt = art === "an" ? id : null;                                          // coach-einfach-1.0: nur das gerade Angenommene mit «Rückgängig»
     U.heute();
   });
   document.addEventListener("meinplan", () => { try { U.heute(); } catch (e) { console.error(e); } });

@@ -1,5 +1,11 @@
 # Änderungen
 
+## V9.5.2 · 23.11.2026 · Coach-Karte schlicht (coach-einfach-1.0)
+Silas (23.11., Bild 12:48): «Braucht es diese Infos? Ich will so Sachen nicht sehen – es soll möglichst einfach aussehen und sich einfach handhaben.»
+- Die Karte «Coach» auf Heute erscheint nur noch, wenn es etwas zu entscheiden gibt (oder gerade etwas angenommen wurde). Weg: Probelauf-Text, «Keine Änderung nötig …», die Liste
+  «Angenommen» der letzten Tage, «Geprüft: …» und der Erklärtext. Je Vorschlag: Titel, ein Grund, was sich ändert, Knöpfe. Nach «Annehmen» eine Zeile mit «Rückgängig» (bis zum nächsten Laden).
+- Rechenregeln des Coaches unverändert. `js/v83-ui.js`, `index.html` (Karte ohne Untertitel, anfangs verborgen), `css/v6.css`.
+
 ## V9.5.1 · 23.11.2026 · Griff fliessend (kalender-4.3)
 Silas (23.11., Aufnahme 12:20): «Das Verschieben des Balkens funktioniert nicht flüssig … es soll nicht eine Stufe oben und unten geben, sondern fliessend eingestellt werden können.»
 - Der Griff unter dem Raster (Liste und Zyklus) zieht das Raster jetzt Pixel für Pixel mit: bis zwei Wochen wächst es nach unten, darüber klappen die übrigen Wochen des Monats um die
