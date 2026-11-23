@@ -126,6 +126,11 @@ Laufen nach Puls, Schwimmen Last pro Bewegungsstunde der letzten acht Wochen) si
 - **Griff (kalender-4.2):** `#kal-griff .k4-griff` ziehen – nach unten mehr Wochen, nach oben weniger, Stufen `[1, 2, "monat"]` je 44 px (`ST.zeilen`, `zeilenSetzen` hält `ST.offen`
   und `ZS.offen` gleich); antippen = zwei Wochen ↔ Monat. Derselbe Knopf bleibt beim Neuzeichnen stehen (sonst risse das Ziehen ab), `touch-action: none`. Im Zyklus zeichnet der Griff
   nur das Raster neu. Knopf «Monat» in der Leiste ausgeblendet, gespeichertes «monat» → Liste (die alte Monatsansicht bleibt nur ohne `V78UI`).
+- **Griff fliessend (kalender-4.3, V9.5.1, Silas 23.11.: «nicht eine Stufe oben und unten, sondern fliessend»):** beim ersten Ziehen (> 6 px) stehen alle Wochen des Monats
+  und die Woche danach bereit (`V78.ziehRaster`, `ST.ziehen`); die Wochen liegen in `.k4-auf > .k4-auf-in`. Das Raster folgt dem Finger Pixel für Pixel (`V78.ziehFenster`: bis zwei
+  Wochen wächst es nach unten, darüber klappen die übrigen Wochen des Monats gleichmässig nach oben und unten auf; Höhe und `translateY`). Loslassen rastet weich (0,18 s) auf der
+  nächsten Stellung ein (1 Woche, 2 Wochen, Monat; ein schneller Wisch ≥ 0,5 px/ms geht zur nächsten in seiner Richtung, `V78.ziehZiel`); mit «Bewegung reduzieren» ohne Übergang.
+  Während des Ziehens zeichnet nur der Griff das Raster neu (`ST.ziehNeu`; sonst risse das Mitführen des Tags beim Scrollen das Ziehen ab). Antippen wie bisher.
 - **Kopf:** «Heute» umrandet (`.kal-v7.k4 .kal-heute`); `#cal-sub` («KW …») in Liste und Zyklus aus; `#kal-wbar` auch im Zyklus (Klasse `.kal-v7.k4zy`, ohne Panel).
 - **Zyklus-Raster:** Zahlen in `<i>` mit Kreis (heute `--race`, gewählter Tag `--wk-sel`; `data-k4zt` antippen wählt Tag und Woche), Wochen-Pille `--wk-pille` ohne Umriss, «mind.» als «≥».
   Die Zonen-Gruppen der Wochenkarte heissen `.k4-zgp` (vorher `.k4-zg` = auch das Zyklus-Raster → Panel im Panel).

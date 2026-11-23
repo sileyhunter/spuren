@@ -162,6 +162,7 @@
   `V66.dichtTeile`/`dichtMax`/`dichtAnwenden`, `V66.zielText`/`zielZeilen`, `V66.zielFp`/`zielAusGilt`; `V66.einheit` mit `dicht`/`zusatz`), `js/v64-ui.js` (`K.ziel`,
   `K.w0vorZiel`), `js/v66-ui.js` (`ctx.ziel`, Bericht), `js/v78-ui.js` (Zyklus-Bereich), `js/v92.js` (`V92.zielBericht`), `tools/merge_daily.py` (`dicht`, `zusatz`, `zielAus`),
   `js/wissen.js` (1.38), `tests/test_v95.cjs`, `tests/test_tools.py`
+- **V9.5.1 (Griff fliessend, kalender-4.3; 23.11.2026):** `js/v78.js` (`V78.ziehRaster`, `V78.ziehFenster`, `V78.ziehZiel`), `js/v78-ui.js` (`griffZiehen`), `css/v6.css`, `tests/test_v93.cjs`
 - `tools/fit_nacht.py` – Nacht-Update: Sekundenwerte einer neuen Aktivität auswerten (A2)
 - `tools/laktat_vorschau.py` – Laktat-Tabellen einlesen, Stufen zuordnen, als Vorschau speichern (A5)
 - `tools/check_referenz.py` – Referenzsatz und Neuberechnung prüfen (A1)

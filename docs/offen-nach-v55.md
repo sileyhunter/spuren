@@ -406,4 +406,9 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
      TL ≈ und wird darum nicht verlängert. (4) Abweichung: ist der Wochenkopf in der Indoor-Phase (Rad drinnen nach der LT2 der Rolle) etwas anders als das TL ≈ ohne
      Indoor, kann die Wochenlast um wenige Punkte über dem oberen Strich liegen. (5) «Neu berechnen» schaltet beides für die Woche aus, bis du etwas änderst.
 154. **Prüfung mit echten Daten offen:** Leck-Prüfung und Probelauf V9.2–V9.5 mit `SPUREN_PW` (in dieser Sitzung nicht gesetzt) – nachholen, sobald es in einer Sitzung da ist.
+155. **Griff fliessend (V9.5.1, kalender-4.3):** **Silas bitte prüfen (iPhone):** Griff langsam nach unten ziehen → das Raster folgt dem Finger, die Wochen des Monats klappen auf;
+     loslassen → rastet auf 1 Woche, 2 Wochen oder Monat ein. Fühlt sich das Einrasten zu früh/spät an oder soll es auch bei 3, 4 Wochen stehen bleiben können: melden.
+156. **Anpassung mit dem Check-in wie Enduco (Silas 23.11., Aufnahmen 12:27 und 12:29):** Enduco prüft nach dem Check-in («Anpassungen prüfen …») und zeigt eine Karte mit Grund
+     («Training heute gestrichen – … du bist heute nicht verfügbar»), «Ignorieren» / «Überprüfen» → Blatt «Trainings gelöscht: …» (durchgestrichen, mit Profil) → «Akzeptieren». Die
+     Seite passt heute nach der Ampel von selbst an (ampel-plan-1.0) und der Coach schlägt vor (tagescoach-1.0). Entscheid von Silas offen (siehe Chat 23.11.) – eigene Etappe.
 

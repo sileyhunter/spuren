@@ -104,11 +104,13 @@ test("bearbeiten-1.1: Bearbeiten beginnt mit der Woche, in der nach heute noch T
   assert.ok(UI.includes('${gesp ? ` <span class="k4-tlk"'), "ein gesperrter Tag zeigt das Schloss am Namen, auch im Bearbeiten");
 });
 
-test("kalender-4.2: Griff ziehen – nach unten mehr Wochen (1 → 2 → Monat), nach oben weniger; Liste und Zyklus teilen den Zustand", () => {
-  assert.equal(V78.VERSIONS.kalender, "kalender-4.2");
+test("kalender-4.2/4.3: Griff ziehen – nach unten mehr Wochen (1 → 2 → Monat), nach oben weniger; Liste und Zyklus teilen den Zustand", () => {
+  assert.equal(V78.VERSIONS.kalender, "kalender-4.3");                         // V9.5.1: fliessend statt in Stufen
   const UI = UI2();
-  assert.ok(UI.includes('const ZEILEN = [1, 2, "monat"]'), "drei Stufen");
-  assert.ok(/addEventListener\("pointerdown"/.test(UI) && /addEventListener\("pointermove"/.test(UI) && UI.includes("Math.trunc(dy / 44)"), "Ziehen mit dem Zeiger, je 44 px eine Stufe");
+  assert.ok(UI.includes('const ZEILEN = [1, 2, "monat"]'), "drei Stellungen zum Einrasten");
+  assert.ok(/addEventListener\("pointerdown"/.test(UI) && /addEventListener\("pointermove"/.test(UI) && !UI.includes("Math.trunc(dy / 44)"), "Ziehen mit dem Zeiger, keine 44-px-Stufen mehr");
+  assert.ok(UI.includes("zeigen(Z.h0 + dy)") && UI.includes("V78().ziehFenster(") && UI.includes("V78().ziehZiel("), "das Raster folgt dem Finger und rastet beim Loslassen ein");
+  assert.ok(/\.k4-auf\.zieht \{ overflow: hidden;/.test(CSS), "beim Ziehen wird der Ausschnitt beschnitten");
   assert.ok(UI.includes("ST.zeilen === 1 ? 1 : 2"), "eine oder zwei Wochen im Raster");
   assert.ok(UI.includes("function zeilenSetzen(z) { ST.zeilen = z; ST.offen = z === \"monat\"; ZS.offen = ST.offen; }"), "ein Zustand für Liste und Zyklus");
   assert.ok(UI.includes("const rasterNeu = () =>"), "Zyklus: der Griff zeichnet nur das Raster neu, die Karten bleiben");
@@ -139,3 +141,21 @@ test("woche-look-1.1: absolvierte Zeile wie die geplanten, Trenner als Leiste, �
   assert.ok(/\.k4-anp-f \.k4-neu \{ background: var\(--wk-neu\)/.test(CSS));
 });
 
+test("kalender-4.3: fliessendes Ziehen – Fenster folgt der Höhe, Monat klappt um die gewählte Woche auf, Loslassen rastet ein", () => {
+  // erfundene Kanten in px: Woche 3 von 5 gewählt, je Woche 40 px
+  const g = { t1: 80, b1: 120, b2: 160, tM: 0, bM: 200 };
+  assert.deepEqual(V78.ziehFenster(g, 10), { top: 80, hoehe: 40 }, "nie kleiner als eine Woche");
+  assert.deepEqual(V78.ziehFenster(g, 55), { top: 80, hoehe: 55 }, "zwischen 1 und 2 Wochen: wächst nach unten, Pixel für Pixel");
+  assert.deepEqual(V78.ziehFenster(g, 80), { top: 80, hoehe: 80 });
+  assert.deepEqual(V78.ziehFenster(g, 140), { top: 40, hoehe: 140 }, "darüber: die Wochen davor klappen gleichmässig auf");
+  assert.deepEqual(V78.ziehFenster(g, 999), { top: 0, hoehe: 200 }, "nie mehr als der Monat");
+  assert.equal(V78.ziehZiel(g, 52, 0), 1); assert.equal(V78.ziehZiel(g, 70, 0), 2); assert.equal(V78.ziehZiel(g, 150, 0), "monat");
+  assert.equal(V78.ziehZiel(g, 52, 0.8), 2, "schneller Wisch nach unten: nächste Stellung");
+  assert.equal(V78.ziehZiel(g, 150, -0.8), 2, "schneller Wisch nach oben");
+  assert.equal(V78.ziehZiel(g, 40, -0.8), 1, "schon ganz oben");
+  // Bereitstehende Wochen: der Monat und die nächste Woche, auch wenn sie im nächsten Monat liegt
+  const R = V78.ziehRaster("2030-03-27").map((w) => w.montag);
+  assert.equal(R[0], V78.monatsRaster("2030-03-27")[0].montag);
+  assert.ok(R.includes(V78.montag("2030-03-27")) && R.includes("2030-04-01"), JSON.stringify(R));
+  assert.ok(R.every((m, i) => i === 0 || (Date.parse(m) - Date.parse(R[i - 1])) === 7 * 864e5), "lückenlos");
+});

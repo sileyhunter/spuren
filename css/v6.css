@@ -1786,3 +1786,8 @@ body.k4-edit .kal-v7.k4 .k4-r-kopf { display: none; }
 .k4-anp-f .k4-neu, .k4-anp-f .k4-anp-ok { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 22px; border: 0; border-radius: 999px; font-size: 16px; font-weight: 600; box-shadow: none; }
 .k4-anp-f .k4-neu { background: var(--wk-neu); color: var(--wk-neu-fg); }
 .k4-anp-f .k4-anp-ok { background: var(--wk-ok); color: var(--wk-ok-fg); }
+
+/* ---------- V9.5.1 kalender-4.3: Griff fliessend (das Raster folgt dem Finger, rastet beim Loslassen ein) ---------- */
+.k4-auf.zieht { overflow: hidden; will-change: height; }
+.k4-auf.zieht > .k4-auf-in { will-change: transform; }
+.k4-zg-in { display: flex; flex-direction: column; gap: 4px; }

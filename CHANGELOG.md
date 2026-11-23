@@ -1,5 +1,14 @@
 # Änderungen
 
+## V9.5.1 · 23.11.2026 · Griff fliessend (kalender-4.3)
+Silas (23.11., Aufnahme 12:20): «Das Verschieben des Balkens funktioniert nicht flüssig … es soll nicht eine Stufe oben und unten geben, sondern fliessend eingestellt werden können.»
+- Der Griff unter dem Raster (Liste und Zyklus) zieht das Raster jetzt Pixel für Pixel mit: bis zwei Wochen wächst es nach unten, darüber klappen die übrigen Wochen des Monats um die
+  gewählte Woche auf. Beim Loslassen rastet es weich auf 1 Woche, 2 Wochen oder Monat ein (die nächste; ein schneller Wisch geht weiter in seine Richtung). Vorher sprang es je 44 px um
+  eine Stufe und zeichnete dabei alles neu.
+- Fehler behoben: Beim Ziehen konnte das Mitführen des Tags (Scrollen der Liste) das Raster neu zeichnen und das Ziehen abreissen.
+- `js/v78.js` (kalender-4.3: `V78.ziehRaster`, `V78.ziehFenster`, `V78.ziehZiel`), `js/v78-ui.js` (`griffZiehen`, Ausschnitt `.k4-auf`), `css/v6.css`; Tests `tests/test_v93.cjs`
+  (+1, kalender-4.3), `tests/test_v78.cjs` (Version). Demo-Durchlauf mit Playwright (Liste und Zyklus: Höhe folgt dem Finger in 13-px-Schritten ohne Sprung, rastet ein).
+
 ## V9.5 · 23.11.2026 · Woche wie Enduco W4: Zeit und Intensität als Stellschrauben (zeit-intensitaet-1.0)
 Silas' Anliegen (23.11.2026): «Wenn ich die Zeit eines Tages ändere, soll die Woche angepasst werden. Heute bringt mehr Zeit kein Mehr an Training.» Entscheide vom 22.11.2026
 (Punkte 3 und 4 des Auftrags), Zahlen und Begründungen von Claude in `docs/anleitung/plan.md` («Zeit und Intensität als Stellschrauben»).

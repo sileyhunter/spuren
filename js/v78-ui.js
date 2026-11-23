@@ -12,7 +12,7 @@
   const SPF = (sp) => `var(--sp-${["rad", "lauf", "schwimm", "wandern", "ski"].includes(sp) ? sp : "andere"})`;
   const WT = ["M", "D", "M", "D", "F", "S", "S"];
   let C = null;
-  const ST = { von: null, bis: null, sel: null, offen: false, zeilen: 2, box: null, raster: null, titel: null, sub: null, KC: new Map(), lauf: 0 };
+  const ST = { von: null, bis: null, sel: null, offen: false, zeilen: 2, ziehen: null, box: null, raster: null, titel: null, sub: null, KC: new Map(), lauf: 0 };
   const bereit = () => { C = UI() && UI().C; return !!(C && C.D && V78() && V66() && V6() && P() && P().kontextFuer && M()); };
   const heute = () => C.iso(C.today);
   const add = (s, n) => { const d = new Date(s + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
@@ -73,11 +73,11 @@
 
   /* ---------------- Raster ---------------- */
   function rasterHTML() {
-    const W = V6(), h = heute(), R = ST.edit ? V78().raster(V78().montag(ST.sel) < ST.editMo ? ST.editMo : V78().montag(ST.sel), 1) : ST.offen ? V78().monatsRaster(ST.sel) : V78().raster(ST.sel, ST.zeilen === 1 ? 1 : 2), mon = new Date(ST.sel + "T12:00:00Z").getUTCMonth();
+    const W = V6(), h = heute(), R = ST.edit ? V78().raster(V78().montag(ST.sel) < ST.editMo ? ST.editMo : V78().montag(ST.sel), 1) : ST.ziehen ? ST.ziehen : ST.offen ? V78().monatsRaster(ST.sel) : V78().raster(ST.sel, ST.zeilen === 1 ? 1 : 2), mon = new Date(ST.sel + "T12:00:00Z").getUTCMonth();
     // V9.3 woche-look-1.0 (Vorlage): sieben Spalten, die Woche des gewählten Tags in einer dunklen Pille; je Tag eine Pille mit weissen Sportsymbolen
     // (je Einheit eines, höchstens zwei) und je Einheit einer Kugel; vergangene Tage gefüllt, kommende mit Umriss; freier Tag = Kalender-✕ ohne Pille
     const kopf = `<div class="k4-r-kopf">${WT.map((t) => `<div class="k4-r-wt">${t}</div>`).join("")}</div>`, selMo = V78().montag(ST.sel);
-    const zeilen = R.map((wk) => `<div class="k4-r-w${wk.montag === selMo ? " sel" : ""}" data-k4rw="${wk.montag}">` + wk.tage.map((ds) => {
+    const zeilen = R.map((wk) => `<div class="k4-r-w${wk.montag === selMo ? " sel" : ""}" data-k4rw="${wk.montag}" data-zrow="${wk.montag}">` + wk.tage.map((ds) => {
       let d = null; try { d = tagDaten(ds); } catch (e) { d = null; }
       const syms = [], kug = [];
       if (d) {
@@ -85,7 +85,7 @@
         for (const e of d.plan) { syms.push(e.sport); kug.push(kugelHTML(e)); }
       }
       const leer = d && !syms.length && !(d.tests || []).length && !d.rennen;
-      const aus = ST.offen && new Date(ds + "T12:00:00Z").getUTCMonth() !== mon;
+      const aus = ST.offen && !ST.ziehen && new Date(ds + "T12:00:00Z").getUTCMonth() !== mon;
       const zs = d ? zustandVon(d, woche(V78().montag(ds))) : "standard";
       const pille = d && d.rennen ? `<span class="k4-r-p renn">${W.icon("flagge", 13)}</span>`
         : syms.length || (d && d.tests.length) ? `<span class="k4-r-p${ds < h ? " voll" : ""}${zs === "gesperrt" ? " gesp" : ""}">${zs === "gesperrt" ? `<i class="k4-r-lock">${W.icon("schloss", 10)}</i>` : ""}${syms.slice(0, 2).map((x) => `<i class="k4-r-ic">${W.sportIcon(x, 13)}</i>`).join("")}<span class="k4-r-k">${kug.slice(0, 3).join("")}${d && d.tests.length ? `<i class="k4-kugel test"></i>` : ""}</span></span>`
@@ -93,30 +93,70 @@
       return `<button type="button" class="k4-r-t${ds === h ? " heute" : ""}${ds === ST.sel ? " sel" : ""}${aus ? " aus" : ""}${zs === "hand" ? " hand" : ""}" data-k4r="${ds}" aria-label="${esc(V78().tagText(ds))}${zs === "gesperrt" ? ", gesperrt" : zs === "hand" ? ", Zeit von Hand gesetzt" : ""}">
         <span class="k4-r-d">${+ds.slice(8)}</span>${pille}</button>`;
     }).join("") + `</div>`).join("");
-    return `<div class="k4-r-gitter" role="group" aria-label="Kalender">${kopf}${zeilen}</div>`;
+    return `<div class="k4-r-gitter" role="group" aria-label="Kalender">${kopf}<div class="k4-auf"><div class="k4-auf-in">${zeilen}</div></div></div>`;
   }
   /** kalender-4.1: Griff in der Leiste unter dem Raster (wie die Vorlage), sonst unter dem Raster. */
   const griffHTML = (offen, attr) => `<button type="button" class="k4-griff" ${attr} aria-expanded="${offen}" aria-label="${offen ? "Raster zuklappen" : "Ganzen Monat zeigen"} – nach oben oder unten ziehen"><span></span></button>`;
   /** V9.3.2 woche-look-1.1 (Vorlage, Aufnahme 22.11. 23:06): den Griff ziehen – nach unten mehr Wochen (1 → 2 → Monat), nach oben weniger (Monat → 2 → 1);
-   *  antippen wechselt wie bisher zwischen zwei Wochen und dem Monat. Gilt für Liste und Zyklus (ein Zustand). */
+   *  antippen wechselt wie bisher zwischen zwei Wochen und dem Monat. Gilt für Liste und Zyklus (ein Zustand).
+   *  V9.5.1 kalender-4.3 (Silas 23.11.: «nicht eine Stufe oben und unten, sondern fliessend»): beim Ziehen stehen alle Wochen des Monats bereit (V78.ziehRaster),
+   *  das Raster folgt dem Finger Pixel für Pixel (V78.ziehFenster: Höhe und Lage des sichtbaren Ausschnitts); loslassen rastet weich ein (V78.ziehZiel). */
   const ZEILEN = [1, 2, "monat"];
   function zeilenSetzen(z) { ST.zeilen = z; ST.offen = z === "monat"; ZS.offen = ST.offen; }
+  const ruhig = () => { try { return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; } };
   function griffZiehen(g) {
     if (g._zieh) return; g._zieh = true;
-    let y0 = null, i0 = 1, bewegt = false;
-    g.addEventListener("pointerdown", (ev) => { y0 = ev.clientY; i0 = Math.max(0, ZEILEN.indexOf(ST.zeilen)); bewegt = false; try { g.setPointerCapture(ev.pointerId); } catch (e) { /* ohne Capture */ } });
+    let y0 = null, bewegt = false, Z = null, zuletzt = null, v = 0;
+    // während des Ziehens zeichnet nur der Griff das Raster neu (sonst risse z. B. das Mitführen des Tags beim Scrollen das Ziehen ab)
+    const neu = () => { ST.ziehNeu = true; try { g._neu(); } finally { ST.ziehNeu = false; } };
+    const geo = (box, basis) => {                                                // Kanten der Wochen im Ausschnitt (px ab seiner Oberkante)
+      const hl = box.querySelector(".k4-auf"), inn = hl && hl.querySelector(".k4-auf-in"); if (!inn) return null;
+      const reihen = [...inn.querySelectorAll("[data-zrow]")], o = inn.getBoundingClientRect().top;
+      if (!reihen.length) return null;
+      const top = reihen.map((r) => r.getBoundingClientRect().top - o), unten = top.slice(1).concat([inn.getBoundingClientRect().height]);
+      const ix = (mo) => reihen.findIndex((r) => r.dataset.zrow === mo);
+      const mo = V78().montag(basis), M = V78().monatsRaster(basis), i1 = Math.max(0, ix(mo)), i2 = Math.min(reihen.length - 1, i1 + 1);
+      const iA = Math.max(0, ix(M[0].montag)), iE = Math.max(iA, ix(M[M.length - 1].montag));
+      return { hl, inn, g: { t1: top[i1], b1: unten[i1], b2: unten[i2], tM: top[iA], bM: unten[iE] } };
+    };
+    const zeigen = (h) => { const f = V78().ziehFenster(Z.geo.g, h); Z.geo.hl.style.height = `${f.hoehe}px`; Z.geo.inn.style.transform = `translateY(${-f.top}px)`; Z.h = f.hoehe; };
+    const start = () => {
+      const box = typeof g._raster === "function" ? g._raster() : null, basis = typeof g._basis === "function" ? g._basis() : null;
+      if (!box || !basis || typeof g._neu !== "function") return false;
+      const g0 = geo(box, basis); if (!g0) return false;
+      const h0 = g0.hl.getBoundingClientRect().height;                          // Höhe vorher – das Raster soll nicht springen
+      ST.ziehen = V78().ziehRaster(basis); neu();
+      const G = geo(box, basis); if (!G) { ST.ziehen = null; neu(); return false; }
+      G.hl.classList.add("zieht");
+      Z = { geo: G, h0: Math.max(G.g.b1 - G.g.t1, h0), h: h0 };
+      zeigen(Z.h0);
+      return true;
+    };
+    const ende = () => {
+      if (y0 == null) return; y0 = null;
+      if (!Z) return;
+      const ziel = V78().ziehZiel(Z.geo.g, Z.h, v), G = Z.geo.g, zH = ziel === 1 ? G.b1 - G.t1 : ziel === 2 ? G.b2 - G.t1 : Math.max(G.bM - G.tM, G.b2 - G.t1 + 1);
+      const fertig = () => { ST.ziehen = null; zeilenSetzen(ziel); Z = null; neu(); };
+      if (ruhig()) { fertig(); return; }
+      Z.geo.hl.style.transition = "height .18s ease-out"; Z.geo.inn.style.transition = "transform .18s ease-out";
+      zeigen(zH);
+      setTimeout(fertig, 190);
+    };
+    g.addEventListener("pointerdown", (ev) => { y0 = ev.clientY; bewegt = false; Z = null; v = 0; zuletzt = { y: ev.clientY, t: ev.timeStamp }; try { g.setPointerCapture(ev.pointerId); } catch (e) { /* ohne Capture */ } });
     g.addEventListener("pointermove", (ev) => {
       if (y0 == null) return;
-      const dy = ev.clientY - y0; if (Math.abs(dy) > 8) bewegt = true;
-      const i = Math.max(0, Math.min(ZEILEN.length - 1, i0 + Math.trunc(dy / 44)));          // je 44 px eine Stufe
-      if (bewegt && ZEILEN[i] !== ST.zeilen && typeof g._neu === "function") { zeilenSetzen(ZEILEN[i]); g._neu(); }
+      const dy = ev.clientY - y0;
+      if (!bewegt && Math.abs(dy) > 6) { bewegt = true; if (!start()) { y0 = null; return; } }
+      if (!Z) return;
+      if (zuletzt && ev.timeStamp > zuletzt.t) v = 0.7 * ((ev.clientY - zuletzt.y) / (ev.timeStamp - zuletzt.t)) + 0.3 * v;      // px/ms, geglättet
+      zuletzt = { y: ev.clientY, t: ev.timeStamp };
+      zeigen(Z.h0 + dy);
     });
-    const ende = () => { y0 = null; };
     g.addEventListener("pointerup", ende); g.addEventListener("pointercancel", ende);
     g.addEventListener("click", (ev) => { if (bewegt) { bewegt = false; ev.preventDefault(); ev.stopImmediatePropagation(); return; } if (typeof g._klick === "function") g._klick(); });
   }
   /** Griff in der Leiste (kalender-4.1) oder unter dem Raster; derselbe Knopf bleibt beim Neuzeichnen stehen (sonst risse das Ziehen ab). neu = Ansicht neu zeichnen. */
-  function griffSetzen(raster, html, onclick, neu) {
+  function griffSetzen(raster, html, onclick, neu, basis) {
     const platz = document.getElementById("kal-griff");
     let g = platz && !platz.hidden ? platz.querySelector(".k4-griff") : null;
     if (platz && !platz.hidden) { if (!g) { platz.innerHTML = html; g = platz.firstElementChild; } }
@@ -125,6 +165,7 @@
     g.setAttribute("aria-expanded", String(ST.offen));
     g.setAttribute("aria-label", `${ST.offen ? "Raster zuklappen" : "Ganzen Monat zeigen"} – nach oben oder unten ziehen: ${ST.zeilen === "monat" ? "Monat" : ST.zeilen === 1 ? "eine Woche" : "zwei Wochen"}`);
     g._klick = onclick; g._neu = neu || onclick; g.onclick = null;
+    g._raster = () => raster; g._basis = typeof basis === "function" ? basis : () => ST.sel;            // kalender-4.3: Ausschnitt und Bezugstag fürs fliessende Ziehen
     griffZiehen(g);
   }
   /** kalender-4.1: Wochenleiste über der Liste – Phase | Wochenart, Tage, Stunden und Last der Woche, die gerade oben steht (Vorlage enduco). */
@@ -236,11 +277,11 @@
     if (opt.ziel) requestAnimationFrame(() => N.zu(opt.ziel, true));
   };
   function rasterZeichnen() {
-    if (!ST.raster) return;
+    if (!ST.raster || (ST.ziehen && !ST.ziehNeu)) return;                       // kalender-4.3: beim Ziehen nur der Griff
     ST.raster.innerHTML = rasterHTML();
     ST.raster.querySelectorAll("[data-k4r]").forEach((b) => (b.onclick = () => N.zu(b.dataset.k4r)));
     ST.raster.querySelectorAll("[data-k4kw]").forEach((b) => (b.onclick = () => window.APP && window.APP.kalenderWoche && window.APP.kalenderWoche(b.dataset.k4kw)));
-    if (!ST.edit) griffSetzen(ST.raster, griffHTML(ST.offen, "data-k4griff"), () => { zeilenSetzen(ST.zeilen === "monat" ? 2 : "monat"); rasterZeichnen(); }, () => rasterZeichnen());
+    if (!ST.edit) griffSetzen(ST.raster, griffHTML(ST.offen, "data-k4griff"), () => { zeilenSetzen(ST.zeilen === "monat" ? 2 : "monat"); rasterZeichnen(); }, () => rasterZeichnen(), () => ST.sel);
     const kopf = ST.raster.closest(".k4-kopf");                                 // V9.3.2: Raster ändert die Höhe (Griff) → Abstand beim Scrollen zum Tag nachführen
     if (kopf && ST.box) ST.box.style.setProperty("--k4-oben", `${Math.round(kopf.getBoundingClientRect().height) + 8}px`);
   }
@@ -617,15 +658,15 @@
     return k1 + k2 + k3 + k4;
   }
   function zyklusRaster() {
-    const W = V6(), h = heute(), R = ZS.offen ? V78().monatsRaster(ZS.mo) : V78().raster(ZS.mo, ST.zeilen === 1 ? 1 : 2), mon = new Date(ZS.mo + "T12:00:00Z").getUTCMonth();
+    const W = V6(), h = heute(), R = ST.ziehen ? ST.ziehen : ZS.offen ? V78().monatsRaster(ZS.mo) : V78().raster(ZS.mo, ST.zeilen === 1 ? 1 : 2), mon = new Date(ZS.mo + "T12:00:00Z").getUTCMonth();
     const selTag = ST.sel && V78().montag(ST.sel) === ZS.mo ? ST.sel : V78().montag(h) === ZS.mo ? h : ZS.mo;
     const zeilen = R.map((wk) => {
       const w = woche(wk.montag), k = w.kopf || {}, titel = V78().wochenTitel(w.K && w.K.w ? w.K.w.phase : null, k.art || null), Z = wochenZahlen(w, h);
-      const tage = wk.tage.map((ds) => `<span data-k4zt="${ds}" class="${ds === h ? "heute" : ""}${ds === selTag ? " sel" : ""}${ZS.offen && new Date(ds + "T12:00:00Z").getUTCMonth() !== mon ? " aus" : ""}"><i>${+ds.slice(8)}</i></span>`).join("");
-      return `<div class="k4-zg-d${wk.montag === ZS.mo ? " sel" : ""}" aria-hidden="true">${tage}</div><button type="button" class="k4-zw${wk.montag === ZS.mo ? " sel" : ""}${wk.montag === V78().montag(h) ? " jetzt" : ""}" data-k4zw="${wk.montag}" aria-pressed="${wk.montag === ZS.mo}"
+      const tage = wk.tage.map((ds) => `<span data-k4zt="${ds}" class="${ds === h ? "heute" : ""}${ds === selTag ? " sel" : ""}${ZS.offen && !ST.ziehen && new Date(ds + "T12:00:00Z").getUTCMonth() !== mon ? " aus" : ""}"><i>${+ds.slice(8)}</i></span>`).join("");
+      return `<div class="k4-zg-d${wk.montag === ZS.mo ? " sel" : ""}" aria-hidden="true" data-zrow="${wk.montag}">${tage}</div><button type="button" class="k4-zw${wk.montag === ZS.mo ? " sel" : ""}${wk.montag === V78().montag(h) ? " jetzt" : ""}" data-k4zw="${wk.montag}" aria-pressed="${wk.montag === ZS.mo}"
         aria-label="KW ${W.isoWoche(wk.montag)}: ${esc(titel)}${Z ? `, ${esc(Z.was)} ${esc(Z.h)}, TL ${esc(Z.tl)}` : ""}"><b>${esc(titel)}</b>${Z ? `<span class="k4-zw-z">${esc(Z.h)} ${W.icon("uhr", 13)}</span><span class="k4-zw-z">${esc(Z.tl.replace(/^mind\. /, "≥ "))} ${W.icon("funken", 13)}</span>` : `<span class="k4-zw-z">–</span>`}</button>`;
     }).join("");
-    return `<div class="k4-zg" role="group" aria-label="Wochen"><div class="k4-zg-d k4-zg-wt" aria-hidden="true">${WT.map((t) => `<span>${t}</span>`).join("")}</div>${zeilen}</div>`;
+    return `<div class="k4-zg" role="group" aria-label="Wochen"><div class="k4-zg-d k4-zg-wt" aria-hidden="true">${WT.map((t) => `<span>${t}</span>`).join("")}</div><div class="k4-auf"><div class="k4-auf-in k4-zg-in">${zeilen}</div></div></div>`;
   }
   /** Zyklus für die Woche mo: im Kopf das Raster mit einer Zeile je Woche, darunter die vier Karten und «Plan und absolviert» (V66UI). */
   N.zyklus = function (box, raster, titel, sub, mo, neu) {
@@ -633,10 +674,11 @@
     ST.KC = new Map(); ZS.PR = null; ZS.mo = V78().montag(mo || heute());
     // V9.3.2: Griff ändert nur das Raster (1 Woche, 2 Wochen, Monat) – die Karten darunter bleiben stehen
     const rasterNeu = () => {
+      if (ST.ziehen && !ST.ziehNeu) return;                                     // kalender-4.3: beim Ziehen nur der Griff
       raster.innerHTML = zyklusRaster();
       raster.querySelectorAll("[data-k4zw]").forEach((b) => (b.onclick = () => { if (window.APP && window.APP.kalenderWoche) window.APP.kalenderWoche(b.dataset.k4zw); }));
       raster.querySelectorAll("[data-k4zt]").forEach((t) => (t.onclick = () => { ST.sel = t.dataset.k4zt; if (window.APP && window.APP.kalenderWoche) window.APP.kalenderWoche(V78().montag(ST.sel)); }));
-      griffSetzen(raster, griffHTML(ZS.offen, "data-k4zgriff"), () => { zeilenSetzen(ST.zeilen === "monat" ? 2 : "monat"); rasterNeu(); }, rasterNeu);
+      griffSetzen(raster, griffHTML(ZS.offen, "data-k4zgriff"), () => { zeilenSetzen(ST.zeilen === "monat" ? 2 : "monat"); rasterNeu(); }, rasterNeu, () => ZS.mo);
     };
     rasterNeu();
     if (titel) titel.textContent = V78().monatText(ZS.mo);

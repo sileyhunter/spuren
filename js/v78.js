@@ -22,6 +22,9 @@
    mit der Woche danach (V78.bearbeitenAb) – wie die Vorlage am Sonntagabend; den heutigen Tag ändert das Tagesblatt; «Tag sperren» steht im Tagesblatt
    hinter «…» (kein Schloss mehr im Tageskopf); ✨ fragt «Anpassen oder neu berechnen?» – «Neu» = Stufe 2 von alles-neu-1.0 (nur Gesperrtes bleibt).
 
+   kalender-4.3 (V9.5.1, Silas 23.11.: «nicht eine Stufe oben und unten, sondern fliessend»): das Raster folgt beim Ziehen dem Finger Pixel für Pixel – die Wochen
+   des Monats klappen um die gewählte Woche auf (V78.ziehFenster); beim Loslassen rastet es weich auf der nächsten Stellung ein (1 Woche, 2 Wochen, Monat; ein schneller
+   Wisch geht zur nächsten in seiner Richtung, V78.ziehZiel).
    kalender-4.2 (V9.3.2, Vorlage Aufnahme 22.11. 23:06): den Griff unter dem Raster ziehen – nach unten mehr Wochen (1 → 2 → Monat), nach oben weniger;
    antippen wechselt zwischen zwei Wochen und dem Monat; gilt für Liste und Zyklus. Die Monatsansicht als eigener Knopf entfällt (der Monat ist der Griff).
 
@@ -35,7 +38,7 @@
   if (root) root.V78 = V78;
 })(typeof window !== "undefined" ? window : null, function () {
   "use strict";
-  const V78 = { VERSIONS: { kalender: "kalender-4.2", status: "trainingsstatus-1.0", zyklus: "zyklus-1.0", prognose: "fitness-prognose-1.0", bearbeiten: "bearbeiten-1.1", tagesblatt: "tagesblatt-2.0" } };
+  const V78 = { VERSIONS: { kalender: "kalender-4.3", status: "trainingsstatus-1.0", zyklus: "zyklus-1.0", prognose: "fitness-prognose-1.0", bearbeiten: "bearbeiten-1.1", tagesblatt: "tagesblatt-2.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const pd = (s) => new Date(s + "T12:00:00Z");
   const iso = (d) => d.toISOString().slice(0, 10);
@@ -82,6 +85,32 @@
     const mo = V78.montag(ds), out = [];
     for (let w = 0; w < (n || 2); w++) { const m = add(mo, 7 * w); out.push({ montag: m, tage: Array.from({ length: 7 }, (_, i) => add(m, i)) }); }
     return out;
+  };
+  /** kalender-4.3: Wochen, die beim Ziehen bereitstehen – der Monat von ds und dazu die Woche von ds und die nächste (für 1 und 2 Wochen). */
+  V78.ziehRaster = function (ds) {
+    const M = V78.monatsRaster(ds), mo = V78.montag(ds), von = M[0].montag < mo ? M[0].montag : mo, nx = add(mo, 7), bis = M[M.length - 1].montag > nx ? M[M.length - 1].montag : nx;
+    return V78.raster(von, Math.round((pd(bis) - pd(von)) / 6048e5) + 1);
+  };
+  /**
+   * kalender-4.3: sichtbares Fenster beim Ziehen. g = { t1, b1, b2, tM, bM } (Oberkante der gewählten Woche, Unterkante dieser und der nächsten Woche, Ober- und
+   * Unterkante des Monats, je in px im Raster), h = gewünschte Höhe. Bis zwei Wochen wächst das Fenster nach unten; darüber klappen die übrigen Wochen des Monats
+   * gleichmässig nach oben und unten auf, bis der ganze Monat steht. → { top, hoehe } (hoehe begrenzt auf eine Woche … Monat).
+   */
+  V78.ziehFenster = function (g, h) {
+    const H1 = g.b1 - g.t1, H2 = g.b2 - g.t1, HM = Math.max(g.bM - g.tM, H2 + 1);
+    const hoehe = Math.max(H1, Math.min(HM, h));
+    if (hoehe <= H2) return { top: g.t1, hoehe };
+    const f = (hoehe - H2) / (HM - H2);
+    return { top: g.t1 + (g.tM - g.t1) * f, hoehe };
+  };
+  /** kalender-4.3: Stellung beim Loslassen – die nächste; ein schneller Wisch (|v| ≥ 0,5 px/ms) die nächste in seiner Richtung. → 1 | 2 | "monat" */
+  V78.ziehZiel = function (g, h, v) {
+    const S = [[1, g.b1 - g.t1], [2, g.b2 - g.t1], ["monat", Math.max(g.bM - g.tM, g.b2 - g.t1 + 1)]];
+    if (Math.abs(v || 0) >= 0.5) {
+      const L = v > 0 ? S.filter((s) => s[1] > h + 1) : S.filter((s) => s[1] < h - 1).reverse();
+      if (L.length) return L[0][0];
+    }
+    return S.reduce((a, b) => (Math.abs(b[1] - h) < Math.abs(a[1] - h) ? b : a))[0];
   };
   /** Raster als Monat: die Wochen, die den Monat von ds berühren (vier bis sechs). */
   V78.monatsRaster = function (ds) {
