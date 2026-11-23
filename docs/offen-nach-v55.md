@@ -422,3 +422,5 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
 159. **W5 Automatisch senden als Einstellung (V9.6, garmin-auto-1.0, 23.11.):** gebaut, **nicht eingeschaltet** (Standard «Nur Tage mit Häkchen» wie bisher). Silas schaltet «Alle Tage» selbst
      ein (Planeinstellungen → Allgemein → Garmin senden). Auf dem iPhone prüfen: Einstellung sichtbar, Standard «Nur Tage mit Häkchen»; «Aus» zeigt im Tagesblatt «Automatisch senden
      abgestellt». Später möglich: Aufträge im Nacht-Update erzeugen (ohne geöffnete Seite).
+160. **W2c Enduco-Look für Plan, Heute, Profil (V9.3.3, enduco-look-1.0, 23.11.):** gebaut (Plan-Kopf mit Kacheln und «Plan verwalten», «Diese Woche» mit Phase, Profil-Kopf). Analyse-Detailseiten
+     (Zeitraum 1M/3M/6M/1Y, Sportfilter) bleiben bei E2/E3; Urlaub/Trainingslager/Sonderphase bei E4. Auf dem iPhone prüfen: Plan, Heute und Profil neben Enduco – was noch anders aussieht, melden.

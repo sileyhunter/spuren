@@ -307,7 +307,11 @@
     const titel = (el) => (el.querySelector("h2") || {}).textContent || el.id;
     // V7 navigation-7.0: Profil oben rechts – Bereiche nach Gruppen (Training, Daten, Darstellung, Labor), Labor = Expertenbereich
     const zeile = (z, ic, t, u) => `<li><button type="button" data-esz="${z}">${ico(ic, 22)}<span><b>${esc(t)}</b><small>${esc(u)}</small></span>${ico("weiter", 18)}</button></li>`;
-    const ov = oeffne("einst", `<div class="te-head"><h2 id="v59-ov-h" tabindex="-1">Profil und Einstellungen</h2><button class="btn" data-x>Schliessen</button></div>
+    // V9.3.3 W2c (wie Enduco: Kreis, Name, «Mitglied seit»): Kopf mit Datenstand statt Name – die Seite kennt keinen Namen, und keiner gehört in den Code
+    const A0 = (C.D.activities || []).reduce((m, a) => (a && a.date && (!m || a.date < m) ? a.date : m), null);
+    const ov = oeffne("einst", `<div class="te-head"><h2 id="v59-ov-h" tabindex="-1">Profil</h2><button class="btn" data-x>Schliessen</button></div>
+      <div class="es-profil"><span class="es-avatar" aria-hidden="true">${ico("person", 34)}</span><div><b>Dein Profil</b>
+        <small>${A0 ? `Trainingsdaten seit ${esc(A0.slice(0, 4))} · ${(C.D.activities || []).length} Aktivitäten` : "Noch keine Trainingsdaten"}</small></div></div>
       <section class="es" id="es-training"><h3>Training</h3><ul class="v6-aktionen">
         ${zeile("plan-einstellungen", "regler", "Planeinstellungen", "Verfügbarkeit, lange Einheiten, Basis-Fitness, Schwimmen, Krafttraining, Trainingsumfang")}
         ${zeile("laktat#zc-card", "fokus", "Trainingszonen", "Zonen je Sportart aus deinen Schwellen, Freigabe und Verlauf")}

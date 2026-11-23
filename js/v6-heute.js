@@ -315,9 +315,10 @@
       <div class="wl-fort">
         <div><span>Trainings</span><b>${w.n_ist} <small>/ ${w.n_woche}</small></b><i style="--p:${bar(w.n_ist, w.n_woche)}%"></i></div>
         <div><span>Dauer</span><b>${esc(w.s_ist ? W.dauerText(w.s_ist) : "0 min")} <small>/ ${esc(W.dauerText(w.s_woche))}</small></b><i style="--p:${bar(w.s_ist, w.s_woche)}%"></i></div></div>
-      ${wk.n_woche ? `<p class="wl-kraft">${W.icon("kraft", 14)}Krafttraining: ${wk.n_ist} von ${wk.n_woche}${wk.s_ist ? ` · ${esc(W.dauerText(wk.s_ist))}` : ""} <small>(Zusatz, nicht in Trainings und Dauer)</small></p>` : ""}
-      <p class="hint">Erledigt = erfasste Aktivitäten (kommen mit dem Nacht-Update); geplant = Mein Plan. Ausgefüllt = erledigt, Rand = geplant, grau = geplant, aber an diesem Tag keine Aktivität dieser Sportart erfasst.
-        Woche = erledigt + noch geplant + verpasst${w.n_verpasst ? ` (${w.n_verpasst} verpasst)` : ""}.</p>`;
+      ${wk.n_woche ? `<p class="wl-kraft">${W.icon("kraft", 14)}Krafttraining: ${wk.n_ist} von ${wk.n_woche}${wk.s_ist ? ` · ${esc(W.dauerText(wk.s_ist))}` : ""}</p>` : ""}`;
+    // V9.3.3 W2c (wie Enduco «Du bist in Woche …»): Phase der Woche unter dem Titel; die Erklärung der Zeichen steht im Wissen, nicht mehr hier
+    const sub = document.querySelector("#woche-card .card-head [data-wl-sub]");
+    if (sub) { let t = ""; try { const K = window.V64UI && window.V64UI.kontextFuer ? window.V64UI.kontextFuer(mo) : null; if (K && K.w && K.w.phase) t = K.w.phase + (K.w.erholung ? " · Erholungswoche" : K.w.taper ? " · Taper" : ""); } catch (e) { console.error(e); } sub.textContent = t; sub.hidden = !t; }
     box.querySelectorAll("[data-wltag]").forEach((b) => (b.onclick = () => { if (window.APP && window.APP.tagBlatt) window.APP.tagBlatt(b.dataset.wltag); }));   // V6.6
   }
 

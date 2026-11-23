@@ -1847,3 +1847,18 @@ body.k4-edit .kal-v7.k4 .k4-r-kopf { display: none; }
 .pe-feld[hidden] { display: none; }
 .pe-feld span { font-weight: 600; }
 .pe-feld select { font: inherit; color: var(--fg); background: transparent; border: 0; text-align: right; }
+
+/* ---------- V9.3.3 W2c (enduco-look-1.0): Plan-Kopf, Diese Woche, Profil ---------- */
+.v7-held-kacheln { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0 10px; }
+.v7-held-kacheln > div { padding: 10px 14px; border-radius: 14px; background: var(--surface-2); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.v7-held-kacheln span { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.v7-held-kacheln b { font-size: 22px; font-weight: 700; }
+.v7-held-kacheln b small, .v7-held-kacheln > div > small { font-size: 13px; font-weight: 500; color: var(--muted); }
+.v7-held-kacheln .v7-fort { margin: 4px 0 0; height: 6px; background: var(--line); }
+.v7-held-knoepfe { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.v7-held-knoepfe .btn { margin: 0; justify-content: center; }
+#woche-card .wl-phase { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.es-profil { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 4px 0 18px; text-align: center; }
+.es-profil .es-avatar { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); border: 1px solid var(--line); color: var(--fg); }
+.es-profil b { display: block; font-size: 20px; }
+.es-profil small { color: var(--muted); }

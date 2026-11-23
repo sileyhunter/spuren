@@ -35,6 +35,12 @@
 - **Heute (V7 heute-7.0):** nur Kacheln, Begrüssung mit Check-in, Heutiges Training und Diese Woche. Heutiges Training = erledigte Garmin-Aktivitäten von
   heute und die Einheiten aus Mein Plan (Balkenprofil aus ihren Teilen, profil-teile-1.0); keine Enduco-Workouts, kein «Neu von Enduco». Die übrigen
   Karten (Ringe, Bereitschaft, Gefühl, Verlauf) stehen unter Analyse → Belastung und Erholung (`#erholung`).
+- **enduco-look-1.0 (V9.3.3, Etappe W2c, Silas 23.11.2026 «W2c kannst du machen», nach seinen Enduco-Screenshots):** Plan-Kopf wie Enduco – Hauptrennen und Datum, Phase,
+  zwei Kacheln «Training» (absolviert / Mein Plan diese Woche mit Balken) und «Bis zum Rennen» (Wochen, Tage), Knöpfe «Kalender» und «Plan verwalten» (Planeinstellungen).
+  «Diese Woche» auf Heute mit der Phase unter dem Titel (Klasse `wl-phase`, nicht `.sub` – sonst klappt ⓘ sie ein), ohne den langen Erklärtext. Profil oben rechts heisst «Profil» und
+  beginnt mit einem Kopf: Kreis mit Personen-Symbol, «Dein Profil», «Trainingsdaten seit <Jahr> · n Aktivitäten» (die Seite kennt keinen Namen; keiner gehört in den Code).
+  Analyse folgt schon dem Karten-Muster (Titel · Kennzahlen · Grafik); Zeitraum-Umschalter 1M/3M/6M/1Y und Sportfilter in den Detailseiten sind die Etappen E2/E3 «Grafik zuerst».
+  Nicht übernommen: Kopfbild im Plan (keine Fotos in der Demo), «Sonderphase» (Urlaub/Trainingslager = eigene Etappe E4).
 - **heute-einfach-1.0 (V9.9, Silas 23.11.2026: «möglichst einfach aussehen und einfach handhaben»):** Die Begrüssung antwortet mit einem Satz auf «Was mache ich heute?»
   (`V91.heuteAntwort`): «Heute: «Titel» · Dauer.» (bis drei Einheiten, «noch», wenn schon etwas erledigt ist), «Heute erledigt: Schwimmen 51 min.» (absolviert ohne Plan –
   vorher hiess das fälschlich «nichts geplant»), «Heute ist alles erledigt.», «Heute frei.», Renntag. Die Ampel-Empfehlung steht nicht mehr darunter (Kachel und Vorschlag

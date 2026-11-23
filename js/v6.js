@@ -350,6 +350,7 @@
     offen: '<rect x="6" y="11" width="12" height="9" rx="2"/><path d="M9 11V8a3 3 0 0 1 5.8-1.1"/>',
     coach: '<path d="M5 5h14a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 16h-7.5L7 19.5V16H5a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 5 5z"/><path d="M8 9.5h8M8 12.5h5"/>',
     geraet: '<rect x="7" y="3.5" width="10" height="17" rx="5"/><path d="M10 8h4"/>',
+    person: '<circle cx="12" cy="8.4" r="3.7"/><path d="M4.8 20.2c1.3-3.7 4.1-5.6 7.2-5.6s5.9 1.9 7.2 5.6"/>',                  // V9.3.3 Profil-Kopf (wie der Knopf oben rechts)
     becken: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9.7h18M3 14.3h18"/>',
     haken: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
     // V7.6 kraft-plan-1.0: eigene Symbole für die Notiz der Übungen und eine Ausnahme in einer Woche

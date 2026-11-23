@@ -1,5 +1,13 @@
 # Änderungen
 
+## V9.3.3 · 23.11.2026 · Enduco-Look für Plan, Heute und Profil (W2c, enduco-look-1.0)
+Silas (23.11.): «W2c kannst du machen» – nach seinen Enduco-Screenshots (Archiv_1.zip, nicht im Repo).
+- Plan: Kopf mit zwei Kacheln «Training» (absolviert / Mein Plan dieser Woche) und «Bis zum Rennen» (Wochen, Tage), Knöpfe «Kalender» und «Plan verwalten».
+- Heute, «Diese Woche»: Phase unter dem Titel (wie Enduco «Du bist in Woche …»), der lange Erklärtext ist weg.
+- Profil: heisst «Profil» und beginnt mit einem Kopf (Kreis, «Dein Profil», Trainingsdaten seit … · Anzahl Aktivitäten).
+- Analyse: folgt schon dem Karten-Muster; Zeitraum-Umschalter und Sportfilter der Detailseiten bleiben bei den Etappen E2/E3.
+- Test `tests/test_v933.cjs` (neu, 4).
+
 ## V9.6 · 23.11.2026 · Automatisch senden als Einstellung (W5, garmin-auto-1.0) – gebaut, nicht eingeschaltet
 Silas (23.11.): «W5 bauen, jedoch noch nicht aktivieren.»
 - Planeinstellungen → Allgemein → «Garmin senden»: Aus · Nur Tage mit Häkchen (Standard, wie bisher) · Alle Tage; «Senden ab» am Vortag 20:00–23:30 (Standard 23:00).

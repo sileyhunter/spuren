@@ -319,12 +319,15 @@
     const p = planS > 0 ? Math.min(100, Math.round((100 * istSum) / planS)) : 0;
     box.innerHTML = `<div class="card v7-plan-held">
         ${A ? `<span class="v7-k-unter">${W.icon("flagge", 14)} Hauptrennen</span><h2 class="v7-held-t">${esc(A.name || A.short || "Rennen")}</h2>
-          <p class="v7-held-s">${esc(C.dateCH(A.date))} · in ${Math.floor(tage / 7)} Wochen (${tage} Tage)</p>` : `<h2 class="v7-held-t">Kein Rennen eingetragen</h2>`}
+          <p class="v7-held-s">${esc(C.dateCH(A.date))}</p>` : `<h2 class="v7-held-t">Kein Rennen eingetragen</h2>`}
         ${jetzt ? `<p class="v7-held-ph"><b>${esc(jetzt.phase || "")}</b>${jetzt.phaseNr && jetzt.phaseN ? ` · Woche ${jetzt.phaseNr} von ${jetzt.phaseN}` : ""}${jetzt.erholung ? " · Erholungswoche" : ""}</p>` : ""}
-        <div class="v7-k-zahlen"><div><b>${std(planS)}</b><span>Mein Plan diese Woche</span></div><div><b>${std(istSum)}</b><span>absolviert</span></div><div><b>${planS ? p + " %" : "–"}</b><span>erreicht</span></div></div>
-        <div class="v7-fort"><i style="width:${p}%"></i></div>
-        <button type="button" class="btn v7-held-k" data-ziel="kalender">${W.icon("kalender", 16)} Woche im Kalender</button></div>`;
+        <div class="v7-held-kacheln">
+          <div><span>Training</span><b>${std(istSum)} <small>/ ${std(planS)}</small></b><div class="v7-fort"><i style="width:${p}%"></i></div><small>diese Woche${planS ? ` · ${p} %` : ""}</small></div>
+          ${A ? `<div><span>Bis zum Rennen</span><b>${Math.floor(tage / 7)} <small>Wochen</small></b><small>${tage} Tage</small></div>` : ""}</div>
+        <div class="row v7-held-knoepfe"><button type="button" class="btn v7-held-k" data-ziel="kalender">${W.icon("kalender", 16)} Kalender</button>
+          <button type="button" class="btn v7-held-k" data-planv>${W.icon("regler", 16)} Plan verwalten</button></div></div>`;
     box.querySelector("[data-ziel]").onclick = () => geh("kalender");
+    box.querySelector("[data-planv]").onclick = () => (window.V75UI && window.V75UI.flow ? window.V75UI.flow() : geh("plan-einstellungen"));   // V9.3.3 W2c (enduco-look-1.0) wie Enduco «Plan verwalten»
   }
   function planWerkzeugeZeichnen() {
     const box = $("v7-plan-werkzeuge"); if (!box || !bereit()) return;
