@@ -1862,3 +1862,9 @@ body.k4-edit .kal-v7.k4 .k4-r-kopf { display: none; }
 .es-profil .es-avatar { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); border: 1px solid var(--line); color: var(--fg); }
 .es-profil b { display: block; font-size: 20px; }
 .es-profil small { color: var(--muted); }
+
+/* V9.12 schwimmseiten-1.0: Tempo-/Pulszonen im Wasser, Test-Einheit */
+table.t.zonen-tab { margin: 4px 0 6px; } table.t.zonen-tab th { width: 3.2em; text-align: left; } table.t.zonen-tab td { font-variant-numeric: tabular-nums; }
+.css-wert { margin: 0 0 8px; } .css-wert b { font-size: 1.15em; font-variant-numeric: tabular-nums; }
+.css-ablauf { margin: 6px 0 8px 1.2em; padding: 0; } .css-ablauf li { margin: 2px 0; }
+label.css-schaetz { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; } label.css-schaetz input { width: auto; margin-top: 2px; }

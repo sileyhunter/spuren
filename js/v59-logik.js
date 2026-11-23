@@ -160,7 +160,7 @@
       const sporten = V62 && V62.testSporten ? V62.testSporten(t) : [t.sport || "rad"];
       const nah = (l) => l && l.kind === t.kind && l.date && tage(l.date, t.date) <= L.TEST_TOLERANZ_TAGE;
       let hit;
-      if (t.kind === "css") hit = (css || []).find((c) => c && c.datum && tage(c.datum, t.date) <= L.TEST_TOLERANZ_TAGE);
+      if (t.kind === "css") hit = (css || []).find((c) => c && !c.geschaetzt && c.datum && tage(c.datum, t.date) <= L.TEST_TOLERANZ_TAGE);   // V9.12: eine Schätzung erledigt keinen Test
       else if (t.kind !== "stufentest") hit = (lactate || []).find(nah);
       else {                                                   // Stufentest: je Sportart ein Test derselben Sportart (gemeinsamer Test: beide)
         const je = sporten.map((sp) => (lactate || []).find((l) => nah(l) && (l.sport || "rad") === sp));

@@ -423,7 +423,7 @@
     const ctl = (d) => { const p = ctx.pmc.get(d); return p ? p.ctl : null; };
     const tests = [];
     for (const l of (D && D.lactate) || []) if (l && l.date >= b.von && l.date <= b.bis) tests.push(l.kind === "stufentest" ? `Stufentest ${l.sport === "lauf" ? "Laufen" : "Rad"}` : "Laktat-Kurzcheck");
-    for (const c of (D && D.css_tests) || []) if (c && c.datum >= b.von && c.datum <= b.bis) tests.push("CSS-Test");
+    for (const c of (D && D.css_tests) || []) if (c && !c.geschaetzt && c.datum >= b.von && c.datum <= b.bis) tests.push("CSS-Test");
     const ampel = ((D && D.ampel_anpassung) || []).filter((x) => x && x.date >= b.von && x.date <= b.bis && ["vorsichtig", "krank"].includes(x.status)).length;
     return {
       von: b.von, bis: b.bis, stunden: { schwimm: r1(st.schwimm), rad: r1(st.rad), lauf: r1(st.lauf), andere: r1(st.andere), gesamt: r1(st.schwimm + st.rad + st.lauf),

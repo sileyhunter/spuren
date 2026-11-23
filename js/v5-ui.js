@@ -17,7 +17,7 @@
   // Einheitliche Status-Pillen (V5.5): nie alarmistisch, «unbekannt» und «nicht beurteilbar» neutral
   const BADGE = { "vorläufig": "warn", "nicht bestimmbar": "muted", "bestätigt": "ok", "vorschau": "next", "bestimmbar": "ok", "entwurf": "next", "aktiv": "ok", "bereit": "ok", "normal": "info", "vorsichtig": "warn",
     "nicht beurteilbar": "muted", "unbekannt": "muted", "niedrige Qualität": "muted", "FIT-abgeleitet": "info", "verbessert": "ok", "stabil": "info", "unklar": "muted", "verschlechtert": "warn",
-    "vorschlag": "next", "auswählen": "next", "getrennt": "muted", "nicht validiert": "warn", "explorativ": "muted",
+    "vorschlag": "next", "auswählen": "next", "getrennt": "muted", "nicht validiert": "warn", "geschätzt": "warn", "explorativ": "muted",
     "offen": "next", "verbessern": "warn", "manueller Videovergleich": "info", "extern analysiert": "info", "nicht protokolliert": "muted", "gesendet": "info", "geplant": "info",
     "steigt": "warn", "gleich": "ok", "sinkt": "info", "nicht vergleichbar": "muted" };
   V.badge = (s, extra) => `<span class="badge ${BADGE[s] || ""}">${esc(s)}${extra ? " · " + esc(extra) : ""}</span>`;

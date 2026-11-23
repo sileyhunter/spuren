@@ -16,7 +16,7 @@
   if (root) root.SW = SW;
 })(typeof window !== "undefined" ? window : null, function () {
   "use strict";
-  const SW = { VERSIONS: { uebungen: "uebungen-2.1", einheit: "schwimmeinheit-1.2" } };
+  const SW = { VERSIONS: { uebungen: "uebungen-2.1", einheit: "schwimmeinheit-1.2", zonen: "schwimmzonen-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const mmss = (s) => { s = Math.round(s); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
   SW.mmss = mmss;
@@ -382,6 +382,23 @@
     if (L.length < 3) return null;
     const m = L.length % 2 ? L[(L.length - 1) / 2] : (L[L.length / 2 - 1] + L[L.length / 2]) / 2;
     return Math.round(m);
+  };
+  /**
+   * V9.12 schwimmzonen-1.0 (Auftrag 3.3): Tempo-Zonen im Wasser aus dem CSS (Sekunden pro 100 m). Eigene Festlegung, keine Studienvorgabe:
+   * Z1 locker über 115 % der CSS-Zeit, Z2 Grundlage 105–115 %, Z3 Tempo 100–105 %, Z4 Schwelle (CSS-Bereich) 96–100 %, Z5 schneller als 96 %.
+   * → [{ z, name, von, bis }] mit von = langsamere Grenze, bis = schnellere Grenze (s/100 m, ganze Sekunden; null = offen); null ohne gültigen CSS.
+   */
+  SW.ZONEN_ANTEIL = [["Z1", "locker", null, 1.15], ["Z2", "Grundlage", 1.15, 1.05], ["Z3", "Tempo", 1.05, 1.0], ["Z4", "Schwelle (CSS)", 1.0, 0.96], ["Z5", "schnell", 0.96, null]];
+  SW.cssZonen = function (css_s) {
+    if (!isNum(css_s) || css_s < 55 || css_s > 300) return null;
+    return SW.ZONEN_ANTEIL.map(([z, name, a, b]) => ({ z, name, von: a == null ? null : Math.round(css_s * a), bis: b == null ? null : Math.round(css_s * b) }));
+  };
+  /** Text einer Tempo-Zone: «langsamer als 2:24», «2:11–2:24», «schneller als 2:00» (pro 100 m). */
+  SW.zoneText = function (z) {
+    if (!z) return "";
+    if (z.von == null) return `langsamer als ${mmss(z.bis)}`;
+    if (z.bis == null) return `schneller als ${mmss(z.von)}`;
+    return `${mmss(z.bis)}–${mmss(z.von)}`;
   };
   return SW;
 });

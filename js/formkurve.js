@@ -847,7 +847,7 @@
     if (art === "laktat") return FK.lactateData(D).tests.filter((t) => t.protokoll === opt.protokoll).map((t) => ({ date: t.datum, v: FK.laInterp(t.punkte, opt.x), id: t.id, name: t.id, x: opt.x,
       q: { status: t.datenstatus === "bestätigt" ? "bestätigt" : "vorschau" } })).filter((p) => isNum(p.v));
     if (art === "css") return ((D && D.css_tests) || []).concat(opt.lokal || []).filter((t) => isNum(FK.css(t.t400, t.t200)))
-      .map((t) => ({ date: t.datum, v: +FK.css(t.t400, t.t200).toFixed(1), id: t.id, name: t.becken ? `${t.becken} m Becken` : "CSS-Test", q: { status: t.validiert === false ? "vorschau" : "bestätigt", becken: t.becken || null } }));
+      .map((t) => ({ date: t.datum, v: +FK.css(t.t400, t.t200).toFixed(1), id: t.id, name: t.becken ? `${t.becken} m Becken` : "CSS-Test", q: { status: t.validiert === false || t.geschaetzt ? "vorschau" : "bestätigt", becken: t.becken || null } }));
     return [];
   };
   /** Gemeinsamer Leistungswert zweier oder mehr Tests: 200 W, wenn alle ihn messen, sonst Mitte des gemeinsamen Bereichs (10-W-Raster). */

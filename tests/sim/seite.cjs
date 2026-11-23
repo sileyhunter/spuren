@@ -33,7 +33,7 @@ function seite(D, heute) {
         if (S) {
           const lac = C.D.lactate || [], stufen = (sp) => lac.filter((l) => l.kind === "stufentest" && (l.sport || "rad") === sp).map((l) => ({ date: l.date, ausbelastet: l.ausbelastet }));
           vor = win.V62.testplan({ heute: h, bis: S.haupt.date, wochen: S.wochen, rennen, fest: C.D.tests || [], planned: C.D.planned || [], sperren: [],
-            erledigt: { css: (C.D.css_tests || []).map((c) => c.datum).filter(Boolean), rad: stufen("rad"), lauf: stufen("lauf"), check: lac.filter((l) => l.kind === "check").map((l) => l.date) } }).vorschlaege;
+            erledigt: { css: (C.D.css_tests || []).filter((c) => !c.geschaetzt).map((c) => c.datum).filter(Boolean), rad: stufen("rad"), lauf: stufen("lauf"), check: lac.filter((l) => l.kind === "check").map((l) => l.date) } }).vorschlaege;
         }
       } catch (e) { vor = []; }
       return (testsMemo = win.V59L.testsMitStatus([...(C.D.tests || []), ...vor], C.D.lactate, C.D.css_tests || []).sort((a, b) => a.date.localeCompare(b.date)));

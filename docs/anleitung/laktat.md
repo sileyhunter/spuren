@@ -89,6 +89,15 @@ Termine (`kind` «css», «geplant») stehen nur verschlüsselt im Testkalender 
 Abwesenheiten nie in Doku, Code oder Tests). Eintrag auf der Seite mit zwei Zeiten (Rest
 optional), über «Direkt speichern» → `css_tests`. Rohpace aus Garmin, Videovergleich und Fehlerboard sind ausgeblendet (Daten bleiben);
 Technik wertet Claude im Chat aus (Videos Bild für Bild), nie auf der Seite.
+**Schwimm-Datenseiten (V9.12.0, schwimmseiten-1.0, schwimmzonen-1.0, Auftrag 3.3):** Der Tab Schwimmen zeigt oben den CSS-Test, darunter «CSS und Zonen im Wasser» und «Test-Einheit».
+- **CSS «geschätzt»:** Eintrag in `css_tests` mit `geschaetzt: true`, `validiert: false`, Quelle «Schätzung» (Feld «Schätzung – noch nicht geschwommen» im Formular). Er gilt für Tempo und Plan
+  (der jüngste Eintrag zählt, ein echter Test ersetzt ihn von selbst), erledigt aber **keinen** Testkalender-Termin (`V59L.testsMitStatus`), erscheint nicht als «✓ CSS-Test» im Kalender, nicht in
+  der Wochenübersicht und ist in «Meine Entwicklung» nur Vorschau. Anzeige immer mit «≈» und der Pille «geschätzt», im Verlauf als hohler Punkt.
+- **Tempo-Zonen:** `SW.cssZonen(css_s)` – Z1 über 115 % der CSS-Zeit, Z2 105–115 %, Z3 100–105 %, Z4 (Schwelle) 96–100 %, Z5 schneller; eigene Festlegung, keine Studienvorgabe.
+- **Puls im Wasser (A.21):** nur Orientierung, im eigenen Datenschlüssel `schwimm_puls` (`zonen`, `grenzen`, `quelle`, `hinweis`, `stand`) und **nicht** im Zonenprofil: so entstehen keine
+  LT1/LT2-Bezüge, keine Intensitätsverteilung und keine Wirkung auf die Trainingslast (der Puls am Handgelenk ist im Wasser ungenau, Werte über dem Maximalpuls kommen vor). Grundlage waren die
+  Einheiten ab 25 min seit April 2026 ohne Werte über dem Maximalpuls (Verteilung von Durchschnitt und besten 10 Minuten). Neu festlegen nur nach neuem Auftrag und mit Rücklesung.
+- **Test-Einheit:** Ablauf des CSS-Tests, nächster Termin aus dem Testkalender, offene Termine der Vergangenheit; das Workout «IN · CSS-Test 400/200» kommt aus `tools/workouts.py`, die Seite lädt nichts hoch.
 **Schwimm-Einheiten (V7.2, schwimmeinheit-1.0, uebungen-2.0; seit V7.3.2 schwimmeinheit-1.1, uebungen-2.1; seit V7.5 schwimmeinheit-1.2):** eigene Schwimm-Einheiten werden als Serien wie im Becken gezeigt (Meter, Bahnen,
 Pausen, Hilfsmittel); Tempo nur aus dem CSS-Test (locker CSS + 15–20 s, Grundlage CSS + 8–12 s, Annahmen), ohne Test nach Anstrengung. Übungstexte
 sind eigene Beschreibungen (nie aus Enduco oder Webseiten übernehmen); Hilfsmittel nur Brett, Pullbuoy, Flossen, Paddles (Schnorchel nur als Garmin-Feld).

@@ -164,6 +164,9 @@
   `js/wissen.js` (1.38), `tests/test_v95.cjs`, `tests/test_tools.py`
 - **V9.11.0 (Tagesregel, tagesregel-1.0; 23.11.2026):** `js/v66.js` (`V66.TAGESMAX`/`LANG_ANTEIL`/`LANG_UMBENENNEN`, `regelGrund`, Zusammenlegen, «Grundlage» statt kurzer «Lange Ausfahrt»,
   `E.verteilung.dritte`/`zusammen`), `js/v66-ui.js` (`M.probe(...).info`), `js/v92.js` (`V92.hinweise`, `V92.mehrVon`), `js/v92-ui.js` (Hinweis im Dialog), `tests/test_v9110.cjs`
+- **V9.12.0 (Schwimm-Datenseiten, schwimmseiten-1.0, schwimmzonen-1.0; 23.11.2026):** `js/v55-schwimmen.js` (`V.zonen`, `V.zonenHTML`, `V.testHTML`, `V.cssAktuell`, Feld «Schätzung»), `js/schwimmen.js`
+  (`SW.cssZonen`, `SW.zoneText`, `SW.ZONEN_ANTEIL`), `js/v59-logik.js` und `js/v82.js` und `js/formkurve.js` (Schätzung erledigt keinen Test, ist nur Vorschau), `index.html` (Karten «CSS und Zonen im Wasser»,
+  «Test-Einheit»; Kalender, Jahresübersicht, Testplan), `js/v5-ui.js` (Pille «geschätzt»), `css/v6.css`, `tests/sim/seite.cjs`, `tests/test_v9120.cjs`
 - **V9.3.3 (W2c Enduco-Look für Plan, Heute, Profil, enduco-look-1.0; 23.11.2026):** `js/v7-ui.js` (Plan-Kopf), `js/v6-heute.js` und `index.html` («Diese Woche»), `js/v59.js` (Profil-Kopf),
   `js/v6.js` (Symbol `person`), `css/v6.css`, `tests/test_v933.cjs`
 - **V9.6 (W5 Automatisch senden als Einstellung, garmin-auto-1.0; 23.11.2026, nicht eingeschaltet):** `js/v75.js` (`pe-garmin`, `V75.GARMIN`, `garminZeiten`), `js/v75-ui.js`

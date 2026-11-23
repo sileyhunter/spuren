@@ -1,5 +1,14 @@
 # Änderungen
 
+## V9.12.0 · 23.11.2026 · Schwimm-Datenseiten (schwimmseiten-1.0, schwimmzonen-1.0, Auftrag 3.3)
+Silas: «seiten erstellen für das schwimmen, so dass dort die Datenseiten Sinn machen». Bisher stand im Tab Schwimmen ohne Test nur ein leeres Formular.
+- **CSS «geschätzt»:** Feld «Schätzung – noch nicht geschwommen» im CSS-Formular; Anzeige mit «≈», Pille «geschätzt», hohler Punkt im Verlauf. Die Schätzung gilt für Tempo und Plan, erledigt aber keinen
+  Testkalender-Termin (`testsMitStatus`, Testplan, Kalender, Wochenübersicht) und ist in «Meine Entwicklung» nur Vorschau; ein echter Test ersetzt sie von selbst.
+- **Neue Karte «CSS und Zonen im Wasser»:** gültiger CSS, fünf Tempo-Zonen pro 100 m (`SW.cssZonen`), Puls im Wasser als Orientierung (eigener Datenschlüssel `schwimm_puls`, nicht im Zonenprofil: keine
+  Schwellenbezüge, keine Wirkung auf die Trainingslast). **Neue Karte «Test-Einheit»:** Ablauf des CSS-Tests, nächster Termin, offene Termine aus der Vergangenheit.
+- Daten (verschlüsselt, mit Rücklesung): geschätzter CSS (Becken 50 m) und Puls-Orientierung im Wasser, Audit-Eintrag. Nichts nach Garmin geschrieben.
+- Test `tests/test_v9120.cjs` (neu, 11, erfundene Werte); `tests/sim/seite.cjs` schliesst Schätzungen bei «erledigt» aus. Bestehende Tests unverändert grün.
+
 ## V9.11.0 · 23.11.2026 · Planer: Tagesregel (tagesregel-1.0, Auftrag 3.4)
 Silas (Aufnahmen 22:18–22:36): Mittwoch mit 3 Einheiten und 2× Schwimmen, «Lange Ausfahrt» von 3:40 auf 1:30 gekürzt, der Dialog «Die Woche geht nicht auf» sagte nichts dazu.
 - `V66.verteilen`: Mo–Fr höchstens 2 Einheiten am Tag (Ausnahme: Zeit von Hand gesetzt – mit Meldung), nie 2× Schwimmen am Tag (lockere Schwimmeinheiten werden zusammengelegt),

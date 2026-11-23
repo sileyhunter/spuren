@@ -9,6 +9,7 @@
   const UI = () => window.V5UI;
   const pill = (s, extra) => (UI() && UI().badge ? UI().badge(s, extra) : `<span class="badge">${s}</span>`);
   V.VERSION = "css-2.0";            // V5.9.4: CSS einziger Schwimm-Massstab (E6), Eintrag mit zwei Zeiten; Formel unverändert (css-1.0)
+  V.VERSION_ZONEN = "schwimmseiten-1.0";   // V9.12: Schätzung markiert, Tempo-Zonen aus dem CSS, Puls im Wasser, Test-Einheit
 
   /** «9:00», «9.00», «9:00.5» oder Sekunden («540») → Sekunden; sonst null. */
   V.parseZeit = function (s) {
@@ -39,7 +40,7 @@
   let EDIT = null, MSG = null;
   const wtag = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("de-CH", { weekday: "short", day: "numeric", month: "numeric", year: "numeric" });
   const gesendet = (t) => !!(window.EG && UI() && UI().Inbox && window.EG.istGesendet(UI().Inbox.data, "css", t));
-  V.status = (t) => (t._lokal ? (gesendet(t) ? pill("gesendet", "kommt mit dem nächsten Update") : pill("entwurf", "auf dem Gerät")) : pill(t.validiert === false ? "vorschau" : "bestätigt"));
+  V.status = (t) => (t.geschaetzt ? pill("geschätzt", "noch nicht geschwommen") : t._lokal ? (gesendet(t) ? pill("gesendet", "kommt mit dem nächsten Update") : pill("entwurf", "auf dem Gerät")) : pill(t.validiert === false ? "vorschau" : "bestätigt"));
 
   /* ---------------- CSS-Test (css-2.0: einziger Massstab, zwei Zeiten genügen) ---------------- */
   V.css = function (C) {
@@ -65,6 +66,7 @@
           <label>Wassertemperatur (°C)<input name="wtemp" type="number" min="10" max="35" step="0.5" value="${C.esc(e && e.wasser && e.wasser.temp_c != null ? e.wasser.temp_c : "")}" placeholder="optional"></label>
           <label>Zeit genommen<select name="quelle">${[["von Hand gestoppt", "von Hand"], ["Uhr: manuelle Runde", "Uhr (Runde)"], ["Trainer/Begleitung", "Begleitung"]].map(([x, l]) => `<option value="${x}" ${e && e.quelle === x ? "selected" : ""}>${l}</option>`).join("")}</select></label>
           <label class="span2">Einschwimmen / Ablauf<input name="einschwimmen" value="${C.esc(pr.einschwimmen ?? "")}" placeholder="z. B. 10 min locker, 4 × 25 m steigernd"></label>
+          <label class="span2 css-schaetz"><input type="checkbox" name="geschaetzt"${e && e.geschaetzt ? " checked" : ""}> Schätzung – noch nicht geschwommen (zählt für den Plan, nicht für «Meine Entwicklung»)</label>
           <label class="span2">Notiz (Bedingungen)<input name="notiz" value="${v("notiz", "")}" placeholder="z. B. Bahn geteilt, Wende ohne Rolle"></label>
         </div></details>
         ${msg ? `<p class="keep" role="status">${msg}</p>` : ""}
@@ -89,7 +91,7 @@
       const item = { id: alt.id || `css-${f.datum.value}-${Date.now().toString(36)}`, datum: f.datum.value, t400: t4, t200: t2, css_s: +p.css.toFixed(1),
         becken: f.becken.value === "frei" ? null : +f.becken.value, wasser: { art: f.becken.value === "frei" ? "Freiwasser" : "Hallen-/Freibad", temp_c: f.wtemp.value ? +f.wtemp.value : null },
         protokoll: { reihenfolge: f.reihenfolge.value, pause_min: f.pause.value !== "" ? +f.pause.value : null, einschwimmen: f.einschwimmen.value.trim() || null },
-        quelle: f.quelle.value, notiz: f.notiz.value.trim() || null, validiert: true, v: V.VERSION,
+        quelle: f.geschaetzt.checked ? "Schätzung" : f.quelle.value, notiz: f.notiz.value.trim() || null, validiert: !f.geschaetzt.checked, ...(f.geschaetzt.checked ? { geschaetzt: true } : {}), v: V.VERSION,
         erfasst: alt.erfasst || new Date().toISOString(), ...(alt.id ? { korrigiert: new Date().toISOString() } : {}) };
       await UI().Inbox.upsert("css", item);
       MSG = `Gespeichert: CSS <b>${mmss(p.css)} /100 m</b> vom ${C.esc(C.dateCH(item.datum))}${window.EG && window.EG.aktiv && window.EG.aktiv() && window.EG.hatSchluessel() ? " – wird direkt gesendet und kommt mit dem nächsten Update in die Daten." : " – auf diesem Gerät; mit «Direkt speichern» oder «Exportieren» in die Daten."}`;
@@ -101,10 +103,11 @@
     const prevOf = (t) => { const i = L.indexOf(t); for (let k = i - 1; k >= 0; k--) if ((L[k].becken || "frei") === (t.becken || "frei") && isNum(window.FK.css(L[k].t400, L[k].t200))) return L[k]; return null; };
     $("css-list").innerHTML = rows.length ? `<h3 class="mini-h">Gespeicherte Tests <small>${rows.length}</small></h3><ul class="css-tests">${rows.map((t) => {
       const c = window.FK.css(t.t400, t.t200), pv = prevOf(t), d = pv ? c - window.FK.css(pv.t400, pv.t200) : null;
-      return `<li><div class="css-top"><b>${C.dateCH(t.datum)}</b> <span class="css-val">CSS ${mmss(c)} /100 m</span> ${V.status(t)}</div>
+      return `<li><div class="css-top"><b>${C.dateCH(t.datum)}</b> <span class="css-val">CSS ${t.geschaetzt ? "≈ " : ""}${mmss(c)} /100 m</span> ${V.status(t)}</div>
         <div class="hint">400 m ${mmss(t.t400)} · 200 m ${mmss(t.t200)} · ${t.becken ? t.becken + " m Becken" : "Freiwasser"}${t.wasser && t.wasser.temp_c != null ? ` · ${C.fmt(t.wasser.temp_c, 1)} °C` : ""}${t.protokoll && t.protokoll.pause_min != null ? ` · Pause ${t.protokoll.pause_min} min` : ""} · ${C.esc(t.quelle || "von Hand")}${t.korrigiert ? " · korrigiert" : ""}${t.notiz ? ` · ${C.esc(t.notiz)}` : ""}</div>
         ${pv ? `<div class="hint">Gegenüber ${C.dateCH(pv.datum)} (gleiches Becken): ${d === 0 ? "gleich" : `${d < 0 ? "−" : "+"}${mmss(Math.abs(d))} /100 m`} – Einzelvergleich, ohne Unsicherheit; gesichert erst in «Meine Entwicklung» ab drei Tests je Zeitraum.</div>` : ""}
-        <div class="row"><button class="btn" data-css-edit="${C.esc(t.id)}">Zeiten korrigieren</button></div></li>`; }).join("")}</ul>`
+        ${t.geschaetzt ? `<div class="hint">Schätzung: gilt für Tempo und Planung, bis ein echter Test eingetragen ist. Der echte Test ersetzt sie von selbst (der jüngere Test zählt).</div>` : ""}
+        <div class="row"><button class="btn" data-css-edit="${C.esc(t.id)}">${t.geschaetzt ? "Schätzung ändern" : "Zeiten korrigieren"}</button></div></li>`; }).join("")}</ul>`
       : `<p class="hint">Noch kein CSS-Test gespeichert. Ablauf: gut einschwimmen, 400 m maximal gleichmässig, Pause (z. B. 5–10 min locker), 200 m maximal. Zeiten von Hand stoppen oder als manuelle Runde nehmen und hier eintragen.</p>`;
     $("css-list").querySelectorAll("[data-css-edit]").forEach((b) => (b.onclick = () => { EDIT = b.dataset.cssEdit; V.css(C); $("sw-css").scrollIntoView({ block: "start" }); }));
     V.cssVerlauf(C, L);
@@ -120,6 +123,7 @@
     const farben = { "25 m": C.css("--accent"), "50 m": C.css("--sleep"), Freiwasser: C.css("--accent-2") };
     const ds = [...new Set(P.map((x) => bk(x.t)))].map((b) => ({ label: b === "Freiwasser" ? "CSS Freiwasser" : `CSS ${parseInt(b, 10)}-m-Becken`, spanGaps: true, tension: 0, pointRadius: 4, borderWidth: 2,
       borderColor: farben[b] || C.css("--fg"), backgroundColor: farben[b] || C.css("--fg"),
+      pointBackgroundColor: labels.map((d) => { const x = P.filter((y) => y.t.datum === d && bk(y.t) === b).at(-1); return x && x.t.geschaetzt ? "transparent" : (farben[b] || C.css("--fg")); }),   // geschätzt = hohler Punkt
       data: labels.map((d) => { const x = P.filter((y) => y.t.datum === d && bk(y.t) === b).at(-1); return x ? +x.c.toFixed(1) : null; }) }));
     C.chart("c-css", { type: "line", data: { labels: labels.map((d) => C.dLabel(d)), datasets: ds },
       options: { plugins: { legend: { position: "bottom", labels: { boxWidth: 12 } }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${mmss(c.raw)} /100 m` } } },
@@ -191,5 +195,55 @@
     n.innerHTML = `${pill("nicht validiert")} Pace = Dauer ÷ Distanz der ganzen Einheit aus Garmin (${sw.length} Einheiten${bad ? `, davon ${bad} Freiwasser` : ""}). Enthält Pausen am Rand, Technik-, Bein- und Pull-Serien; Bahnen und Wenden erkennt die Uhr nicht immer. Darum <b>kein bestätigter Fortschritt</b> – Vergleiche nur über den CSS-Test oben.`;
   };
 
-  V.schwimmen = function (C) { V.css(C); V.board(C); V.rohpace(C); };
+  /* ---------------- V9.12 schwimmseiten-1.0: CSS und Zonen im Wasser, Test-Einheit ---------------- */
+  const hm = (s) => (window.SW && isNum(s) ? window.SW.mmss(s) : mmss(s));
+  /** Der gültige CSS: der jüngste Test mit beiden Zeiten (wie die Planung, V64UI.cssAktuell) – geschätzt oder geschwommen. → { s, datum, geschaetzt } oder null */
+  V.cssAktuell = function (L) {
+    const x = (L || []).filter((t) => t && t.datum && isNum(t.t400) && isNum(t.t200) && isNum(window.FK.css(t.t400, t.t200))).sort((a, b) => a.datum.localeCompare(b.datum)).at(-1);
+    return x ? { s: window.FK.css(x.t400, x.t200), datum: x.datum, geschaetzt: !!x.geschaetzt, vorschau: x.validiert === false && !x.geschaetzt } : null;
+  };
+  /** Text einer Pulszone: «unter 129», «129–142», «ab 159 (bis 175)». */
+  V.pulsText = function (z, hfmax) {
+    if (!z) return "";
+    if (z.von == null) return `unter ${z.bis}`;
+    if (z.bis == null) return `ab ${z.von}${isNum(hfmax) && hfmax > z.von ? ` (bis ${hfmax})` : ""}`;
+    return `${z.von}–${z.bis}`;
+  };
+  /** HTML der Karte «CSS und Zonen im Wasser» (rein). o = { css: V.cssAktuell(…), hf: Zonenliste Schwimm-Puls | null, hfmax, hinweis, esc, dateCH, pill } */
+  V.zonenHTML = function (o) {
+    const esc = o.esc || ((x) => String(x)), pl = o.pill || ((s) => `<span class="badge">${esc(s)}</span>`), SW = window.SW;
+    if (!o.css) return `<p class="hint">Noch kein CSS – ohne CSS gibt es keine Tempo-Zonen im Wasser. Trag oben einen Test oder eine Schätzung (400 m und 200 m) ein.</p>`;
+    const Z = SW ? SW.cssZonen(o.css.s) : null;
+    const kopf = `<p class="keep css-wert">CSS <b>${o.css.geschaetzt ? "≈ " : ""}${hm(o.css.s)} /100 m</b> ${o.css.geschaetzt ? pl("geschätzt", "noch nicht geschwommen") : pl(o.css.vorschau ? "vorschau" : "bestätigt")} <small>vom ${esc(o.dateCH ? o.dateCH(o.css.datum) : o.css.datum)}</small></p>`;
+    const tempo = Z ? `<h3 class="mini-h">Tempo pro 100 m <small>aus dem CSS (${esc(SW.VERSIONS.zonen)})</small></h3><table class="t zonen-tab"><tbody>${Z.map((z) => `<tr><th>${esc(z.z)}</th><td>${esc(z.name)}</td><td>${esc(SW.zoneText(z))}</td></tr>`).join("")}</tbody></table>
+      <p class="hint">Eigene Festlegung, keine Studienvorgabe: Anteile der CSS-Zeit (Z1 über 115 %, Z2 105–115 %, Z3 100–105 %, Z4 96–100 %, Z5 schneller). ${o.css.geschaetzt ? "Mit einer Schätzung gelten sie nur grob." : ""}</p>` : "";
+    const puls = o.hf && o.hf.length ? `<h3 class="mini-h">Puls im Wasser <small>Orientierung${o.stand ? ", Stand " + esc(o.dateCH ? o.dateCH(o.stand) : o.stand) : ""}</small></h3><table class="t zonen-tab"><tbody>${o.hf.map((z) => `<tr><th>${esc(z.z)}</th><td>${esc(V.pulsText(z, o.hfmax))} bpm</td></tr>`).join("")}</tbody></table>
+      <p class="hint">${esc(o.hinweis || "Der Puls am Handgelenk ist im Wasser ungenau und verzögert; das Tempo (CSS) bleibt der Massstab.")}</p>`
+      : `<p class="hint">Eigene Pulszonen fürs Schwimmen sind noch nicht festgelegt – bis dahin gilt der Standard der Uhr.</p>`;
+    return kopf + tempo + puls;
+  };
+  /** HTML der Karte «Test-Einheit» (rein). o = { naechster: { date, note } | null, verpasst: { date, note } | null (geplant, vorbei, nicht eingetragen), esc, wtag } */
+  V.testHTML = function (o) {
+    const esc = o.esc || ((x) => String(x)), nx = o.naechster;
+    const vp = o.verpasst;
+    return `<p class="keep">${nx ? `Nächster CSS-Test: <b>${esc(o.wtag ? o.wtag(nx.date) : nx.date)}</b>${nx.note ? " – " + esc(nx.note) : ""}.` : "Kein CSS-Test im Testkalender offen."}${vp ? ` <small>Offen aus der Vergangenheit: ${esc(o.wtag ? o.wtag(vp.date) : vp.date)}${vp.note ? " (" + esc(vp.note) + ")" : ""} – der CSS gilt bis dahin als Schätzung.</small>` : ""}</p>
+      <ol class="css-ablauf"><li>400 m einschwimmen, dann 4 × 50 m steigernd mit 15 s Pause</li><li>2 min Pause</li><li><b>400 m</b> maximal, gleichmässig – Zeit merken</li>
+        <li>Erholung 5–10 min locker, Taste drücken, wenn bereit</li><li><b>200 m</b> maximal – Zeit merken</li><li>200 m ausschwimmen</li></ol>
+      <p class="hint">Bahn 50 m (wie in den Planeinstellungen; ein anderes Becken beim Eintragen angeben). Zeiten nach der Einheit oben bei «CSS-Test» eintragen. Als Workout für die Uhr gibt es «IN · CSS-Test 400/200» (1400 m, Bahn 50 m, Erholung per Taste); es kommt nach Garmin Connect, wenn du es willst – die Seite lädt nichts selbst hoch.</p>`;
+  };
+  V.zonen = function (C) {
+    const box = $("sw-zonen"), tb = $("sw-test"); if (!box && !tb) return;
+    const L = tests();
+    if (box) {
+      // Puls im Wasser: eigener Datenschlüssel «schwimm_puls» (nicht im Zonenprofil: keine LT1/LT2-Bezüge, keine Intensitätsverteilung, nur Orientierung)
+      const sp = C.D && C.D.schwimm_puls, hf = sp && Array.isArray(sp.zonen) && sp.zonen.length ? sp.zonen : null;
+      box.innerHTML = V.zonenHTML({ css: V.cssAktuell(L), hf, hfmax: null, hinweis: sp ? sp.hinweis : null, stand: sp ? sp.stand : null, esc: C.esc, dateCH: C.dateCH, pill });
+    }
+    if (tb) {
+      const plan = window.V59L ? window.V59L.cssPlan(C.D.tests, L, C.iso(C.today)) : { naechster: null };
+      const heute = C.iso(C.today), vp = (plan.liste || []).filter((t) => !t.done && t.date < heute).pop() || null;
+      tb.innerHTML = V.testHTML({ naechster: plan.naechster, verpasst: vp, esc: C.esc, wtag });
+    }
+  };
+  V.schwimmen = function (C) { V.css(C); V.zonen(C); V.board(C); V.rohpace(C); };
 })();
