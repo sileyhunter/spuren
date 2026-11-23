@@ -1797,3 +1797,12 @@ body.k4-edit .kal-v7.k4 .k4-r-kopf { display: none; }
 .co-karte .co-opt { margin: 6px 0 8px; font-weight: 600; }
 .co-ok1 { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0 0; }
 
+
+/* ---------- V9.8 checkin-anpassung-1.0: Vorschlag nach dem Check-in (wie Enduco) ---------- */
+.aa-banner.aa-vorschlag { border: 1px solid var(--wk-linie, var(--line)); }
+.aa-vorschlag .aa-knoepfe { justify-content: flex-end; gap: 8px; }
+.aa-pl { list-style: none; margin: 4px 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.aa-pl li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; background: var(--surface-2, var(--btn-2)); }
+.aa-pl li small { color: var(--muted); white-space: nowrap; }
+.aa-pl .aa-alt { text-decoration: line-through; color: var(--muted); }
+.aa-hinweis .btn.klein { margin-left: 6px; padding: 2px 10px; min-height: 0; font-size: 13px; }

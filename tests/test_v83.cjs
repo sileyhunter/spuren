@@ -39,7 +39,7 @@ const kern = (w) => w.tage.map((t) => `${t.date}:${t.einheiten.map((e) => `${e.i
 
 test("Versionen und Festlegungen", () => {
   assert.equal(V83.VERSIONS.coach, "tagescoach-1.1");
-  assert.equal(V74.VERSIONS.ampelplan, "ampel-plan-1.2");
+  assert.equal(V74.VERSIONS.ampelplan, "ampel-plan-1.3");
   assert.deepEqual(V83.EINZEL, { hrv: 10, rhr: 5, faktor: 2, hrv_stark: 20, rhr_stark: 8, stark: 3 });
   assert.deepEqual(V83.ANLASS, ["schmerz", "morgen", "last", "ausgefallen", "zeit", "nachholen", "umfang"]);
   assert.deepEqual(V83.UMFANG, { min_defizit: 20, min_plus: 15, max_anteil: 0.5 });

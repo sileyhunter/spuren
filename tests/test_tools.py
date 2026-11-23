@@ -1522,7 +1522,9 @@ check("Ampel (merge_daily): ein Eintrag je Tag – Entscheid aus dem neueren (Mo
       len(_DQ.get("ampel_anpassung", [])) == 1 and _DQ["ampel_anpassung"][0]["quelle"] == "morgen-update" and _DQ["ampel_anpassung"][0]["trotzdem"]["an"] is True
       and any(a.get("was") == "Ampel-Entscheid ersetzt" for a in _DQ.get("audit", [])), str(_DQ.get("ampel_anpassung")))
 _u0 = _au["einheiten"][0]
-_DA = {"ampel_anpassung": [_ae], "garmin_auftraege": [dict(_au, status="erledigt")],
+# V9.8 ampel-plan-1.3: «vorsichtig» ist ein Vorschlag – das Morgen-Update ersetzt erst nach «Akzeptieren» (alte Einträge bis 1.2 wie bisher)
+_ae_ok = dict(_ae, angenommen={"an": True, "am": "2026-03-05T06:20:00Z"})
+_DA = {"ampel_anpassung": [_ae_ok], "garmin_auftraege": [dict(_au, status="erledigt")],
        "plan_garmin": [{"uid": "a-vo2", "date": "2026-03-05", "quelle": "vorschlag", "titel": _u0["titel"], "sport": "lauf", "fassung": _u0["fassung"], "workout_id": 6101, "scheduled_id": 8101},
                        {"uid": "a-rad", "date": "2026-03-05", "quelle": "vorschlag", "titel": "Rad locker", "sport": "rad", "fassung": _au["einheiten"][1]["fassung"], "workout_id": 6102, "scheduled_id": 8102},
                        {"uid": "a-vo2", "date": "2026-03-06", "quelle": "vorschlag", "titel": "anderer Tag", "sport": "lauf", "fassung": "x", "workout_id": 6103, "scheduled_id": 8103}]}
@@ -1531,8 +1533,17 @@ _PA = GS.ampel(_DA, _jt)
 check("Ampel (Morgen-Update, A7): nur heute, nur die harte eigene Einheit – lockere Fassung hochladen, danach die harte austragen und löschen",
       [x["art"] for x in _PA["aktionen"]] == ["hochladen", "austragen"] and _PA["aktionen"][0]["workout"] == _u0["ampel"]["workout"] and _PA["aktionen"][0]["ampel"] is True
       and _PA["aktionen"][1]["nach"] == 1 and _PA["aktionen"][1]["loeschen"] is True and _PA["aktionen"][1]["workout_id"] == 6101, json.dumps(_PA)[:400])
-_PT = GS.ampel(dict(_DA, ampel_anpassung=[dict(_ae, trotzdem={"an": True, "am": "2026-03-05T06:30:00Z"})]), _jt)
-_PW = GS.ampel(dict(_DA, ampel_anpassung=[dict(_ae, status="wie_geplant")]), _jt)
+_PO = GS.ampel(dict(_DA, ampel_anpassung=[_ae]), _jt)
+_PALT = GS.ampel(dict(_DA, ampel_anpassung=[dict(_ae, v="ampel-plan-1.2")]), _jt)
+check("V9.8 Ampel (Morgen-Update): «vorsichtig» ohne «Akzeptieren» ersetzt nichts; ein Eintrag vor ampel-plan-1.3 wie bisher",
+      _ae.get("status") == "vorsichtig" and not _PO["aktionen"] and "nicht akzeptiert" in " ".join(_PO["hinweise"])
+      and [x["art"] for x in _PALT["aktionen"]] == ["hochladen", "austragen"], str([_PO["hinweise"], _PALT["aktionen"][:1]]))
+check("V9.8 Ampel: «Akzeptieren» geprüft und wie «Trotzdem» zusammengeführt (die zuletzt gedrückte Antwort zählt)",
+      merge_daily.ampel_pruefen(_ae_ok) is None and merge_daily.ampel_pruefen(dict(_ae, angenommen={"an": "ja", "am": "2026-03-05T06:20:00Z"})) is not None
+      and merge_daily.ampel_zusammen(_ae_ok, dict(_ae, geaendert="2026-03-05T06:40:00Z"))["angenommen"]["an"] is True
+      and merge_daily.ampel_zusammen(_ae_ok, dict(_ae, angenommen={"an": False, "am": "2026-03-05T06:50:00Z"}))["angenommen"]["an"] is False)
+_PT = GS.ampel(dict(_DA, ampel_anpassung=[dict(_ae_ok, trotzdem={"an": True, "am": "2026-03-05T06:30:00Z"})]), _jt)
+_PW = GS.ampel(dict(_DA, ampel_anpassung=[dict(_ae_ok, status="wie_geplant")]), _jt)
 _PM = GS.ampel(_DA, dt_mod.datetime(2026, 3, 6, 7, 5, tzinfo=zoneinfo_mod.ZoneInfo("Europe/Zurich")))
 check("Ampel (Morgen-Update): «Trotzdem wie geplant», «wie geplant» oder ein anderer Tag → nichts ersetzen",
       not _PT["aktionen"] and not _PW["aktionen"] and not _PM["aktionen"], str([_PT["hinweise"], _PW["hinweise"], _PM["hinweise"]]))

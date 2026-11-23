@@ -32,5 +32,5 @@ const e = V74.entscheid(r, { morgenwerte: V74.morgenwerte(D.days, datum), datum 
 const alt = V74.gespeichert(datum, D.ampel_anpassung || []);
 const out = { v: V74.VERSIONS.ampelplan, datum, status: e.status, ampel: e.ampel, gruende: e.gruende, morgenwerte: e.morgenwerte, hinweis: e.hinweis,
   trotzdem: !!(alt && alt.trotzdem && alt.trotzdem.an), last: modell === "ftp_est" ? "Last wie geliefert (ftp_est nicht nachgebildet)" : modell };
-if (alt ? alt.status !== e.status : e.status !== "wie_geplant") out.ampel_add = [V74.eintrag(e, { quelle: "morgen-update", jetzt, trotzdem: alt && alt.trotzdem })];
+if (alt ? alt.status !== e.status : e.status !== "wie_geplant") out.ampel_add = [V74.eintrag(e, { quelle: "morgen-update", jetzt, trotzdem: alt && alt.trotzdem, angenommen: alt && alt.angenommen })];
 process.stdout.write(JSON.stringify(out, null, 1) + "\n");

@@ -10,6 +10,7 @@
   "use strict";
   const M = (window.V74UI = window.V74UI || {});
   const UI = () => window.V5UI, V74 = () => window.V74, FK = () => window.FK, V6 = () => window.V6, V59 = () => window.V59, V64 = () => window.V64;
+  // checkin-anpassung-1.0 (V9.8): V59().blatt / schliessen für das Blatt «Überprüfen»
   const V66 = () => window.V66, U66 = () => window.V66UI, P = () => window.V64UI, TR = () => window.TR;
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   let C = null;
@@ -45,7 +46,8 @@
     if (d > h) return null;
     const g = M.gespeichert(d);
     if (d < h) return V74().ausEintrag(g);
-    return Object.assign({}, live(), { trotzdem: !!(g && g.trotzdem && g.trotzdem.an) });
+    const e = live(), w = V74().wirkung(e.status, g);                          // ampel-plan-1.3: «vorsichtig» erst nach «Akzeptieren»
+    return Object.assign({}, e, { trotzdem: w.aus, offen: w.offen });
   };
   /** Woche mit der Ampel-Schicht (aus js/v64-ui.js). opt = { ctx, verf }. */
   M.anwenden = function (w, opt) {
@@ -74,16 +76,49 @@
       return;
     }
     SPEICHERT = true;
-    try { await sichern(V74().eintrag(e, { quelle: "seite", trotzdem: g && g.trotzdem })); neuZeichnen(); }
+    try { await sichern(V74().eintrag(e, { quelle: "seite", trotzdem: g && g.trotzdem, angenommen: g && g.angenommen })); neuZeichnen(); }
     catch (err) { console.error(err); } finally { SPEICHERT = false; }
   };
-  /** «Trotzdem wie geplant» (an = true) oder «Doch anpassen» (an = false) – nur für heute. */
+  /** «Trotzdem wie geplant» / «Ignorieren» (an = true) oder «Doch anpassen» / «Akzeptieren» (an = false) – nur für heute. ampel-plan-1.3: speichert dazu die Antwort. */
   M.trotzdem = async function (an) {
     if (!bereit()) return "Seite noch nicht bereit";
-    const jetzt = new Date().toISOString(), f = await sichern(V74().eintrag(live(), { quelle: "seite", jetzt, trotzdem: { an: !!an, am: jetzt } }));
+    const jetzt = new Date().toISOString(), f = await sichern(V74().eintrag(live(), { quelle: "seite", jetzt, trotzdem: { an: !!an, am: jetzt }, angenommen: { an: !an, am: jetzt } }));
     neuZeichnen();
     return f;
   };
+  /** checkin-anpassung-1.0: was «Akzeptieren» heute ändern würde (Woche mit angewendetem Entscheid) → Ampel-Info des Tages oder null. */
+  M.vorschau = function (ds) {
+    if (!bereit() || !P() || !P().kontextFuer) return null;
+    const K = P().kontextFuer(V64().montag(ds)); if (!K || !K.wPlan) return null;
+    const st = (d) => { const x = M.stand(d); return d === ds && x ? Object.assign({}, x, { trotzdem: false, offen: false }) : x; };
+    let w = null; try { w = V74().woche(K.wPlan, st, { ctx: K.ctxE || {}, verf: K.verf }); } catch (e) { console.error(e); return null; }
+    const t = w && w.tage.find((x) => x.date === ds);
+    return t ? Object.assign({ einheiten: t.einheiten }, t.ampel || {}) : null;
+  };
+  /** Blatt «Überprüfen» (wie Enduco): Grund, gestrichen / geändert, «Ignorieren» und «Akzeptieren». */
+  M.ueberpruefen = function (ds) {
+    if (!bereit() || !V59() || !V59().blatt) return;
+    const A = M.vorschau(ds), W = V6(); if (!A) return;
+    const weg = A.geaendert.filter((g) => !g.nach).concat(A.status === "krank" ? [] : []), neu = A.geaendert.filter((g) => g.nach);
+    const zeile = (e, alt) => `<li><span class="${alt ? "aa-alt" : ""}">${W.sportIcon ? W.sportIcon(e.sport, 14) : ""} ${esc(e.titel)}</span><small>${esc(dauer(e.dauer))}</small></li>`;
+    const ov = V59().blatt("aa-pruefen", `<div class="blatt-titel"><h2 id="v59-ov-h" tabindex="-1">${W.icon("funken", 18)} Überprüfen</h2></div>
+      <p class="aa-text">${esc(textVon(A))}</p>
+      ${weg.length ? `<h3 class="abschnitt">Gestrichen</h3><ul class="aa-pl">${weg.map((g) => zeile(g.von, true)).join("")}</ul>` : ""}
+      ${neu.length ? `<h3 class="abschnitt">Geändert</h3><ul class="aa-pl">${neu.map((g) => `${zeile(g.von, true)}${zeile(g.nach, false)}`).join("")}</ul>` : ""}
+      ${!weg.length && !neu.length ? `<p class="hint">Heute ändert sich nichts an den Einheiten.</p>` : ""}
+      <div class="blatt-fuss"><button type="button" class="btn" data-aaw="nein">Ignorieren</button><button type="button" class="btn primary" data-aaw="ja">Akzeptieren ✓</button></div>
+      <p class="warn-t" data-aafehler hidden></p>`);
+    ov.querySelectorAll("[data-aaw]").forEach((b) => (b.onclick = async () => {
+      b.disabled = true; const f = await M.trotzdem(b.dataset.aaw === "nein"); b.disabled = false;
+      if (f) { const p = ov.querySelector("[data-aafehler]"); if (p) { p.textContent = f; p.hidden = false; } return; }
+      V59().schliessen();
+    }));
+  };
+  /** Ein Satz Grund (aus den Gründen der Ampel). */
+  function textVon(A) {
+    const g = (A.gruende || []).slice(0, 2).map((x) => String(x).replace(/[.\s]+$/, "") + ".").join(" ");
+    return (g ? g + " " : "") + (A.status === "krank" ? "Heute ist Ruhetag." : "Darum heute lieber locker – die harten Abschnitte fallen weg.");
+  }
 
   /* ---------- Anzeige ---------- */
   const skalen = () => (TR() && C ? TR().zonen(C.D.zonen).skalen : null);
@@ -101,8 +136,20 @@
     if (!bereit() || !t) return "";
     const A = t.ampel, h = heute(), W = V6(), nach = (t.einheiten || []).filter((e) => e.ampel && e.ampel.nachgeholt && !e.ampel.von);
     let html = "";
-    if (A && (A.status === "vorsichtig" || A.status === "krank")) {
-      const knopf = ds === h ? `<div class="row aa-knoepfe"><button type="button" class="btn" data-aa="trotzdem" aria-pressed="${A.trotzdem}">${A.trotzdem ? "Doch anpassen" : "Trotzdem wie geplant"}</button></div>` : "";
+    const V = A && A.status === "vorsichtig" && A.offen && ds === h ? M.vorschau(ds) : null;
+    const zuTun = !!(V && ((V.geaendert || []).length || (V.weg || []).length));
+    if (A && A.status === "vorsichtig" && A.offen && ds === h && !zuTun) {
+      html += `<p class="hint aa-hinweis">${W.icon("ampel", 14)} Ampel: Vorsicht – heute ist nichts Hartes mehr geplant.</p>`;   // nichts zu ändern: keine Frage
+    } else if (A && A.status === "vorsichtig" && A.offen && ds === h) {
+      // checkin-anpassung-1.0 (V9.8, wie Enduco): Vorschlag mit Grund – «Ignorieren» oder «Überprüfen» (dort «Akzeptieren»); Mein Plan bleibt, bis du akzeptierst
+      html += `<div class="card aa-banner aa-vorschlag" role="status"><div class="aa-kopf">${W.icon("funken", 16)}<b>Heute lieber locker?</b></div>
+        <p class="aa-text">${esc(textVon(A))}</p>
+        <div class="row aa-knoepfe"><button type="button" class="btn" data-aa="ignorieren">Ignorieren</button><button type="button" class="btn primary" data-aa="pruefen">Überprüfen ${W.icon("funken", 14)}</button></div>
+        <p class="warn-t" data-aafehler hidden></p></div>`;
+    } else if (A && A.status === "vorsichtig" && A.trotzdem && ds === h && !A.offen) {
+      html += `<p class="hint aa-hinweis">${W.icon("ampel", 14)} Ampel: Vorsicht – heute wie geplant (deine Wahl). <button type="button" class="btn klein" data-aa="pruefen">Doch anpassen</button></p>`;
+    } else if (A && (A.status === "vorsichtig" || A.status === "krank")) {
+      const knopf = ds === h ? `<div class="row aa-knoepfe"><button type="button" class="btn" data-aa="trotzdem" aria-pressed="${A.trotzdem}">${A.trotzdem ? "Doch anpassen" : A.status === "vorsichtig" ? "Rückgängig" : "Trotzdem wie geplant"}</button></div>` : "";
       const gr = A.gruende.length ? `<ul class="aa-gruende">${A.gruende.map((g) => `<li>${esc(g)}</li>`).join("")}</ul>` : "";
       if (A.trotzdem) {
         html += `<div class="card aa-banner aa-trotzdem" role="status"><div class="aa-kopf">${W.icon("ampel", 16)}<b>${ds === h ? "Heute" : "Dieser Tag"} wie geplant – deine Wahl</b></div>
@@ -118,8 +165,7 @@
           : ds === h && (t.einheiten || []).some((e) => e.ampel && e.ampel.von && uhr(ds, e) === "locker") ? `<p class="hint">Auf der Uhr steht die lockere Fassung (Morgen-Update).</p>` : "";
         html += `<div class="card aa-banner aa-${A.status}" role="status"><div class="aa-kopf">${W.icon("ampel", 16)}<b>${esc(V74().titel(A))}</b><small>Ampel: ${esc(AMPEL_WORT[A.ampel] || "Vorsicht")}</small></div>
           ${gr}${liste ? `<ul class="aa-liste">${liste}</ul>` : ""}${A.status === "krank" ? `<p class="aa-text">Bei Fieber oder allgemeinen Symptomen pausieren und ärztlich abklären.</p>` : ""}
-          ${holen}${weg}${gesp}${uhrT}${knopf}
-          <p class="hint">Mein Plan bleibt gespeichert, wie er war; die Ampel macht Einheiten nur leichter oder kürzer, nie härter, nie eine andere Sportart (${esc(V74().VERSIONS.ampelplan)}).</p></div>`;
+          ${holen}${weg}${gesp}${uhrT}${knopf}</div>`;
       }
     } else if (ds === h) {
       const e = live();
@@ -170,6 +216,10 @@
     box.querySelectorAll('[data-aa="trotzdem"]').forEach((b) => (b.onclick = async () => {
       b.disabled = true; const f = await M.trotzdem(b.getAttribute("aria-pressed") !== "true"); b.disabled = false; if (f) fehler(f); if (nachher) nachher();
     }));
+    box.querySelectorAll('[data-aa="ignorieren"]').forEach((b) => (b.onclick = async () => {
+      b.disabled = true; const f = await M.trotzdem(true); b.disabled = false; if (f) fehler(f); if (nachher) nachher();
+    }));
+    box.querySelectorAll('[data-aa="pruefen"]').forEach((b) => (b.onclick = () => M.ueberpruefen(heute())));
     box.querySelectorAll('[data-aa="nein"]').forEach((b) => (b.onclick = () => { lsSet("sf.aa.nein", V64().montag(heute())); neuZeichnen(); if (nachher) nachher(); }));
     box.querySelectorAll('[data-aa="erholung"]').forEach((b) => (b.onclick = async () => {
       if (!U66() || !U66().aendern) return;

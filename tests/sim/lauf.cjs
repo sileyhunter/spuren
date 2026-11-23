@@ -102,6 +102,13 @@ function simulator(opt) {
     if (haken.vorher) await haken.vorher(d, sim);
     await S.win.V74UI.pruefen();                                              // Seite geöffnet: Ampel-Entscheid von heute speichern
     S.neu();
+    // V9.8 ampel-plan-1.3: «vorsichtig» ist ein Vorschlag – der Athlet antwortet (haken.ampel → "akzeptieren" | "ignorieren" | null = offen lassen);
+    // ohne Haken akzeptiert er wie früher die Ampel von selbst wirkte, damit die Szenarien vor V9.8 gleich bleiben
+    const st0 = S.win.V74UI.stand ? S.win.V74UI.stand(d) : null;
+    if (st0 && st0.offen) {
+      const antwort = haken.ampel ? haken.ampel(d, st0) : "akzeptieren";
+      if (antwort === "akzeptieren" || antwort === "ignorieren") { await S.win.V74UI.trotzdem(antwort === "ignorieren"); S.neu(); }
+    }
     // V8.3 Tagescoach: Vorschläge nach dem Öffnen der Seite; ein Szenario nimmt sie über haken.coach an (Liste von IDs bzw. { id, option })
     let coach = S.win.V83UI && S.win.V83UI.pruefen ? S.win.V83UI.pruefen() : null;
     const coachLog = (R) => (R ? R.vorschlaege.map((p) => ({ id: p.id, anlass: p.anlass, date: p.date, uid: p.uid, titel: p.titel, grund: p.grund, arten: p.optionen.map((o) => o.art) })) : []);

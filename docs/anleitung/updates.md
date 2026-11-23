@@ -170,6 +170,7 @@ Enduco-Workouts werden nie geändert. Jeder Abruf, der fehlschlägt, wird weggel
    heute mit den Morgenwerten und dem Check-in, gleiche Regeln wie die Seite), dann `python3 -I tools/merge_daily.py data.json work/ampel_heute.json`
    (speichert ihn als `ampel_anpassung`, wenn er neu ist oder sich geändert hat; «Trotzdem wie geplant» vom Handy bleibt). Dann
    `python3 -I tools/garmin_senden.py ampel data.json > work/garmin_plan.json`: nur bei «vorsichtig» oder Krankheitszeichen und ohne «Trotzdem» stehen dort
+   (seit V9.8, ampel-plan-1.3: bei «vorsichtig» erst, wenn Silas auf der Seite «Akzeptieren» gedrückt hat; sonst Hinweis «Vorschlag noch nicht akzeptiert – nichts ersetzt»)
    Aktionen – je eigene Einheit von heute in Garmin, deren Auftrag eine lockere Fassung trägt, `hochladen` (lockere Fassung, mit Rücklese) und danach
    `austragen` (die harte, mit `nach`). Genau diese Aktionen ausführen wie im Abschnitt «An Garmin senden» (sonst nichts), dann
    `python3 -I tools/garmin_senden.py eintragen data.json work/garmin_plan.json work/garmin_ergebnis.json` (auch ohne Aktionen). Meldet es

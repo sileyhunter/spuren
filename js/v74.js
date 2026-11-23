@@ -17,7 +17,7 @@
   if (root) root.V74 = V74;
 })(typeof window !== "undefined" ? window : null, function (V64, V66) {
   "use strict";
-  const V74 = { VERSIONS: { ampelplan: "ampel-plan-1.2" } };            // 1.1 (V7.6.1): kein Nachholen von Rad oder Laufen am Tag nach einem Krafttraining
+  const V74 = { VERSIONS: { ampelplan: "ampel-plan-1.3" } };            // 1.3 (V9.8, checkin-anpassung-1.0): «vorsichtig» ist ein Vorschlag – wirkt erst nach «Akzeptieren»            // 1.1 (V7.6.1): kein Nachholen von Rad oder Laufen am Tag nach einem Krafttraining
                                                                         // 1.2 (V8.3): Nachholen nur noch als Vorschlag (Tagescoach, js/v83.js), nie von selbst
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -137,7 +137,7 @@
     const info = (i) => {
       const s = S[i] || {};
       if (!tage[i].ampel) tage[i].ampel = { v: V74.VERSIONS.ampelplan, status: s.status || "wie_geplant", ampel: s.ampel || null, gruende: (s.gruende || []).slice(),
-        hinweis: s.hinweis || null, trotzdem: !!s.trotzdem, geaendert: [], nachholen: [], weg: [], gesperrt: [] };
+        hinweis: s.hinweis || null, trotzdem: !!s.trotzdem, offen: !!s.offen, geaendert: [], nachholen: [], weg: [], gesperrt: [] };
       return tage[i].ampel;
     };
     // Platz für eine nachgeholte Einheit H an Tag i: Index der lockeren Einheit derselben Sportart, die sie ersetzt, oder −1
@@ -249,7 +249,20 @@
       gruende: (e.gruende || []).slice(0, 6).map((g) => String(g).slice(0, 300)), morgenwerte: !!e.morgenwerte, quelle: o.quelle === "morgen-update" ? "morgen-update" : "seite",
       geaendert: o.jetzt || new Date().toISOString() };
     if (o.trotzdem && typeof o.trotzdem === "object") x.trotzdem = { an: !!o.trotzdem.an, am: String(o.trotzdem.am || x.geaendert) };
+    if (o.angenommen && typeof o.angenommen === "object") x.angenommen = { an: !!o.angenommen.an, am: String(o.angenommen.am || x.geaendert) };   // ampel-plan-1.3
     return x;
+  };
+  /**
+   * ampel-plan-1.3 (V9.8, checkin-anpassung-1.0; Silas 23.11.2026: «wie Enduco, mit Ausnahme»): wirkt der Entscheid eines Tages? x = gespeicherter Eintrag (oder null).
+   * «krank»: wirkt von selbst, ausser «Trotzdem wie geplant». «vorsichtig»: ein Vorschlag – wirkt erst nach «Akzeptieren» (angenommen.an) und nicht nach «Ignorieren»
+   * (trotzdem.an); Einträge vor 1.3 wie bisher (wirkt, ausser «Trotzdem»). → { aus: wirkt nicht, offen: noch keine Antwort }
+   */
+  V74.wirkung = function (status, x) {
+    const tz = !!(x && x.trotzdem && x.trotzdem.an), an = !!(x && x.angenommen && x.angenommen.an);
+    if (status !== "vorsichtig") return { aus: tz, offen: false };
+    const m = x && /ampel-plan-(\d+)\.(\d+)/.exec(String(x.v || "")), alt = !!(m && (+m[1] < 1 || (+m[1] === 1 && +m[2] < 3)));
+    if (alt) return { aus: tz, offen: false };
+    return { aus: tz || !an, offen: !(x && (x.angenommen || x.trotzdem)) };
   };
   const zeitOk = (s) => typeof s === "string" && !isNaN(Date.parse(s));
   /** Prüft einen Eintrag (gleiche Regeln wie merge_daily.ampel_pruefen) → Fehlertext oder null. */
@@ -265,6 +278,7 @@
     if (!zeitOk(x.geaendert)) return "ohne Zeitpunkt";
     if (Math.abs(Date.parse(x.date + "T12:00:00Z") - Date.parse(x.geaendert)) > 1.5 * 864e5) return "Entscheid nicht am selben Tag";
     if (x.trotzdem != null && !(typeof x.trotzdem === "object" && typeof x.trotzdem.an === "boolean" && zeitOk(x.trotzdem.am))) return "«Trotzdem» ungültig";
+    if (x.angenommen != null && !(typeof x.angenommen === "object" && typeof x.angenommen.an === "boolean" && zeitOk(x.angenommen.am))) return "«Akzeptieren» ungültig";
     return null;
   };
   /** Zwei Fassungen desselben Tages zusammenführen (Daten und Gerät): Entscheid aus der neueren, «Trotzdem» aus der zuletzt gedrückten. */
@@ -275,6 +289,8 @@
     const out = Object.assign({}, L[L.length - 1]);
     const T = L.map((x) => x.trotzdem).filter((t) => t && typeof t === "object").sort((x, y) => String(x.am).localeCompare(String(y.am)));
     if (T.length) out.trotzdem = T[T.length - 1]; else delete out.trotzdem;
+    const A = L.map((x) => x.angenommen).filter((t) => t && typeof t === "object").sort((x, y) => String(x.am).localeCompare(String(y.am)));   // ampel-plan-1.3
+    if (A.length) out.angenommen = A[A.length - 1]; else delete out.angenommen;
     return out;
   };
   /** Gespeicherter Eintrag eines Tages aus einer oder mehreren Listen. */
@@ -284,7 +300,7 @@
     return x;
   };
   /** Stand für die Schicht: gespeicherter Eintrag → { status, ampel, gruende, hinweis, trotzdem } */
-  V74.ausEintrag = (x) => (x ? { status: x.status, ampel: x.ampel, gruende: x.gruende || [], hinweis: null, trotzdem: !!(x.trotzdem && x.trotzdem.an), morgenwerte: !!x.morgenwerte } : null);
+  V74.ausEintrag = (x) => (x ? { status: x.status, ampel: x.ampel, gruende: x.gruende || [], hinweis: null, trotzdem: V74.wirkung(x.status, x).aus, morgenwerte: !!x.morgenwerte } : null);   // 1.3: «vorsichtig» ohne Akzeptieren wirkt nicht
   /** Kurztext eines Entscheids für Banner und Kalender. */
   V74.titel = (s) => (!s ? "" : s.status === "krank" ? "Ruhetag wegen Krankheitszeichen" : s.status === "vorsichtig" ? "Angepasst wegen Ampel" : "Wie geplant");
   V74.sportWort = (sp) => SPW[sp] || "Training";

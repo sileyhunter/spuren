@@ -97,7 +97,7 @@
     const BZ = V66z ? V66z.bezug(sk, css ? css.s : null) : null, tlZ = (e) => { try { return V66z.schaetzung(e, BZ).tl; } catch (err) { return null; } };
     const taperW = phase === "Taper" || String(phase).startsWith("B-Rennen"), rennW = rennen().some((r) => r && r.date >= mo && r.date <= V.addDays(mo, 6));
     const ampelV = !vorbei && mo === V.montag(h) && (() => { try { const A = window.V74UI && window.V74UI.stand ? window.V74UI.stand(h) : null;
-      return !!(A && !A.trotzdem && (A.status === "vorsichtig" || A.status === "krank")); } catch (err) { return false; } })();
+      return !!(A && (A.offen || !A.trotzdem) && (A.status === "vorsichtig" || A.status === "krank")); } catch (err) { return false; } })();
     const ziel = V66z ? { v: V66z.VERSIONS.ziel, tl: tlZ, vorsichtig: ampelV,
       aus: vorbei ? "vergangen" : rennW ? "Rennwoche" : erholung ? "Erholungswoche" : taperW ? "Taper" : V66z.zielAusGilt(E0, verf) ? "neu" : null } : null;
     const verteilt = (w) => (!vorbei && window.V66 && window.V66.wocheVerteilt ? window.V66.wocheVerteilt(w, verf, { css_s: css ? css.s : null, lang, ctxE, vorher, vorherDatum,

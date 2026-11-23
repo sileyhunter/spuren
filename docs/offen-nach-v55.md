@@ -412,4 +412,7 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
      («Training heute gestrichen – … du bist heute nicht verfügbar»), «Ignorieren» / «Überprüfen» → Blatt «Trainings gelöscht: …» (durchgestrichen, mit Profil) → «Akzeptieren». Die
      Seite passt heute nach der Ampel von selbst an (ampel-plan-1.0) und der Coach schlägt vor (tagescoach-1.0). **Entschieden 23.11.:** wie Enduco (Karte, «Überprüfen», «Akzeptieren»/
      «Ignorieren»), nur Krankheitszeichen bleiben von selbst Ruhetag. Auftrag `docs/auftrag-checkin-anpassung.md` (V9.8, eigene Sitzung).
+     **Gebaut in V9.8 (23.11., checkin-anpassung-1.0 / ampel-plan-1.3).** Offen: Coach und Ampel in eine Karte (Auftrag Punkt 6, zurückgestellt). Auf dem iPhone prüfen: nach einem
+     müden Check-in an einem Tag mit harter Einheit erscheint «Heute lieber locker?»; «Überprüfen» zeigt die harte Einheit durchgestrichen und die lockere; «Akzeptieren» ändert den
+     Tag, «Rückgängig» stellt ihn zurück; «Ignorieren» lässt den Plan und die Karte kommt nicht wieder; mit Krankheitszeichen wird der Tag ohne Frage Ruhetag.
 

@@ -344,8 +344,15 @@ def plan(D, jetzt):
     return {"v": V, "jetzt": jetzt.isoformat(timespec="seconds"), "aktionen": aktionen, "abschluesse": abschluesse, "warten_bis": warten}
 
 
+def _ampel_neu(E):
+    """ampel-plan-1.3 (V9.8, checkin-anpassung-1.0): ab dieser Fassung ist «vorsichtig» ein Vorschlag – er wirkt erst nach «Akzeptieren».
+    Ältere Einträge (bis 1.2) wirken wie bisher (gleiche Regel wie V74.wirkung in js/v74.js)."""
+    m = re.search(r"ampel-plan-(\d+)\.(\d+)", str(E.get("v") or ""))
+    return not (m and (int(m.group(1)), int(m.group(2))) < (1, 3))
+
+
 def ampel(D, jetzt):
-    """ampel-plan-1.0 (Entscheid A7): heute bei «vorsichtig» oder Krankheitszeichen (und nicht «Trotzdem wie geplant») die eigenen Workouts des
+    """ampel-plan-1.0 (Entscheid A7; 1.3: «vorsichtig» nur nach «Akzeptieren»): heute bei «vorsichtig» oder Krankheitszeichen (und nicht «Trotzdem wie geplant») die eigenen Workouts des
     Tages, deren Auftrag eine lockere Fassung trägt, durch diese ersetzen. Gleiche Aktionen wie plan() (hochladen mit Rücklese, einplanen, dann
     das bisherige austragen; «nach» sorgt dafür, dass das harte bleibt, wenn das lockere nicht ankommt). → {v, jetzt, aktionen, abschluesse, hinweise}"""
     jetzt = jetzt.astimezone(TZ)
@@ -357,6 +364,9 @@ def ampel(D, jetzt):
         return out
     if (E.get("trotzdem") or {}).get("an"):
         out["hinweise"].append("Trotzdem wie geplant – nichts ersetzt")
+        return out
+    if E.get("status") == "vorsichtig" and _ampel_neu(E) and not (E.get("angenommen") or {}).get("an"):
+        out["hinweise"].append("Ampel heute: Vorschlag noch nicht akzeptiert – nichts ersetzt")   # V9.8 ampel-plan-1.3
         return out
     A = sorted([a for a in D.get("garmin_auftraege") or [] if isinstance(a, dict) and a.get("date") == heute], key=lambda a: str(a.get("erstellt") or ""), reverse=True)
     G = [g for g in D.get("plan_garmin") or [] if isinstance(g, dict) and g.get("date") == heute and not g.get("entfernt")]

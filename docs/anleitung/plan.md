@@ -185,6 +185,14 @@
   Tage gelten so, wie entschieden, heute live, kommende Tage ohne Entscheid. Die Schicht wird beim Zeichnen angewendet (`V64UI` kontext → `V74UI.anwenden`):
   Heute, Kalender, Tagesblatt, Einheit-Seite, TL ≈, Form und Plan-Übersicht rechnen mit dem, was galt; Mein Plan (`plan_woche`) bleibt unverändert,
   Änderungen gehen weiter über `V66.aendern`. Nachgeholte Einheiten sind auf der Einheit-Seite nur zu lesen.
+- **checkin-anpassung-1.0 / ampel-plan-1.3 (V9.8, Silas 23.11.2026: «wie Enduco, mit Ausnahme»):** «vorsichtig» passt heute nicht mehr von selbst an, sondern
+  schlägt vor: Karte «Heute lieber locker?» mit Grund (höchstens zwei Gründe der Ampel), «Ignorieren» / «Überprüfen» → Blatt «Geändert» (alte Einheit durchgestrichen, darunter die
+  lockere) bzw. «Gestrichen» → «Akzeptieren». Bis zur Antwort bleibt Mein Plan, wie er ist (`V74.wirkung`: `offen`); «Akzeptieren» speichert `angenommen {an, am}` (und
+  `trotzdem.an = false`), «Ignorieren» `trotzdem.an = true` – die Karte kommt an diesem Tag nicht wieder, eine Zeile «Doch anpassen» bleibt. Angewendet: kurzer Hinweis mit
+  «Rückgängig». Ändert sich heute nichts (keine harte Einheit), gibt es keine Frage, nur eine Zeile. **Ausnahme:** Krankheitszeichen im Check-in machen den Tag wie bisher von
+  selbst zum Ruhetag. Einträge vor ampel-plan-1.3 gelten, wie sie galten (Vergangenes bleibt). Das Morgen-Update ersetzt auf der Uhr bei «vorsichtig» erst nach «Akzeptieren»;
+  wird später am Morgen akzeptiert, steht auf der Uhr noch die harte Fassung (Hinweis wie bei W1). Der Coach (tagescoach) bleibt eine eigene Karte; das Zusammenlegen beider
+  Karten (Auftrag Punkt 6) ist zurückgestellt, die Coach-Karte ist seit V9.5.2 schlicht.
 - «Trotzdem wie geplant» gilt je Tag (nur heute antippbar). Ab dem dritten Tag «vorsichtig» bzw. krank in Folge zeigt die Seite «Woche anpassen?»: Rest
   der Woche als Erholungswoche (V64-Vorschlag mit Erholung, 65 % der Stunden, nach der Verfügbarkeit verteilt; Aktion «erholung», eigenplan-1.2) – nur
   auf Knopfdruck, gesperrte Tage bleiben, nicht in Erholungs-, Taper- oder Rennwochen.

@@ -4,6 +4,11 @@ Silas, 23.11.2026 (Aufnahmen 12:27 und 12:29, Enduco): «Bei Enduco kommt die An
 Entscheid von Silas am 23.11.2026: **wie Enduco, mit einer Ausnahme** – Ampel und Coach schlagen nach dem Check-in vor, Silas entscheidet mit «Akzeptieren» oder «Ignorieren»;
 **nur Krankheitszeichen** machen den Tag weiterhin von selbst zum Ruhetag. Eigene Sitzung. Alle Beispiele hier sind erfunden; echte Werte und Bilder gehören nicht ins Repo.
 
+**Stand 23.11.2026: gebaut in V9.8** (Abnahme 1–5, 7, 8). Bewusst schlichter als hier beschrieben (Silas 23.11.: «möglichst einfach»): «Ignorieren» gilt für den ganzen Tag (kein
+Fingerabdruck; eine Zeile «Doch anpassen» bleibt); das Blatt zeigt nur «Gestrichen»/«Geändert» mit Sportart und Dauer (ohne Profil und Wochenlast); bei Krankheitszeichen bleibt der
+bisherige Hinweis mit «Trotzdem wie geplant»; ist nichts zu ändern, eine Zeile statt Karte. Die Uhr wird nach «Akzeptieren» nicht sofort nachgeführt (das macht das Morgen-Update; danach
+Hinweis «Auf der Uhr steht noch die harte Fassung»). Zurückgestellt: Punkt 6 «Coach und Ampel in einer Karte» (die Coach-Karte ist seit V9.5.2 schlicht). Siehe CHANGELOG.
+
 Repo: sileyhunter/spuren. Es gilt CLAUDE.md. Zu Beginn nur CLAUDE.md, diesen Auftrag und `docs/anleitung/plan.md` (Abschnitte «Ampel passt das Training an», «Täglicher Coach»,
 «Umplanen», «Zeit und Intensität») lesen, bei Bedarf `bedienung-design.md`. Ablauf wie immer: Version V9.8, neue Testdatei `tests/test_v98.cjs` (in CLAUDE.md eintragen),
 CHANGELOG, `docs/offen-nach-v55.md` (Nr. 156), `docs/anleitung/plan.md`, `python3 -I tools/make_demo.py` (demo.html mitcommitten), Leck-Prüfung, Push erst nach bestandenen Tests.

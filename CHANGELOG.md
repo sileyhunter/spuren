@@ -1,5 +1,15 @@
 # Änderungen
 
+## V9.8 · 23.11.2026 · Check-in passt an wie Enduco (checkin-anpassung-1.0, ampel-plan-1.3)
+Silas (23.11., Aufnahmen 12:27/12:29): «Bei Enduco kommt die Anpassung mit dem Check-in. Dann zeigt er, was er streicht und was er hinzufügt.» Entscheid: wie Enduco, mit Ausnahme.
+- Ampel «vorsichtig» ändert heute nicht mehr von selbst: Karte «Heute lieber locker?» mit Grund, «Ignorieren» / «Überprüfen ✨» → Blatt mit «Geändert» (harte Einheit
+  durchgestrichen, darunter die lockere) bzw. «Gestrichen» → «Akzeptieren». Bis dahin bleibt der Plan. Angewendet: eine Zeile mit «Rückgängig»; ignoriert: eine Zeile «Doch anpassen».
+- Ausnahme: Krankheitszeichen im Check-in → Ruhetag wie bisher von selbst. Ändert sich nichts, keine Frage. Einträge vor ampel-plan-1.3 gelten weiter, wie sie galten.
+- Morgen-Update ersetzt auf der Uhr bei «vorsichtig» erst nach «Akzeptieren» (sonst Hinweis); merge_daily prüft und führt `angenommen` zusammen.
+- `js/v74.js`, `js/v74-ui.js`, `js/v64-ui.js`, `js/wissen.js` (1.39), `css/v6.css`, `tools/ampel_heute.mjs`, `tools/merge_daily.py`, `tools/garmin_senden.py`, Simulator-Haken `ampel`;
+  Tests `tests/test_v98.cjs` (neu, 6), `tests/test_tools.py` (+2), Versionen in `test_v64/v74/v83`. Demo-Durchlauf mit Playwright (Karte → Überprüfen → Akzeptieren → Rückgängig).
+- Zurückgestellt: Coach und Ampel in einer Karte (Auftrag Punkt 6).
+
 ## V9.5.2 · 23.11.2026 · Coach-Karte schlicht (coach-einfach-1.0)
 Silas (23.11., Bild 12:48): «Braucht es diese Infos? Ich will so Sachen nicht sehen – es soll möglichst einfach aussehen und sich einfach handhaben.»
 - Die Karte «Coach» auf Heute erscheint nur noch, wenn es etwas zu entscheiden gibt (oder gerade etwas angenommen wurde). Weg: Probelauf-Text, «Keine Änderung nötig …», die Liste

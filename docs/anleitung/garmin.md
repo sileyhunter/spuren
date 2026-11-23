@@ -76,7 +76,8 @@ und (V6.5) unverändert im privaten Archiv ablegen (Abschnitt «Archiv», Art `g
   - Fehlschlag eines Aufrufs: `{"nr", "ok": false, "fehler": "<kurz>"}`, weiter mit der nächsten Aktion.
 - Nie: Enduco-Workouts ändern oder löschen, Kalendereinträge ohne eigenen Vermerk austragen, Bibliotheks-Workouts löschen, Zonen oder die CSS
   nach Garmin schreiben, etwas senden, das nicht in `work/garmin_plan.json` steht. Das Morgen-Update sendet nur im Schritt «Ampel» (Entscheid A7 vom
-  16.11.2026, seit V7.4): bei «vorsichtig» oder Krankheitszeichen die eigene harte Einheit des Tages durch ihre lockere Fassung ersetzen.
+  16.11.2026, seit V7.4): bei «vorsichtig» oder Krankheitszeichen die eigene harte Einheit des Tages durch ihre lockere Fassung ersetzen (seit V9.8 bei «vorsichtig» erst nach
+  «Akzeptieren» auf der Seite; Krankheitszeichen wie bisher von selbst).
 - **V9.2 umplanen-1.0 (Etappe W1):** Umplanen ändert Einheiten an bis zu sieben Tagen. Danach führt `V66UI.planen` die offenen Aufträge **aller sieben Tage** nach
   (`auftraegeWoche`): Auswahl vorher = Einheiten in den offenen Aufträgen (Momentaufnahme), über `V92.zuordnung` (Kennung, sonst Vorlage und nächster Tag) auf die neue Woche
   übertragen; Tag mit offenem Auftrag → neue Fassung nur, wenn sie sich ändert (gleicher Modus; mit «teil» nur die gewählten, die noch dort stehen); gewählte Einheit an einem Tag

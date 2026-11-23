@@ -594,6 +594,9 @@ def ampel_pruefen(x):
     tz = x.get("trotzdem")
     if tz is not None and not (isinstance(tz, dict) and isinstance(tz.get("an"), bool) and _zeit_iso(tz.get("am"))):
         return "«Trotzdem» ungültig"
+    an = x.get("angenommen")                                         # V9.8 ampel-plan-1.3: «Akzeptieren» des Vorschlags
+    if an is not None and not (isinstance(an, dict) and isinstance(an.get("an"), bool) and _zeit_iso(an.get("am"))):
+        return "«Akzeptieren» ungültig"
     return None
 
 
@@ -602,11 +605,12 @@ def ampel_zusammen(alt, neu):
     gedrückten (am) – eine spät eingespielte Eingabe vom Handy hebt so den Entscheid des Morgen-Updates nicht auf und umgekehrt."""
     L = sorted([x for x in (alt, neu) if isinstance(x, dict)], key=lambda x: _zeit_iso(x["geaendert"]))
     out = dict(L[-1])
-    T = sorted([x["trotzdem"] for x in L if isinstance(x.get("trotzdem"), dict)], key=lambda t: _zeit_iso(t["am"]))
-    if T:
-        out["trotzdem"] = T[-1]
-    else:
-        out.pop("trotzdem", None)
+    for k in ("trotzdem", "angenommen"):                             # V9.8: «Akzeptieren» wie «Trotzdem» – die zuletzt gedrückte Antwort zählt
+        T = sorted([x[k] for x in L if isinstance(x.get(k), dict)], key=lambda t: _zeit_iso(t["am"]))
+        if T:
+            out[k] = T[-1]
+        else:
+            out.pop(k, None)
     return out
 
 
