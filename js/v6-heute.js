@@ -125,7 +125,7 @@
       ${U ? A.map((a) => U.aktKarte(a, Z ? Z.von.get(a.id) : null) + (window.V81UI ? window.V81UI.zeile(a) : "")).join("") : ""}
       ${U ? karten.map((k) => k.erledigt ? U.einheitKarte(k.e, day, true).replace('class="card ek-karte v7-ek klein"', 'class="card ek-karte v7-ek klein v7-erl"') : U.einheitKarte(k.e, day) + (window.VPUI ? window.VPUI.zeile(day, k.e) : "")).join("") : ""}
       ${leer ? `<div class="card ek-leer"><p>${X && X.t.gesperrt ? "Heute ist gesperrt – kein Training geplant." : X && X.t.ampel && X.t.ampel.status === "krank" && !X.t.ampel.trotzdem ? "Heute Ruhetag (Krankheitszeichen)." : "Für heute ist nichts geplant."}</p>
-        ${X && !X.t.gesperrt ? `<button type="button" class="btn" data-v7add>${V6().icon("plus", 16)} Training hinzufügen</button>` : ""}</div>` : ""}
+        ${X && !X.t.gesperrt ? `<button type="button" class="btn" data-v7add>${V6().icon("plus", 16)} Training planen</button>` : ""}</div>` : ""}
       ${testHinweis(day)}`;
     binden(box);
     if (U) U.binden(box);
@@ -239,7 +239,7 @@
       ["schwimm", "CSS-Test eintragen", "400 m und 200 m (Schwimmen)", "css"],
       ["kalender", "Kalender öffnen", "Woche und Monat mit geplanten Einheiten", "kalender"],
     ];
-    akt.splice(1, 0, ["plus", "Training hinzufügen", "Eigene Einheit für heute (Mein Plan)", "hinzu"]);
+    akt.splice(1, 0, ["plus", "Training planen", "Eigene Einheit für heute (Mein Plan)", "hinzu"]);
     const html = `<div class="blatt-titel">${W.icon("plus", 34)}<h2 id="v59-ov-h" tabindex="-1">Optionen für heute</h2></div>
       ${pa ? `<div class="kv ek-kv"><div><b>${pa.fitness}</b><span>Fitness</span></div><div><b>${pa.ermuedung}</b><span>Ermüdung</span></div><div><b>${sg(pa.form)}</b><span>Form</span></div></div>
       <div class="st-block"><div class="st-kopf"><span class="abschnitt">${W.icon("status", 15)}Trainingsstatus</span><b class="st-farbe" style="--stc:${st.farbe}">${esc(st.name)}</b></div>

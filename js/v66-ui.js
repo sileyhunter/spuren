@@ -567,7 +567,7 @@
     // V7.10 tagesblatt-2.0 (Vorlage): Zeilen «Training hinzufügen ›» und «Eigene Aktivität planen ›»; «Tag sperren» klein und weiter unten
     const vorbei = ds < heute();
     const zeilen = vorbei || t.gesperrt || t.rennen ? "" : `<div class="tb-zeilen">
-        <button type="button" class="mp-zeile" data-mpadd><span>${W.icon("plus", 18)} Training hinzufügen</span>${W.icon("weiter", 16)}</button>
+        <button type="button" class="mp-zeile" data-mpadd><span>${W.icon("plus", 18)} Training planen</span>${W.icon("weiter", 16)}</button>
         <button type="button" class="mp-zeile" data-mpeigen><span>${W.icon("stift", 18)} Eigene Aktivität planen</span>${W.icon("weiter", 16)}</button></div>`;
     const akt = vorbei ? `<p class="hint">Vergangene Tage nur lesen.</p>`
       : `<div class="tb-sperre"><button type="button" class="btn klein" data-mplock aria-pressed="${t.gesperrt}">${W.icon("schloss", 14)} ${t.gesperrt ? "Entsperren" : "Tag sperren"}</button>
@@ -1035,7 +1035,7 @@
     opt = opt || {};
     if (!bereit()) return;
     // V7.3 einheit-2.0: die Einheit öffnet als ganze Seite (js/v73-ui.js); «Zurück» führt dorthin, woher sie kam
-    if (window.V73UI && window.V73UI.plan && window.V73UI.plan(ds, uid, { zurueck: opt.zurueck || null })) return;
+    if (window.V73UI && window.V73UI.plan && window.V73UI.plan(ds, uid, { zurueck: opt.zurueck || null, bearbeiten: !!opt.bearbeiten })) return;
     const x = tagVon(ds); const e = x && x.t.einheiten.find((y) => y.uid === uid); if (!e) return;
     const mo = montag(ds), zurueck = opt.zurueck || null, darf = istAenderbar(ds, x.t);
     const B = e.quelle === "bibliothek" ? null : V66().bereich(e.vorlage || e.id);
@@ -1082,7 +1082,7 @@
     else P().einheitE(e, ds, { K: x.K, extra, nachher });
   };
 
-  /* ---------- Training hinzufügen: Sportart → Vorlage → Dauer ---------- */
+  /* ---------- Training planen (V9.4 planen-fluss-1.0, wie Enduco): Sportart → Intensität → Workout → Dauer ---------- */
   function fuss(zurueckAttr, haupt) {
     return `<div class="blatt-fuss"><button type="button" class="btn-zurueck" ${zurueckAttr} aria-label="Zurück">${V6().icon("zurueck", 22)}</button>${haupt || ""}</div>`;
   }
@@ -1092,68 +1092,85 @@
     // V7.5 indoor-phase-1.0: liegt der Tag in einer Indoor-Phase, heisst die Wahl ohne «drinnen» ausdrücklich «draussen»
     const phase = (sp) => !!(window.V75UI && window.V75UI.indoorAm(sp, ds));
     const name = (k, n) => ((k === "rad" || k === "lauf") && phase(k) ? `${n} draussen` : n);
-    const html = `<h2 id="v59-ov-h" tabindex="-1">Training hinzufügen</h2><p class="sub">${esc(tagText(ds))} · Sportart wählen</p>
-      <ul class="mp-wahl">${V66().SPORTARTEN.map(([k, n]) => [k, name(k, n)]).map(([k, name]) => `<li><button type="button" class="mp-zeile" data-mpsp="${k}">
-        <span class="mo-sp" style="--sp:${spFarbe(k.replace("_drinnen", ""))}">${W.sportIcon(k.replace("_drinnen", ""), 18)}</span><b>${esc(name)}</b>${W.icon("weiter", 18)}</button></li>`).join("")}</ul>
+    const html = `<h2 id="v59-ov-h" tabindex="-1">Training planen</h2><p class="sub">${esc(tagText(ds))}</p>
+      <ul class="mp-wahl mp-sporte">${V66().SPORTARTEN.map(([k, n]) => [k, name(k, n)]).map(([k, name]) => `<li><button type="button" class="mp-zeile" data-mpsp="${k}">
+        <span class="mp-sp-w" aria-hidden="true">${W.sportIcon(k.replace("_drinnen", ""), 20)}</span><b>${esc(name)}</b>${W.icon("weiter", 18)}</button></li>`).join("")}</ul>
       ${window.V77UI ? window.V77UI.wahlZeilen() : ""}
       ${fuss("data-mpz")}`;
     const ov = V59().blatt("mp-neu", html);
     ov.querySelector("[data-mpz]").onclick = () => (zurueck ? zurueck() : V59().schliessen());
-    ov.querySelectorAll("[data-mpsp]").forEach((b) => (b.onclick = () => vorlagenBlatt(ds, b.dataset.mpsp, zurueck)));
+    ov.querySelectorAll("[data-mpsp]").forEach((b) => (b.onclick = () => stufenBlatt(ds, b.dataset.mpsp, zurueck)));
     // V7.7 aktivitaet-plan-1.0: Skitour, Wandern, Langlauf, Traillauf – eigenes Blatt (js/v77-ui.js), zurück hierher
     ov.querySelectorAll("[data-akneu]").forEach((b) => (b.onclick = () => window.V77UI.blatt(ds, b.dataset.akneu, () => (zurueck ? zurueck() : V59().schliessen()), () => nachAenderung(ds))));
   };
-  function vorlagenBlatt(ds, sp, zurueck) {
+  const V94 = () => window.V94;
+  const spName = (sp) => (V66().SPORTARTEN.find((s) => s[0] === sp) || [, sp])[1];
+  /** Schritt 2: Intensität (nur Stufen mit Vorlagen; gibt es nur eine, direkt die Workouts). */
+  function stufenBlatt(ds, sp, zurueck) {
+    const W = V6(), L = V66().vorlagen(sp), S = V94() ? V94().stufen(L) : [], basis = sp.replace("_drinnen", "");
+    if (S.length <= 1) return vorlagenBlatt(ds, sp, zurueck, S[0] ? S[0].k : null, true);
+    const bib = ["rad", "lauf", "schwimm"].includes(basis) && C.D.enduco_bib && C.D.enduco_bib.workouts && Object.keys(C.D.enduco_bib.workouts).length;
+    const zf = (z) => (W.ZONEN[z] || W.ZONEN.offen).farbe;
+    const html = `<h2 id="v59-ov-h" tabindex="-1">${esc(spName(sp))}</h2><p class="sub">${esc(tagText(ds))} · Intensität wählen</p>
+      <ul class="mp-wahl mp-stufen">${S.map((st) => `<li><button type="button" class="mp-zeile mp-stufe" data-mpst="${st.k}">
+        <span class="mp-st-kachel" style="--zc:${zf(st.zone)}" aria-hidden="true"></span><span class="mp-vt"><b>${esc(st.name)}</b><small>${esc(st.text)}</small></span>${W.icon("weiter", 18)}</button></li>`).join("")}
+        ${bib ? `<li><button type="button" class="mp-zeile" data-mpbibl><span class="mp-st-kachel bib" aria-hidden="true"></span><span class="mp-vt"><b>Aus deiner Enduco-Bibliothek</b><small>Ein Workout, das du in Enduco gespeichert hast.</small></span>${W.icon("weiter", 18)}</button></li>` : ""}</ul>
+      ${fuss("data-mpz")}`;
+    const ov = V59().blatt("mp-neu", html);
+    ov.querySelector("[data-mpz]").onclick = () => M.hinzufuegen(ds, zurueck);
+    ov.querySelectorAll("[data-mpst]").forEach((b) => (b.onclick = () => vorlagenBlatt(ds, sp, zurueck, b.dataset.mpst)));
+    const bb = ov.querySelector("[data-mpbibl]"); if (bb) bb.onclick = () => bibBlatt(ds, sp, zurueck);
+  }
+  /** Schritt 3: Workouts der Stufe (Name, Dauerbereich, Profil); unten «Über» mit dem Beschrieb der Stufe. */
+  function vorlagenBlatt(ds, sp, zurueck, stufe, direkt) {
     const W = V6(), x = tagVon(ds); if (!x) return;
-    const L = V66().vorlagen(sp), basis = sp.replace("_drinnen", "");
+    const alle = V66().vorlagen(sp), St = V94() && stufe ? V94().STUFEN.find((s) => s.k === stufe) : null;
+    const L = St ? alle.filter((v) => V94().stufeVon(v.art) === stufe) : alle;
     const profil = (v) => {
       const e = V66().einheit({ uid: "x", vorlage: v.id, dauer: v.std, quelle: "eigen" }, x.K.ctxE);
       return e && e.teile && e.teile.length && e.teile[0][0] !== "ohne" && P().profil ? W.profilSVG(P().profil(e), { h: 22 }) : "";
     };
-    const gruppen = [];
-    for (const [art, name] of Object.entries(V66().ARTEN)) {
-      const G = L.filter((v) => v.art === art); if (!G.length) continue;
-      gruppen.push(`<h3 class="abschnitt">${esc(name)}</h3><ul class="mp-wahl">${G.map((v) => `<li><button type="button" class="mp-zeile mp-vorlage" data-mpv="${v.id}">
+    const zurueckHin = () => (direkt ? M.hinzufuegen(ds, zurueck) : stufenBlatt(ds, sp, zurueck));
+    const html = `<h2 id="v59-ov-h" tabindex="-1">${esc(St ? St.name : spName(sp))}</h2><p class="sub">${esc(spName(sp))} · ${esc(tagText(ds))}</p>
+      <ul class="mp-wahl">${L.map((v) => `<li><button type="button" class="mp-zeile mp-vorlage" data-mpv="${v.id}">
         <span class="mp-vt"><b>${esc(v.titel)}</b><small>${v.fest ? esc(W.dauerText(v.std * 60)) : `${esc(W.dauerText(v.min * 60))} – ${esc(W.dauerText(v.max * 60))}`}</small></span>
-        <span class="mp-vp">${profil(v)}</span></button></li>`).join("")}</ul>`);
-    }
-    const bib = ["rad", "lauf", "schwimm"].includes(basis) && C.D.enduco_bib && C.D.enduco_bib.workouts && Object.keys(C.D.enduco_bib.workouts).length;
-    const html = `<h2 id="v59-ov-h" tabindex="-1">${esc((V66().SPORTARTEN.find((s) => s[0] === sp) || [, sp])[1])}</h2><p class="sub">${esc(tagText(ds))} · Vorlage wählen</p>
-      ${gruppen.join("")}
-      ${bib ? `<h3 class="abschnitt">Aus deiner Enduco-Bibliothek</h3><ul class="mp-wahl"><li><button type="button" class="mp-zeile" data-mpbibl><b>Workout aus der Bibliothek wählen</b>${W.icon("weiter", 18)}</button></li></ul>` : ""}
-      <p class="hint">Vorlagen aus den Trainingsmodellen der Seite (${esc(V66().VERSIONS.vorlagen)}); Ziele aus deinem aktiven Zonenprofil. Nach Garmin geht nur, was du mit «An Garmin senden» auslöst; Enduco bleibt unverändert.</p>
+        <span class="mp-vp">${profil(v)}</span></button></li>`).join("")}</ul>
+      ${St ? `<h3 class="abschnitt">Über</h3><p class="ek-text mp-ueber">${esc(St.text)}</p>` : ""}
       ${fuss("data-mpz")}`;
     const ov = V59().blatt("mp-neu", html);
-    ov.querySelector("[data-mpz]").onclick = () => M.hinzufuegen(ds, zurueck);
-    ov.querySelectorAll("[data-mpv]").forEach((b) => (b.onclick = () => dauerBlatt(ds, sp, b.dataset.mpv, zurueck)));
-    const bb = ov.querySelector("[data-mpbibl]"); if (bb) bb.onclick = () => bibBlatt(ds, sp, zurueck);
+    ov.querySelector("[data-mpz]").onclick = zurueckHin;
+    ov.querySelectorAll("[data-mpv]").forEach((b) => (b.onclick = () => dauerBlatt(ds, sp, b.dataset.mpv, zurueck, () => vorlagenBlatt(ds, sp, zurueck, stufe, direkt))));
   }
-  function dauerBlatt(ds, sp, id, zurueck) {
+  /** Schritt 4: Trainingsdauer – Kacheln TL und Distanz, grosses Profil mit Minutenachse, grosse Dauer, Regler; alles live (V9.4 planen-fluss-1.0). */
+  function dauerBlatt(ds, sp, id, zurueck, vorher) {
     const W = V6(), x = tagVon(ds); if (!x) return;
     const B = V66().bereich(id), drinnen = sp.endsWith("_drinnen");
-    const html = `<h2 id="v59-ov-h" tabindex="-1">${esc((V66().vorlagen(sp).find((v) => v.id === id) || {}).titel || "Training")}</h2><p class="sub">${esc(tagText(ds))}${drinnen ? " · drinnen" : ""}</p>
-      <div class="kv ek-kv mp-kv"><div><b data-mpk="dauer"></b><span>Dauer</span></div><div><b data-mpk="tl"></b><span>TL ≈</span></div><div><b data-mpk="km"></b><span>Distanz ≈</span></div></div>
+    const html = `<div class="blatt-titel mp-dauer-titel">${W.icon("uhr", 30)}<h2 id="v59-ov-h" tabindex="-1">${esc((V66().vorlagen(sp).find((v) => v.id === id) || {}).titel || "Training")}</h2><p class="sub">${esc(tagText(ds))}${drinnen ? " · drinnen" : ""}</p></div>
+      <div class="mp-kacheln"><div><span>Training Load</span><b data-mpk="tl"></b></div><div><span>Distanz</span><b data-mpk="km"></b></div></div>
       <p class="warn-t" data-mpaufbau hidden></p>
-      <div class="mp-prof" data-mpprof></div>
-      ${B.fest ? `<p class="hint">Feste Dauer.</p>` : `<label class="mp-dauer"><span>Dauer</span><input type="range" min="${B.min}" max="${B.max}" step="5" value="${B.std}" data-mpdauer aria-label="Dauer in Minuten"></label>`}
-      <ul class="mo-ablauf" data-mpablauf></ul>
-      <p class="hint">TL und Distanz sind Schätzungen aus deinem Zonenprofil (${esc(V66().VERSIONS.tl)}), keine Messung.</p>
+      <div class="mp-prof gross" data-mpprof></div><div class="mp-achse" data-mpachse aria-hidden="true"></div>
+      <p class="mp-gross" data-mpk="dauer"></p>
+      ${B.fest ? `<p class="hint">Feste Dauer.</p>` : `<label class="mp-dauer mp-regler"><input type="range" min="${B.min}" max="${B.max}" step="5" value="${B.std}" data-mpdauer aria-label="Dauer in Minuten"></label>`}
+      <details class="mp-mehr"><summary>Ablauf</summary><ul class="mo-ablauf" data-mpablauf></ul><p class="hint">TL und Distanz sind Schätzungen aus deinem Zonenprofil (${esc(V66().VERSIONS.tl)}), keine Messung.</p></details>
       <p class="warn-t" data-mpfehler hidden></p>
-      ${fuss("data-mpz", `<button type="button" class="btn primary gross" data-mpok>${W.icon("check", 18)} Speichern</button>`)}`;
+      ${fuss("data-mpz", `<button type="button" class="btn gross${B.fest ? " primary" : ""}" data-mpok>Speichern ${W.icon("check", 18)}</button>`)}`;
     const ov = V59().blatt("mp-neu", html);
     const sl = ov.querySelector("[data-mpdauer]"), k = (n) => ov.querySelector(`[data-mpk="${n}"]`);
     const zeig = () => {
       const d = sl ? +sl.value : B.std;
       const e = V66().einheit({ uid: "x", vorlage: id, dauer: d, quelle: "eigen", drinnen }, x.K.ctxE), S = V66().schaetzung(e, bezug(x.K));
       k("dauer").textContent = W.dauerText(e.dauer * 60);
+      const ax = ov.querySelector("[data-mpachse]");
+      if (ax && V94()) ax.innerHTML = V94().achse(e.dauer).map((t) => `<span style="left:${t.pct}%">${t.min}</span>`).join("");
       k("tl").textContent = isNum(S.tl) ? `${S.vollstaendig ? "" : "mind. "}${S.tl}` : "–";
       k("km").textContent = isNum(S.km) && S.km > 0 ? `${komma(S.km)} km` : "–";
       aufbauZeigen(ov.querySelector("[data-mpaufbau]"), aufbauText(e, ds, S.km));
       ov.querySelector("[data-mpprof]").innerHTML = e.teile && e.teile.length && e.teile[0][0] !== "ohne" && P().profil ? W.profilSVG(P().profil(e), { gross: true, h: 90 }) : "";
       ov.querySelector("[data-mpablauf]").innerHTML = (e.ablauf || []).map((a) => `<li>${esc(a)}</li>`).join("");
     };
-    if (sl) sl.oninput = zeig; zeig();
-    ov.querySelector("[data-mpz]").onclick = () => vorlagenBlatt(ds, sp, zurueck);
+    const ok = ov.querySelector("[data-mpok]");
+    if (sl) sl.oninput = () => { ok.classList.add("primary"); zeig(); }; zeig();      // wie Enduco: «Speichern» wird weiss, sobald der Regler bewegt wurde
+    ov.querySelector("[data-mpz]").onclick = () => (vorher ? vorher() : stufenBlatt(ds, sp, zurueck));
     ov.querySelector("[data-mpok]").onclick = async () => {
       // V7.5 einheit-felder-1.1: «drinnen» nur gespeichert, wenn es von der Indoor-Phase abweicht (draussen in der Phase = false)
       const sport = sp.replace("_drinnen", ""), dw = (sport === "rad" || sport === "lauf") && window.V75UI ? window.V75UI.drinnenFeld(sport, ds, drinnen) : (drinnen || null);
@@ -1185,7 +1202,7 @@
       }));
     };
     ov.querySelector("[data-mpq]").oninput = (ev) => liste(ev.target.value); liste("");
-    ov.querySelector("[data-mpz]").onclick = () => vorlagenBlatt(ds, sp, zurueck);
+    ov.querySelector("[data-mpz]").onclick = () => stufenBlatt(ds, sp, zurueck);
   }
 
   /* ---------- Wochenaktionen ---------- */

@@ -311,11 +311,11 @@
   function binden() {
     const B = ST.box;
     B.querySelectorAll("[data-k4blatt]").forEach((b) => (b.onclick = () => window.APP && window.APP.tagBlatt && window.APP.tagBlatt(b.dataset.k4blatt)));
-    const auf = (ds, uid) => M().einheit(ds, uid, { zurueck: () => { if (window.V59) window.V59.schliessen(); N.neu(); } });
+    const auf = (ds, uid, bearbeiten) => M().einheit(ds, uid, { zurueck: () => { if (window.V59) window.V59.schliessen(); N.neu(); }, bearbeiten: !!bearbeiten });
     B.querySelectorAll("button[data-k4e]").forEach((b) => (b.onclick = () => auf(b.dataset.k4d, b.dataset.k4e)));
     B.querySelectorAll(".k4-e-ed").forEach((r) => {
       const ds = r.dataset.k4d, uid = r.dataset.k4e, mo = V78().montag(ds);
-      const a = r.querySelector("[data-k4auf]"); if (a) a.onclick = () => auf(ds, uid);
+      const a = r.querySelector("[data-k4auf]"); if (a) a.onclick = () => auf(ds, uid, true);     // V9.4 planen-fluss-1.0: im Bearbeiten gleich «Training bearbeiten»
       const l = r.querySelector("[data-k4elock]"); if (l) l.onclick = () => schritt(mo, { art: "einheit", date: ds, uid, felder: { gesperrt: l.getAttribute("aria-pressed") !== "true" } });
       const z = r.querySelector("[data-k4zieh]");
       if (z) { z.addEventListener("pointerdown", (ev) => ziehen(z, r, ev)); z.addEventListener("click", (ev) => { if (ev.detail === 0) verschiebenBlatt(ds, uid); }); }   // Tastatur: Tag wählen

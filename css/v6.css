@@ -1816,3 +1816,28 @@ body.k4-edit .kal-v7.k4 .k4-r-kopf { display: none; }
 .wl-je summary::-webkit-details-marker { display: none; }
 .wl-je summary::after { content: "›"; font-size: 16px; line-height: 1; transition: transform .2s; }
 .wl-je[open] summary::after { transform: rotate(90deg); }
+
+/* ---------- V9.4 planen-fluss-1.0: Training planen wie Enduco (Sportart → Intensität → Workout → Dauer) ---------- */
+.mp-stufe { align-items: center; }
+.mp-st-kachel { flex: none; width: 34px; height: 34px; border-radius: 10px; background: var(--zc); }
+.mp-st-kachel.bib { background: var(--surface-2, var(--btn-2)); border: 1px solid var(--line); }
+.mp-stufe .mp-vt small, .mp-stufen .mp-vt small { white-space: normal; }
+.mp-ueber { color: var(--muted); }
+.mp-kacheln { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 8px; }
+.mp-kacheln > div { padding: 10px 14px; border-radius: 14px; background: var(--surface-2, var(--btn-2)); display: flex; flex-direction: column; gap: 2px; }
+.mp-kacheln span { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.mp-kacheln b { font-size: 20px; font-weight: 650; }
+.mp-prof.gross { margin: 8px 0 0; }
+.mp-achse { position: relative; height: 16px; margin-bottom: 6px; font-size: 11px; color: var(--muted); }
+.mp-achse span { position: absolute; top: 0; transform: translateX(-50%); }
+.mp-achse span:first-child { transform: none; }
+.mp-gross { text-align: center; font: 700 40px/1.1 var(--f-body); margin: 6px 0 0; }
+.mp-regler { margin-top: 0; }
+.mp-mehr summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 4px 0; }
+.mp-dauer-titel svg { width: 30px; height: 30px; }
+.mp-sp-w { flex: none; width: 28px; display: inline-flex; justify-content: center; color: var(--fg); }
+.mp-sporte .mp-zeile b { flex: 1; }
+.mp-mehr summary { list-style: none; display: flex; align-items: center; gap: 6px; }
+.mp-mehr summary::-webkit-details-marker { display: none; }
+.mp-mehr summary::after { content: "›"; font-size: 16px; line-height: 1; transition: transform .2s; }
+.mp-mehr[open] summary::after { transform: rotate(90deg); }

@@ -417,3 +417,5 @@ Nur offene Punkte. Erledigtes steht in `CHANGELOG.md` und `docs/AUDIT_V55.md`.
      Tag, «Rückgängig» stellt ihn zurück; «Ignorieren» lässt den Plan und die Karte kommt nicht wieder; mit Krankheitszeichen wird der Tag ohne Frage Ruhetag.
 157. **Heute schlicht (V9.9, heute-einfach-1.0, 23.11.):** gebaut (Begrüssung als eine Antwort «Was mache ich heute?», Check-in als eine Zeile, Ampel-Empfehlung nur noch bei
      Krankheitszeichen/Schmerzen). Auf dem iPhone prüfen: Satz oben passt zum Tag (geplant, erledigt, frei); nach dem Check-in nur eine Zeile. Weiter vereinfachen nach Rückmeldung.
+158. **W3 Training planen und bearbeiten wie Enduco (V9.4, planen-fluss-1.0, 23.11.):** gebaut (Sportart → Intensität → Workout → Dauer; «Training bearbeiten» mit Indoor/Draussen;
+     Bearbeiten-Modus öffnet es gleich). Auf dem iPhone prüfen: eine Einheit planen und wieder löschen, Dauer ändern und ↶/↷; neben Enduco: was anders aussieht, mit Screenshot.

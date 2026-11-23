@@ -162,7 +162,7 @@
   M.plan = function (ds, uid, opt) {
     C = UI() && UI().C; if (!C || !P() || !P().kontextFuer || !V66()) return false;
     const x = planSuchen(ds, uid); if (!x) return false;
-    return oeffnen({ art: "plan", ds, uid, sport: x.e.sport, zurueck: (opt && opt.zurueck) || null });
+    return oeffnen({ art: "plan", ds, uid, sport: x.e.sport, zurueck: (opt && opt.zurueck) || null, bearbeiten: !!(opt && opt.bearbeiten) });
   };
   /** Workout aus der Bibliothek (p wie ein Kalendereintrag, mit steps), nur lesen; opt.datumText, opt.extra (HTML). */
   M.workout = function (p, opt) {
@@ -245,6 +245,8 @@
     if (window.V74UI) window.V74UI.binden(sc, () => zeichnen());
     const f = LETZT && SEITE.querySelector(`[data-v73="${LETZT}"]`);
     if (f && document.activeElement === document.body) try { f.focus({ preventScroll: true }); } catch (e) { /* */ }
+    // V9.4 planen-fluss-1.0: aus dem Bearbeiten-Modus des Kalenders gleich «Training bearbeiten» (wie Enduco); nur einmal
+    if (Z.bearbeiten) { Z.bearbeiten = false; if (X.art === "plan" && X.darf && !kraft && !drau) optionenBlatt(); }
   }
   function kopf(bk) {
     const W = V6(), gesperrt = X.art === "plan" && (X.e.gesperrt || X.t.gesperrt);
@@ -685,8 +687,11 @@
     const e = X.e, B = e.quelle === "bibliothek" ? null : V66().bereich(e.vorlage || e.id), iv = hatIntervalle();
     const zeile = (k, titel, wert, satz, an) => `<li><button type="button" class="v6-zeile v73-zeile" data-v73o="${k}"${an ? "" : " disabled"}><span><b>${esc(titel)}</b><small>${esc(satz)}</small></span><em>${esc(wert)}</em>${ic("weiter", 18)}</button></li>`;
     const dauerSatz = B && !B.fest ? `${V6().dauerText(B.min * 60)} bis ${V6().dauerText(B.max * 60)}` : e.quelle === "bibliothek" ? "wie im Enduco-Workout" : "feste Dauer";
-    const ov = blatt("v73-optionen", `<div class="blatt-titel">${ic("regler", 34)}<h2 id="v59-ov-h" tabindex="-1">Workout bearbeiten</h2><p class="sub">${esc(X.titel)} · ${esc(tagText(X.ds))}</p></div>
+    // V9.4 planen-fluss-1.0: «Training bearbeiten» wie Enduco, mit «Zu Indoor/Draussen ändern» (Rad und Laufen, einheit-felder-1.1)
+    const io = (X.sport === "rad" || X.sport === "lauf") && e.quelle !== "bibliothek" && e.art !== "test";
+    const ov = blatt("v73-optionen", `<div class="blatt-titel">${ic("regler", 34)}<h2 id="v59-ov-h" tabindex="-1">Training bearbeiten</h2><p class="sub">${esc(X.titel)} · ${esc(tagText(X.ds))}</p></div>
       <ul class="v6-aktionen v73-zeilen">
+        ${io ? `<li><button type="button" class="v6-zeile v73-zeile" data-v73o="indoor"><span><b>${e.drinnen ? "Zu Draussen ändern" : "Zu Indoor ändern"}</b><small>${e.drinnen ? (X.sport === "rad" ? "auf der Strasse statt auf der Rolle" : "draussen statt auf dem Laufband") : X.sport === "rad" ? "auf der Rolle statt auf der Strasse" : "auf dem Laufband statt draussen"}</small></span>${ic("weiter", 18)}</button></li>` : ""}
         ${zeile("dauer", "Trainingsdauer", V6().dauerText(e.dauer * 60), dauerSatz, !!(B && !B.fest))}
         ${zeile("ein", "Warm-up-Dauer", `${einfahrenMin()} min`, iv ? "Locker bis zum ersten Intervall (5–40 min)" : "nur bei Einheiten mit Intervallen", iv)}
         ${zeile("pausen", "Intervall-Intensität", `${isNum(e.pausen) ? e.pausen : 50} %`, iv ? "steuert die Pausenlänge zwischen den Intervallen" : "nur bei Einheiten mit Intervallen", iv)}
@@ -699,6 +704,7 @@
         speichern({ art: "entfernen" }).then((f) => f && fehlerIn(ov, f));
         return;
       }
+      if (k === "indoor") return indoorBlatt();
       reglerBlatt(k);
     }));
   }

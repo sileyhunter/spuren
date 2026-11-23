@@ -1,3 +1,13 @@
+## Training planen und bearbeiten wie Enduco (V9.4, planen-fluss-1.0, Etappe W3)
+- «Training planen» (vorher «Training hinzufügen»; Tagesblatt, Heute) als Blätter mit ‹: **Sportart** (weisse Symbole) → **Intensität** (`V94.STUFEN`: Grundlage = grundlage, lang,
+  technik, aktivierung, kraft, mobility · Tempo/Schwelle = tempo, schwelle, renntempo, koppel · VO2max · Test; nur Stufen mit Vorlagen; eine anaerobe Stufe gibt es nicht, weil keine
+  Vorlage anaerob ist; hat eine Sportart nur eine Stufe, z. B. Kraft, fällt der Schritt weg; die Enduco-Bibliothek ist eine Zeile hier) → **Workout** (Name, Dauerbereich, Profil;
+  «Über» mit dem Satz der Stufe) → **Trainingsdauer** (Uhr, Titel, Kacheln Training Load und Distanz, grosses Profil mit Minutenachse `V94.achse`, grosse Dauer, Regler; «Speichern»
+  grau, bis der Regler bewegt wurde, dann weiss – speichern geht auch ohne Bewegen; Ablauf eingeklappt). Gespeichert wird wie bisher (`V66.aendern` «hinzufuegen», W1 plant um).
+- «Training bearbeiten» (vorher «Workout bearbeiten», Einheit-Seite → Optionen): «Zu Indoor ändern» bzw. «Zu Draussen ändern» (Rad und Laufen, nicht Tests und Bibliothek; Blatt wie
+  die Kachel, einheit-felder-1.1), Trainingsdauer, Warm-up-Dauer, Intervall-Intensität, Löschen. Im Bearbeiten-Modus des Kalenders öffnet Tippen auf eine Einheit die Seite und
+  gleich dieses Blatt (`V73UI.plan(…, { bearbeiten: true })`). Felder und Grenzen unverändert (einheit-felder-1.1, einheit-anpassen-1.0).
+
 ## Einheit als Seite (V7.3, einheit-2.0, schritte-1.0)
 - Jede Einheit aus Mein Plan (Kalender, Tagesblatt, Heute, Woche nach Modell) und jedes Bibliotheks-Workout öffnet als ganze Seite (`V73UI.plan(ds, uid,
   { zurueck })`, `V73UI.workout(p, opt)`); `V66UI.einheit` und `V6H.einheitP` leiten dorthin, das alte Blatt bleibt nur als Rückfall. Die Seite liegt unter den
@@ -148,7 +158,7 @@
   `tests/test_verpflegung.cjs` nachführen.
 
 ## Aktivitäten draussen (V7.7, aktivitaet-plan-1.0, Etappe 4 Teil 1; Vorschlag vom 17.11.2026, von Silas am 18.11.2026 bestätigt, Ersatz «nur Rad» von Claude entschieden)
-- Skitour, Wandern, Langlauf und Traillauf im Voraus planen (Tagesblatt → «Training hinzufügen» → «Draussen – blockiert den Tag», Blatt `V77UI.blatt`): Dauer 1–10 h in
+- Skitour, Wandern, Langlauf und Traillauf im Voraus planen (Tagesblatt → «Training planen» → «Draussen – blockiert den Tag», Blatt `V77UI.blatt`): Dauer 1–10 h in
   15-min-Schritten, Z1 oder Z2 nach Puls (Pulszonen vom Laufen, wie Wandern in `V6.SKALA`), Uhrzeit und Notiz optional; ein Eintrag je Tag. Der Rest von Etappe 4 (Kalender,
   Zyklus, Bearbeiten, Tagesblatt wie enduco) erst nach Silas' Okay.
 - Wirkung (eigene Festlegungen, Wissen Kapitel «draussen»): der Tag gehört der Aktivität (`V66.verteilen` `aktTag`: keine andere Einheit des Vorschlags), ab 2 h am Vortag

@@ -1,5 +1,15 @@
 # Änderungen
 
+## V9.4 · 23.11.2026 · Training planen und bearbeiten wie Enduco (W3, planen-fluss-1.0)
+Etappe W3 des Auftrags «Woche wie Enduco» (nach V9.9 gebaut; die Nummer V9.4 war für W3 reserviert).
+- «Training planen» statt «Training hinzufügen»: Sportart → **Intensität** (neu: Grundlage · Tempo/Schwelle · VO2max · Test, mit Farbkachel und Kurzsatz; nur, was die Sportart hat)
+  → Workout (Name, Dauerbereich, Profil, «Über») → Trainingsdauer (Kacheln Training Load und Distanz, grosses Profil mit Minutenachse, grosse Dauer, Regler; «Speichern» wird weiss,
+  sobald der Regler bewegt wurde). Sportarten mit weissen Symbolen.
+- «Training bearbeiten» statt «Workout bearbeiten», neu mit «Zu Indoor ändern» / «Zu Draussen ändern». Im Bearbeiten-Modus des Kalenders öffnet Tippen auf eine Einheit gleich dieses Blatt.
+- Rechenregeln, Felder und Grenzen unverändert. `js/v94.js` (neu), `js/v66-ui.js`, `js/v73-ui.js`, `js/v78-ui.js`, `js/v6-heute.js`, `js/wissen.js` (1.40), `css/v6.css`, `index.html`,
+  `sw.js`; Test `tests/test_v94.cjs` (neu, 5); Demo-Durchlauf mit Playwright (Rad → Tempo/Schwelle → Tempo 2 × 20 → Regler → Speichern → Einheit im Plan; Bearbeiten → Einheit →
+  «Training bearbeiten»).
+
 ## V9.9 · 23.11.2026 · Heute schlicht (heute-einfach-1.0)
 Silas (23.11.): «Es soll möglichst einfach aussehen und sich einfach handhaben.» Punkt «Heute entrümpeln» der offenen Liste (frühere Bedingung «erst Mockup» mit Silas' Freigabe vom 23.11.
 «ohne mich andauernd zu fragen» ersetzt).

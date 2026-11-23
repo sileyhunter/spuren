@@ -162,6 +162,9 @@
   `V66.dichtTeile`/`dichtMax`/`dichtAnwenden`, `V66.zielText`/`zielZeilen`, `V66.zielFp`/`zielAusGilt`; `V66.einheit` mit `dicht`/`zusatz`), `js/v64-ui.js` (`K.ziel`,
   `K.w0vorZiel`), `js/v66-ui.js` (`ctx.ziel`, Bericht), `js/v78-ui.js` (Zyklus-Bereich), `js/v92.js` (`V92.zielBericht`), `tools/merge_daily.py` (`dicht`, `zusatz`, `zielAus`),
   `js/wissen.js` (1.38), `tests/test_v95.cjs`, `tests/test_tools.py`
+- **V9.4 (W3 Training planen und bearbeiten wie Enduco, planen-fluss-1.0; 23.11.2026, nach V9.9 gebaut):** `js/v94.js` (neu: `V94.STUFEN`, `V94.stufeVon`, `V94.stufen`,
+  `V94.achse`), `js/v66-ui.js` (`stufenBlatt`, `vorlagenBlatt` je Stufe, `dauerBlatt` neu), `js/v73-ui.js` («Training bearbeiten» mit «Zu Indoor/Draussen ändern», `opt.bearbeiten`),
+  `js/v78-ui.js` (Bearbeiten-Modus öffnet gleich «Training bearbeiten»), `js/v6-heute.js`, `js/wissen.js` (1.40), `css/v6.css`, `index.html`, `sw.js`, `tests/test_v94.cjs`
 - **V9.9 (Heute schlicht, heute-einfach-1.0; 23.11.2026):** `js/v91.js` (`V91.heuteAntwort`, `V91.dauerText`), `js/v59.js` (Begrüssung, Check-in-Zeile), `js/v74-ui.js`, `css/v6.css`,
   `tests/test_v99.cjs`
 - **V9.8 (Check-in passt an, checkin-anpassung-1.0 / ampel-plan-1.3; 23.11.2026):** `js/v74.js` (`V74.wirkung`, `angenommen` in `eintrag`/`pruefen`/`zusammen`), `js/v74-ui.js`
