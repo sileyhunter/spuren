@@ -4,7 +4,7 @@
 Silas: Training läuft auf der Uhr, die Strecke zum Navigieren daneben – beides getrennt, ein Training mit GPX braucht er nicht (und umgekehrt). Darum:
 - **GPX aus «Training → Route»** (GPX teilen / GPX in Dateien) enthält nur noch die Strecke mit Start, Ziel und den Zwischenzielen; die Wegpunkte «Intervall 1: …» sind weg (`TRUI.gpxExtras` gibt `null` zurück). Der gewählte Vorschlag wird beim Export weiterhin auf dem Gerät gespeichert («Vorschlag vs. Ist»).
 - Hinweis im Training-Blatt: «GPX in Dateien (nur die Strecke, ohne Training)». Die Intervall-Bänder über dem Höhenprofil im Planer bleiben (Ansicht, kein Export).
-- Neu: `tests/test_v9151.cjs` (4 Tests). `sw.js`-CACHE angehoben, `demo.html` neu erzeugt.
+- Neu: `tests/test_v9151.cjs` (4 Tests). `sw.js`-CACHE angehoben; `test_v9150` prüft den Cache-Namen nur noch als Muster.
 
 ## V9.15.0 · 24.11.2026 · Planer schlank (planer-schlank-1.0; Outdoor O2, Routen 7.3)
 Der Planer öffnet schlank: eine Sportleiste, Tippen setzt Punkte, unten die Eckdaten und ein Knopf «Fertig». Alles Bisherige steht unverändert unter «Details». Neu gebaut auf dem Stand von GitHub (V9.14.1); der erste Bau war nie gepusht worden.
