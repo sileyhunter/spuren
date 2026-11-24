@@ -192,7 +192,7 @@
             <li>Streckentyp wählen (z. B. Rennrad) und speichern; in Garmin Connect bei der Strecke «An Gerät senden».</li></ol>
           <p class="hint">Fehlt Garmin Connect im Teilen-Menü, verdrängt es oft eine andere App, die GPX öffnet. Sonst geht es in Garmin Connect im
             Browser: Training → Strecken → Importieren.</p>
-          <p class="hint"><b>Kürzer:</b> «An Garmin senden» legt die Strecke nach deinem Ja im Nacht-Update (gegen 23 Uhr) in Garmin Connect an (nur dort, nie aufs Gerät). Dann in Garmin Connect bei der
+          <p class="hint"><b>Kürzer:</b> «An Garmin senden» bereitet die Strecke nach deinem Ja vor; auf Zuruf im Chat («schick die Strecken») legt Claude sie in Garmin Connect an (nur dort, nie aufs Gerät). Dann in Garmin Connect bei der
             Strecke «An Gerät senden» tippen.</p></details>
         <details class="rp-src" id="rp-srcbox"><summary>Herkunft, Methode, Annahmen</summary><div id="rp-src"></div></details>
         <div class="sr-only" id="rp-live" aria-live="polite"></div>
@@ -1861,9 +1861,9 @@
     GS.sum = o.pruefsumme;
     const st = SG.stand(C.D, I.data.strecke_senden, o.id, o.pruefsumme);
     if (st.status === "gesendet" && st.gleich) { garminZu(); msg("Diese Fassung ist schon in Garmin Connect – dort bei der Strecke «An Gerät senden» tippen."); renderGarminStand(); return; }
-    if (st.status === "offen" && st.gleich) { garminZu(); msg("Für diese Fassung liegt schon ein Auftrag bereit – das Nacht-Update legt sie an."); renderGarminStand(); return; }
+    if (st.status === "offen" && st.gleich) { garminZu(); msg("Für diese Fassung liegt schon ein Auftrag bereit – sag im Chat «schick die Strecken»."); renderGarminStand(); return; }
     GS.bereit = o;
-    $("pl-gs-text").textContent = (`«${o.name}» (${SG.TYP_TEXT[o.typ]}, ${o.km.toFixed(1).replace(".", ",")} km${o.hm != null ? ", " + o.hm + " Hm" : ""}) in Garmin Connect anlegen? Das Nacht-Update (gegen 23 Uhr) legt sie dort an;` +
+    $("pl-gs-text").textContent = (`«${o.name}» (${SG.TYP_TEXT[o.typ]}, ${o.km.toFixed(1).replace(".", ",")} km${o.hm != null ? ", " + o.hm + " Hm" : ""}) in Garmin Connect anlegen? Claude legt sie danach dort an, sobald du im Chat «schick die Strecken» sagst;` +
       ` aufs Gerät schickst du sie danach in Garmin Connect selbst.` + (st.status === "gesendet" ? " Eine ältere Fassung bleibt dort liegen, bis du sie löschst." : "") +
       (/von Hand gezeichnet/.test(o.beschreibung) ? " Achtung: ein Teil ist von Hand gezeichnet (kein Wegnetz) und steht so in der Beschreibung." : ""));
     $("pl-gs").hidden = false; msg("");
@@ -1874,7 +1874,7 @@
     o.erstellt = o.ja_am = new Date().toISOString();                // der Zeitpunkt des Ja
     if (!Array.isArray(I.data.strecke_senden)) I.data.strecke_senden = [];
     try { await I.upsert("strecke_senden", o); } catch (e) { msg("Der Auftrag konnte nicht gespeichert werden."); return; }
-    garminZu(); msg(`Auftrag für «${o.name}» liegt bereit: das Nacht-Update legt die Strecke in Garmin Connect an.`); renderGarminStand();
+    garminZu(); msg(`Auftrag für «${o.name}» liegt bereit – sag im Chat «schick die Strecken», dann legt Claude sie in Garmin Connect an.`); renderGarminStand();
   }
   /** V6.6 (Teil 0): GPX als Datei sichern statt teilen – im Teilen-Menü fehlt Garmin Connect oft, aus der Dateien-App klappt es meist. */
   function dateiSichern(file, text) {

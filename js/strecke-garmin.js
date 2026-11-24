@@ -1,6 +1,6 @@
 /* Ironman Notebook – V9.14.0 gpx-export-2.0 (Routen 7.2): Strecke an Garmin senden.
  * Die Seite kann nicht selbst mit Garmin sprechen. Wie bei den Workouts legt sie nur einen verschlüsselten Auftrag an (Eingabe strecke_senden →
- * strecken_auftraege); das Nacht-Update oder der Chat lädt die Strecke mit upload_course in Garmin Connect hoch, liest sie zurück und trägt
+ * strecken_auftraege); der Chat (später evtl. das Nacht-Update) lädt die Strecke mit upload_course in Garmin Connect hoch, liest sie zurück und trägt
  * das Ergebnis ein (tools/strecken_senden.py). Aufs Gerät geschickt wird nie: das tippt Silas in Garmin Connect selbst («An Gerät senden»).
  * Ein Auftrag entsteht nur mit ausdrücklichem Ja (Knopf mit Bestätigung, `ja_am`), nie automatisch und nie über «Alle Tage senden».
  * Dieser Teil ist rein (läuft auch in Node, tests/test_v9140.cjs): GPX prüfen, Typ, Name, Beschreibung, Auftrag, Stand. */
@@ -108,8 +108,8 @@
     if (!a) return { status: null, text: "" };
     const gleich = !!pruefsumme && a.pruefsumme === pruefsumme;
     if (a.status === "gesendet") return { status: "gesendet", text: "In Garmin Connect" + (a.gesendet_am ? " seit " + datum(a.gesendet_am) : "") + (gleich ? "" : " (ältere Fassung)"), garmin_id: a.garmin_id, zeit: a.gesendet_am, gleich };
-    if (a.status === "fehler") return { status: "fehler", text: "Fehlgeschlagen: " + ((a.fehler && a.fehler[0]) || a.fehler || "unbekannter Grund") + " – das Nacht-Update versucht es nicht noch einmal – sag mir Bescheid.", gleich };
-    return { status: "offen", text: "Auftrag liegt bereit: das Nacht-Update legt die Strecke in Garmin Connect an.", gleich };
+    if (a.status === "fehler") return { status: "fehler", text: "Fehlgeschlagen: " + ((a.fehler && a.fehler[0]) || a.fehler || "unbekannter Grund") + " – es wird nicht von selbst wiederholt – sag im Chat Bescheid.", gleich };
+    return { status: "offen", text: "Auftrag liegt bereit – sag im Chat «schick die Strecken».", gleich };
   };
   const datum = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("de-CH", { day: "numeric", month: "numeric", year: "numeric" }); };
 
