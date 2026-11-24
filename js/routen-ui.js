@@ -178,14 +178,22 @@
           <button class="btn" id="pl-save">Speichern</button>
           <button class="btn primary" id="pl-gpx" title="Teilen-Menü des Geräts">GPX teilen</button>
           <button class="btn" id="pl-gpx-dl" title="Als Datei sichern (iPhone: Dateien → Downloads)">GPX in Dateien</button>
+          <button class="btn" id="pl-garmin" title="Strecke in Garmin Connect anlegen (nur mit deinem Ja)">An Garmin senden</button>
+        </div>
+        <div class="rp-gs" id="pl-gs" hidden role="group" aria-label="Strecke an Garmin senden">
+          <p id="pl-gs-text"></p>
+          <div class="row"><button class="btn primary" id="pl-gs-ja">Ja, senden</button><button class="btn" id="pl-gs-nein">Abbrechen</button></div>
         </div>
         <p class="hint" id="pl-msg" role="status"></p>
+        <p class="hint" id="pl-gs-stand" role="status"></p>
         <details class="rp-garmin" id="rp-garmin" hidden><summary>So kommt die Strecke auf Fenix und Edge</summary>
           <ol><li>«GPX in Dateien» tippen: Die Datei landet in der Dateien-App (Downloads).</li>
             <li>In der Dateien-App die Datei lange drücken → Teilen → Garmin Connect (allenfalls unter «Mehr»).</li>
             <li>Streckentyp wählen (z. B. Rennrad) und speichern; in Garmin Connect bei der Strecke «An Gerät senden».</li></ol>
           <p class="hint">Fehlt Garmin Connect im Teilen-Menü, verdrängt es oft eine andere App, die GPX öffnet. Sonst geht es in Garmin Connect im
-            Browser: Training → Strecken → Importieren. Direkt aus dem Notebook senden kommt später (nur eigene Strecken, mit deiner Freigabe).</p></details>
+            Browser: Training → Strecken → Importieren.</p>
+          <p class="hint"><b>Kürzer:</b> «An Garmin senden» legt die Strecke nach deinem Ja im Nacht-Update (gegen 23 Uhr) in Garmin Connect an (nur dort, nie aufs Gerät). Dann in Garmin Connect bei der
+            Strecke «An Gerät senden» tippen.</p></details>
         <details class="rp-src" id="rp-srcbox"><summary>Herkunft, Methode, Annahmen</summary><div id="rp-src"></div></details>
         <div class="sr-only" id="rp-live" aria-live="polite"></div>
       </div>`;
@@ -1607,6 +1615,7 @@
     $("rp-saverow").hidden = !route && !ST.vias.length;
     $("pl-gpx").disabled = !route; $("pl-gpx").title = route ? "Teilen-Menü des Geräts" : "Erst nach erfolgreichem Routing";
     $("pl-gpx-dl").disabled = !route; $("rp-garmin").hidden = !route;
+    $("pl-garmin").disabled = !route; renderGarminStand();
     renderGap(); renderSki(); renderGravel(); renderWhen(); renderVar(); renderMtb(); renderAlt(); renderWinter(); renderTabs(); renderLegend(); renderInt(); renderArr(); renderWx(); renderSrc();
     renderMap();
     requestAnimationFrame(() => { drawChart(); renderInfo(); });
@@ -1760,6 +1769,7 @@
     $("pl-save").onclick = save;
     $("pl-gpx").onclick = () => gpx(false);
     $("pl-gpx-dl").onclick = () => gpx(true);
+    $("pl-garmin").onclick = garminOeffnen; $("pl-gs-ja").onclick = garminSenden; $("pl-gs-nein").onclick = garminZu;
   }
 
   /* ---------------- Speichern / GPX / Laden ---------------- */
@@ -1820,6 +1830,51 @@
     const text = RT.gpx(route, name, ST.names, extra);
     if (alsDatei) { dateiSichern(file, text); msg(`«${file}» gesichert – weiter mit «So kommt die Strecke auf Fenix und Edge».`); $("rp-garmin").open = true; return; }
     msg(await C.shareOrDownload(file, text));
+  }
+  /* ---------------- V9.14.0 gpx-export-2.0 (Routen 7.2): Strecke an Garmin senden ----------------
+   * Nur mit ausdrücklichem Ja (Knopf «Ja, senden»). Die Seite legt nur einen verschlüsselten Auftrag an (Eingabe strecke_senden); das nächste Update lädt die
+   * Strecke in Garmin Connect hoch (tools/strecken_senden.py). Aufs Gerät geschickt wird nie; nie automatisch, nie über «Alle Tage senden». */
+  let GS = { bereit: null };                                       // geprüfter Auftrag, der auf das Ja wartet
+  const gsId = () => "sg-" + String(ST.editId || "").replace(/[^\w.-]+/g, "").slice(0, 60);
+  const gsInbox = () => (window.V5UI && window.V5UI.Inbox) || null;
+  function garminZu() { GS.bereit = null; $("pl-gs").hidden = true; }
+  /** Stand dieser Strecke (Auftrag liegt bereit · in Garmin Connect · nicht übernommen · Fehler) unter dem Speichern-Block. */
+  function renderGarminStand() {
+    const el = $("pl-gs-stand"); if (!el) return;
+    const SG = window.SG, I = gsInbox();
+    if (!SG || !I || !ST.editId) { el.textContent = ""; return; }
+    const s = SG.stand(C.D, I.data && I.data.strecke_senden, gsId(), GS.sum);
+    el.textContent = s.status ? "Garmin Connect: " + s.text : "";
+  }
+  async function garminOeffnen() {
+    const msg = (t) => ($("pl-msg").textContent = t), SG = window.SG, I = gsInbox();
+    if (!route) { msg("Garmin gibt es nur für eine erfolgreich berechnete Route – nie als Ersatzlinie."); return; }
+    if (!SG || !I || !I.data) { msg("Senden an Garmin ist hier nicht verfügbar."); return; }
+    if (!ST.editId) save();                                         // die Strecke gehört zu einer gespeicherten Route
+    if (!ST.editId) return;
+    const name = $("pl-name").value.trim() || (window.TRUI && window.TRUI.gpxName && window.TRUI.gpxName()) || `${sportDef().label} ${C.dateCH(C.iso(C.today))}`;
+    const extra = window.TRUI && window.TRUI.gpxExtras ? window.TRUI.gpxExtras(route, sim) : null;
+    const text = RT.gpx(route, name, ST.names, extra);
+    const Q = route.quellen || {}, hm = route.profile && route.profile.up;
+    const o = await SG.auftrag({ routeId: ST.editId, name, sport: ST.sport, gpx: text, hm, handKm: Q.hand > 0.5 && Q.hand < route.L - 0.5 ? Q.hand / 1000 : 0 });
+    if (o.fehler) { garminZu(); msg("Nicht gesendet: " + o.fehler); return; }
+    GS.sum = o.pruefsumme;
+    const st = SG.stand(C.D, I.data.strecke_senden, o.id, o.pruefsumme);
+    if (st.status === "gesendet" && st.gleich) { garminZu(); msg("Diese Fassung ist schon in Garmin Connect – dort bei der Strecke «An Gerät senden» tippen."); renderGarminStand(); return; }
+    if (st.status === "offen" && st.gleich) { garminZu(); msg("Für diese Fassung liegt schon ein Auftrag bereit – das Nacht-Update legt sie an."); renderGarminStand(); return; }
+    GS.bereit = o;
+    $("pl-gs-text").textContent = (`«${o.name}» (${SG.TYP_TEXT[o.typ]}, ${o.km.toFixed(1).replace(".", ",")} km${o.hm != null ? ", " + o.hm + " Hm" : ""}) in Garmin Connect anlegen? Das Nacht-Update (gegen 23 Uhr) legt sie dort an;` +
+      ` aufs Gerät schickst du sie danach in Garmin Connect selbst.` + (st.status === "gesendet" ? " Eine ältere Fassung bleibt dort liegen, bis du sie löschst." : "") +
+      (/von Hand gezeichnet/.test(o.beschreibung) ? " Achtung: ein Teil ist von Hand gezeichnet (kein Wegnetz) und steht so in der Beschreibung." : ""));
+    $("pl-gs").hidden = false; msg("");
+  }
+  async function garminSenden() {
+    const msg = (t) => ($("pl-msg").textContent = t), o = GS.bereit, I = gsInbox();
+    if (!o || !I) { garminZu(); return; }
+    o.erstellt = o.ja_am = new Date().toISOString();                // der Zeitpunkt des Ja
+    if (!Array.isArray(I.data.strecke_senden)) I.data.strecke_senden = [];
+    try { await I.upsert("strecke_senden", o); } catch (e) { msg("Der Auftrag konnte nicht gespeichert werden."); return; }
+    garminZu(); msg(`Auftrag für «${o.name}» liegt bereit: das Nacht-Update legt die Strecke in Garmin Connect an.`); renderGarminStand();
   }
   /** V6.6 (Teil 0): GPX als Datei sichern statt teilen – im Teilen-Menü fehlt Garmin Connect oft, aus der Dateien-App klappt es meist. */
   function dateiSichern(file, text) {

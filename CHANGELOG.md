@@ -1,5 +1,16 @@
 # Änderungen
 
+## V9.14.0 · 24.11.2026 · Strecke an Garmin senden (gpx-export-2.0, strecken-senden-1.0, Routen 7.2)
+Silas (13.11.): GPX direkt zu Garmin, `upload_course` nur mit ausdrücklichem Ja. Gebaut auf dem Stand von GitHub; **V9.13.0 und die Nummern 176–179 in `offen-nach-v55.md` bleiben für «Karte einfach» (O1) frei**, das in einer anderen Sitzung gebaut, aber noch nicht gepusht ist.
+- **Planer:** neuer Knopf «An Garmin senden» (nur bei berechneter Route) → Feld mit Name, Typ, Länge, Hm und «Ja, senden» / «Abbrechen»; Stand unter dem Speichern-Block (Auftrag liegt bereit · in Garmin Connect seit … · nicht übernommen · Fehler).
+  Hinweistext «kommt später» ersetzt. «GPX teilen» und «GPX in Dateien» bleiben.
+- **Auftrag statt Direktverbindung:** Eingabe `strecke_senden` (verschlüsselt, mit GPX, SHA-256, Typ, `ja_am`) → `strecken_auftraege`; nur mit Ja, nie automatisch, nie über «Alle Tage senden». GPX-Prüfung vor dem Senden (Seite und Werkzeug).
+- **`tools/strecken_senden.py`:** `plan` (GPX-Dateien + Aktionen für `upload_course`), `eintragen` (Rücklese mit `get_courses`: Name, Länge; Status, Garmin-ID, Audit). Nur Garmin Connect, nie aufs Gerät, nie löschen; gleiche Fassung nie zweimal, Fehler nicht von selbst wiederholt.
+- **Nacht-Update:** Die Aufgabenbeschreibung des geplanten Nacht-Updates erlaubt heute nur `garmin_senden.py plan`; die Strecken führt Claude im Chat auf Zuruf aus, bis Silas die Aufgabe erweitert (`garmin.md`).
+- Browser-Prüfung (Chrome headless, Demo, 390 px, Karte als Attrappe, erfundene Strecke): Feld, «Abbrechen», «Ja, senden», Doppelschutz, Aufräumen nach dem Einspielen, Stände; dabei einen Fehler (fehlende Hilfsfunktion) gefunden und behoben.
+- Tests: `tests/test_v9140.cjs` (neu, 9), `tests/test_tools.py` Abschnitt V9.14 (11 Prüfungen, erfundene Strecke). Bestehende Tests unverändert grün.
+- Nicht geprüft: Karte und Kacheln (CDN gesperrt); der erste echte Upload steht aus (braucht Silas' Ja im Chat); ob `upload_course` die Strecke wie erwartet anlegt und ob sie von selbst aufs Gerät kommt.
+
 ## V9.12.0 · 23.11.2026 · Schwimm-Datenseiten (schwimmseiten-1.0, schwimmzonen-1.0, Auftrag 3.3)
 Silas: «seiten erstellen für das schwimmen, so dass dort die Datenseiten Sinn machen». Bisher stand im Tab Schwimmen ohne Test nur ein leeres Formular.
 - **CSS «geschätzt»:** Feld «Schätzung – noch nicht geschwommen» im CSS-Formular; Anzeige mit «≈», Pille «geschätzt», hohler Punkt im Verlauf. Die Schätzung gilt für Tempo und Plan, erledigt aber keinen

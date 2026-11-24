@@ -53,4 +53,6 @@
   Nacht, Belastung = (1 − 2^(−TSS/CTL_Vortag)) · 100; alle 0–100 %, Lücken bleiben leer, Tag mit Datum. Kein medizinisches Mass. Ein Tag, dessen
   Einheiten noch nicht eingespielt sind (`FK.aktivitaetenBis`: Nacht-Update = Tag des Laufs, Morgen-Update = Vortag), hat Belastung «offen», nie 0 %.
 
-
+## GPX direkt zu Garmin (V9.14.0, gpx-export-2.0, Routen 7.2)
+Planer → «An Garmin senden»: Auftrag nach Bestätigung («Ja, senden»), hochgeladen als Garmin-Strecke im Nacht-Update oder im Chat; nur Garmin Connect, nie aufs Gerät, nie automatisch. «GPX teilen» und «GPX in Dateien» bleiben
+als Rückfall. Regeln und Ablauf: `garmin.md`, Abschnitt «Strecken an Garmin Connect». Routing-Regeln unverändert (Rennrad nie mit Gravel, keine Luftlinie als Weg, `hand-1.0`).

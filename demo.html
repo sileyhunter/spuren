@@ -703,6 +703,7 @@ table.t.tr-vt { table-layout: auto; } table.t.tr-vt th, table.t.tr-vt td { paddi
 .rp-radf label.ck { flex-direction: row; align-items: center; grid-column: 1 / -1; gap: 6px; color: var(--fg); }
 .rp-src summary { cursor: pointer; font-size: 13px; color: var(--muted); }
 .rp-save { flex-wrap: wrap; } .rp-save input { flex: 1 1 100%; }   /* V6.6: GPX teilen und GPX in Dateien */
+.rp-gs { margin: 6px 0; padding: 10px 12px; border: 1px solid var(--line-2); border-radius: 12px; background: var(--surface-2); font-size: 14px; } .rp-gs p { margin: 0 0 8px; } .rp-gs .row { display: flex; gap: 8px; flex-wrap: wrap; }   /* V9.14.0: Strecke an Garmin senden */
 .rp-garmin { margin: 4px 0 8px; font-size: 13px; } .rp-garmin summary { cursor: pointer; color: var(--accent-text, var(--accent)); } .rp-garmin ol { margin: 6px 0; padding-left: 20px; }
 .map-wrap.planning .legend, .map-wrap.planning .mobile-filter, .map-wrap.planning #heat-status { display: none !important; }
 #view-karte.planning { grid-template-columns: minmax(0, 1fr); }
@@ -1720,6 +1721,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <script src="js/eingang.js"></script>
 <script src="js/v59-logik.js"></script>
 <script src="js/route.js"></script>
+<script src="js/strecke-garmin.js"></script>
 <script src="js/routen-ui.js"></script>
 <script src="js/training-route.js"></script>
 <script src="js/training-ui.js"></script>

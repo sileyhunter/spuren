@@ -93,6 +93,10 @@
    `python3 -I tools/garmin_senden.py plan data.json > work/garmin_plan.json` und die `aktionen` der Reihe nach ausführen, wie im Abschnitt
    «An Garmin senden» beschrieben; danach `python3 -I tools/garmin_senden.py eintragen data.json work/garmin_plan.json work/garmin_ergebnis.json`
    (auch ohne Aktionen). Meldet es «GARMIN FEHLER …»: Silas kurz informieren (Titel und Grund). Fehler beim Senden brechen das Update nie ab.
+   **Strecken an Garmin Connect (V9.14.0, strecken-senden-1.0; Abschnitt «Strecken an Garmin Connect» in `garmin.md`):** nur wenn die Aufgabenbeschreibung des Updates ihn ausdrücklich nennt (Freigabe von Silas;
+   sonst auf Zuruf im Chat), danach `python3 -I tools/strecken_senden.py plan data.json work/strecken > work/strecken_plan.json`. Je Aktion `upload_course` und `get_courses` zum Zurücklesen,
+   `python3 -I tools/strecken_senden.py eintragen data.json work/strecken_plan.json work/strecken_ergebnis.json`, `work/strecken/` löschen. Nur Garmin Connect, nie aufs Gerät, nie löschen; Fehler brechen das Update nie ab
+   («STRECKEN FEHLER …»: Silas kurz informieren, ohne Routennamen in Commit-Texten).
 4. `SPUREN_PW=… node tools/crypt.mjs encrypt data.json data.enc.json`.
    **Sekundenreihen (V5.7.1, von Silas am 8.11.2026 freigegeben):** `SPUREN_PW=… node tools/serien_crypt.mjs --nacht` (nur neue oder
    tatsächlich geänderte Reihen aus `work/serien/`, atomar geschrieben, nichts gelöscht oder umbenannt), dann

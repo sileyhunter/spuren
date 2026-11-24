@@ -167,6 +167,9 @@
 - **V9.12.0 (Schwimm-Datenseiten, schwimmseiten-1.0, schwimmzonen-1.0; 23.11.2026):** `js/v55-schwimmen.js` (`V.zonen`, `V.zonenHTML`, `V.testHTML`, `V.cssAktuell`, Feld «Schätzung»), `js/schwimmen.js`
   (`SW.cssZonen`, `SW.zoneText`, `SW.ZONEN_ANTEIL`), `js/v59-logik.js` und `js/v82.js` und `js/formkurve.js` (Schätzung erledigt keinen Test, ist nur Vorschau), `index.html` (Karten «CSS und Zonen im Wasser»,
   «Test-Einheit»; Kalender, Jahresübersicht, Testplan), `js/v5-ui.js` (Pille «geschätzt»), `css/v6.css`, `tests/sim/seite.cjs`, `tests/test_v9120.cjs`
+- **V9.14.0 (Strecke an Garmin senden, gpx-export-2.0, strecken-senden-1.0; 24.11.2026):** `js/strecke-garmin.js` (neu, `SG`: `pruefenGpx`, `auftrag`, `stand`, `typFuer`, `beschreibung`), `js/routen-ui.js` (Knopf «An Garmin senden»,
+  Bestätigungsfeld, Stand), `js/eingang.js` und `js/v5-ui.js` (Eingabe `strecke_senden`), `tools/strecken_senden.py` (neu: Prüfung, `plan`, `eintragen`), `tools/merge_daily.py` und `tools/eingaben_lib.mjs`
+  (`strecke_senden_add` → `strecken_auftraege`, `strecken_abgelehnt`), `index.html` (Skript, Stil `.rp-gs`), `sw.js`, `tests/test_v9140.cjs`, `tests/test_tools.py` (Abschnitt V9.14)
 - **V9.3.3 (W2c Enduco-Look für Plan, Heute, Profil, enduco-look-1.0; 23.11.2026):** `js/v7-ui.js` (Plan-Kopf), `js/v6-heute.js` und `index.html` («Diese Woche»), `js/v59.js` (Profil-Kopf),
   `js/v6.js` (Symbol `person`), `css/v6.css`, `tests/test_v933.cjs`
 - **V9.6 (W5 Automatisch senden als Einstellung, garmin-auto-1.0; 23.11.2026, nicht eingeschaltet):** `js/v75.js` (`pe-garmin`, `V75.GARMIN`, `garminZeiten`), `js/v75-ui.js`

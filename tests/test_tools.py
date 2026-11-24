@@ -1886,5 +1886,98 @@ check("V9.10 Rad-Tests: Namen jetzt mit «IN · »; Stufen unverändert (120–3
       workouts.garmin(dict(workouts.ALL)["stufentest-120-300"])["workoutName"].startswith("IN · ")
       and [s[2] for s in dict(workouts.ALL)["stufentest-120-300"]["steps"] if s[0] == "interval"] == list(range(120, 301, 20)))
 
+# ---------- V9.14.0 Strecke an Garmin senden (tools/strecken_senden.py, strecken-senden-1.0; Routen 7.2) – erfundene Strecke, keine echte Route ----------
+import hashlib  # noqa: E402
+import strecken_senden as SS  # noqa: E402
+
+
+def _gpx(n=40, ele=True, name="Testrunde", extra=""):
+    pts = "\n".join(f'<trkpt lat="{10.0 + i * 0.001:.6f}" lon="{10.0 + i * 0.0005:.6f}">' + (f"<ele>{500 + i}.0</ele>" if ele else "") + "</trkpt>" for i in range(n))
+    meta = f"<metadata><name>{name}</name></metadata>" if name else "<metadata></metadata>"
+    return f'<?xml version="1.0" encoding="UTF-8"?>\n{extra}<gpx version="1.1" creator="Test" xmlns="http://www.topografix.com/GPX/1/1">\n{meta}\n<trk><name>{name}</name><trkseg>\n{pts}\n</trkseg></trk>\n</gpx>'
+
+
+_g_ok = _gpx()
+_g_info = SS.gpx_pruefen(_g_ok)[1]
+_g_falsch = {
+    "leer": SS.gpx_pruefen("")[0], "kein Name": SS.gpx_pruefen(_gpx(name=""))[0], "ohne Höhen": SS.gpx_pruefen(_gpx(ele=False))[0],
+    "ein Punkt": SS.gpx_pruefen(_gpx(n=1))[0], "DOCTYPE": SS.gpx_pruefen(_gpx(extra='<!DOCTYPE gpx [<!ENTITY x "y">]>\n'))[0],
+    "kaputt": SS.gpx_pruefen(_g_ok[:-30])[0], "Breite 95": SS.gpx_pruefen(_g_ok.replace('lat="10.020000"', 'lat="95.000000"'))[0],
+    "kein gpx": SS.gpx_pruefen("<kml></kml>")[0], "zu gross": SS.gpx_pruefen("x" * (SS.MAX_BYTES + 1))[0],
+}
+check("V9.14 GPX-Prüfung: gültige Strecke besteht (40 Punkte, Höhen, Länge ≈ 4,8 km)", SS.gpx_pruefen(_g_ok)[0] is None and _g_info["punkte"] == 40 and 4.5 < _g_info["km"] < 5.2, str(_g_info))
+check("V9.14 GPX-Prüfung lehnt ab: leer, ohne Name, ohne Höhen, ein Punkt, DOCTYPE/ENTITY, kaputtes XML, Breite 95°, keine GPX, über 2 MB",
+      all(_g_falsch.values()), str({k: v for k, v in _g_falsch.items() if not v}))
+
+
+def _auftrag(**k):
+    a = {"id": "sg-u-r1", "v": SS.FORMAT, "route_id": "u-r1", "name": "Testrunde", "sport": "rennrad", "typ": "road_biking", "beschreibung": "Ironman Notebook · Rennrad · 4,8 km",
+         "km": _g_info["km"], "hm": 40, "punkte": 40, "pruefsumme": hashlib.sha256(_g_ok.encode("utf-8")).hexdigest(), "bytes": len(_g_ok), "gpx": _g_ok,
+         "erstellt": "2030-01-05T10:00:00Z", "ja_am": "2030-01-05T10:00:00Z"}
+    a.update(k)
+    return a
+
+
+_a_falsch = {
+    "ohne Ja": SS.pruefen({k: v for k, v in _auftrag().items() if k != "ja_am"}), "Ja nach dem Auftrag": SS.pruefen(_auftrag(ja_am="2030-01-05T11:00:00Z")),
+    "Prüfsumme": SS.pruefen(_auftrag(pruefsumme="0" * 64)), "Typ": SS.pruefen(_auftrag(typ="flying")), "Name zu lang": SS.pruefen(_auftrag(name="x" * 129)),
+    "Name leer": SS.pruefen(_auftrag(name="  ")), "Steuerzeichen": SS.pruefen(_auftrag(name="a\nb")), "Beschreibung": SS.pruefen(_auftrag(beschreibung="x" * 513)),
+    "fremdes Feld": SS.pruefen(_auftrag(status="gesendet")), "Format": SS.pruefen(_auftrag(v="x")), "Sportart": SS.pruefen(_auftrag(sport="ufo")),
+    "Länge": SS.pruefen(_auftrag(km=50.0)), "ID": SS.pruefen(_auftrag(id="x-u-r1")), "ohne GPX": SS.pruefen({k: v for k, v in _auftrag().items() if k != "gpx"}),
+    "Routen-ID": SS.pruefen(_auftrag(route_id="")),
+}
+check("V9.14 Strecken-Auftrag: gültig besteht; ohne Ja, Ja später, falsche Prüfsumme, Typ, Name, Beschreibung, fremdes Feld, Format, Sportart, Länge, ID, ohne GPX werden abgelehnt",
+      SS.pruefen(_auftrag()) is None and all(_a_falsch.values()), str(SS.pruefen(_auftrag())) + str({k: v for k, v in _a_falsch.items() if not v}))
+_ts = tempfile.mkdtemp()
+json.dump({"activities": [], "days": []}, open(os.path.join(_ts, "d.json"), "w"))
+_a2 = _auftrag(id="sg-u-r2", route_id="u-r2", name="Zweite")
+json.dump({"strecke_senden_add": [_auftrag(), _a2, _auftrag(id="sg-u-r3", route_id="u-r3", pruefsumme="0" * 64)]}, open(os.path.join(_ts, "n.json"), "w"))
+merge_daily.main(os.path.join(_ts, "d.json"), os.path.join(_ts, "n.json"))
+merge_daily.main(os.path.join(_ts, "d.json"), os.path.join(_ts, "n.json"))
+_DS = json.load(open(os.path.join(_ts, "d.json")))
+check("V9.14 Strecken senden: Aufträge eingespielt (offen, mit GPX), fehlerhafter abgelehnt mit Grund für die Seite, dieselbe Datei nochmals → nichts doppelt",
+      [(a["id"], a["status"], "gpx" in a) for a in _DS.get("strecken_auftraege", [])] == [("sg-u-r1", "offen", True), ("sg-u-r2", "offen", True)]
+      and [a["id"] for a in _DS.get("strecken_abgelehnt", [])] == ["sg-u-r3"] and _DS["strecken_abgelehnt"][0]["grund"], str(_DS.get("strecken_abgelehnt")))
+_pl = SS.plan(_DS, os.path.join(_ts, "gpx"), _jz("2030-01-05T23:05"))
+check("V9.14 Strecken senden: Plan schreibt je offenem Auftrag eine GPX-Datei (gleicher Inhalt) und eine Aktion mit Name, Typ, Beschreibung, Länge",
+      [x["name"] for x in _pl["aktionen"]] == ["Testrunde", "Zweite"] and all(x["typ"] == "road_biking" and os.path.isfile(x["datei"]) and open(x["datei"], encoding="utf-8").read() == _g_ok for x in _pl["aktionen"])
+      and not _pl["abschluesse"], str(_pl)[:300])
+_erg = [{"nr": 1, "ok": True, "course_id": 4711, "name": "Testrunde", "distanz_m": _g_info["km"] * 1000 + 40, "typ": "road_biking"},
+        {"nr": 2, "ok": True, "course_id": 4712, "name": "Zweite", "distanz_m": 9000.0, "typ": "road_biking"}]
+_msg, _fe = SS.eintragen(_DS, _pl, _erg, _jz("2030-01-05T23:20"))
+_A = {a["id"]: a for a in _DS["strecken_auftraege"]}
+check("V9.14 Strecken senden: eintragen – passende Rücklese = gesendet mit Garmin-ID und ohne GPX; abweichende Länge = Fehler (Strecke bleibt vermerkt), Audit ohne GPX",
+      _A["sg-u-r1"]["status"] == "gesendet" and _A["sg-u-r1"]["garmin_id"] == "4711" and "gpx" not in _A["sg-u-r1"] and _A["sg-u-r2"]["status"] == "fehler"
+      and _A["sg-u-r2"]["garmin_id"] == "4712" and "sg-u-r2" in _fe and not any("gpx" in x for x in _DS["audit"]) and len(_msg) == 1 and "Testrunde" not in _msg[0], str(_msg) + str(_fe))
+check("V9.14 Strecken senden: ein zweiter Plan lädt nichts nochmals hoch (gesendet und Fehler werden nie von selbst wiederholt)", not SS.plan(_DS, os.path.join(_ts, "gpx2"), _jz("2030-01-06T23:05"))["aktionen"])
+_bad = SS.eintragen(_DS, {"aktionen": [{"nr": 1, "auftrag": "sg-u-r1", "name": "Testrunde", "km": 6.4, "pruefsumme": _A["sg-u-r1"]["pruefsumme"]}]}, [{"nr": 1, "ok": False, "fehler": "x"}], _jz("2030-01-06T00:00"))
+check("V9.14 Strecken senden: Eintragen verändert einen schon gesendeten Auftrag nicht", _A["sg-u-r1"]["status"] == "gesendet" and not _bad[1])
+# geänderte Strecke: gleiche ID, neue Fassung → neuer Auftrag mit Verweis auf die ältere Garmin-Strecke; gleiche Fassung nochmals → abgelehnt
+_g2 = _gpx(n=50)
+_a_neu = _auftrag(gpx=_g2, pruefsumme=hashlib.sha256(_g2.encode("utf-8")).hexdigest(), km=SS.gpx_pruefen(_g2)[1]["km"], punkte=50, erstellt="2030-01-07T10:00:00Z", ja_am="2030-01-07T10:00:00Z")
+_a_gleich = _auftrag(erstellt="2030-01-08T10:00:00Z", ja_am="2030-01-08T10:00:00Z")
+json.dump(_DS, open(os.path.join(_ts, "d.json"), "w"))                                # Stand nach dem Eintragen (gesendet, Garmin-ID 4711)
+json.dump({"strecke_senden_add": [_a_neu, _a_gleich]}, open(os.path.join(_ts, "n2.json"), "w"))
+merge_daily.main(os.path.join(_ts, "d.json"), os.path.join(_ts, "n2.json"))
+_DS2 = json.load(open(os.path.join(_ts, "d.json")))
+_r1 = next(a for a in _DS2["strecken_auftraege"] if a["id"] == "sg-u-r1")
+check("V9.14 Strecken senden: geänderte Strecke = neue Fassung (offen, ersetzt_garmin_id der älteren, nichts gelöscht); gleiche Fassung = schon in Garmin Connect (abgelehnt)",
+      _r1["status"] == "offen" and _r1["ersetzt_garmin_id"] == "4711" and _r1["punkte"] == 50 and any(x["id"] == "sg-u-r1" and "schon in Garmin" in x["grund"] for x in _DS2.get("strecken_abgelehnt", []))
+      and any(x.get("was") == "Strecken-Auftrag ersetzt" for x in _DS2["audit"]), str(_r1)[:200])
+# Befehlszeile (wie im Update): plan → eintragen
+_tc = tempfile.mkdtemp()
+json.dump(_DS2, open(os.path.join(_tc, "d.json"), "w"))
+_c1 = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "tools", "strecken_senden.py"), "plan", os.path.join(_tc, "d.json"), os.path.join(_tc, "gpx"), "--jetzt", "2030-01-07T23:05"],
+                     capture_output=True, text=True)
+_cp = json.loads(_c1.stdout) if _c1.returncode == 0 else {}
+json.dump(_cp, open(os.path.join(_tc, "p.json"), "w"))
+json.dump([{"nr": 1, "ok": True, "course_id": 4713, "name": "Testrunde", "distanz_m": SS.gpx_pruefen(_g2)[1]["km"] * 1000, "typ": "road_biking"}], open(os.path.join(_tc, "e.json"), "w"))
+_c2 = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "tools", "strecken_senden.py"), "eintragen", os.path.join(_tc, "d.json"), os.path.join(_tc, "p.json"), os.path.join(_tc, "e.json")],
+                     capture_output=True, text=True)
+_DC = json.load(open(os.path.join(_tc, "d.json")))
+check("V9.14 Strecken senden: Befehlszeile plan → eintragen (Datei atomar zurückgeschrieben, ältere Garmin-Strecke im Vermerk)",
+      _c1.returncode == 0 and _c2.returncode == 0 and "4713" in _c2.stdout and "4711" in _c2.stdout
+      and next(a for a in _DC["strecken_auftraege"] if a["id"] == "sg-u-r1")["garmin_id"] == "4713" and not os.path.exists(os.path.join(_tc, "d.json.tmp")), _c1.stderr[-200:] + _c2.stdout[-200:] + _c2.stderr[-200:])
+
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)

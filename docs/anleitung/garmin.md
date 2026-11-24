@@ -109,4 +109,24 @@ und (V6.5) unverändert im privaten Archiv ablegen (Abschnitt «Archiv», Art `g
   «ohne Ziel» darf als null oder no.target zurückkommen. Erstes echtes Senden einer Schwimm-Einheit: Rücklese im Chat zeigen und Silas bitten, auf der
   Fenix zu prüfen (Übungsname sichtbar, Hilfsmittel, Pausen, Bahnen); bis dahin nie behaupten, Schwimmen sei auf dem Gerät geprüft.
 
-
+## Strecken an Garmin Connect (V9.14.0, gpx-export-2.0 / strecken-senden-1.0, Routen 7.2; Silas 13.11. und 24.11.2026)
+- **Was:** Eine im Routenplaner berechnete und gespeicherte Strecke kommt mit einem Tipp als **Strecke (Course) in Garmin Connect**, ohne Umweg über das Teilen-Menü. **Nur nach
+  Garmin Connect, nie aufs Gerät:** «An Gerät senden» tippt Silas in Garmin Connect selbst. Ob Strecken von selbst auf Fenix und Edge synchronisieren, ist nicht geprüft.
+- **Ablauf:** Planer → «An Garmin senden» (neben «GPX teilen» und «GPX in Dateien», nur bei erfolgreich berechneter Route; speichert die Route, falls noch nicht gespeichert) → Feld mit
+  Name, Typ, Länge, Hm und «Ja, senden» / «Abbrechen». Erst «Ja, senden» legt den Auftrag an (Eingabe `strecke_senden`, verschlüsselt in `eingang/`, ID `sg-<Routen-ID>`, mit der GPX-Datei, SHA-256,
+  Streckentyp und `ja_am`). Das Einspielen (`merge_daily.py`, `strecken_senden.pruefen`) prüft und legt den Auftrag in `strecken_auftraege` (Status offen) bzw. bei Ablehnung mit Grund in
+  `strecken_abgelehnt` (die Seite zeigt den Grund). **Nie automatisch, nie über «Alle Tage senden»**; kein Auftrag ohne `ja_am`.
+- **Typ aus der Sportart:** Rennrad `road_biking` · Gravel `gravel_cycling` · MTB `mountain_biking` · Laufen `running` · Trail `trail_running` · Wandern und Skitour `hiking`. Name höchstens 128, Beschreibung höchstens 512
+  Zeichen («Ironman Notebook · Sportart · km · Hm», bei von Hand gezeichneten Abschnitten mit Vermerk; nichts Persönliches). Die Namen tragen keinen Vorsatz; die Zuordnung läuft über die Garmin-ID im Vermerk.
+- **GPX-Prüfung** (Seite `SG.pruefenGpx`, Werkzeug `strecken_senden.gpx_pruefen` mit XML-Parser): GPX 1.1 mit Namen, ein Track mit mindestens 2 und höchstens 25 000 Punkten, gültige Koordinaten, Höhen bei
+  mindestens 90 % der Punkte, höchstens 2 MB, kein DOCTYPE/ENTITY; Länge laut Auftrag = Länge der Datei. Fehlt etwas, zeigt die Seite den Grund und sendet nicht. Abschnitte «von Hand» bleiben wie im GPX-Export gekennzeichnet (`hand-1.0`).
+- **Ausführen (Nacht-Update oder Chat auf Zuruf):** `python3 -I tools/strecken_senden.py plan data.json work/strecken > work/strecken_plan.json` schreibt je offenem Auftrag `work/strecken/<id>.gpx`. Je Aktion
+  `upload_course(gpx_path, course_name, activity_type, description)` mit den Angaben aus dem Plan, danach `get_courses` (Rücklese: Name, Länge) und die Ergebnisse als
+  `work/strecken_ergebnis.json` (`[{"nr": 1, "ok": true, "course_id": …, "name": …, "distanz_m": …, "typ": …}]`, bei Fehler `{"nr": 1, "ok": false, "fehler": "…"}`).
+  Dann `python3 -I tools/strecken_senden.py eintragen data.json work/strecken_plan.json work/strecken_ergebnis.json` (Status gesendet mit Garmin-ID, Audit; die GPX-Datei fällt aus dem Auftrag),
+  danach `work/strecken/` löschen. Rücklese weicht ab (Name, Länge um mehr als 3 %): Status Fehler, die Strecke bleibt in Garmin Connect vermerkt, Silas informieren.
+- **Regeln:** nie löschen (eine geänderte Strecke kommt als neue Fassung dazu, `ersetzt_garmin_id` zeigt auf die ältere; entfernen nur auf Silas' Wunsch mit `delete_course`, erst Vorschau, dann `confirm`); dieselbe Fassung
+  (Prüfsumme) wird nie zweimal hochgeladen (`fassungen`); ein Fehler wird nicht von selbst wiederholt (kein Doppel); Meldungen und Commit-Texte ohne Routennamen (öffentlich sichtbar).
+- **Einschränkung Nacht-Update:** Die Aufgabenbeschreibung des geplanten Nacht-Updates erlaubt heute nur die Aktionen von `garmin_senden.py plan`. Die Strecken führt es erst aus, wenn Silas die Aufgabe
+  ausdrücklich erweitert hat; bis dahin führt sie Claude im Chat auf Zuruf aus («schick die Strecken»). Der erste echte Upload braucht Silas' Ja im Chat.
+- Tests: `tests/test_v9140.cjs` (Seite: GPX-Prüfung, Auftrag, Stand, Verdrahtung, kein automatischer Weg), `tests/test_tools.py` (Abschnitt V9.14: Prüfung, Einspielen, Plan, Eintragen, Befehlszeile).

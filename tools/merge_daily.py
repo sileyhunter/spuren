@@ -16,6 +16,7 @@ import bibliothek  # noqa: E402          V6.5: Enduco-Bibliothek (bib-1.0), nich
 import garmin_ernaehrung  # noqa: E402   V5.7.2: Garmin-Ernährungsprotokoll → Fueling
 import garmin_export  # noqa: E402       V6.2.3: Garmin-Datenexport (Verlauf), füllt nur fehlende Tageswerte
 import garmin_senden  # noqa: E402       V6.6: Aufträge «An Garmin senden» (garmin-senden-1.0) prüfen
+import strecken_senden  # noqa: E402     V9.14.0: Aufträge «Strecke an Garmin senden» (strecken-senden-1.0, Routen 7.2) prüfen
 import last  # noqa: E402                V5.9.1: Trainingslast mit LT2 (tl2, last-2.0)
 import notizen  # noqa: E402             V6.1: Garmin-Notizen, Laktat und Verpflegung daraus als Vorschau (notizen-1.0)
 import verpflegung  # noqa: E402         V8.1.1: Verpflegung je Einheit (verpflegung-1.0): eigene Lebensmittel aus Garmin, Anpassungen je Einheit
@@ -381,6 +382,43 @@ def v5_merge(D, N):
         else:
             L.append(dict(g, status="offen"))
         msg.append(f"Garmin-Auftrag {g['date']} ({g['modus']})")
+    for g in N.get("strecke_senden_add") or []:         # V9.14.0 strecken-senden-1.0 (Routen 7.2): Auftrag je Strecke, nur mit Ja; hochgeladen wird im Update (tools/strecken_senden.py)
+        fehler = strecken_senden.pruefen(g)
+        if fehler:
+            msg.append(f"Strecken-Auftrag nicht übernommen: {fehler}")
+            if isinstance(g, dict) and g.get("id"):       # die Seite zeigt den Grund (und räumt den Auftrag auf dem Gerät weg)
+                ab = [x for x in D.get("strecken_abgelehnt") or [] if not (x.get("id") == g.get("id") and x.get("erstellt") == g.get("erstellt"))]
+                D["strecken_abgelehnt"] = (ab + [{"id": str(g.get("id")), "erstellt": g.get("erstellt"), "grund": fehler,
+                                                  "zeit": dt.datetime.now(ZRH).isoformat(timespec="seconds")}])[-20:]
+            continue
+        L = D.setdefault("strecken_auftraege", [])
+        i = next((k for k, x in enumerate(L) if isinstance(x, dict) and x.get("id") == g["id"]), None)
+        if i is not None and str(L[i].get("erstellt") or "") >= str(g.get("erstellt") or ""):
+            continue                                     # schon bekannt (gleiche oder neuere Fassung) – nie zweimal hochladen
+        bekannt = dict(L[i].get("fassungen") or {}) if i is not None else {}        # Prüfsumme → Garmin-ID aller schon hochgeladenen Fassungen dieser Strecke
+        if i is not None and L[i].get("status") == "gesendet" and L[i].get("garmin_id"):
+            bekannt[L[i].get("pruefsumme")] = L[i]["garmin_id"]
+        if g["pruefsumme"] in bekannt:                   # nie zweimal hochladen: eine schon hochgeladene Fassung ist in Garmin Connect
+            ab = [x for x in D.get("strecken_abgelehnt") or [] if not (x.get("id") == g["id"] and x.get("erstellt") == g.get("erstellt"))]
+            D["strecken_abgelehnt"] = (ab + [{"id": g["id"], "erstellt": g.get("erstellt"), "grund": "diese Fassung ist schon in Garmin Connect",
+                                              "zeit": dt.datetime.now(ZRH).isoformat(timespec="seconds")}])[-20:]
+            msg.append(f"Strecke {g['id']}: gleiche Fassung ist schon in Garmin Connect")
+            continue
+        neu = dict(g, status="offen")
+        if bekannt:
+            neu["fassungen"] = bekannt
+        if i is not None:                                # Audit ohne die GPX-Datei; eine ältere Fassung in Garmin bleibt dort (nie von selbst gelöscht)
+            x = L[i]
+            D.setdefault("audit", []).append({"zeit": dt.datetime.now(ZRH).isoformat(timespec="seconds"), "was": "Strecken-Auftrag ersetzt", "id": g["id"],
+                                              "alt": {"erstellt": x.get("erstellt"), "status": x.get("status"), "pruefsumme": x.get("pruefsumme"), "garmin_id": x.get("garmin_id")}})
+            if x.get("status") == "gesendet" and x.get("garmin_id"):
+                neu["ersetzt_garmin_id"] = x["garmin_id"]
+            elif x.get("ersetzt_garmin_id"):
+                neu["ersetzt_garmin_id"] = x["ersetzt_garmin_id"]
+            L[i] = neu
+        else:
+            L.append(neu)
+        msg.append(f"Strecken-Auftrag {g['id']} ({g['km']:.1f} km, {g['typ']})")
     for x in N.get("ampel_add") or []:                   # V7.4 ampel-plan-1.0: Entscheid der Ampel je Tag (Seite oder Morgen-Update), «Trotzdem wie geplant»
         fehler = ampel_pruefen(x)
         if fehler:

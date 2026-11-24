@@ -26,6 +26,7 @@
     planwoche: id,                                                   // V6.6: Mein Plan einer Woche (eigenplan-1.0) → plan_woche
     verfuegbarkeit: id,                                              // V7.2: Verfügbarkeit je Tag oder Wochentag (verfuegbarkeit-1.0) → plan_verfuegbarkeit
     garmin_senden: id,                                               // V6.6: Auftrag «An Garmin senden» je Tag (garmin-senden-1.0) → garmin_auftraege
+    strecke_senden: id,                                              // V9.14.0: Auftrag «Strecke an Garmin senden» (strecken-senden-1.0) → strecken_auftraege
     ampel: id,                                                       // V7.4: Entscheid der Ampel je Tag (ampel-plan-1.0) → ampel_anpassung
     planeinstellung: id,                                             // V7.5: Planeinstellungen je Gruppe (planeinstellungen-1.0) → plan_einstellungen
     aktivitaet: id,                                                  // V7.7: Aktivität draussen je Tag (aktivitaet-plan-1.0) → plan_aktivitaeten
