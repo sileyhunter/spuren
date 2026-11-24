@@ -11,7 +11,7 @@
   "use strict";
   /* 24.11.2026 geprüft: `upload_course` des Garmin-Dienstes liest die GPX-Datei von der Festplatte des Dienstes, nicht aus der Sitzung von Claude
    * («GPX file not found», Pfade in der Sitzung, /tmp und den gemeinsamen Ordnern versucht). Solange kein Weg bekannt ist, die Datei dorthin zu bringen,
-   * bleibt der Knopf «An Garmin senden» verborgen (false) und die Seite verspricht nichts. Siehe docs/anleitung/garmin.md, docs/offen-nach-v55.md Nr. 185. */
+   * bleibt der Knopf «An Garmin senden» verborgen (false) und die Seite verspricht nichts. Siehe docs/anleitung/garmin.md, docs/offen-nach-v55.md Nr. 188. */
   const UPLOAD_MOEGLICH = false;
   const SG = { UPLOAD_MOEGLICH, VERSION: "gpx-export-2.0", FORMAT: "strecke-senden-1.0", MAX_NAME: 128, MAX_BESCHR: 512, MAX_BYTES: 2 * 1024 * 1024, MIN_PUNKTE: 2, MAX_PUNKTE: 25000,
     HOEHEN_MIN: 0.9 };
