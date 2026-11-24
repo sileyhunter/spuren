@@ -93,7 +93,7 @@
 
   /* ⋯-Menü: feste Reihenfolge der Einträge (die Knöpfe behalten ihre Kennungen) */
   PS.MENUE = [
-    { id: "rp-add", text: "Punkte setzen" }, { id: "rp-rev", text: "Route umkehren" }, { id: "rp-loop", text: "Rundtour" },
+    { id: "rp-add", text: "Punkte setzen" }, { id: "rp-rev", text: "Route umkehren" }, { id: "rp-loop", text: "Hin und zurück" },
     { id: "rp-tr", text: "Training → Route" }, { id: "rp-undo", text: "Rückgängig" }, { id: "rp-clear", text: "Alle Punkte löschen" }, { id: "rp-new", text: "Neu" },
   ];
 

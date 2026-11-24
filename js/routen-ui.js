@@ -197,7 +197,7 @@
         <div class="rp-menu" id="rp-menu" role="menu" aria-label="Weitere Werkzeuge" hidden>
           <button class="btn" role="menuitem" id="rp-add" aria-pressed="true" title="Tippen in die Karte setzt Punkte">＋ Punkt</button>
           <button class="btn" role="menuitem" id="rp-rev" title="Reihenfolge umdrehen und neu routen">Route umkehren</button>
-          <button class="btn" role="menuitem" id="rp-loop">Rundtour</button>
+          <button class="btn" role="menuitem" id="rp-loop">Hin und zurück</button>
           <button class="btn" role="menuitem" id="rp-tr" title="Passende Route zu einer geplanten Einheit">Training → Route</button>
           <button class="btn" role="menuitem" id="rp-undo">Rückgängig</button>
           <button class="btn" role="menuitem" id="rp-clear" title="Alle Punkte löschen (mit ↶ zurückholen)">Alle Punkte löschen</button>
@@ -418,6 +418,7 @@
   function mapClick(e) {
     if (!active()) return false;
     if (window.TRUI && window.TRUI.wantsMapClick && window.TRUI.wantsMapClick()) { window.TRUI.mapClick([+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)]); return true; }
+    if (window.TRUI && window.TRUI.kartenKlick && window.TRUI.kartenKlick(e)) return true;          // trainingsroute-1.2: Vorschlagslinie antippen = markieren
     // Route antippen = Position im Profil (immer, auch im Punkt-Modus); daneben tippen = Punkt setzen (im Punkt-Modus)
     if (route) {
       const box = [[e.point.x - 14, e.point.y - 14], [e.point.x + 14, e.point.y + 14]];
@@ -1954,7 +1955,7 @@
       drawChart(); renderInfo();
     });
   }
-  /** ⋯: Punkte setzen, Route umkehren, Rundtour, Training → Route, Rückgängig, Alle Punkte löschen, Neu. */
+  /** ⋯: Punkte setzen, Route umkehren, Hin und zurück, Training → Route, Rückgängig, Alle Punkte löschen, Neu. */
   function menuZu() { const m = $("rp-menu"); if (m) { m.hidden = true; $("rp-more").setAttribute("aria-expanded", "false"); } }
   function menuUmschalten() { const m = $("rp-menu"), an = m.hidden; m.hidden = !an; $("rp-more").setAttribute("aria-expanded", String(an)); if (an) { const b = m.querySelector("button"); if (b) b.focus(); } }
   async function gpx(alsDatei) {

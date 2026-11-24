@@ -88,7 +88,7 @@ test("Fertig: speichert unter «Sportart Datum», ein eigener Name bleibt; Meldu
 
 test("⋯-Menü: sieben Einträge in fester Reihenfolge, alle mit den bisherigen Kennungen", () => {
   assert.deepEqual(PS.MENUE.map((m) => m.id), ["rp-add", "rp-rev", "rp-loop", "rp-tr", "rp-undo", "rp-clear", "rp-new"]);
-  assert.deepEqual(PS.MENUE.map((m) => m.text), ["Punkte setzen", "Route umkehren", "Rundtour", "Training → Route", "Rückgängig", "Alle Punkte löschen", "Neu"]);
+  assert.deepEqual(PS.MENUE.map((m) => m.text), ["Punkte setzen", "Route umkehren", "Hin und zurück", "Training → Route", "Rückgängig", "Alle Punkte löschen", "Neu"]);
   const ui = R("js/routen-ui.js"), menu = ui.slice(ui.indexOf('id="rp-menu"'), ui.indexOf('<div class="rp-btns">'));
   assert.deepEqual([...menu.matchAll(/id="(rp-[a-z]+)"/g)].map((m) => m[1]).filter((x) => x !== "rp-menu"), PS.MENUE.map((m) => m.id));
 });
@@ -124,7 +124,7 @@ test("Einwilligung und Regeln: Koordinaten erst nach dem Ja, kein Dienst vor der
 test("Versionskennungen: planer-schlank-1.0 neu, die bisherigen unverändert", () => {
   assert.equal(PS.VERSION, "planer-schlank-1.0");
   const RT = require("../js/route.js");
-  for (const [k, v] of Object.entries({ varianten: "varianten-3.0", hand: "hand-1.0", ski: "skiroute-1.0", training: "trainingsroute-1.1", wegpunkte: "wegpunkte-1.1" })) {
+  for (const [k, v] of Object.entries({ varianten: "varianten-3.0", hand: "hand-1.0", ski: "skiroute-1.0", training: "trainingsroute-1.2", wegpunkte: "wegpunkte-1.1" })) {
     const all = JSON.stringify(RT.VERSIONS || {}) + R("js/route.js") + R("js/routen-ui.js") + R("js/training-route.js");
     assert.ok(all.includes(v), `${k}: ${v}`);
   }

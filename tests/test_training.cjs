@@ -408,7 +408,7 @@ test("Anfragen begrenzen: höchstens 2 gleichzeitig, alle erledigt", async () =>
   assert.equal(g.stats().gesamt, 7);
 });
 
-test("trainingsroute-1.1 (V6.6): Rennrad-Vorschläge nie mit Gravel – Kandidaten mit Gravel verworfen, sonst kein Vorschlag mit Grund", () => {
+test("trainingsroute-1.1 (V6.6, ab V9.16.0 trainingsroute-1.2): Rennrad-Vorschläge nie mit Gravel – Kandidaten mit Gravel verworfen, sonst kein Vorschlag mit Grund", () => {
   const k = (dx, dy, g, a, c) => ({ variante: "A", route: strecke([[0, 0, 500], [dx, dy, 500]]), K: { unzureichend: false, gravel_m: g }, sA: { wert: a }, sB: null, sC: { wert: c } });
   const mitG = k(5000, 0, 400, 95, 90), ohne = k(0, 5000, 0, 80, 70), wenig = k(-5000, 0, 15, 75, 85);
   const r = TR.auswahl([mitG, ohne, wenig], { sport: "rennrad" });
@@ -420,5 +420,5 @@ test("trainingsroute-1.1 (V6.6): Rennrad-Vorschläge nie mit Gravel – Kandidat
   assert.equal(leer.A, null, "alle mit mehr als 20 m Gravel (auch «möglicherweise»): kein Vorschlag");
   assert.match(leer.hinweise[0], /Keine Rennrad-Route ohne Gravel gefunden: alle 2 Kandidaten/);
   assert.equal(TR.auswahl([mitG], { sport: "gravel" }).A, mitG, "beim Gravelbike bleibt Gravel erlaubt");
-  assert.equal(TR.VERSIONS.vorschlag, "trainingsroute-1.1");
+  assert.equal(TR.VERSIONS.vorschlag, "trainingsroute-1.2");
 });

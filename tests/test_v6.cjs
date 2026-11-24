@@ -229,7 +229,7 @@ test("design-1.1: Planer-CSS ohne feste Farben (Hintergrund, Schrift, Füllung, 
   assert.deepEqual(fest, []);
 });
 test("design-1.1: Planer- und Trainings-JS ohne feste Farben (ausser unsichtbaren Trefferflächen und SDF-Maske)", () => {
-  const erlaubt = ['"#000", "line-width": 22', '"#000", "line-width": 26', 'wg.fillStyle = "#ffffff"', '"rgba(0,0,0,0)"', 'FARBEN.set(name, v || "#888888")'];
+  const erlaubt = ['"#000", "line-width": 22', '"#000", "line-width": 26', '"#000", "line-width": 28', 'wg.fillStyle = "#ffffff"', '"rgba(0,0,0,0)"', 'FARBEN.set(name, v || "#888888")'];
   for (const f of ["js/routen-ui.js", "js/training-ui.js", "js/route.js"]) {
     const zeilen = lies(f).split("\n");
     const fund = [];

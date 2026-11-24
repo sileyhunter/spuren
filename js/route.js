@@ -172,14 +172,24 @@
     if (status >= 500) return `Der Routing-Server meldet einen internen Fehler${engine ? ` (z. B. Profil «${RT.profilName(engine)}» dort nicht verfügbar oder Überlastung)` : ""}. Später erneut versuchen oder eine andere Sportart wählen.`;
     return "Die Route konnte nicht berechnet werden.";
   };
+  /** abbrechen-1.0 (V9.16.0): ein äusseres Abbruchsignal (opt.signal, z. B. «Abbrechen» bei «Training → Route») bricht die laufende
+   *  Anfrage ab; schon abgebrochen = gar nicht erst senden. Fehlerart «abbruch», nie mit der Zeitüberschreitung verwechselt. */
+  RT.signalKoppeln = function (ctl, opt) {
+    const ext = opt && opt.signal;
+    if (!ext || !ctl) return;
+    if (ext.aborted) { ctl.abort(); return; }
+    ext.addEventListener("abort", () => ctl.abort(), { once: true });
+  };
   /** Einen Abschnitt routen. fetchFn = window.fetch (Tests: eigener Server). */
   RT.fetchLeg = async function (fetchFn, endpoint, eng, a, b, opt) {
     const url = RT.brouterUrl(endpoint, eng, a, b, opt);
     const ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
     const timer = ctl ? setTimeout(() => ctl.abort(), (opt && opt.timeout_ms) || 30000) : null;
+    RT.signalKoppeln(ctl, opt);
     let res;
     try { res = await fetchFn(url, ctl ? { signal: ctl.signal } : {}); }
     catch (e) {
+      if (opt && opt.signal && opt.signal.aborted) throw new RouteError("abbruch", "Abgebrochen.");
       const aborted = e && e.name === "AbortError";
       throw new RouteError(aborted ? "timeout" : "netz", aborted ? "Zeitüberschreitung beim Routing-Server." : RT.explainError(0, ""), String(e && e.message || e));
     } finally { if (timer) clearTimeout(timer); }
@@ -220,9 +230,10 @@
     const url = RT.brouterUrlPts(endpoint, eng, pts, opt);
     const ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
     const timer = ctl ? setTimeout(() => ctl.abort(), (opt && opt.timeout_ms) || 45000) : null;
+    RT.signalKoppeln(ctl, opt);
     let res;
     try { res = await fetchFn(url, ctl ? { signal: ctl.signal } : {}); }
-    catch (e) { const ab = e && e.name === "AbortError"; throw new RouteError(ab ? "timeout" : "netz", ab ? "Zeitüberschreitung beim Routing-Server." : RT.explainError(0, ""), String(e && e.message || e)); }
+    catch (e) { if (opt && opt.signal && opt.signal.aborted) throw new RouteError("abbruch", "Abgebrochen."); const ab = e && e.name === "AbortError"; throw new RouteError(ab ? "timeout" : "netz", ab ? "Zeitüberschreitung beim Routing-Server." : RT.explainError(0, ""), String(e && e.message || e)); }
     finally { if (timer) clearTimeout(timer); }
     const text = await res.text();
     if (!res.ok) { const er = new RouteError("dienst", RT.explainError(res.status, text, eng.engine), `HTTP ${res.status}: ${text.slice(0, 300) || "(ohne Text)"}`); er.status = res.status; throw er; }

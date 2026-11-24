@@ -19,6 +19,7 @@
   // design-1.1: Farben nur über CSS-Variablen (css/v6.css); die Karte bekommt den berechneten Wert über RTUI.farbe()
   const FARBE = { A: "var(--tr-a)", B: "var(--tr-b)", C: "var(--tr-c)" };
   const kf = (c) => (R() && R().farbe ? R().farbe(c) : c);
+  const nm = (k) => (TR() && TR().name ? TR().name(k) : k);          // Anzeigename 1/2/3 (trainingsroute-1.2); gerechnet und gespeichert wird A/B/C
   const TITEL = { A: "Trainingsoptimiert", B: "Wetteroptimiert", C: "Ruhig und velofreundlich" };
   const titel = (k, sport) => (k === "C" && TR().FAMILIE[sport] !== "rad" ? "Ruhig und laufgeeignet" : k === "C" && sport !== "rennrad" ? "Ruhig (Forst- und Feldwege)" : TITEL[k]);
   const store = { get: (k, d) => { try { const v = localStorage.getItem("sf.tr." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
@@ -26,7 +27,7 @@
 
   const TS = { offen: false, key: null, wo: null, datum: null, zeit: store.get("zeit", "09:00"), ortId: store.get("ort", null), ortTemp: null, zielId: null, zielTemp: null,
     sport: null, opts: {}, routenart: "rund", pz: "0", artOv: "auto", haupt: null, intens: null, busy: false, msg: "", res: null, ctx: null, gewaehlt: null,
-    pick: null, profilFallback: null, anfragen: 0, cache: 0, planerRoute: null, planerIv: null, orteOffen: false, fehler: null, verdeckt: false,
+    pick: null, sel: null, suchId: 0, abort: null, abgebrochen: false, schritt: null, abHinweis: "", profilFallback: null, anfragen: 0, cache: 0, planerRoute: null, planerIv: null, orteOffen: false, fehler: null, verdeckt: false,
     man: { sport: "rad", titel: "", dauer_min: 120, modus: "watt", wert: 200, ein_min: 15, aus_min: 10, iv: false, iv_n: 3, iv_min: 15, iv_wert: 260, iv_pause: 5 } };
   const KC = new Map(), WX = new Map();
   let kandMarker = [];
@@ -110,12 +111,15 @@
   }
   async function routeKand(variante, pts, extra) {
     const ep = R().endpoint(), eng = await engFor(variante);
-    const go = (e) => {
+    const sig = TS.abort ? TS.abort.signal : null;                 // «Abbrechen» (V9.16.0): bricht auch laufende und wartende Anfragen ab
+    const go = (e, nochmal) => {
       const url = RT().brouterUrlPts(ep, e, pts, extra);
+      if (sig && sig.aborted) return Promise.reject(new (RT().RouteError)("abbruch", "Abgebrochen."));
       TS.anfragen++;
       if (KC.has(url)) TS.cache++;
-      else KC.set(url, RT().fetchPts(R().bfetch(), ep, e, pts, extra).then((leg) => Object.assign(leg, { engine: e.engine, eng: JSON.parse(JSON.stringify(e)) })).catch((er) => { KC.delete(url); throw er; }));
-      return KC.get(url);
+      else KC.set(url, RT().fetchPts(R().bfetch(), ep, e, pts, Object.assign({}, extra || {}, sig ? { signal: sig } : {})).then((leg) => Object.assign(leg, { engine: e.engine, eng: JSON.parse(JSON.stringify(e)) })).catch((er) => { KC.delete(url); throw er; }));
+      // Eine Antwort, die eine früher abgebrochene Suche angefangen hat, ist nicht unsere: einmal neu anfragen
+      return KC.get(url).catch((er) => { if (er && er.kind === "abbruch" && !(sig && sig.aborted) && !nochmal) return go(e, true); throw er; });
     };
     try { return await go(eng); }
     catch (e) {
@@ -137,7 +141,7 @@
     for (let i = 0; i < fehlt.length; i += 40) {
       const chunk = fehlt.slice(i, i + 40);
       // Zusage je Zelle sofort eintragen: ein gleichzeitiger zweiter Aufruf wartet auf dieselbe Anfrage
-      const p = fetch(RT().openMeteoUrl(chunk, t0, t1)).then(async (res) => { const js = await res.json(); if (!res.ok || js.error) throw new Error(js.reason || "HTTP " + res.status); return Array.isArray(js) ? js : [js]; });
+      const p = fetch(RT().openMeteoUrl(chunk, t0, t1), TS.busy && TS.abort ? { signal: TS.abort.signal } : {}).then(async (res) => { const js = await res.json(); if (!res.ok || js.error) throw new Error(js.reason || "HTTP " + res.status); return Array.isArray(js) ? js : [js]; });
       chunk.forEach((z, j) => WX.set(k(z), p.then((arr) => arr[j])));
       p.catch(() => chunk.forEach((z) => WX.delete(k(z))));
     }
@@ -157,16 +161,52 @@
     if (!c.start) { TS.fehler = "Bitte zuerst einen Startort wählen."; render(); return; }
     if (TS.routenart === "ziel" && !c.ziel) { TS.fehler = "Bitte ein Ziel wählen."; render(); return; }
     if (!isNum(c.wo.dauer_s) || c.wo.dauer_s <= 0) { TS.fehler = "Dauer unbekannt – bitte eigene Angaben verwenden."; render(); return; }
-    TS.fehler = null; TS.busy = true; TS.res = null; TS.gewaehlt = null; TS.planerIv = null; TS.profilFallback = null; TS.anfragen = 0; TS.cache = 0; TS.ctx = c; clearKand();
+    // Stand vor der Suche merken: «Abbrechen» stellt Karte und Anzeige genau so wieder her, nichts wird halb gespeichert
+    const vorher = { res: TS.res, gewaehlt: TS.gewaehlt, sel: TS.sel, planerIv: TS.planerIv, ctx: TS.ctx, profilFallback: TS.profilFallback, anfragen: TS.anfragen, cache: TS.cache, formOffen: TS.formOffen };
+    TS.fehler = null; TS.busy = true; TS.res = null; TS.gewaehlt = null; TS.sel = null; TS.planerIv = null; TS.profilFallback = null; TS.anfragen = 0; TS.cache = 0; TS.ctx = c; TS.schritt = null; TS.abHinweis = "";
+    TS.abgebrochen = false; TS.abort = typeof AbortController !== "undefined" ? new AbortController() : null; TS.vorher = vorher;
+    const id = ++TS.suchId;
+    clearKand();
     store.set("zeit", TS.zeit); if (TS.ortId && TS.ortId !== "temp") store.set("ort", TS.ortId);
     render();
+    let res;
     try {
-      TS.res = await TR().suche(c, { route: routeKand, wetter: wetterFuer, fortschritt: (t) => { TS.msg = t; const el = $("tr-status"); if (el) el.innerHTML = `<span class="spin" aria-hidden="true"></span> ${esc(t)}`; } });
-    } catch (e) { TS.res = { pool: [], fehler: [{ text: e.message || String(e) }], hinweise: [] }; }
-    TS.busy = false; TS.msg = "";
-    if (TS.res && TS.res.A) TS.formOffen = false;          // Ergebnisse oben, Einstellungen über «Einstellungen»
+      res = await TR().suche(c, { route: routeKand, wetter: wetterFuer, abbruch: () => TS.abgebrochen || id !== TS.suchId,
+        fortschritt: (t, st) => { if (id !== TS.suchId) return; TS.msg = t; TS.schritt = st || null; statusZeichnen(); } });
+    } catch (e) { res = { pool: [], fehler: [{ text: e.message || String(e) }], hinweise: [] }; }
+    if (id !== TS.suchId || TS.abgebrochen || (res && res.abgebrochen)) return;          // abgebrochen: «Abbrechen» hat den alten Stand schon wiederhergestellt
+    TS.res = res; TS.vorher = null; TS.abort = null;
+    TS.busy = false; TS.msg = ""; TS.schritt = null;
+    if (TS.res && TS.res.A) { TS.formOffen = false; if (innerWidth <= 760) R().setSheet("half"); }          // Ergebnisse oben, Karte sichtbar; Einstellungen über «Einstellungen»
     render(); zeigeKand();
     const rb = $("tr-res"); if (rb && rb.scrollIntoView && TS.res && TS.res.A) setTimeout(() => rb.scrollIntoView({ block: "start" }), 60);
+  }
+  /** «Abbrechen» bei der Suche (V9.16.0): laufende und wartende Anfragen abbrechen, nichts übernehmen oder speichern,
+   *  Anzeige und Karte wie vor der Suche. */
+  function abbrechen() {
+    if (!TS.busy) return;
+    TS.abgebrochen = true;
+    if (TS.abort) { try { TS.abort.abort(); } catch (e) { /* schon beendet */ } }
+    const v = TS.vorher || {};
+    TS.busy = false; TS.msg = ""; TS.schritt = null; TS.abort = null; TS.vorher = null;
+    TS.res = v.res || null; TS.gewaehlt = v.gewaehlt || null; TS.sel = v.sel || null; TS.planerIv = v.planerIv || null; TS.ctx = v.ctx || TS.ctx;
+    TS.profilFallback = v.profilFallback || null; TS.anfragen = v.anfragen || 0; TS.cache = v.cache || 0; TS.formOffen = v.formOffen;
+    TS.abHinweis = "Suche abgebrochen – nichts wurde gespeichert.";
+    render();
+    if (TS.res && TS.res.A) zeigeKand(true);
+    if (TS.gewaehlt) zeigeIntervalle();
+  }
+  function statusHtml() {
+    if (TS.busy) {
+      const st = TS.schritt ? `Schritt ${TS.schritt.n} von ${TS.schritt.von} · ` : "";
+      return `<span class="spin" aria-hidden="true"></span> <span id="tr-status-t">${esc(st + (TS.msg || "…"))}</span> <button type="button" class="btn" data-tr="abbruch">Abbrechen</button>`;
+    }
+    return TS.abHinweis ? `<span class="hint">${esc(TS.abHinweis)}</span>` : "";
+  }
+  function statusZeichnen() {
+    const el = $("tr-status"); if (!el) return;
+    el.innerHTML = statusHtml();
+    const b = el.querySelector('[data-tr="abbruch"]'); if (b) b.addEventListener("click", abbrechen);
   }
   /** Regler geändert: die drei gewählten Vorschläge sofort neu rechnen (ohne neue Anfragen); Auswahl bleibt. */
   let raf = 0;
@@ -190,9 +230,13 @@
     const E = { type: "FeatureCollection", features: [] }, lay = { "line-join": "round", "line-cap": "round" };
     m.addSource("tr-kand", { type: "geojson", data: E });
     m.addSource("tr-int", { type: "geojson", data: E });
-    const before = m.getLayer("rt-alt-case") ? "rt-alt-case" : undefined;
-    m.addLayer({ id: "tr-kand-case", type: "line", source: "tr-kand", layout: lay, paint: { "line-color": kf("var(--mk-ring)"), "line-width": 6, "line-opacity": 0.85 } }, before);
-    m.addLayer({ id: "tr-kand-line", type: "line", source: "tr-kand", layout: lay, paint: { "line-color": ["get", "color"], "line-width": 3.5, "line-dasharray": [2, 1.5], "line-opacity": 0.9 } }, before);
+    const before = m.getLayer("rt-alt-case") ? "rt-alt-case" : undefined, istSel = ["==", ["get", "sel"], 1];
+    // Markierte Linie (trainingsroute-1.2): breiter, durchgezogen, mit Rand; die übrigen gestrichelt
+    m.addLayer({ id: "tr-kand-case", type: "line", source: "tr-kand", layout: lay, paint: { "line-color": kf("var(--mk-ring)"), "line-width": ["case", istSel, 10, 6], "line-opacity": 0.85 } }, before);
+    m.addLayer({ id: "tr-kand-line", type: "line", source: "tr-kand", filter: ["!=", ["get", "sel"], 1], layout: lay, paint: { "line-color": ["get", "color"], "line-width": 3.5, "line-dasharray": [2, 1.5], "line-opacity": 0.9 } }, before);
+    m.addLayer({ id: "tr-kand-sel", type: "line", source: "tr-kand", filter: istSel, layout: lay, paint: { "line-color": ["get", "color"], "line-width": 6, "line-opacity": 1 } }, before);
+    // unsichtbare Trefferfläche (28 px breit = mindestens 12 px je Seite); nur solange noch keiner im Planer bearbeitet wird
+    m.addLayer({ id: "tr-kand-hit", type: "line", source: "tr-kand", filter: ["==", ["get", "hit"], 1], layout: lay, paint: { "line-color": "#000", "line-width": 28, "line-opacity": 0.001 } }, before);
     m.addLayer({ id: "tr-int-line", type: "line", source: "tr-int", layout: lay, paint: { "line-color": ["get", "color"], "line-width": 9, "line-opacity": 0.55 } }, m.getLayer("rt-arrows") ? "rt-arrows" : undefined);
   }
   /** Nur die Vorschlagslinien A/B/C und ihre Marker von der Karte nehmen (der Stand bleibt, «Training → Route» zu). */
@@ -201,6 +245,7 @@
     const m = karte(); if (m && m.getSource("tr-kand")) m.getSource("tr-kand").setData({ type: "FeatureCollection", features: [] });
   }
   function clearKand() {
+    TS.sel = null;
     kandWeg();
     const m = karte(); if (m && m.getSource("tr-int")) m.getSource("tr-int").setData({ type: "FeatureCollection", features: [] });
   }
@@ -213,19 +258,41 @@
     const m = karte(); if (!m || !TS.res || !TS.res.A || !TS.offen || !R().active()) return;
     layers(m); kandMarker.forEach((x) => x.remove()); kandMarker = [];
     const feats = [], seen = new Set();
-    for (const k of ["C", "B", "A"]) {
+    // Markierte Linie zuletzt zeichnen (liegt oben); ist ein Vorschlag im Planer (gewählt), sind die übrigen nur noch Anzeige
+    const reihe = ["C", "B", "A"].sort((x, y) => (x === TS.sel ? 1 : 0) - (y === TS.sel ? 1 : 0));
+    for (const k of reihe) {
       const c = TS.res[k]; if (!c || seen.has(c.id) || (TS.gewaehlt === k)) continue;
       seen.add(c.id);
-      feats.push({ type: "Feature", properties: { k, color: kf(FARBE[k]) }, geometry: { type: "LineString", coordinates: c.route.lon.map((x, i) => [x, c.route.lat[i]]) } });
+      feats.push({ type: "Feature", properties: { k, name: nm(k), color: kf(FARBE[k]), sel: TS.sel === k ? 1 : 0, hit: TS.gewaehlt ? 0 : 1 }, geometry: { type: "LineString", coordinates: c.route.lon.map((x, i) => [x, c.route.lat[i]]) } });
       if (window.maplibregl) {
         const a = RT().at(c.route, c.route.L * (k === "A" ? 0.35 : k === "B" ? 0.5 : 0.65)), el = document.createElement("button");
-        el.type = "button"; el.className = "rp-altpin tr-pin tr-" + k.toLowerCase(); el.textContent = k; el.title = `Vorschlag ${k}: ${titel(k, TS.sport)} – antippen zum Wählen`;
-        el.addEventListener("click", (ev) => { ev.stopPropagation(); waehle(k); });
+        el.type = "button"; el.className = "rp-altpin tr-pin tr-" + k.toLowerCase() + (TS.sel === k ? " on" : ""); el.textContent = nm(k); el.title = `Vorschlag ${nm(k)}: ${titel(k, TS.sport)} – antippen`;
+        el.addEventListener("click", (ev) => { ev.stopPropagation(); markiere(k); });
         kandMarker.push(new maplibregl.Marker({ element: el }).setLngLat([a.lon, a.lat]).addTo(m));
       }
     }
     m.getSource("tr-kand").setData({ type: "FeatureCollection", features: feats });
     if (!TS.gewaehlt && !ohneEinpassen) { const all = []; for (const f of feats) all.push(...f.geometry.coordinates); if (all.length) R().fitCoords(all); }
+  }
+  /** Linie oder Zeile antippen (trainingsroute-1.2): Vorschlag markieren, hervorheben, Kennzahlen unten zeigen. Bearbeitet wird erst mit «Bearbeiten». */
+  function markiere(k) {
+    const c = TS.res && TS.res[k]; if (!c || (c.K && c.K.unzureichend)) return;
+    TS.sel = k;
+    zeigeKand(true); renderBody();
+    const el = $("tr-body"); if (el && el.scrollIntoView) setTimeout(() => el.scrollIntoView({ block: "start" }), 40);          // Tabelle und Kennzahlen der Markierung zeigen
+  }
+  /** Karten-Klick aus dem Planer (js/routen-ui.js, mapClick): trifft er eine Vorschlagslinie (±14 px), wird sie markiert. Liegen mehrere
+   *  Linien übereinander, wechselt jedes weitere Tippen zur nächsten. */
+  function kartenKlick(e) {
+    const m = karte();
+    if (!m || !TS.offen || !TS.res || !TS.res.A || TS.gewaehlt || !m.getLayer || !m.getLayer("tr-kand-hit") || !e || !e.point) return false;
+    const box = [[e.point.x - 14, e.point.y - 14], [e.point.x + 14, e.point.y + 14]];
+    const f = m.queryRenderedFeatures(box, { layers: ["tr-kand-hit"] });
+    const ks = [...new Set((f || []).map((x) => x.properties && x.properties.k).filter(Boolean))];
+    if (!ks.length) return false;
+    const i = ks.indexOf(TS.sel);
+    markiere(ks.length > 1 && i >= 0 ? ks[(i + 1) % ks.length] : ks[0]);
+    return true;
   }
   function zeigeIntervalle() {
     const m = karte(); if (!m || !R().active()) return;
@@ -244,7 +311,7 @@
     const n = vias.length, nm = ortName(TS.ortId, TS.ortTemp);
     const names = vias.map((_, i) => (i === 0 ? nm : i === n - 1 ? (TS.routenart === "ziel" ? ortName(TS.zielId, TS.zielTemp) : nm) : `Wegpunkt ${i}`));
     const [pn, pm] = String(TS.pz || "0").split("x").map(Number);
-    TS.gewaehlt = k; TS.formOffen = false; TS.fitNach = true;
+    TS.gewaehlt = k; TS.sel = null; TS.formOffen = false; TS.fitNach = true;
     if (innerWidth <= 760) R().setSheet("half");          // Karte und Profil sichtbar; die Route wird mit dieser Höhe eingepasst
     R().loadTraining({ sport: TS.sport, opts: TS.opts, vias, names, startUnix: TS.ctx.start_unix, effort: { mode: modus(), value: TS.haupt },
       variantWahl: TS.sport === "rennrad" ? (c.variante === "C" ? "velo" : "schnell") : null, pauseMin: (pn || 0) * (pm || 0), name: gpxName() });
@@ -366,7 +433,7 @@
         <label>Start <input type="time" id="tr-zeit" value="${esc(TS.zeit)}"></label>
         <label>Startort <select id="tr-ort">${ortOptions(TS.ortId, TS.ortTemp, true)}</select></label>
         <label>Sportart <select id="tr-sport">${sportOpts.map(([v, l]) => `<option value="${v}" ${TS.sport === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
-        <label>Routenart <select id="tr-art">${[["rund", "Rundtour"], ["hin", "Hin und zurück"], ["ziel", "Zu einem Ziel"]].map(([v, l]) => `<option value="${v}" ${TS.routenart === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+        <label>Routenart <select id="tr-art">${[["rund", "Hin und zurück"], ["hin", "Gleicher Weg zurück"], ["ziel", "Zu einem Ziel"]].map(([v, l]) => `<option value="${v}" ${TS.routenart === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
         ${TS.routenart === "ziel" ? `<label>Ziel <select id="tr-zielort">${ortOptions(TS.zielId, TS.zielTemp, false)}</select></label>` : ""}
         <label title="Geplante Halte (z. B. Kaffee): verschieben Ankunft, Tageslicht und Wetter entlang der Strecke, zählen nicht zur Trainingsdauer">Stopps unterwegs <select id="tr-pz">${pause.map(([v, l]) => `<option value="${v}" ${TS.pz === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
         <label>Trainingsziel <select id="tr-ziel">${arten.map(([v, l]) => `<option value="${v}" ${TS.artOv === v ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></label>
@@ -378,8 +445,9 @@
       ${TS.fehler === "zustimmung" ? zustimmung() : TS.fehler ? `<p class="verdict bad">${esc(TS.fehler)}</p>` : ""}
       <div class="row"><button class="btn primary" id="tr-go" ${TS.busy ? "disabled" : ""}>${TS.busy ? '<span class="spin" aria-hidden="true"></span> wird berechnet …' : TS.res ? "Neu berechnen" : "Vorschläge berechnen"}</button></div>
       <p class="hint">Je Berechnung bis etwa 16 Anfragen an BRouter (höchstens 2 gleichzeitig, gleiche Anfragen nur einmal) und 1–3 an Open-Meteo. Gesendet werden nur Koordinaten und Zeiten.</p>`}`}
-      <div id="tr-status" class="tr-status" role="status" aria-live="polite">${TS.busy ? `<span class="spin" aria-hidden="true"></span> ${esc(TS.msg || "…")}` : ""}</div>
+      <div id="tr-status" class="tr-status" role="status" aria-live="polite"></div>
       <div id="tr-res"></div></div>`;
+    statusZeichnen();
     renderRes();
     bind();
   }
@@ -439,14 +507,14 @@
   function karteHtml(k) {
     const c = TS.res[k]; if (!c) return "";
     const K = c.K, x = TS.ctx, gleich = TS.res[k + "_gleich"];
-    if (K.unzureichend) return `<div class="tr-card"><b>${k}</b> ${esc(K.grund)}</div>`;
+    if (K.unzureichend) return `<div class="tr-card"><b>${nm(k)}</b> ${esc(K.grund)}</div>`;
     const e = eignung(K), dauerOk = Math.abs(K.abw) <= x.wo.tol;
     const ma = K.max_anstieg;
     const begr = TR().begruendung(k, c, x);
     const ivs = K.intervalle.length ? `<ol class="tr-ivs">${K.intervalle.map((v) => `<li class="${v.note}"><b>${v.nr}</b> km ${isNum(v.d0) ? km(v.d0) : "–"}–${isNum(v.d1) ? km(v.d1) : "–"} · ${TR().mmss(v.t1 - v.t0)} · <span class="badge ${NOTE[v.note]}">${v.note}</span>${v.gruende.length ? ` <small>${esc(v.gruende.join("; "))}</small>` : ""}</li>`).join("")}</ol>` : "";
     const sh = K.intervalle.length && K.int_wert < 1 ? TR().verschiebung(c.route, K.sim, x.plan, { fam: TR().FAMILIE[TS.sport], typ: TR().intervallTyp(x.wo, TR().FAMILIE[TS.sport]), rennrad: TS.sport === "rennrad", unterbr: K.unterbr }) : null;
-    return `<div class="tr-card k-${k} ${TS.gewaehlt === k ? "on" : ""}">
-      <div class="tr-card-h"><span class="tr-key k-${k}">${k}</span><b>${esc(titel(k, TS.sport))}</b> <span class="badge ${NOTE[e.note]}">${esc(e.text)}</span>${gleich ? ` <span class="badge muted">wie ${gleich}</span>` : ""}${c.umgekehrt_von ? ` <span class="badge info">Gegenrichtung wegen Wind</span>` : ""}</div>
+    return `<div class="tr-card k-${k} ${TS.gewaehlt === k || TS.sel === k ? "on" : ""}${TS.sel === k ? " tr-markiert" : ""}">
+      <div class="tr-card-h"><span class="tr-key k-${k}">${nm(k)}</span><b>${esc(titel(k, TS.sport))}</b> <span class="badge ${NOTE[e.note]}">${esc(e.text)}</span>${gleich ? ` <span class="badge muted">wie ${nm(gleich)}</span>` : ""}${c.umgekehrt_von ? ` <span class="badge info">Gegenrichtung wegen Wind</span>` : ""}</div>
       <div class="tr-kpi"><div><span>Distanz</span><b>${km(K.L)} km</b></div><div><span>Zeit</span><b>${dur(K.T)} h</b><small>${dur(K.band[0])}–${dur(K.band[1])}</small></div>
         <div><span>Höhe</span><b>${num(K.up)} m</b><small>↓ ${num(K.down)} m</small></div><div class="${dauerOk ? "" : "warn"}"><span>vs. Plan</span><b>${K.abw >= 0 ? "+" : "−"}${num(Math.abs(K.abw * 100))} %</b><small>Plan ${dur(x.wo.dauer_s)}</small></div></div>
       ${dauerOk ? "" : `<p class="hint warn-t">Weicht mehr als ±${num(x.wo.tol * 100)} % von der Plandauer ab – die Plandauer bleibt massgebend.${TS.routenart === "ziel" ? "" : " «Neu berechnen» sucht erneut."}</p>`}
@@ -456,7 +524,8 @@
         <li><span>Licht</span>${lichtText(K)}</li><li><span>Prognose</span>${prognoseText(K)}</li></ul>
       ${ivs}${sh ? `<p class="hint">Hinweis: ${sh.min > 0 ? sh.min + " min länger" : -sh.min + " min kürzer"} einfahren, dann lägen die Intervalle besser (${sh.alle_gut ? "alle geeignet" : "mehr geeignet"}). Der Plan bleibt unverändert.</p>` : ""}
       <p class="hint"><b>Warum:</b> ${esc(begr)}</p>
-      <div class="row">${TS.gewaehlt === k ? `<span class="pill">gewählt</span>` : `<button class="btn primary" data-wahl="${k}">Auswählen</button>`}<button class="btn" data-zeig="${k}">Auf der Karte</button></div></div>`;
+      <div class="row">${TS.gewaehlt === k ? `<span class="pill">im Planer</span>` : `<button class="btn primary" data-wahl="${k}">${TS.gewaehlt ? "Stattdessen bearbeiten" : "Bearbeiten"}</button>`}<button class="btn" data-zeig="${k}">Auf der Karte</button></div>
+      ${TS.gewaehlt && TS.gewaehlt !== k ? `<p class="hint">Stattdessen bearbeiten ersetzt die Route im Planer; Änderungen dort gehen verloren.</p>` : ""}</div>`;
   }
   function renderRes() {
     const box = $("tr-res"); if (!box) return;
@@ -485,19 +554,25 @@
     const body = $("tr-body");
     if (!body || !TS.res || !TS.res.A) { renderRes(); return; }
     const r = TS.res, x = TS.ctx;
-    const zeile = (k) => { const c = r[k]; if (!c || c.K.unzureichend) return ""; const K = c.K, e = eignung(K); const gew = TS.gewaehlt === k;
+    const zeile = (k) => { const c = r[k]; if (!c || c.K.unzureichend) return ""; const K = c.K, e = eignung(K); const gew = TS.gewaehlt === k, mark = TS.sel === k;
       // Teil 0b (K3): ganze Zeile antippbar (Tippziel ≥ 44 px), keine eigene Knopfspalte – passt ohne seitliches Scrollen
-      return `<tr class="tr-zeile${gew ? " on" : ""}"${gew ? ' aria-current="true"' : ` data-wahlzeile="${k}"`}><td>${gew ? `<span class="tr-wbtn"><span class="tr-key sm k-${k}">${k}</span><span class="tr-gew">gewählt</span></span>` : `<button type="button" class="tr-wbtn" aria-label="Vorschlag ${k} wählen"><span class="tr-key sm k-${k}">${k}</span><span class="tr-gew" aria-hidden="true">wählen</span></button>`}</td><td>${km(K.L)}</td><td>${dur(K.T)}</td><td>${num(K.up)}</td><td class="${Math.abs(K.abw) <= x.wo.tol ? "" : "warn-t"}">${K.abw >= 0 ? "+" : "−"}${num(Math.abs(K.abw * 100))} %</td><td><span class="badge ${NOTE[e.note]}">${esc(e.note)}</span></td></tr>`; };
+      // trainingsroute-1.2: Zeile antippen = markieren (wie die Linie auf der Karte); bearbeitet wird erst mit «Bearbeiten»
+      const zu = gew ? "bearbeitet" : mark ? "markiert" : "zeigen";
+      return `<tr class="tr-zeile${gew || mark ? " on" : ""}"${gew ? ' aria-current="true"' : ` data-wahlzeile="${k}"`}><td>${gew ? `<span class="tr-wbtn"><span class="tr-key sm k-${k}">${nm(k)}</span><span class="tr-gew">${zu}</span></span>` : `<button type="button" class="tr-wbtn" aria-label="Vorschlag ${nm(k)} markieren"><span class="tr-key sm k-${k}">${nm(k)}</span><span class="tr-gew" aria-hidden="true">${zu}</span></button>`}</td><td>${km(K.L)}</td><td>${dur(K.T)}</td><td>${num(K.up)}</td><td class="${Math.abs(K.abw) <= x.wo.tol ? "" : "warn-t"}">${K.abw >= 0 ? "+" : "−"}${num(Math.abs(K.abw * 100))} %</td><td><span class="badge ${NOTE[e.note]}">${esc(e.note)}</span></td></tr>`; };
+    const ok = ["A", "B", "C"].filter((k) => r[k] && !r[k].K.unzureichend);
+    // Unten: Kennzahlen der markierten Linie (Belag, Wegart, Steigungen, Wetter und Wind, Licht, Gravel, Intervall-Eignung); sonst ein Hinweis
+    const unten = TS.sel && r[TS.sel] ? karteHtml(TS.sel) : !TS.gewaehlt && ok.length ? `<p class="hint tr-tipp">Tippe eine Linie auf der Karte oder eine Zeile an – dann erscheinen hier ihre Kennzahlen und «Bearbeiten».</p>` : "";
     body.innerHTML = `${TS.gewaehlt ? selInfo() : ""}
       <div class="tbl-wrap"><table class="t tr-vt" data-keine-liste><tr><th><span class="sr-only">Vorschlag</span></th><th>km</th><th>Zeit</th><th>Hm</th><th>vs. Plan</th><th>Eignung</th></tr>${["A", "B", "C"].map(zeile).join("")}</table></div>
-      ${TS.gewaehlt ? `<details class="tr-det" ${TS.detOffen ? "open" : ""}><summary>Vorschläge im Detail</summary>${["A", "B", "C"].map(karteHtml).join("")}</details>` : ["A", "B", "C"].map(karteHtml).join("")}
+      ${unten}
+      <details class="tr-det" ${TS.detOffen ? "open" : ""}><summary>Alle Vorschläge im Detail</summary>${["A", "B", "C"].filter((k) => k !== TS.sel).map(karteHtml).join("")}</details>
       <p class="hint">${TS.anfragen} Routing-Anfragen (${TS.cache} aus dem Zwischenspeicher)${r.d_schaetzung ? ` · Startschätzung ${km(r.d_schaetzung)} km aus deiner Zeitprognose` : ""} · Regeln ${esc(TR().VERSIONS.vorschlag)}, ${esc(TR().VERSIONS.intervalle)}, ${esc(TR().VERSIONS.wetter)}, ${esc(RT().VERSIONS.zeit)}.</p>`;
     bindBody(body);
   }
   function selInfo() {
     const r = TS.planerRoute, I = TS.planerIv || [], s = R().sim();
     const dauer = s && !s.unzureichend ? s.moving_s : null, plan = TS.wo.dauer_s, abw = dauer && plan ? (dauer - plan) / plan : null;
-    return `<div class="rp-card tr-sel"><b>Im Planer: Vorschlag ${TS.gewaehlt}</b>
+    return `<div class="rp-card tr-sel"><b>Im Planer: Vorschlag ${nm(TS.gewaehlt)}</b>
       <p class="hint">Plan ${dur(plan)} h · Prognose im Planer ${dur(dauer)} h${isNum(abw) ? ` (${abw >= 0 ? "+" : "−"}${num(Math.abs(abw * 100))} %)` : ""}. Zwischenziele verschieben, ergänzen oder umkehren ist im Planer möglich; die Intervalle wandern mit.</p>
       ${isNum(abw) && Math.abs(abw) > TS.wo.tol ? `<p class="verdict warn">Die Route passt nicht mehr zur Plandauer (±${num(TS.wo.tol * 100)} %). <button class="btn" data-tr="neu">Route neu berechnen</button></p>` : ""}
       ${r && I.length ? `<ol class="tr-ivs">${I.map((v) => `<li class="${v.note}"><b>${v.nr}</b> km ${isNum(v.d0) ? km(v.d0) : "–"}–${isNum(v.d1) ? km(v.d1) : "–"} · <span class="badge ${NOTE[v.note]}">${v.note}</span>${v.gruende.length ? ` <small>${esc(v.gruende.join("; "))}</small>` : ""}</li>`).join("")}</ol>` : ""}
@@ -562,8 +637,8 @@
   /** Vergleich und Karten: Auswahl, Karte, neu berechnen, beenden. */
   function bindBody(body) {
     body.querySelectorAll("[data-wahl]").forEach((b) => b.addEventListener("click", () => waehle(b.dataset.wahl)));
-    body.querySelectorAll("[data-wahlzeile]").forEach((tr) => tr.addEventListener("click", () => waehle(tr.dataset.wahlzeile)));
-    body.querySelectorAll("[data-zeig]").forEach((b) => b.addEventListener("click", () => { const c = TS.res[b.dataset.zeig]; if (c) { if (innerWidth <= 760) R().setSheet("min"); R().fitCoords(c.route.lon.map((x, i) => [x, c.route.lat[i]])); } }));
+    body.querySelectorAll("[data-wahlzeile]").forEach((tr) => tr.addEventListener("click", () => markiere(tr.dataset.wahlzeile)));
+    body.querySelectorAll("[data-zeig]").forEach((b) => b.addEventListener("click", () => { const c = TS.res[b.dataset.zeig]; if (c) { if (innerWidth <= 760) R().setSheet("half"); R().fitCoords(c.route.lon.map((x, i) => [x, c.route.lat[i]])); } }));
     body.querySelectorAll("[data-tr]").forEach((b) => b.addEventListener("click", () => {
       const a = b.dataset.tr;
       if (a === "neu") { TS.gewaehlt = null; suche(); }
@@ -664,7 +739,7 @@
   function vorschlaege() { return UI() && UI().merged ? UI().merged("trainingsrouten", "trainingsrouten") : D().trainingsrouten || []; }
   function kalender(ds) {
     const L = vorschlaege().filter((r) => r.datum === ds); if (!L.length) return "";
-    return L.map((r) => `<div class="tr-kal"><span class="dot" style="background:${FARBE[r.vorschlag] || "var(--tr-ohne)"}"></span> Trainingsroute ${esc(r.vorschlag)} (${esc(r.titel || "")}): ${km(r.pred.L)} km, Prognose ${dur(r.pred.moving_s)} h${r._lokal ? " · nur auf diesem Gerät" : ""}
+    return L.map((r) => `<div class="tr-kal"><span class="dot" style="background:${FARBE[r.vorschlag] || "var(--tr-ohne)"}"></span> Trainingsroute ${esc(nm(r.vorschlag))} (${esc(r.titel || "")}): ${km(r.pred.L)} km, Prognose ${dur(r.pred.moving_s)} h${r._lokal ? " · nur auf diesem Gerät" : ""}
       <button class="btn ex-btn" data-trv="${esc(r.id)}">Vorschlag vs. Ist</button><div class="tr-vgl" id="trv-${esc(r.id)}" hidden></div></div>`).join("");
   }
   function zeigeVergleich(id) {
@@ -695,5 +770,5 @@
     const v = e.target.closest && e.target.closest("[data-trv]");
     if (v) { e.preventDefault(); zeigeVergleich(v.dataset.trv); }
   });
-  window.TRUI = { show, hide, openPlan, planFor, onPlanner, chartBands, gpxExtras, gpxName, wantsMapClick, mapClick, kalender, zeigeVergleich, state: () => TS, waehle, suche, planerZu, planerAuf };
+  window.TRUI = { show, hide, openPlan, planFor, onPlanner, chartBands, gpxExtras, gpxName, wantsMapClick, mapClick, kartenKlick, kalender, zeigeVergleich, state: () => TS, waehle, markiere, suche, abbrechen, planerZu, planerAuf };
 })();

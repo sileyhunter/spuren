@@ -14,8 +14,8 @@
 })(typeof self !== "undefined" ? self : this, function (RT, FK) {
   "use strict";
   const TR = {};
-  TR.VERSIONS = { workout: "workout-1.1", vorschlag: "trainingsroute-1.1", dauer: "dauer-1.0", intervalle: "intervall-rt-1.0",
-    wetter: "wetteroptimiert-1.0", ruhig: "ruhig-1.0", licht: "tageslicht-1.0", auswertung: "auswertung-rt-1.0" };
+  TR.VERSIONS = { workout: "workout-1.1", vorschlag: "trainingsroute-1.2", dauer: "dauer-1.0", intervalle: "intervall-rt-1.0",
+    wetter: "wetteroptimiert-1.0", ruhig: "ruhig-1.0", licht: "tageslicht-1.0", auswertung: "auswertung-rt-1.0", abbrechen: "abbrechen-1.0" };
   const isNum = (v) => typeof v === "number" && isFinite(v);
   const RAD = Math.PI / 180, R_E = 6371008.8;
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
@@ -253,7 +253,11 @@
     return [+((((l2 / RAD) + 540) % 360) - 180).toFixed(6), +(p2 / RAD).toFixed(6)];
   };
   /** Luftlinien-Länge × Umwegfaktor (Annahme für die erste Runde; danach nach der echten Fahrzeit nachgeregelt). */
-  TR.FORM = { rund: { faktor: 4 * Math.SQRT2 * 1.3, text: "Rundtour" }, hin: { faktor: 2 * 1.25, text: "Hin und zurück" }, ziel: { faktor: 1, text: "Zum Ziel" } };
+  TR.FORM = { rund: { faktor: 4 * Math.SQRT2 * 1.3, text: "Hin und zurück" }, hin: { faktor: 2 * 1.25, text: "Gleicher Weg zurück" }, ziel: { faktor: 1, text: "Zum Ziel" } };
+  /** trainingsroute-1.2 (V9.16.0, Entscheid Nr. 76): Anzeigenamen der Vorschläge 1/2/3; gespeichert und gerechnet wird weiter mit A/B/C
+   *  (alte Einträge in `trainingsrouten` bleiben lesbar). */
+  TR.NAME = { A: "1", B: "2", C: "3" };
+  TR.name = (k) => TR.NAME[k] || String(k || "");
   /** Punkte einer Kandidatenroute. Rundtour: Kreis durch den Start (Mittelpunkt in Richtung brg, Radius r), Zwischenziele
    *  bei 90°, 180° und 270° im Uhrzeigersinn; Hin und zurück: Wendepunkt in Richtung brg im Abstand r. */
   TR.punkte = function (form, start, brg, r) {
@@ -591,13 +595,13 @@
     if (ok.some((c) => c.sB)) {
       const r = nimm(ok, (c) => (c.sB ? c.sB.wert : null), [out.A]);
       out.B = r.c;
-      if (r.gleich) { out.B_gleich = "A"; out.hinweise.push("B: Beim Wetter ist A bereits die beste Route – B entspricht A."); }
-    } else out.hinweise.push("B: Wetter unbekannt (keine Prognose geladen oder Lücken) – keine wetteroptimierte Auswahl.");
+      if (r.gleich) { out.B_gleich = "A"; out.hinweise.push(`${TR.name("B")}: Beim Wetter ist ${TR.name("A")} bereits die beste Route – ${TR.name("B")} entspricht ${TR.name("A")}.`); }
+    } else out.hinweise.push(`${TR.name("B")}: Wetter unbekannt (keine Prognose geladen oder Lücken) – keine wetteroptimierte Auswahl.`);
     const poolC = ctx.sport === "rennrad" && ok.some((c) => c.variante === "C") ? ok.filter((c) => c.variante === "C") : ok;
     const rc = nimm(poolC, (c) => c.sC.wert, [out.A, out.B && out.B !== out.A ? out.B : null]);
     if (rc) {
       out.C = rc.c;
-      if (rc.gleich) { const g = rc.gleich === out.A ? "A" : "B"; out.C_gleich = g; out.hinweise.push(`C: ${g} ist bereits die ruhigste Route – C führt fast über dieselben Wege.`); }
+      if (rc.gleich) { const g = rc.gleich === out.A ? "A" : "B"; out.C_gleich = g; out.hinweise.push(`${TR.name("C")}: ${TR.name(g)} ist bereits die ruhigste Route – ${TR.name("C")} führt fast über dieselben Wege.`); }
     }
     return out;
   };
@@ -637,7 +641,11 @@
   TR.suche = async function (ctx, io) {
     const res = { pool: [], fehler: [], hinweise: [], v: TR.VERSIONS.vorschlag };
     const fam = TR.FAMILIE[ctx.sport] || "rad", form = ctx.routenart || "rund", T = ctx.wo.dauer_s, tol = ctx.wo.tol;
-    const melde = (t) => io.fortschritt && io.fortschritt(t);
+    // Fortschritt (V9.16.0): «Schritt n von y»; Rundtouren: Richtungen · Dauer abstimmen (2 Runden) · Rennrad: ruhige Variante; zum Ziel: ein Schritt
+    const von = form === "ziel" ? 1 : ctx.sport === "rennrad" ? 4 : 3;
+    const melde = (t, n) => io.fortschritt && io.fortschritt(t, { n: Math.min(von, n || 1), von });
+    const weg = () => !!(io.abbruch && io.abbruch());       // «Abbrechen»: nichts mehr rechnen, nichts halb übernehmen
+    const abgebrochen = () => ({ pool: [], fehler: [], hinweise: [], v: TR.VERSIONS.vorschlag, abgebrochen: true });
     if (!isNum(T) || T <= 0) { res.hinweise.push("Keine Dauer bekannt – bitte Dauer angeben."); return res; }
     const Dflat = TR.flachDistanz(ctx.sport, ctx.inp, T);
     if (!isNum(Dflat)) { res.hinweise.push("Keine Zeitprognose möglich (Kalibrierung fehlt für diese Eingabe)."); return res; }
@@ -647,6 +655,7 @@
     const ordnen = () => res.pool.sort((a, b) => a.seq - b.seq);       // gleiche Reihenfolge unabhängig von der Antwortzeit
     const rechne = async (variante, brg, r, extra) => {
       const pts = form === "ziel" ? [ctx.start, ctx.ziel] : TR.punkte(form, ctx.start, brg, r), seq = ++nr;
+      if (weg()) return null;
       try {
         const leg = await io.route(variante, pts, extra);
         const legs = pts.length > 2 ? RT.splitLegs(leg, pts) : [leg];
@@ -657,31 +666,35 @@
         TR.bewerte(c, ctx, fields.get(route.id) || null);
         res.pool.push(c); ordnen();
         return c;
-      } catch (e) { res.fehler.push({ variante, brg, r, text: (e && e.message) || String(e), detail: (e && e.detail) || "" }); return null; }
+      } catch (e) { if (weg() || (e && e.kind === "abbruch")) return null; res.fehler.push({ variante, brg, r, text: (e && e.message) || String(e), detail: (e && e.detail) || "" }); return null; }
     };
     const wetter = async (list) => {
-      if (!io.wetter || !list.length) return;
+      if (!io.wetter || !list.length || weg()) return;
       try {
         const m = await io.wetter(list.map((c) => c.route));
         if (!m) return;
         for (const c of list) { const f = m.get(c.route.id); if (f) { fields.set(c.route.id, f); c.field = f; TR.bewerte(c, ctx, f); } }
-      } catch (e) { res.hinweise.push("Wetter nicht verfügbar: " + ((e && e.message) || e)); }
+      } catch (e) { if (!weg()) res.hinweise.push("Wetter nicht verfügbar: " + ((e && e.message) || e)); }
     };
     if (form === "ziel") {
-      melde("Route zum Ziel …");
+      melde("Route zum Ziel …", 1);
       await Promise.all([rechne("A", null, null), rechne("C", null, null), rechne("A", null, null, { alt: 1 })]);
       await wetter(res.pool);
+      if (weg()) return abgebrochen();
       return Object.assign(res, TR.auswahl(res.pool, ctx));
     }
     const r0 = Math.max(300, res.d_schaetzung / TR.FORM[form].faktor);
-    melde("6 Richtungen werden gerechnet …");
+    melde("6 Richtungen werden gerechnet …", 1);
     await Promise.all([0, 60, 120, 180, 240, 300].map((b) => rechne("A", b, r0)));
+    if (weg()) return abgebrochen();
     if (!res.pool.length) { res.hinweise.push("Keine Route gefunden (siehe Meldungen)."); return res; }
     await wetter(res.pool.slice());
+    if (weg()) return abgebrochen();
     // Nachregeln: je Richtung (Familie) Radius so ändern, dass die Bewegungszeit zur Plandauer passt
     const familie = (variante, brg) => res.pool.filter((c) => c.variante === variante && c.brg === brg && c.K && !c.K.unzureichend);
     const nachregeln = async (variante, brgs, runden) => {
       for (let rr = 0; rr < runden; rr++) {
+        if (weg()) return;
         const todo = [];
         for (const b of brgs) {
           const F = familie(variante, b).sort((x, y) => Math.abs(x.K.abw) - Math.abs(y.K.abw));
@@ -696,7 +709,7 @@
           todo.push(rechne(variante, b, rn));
         }
         if (!todo.length) break;
-        melde(`Dauer abstimmen (${variante === "C" ? "ruhige Variante, " : ""}Runde ${rr + 1}) …`);
+        melde(`Dauer abstimmen (${variante === "C" ? "ruhige Variante, " : ""}Runde ${rr + 1}) …`, variante === "C" ? 4 : 2 + rr);
         const neu = (await Promise.all(todo)).filter(Boolean);
         await wetter(neu);
       }
@@ -707,13 +720,15 @@
     const topA = rang((c) => ohneDauer(c.sA)).slice(0, 3);
     const topB = rang((c) => ohneDauer(c.sB)).slice(0, 1), topC = rang((c) => ohneDauer(c.sC)).slice(0, 2);
     await nachregeln("A", [...new Set([...topA, ...topB, ...(ctx.sport === "rennrad" ? [] : topC)])], 2);
+    if (weg()) return abgebrochen();
     if (ctx.sport === "rennrad") {
-      melde("Velofreundliche Variante (C) …");
+      melde("Ruhige Variante (3) …", 4);
       const start = topC.map((b) => familie("A", b).sort((x, y) => Math.abs(x.K.abw) - Math.abs(y.K.abw))[0]).filter(Boolean);
       const neu = (await Promise.all(start.map((c) => rechne("C", c.brg, c.r)))).filter(Boolean);
       await wetter(neu);
       await nachregeln("C", start.map((c) => c.brg), 1);
     }
+    if (weg()) return abgebrochen();
     // Rundtour mit Wind: Die erste Hälfte führt immer vom Start zum entferntesten Punkt (Richtung brg), die zweite zurück –
     // ob zuerst Gegenwind kommt, entscheidet also die Richtung der Runde (B wählt sie über «Wind Rückweg»), nicht der Umlaufsinn.
     return Object.assign(res, TR.auswahl(res.pool, ctx));
