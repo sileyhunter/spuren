@@ -23,7 +23,7 @@
   if (root) root.V64 = V64;
 })(typeof window !== "undefined" ? window : null, function (V62) {
   "use strict";
-  const V64 = { VERSIONS: { modell: "modell-1.0", woche: "wochenplan-1.2", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.1", aufbau: "aufbau-1.2", vergleich: "vergleich-1.4", abwechslung: "abwechslung-1.0", abc: "lauf-abc-1.0", sportart: "sportart-1.0", automatisch: "automatisch-1.0" } };
+  const V64 = { VERSIONS: { vorlagen: "vorlagen-enduco-1.0", modell: "modell-1.0", woche: "wochenplan-1.2", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.1", aufbau: "aufbau-1.2", vergleich: "vergleich-1.4", abwechslung: "abwechslung-1.0", abc: "lauf-abc-1.0", sportart: "sportart-1.0", automatisch: "automatisch-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const T = (iso) => Date.parse(iso + "T12:00:00Z");
   const add = (iso, n) => new Date(T(iso) + n * 864e5).toISOString().slice(0, 10);
@@ -39,8 +39,8 @@
     z3: "mittel", sweet: "mittel", z3o: "mittel",
     z4: "hart", z5: "hart", vo2: "hart", anaerob: "hart", neuro: "hart", sprint: "hart" };
   /** Eigene Baustein-Schlüssel → Farbe aus V6.ZONEN (nur zum Zeichnen). */
-  V64.FARBE = { z1: "z1", z2: "z2", renntempo: "fatmax", z3: "z3", z3o: "sweet", vo2: "vo2", pause: "pause", css: "z4", test: "offen", abc: "z1" };
-  V64.ZNAME = { z1: "Z1 locker", z2: "Z2 Grundlage", renntempo: "Renntempo (knapp unter LT1)", z3: "Z3 Tempo", z3o: "knapp unter LT2", vo2: "Z5 VO2max",
+  V64.FARBE = { z1: "z1", z2: "z2", fatmax: "fatmax", renntempo: "fatmax", z3: "z3", z3o: "sweet", vo2: "vo2", pause: "pause", css: "z4", test: "offen", abc: "z1" };
+  V64.ZNAME = { z1: "Z1 locker", z2: "Z2 Grundlage", fatmax: "FatMax (obere Hälfte von Z2)", renntempo: "Renntempo (knapp unter LT1)", z3: "Z3 Tempo", z3o: "knapp unter LT2", vo2: "Z5 VO2max",
     css: "CSS-Tempo", test: "Test", pause: "locker", abc: "Lauf-ABC" };
   V64.AUFTEILUNG = { schwimm: 0.2, rad: 0.5, lauf: 0.3 };
 
@@ -167,6 +167,49 @@
     schwimm_locker: { sport: "schwimm", titel: "Schwimmen locker", art: "locker", wissen: "schwimmen", quellen: ["dekerle2005"],
       zweck: "Lange Wiederholungen ruhig und sauber: Grundlage und Technik unter leichter Ermüdung.",
       teile: (o) => [["z2", o.d]], ablauf: (o) => ["lange Wiederholungen (300–400 m), 20–30 s Pause", isNum(o.css_s) ? `Tempo deutlich langsamer als CSS, etwa ${mmss(o.css_s + 8)}–${mmss(o.css_s + 12)}/100 m (CSS + 8–12 s, Annahme)` : "Tempo locker, nach Gefühl"] },
+    /* V9.18.0 intensitaet-stufen-1.0: FatMax (obere Hälfte von Z2) und Sweet Spot (oberes Drittel von Z3, Abschnittsart z3o) als eigene Stufen in «Training planen».
+       Namen wie in den enduco-Einheiten, Aufbau und Texte eigen; die Zeiten richten sich nach der gewählten Dauer. Die automatische Wochenplanung wählt sie nicht von selbst. */
+    rad_fatmax: { sport: "rad", titel: "FatMax", art: "locker", wissen: "zonen", quellen: ["seiler2010"],
+      zweck: "Lange gleichmässige Fahrt im oberen Teil von Z2, nahe an LT1: viel Zeit dort, wo der Körper viel Fett verbrennt, und trotzdem gut erholbar.",
+      teile: (o) => [["z1", 5], ["z2", 5], ["fatmax", Math.max(10, o.d - 15)], ["z1", 5]],
+      ablauf: (o) => ["5 min einrollen, 5 min Z2", `${Math.max(10, o.d - 15)} min gleichmässig im oberen Z2 (FatMax)`, "5 min locker ausfahren"] },
+    rad_fatmax_int: { sport: "rad", titel: "FatMax Intervalle", art: "locker", wissen: "zonen", quellen: ["seiler2010"],
+      zweck: "FatMax-Blöcke im Wechsel mit lockerer Fahrt in Z2: mehr Zeit nahe LT1, als am Stück gut zu halten wäre, mit kleinen Erholungen dazwischen.",
+      bloecke: (o) => { const U = o.d - 15, L = U < 80 ? 20 : U < 130 ? 25 : 30, R = L <= 20 ? 5 : 10; let n = Math.max(2, Math.floor((U + R) / (L + R)));
+        while (n > 1 && o.d - 10 - n * L - (n - 1) * R < 5) n--; return { n, L, R, vorne: Math.max(5, o.d - 10 - n * L - (n - 1) * R) }; },
+      teile(o) { const b = this.bloecke(o); return [["z1", 5], ["z2", b.vorne]].concat(wdh(b.n, [["fatmax", b.L]], [["z2", b.R]]), [["z1", 5]]); },
+      ablauf(o) { const b = this.bloecke(o); return [`5 min einrollen, ${b.vorne} min Z2`, `${b.n} × ${b.L} min FatMax, ${b.R} min Z2 dazwischen`, "5 min locker ausfahren"]; } },
+    rad_fatmax_pyr: { sport: "rad", titel: "FatMax Pyramide", art: "locker", wissen: "zonen", quellen: ["seiler2010"],
+      zweck: "Zwei Durchgänge FatMax – Tempo – FatMax: die Tempo-Mitte hebt den Stoffwechsel kurz an, danach geht es zurück in den ruhigen Bereich.",
+      form: (o) => { const U = o.d - 30, A = Math.max(5, Math.floor(U / 5.8)), B_ = Math.floor(A * 0.9); return { A, B: B_, rest: Math.max(0, U - 2 * (2 * A + B_)) }; },
+      teile(o) { const f = this.form(o); return [["z1", 5], ["z2", 5]].concat(wdh(2, [["fatmax", f.A], ["z3", f.B], ["fatmax", f.A]], [["z2", 10]]), [["z2", 5 + f.rest], ["z1", 5]]); },
+      ablauf(o) { const f = this.form(o); return ["5 min einrollen, 5 min Z2", `2 × (${f.A} min FatMax, ${f.B} min Tempo (Z3), ${f.A} min FatMax), 10 min Z2 dazwischen`, "locker ausfahren"]; } },
+    rad_sweet: { sport: "rad", titel: "Sweet Spot gleichmässig", art: "schluessel", dyn: true, wissen: "modelle", quellen: ["stoeggl2015", "seiler2010"],
+      zweck: "Ein langer gleichmässiger Block im oberen Z3, knapp unter LT2: viel Zeit nahe der Schwelle ohne die Ermüdung harter Intervalle.",
+      L: (o) => Math.min(40, Math.max(15, Math.round(((o.d || 60) - 30) * 0.6 / 5) * 5)),
+      teile(o) { const d = Math.max(40, o.d || 60), L = this.L(o); return [["z1", 5], ["z2", 10], ["z3o", L], ["z2", d - 20 - L], ["z1", 5]]; },
+      ablauf(o) { const d = Math.max(40, o.d || 60), L = this.L(o); return ["15 min einfahren", `${L} min gleichmässig im Sweet Spot (oberes Z3)`, `${d - 20 - L} min Z2, 5 min locker ausfahren`]; } },
+    rad_sweet_int: { sport: "rad", titel: "Sweet Spot Intervalle", art: "schluessel", dyn: true, wissen: "modelle", quellen: ["stoeggl2015", "seiler2010"],
+      zweck: "Mehrere Blöcke im Sweet Spot mit kurzer Erholung: gleiche Zone wie der gleichmässige Block, in Stücken leichter zu halten.",
+      form: (o) => { const d = Math.max(65, o.d || 75), L = 20, R = 5, n = Math.min(4, Math.max(2, Math.floor((d - 20 + R) / (L + R)))); return { n, L, R, rest: d - 15 - n * L - (n - 1) * R - 5 }; },
+      teile(o) { const f = this.form(o); return [["z1", 5], ["z2", 10]].concat(wdh(f.n, [["z3o", f.L]], [["z1", f.R]]), [["z2", f.rest], ["z1", 5]]); },
+      ablauf(o) { const f = this.form(o); return ["15 min einfahren", `${f.n} × ${f.L} min Sweet Spot, ${f.R} min locker dazwischen`, "gleichmässig fahren, nicht über die Schwelle", `${f.rest} min Z2, 5 min ausfahren`]; } },
+    lauf_fatmax: { sport: "lauf", titel: "FatMax", art: "locker", wissen: "zonen", quellen: ["seiler2010"],
+      zweck: "Gleichmässig laufen im oberen Teil von Z2, nahe an LT1: viel Zeit im Fettstoffwechsel-Bereich, gut erholbar.",
+      teile: (o) => [["z1", 5], ["z2", 5], ["fatmax", Math.max(10, o.d - 15)], ["z1", 5]],
+      ablauf: (o) => ["5 min einlaufen, 5 min Z2", `${Math.max(10, o.d - 15)} min gleichmässig im oberen Z2 (FatMax)`, "5 min locker auslaufen"] },
+    lauf_fatmax_int: { sport: "lauf", titel: "FatMax Intervalle", art: "locker", wissen: "zonen", quellen: ["seiler2010"],
+      zweck: "FatMax-Blöcke im Wechsel mit lockerem Laufen in Z2: mehr Zeit nahe LT1, mit kleinen Erholungen dazwischen.",
+      bloecke: (o) => { const U = o.d - 15, L = U < 50 ? 15 : U < 75 ? 20 : 25, R = 5; let n = Math.max(2, Math.floor((U + R) / (L + R)));
+        while (n > 1 && o.d - 10 - n * L - (n - 1) * R < 5) n--; return { n, L, R, vorne: Math.max(5, o.d - 10 - n * L - (n - 1) * R) }; },
+      teile(o) { const b = this.bloecke(o); return [["z1", 5], ["z2", b.vorne]].concat(wdh(b.n, [["fatmax", b.L]], [["z2", b.R]]), [["z1", 5]]); },
+      ablauf(o) { const b = this.bloecke(o); return [`5 min einlaufen, ${b.vorne} min Z2`, `${b.n} × ${b.L} min FatMax, ${b.R} min Z2 dazwischen`, "5 min locker auslaufen"]; } },
+    lauf_sweet: { sport: "lauf", titel: "Sweet Spot", art: "schluessel", dyn: true, wissen: "modelle", quellen: ["stoeggl2015", "seiler2010"],
+      zweck: "Mehrere Blöcke im oberen Z3, knapp unter LT2: Schwellenzeit mit überschaubarer Ermüdung.",
+      abcMin: (o) => { const A = o.abc === false ? null : V64.LAUF_ABC && V64.LAUF_ABC[V64.abcVon("lauf_sweet")]; return A ? A.dauer : 0; },   // das Lauf-ABC steckt in der gewählten Dauer (V64.mitAbc nimmt es vom Auslaufen)
+      form(o) { const d = Math.max(50, o.d || 60), L = 12, R = 3, a = this.abcMin(o), amax = this.abcMin({}), n = Math.min(4, Math.max(2, Math.floor((d - 15 - amax + R) / (L + R)))); return { n, L, R, a, rest: Math.max(0, d - 15 - n * L - (n - 1) * R - a) }; },
+      teile(o) { const f = this.form(o); return [["z1", 5], ["z2", 5]].concat(wdh(f.n, [["z3o", f.L]], [["z1", f.R]]), [["z2", f.rest], ["z1", 5 + f.a]]); },
+      ablauf(o) { const f = this.form(o); return ["10 min einlaufen", `${f.n} × ${f.L} min Sweet Spot, ${f.R} min Trab dazwischen`, "gleichmässig laufen, nicht über die Schwelle", `${f.rest > 0 ? f.rest + " min Z2, " : ""}5 min auslaufen`]; } },
     /* V8.4 abwechslung-1.0: gleicher Reiz in anderer Form (Familien in V64.FAMILIEN; die erste Form ist die Vergleichseinheit) */
     rad_vo2_4x5: { sport: "rad", titel: "VO2max 4 × 5 min", art: "schluessel", wissen: "intervalle", quellen: ["roennestad2015", "buchheit2013a"],
       zweck: "Gleicher Reiz wie 30/15 in langen Stücken: Zeit nahe der maximalen Sauerstoffaufnahme. Diese Form war in der Studie zu 30/15 die Vergleichsgruppe.",
@@ -245,11 +288,12 @@
   const RANG = (V64.RANG = { locker: 0, schwelle: 1, alles: 2 });
   V64.INTENSITAET_STANDARD = { schwimm: "alles", rad: "alles", lauf: "alles" };
   V64.STUFE_BAUSTEIN = { rad_vo2: "alles", lauf_vo2: "alles", rad_schwelle: "schwelle", rad_laktat: "schwelle", rad_tempo: "schwelle",
-    lauf_tempo: "schwelle", lauf_laktat: "schwelle", schwimm_css: "schwelle" };
+    lauf_tempo: "schwelle", lauf_laktat: "schwelle", schwimm_css: "schwelle", rad_sweet: "schwelle", rad_sweet_int: "schwelle", lauf_sweet: "schwelle" };
   /** Ersatz derselben Sportart, wenn ein Baustein über der gewählten Stufe liegt. */
   V64.ERSATZ = { rad_vo2: { schwelle: "rad_schwelle", locker: "rad_locker" }, lauf_vo2: { schwelle: "lauf_tempo", locker: "lauf_locker" },
     rad_schwelle: { locker: "rad_locker" }, rad_laktat: { locker: "rad_locker" }, rad_tempo: { locker: "rad_locker" },
-    lauf_tempo: { locker: "lauf_locker" }, lauf_laktat: { locker: "lauf_locker" }, schwimm_css: { locker: "schwimm_locker" } };
+    lauf_tempo: { locker: "lauf_locker" }, lauf_laktat: { locker: "lauf_locker" }, schwimm_css: { locker: "schwimm_locker" },
+    rad_sweet: { locker: "rad_locker" }, rad_sweet_int: { locker: "rad_locker" }, lauf_sweet: { locker: "lauf_locker" } };
   /* ---------------- Abwechslung (abwechslung-1.0, V8.4) ---------------- */
   /** Familien desselben Reizes: die erste Form ist die Vergleichseinheit, die anderen sind Varianten mit ähnlicher Zeit im selben Bereich. */
   V64.FAMILIEN = { rad_vo2: ["rad_vo2", "rad_vo2_4x5", "rad_vo2_4020"], lauf_vo2: ["lauf_vo2", "lauf_vo2_5x3", "lauf_vo2_3030"],
@@ -402,6 +446,11 @@
         if (!z3 || !isNum(z3.von)) return null;
         const lt1 = z3.von, a = sport === "rad" ? W5(0.95 * lt1) : lt1 * 1.03;      // Rad 95–100 % der Leistung an LT1, Laufen bis 3 % langsamer
         return `${band(a, lt1)} (LT1 ${wert(lt1)})${puls(h3 && isNum(h3.von) ? `bis ${h3.von}` : null)}`;
+      }
+      case "fatmax": {                                              // V9.18.0 intensitaet-stufen-1.0: obere Hälfte von Z2 (eigene Festlegung; bei Rad und Puls gleiche Lage wie die FatMax-Unterstufe in enduco)
+        if (!ok(z2)) return null;
+        const a = z2.von + (z2.bis - z2.von) / 2;
+        return band(sport === "rad" ? W5(a) : a, z2.bis) + puls(ok(h2) ? `${Math.round(h2.von + (h2.bis - h2.von) / 2)}–${h2.bis}` : null);
       }
       case "z3": return ok(z3) ? band(z3.von, z3.bis) + puls(ok(h3) ? `${h3.von}–${h3.bis}` : null) : null;
       case "z3o": {
@@ -713,7 +762,7 @@
     const sk = skalen && skalen.lauf_pace, z2 = zone(sk, 2), z3 = zone(sk, 3), z5 = zone(sk, 5);
     if (!z2 || !isNum(z2.von) || !isNum(z2.bis)) return null;
     const p2 = (z2.von + z2.bis) / 2, z3ok = z3 && isNum(z3.von) && isNum(z3.bis);
-    const P = { z1: z2.von, pause: z2.von, z2: p2, renntempo: z3ok ? z3.von * 1.015 : null, z3: z3ok ? (z3.von + z3.bis) / 2 : null, z3o: z3ok ? z3.bis : null,
+    const P = { z1: z2.von, pause: z2.von, z2: p2, fatmax: z2.von + 0.75 * (z2.bis - z2.von), renntempo: z3ok ? z3.von * 1.015 : null, z3: z3ok ? (z3.von + z3.bis) / 2 : null, z3o: z3ok ? z3.bis : null,
       vo2: z5 && isNum(z5.von) ? z5.von : null };
     let km = 0;
     for (const [k, m] of e.teile) { if (k === "abc") continue; const p = P[k]; if (!isNum(p) || p <= 0) return null; km += (m * 60) / p; }   // Lauf-ABC: kaum Strecke

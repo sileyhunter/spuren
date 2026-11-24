@@ -1868,3 +1868,20 @@ table.t.zonen-tab { margin: 4px 0 6px; } table.t.zonen-tab th { width: 3.2em; te
 .css-wert { margin: 0 0 8px; } .css-wert b { font-size: 1.15em; font-variant-numeric: tabular-nums; }
 .css-ablauf { margin: 6px 0 8px 1.2em; padding: 0; } .css-ablauf li { margin: 2px 0; }
 label.css-schaetz { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; } label.css-schaetz input { width: auto; margin-top: 2px; }
+
+/* V9.17.0 Intensitätszonen wie enduco (zonen-ansicht-1.0, js/zonen-ansicht.js): Balken über die ganze Skala, Unterstufen darunter, Teilstriche, Liste */
+.iz-metrik { margin: 0 0 14px; }
+.iz-bar { position: relative; height: 40px; border-radius: 10px; background: var(--surface-2); overflow: hidden; }
+.iz-z { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; background: var(--zc); color: var(--wk-weiss); font: 700 13px var(--f-body); border-right: 2px solid var(--bg); overflow: hidden; }
+.iz-z:last-child { border-right: 0; } .iz-z.hell { color: var(--wk-schwarz); } .iz-z span { white-space: nowrap; }
+.iz-unter { position: relative; height: 10px; margin-top: 4px; }
+.iz-u { position: absolute; top: 0; bottom: 0; background: var(--zc); border-radius: 5px; }
+.iz-ticks { position: relative; height: 18px; margin-top: 6px; font: 11.5px var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.iz-ticks.zwei { height: 32px; }
+.iz-t { position: absolute; transform: translateX(-50%); white-space: nowrap; } .iz-t.erste { transform: none; } .iz-t.letzte { transform: translateX(-100%); } .iz-t.tief { top: 14px; }
+.iz-rand { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 2px; min-height: 14px; }
+.iz-liste { margin-top: 12px; }
+
+/* V9.18.0 Unterstufen (FatMax unter Grundlage, Sweet Spot unter Tempo · Schwelle) im Blatt «Intensität», eingerückt wie in enduco */
+.mp-stufen .mp-unter { margin-left: 22px; }
+.mp-stufen .mp-unter .mp-st-kachel { width: 26px; height: 26px; border-radius: 8px; }

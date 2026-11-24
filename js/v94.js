@@ -3,13 +3,18 @@
    Eine anaerobe Stufe gibt es nicht, weil keine Vorlage der Seite anaerob ist. Texte eigen. */
 (function () {
   "use strict";
-  const V94 = { VERSIONS: { fluss: "planen-fluss-1.0" } };
+  const V94 = { VERSIONS: { fluss: "planen-fluss-1.0", stufen: "intensitaet-stufen-1.0" } };
 
   V94.STUFEN = [
     { k: "grundlage", name: "Grundlage", zone: "z2", arten: ["grundlage", "lang", "technik", "aktivierung", "kraft", "mobility"],
       text: "Locker und lang, unter der ersten Schwelle. Baut die Ausdauer auf." },
+    /* V9.18.0 intensitaet-stufen-1.0: Unterstufen wie in enduco; «unter» = Oberstufe (im Blatt eingerückt). Die automatische Wochenplanung wählt sie nicht von selbst. */
+    { k: "fatmax", name: "FatMax", zone: "fatmax", unter: "grundlage", arten: ["fatmax"],
+      text: "Oberer Teil von Z2, nahe an LT1: viel Zeit im Fettstoffwechsel-Bereich und gut erholbar." },
     { k: "tempo", name: "Tempo · Schwelle", zone: "z4", arten: ["tempo", "schwelle", "renntempo", "koppel"],
       text: "Längere Blöcke bis knapp unter LT2 und im Renntempo." },
+    { k: "sweet", name: "Sweet Spot", zone: "sweet", unter: "tempo", arten: ["sweet"],
+      text: "Oberes Drittel von Z3, knapp unter LT2: viel Schwellenzeit bei überschaubarer Ermüdung." },
     { k: "vo2max", name: "VO2max", zone: "vo2", arten: ["vo2max"],
       text: "Kurze, harte Intervalle über der Schwelle." },
     { k: "test", name: "Test", zone: "neuro", arten: ["test"],

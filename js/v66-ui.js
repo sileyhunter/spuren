@@ -1145,7 +1145,7 @@
     const bib = ["rad", "lauf", "schwimm"].includes(basis) && C.D.enduco_bib && C.D.enduco_bib.workouts && Object.keys(C.D.enduco_bib.workouts).length;
     const zf = (z) => (W.ZONEN[z] || W.ZONEN.offen).farbe;
     const html = `<h2 id="v59-ov-h" tabindex="-1">${esc(spName(sp))}</h2><p class="sub">${esc(tagText(ds))} · Intensität wählen</p>
-      <ul class="mp-wahl mp-stufen">${S.map((st) => `<li><button type="button" class="mp-zeile mp-stufe" data-mpst="${st.k}">
+      <ul class="mp-wahl mp-stufen">${S.map((st) => `<li${st.unter ? ' class="mp-unter"' : ""}><button type="button" class="mp-zeile mp-stufe" data-mpst="${st.k}">
         <span class="mp-st-kachel" style="--zc:${zf(st.zone)}" aria-hidden="true"></span><span class="mp-vt"><b>${esc(st.name)}</b><small>${esc(st.text)}</small></span>${W.icon("weiter", 18)}</button></li>`).join("")}
         ${bib ? `<li><button type="button" class="mp-zeile" data-mpbibl><span class="mp-st-kachel bib" aria-hidden="true"></span><span class="mp-vt"><b>Aus deiner Enduco-Bibliothek</b><small>Ein Workout, das du in Enduco gespeichert hast.</small></span>${W.icon("weiter", 18)}</button></li>` : ""}</ul>
       ${fuss("data-mpz")}`;

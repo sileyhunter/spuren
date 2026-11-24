@@ -417,3 +417,11 @@ Tests, Eigenes, Gesperrtes) bleibt, wie es ist. Entschieden von Claude nach «ja
 - **Dialog:** `M.probe(mo).info(mehr)` rechnet einen Vorschlag mit dem echten Planer und liefert, was er auslöst (`dritte`, `zusammen`); `V92.hinweise` stellt das gegen den Stand ohne Vorschlag.
   Der Dialog zeigt «Achtung: Mittwoch hätte dann 3 Einheiten» und nennt Vorschläge ohne so etwas zuerst.
 - Regel ändern = `V66.VERSIONS.tagesregel`, `V66.TAGESMAX`/`LANG_ANTEIL`/`LANG_UMBENENNEN`, `tests/test_v9110.cjs` nachführen.
+
+## Unterstufen FatMax und Sweet Spot (V9.18.0, intensitaet-stufen-1.0; V9.19.0, vorlagen-enduco-1.0; Auftrag FatMax · Zonen · enduco B und C, 24.11.2026)
+- **Regeln (eigene Festlegung, keine festen Zahlen):** FatMax = obere Hälfte von Z2 (`fatmax`: Watt, Puls, Pace aus dem aktiven Profil); Sweet Spot = oberes Drittel von Z3 (Abschnitt `z3o`). Ohne passende Skala wird nichts geraten (kein Ziel).
+- **Stufen im Planen-Blatt:** `V94.STUFEN` kennt `fatmax` (unter Grundlage) und `sweet` (unter Tempo · Schwelle); sie gibt es nur für Sportarten mit solchen Vorlagen (Rad, Lauf). Art `fatmax` und `sweet` in `V66.ARTEN`.
+- **Einstufung:** FatMax ist locker (Baustein-Art `locker`, nicht in `HART_K`, nicht `schluessel`); Sweet Spot ist Schlüsseleinheit (Art `schluessel`) mit freier Dauer (`dyn`), wird aber von der Wochenplanung nie verkürzt (`neuBauen` kennt nur `locker`, `lang`, `kurs`, `koppel`).
+- **Wochenplanung unverändert:** die neuen Vorlagen sind nur von Hand wählbar; keine Familie (`V64.FAMILIEN`) und kein `V64.woche`-Pfad nennt sie. Die Tagesregel V9.11.0 gilt wie bei jeder anderen Einheit.
+- **Aufbau (nur Struktur und Anteile aus enduco, Namen wie dort, Beschriebe eigen):** FatMax Intervalle = Einfahren, Z2, n × FatMax mit Z2-Erholung (kürzer als der Block), Ausfahren; FatMax Pyramide = zweimal FatMax – Tempo (Z3) – FatMax mit Z2 dazwischen; Sweet Spot gleichmässig = ein langer Block (höchstens 40 min); Sweet Spot Intervalle und Lauf = 2–4 Blöcke mit kurzer Erholung. Jede Vorlage baut sich für jede gewählte Dauer auf (Summe stimmt). Der Lauf-Sweet-Spot trägt das Lauf-ABC vom Auslaufen.
+- **Nicht übernommen:** Pace- und Watt-Zielwerte aus enduco; die enduco-Schwimmeinheiten (nur Strecken). Weitere enduco-Namen sind offen (`docs/offen-nach-v55.md`, Nr. 197).

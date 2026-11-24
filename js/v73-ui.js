@@ -31,7 +31,7 @@
   const skalen = () => (TR() && C ? TR().zonen(C.D.zonen).skalen : {}) || {};
 
   /* ---------- Zonen: Chips, Farben, Erklärungen (eigene Worte) ---------- */
-  const ZCHIP = { z1: ["z1", "Z1·Erholung"], pause: ["z1", "Z1·Erholung"], z2: ["z2", "Z2·Grundlage"], renntempo: ["fatmax", "Z2·Renntempo"], z3: ["z3", "Z3·Tempo"],
+  const ZCHIP = { z1: ["z1", "Z1·Erholung"], pause: ["z1", "Z1·Erholung"], z2: ["z2", "Z2·Grundlage"], fatmax: ["fatmax", "Z2·FatMax"], renntempo: ["fatmax", "Z2·Renntempo"], z3: ["z3", "Z3·Tempo"],
     z3o: ["sweet", "Z3·unter LT2"], css: ["z4", "Z4·CSS"], vo2: ["vo2", "Z5·VO2max"], test: ["offen", "Test"], abc: ["z1", "Lauf-ABC"] };
   /** Schlüssel der Zonenfarben (V6.ZONEN) eines Schritts: Abschnittsart (Mein Plan) oder Zone des Workouts (Bibliothek). */
   const v6Key = (s) => (s.key ? (ZCHIP[s.key] || ["offen"])[0] : s.zone && V6().ZONEN[s.zone] ? s.zone : "offen");

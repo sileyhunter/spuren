@@ -415,7 +415,7 @@
   V.cockpit = function () {
     const box = $("zc-box"); if (!box) return;
     const ck = FK().cockpit(C.D.zonen, C.D.schwellen, isoToday());
-    if (!ck) { box.innerHTML = `<p class="hint">Noch kein Zonenprofil. Zonen entstehen nie automatisch aus LT1/LT2; sie werden mit deiner Freigabe gesetzt.</p>`; return; }
+    if (!ck) { box.innerHTML = `<p class="hint">Noch kein Zonenprofil. Zonen entstehen nie automatisch aus LT1/LT2; sie werden mit deiner Freigabe gesetzt.</p>`; V.intensitaetszonen(null); return; }
     const P = ck.profil;
     const ausLt = P.methodik && /^zonenvorschlag-/.test(P.methodik.art || "");
     $("zc-meta").innerHTML = `<b>${esc(P.name)}</b> ${V.badge(P.status)} ${ausLt ? V.prov("berechnet", "Aus LT1/LT2 berechnet, von dir bestätigt") : V.prov("manuell", "Von Hand gesetzt")} · gültig ab ${dch(P.gueltig_ab)}${P.gueltig_bis ? " bis " + dch(P.gueltig_bis) : ""}
@@ -424,6 +424,27 @@
     box.innerHTML = ck.skalen.map((k, si) => scaleHTML(k, si, P)).join("");
     box.classList.toggle("cmp", LZ.mode !== "aktuell");
     box.querySelectorAll(".ltm,.ltna").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); const k = ck.skalen[+b.dataset.s]; openPop(b, popHTML(k, b.dataset.w, b.dataset.which, P)); }));
+    V.intensitaetszonen(ck);
+  };
+  /** V9.17.0 zonen-ansicht-1.0 (js/zonen-ansicht.js): «Intensitätszonen» wie bei enduco – Sportart und Messgrösse wählen, ein Balken, Unterstufen, Liste. Ändert keine Zonen. */
+  const IZ = { sport: "rad", metrik: "puls" };
+  V.intensitaetszonen = function (ck) {
+    const box = $("iz-box"); if (!box) return;
+    const ZA = window.ZA, W = window.V6, sp = $("iz-sport"), mt = $("iz-metrik"), meta = $("iz-meta");
+    const leer = (t) => { sp.innerHTML = ""; mt.innerHTML = ""; meta.textContent = ""; box.innerHTML = `<p class="hint">${t}</p>`; };
+    if (!ZA || !W) return leer("Ansicht nicht verfügbar.");
+    if (!ck) return leer("Noch kein Zonenprofil.");
+    const angebot = ZA.angebot(ck.skalen.map((k) => k.skala)), w = ZA.waehle(angebot, IZ.sport, IZ.metrik);
+    if (!w) return leer("Keine Zonen für Rad oder Laufen im Profil.");
+    IZ.sport = w.sport; IZ.metrik = w.metrik;
+    sp.innerHTML = angebot.map((a) => `<button type="button" data-izs="${a.sport}" aria-pressed="${a.sport === w.sport}">${esc(a.name)}</button>`).join("");
+    mt.innerHTML = w.angebot.metriken.map((m) => `<button type="button" data-izm="${m.k}" aria-pressed="${m.k === w.metrik}">${esc(m.name)}</button>`).join("");
+    sp.querySelectorAll("[data-izs]").forEach((b) => b.addEventListener("click", () => { IZ.sport = b.dataset.izs; V.intensitaetszonen(ck); }));
+    mt.querySelectorAll("[data-izm]").forEach((b) => b.addEventListener("click", () => { IZ.metrik = b.dataset.izm; V.intensitaetszonen(ck); }));
+    const fmt = w.skala.metrik === "pace" ? (v) => FK().pace(v) : (v) => num(v);
+    const m = ZA.modell(w.skala, W, { ruhe: ZA.ruhepuls((C.D && C.D.days) || [], isoToday(), 14), fmt });
+    meta.textContent = `${ck.profil.name} · gültig ab ${dch(ck.profil.gueltig_ab)}`;
+    box.innerHTML = ZA.html(m, { esc, fmt });
   };
   function scaleHTML(k, si, P) {
     const s = k.skala, F = FK();

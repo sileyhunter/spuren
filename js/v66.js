@@ -45,7 +45,7 @@
   // gehört zu den harten Läufen (lauf-abc-1.0, js/v64.js). Vorlage «mobility» bleibt nur, damit ältere Einträge lesbar bleiben.
   V66.SPORTARTEN = [["schwimm", "Schwimmen"], ["rad", "Rad"], ["rad_drinnen", "Rad drinnen"], ["lauf", "Laufen"], ["lauf_drinnen", "Laufen drinnen"],
     ["kraft", "Kraft und Athletik"]];
-  V66.ARTEN = { grundlage: "Grundlage", lang: "Lang", tempo: "Tempo", schwelle: "Schwelle", vo2max: "VO2max", renntempo: "Renntempo",
+  V66.ARTEN = { grundlage: "Grundlage", fatmax: "FatMax", lang: "Lang", tempo: "Tempo", schwelle: "Schwelle", sweet: "Sweet Spot", vo2max: "VO2max", renntempo: "Renntempo",
     koppel: "Koppellauf", technik: "Technik und Kurs", aktivierung: "Aktivierung", test: "Test", kraft: "Kraft und Athletik", mobility: "Mobility", draussen: "Draussen" };
   const EXTRA = {
     kraft: { sport: "kraft", titel: "Krafttraining", art: "kraft", zweck: "Kraft- und Stabilisationsübungen nach deinem Programm; die Seite plant keine Übungen und keine Ziele." },
@@ -69,6 +69,8 @@
   };
   // Vorlage → [Art, min, max, Standard] in Minuten; ohne Zahlen: Schlüsseleinheit (min = kurze Fassung, Standard = volle, max = volle + 60)
   const ZU = {
+    rad_fatmax: ["fatmax", 30, 300, 90], rad_fatmax_int: ["fatmax", 60, 300, 120], rad_fatmax_pyr: ["fatmax", 60, 240, 120],     // V9.18.0 intensitaet-stufen-1.0 (V9.19.0 vorlagen-enduco-1.0)
+    rad_sweet: ["sweet", 45, 150, 60], rad_sweet_int: ["sweet", 65, 150, 75], lauf_fatmax: ["fatmax", 30, 150, 60], lauf_fatmax_int: ["fatmax", 45, 150, 75], lauf_sweet: ["sweet", 50, 100, 60],
     rad_locker: ["grundlage", 30, 300, 60], rad_lang: ["lang", 90, 360, 180], rad_lang_rt: ["renntempo", 120, 360, 180],
     rad_tempo: ["tempo"], rad_schwelle: ["schwelle"], rad_laktat: ["schwelle"], rad_vo2: ["vo2max"], aktivierung: ["aktivierung"], test_rad: ["test"],
     lauf_locker: ["grundlage", 20, 120, 45], lauf_lang: ["lang", 60, 210, 90], lauf_lang_rt: ["renntempo", 75, 210, 100], lauf_tempo: ["tempo"],
@@ -141,7 +143,7 @@
     const o = { phase: ctx.phase, css_s: ctx.css_s };
     let e;
     if (b.fix) e = V64.einheit(s.vorlage, o);
-    else if (DYN.has(b.art)) e = V64.einheit(s.vorlage, Object.assign({ d: s.dauer }, o));
+    else if (DYN.has(b.art) || b.dyn) e = V64.einheit(s.vorlage, Object.assign({ d: s.dauer }, o));   // dyn: Sweet Spot (V9.18.0) – Dauer frei, Art bleibt Schlüsseleinheit
     else {
       const voll = V64.einheit(s.vorlage, o), kurz = V64.einheit(s.vorlage, Object.assign({ kurz: true }, o));
       e = isNum(s.dauer) && s.dauer >= voll.dauer ? voll : kurz;
@@ -1337,13 +1339,14 @@
     if (z4w && isNum(z4w.von)) {
       const lt2 = z4w.von, lt1 = z3w && isNum(z3w.von) ? z3w.von : null;
       R.rad = { lt2, wert: { z1: z2w && isNum(z2w.von) ? 0.85 * z2w.von : null, z2: mitte(z2w), z3: mitte(z3w), z3o: 0.97 * lt2,
+        fatmax: z2w && isNum(z2w.von) && isNum(z2w.bis) ? z2w.von + 0.75 * (z2w.bis - z2w.von) : null,
         vo2: z5w && isNum(z5w.von) ? 1.05 * z5w.von : null, renntempo: lt1 ? 0.975 * lt1 : null, pause: z2w && isNum(z2w.von) ? 0.85 * z2w.von : null } };
     }
     const z1p = zone(p, 1), z2p = zone(p, 2), z3p = zone(p, 3), z4p = zone(p, 4), z5p = zone(p, 5);
     if (z4p && isNum(z4p.von)) {
       const lt2 = z4p.von, lt1 = z3p && isNum(z3p.von) ? z3p.von : null;
       const langsam = z1p && isNum(z1p.bis) ? 1.05 * z1p.bis : null;     // Pace in s/km, grösser = langsamer
-      R.lauf = { lt2, pace: { z1: langsam, z2: mitte(z2p), z3: mitte(z3p), z3o: 1.03 * lt2, vo2: z5p && isNum(z5p.von) ? 0.97 * z5p.von : null,
+      R.lauf = { lt2, pace: { z1: langsam, z2: mitte(z2p), fatmax: z2p && isNum(z2p.von) && isNum(z2p.bis) ? z2p.von + 0.75 * (z2p.bis - z2p.von) : null, z3: mitte(z3p), z3o: 1.03 * lt2, vo2: z5p && isNum(z5p.von) ? 0.97 * z5p.von : null,
         renntempo: lt1 ? 1.015 * lt1 : null, pause: langsam } };
     }
     if (last) {                                                       // tl-plan-1.1: wie die absolvierte Last
@@ -1351,7 +1354,7 @@
         const z2 = zone(L, 2), z3 = zone(L, 3), z4 = zone(L, 4), z5 = zone(L, 5);
         if (!isNum(schwelle) || !z2 || !isNum(z2.von) || !isNum(z2.bis)) return null;
         const locker = 0.95 * z2.von;
-        return { lthr: schwelle, wert: { z1: locker, pause: locker, z2: mitte(z2), renntempo: z2.von + (2 / 3) * (z2.bis - z2.von), z3: mitte(z3),
+        return { lthr: schwelle, wert: { z1: locker, pause: locker, z2: mitte(z2), fatmax: z2 && isNum(z2.von) && isNum(z2.bis) ? z2.von + 0.75 * (z2.bis - z2.von) : null, renntempo: z2.von + (2 / 3) * (z2.bis - z2.von), z3: mitte(z3),
           z3o: z4 && isNum(z4.von) ? 0.98 * z4.von : null, vo2: z5 && isNum(z5.von) ? z5.von : null } };
       };
       const refs = (((last.ref || {}).rad) || []).filter((x) => x && isNum(x.lt2_w)).sort((a, b) => String(a.ab || "").localeCompare(String(b.ab || "")));
@@ -1439,7 +1442,7 @@
   V66.METRIK_JE = { rad: ["leistung", "puls", "rpe"], lauf: ["pace", "puls", "rpe"], schwimm: ["pace", "rpe"] };
   V66.metrikVon = (e) => { const L = V66.METRIK_JE[e && e.sport] || ["rpe"]; return e && L.includes(e.metrik) ? e.metrik : L[0]; };
   /** RPE je Abschnitt (rpe-zonen-1.0, gleich wie V73.RPE). */
-  V66.RPE = { pause: "RPE 1–2", z1: "RPE 1–2", z2: "RPE 3–4", renntempo: "RPE 4–5", z3: "RPE 5–6", z3o: "RPE 6–7", css: "RPE 7", vo2: "RPE 8–9" };
+  V66.RPE = { pause: "RPE 1–2", z1: "RPE 1–2", z2: "RPE 3–4", fatmax: "RPE 4", renntempo: "RPE 4–5", z3: "RPE 5–6", z3o: "RPE 6–7", css: "RPE 7", vo2: "RPE 8–9" };
   /** Zielbereich eines Abschnitts für Garmin → { art: "watt"|"tempo", lo, hi, offen } oder null (ohne Ziel). Tempo in m/s, lo < hi. */
   V66.garminZiel = function (key, sport, skalen) {
     const S = skalen || {}, W5 = (x) => Math.round(x / 5) * 5;
@@ -1447,6 +1450,7 @@
       const z2 = gz(S.rad_w, 2), z3 = gz(S.rad_w, 3), z5 = gz(S.rad_w, 5), w = (lo, hi, offen) => ({ art: "watt", lo: Math.round(Math.min(lo, hi)), hi: Math.round(Math.max(lo, hi)), offen: !!offen });
       switch (key) {
         case "z2": return voll(z2) ? w(z2.von, z2.bis) : null;
+        case "fatmax": return voll(z2) ? w(W5(z2.von + (z2.bis - z2.von) / 2), z2.bis) : null;            // V9.18.0: obere Hälfte von Z2
         case "z3": return voll(z3) ? w(z3.von, z3.bis) : null;
         case "z3o": return voll(z3) ? w(W5(z3.von + (2 / 3) * (z3.bis - z3.von)), z3.bis) : null;
         case "renntempo": return z3 && isNum(z3.von) ? w(W5(0.95 * z3.von), z3.von) : null;
@@ -1460,6 +1464,7 @@
       const okP = (z) => voll(z) && z.von > 0 && z.bis > 0;
       switch (key) {
         case "z2": return okP(z2) ? t(z2.von, z2.bis) : null;
+        case "fatmax": return okP(z2) ? t(z2.von + (z2.bis - z2.von) / 2, z2.bis) : null;
         case "z3": return okP(z3) ? t(z3.von, z3.bis) : null;
         case "z3o": return okP(z3) ? t(z3.von + (2 / 3) * (z3.bis - z3.von), z3.bis) : null;
         case "renntempo": return z3 && isNum(z3.von) && z3.von > 0 ? t(z3.von * 1.03, z3.von) : null;
@@ -1477,6 +1482,7 @@
     const p = (lo, hi, offen) => (isNum(lo) && isNum(hi) && lo > 0 && hi >= lo ? { art: "puls", lo: Math.round(lo), hi: Math.round(hi), offen: !!offen } : null);
     switch (key) {
       case "z2": return voll(z2) ? p(z2.von, z2.bis) : null;
+      case "fatmax": return voll(z2) ? p(z2.von + (z2.bis - z2.von) / 2, z2.bis) : null;
       case "z3": return voll(z3) ? p(z3.von, z3.bis) : null;
       case "z3o": return voll(z3) ? p(z3.von + (2 / 3) * (z3.bis - z3.von), z3.bis) : null;
       case "renntempo": return voll(z2) && z3 && isNum(z3.von) ? p(z2.von + (2 / 3) * (z2.bis - z2.von), z3.von) : null;

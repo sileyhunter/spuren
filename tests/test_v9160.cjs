@@ -170,5 +170,5 @@ test("Nichts verloren: Kennungen, Regeln und Planer-Wege der Vorschläge sind un
   assert.match(ui, /Zwischenziele verschieben, ergänzen oder umkehren ist im Planer möglich; die Intervalle wandern mit/);
   assert.match(ui, /if \(!R\(\)\.consent\(\)\.routing\) \{ TS\.fehler = "zustimmung"/, "ohne Zustimmung keine Koordinaten");
   assert.match(R("index.html"), /sw\.js/);
-  assert.match(R("sw.js"), /notebook-v9160/);
+  assert.match(R("sw.js"), /notebook-v9\d+-/);
 });

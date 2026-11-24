@@ -1,5 +1,30 @@
 # Änderungen
 
+## V9.19.0 · 24.11.2026 · Neue Vorlagen nach enduco (vorlagen-enduco-1.0; Auftrag FatMax · Zonen · enduco, Etappe C)
+Aufbau und Anteile von enduco-Einheiten (aus Garmin Connect gelesen, Anbieter «Enduco»); **keine** Pace- oder Watt-Zahlen übernommen, alle Ziele kommen aus deinem aktiven Zonenprofil. Namen wie in enduco, Beschriebe eigen. Dauerfassungen derselben Einheit sind zu einer Vorlage mit Dauerbereich zusammengefasst.
+- **Rad, FatMax:** «FatMax» (gleichmässig, 30 min – 5 h), «FatMax Intervalle» (Blöcke 20–30 min, dazwischen Z2), «FatMax Pyramide» (zweimal FatMax – Tempo – FatMax, Z2 dazwischen).
+- **Rad, Sweet Spot:** «Sweet Spot gleichmässig» (ein langer Block), «Sweet Spot Intervalle» (2–4 Blöcke zu 20 min, 5 min locker dazwischen).
+- **Lauf:** «FatMax», «FatMax Intervalle» (Blöcke 15–25 min, 5 min Z2 dazwischen), «Sweet Spot» (2–4 Blöcke zu 12 min, 3 min Trab dazwischen, mit Lauf-ABC wie die übrigen harten Läufe).
+- **Dauer frei:** jede neue Vorlage baut sich für jede gewählte Dauer (5-Minuten-Schritte) auf; die Summe stimmt immer, keine leeren Abschnitte. Sweet Spot bleibt Schlüsseleinheit (Art `schluessel`, Baustein-Marke `dyn`: Dauer frei, wird aber von der Wochenplanung nie verkürzt).
+- **Schwimmen nicht berührt:** die enduco-Schwimmeinheiten haben keine Zeitstruktur (Strecken); Schwimm-Vorlagen bleiben unverändert.
+- **Noch offen (nicht gebaut):** weitere enduco-Namen (Gleichmässiges Tempo, 2×/3× Tempo Blöcke, Tempo Über-Unter, Progressives Trio, Kurze VO2max & Tempo, Sweet Spot & VO2max, Priming & Tempo Block, Neuro-Varianten u. a.). Sie kommen in einer späteren Etappe, jeweils nach dem Aufbau der enduco-Einheit.
+- Neu: `tests/test_v9190.cjs` (7 Tests). Kennung `vorlagen-enduco-1.0` (`V64.VERSIONS.vorlagen`).
+
+## V9.18.0 · 24.11.2026 · FatMax und Sweet Spot als Stufen im Planer (intensitaet-stufen-1.0; Auftrag FatMax · Zonen · enduco, Etappe B)
+In «Training planen» → Sportart (Rad, Lauf) erscheint unter **Grundlage** die Unterstufe **FatMax** und unter **Tempo · Schwelle** die Unterstufe **Sweet Spot**, eingerückt, mit eigener Farbe aus der Zonenpalette. Schwimmen und Kraft zeigen sie nicht.
+- **FatMax = obere Hälfte von Z2** (Regel statt fester Zahlen; trifft bei Rad und Puls die Lage der FatMax-Unterstufe in enduco): neuer Abschnitt `fatmax` in Zielen (Watt, Puls, Pace), Garmin-Zielen (`garminZiel`, `garminPuls`), Pulsziel der Einheit-Seite, RPE 4, Zonen-Chip «Z2·FatMax», Farbe `fatmax`. Er zählt als **locker** (nicht als harte Einheit, nicht in `HART_K`: «vorsichtig» lässt ihn stehen).
+- **Sweet Spot = oberes Drittel von Z3** (bisheriger Abschnitt `z3o`, «knapp unter LT2»).
+- **Einheit-Seite:** FatMax-Blöcke und Sweet-Spot-Blöcke mit eigenem Namen und Text; die Z2-Erholung zwischen FatMax-Blöcken zählt als Erholung; Wiederholungen mit Z2-Erholung werden zu «n × … (ohne letzte Erholung)» zusammengefasst (`V73.gruppieren`).
+- **Unverändert:** die automatische Wochenplanung wählt FatMax und Sweet Spot nicht von selbst; Tagesregel V9.11.0; Zonenwerte werden nirgends verändert.
+- Neu: `tests/test_v9180.cjs` (8 Tests), `tools/durchklick_stufen.py` (52 Schritte gegen die Demo, 390 px dunkel/hell, 1280 px). `tests/test_v94.cjs` kennt die sechs Stufen. Kennung `intensitaet-stufen-1.0` (`V94.VERSIONS.stufen`).
+
+## V9.17.0 · 24.11.2026 · Intensitätszonen wie enduco (zonen-ansicht-1.0; Auftrag FatMax · Zonen · enduco, Etappe A)
+Neue Karte «Intensitätszonen» in der Ansicht Laktat und Zonen, nur Aussehen: **Balken über die ganze Skala** von Ruhepuls bis Max-HF (bei Leistung und Pace von der ersten bis zur letzten Zone), darin die **Unterstufen** (FatMax in Z2, Sweet Spot in Z3, VO2max, anaerob, Neuro, Sprint in Z5) als schmaleres Band; darunter die **Liste** der Zonen mit eingerückten Unterstufen.
+- Schalter **Puls · Leistung** (Rad) bzw. **Puls · Pace** (Lauf), Sportwahl; Ruhepuls = Median der letzten gemessenen Ruhepulse (nur bei mindestens 3 Werten, sonst beginnt der Balken bei Z1).
+- Die Unterstufen kommen aus dem Text der Zone im Profil (`V6.unterbereiche`), **keine Zonenwerte wurden geändert oder neu festgelegt**.
+- **Nicht gebaut:** Schalter «Kalorien» (die Zonen enthalten keine Kalorien; es bräuchte eine Annahme zum Wirkungsgrad – offene Entscheidung für Silas).
+- Neu: `js/zonen-ansicht.js` (`ZA`, rein), `tests/test_v9170.cjs` (11 Tests), `tools/durchklick_zonen.py` (63 Schritte). `sw.js`-CACHE `notebook-v9190-…`, Skript im SHELL. Kennung `zonen-ansicht-1.0`.
+- Kennungen: `docs/versionsliste-v9.19.md` (251 → 254, nichts weggefallen).
 ## V9.16.0 · 24.11.2026 · Vorschläge antippen, bearbeiten, abbrechen (trainingsroute-1.2, abbrechen-1.0; Routen 7.4)
 «Training → Route»: Die Vorschlagslinien lassen sich auf der Karte antippen, der gewählte Vorschlag wird hervorgehoben, unten stehen seine Kennzahlen, «Bearbeiten» übernimmt ihn als normale Planer-Route. Beim Suchen zeigt die Seite «Schritt x von y» und «Abbrechen». Gebaut auf dem Stand von GitHub (V9.15.0).
 - **Linie antippen (Treffer ±14 px, Trefferfläche 28 px):** markiert den Vorschlag (breite, durchgezogene Linie mit dickem Rand; die übrigen gestrichelt), unten erscheinen Belag, Wegart, Steigungen und Anstiege, Wetter und Wind, Tageslicht, Gravel und Intervall-Eignung. Liegen mehrere Linien übereinander, wechselt jedes weitere Tippen zur nächsten. Zeile in der Tabelle oder Marker antippen = dasselbe. **Antippen bearbeitet nichts.**

@@ -14,7 +14,7 @@ test("Version", () => assert.equal(V94.VERSIONS.fluss, "planen-fluss-1.0"));
 test("Jede Art der Vorlagen gehört zu genau einer Stufe; Reihenfolge Grundlage → Tempo/Schwelle → VO2max → Test", () => {
   const arten = Object.keys(V66.ARTEN).filter((a) => a !== "draussen");
   for (const a of arten) assert.equal(V94.STUFEN.filter((s) => s.arten.includes(a)).length, 1, a);
-  assert.deepEqual(V94.STUFEN.map((s) => s.k), ["grundlage", "tempo", "vo2max", "test"]);
+  assert.deepEqual(V94.STUFEN.map((s) => s.k), ["grundlage", "fatmax", "tempo", "sweet", "vo2max", "test"]);
   assert.equal(V94.stufeVon("vo2max"), "vo2max"); assert.equal(V94.stufeVon("lang"), "grundlage"); assert.equal(V94.stufeVon("koppel"), "tempo");
   assert.equal(V94.stufeVon("unbekannt"), "grundlage");
 });
@@ -25,7 +25,7 @@ test("Stufen je Sportart: nur mit Vorlagen, keine Vorlage geht verloren", () => 
     assert.equal(S.reduce((n, s) => n + s.vorlagen.length, 0), L.length, sp);
     assert.ok(S.every((s) => s.vorlagen.length > 0 && s.min <= s.max), sp);
   }
-  assert.deepEqual(V94.stufen(V66.vorlagen("rad")).map((s) => s.k), ["grundlage", "tempo", "vo2max", "test"]);
+  assert.deepEqual(V94.stufen(V66.vorlagen("rad")).map((s) => s.k), ["grundlage", "fatmax", "tempo", "sweet", "vo2max", "test"]);
   assert.deepEqual(V94.stufen(V66.vorlagen("schwimm")).map((s) => s.k), ["grundlage", "tempo", "test"], "Schwimmen ohne VO2max-Vorlage");
   assert.equal(V94.stufen(V66.vorlagen("kraft")).length, 1, "Kraft: eine Stufe → das Blatt überspringt die Intensität");
   assert.ok(!V94.stufen(V66.vorlagen("rad_drinnen")).find((s) => s.k === "tempo").vorlagen.some((v) => v.art === "lang" || v.art === "renntempo"), "drinnen ohne lange Einheiten");

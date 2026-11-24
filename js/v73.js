@@ -19,20 +19,20 @@
 
   /* ---------------- Zonen der Abschnitte ---------------- */
   /** Zone 1–5 je Abschnittsart (Pause = Erholung = Zone 1); Test und «ohne» haben keine Zone. */
-  V73.ZNR = { pause: 1, z1: 1, z2: 2, renntempo: 2, z3: 3, z3o: 3, css: 4, vo2: 5, abc: 1 };
+  V73.ZNR = { pause: 1, z1: 1, z2: 2, fatmax: 2, renntempo: 2, z3: 3, z3o: 3, css: 4, vo2: 5, abc: 1 };
   /** Farbe/Chip (Schlüssel aus V6.ZONEN) je Abschnittsart, wie profil-1.0 (V64.FARBE). */
   V73.FARBE = Object.assign({ ohne: "offen" }, V64.FARBE);
-  const ARBEIT = new Set(["z3", "z3o", "vo2", "css", "renntempo"]);
-  const STUFE = { test: 0, ohne: 0, pause: 0, z1: 1, z2: 2, renntempo: 2.5, z3: 3, z3o: 3.5, css: 4, vo2: 5, abc: 1 };
+  const ARBEIT = new Set(["z3", "z3o", "vo2", "css", "renntempo", "fatmax"]);
+  const STUFE = { test: 0, ohne: 0, pause: 0, z1: 1, z2: 2, fatmax: 2.4, renntempo: 2.5, z3: 3, z3o: 3.5, css: 4, vo2: 5, abc: 1 };
   /** RPE je Abschnittsart (rpe-zonen-1.0, eigene Festlegung auf der CR-10-Skala nach Foster). */
-  V73.RPE = { pause: "RPE 1–2", z1: "RPE 1–2", z2: "RPE 3–4", renntempo: "RPE 4–5", z3: "RPE 5–6", z3o: "RPE 6–7", css: "RPE 7", vo2: "RPE 8–9" };
+  V73.RPE = { pause: "RPE 1–2", z1: "RPE 1–2", z2: "RPE 3–4", fatmax: "RPE 4", renntempo: "RPE 4–5", z3: "RPE 5–6", z3o: "RPE 6–7", css: "RPE 7", vo2: "RPE 8–9" };
 
   /* ---------------- Texte (eigene Worte) ---------------- */
   const T = {
     rad: { ein_z1: "Locker einrollen", ein_z2: "Gleichmässig treten, Puls ruhig", z2: "Gleichmässig in der Grundlage", erh_z1: "Locker treten",
-      erh_pause: "Locker weitertreten", aus: "Locker ausfahren", z3: "Zügig und gleichmässig", z3o: "Knapp unter der Schwelle, nicht darüber",
+      erh_pause: "Locker weitertreten", fatmax: "Gleichmässig im oberen Z2, nahe an LT1", aus: "Locker ausfahren", z3: "Zügig und gleichmässig", z3o: "Knapp unter der Schwelle, nicht darüber",
       vo2: "Hart – alle Wiederholungen gleich stark", renntempo: "Renntempo, Verpflegung wie im Rennen", test: "Test laut Protokoll", nach_z2: "Locker weiterfahren" },
-    lauf: { ein_z1: "Locker einlaufen", ein_z2: "Ruhig weiterlaufen", z2: "Locker und gleichmässig", erh_z1: "Traben", erh_pause: "Locker traben",
+    lauf: { ein_z1: "Locker einlaufen", ein_z2: "Ruhig weiterlaufen", z2: "Locker und gleichmässig", erh_z1: "Traben", erh_pause: "Locker traben", fatmax: "Gleichmässig im oberen Z2, nahe an LT1",
       aus: "Locker auslaufen", z3: "Zügig und gleichmässig", z3o: "Knapp unter der Schwelle, nicht darüber", vo2: "Hart, aber kontrolliert",
       renntempo: "Renntempo", test: "Test laut Protokoll", nach_z2: "Locker weiterlaufen" },
     schwimm: { ein_z1: "Locker einschwimmen", ein_z2: "Ruhig schwimmen", z2: "Ruhig und gleichmässig", erh_z1: "Locker schwimmen", erh_pause: "Pause",
@@ -44,6 +44,7 @@
     vo2: "Kurze harte Abschnitte nahe der maximalen Sauerstoffaufnahme. Hart heisst: so stark, dass alle Wiederholungen gleich bleiben – die letzte nicht langsamer als die erste. Die Pausen sind kurz, die Atmung beruhigt sich nur teilweise.",
     z3o: "Knapp unter der Schwelle (LT2): anstrengend, aber über die ganze Dauer haltbar. Nicht darüber gehen – sonst steigt das Laktat weiter und die Erholung dauert länger.",
     z3: "Zwischen LT1 und LT2: zügig und gleichmässig, nahe am Tempo langer Rennen. Die Atmung ist tiefer, Sprechen geht nur noch in kurzen Sätzen.",
+    fatmax: "Oberer Teil von Z2, nahe an LT1: gleichmässig und gut erholbar. Wer hier anfängt, über die Zone zu steigen, verliert den Zweck – lieber etwas ruhiger bleiben. Die Pausen dazwischen sind Z2 und locker.",
     renntempo: "Knapp unter LT1, so wie du im Rennen fahren bzw. laufen willst. Gleichmässig bleiben und die Verpflegung wie im Rennen üben.",
     css: "Wiederholungen im CSS-Tempo mit kurzen Pausen: knapp über der Dauerleistungsgrenze. Gleichmässig einteilen, die letzte Wiederholung nicht langsamer.",
     serien: "Mehrere Serien mit lockeren Minuten dazwischen. In der Pause zwischen den Serien wirklich locker bleiben, damit jede Serie gleich gut gelingt.",
@@ -74,7 +75,7 @@
         let k = 1;
         while (i + (k + 1) * p <= L.length && L.slice(i + k * p, i + (k + 1) * p).every((x, j) => gleich(x, L[i + j]))) k++;
         let kk = k, ohne = false;
-        if (p >= 2 && istRuhe(L[i + p - 1]) && i + k * p + (p - 1) <= L.length && L.slice(i + k * p, i + k * p + p - 1).every((x, j) => gleich(x, L[i + j]))) { kk = k + 1; ohne = true; }
+        if (p >= 2 && (istRuhe(L[i + p - 1]) || (L[i + p - 1] && L[i + p - 1].typ === "s" && L[i + p - 1].key === "z2")) && i + k * p + (p - 1) <= L.length && L.slice(i + k * p, i + k * p + p - 1).every((x, j) => gleich(x, L[i + j]))) { kk = k + 1; ohne = true; }
         if (kk >= 2) { const cover = kk * p - (ohne ? 1 : 0); if (!best || cover > best.cover) best = { p, k: kk, ohne, cover }; }
       }
       if (best) { out.push({ typ: "b", wdh: best.k, ohneLetzte: best.ohne, schritte: L.slice(i, i + best.p) }); i += best.cover; }
@@ -101,6 +102,8 @@
   function blockName(b, e) {
     const id = e.id || e.vorlage || "", k = hauptKey(b);
     if (hatBlock(b)) return "Serien";
+    if (/fatmax/.test(id)) return /pyr/.test(id) ? "FatMax mit Tempo" : "FatMax-Blöcke";
+    if (/sweet/.test(id) && k === "z3o") return "Sweet-Spot-Blöcke";
     if (k === "vo2") {
       const w = b.schritte.find((x) => x.key === "vo2"), r = b.schritte.find((x) => istRuhe(x));
       return w && w.s <= 60 && r ? `${dauerKurz(w.s)} hart / ${dauerKurz(r.s)} locker` : "VO2max-Intervalle";
@@ -115,6 +118,7 @@
     const id = e.id || e.vorlage || "", k = hauptKey(b);
     if (hatBlock(b)) return V73.BLOCK_TEXT.serien;
     if (id === "aktivierung") return V73.BLOCK_TEXT.aktivierung;
+    if (/fatmax/.test(id)) return V73.BLOCK_TEXT.fatmax;
     const t = V73.BLOCK_TEXT[k] || null;
     return /laktat/.test(id) && t ? `${t} ${V73.BLOCK_TEXT.laktat}` : t;
   }
@@ -123,7 +127,7 @@
     if (n.key === "test") return t.test;
     if (art === "ein") return n.key === "z1" ? t.ein_z1 : t.ein_z2;
     if (art === "aus") return t.aus;
-    if (art === "erholung") return n.key === "pause" ? t.erh_pause : t.erh_z1;
+    if (art === "erholung") return n.key === "pause" ? t.erh_pause : n.key === "z2" ? t.nach_z2 : t.erh_z1;
     if (n.key === "z2") return vorher ? t.nach_z2 : t.z2;
     return t[n.key] || V64.ZNAME[n.key] || n.key;
   }
@@ -144,7 +148,7 @@
       b.name = blockName(b, e); b.beschreibung = blockText(b, e);
       for (const c of b.schritte) {
         if (c.typ === "b") { annotBlock(c); continue; }
-        c.art = c.key === "test" ? "test" : ARBEIT.has(c.key) ? "belastung" : istRuhe(c) ? "erholung" : "belastung";
+        c.art = c.key === "test" ? "test" : ARBEIT.has(c.key) ? "belastung" : istRuhe(c) || (c.key === "z2" && /fatmax/.test(e.id || e.vorlage || "")) ? "erholung" : "belastung";
         c.text = stepText(c, e, c.art, false);
       }
     };
@@ -367,6 +371,7 @@
     switch (key) {
       case "z1": return z2 && isNum(z2.von) ? `Puls unter ${r(z2.von)}` : null;
       case "z2": return ok(z2) ? `Puls ${r(z2.von)}–${r(z2.bis)}` : null;
+      case "fatmax": return ok(z2) ? `Puls ${r(z2.von + (z2.bis - z2.von) / 2)}–${r(z2.bis)}` : null;
       case "renntempo": return z3 && isNum(z3.von) ? `Puls bis ${r(z3.von)}` : null;
       case "z3": return ok(z3) ? `Puls ${r(z3.von)}–${r(z3.bis)}` : null;
       case "z3o": return ok(z3) ? `Puls ${r(z3.von + (2 / 3) * (z3.bis - z3.von))}–${r(z3.bis)}` : null;

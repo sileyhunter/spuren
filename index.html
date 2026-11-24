@@ -1616,6 +1616,13 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
         <details><summary>Messpunkte als Liste</summary><div class="tablewrap" id="lz-list"></div></details>
       </div>
       <div class="card w4" id="lz-detail" tabindex="-1" aria-live="polite"></div>
+      <div class="card w12" id="iz-card">
+        <div class="card-head"><div><h2>Intensitätszonen</h2><div class="sub" id="iz-meta"></div></div>
+          <div class="seg" id="iz-sport" role="group" aria-label="Sportart"></div></div>
+        <div class="seg iz-metrik" id="iz-metrik" role="group" aria-label="Messgrösse"></div>
+        <div id="iz-box" aria-live="polite"></div>
+        <p class="hint">Unterstufen wie FatMax und Sweet Spot stehen nur dort, wo sie in deinem Zonenprofil als Text der Zone eingetragen sind. Die Ansicht ändert keine Zonen.</p>
+      </div>
       <div class="card w12" id="zc-card">
         <div class="card-head"><div><h2>Trainingszonen: alle vier Skalen</h2><div class="sub" id="zc-meta"></div></div>
           <div class="seg" id="zc-mode" role="group" aria-label="Ansicht"><button data-m="aktuell">Aktuell</button><button data-m="vorher">Voriger Test</button><button data-m="vergleich">Vergleichen</button></div></div>
@@ -1844,6 +1851,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <script src="js/v56.js"></script>
 <script src="js/v59.js"></script>
 <script src="js/v6.js"></script>
+<script src="js/zonen-ansicht.js"></script>
 <script src="js/v6-heute.js"></script>
 <script src="js/v6-plan.js"></script>
 <script src="js/v64.js"></script>
