@@ -38,7 +38,7 @@ ATTRAPPE = r"""
     on(e, a, b) { const f = typeof a === "function" ? a : b; if (typeof f === "function") (this._h[e] = this._h[e] || []).push(f); return this; }
     once(e, f) { if (e === "load") setTimeout(f, 0); return this; }
     off() { return this; }
-    addControl() { return this; }
+    addControl(c) { try { if (c && c.onAdd) document.querySelector('.map-wrap').appendChild(c.onAdd(this)); } catch (e) {} return this; }
     getLayer(id) { return layers.get(id); }
     addLayer(l) { layers.set(l.id, { ...l, layout: { ...(l.layout || {}) }, paint: { ...(l.paint || {}) } }); log.push("addLayer " + l.id); }
     removeLayer(id) { layers.delete(id); }
@@ -154,7 +154,11 @@ def main():
             pruefe(f"{name}: ✕ schaltet Veloland aus", K("window.__karte.layers.get('velo').layout.visibility") == "none")
             # Ausland
             seite.click('#lay-region [data-region="ausland"]')
-            pruefe(f"{name}: Ausland zeigt vier Grundkarten", K("[...document.querySelectorAll('#lay-base [data-base]')].filter((b) => !b.hidden).length") == 4)
+            pruefe(f"{name}: Ausland zeigt sechs Grundkarten (inkl. Mapy)", K("[...document.querySelectorAll('#lay-base [data-base]')].filter((b) => !b.hidden).length") == 6)
+            # V9.20.0 mapy-1.0: ohne Schlüssel schaltet Mapy nicht um, es gibt keine Mapy-Quelle und kein Logo
+            seite.click('#lay-base [data-base="mapy_out"]')
+            pruefe(f"{name}: Mapy ohne Schlüssel schaltet nicht um", K("document.querySelector('#lay-base [data-base=\"mapy_out\"]').getAttribute('aria-pressed')") == "false" and "Schlüssel" in K("document.getElementById('lay-msg').textContent"))
+            pruefe(f"{name}: ohne Schlüssel keine Mapy-Quelle, kein Logo", K("!window.__karte.sources.has('mapy_out') && !window.__karte.layers.has('mapy_out') && !document.getElementById('mapy-logo')"))
             seite.click('#lay-base [data-base="ot"]')
             seite.wait_for_timeout(200)
             pruefe(f"{name}: OpenTopoMap sichtbar, Welt darunter aus", K("(() => { const L = window.__karte.layers; return L.get('ot').layout.visibility === 'visible' && L.get('weltHell').layout.visibility === 'none' && L.get('weltDunkel').layout.visibility === 'none' && L.get('farbe').layout.visibility === 'none'; })()"))
@@ -210,6 +214,69 @@ def main():
             seite.screenshot(path=str(BILDER / f"{name}-7-planer.png"))
             seite.click("#btn-plan")
             ctx.close()
+        # V9.20.0 mapy-1.0: mit (erfundenem) Schlüssel – die Demo bekommt ihn nur in diesem Durchlauf, über eine umgeleitete Seite
+        ERFUNDEN = "TESTSCHLUESSEL_erfunden-0123456789abcdef"
+        ctx = br.new_context(viewport={"width": 390, "height": 844}, color_scheme="dark", service_workers="block")
+        seite = ctx.new_page()
+        seite.on("console", lambda m: konsole.append(f"[mapy] {m.text}") if m.type == "error" else None)
+        seite.on("pageerror", lambda e: konsole.append(f"[mapy] Seitenfehler: {e}"))
+        angefragt = []
+
+        def demo_mit_schluessel(route):
+            t = (ROOT / "demo.html").read_text(encoding="utf8")
+            alt = "const MAPY_KEY = KE.mapySchluessel(D.config);"
+            if alt not in t:
+                raise SystemExit("Mapy: Schlüssel-Zeile in demo.html nicht gefunden")
+            route.fulfill(status=200, content_type="text/html; charset=utf-8", body=t.replace(alt, 'const MAPY_KEY = KE.mapySchluessel({ mapy_key: "%s" });' % ERFUNDEN))
+
+        def fremd2(route):
+            u = route.request.url
+            angefragt.append(u)
+            if u.endswith("maplibre-gl.js"):
+                route.fulfill(status=200, content_type="application/javascript", body=ATTRAPPE)
+            elif u.endswith("maplibre-gl.css"):
+                route.fulfill(status=200, content_type="text/css", body="")
+            elif "wmts.geo.admin.ch" in u:
+                route.fulfill(status=200, content_type="image/png", body=PNG)
+            elif "api.mapy.com/img/api/logo" in u:
+                route.fulfill(status=200, content_type="image/svg+xml", body='<svg xmlns="http://www.w3.org/2000/svg" width="60" height="22"/>')
+            else:
+                route.abort()
+
+        seite.route(f"http://127.0.0.1:{port}/demo.html", demo_mit_schluessel)
+        seite.route(lambda u: not u.startswith(f"http://127.0.0.1:{port}"), fremd2)
+        seite.goto(f"http://127.0.0.1:{port}/demo.html")
+        seite.wait_for_selector("#map canvas", state="attached", timeout=15000)
+        seite.evaluate("localStorage.clear()")
+        seite.reload()
+        seite.wait_for_selector("#map canvas", state="attached", timeout=15000)
+        seite.wait_for_timeout(400)
+        seite.evaluate("""() => { const b = document.querySelector('button[data-gruppe="karte"]'); if (b) b.click(); }""")
+        seite.wait_for_timeout(300)
+        K = lambda js: seite.evaluate(js)
+        n = "mapy-mit-schluessel"
+        seite.click("#btn-layers")
+        seite.click('#lay-region [data-region="ausland"]')
+        pruefe(f"{n}: Mapy-Quellen und -Schichten sind im Stil", K("['mapy_out', 'mapy_win'].every((i) => window.__karte.sources.has(i) && window.__karte.layers.has(i))"))
+        pruefe(f"{n}: Kachel-Adresse mit Schlüssel", K("window.__karte.sources.get('mapy_out').tiles[0]") == f"https://api.mapy.com/v1/maptiles/outdoor/256/{{z}}/{{x}}/{{y}}?apikey={ERFUNDEN}")
+        pruefe(f"{n}: Winterkarte = Kartenart winter", "/maptiles/winter/256/" in K("window.__karte.sources.get('mapy_win').tiles[0]"))
+        pruefe(f"{n}: vor dem Antippen kein Logo sichtbar", K("(() => { const e = document.getElementById('mapy-logo'); return !e || e.hidden; })()"))
+        seite.click('#lay-base [data-base="mapy_out"]')
+        seite.wait_for_timeout(250)
+        pruefe(f"{n}: Mapy Outdoor sichtbar, Welt darunter aus", K("(() => { const L = window.__karte.layers; return L.get('mapy_out').layout.visibility === 'visible' && L.get('weltHell').layout.visibility === 'none' && L.get('weltDunkel').layout.visibility === 'none' && L.get('nacht').layout.visibility === 'none'; })()"))
+        pruefe(f"{n}: Logo sichtbar, führt zu Mapy", K("(() => { const e = document.getElementById('mapy-logo'); return !!e && !e.hidden && e.href.startsWith('https://mapy.com') && !!e.querySelector('img'); })()"))
+        pruefe(f"{n}: Quellenhinweis in der Quelle", "Seznam" in K("window.__karte.sources.get('mapy_out').attribution"))
+        pruefe(f"{n}: Knopf gedrückt, Aktive Ebenen nennt Mapy", K("document.querySelector('#lay-base [data-base=\"mapy_out\"]').getAttribute('aria-pressed')") == "true" and "Mapy Outdoor" in K("document.getElementById('lay-aktiv').textContent"))
+        seite.click('#lay-base [data-base="mapy_win"]')
+        seite.wait_for_timeout(200)
+        pruefe(f"{n}: Winter an, Outdoor aus, Logo bleibt", K("(() => { const L = window.__karte.layers; return L.get('mapy_win').layout.visibility === 'visible' && L.get('mapy_out').layout.visibility === 'none' && !document.getElementById('mapy-logo').hidden; })()"))
+        seite.screenshot(path=str(BILDER / "mapy-1-winter.png"))
+        seite.click('#lay-base [data-base="ot"]')
+        seite.wait_for_timeout(200)
+        pruefe(f"{n}: andere Grundkarte blendet das Logo aus", K("document.getElementById('mapy-logo').hidden") is True and K("window.__karte.layers.get('mapy_win').layout.visibility") == "none")
+        pruefe(f"{n}: Quellen und Lizenzen nennen Mapy", "Mapy.com" in K("document.getElementById('lay-quellen-liste').textContent"))
+        pruefe(f"{n}: Schlüssel nur in Kachel-Anfragen an api.mapy.com", all(ERFUNDEN not in u or u.startswith("https://api.mapy.com/") for u in angefragt))
+        ctx.close()
         br.close()
     srv.shutdown()
     echte = [k for k in konsole if not any(x in k for x in ("net::ERR", "Failed to load resource", "ERR_FAILED", "fonts.g"))]

@@ -1,5 +1,12 @@
 # Änderungen
 
+## V9.20.0 · 24.11.2026 · Mapy als Grundkarte Ausland (mapy-1.0; Outdoor O4)
+- **Mapy Outdoor und Mapy Winter** unter Ebenen → Grundkarte → Ausland (`js/karte-ebenen.js`, `KE.MAPY`; Verdrahtung in `index.html`: `MAPY_KEY`, `setBase`, `mapyLogo`). Kachel-Adresse `https://api.mapy.com/v1/maptiles/<outdoor|winter>/256/{z}/{x}/{y}?apikey=…` nach der Mapy-Dokumentation; **nicht live geprüft**.
+- **Schlüssel nur verschlüsselt:** Er steht nie im Code, sondern in der Konfiguration (`config.mapy_key` in `data.enc.json`) und wird erst nach dem Entschlüsseln gelesen (`KE.mapySchluessel`: nur `A–Z a–z 0–9 - _`, 20–100 Zeichen). Ohne Schlüssel gibt es keine Mapy-Quelle, keine Schicht und keine Anfrage an Mapy; ein Tipp auf die Knöpfe zeigt «Mapy braucht einen eigenen Schlüssel». Der Service Worker speichert Mapy-Kacheln nie (Schlüssel steht in der Adresse). Dass sich der Schlüssel bei Mapy auf eine Domain beschränken lässt, ist **nicht verifiziert**; die Kachel-Adresse im Browser ist für jeden sichtbar, der die Seite entschlüsselt hat.
+- **Logo und Quellenhinweis (Bedingung von Mapy):** Solange eine Mapy-Karte die Grundkarte ist, steht das Mapy-Logo (Link zu mapy.com) als Kartenelement unten links über dem Massstab (fällt das Bild aus: Text «Mapy.com»); der Quellenhinweis «© Seznam.cz a.s. a další» steht in der Quellenangabe der Karte und unter «Quellen und Lizenzen».
+- Neu: `tests/test_v9200.cjs` (9 Tests); `tools/durchklick_karte.py` jetzt 121 Schritte (Ausland zeigt sechs Grundkarten; ohne Schlüssel schaltet Mapy nicht um; mit erfundenem Schlüssel Quellen, Schichten, Logo, Wechsel). Zwei ältere Tests (`test_v9170`, `test_v9190`) prüfen den Namen des Zwischenspeichers nur noch als `notebook-v9…`. Kennung `mapy-1.0`; Abgleich `docs/versionsliste-v9.20.md` (256 → 257, nichts weggefallen).
+- **Nicht gebaut:** Mapy Luftbild, Mapy-Suche und -Routing, Offline-Kacheln (O5).
+
 ## V9.19.0 · 24.11.2026 · Neue Vorlagen nach enduco (vorlagen-enduco-1.0; Auftrag FatMax · Zonen · enduco, Etappe C)
 Aufbau und Anteile von enduco-Einheiten (aus Garmin Connect gelesen, Anbieter «Enduco»); **keine** Pace- oder Watt-Zahlen übernommen, alle Ziele kommen aus deinem aktiven Zonenprofil. Namen wie in enduco, Beschriebe eigen. Dauerfassungen derselben Einheit sind zu einer Vorlage mit Dauerbereich zusammengefasst.
 - **Rad, FatMax:** «FatMax» (gleichmässig, 30 min – 5 h), «FatMax Intervalle» (Blöcke 20–30 min, dazwischen Z2), «FatMax Pyramide» (zweimal FatMax – Tempo – FatMax, Z2 dazwischen).

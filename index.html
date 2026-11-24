@@ -102,6 +102,10 @@ input[type=number], input[type=date], input[type=text], input[type=search], sele
 .seg button { border: 0; background: none; padding: 6px 10px; cursor: pointer; font-size: 12.5px; color: var(--muted); }
 .seg button:hover { color: var(--fg); }
 .seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.mapy-logo { display: inline-flex; align-items: center; background: rgba(255,255,255,.92); border-radius: 6px; padding: 3px 6px; margin: 0 0 4px 10px !important; line-height: 0; }
+.mapy-logo[hidden] { display: none; }
+.mapy-logo img { height: 22px; width: auto; }
+.mapy-logo.nur-text { font: 600 12px var(--f-display); color: #222; line-height: 1.2; text-decoration: none; }
 .legend { position: absolute; left: 10px; bottom: calc(var(--unten-l, 28px) + 6px); z-index: 3; background: rgba(20,24,27,.92); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: 11px var(--f-mono); color: var(--muted); width: 190px; }
 .legend .bar { height: 6px; border-radius: 3px; margin: 5px 0 3px; background: linear-gradient(90deg, #5e0b18, #9a1a1c, #d8401c, #f78a1d, #fcd34d, #fffdf0); }
 .legend .ends { display: flex; justify-content: space-between; }
@@ -1108,6 +1112,8 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
             <button class="chip" data-base="ignplan" data-region="ausland" aria-pressed="false" hidden>IGN Plan</button>
             <button class="chip" data-base="igntopo" data-region="ausland" aria-pressed="false" hidden>IGN Topo</button>
             <button class="chip" data-base="bmat" data-region="ausland" aria-pressed="false" hidden>basemap.at</button>
+            <button class="chip" data-base="mapy_out" data-region="ausland" aria-pressed="false" hidden>Mapy Outdoor</button>
+            <button class="chip" data-base="mapy_win" data-region="ausland" aria-pressed="false" hidden>Mapy Winter</button>
           </div>
           <div class="lay-h">Aktive Ebenen</div>
           <ul class="lay-aktiv" id="lay-aktiv" aria-live="polite"></ul>
@@ -2637,6 +2643,8 @@ const SWISSTOPO = '© <a href="https://www.swisstopo.admin.ch" target="_blank" r
 const HEAT_RAMP = ["interpolate", ["linear"], ["get", "h"], 0, "#5e0b18", 0.2, "#9a1a1c", 0.4, "#d8401c", 0.6, "#f78a1d", 0.8, "#fcd34d", 1, "#fffdf0"];
 const SPORT_COLOR = ["match", ["get", "sport"], ...Object.entries(KARTE_FARBE).flatMap(([k, c]) => [k, c]), KARTE_FARBE.andere];
 const EMPTY = { type: "FeatureCollection", features: [] };
+/* V9.20.0 mapy-1.0: Mapy-Schlüssel aus der entschlüsselten Konfiguration (config.mapy_key); nie im Code. Ohne Schlüssel keine Mapy-Karte, keine Anfrage an Mapy. */
+const MAPY_KEY = KE.mapySchluessel(D.config);
 const lineGeo = (items) => ({ type: "FeatureCollection", features: items.filter((x) => x.coords && x.coords.length > 1).map((x) => ({ type: "Feature", properties: { id: x.id, name: x.name || "" }, geometry: { type: "LineString", coordinates: x.coords } })) });
 const pointGeo = () => ({ type: "FeatureCollection", features: allPoints().filter((p) => pointCats.has(p.cat in POINT_CATS ? p.cat : "sonst")).map((p) => ({
   type: "Feature", properties: { id: p.id, color: (POINT_CATS[p.cat] || POINT_CATS.sonst).color }, geometry: { type: "Point", coordinates: [p.lon, p.lat] } })) });
@@ -2671,6 +2679,7 @@ function initMap() {
         velo: ras(WMTS("ch.astra.veloland", "png")),
         mtb: ras(WMTS("ch.astra.mountainbikeland", "png")),
         ...KE.rasterQuellen(),      // V9.13.0 karte-einfach-1.0: OpenTopoMap, IGN, basemap.at, Waymarked Trails
+        ...KE.mapyQuellen(MAPY_KEY),  // V9.20.0 mapy-1.0: nur mit Schlüssel aus der verschlüsselten Konfiguration
         dem: { type: "raster-dem", tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"], tileSize: 256, maxzoom: 14, encoding: "terrarium", attribution: "Höhenmodell: Mapzen/AWS Terrain Tiles" },
         tracks: { type: "geojson", data: EMPTY, tolerance: 0.6 },
         sel: { type: "geojson", data: EMPTY },
@@ -2686,6 +2695,7 @@ function initMap() {
         { id: "farbe", type: "raster", source: "farbe", layout: { visibility: "none" } },
         { id: "luft", type: "raster", source: "luft", layout: { visibility: "none" } },
         ...KE.grundLayer(),
+        ...KE.mapyLayer(MAPY_KEY),
         { id: "wander", type: "raster", source: "wander", layout: { visibility: "none" }, paint: { "raster-opacity": 0.9 } },
         { id: "velo", type: "raster", source: "velo", layout: { visibility: "none" }, paint: { "raster-opacity": 0.9 } },
         { id: "mtb", type: "raster", source: "mtb", layout: { visibility: "none" }, paint: { "raster-opacity": 0.9 } },
@@ -2780,17 +2790,37 @@ function regionZeigen(r) {
   document.querySelectorAll("#lay-base [data-base]").forEach((c) => { c.hidden = c.dataset.region !== r; });
   document.querySelectorAll("#lay-region [data-region]").forEach((c) => c.setAttribute("aria-pressed", String(c.dataset.region === r)));
 }
+/* V9.20.0 mapy-1.0: Logo und Quellenhinweis gehören bei Mapy-Karten in die Karte (Bedingung von Mapy) */
+function mapyLogo(b) {
+  if (!map) return;
+  let el = document.getElementById("mapy-logo");
+  if (!KE.mapyLogoSichtbar(b)) { if (el) el.hidden = true; return; }
+  if (!el) {
+    el = document.createElement("a"); el.id = "mapy-logo"; el.className = "maplibregl-ctrl mapy-logo"; el.href = KE.MAPY_LOGO.href; el.target = "_blank"; el.rel = "noopener";
+    el.setAttribute("aria-label", KE.MAPY_LOGO.alt);
+    const img = document.createElement("img"); img.alt = KE.MAPY_LOGO.alt; img.src = KE.MAPY_LOGO.img; img.height = 22; img.decoding = "async";
+    img.addEventListener("error", () => { img.remove(); el.textContent = KE.MAPY_LOGO.alt; el.classList.add("nur-text"); });
+    el.appendChild(img);
+    if (typeof map.addControl === "function") map.addControl({ onAdd: () => el, onRemove: () => el.remove() }, "bottom-left");   // wie der Massstab: darüber stehen Legende und Status
+    else document.querySelector("#view-karte .map-wrap").appendChild(el);
+  }
+  el.hidden = false;
+}
 async function setBase(b) {
+  if (KE.istMapy(b) && !MAPY_KEY) {
+    document.getElementById("lay-msg").textContent = "Mapy braucht einen eigenen Schlüssel (developer.mapy.com). Er ist noch nicht eingetragen.";
+    return false;
+  }
   if (b === "winter" && !(await ensureExtra("winter"))) {
     const c = document.querySelector('#lay-base [data-base="winter"]'); c.setAttribute("aria-disabled", "true");
     document.getElementById("lay-msg").textContent = "Die Winterkarte ist im Moment nicht verfügbar."; return false;
   }
   base = b;
-  for (const k of KE.grundIds()) if (map.getLayer(k)) map.setLayoutProperty(k, "visibility", k === b ? "visible" : "none");
+  for (const k of KE.grundIdsAlle()) if (map.getLayer(k)) map.setLayoutProperty(k, "visibility", k === b ? "visible" : "none");
   map.setLayoutProperty("weltDunkel", "visibility", b === "nacht" ? "visible" : "none");
   map.setLayoutProperty("weltHell", "visibility", b !== "nacht" && KE.regionVon(b) === "ch" ? "visible" : "none");   // im Ausland deckt die Grundkarte die Welt allein ab
   document.querySelectorAll("#lay-base [data-base]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.base === b)));
-  regionZeigen(KE.regionVon(b)); opAnwenden(b); aktivNeu();
+  regionZeigen(KE.regionVon(b)); opAnwenden(b); mapyLogo(b); aktivNeu();
   return true;
 }
 /* Teil 0b (K7): Höhe der Kartenknöpfe unten (links Massstab, rechts Quellenangabe) als CSS-Variablen --unten-l/--unten-r an der Karte:

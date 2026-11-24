@@ -65,7 +65,7 @@ test("Jede neue Vorlage hat Zweck, Quellen aus der Wissensliste und Ziele (Watt/
 });
 
 test("Verdrahtung: Dateilisten, Service-Worker-Version, Demo, Lauf-Unterstufen in den Planen-Flow", () => {
-  assert.match(R("sw.js"), /const CACHE = "notebook-v919\d-/);
+  assert.match(R("sw.js"), /const CACHE = "notebook-v9(19|2\d)\d-/);
   assert.match(R("js/v94.js"), /k: "fatmax"/); assert.match(R("js/v66.js"), /rad_fatmax_int: \["fatmax"/);
   assert.ok(R("demo.html").includes("zonen-ansicht.js"));
 });

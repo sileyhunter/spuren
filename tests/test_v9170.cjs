@@ -111,7 +111,7 @@ test("Verdrahtung: Karte in index.html, Skript geladen und im Offline-Speicher, 
   assert.ok(tag("zonen-ansicht.js") > tag("v6.js") && tag("v6.js") > 0);
   for (const id of ["iz-card", "iz-box", "iz-sport", "iz-metrik", "iz-meta"]) assert.match(idx, new RegExp(`id="${id}"`));
   assert.ok(idx.indexOf('id="iz-card"') < idx.indexOf('id="zc-card"'), "die einfache Ansicht steht vor den vier Skalen");
-  assert.match(R("sw.js"), /"js\/zonen-ansicht\.js"/); assert.match(R("sw.js"), /const CACHE = "notebook-v91\d+-/);
+  assert.match(R("sw.js"), /"js\/zonen-ansicht\.js"/); assert.match(R("sw.js"), /const CACHE = "notebook-v9\d+-/);
   const ui = R("js/v5-ui.js"); assert.match(ui, /V\.intensitaetszonen = function/); assert.match(ui, /V\.intensitaetszonen\(ck\)/);
   assert.match(R("demo.html"), /<script src="js\/zonen-ansicht\.js">/, "Demo neu erzeugt (tools/make_demo.py)");
   assert.match(R("css/v6.css"), /\.iz-bar/);

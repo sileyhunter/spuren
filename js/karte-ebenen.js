@@ -40,8 +40,41 @@
     { id: "wmt_mtb", label: "MTB-Routen (OSM)", quelle: "wmt", art: "mtb" },
   ].map((e) => Object.assign(e, { max: 18, tiles: [`https://tile.waymarkedtrails.org/${e.art}/{z}/{x}/{y}.png`], attr: WMT_ATTR }));
 
+  /* V9.20.0 mapy-1.0 (Outdoor O4): Mapy.com (Seznam.cz) als Grundkarte Ausland. Braucht einen eigenen API-Schlüssel (Silas, Basic-Tarif).
+   * Der Schlüssel steht NIE im Code, nur verschlüsselt in der Konfiguration (config.mapy_key in data.enc.json) und wird erst nach dem Entschlüsseln
+   * gelesen. Ohne Schlüssel werden keine Mapy-Quellen und -Schichten angelegt und keine Anfrage an Mapy gesendet. Adressen und Kartenarten aus der
+   * Mapy-Dokumentation (api.mapy.com/v1/maptiles/<Kartenart>/256/z/x/y?apikey=…); am iPhone nicht geprüft. Logo und Quellenhinweis gehören bei
+   * Mapy-Karten in die Karte (Bedingung von Mapy), siehe `KE.MAPY_LOGO` und `attr`. */
+  KE.MAPY_VERSION = "mapy-1.0";
+  KE.MAPY = [
+    { id: "mapy_out", label: "Mapy Outdoor", mapset: "outdoor", region: "ausland", quelle: "mapy", max: 19 },
+    { id: "mapy_win", label: "Mapy Winter", mapset: "winter", region: "ausland", quelle: "mapy", max: 19 },
+  ];
+  KE.MAPY_ATTR = '© <a href="https://api.mapy.cz/copyright" target="_blank" rel="noopener">Seznam.cz a.s. a další</a>';
+  KE.MAPY_LOGO = { href: "https://mapy.com", img: "https://api.mapy.com/img/api/logo.svg", alt: "Mapy.com" };
+  KE.mapyIds = () => KE.MAPY.map((m) => m.id);
+  KE.istMapy = (id) => KE.MAPY.some((m) => m.id === id);
+  /** Schlüssel aus der entschlüsselten Konfiguration: nur Buchstaben, Ziffern, «-» und «_» (Länge 20–100); sonst null (dann keine Mapy-Karte). */
+  KE.mapySchluessel = function (cfg) {
+    const k = cfg && typeof cfg === "object" ? cfg.mapy_key : null;
+    return typeof k === "string" && /^[A-Za-z0-9_-]{20,100}$/.test(k.trim()) ? k.trim() : null;
+  };
+  KE.mapyTiles = (mapset, key) => [`https://api.mapy.com/v1/maptiles/${mapset}/256/{z}/{x}/{y}?apikey=${encodeURIComponent(key)}`];
+  /** Quellen und Schichten für den Kartenstil; ohne gültigen Schlüssel leer. */
+  KE.mapyQuellen = function (key) {
+    const q = {};
+    if (!key) return q;
+    for (const m of KE.MAPY) q[m.id] = { type: "raster", tiles: KE.mapyTiles(m.mapset, key), tileSize: 256, maxzoom: m.max, attribution: KE.MAPY_ATTR };
+    return q;
+  };
+  KE.mapyLayer = (key) => (key ? KE.MAPY.map((m) => ({ id: m.id, type: "raster", source: m.id, layout: { visibility: "none" } })) : []);
+  /** Logo und Quellenhinweis werden gezeigt, solange eine Mapy-Karte die Grundkarte ist. */
+  KE.mapyLogoSichtbar = (grundId) => KE.istMapy(grundId);
+
   KE.grundIds = () => KE.GRUND.map((g) => g.id);
-  KE.grund = (id) => KE.GRUND.find((g) => g.id === id) || null;
+  KE.grund = (id) => KE.GRUND.find((g) => g.id === id) || KE.MAPY.find((g) => g.id === id) || null;
+  /** Alle Grundkarten-Kennungen inklusive Mapy (die Schichten gibt es nur mit Schlüssel; `getLayer` prüft das). */
+  KE.grundIdsAlle = () => KE.grundIds().concat(KE.mapyIds());
   KE.regionVon = (id) => { const g = KE.grund(id); return g ? g.region : "ch"; };
   KE.grundNeu = () => KE.GRUND.filter((g) => g.tiles);
 
@@ -139,6 +172,7 @@
     { id: "ign", name: "IGN (Géoplateforme)", wofuer: "Grundkarte Frankreich: IGN Plan und IGN Topo", lizenz: "Quelle «IGN»; Nutzungsbedingungen von geoservices.ign.fr", url: "https://geoservices.ign.fr", hinweis: "Nicht verifiziert: Ebenennamen und Zugang ohne Schlüssel am iPhone prüfen (IGN Topo besonders)" },
     { id: "basemapat", name: "basemap.at", wofuer: "Grundkarte Österreich", lizenz: "CC BY 4.0, «Grundkarte: basemap.at»", url: "https://basemap.at", hinweis: "Am iPhone nicht geprüft" },
     { id: "wmt", name: "Waymarked Trails", wofuer: "Wander-, Rad- und MTB-Routen aus OpenStreetMap (weltweit)", lizenz: "CC BY-SA; Daten © OpenStreetMap-Mitwirkende", url: "https://waymarkedtrails.org", hinweis: "Am iPhone nicht geprüft" },
+    { id: "mapy", name: "Mapy.com (Seznam.cz)", wofuer: "Grundkarte Ausland: Mapy Outdoor und Mapy Winter (nur mit eigenem Schlüssel)", lizenz: "© Seznam.cz a.s. a další; Logo und Quellenhinweis stehen in der Karte (Bedingung von Mapy); eigener Schlüssel, Basic-Tarif", url: "https://developer.mapy.com", hinweis: "Adressen aus der Mapy-Dokumentation, am iPhone nicht geprüft; Schlüssel nur verschlüsselt gespeichert" },
     { id: "terrain", name: "Mapzen / AWS Terrain Tiles", wofuer: "3D-Gelände", lizenz: "Quellenangabe in der Karte", url: "https://registry.opendata.aws/terrain-tiles/", hinweis: "" },
   ];
   KE.quellenHtml = (esc) => { const e = esc || ((x) => String(x)); return KE.QUELLEN.map((q) => `<li><b>${e(q.name)}</b>: ${e(q.wofuer)}.<br><small>${e(q.lizenz)}${q.hinweis ? " · " + e(q.hinweis) : ""} · <a href="${e(q.url)}" target="_blank" rel="noopener">${e(q.url.replace(/^https?:\/\//, ""))}</a></small></li>`).join(""); };
