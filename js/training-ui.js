@@ -501,7 +501,7 @@
       <p class="hint">Plan ${dur(plan)} h · Prognose im Planer ${dur(dauer)} h${isNum(abw) ? ` (${abw >= 0 ? "+" : "−"}${num(Math.abs(abw * 100))} %)` : ""}. Zwischenziele verschieben, ergänzen oder umkehren ist im Planer möglich; die Intervalle wandern mit.</p>
       ${isNum(abw) && Math.abs(abw) > TS.wo.tol ? `<p class="verdict warn">Die Route passt nicht mehr zur Plandauer (±${num(TS.wo.tol * 100)} %). <button class="btn" data-tr="neu">Route neu berechnen</button></p>` : ""}
       ${r && I.length ? `<ol class="tr-ivs">${I.map((v) => `<li class="${v.note}"><b>${v.nr}</b> km ${isNum(v.d0) ? km(v.d0) : "–"}–${isNum(v.d1) ? km(v.d1) : "–"} · <span class="badge ${NOTE[v.note]}">${v.note}</span>${v.gruende.length ? ` <small>${esc(v.gruende.join("; "))}</small>` : ""}</li>`).join("")}</ol>` : ""}
-      <p class="hint">Export zu Garmin: unten im Planer «GPX in Dateien» (Name und Intervall-Beginne als Wegpunkte), dann in der Dateien-App die Datei lange drücken → Teilen → Garmin Connect; oder in Garmin Connect im Browser unter Training → Strecken → Importieren. Oder die GPX-Datei im Chat schicken – ich lade sie als Strecke hoch, aber nur mit deinem Ja.</p>
+      <p class="hint">Export zu Garmin: unten im Planer «GPX in Dateien» (nur die Strecke, ohne Training), dann in der Dateien-App die Datei lange drücken → Teilen → Garmin Connect; oder in Garmin Connect im Browser unter Training → Strecken → Importieren. Oder die GPX-Datei im Chat schicken – ich lade sie als Strecke hoch, aber nur mit deinem Ja.</p>
       <div class="row"><button class="btn" data-tr="ende">Training beenden</button></div></div>`;
   }
 
@@ -641,11 +641,13 @@
     if (TS.offen && $("tr-res")) { if ($("tr-body")) renderBody(); else renderRes(); }
   }
   function chartBands(route) { return aktiv() && route && route === TS.planerRoute && TS.planerIv ? TS.planerIv.filter((x) => isNum(x.d0) && isNum(x.d1)) : null; }
+  /** GPX-Export aus dem Planer (V9.15.1): Training und Navigation bleiben getrennt – die Strecke geht ohne Intervall-Wegpunkte
+   *  hinaus (null = keine zusätzlichen Wegpunkte). Der gewählte Vorschlag wird beim Export weiterhin auf dem Gerät gespeichert
+   *  (für «Vorschlag vs. Ist»). */
   function gpxExtras(route) {
     if (!aktiv() || route !== TS.planerRoute || !TS.planerIv) return null;
-    const m = modus(), fw = (v) => (m === "pace" ? FK().pace(v) + "/km" : m === "watt" ? Math.round(v) + " W" : Math.round(v) + " bpm");
     if (TS.gewaehlt) speichern(TS.gewaehlt, { route, sim: R().sim() });
-    return TS.planerIv.filter((x) => isNum(x.d0)).map((x) => { const a = RT().at(route, x.d0); return { lon: a.lon, lat: a.lat, name: `Intervall ${x.nr}: ${TR().mmss(x.t1 - x.t0)} @ ${fw(x.wert)}` }; });
+    return null;
   }
   function wantsMapClick() { return !!TS.pick; }
   function mapClick(ll) {

@@ -96,7 +96,7 @@ test("⋯-Menü: sieben Einträge in fester Reihenfolge, alle mit den bisherigen
 test("Verdrahtung: Skript-Reihenfolge, Service Worker, Demo", () => {
   const h = R("index.html"), tag = (f) => h.indexOf(`<script src="js/${f}">`);
   assert.ok(tag("planer-schlank.js") > tag("strecke-garmin.js") && tag("planer-schlank.js") < tag("routen-ui.js") && tag("planer-schlank.js") > 0);
-  const sw = R("sw.js"); assert.match(sw, /"js\/planer-schlank\.js"/); assert.match(sw, /const CACHE = "notebook-v9150-/);
+  const sw = R("sw.js"); assert.match(sw, /"js\/planer-schlank\.js"/); assert.match(sw, /const CACHE = "notebook-v9\d+-/);   // V9.15.1: Name wird bei jeder Änderung angehoben, hier nur das Muster
   assert.match(R("demo.html"), /<script src="js\/planer-schlank\.js">/, "Demo neu erzeugt (tools/make_demo.py)");
   assert.match(h, /\.planner\.rp\[data-sheet="min"\] \{ height: 200px; \}/);
   assert.match(R("js/routen-ui.js"), /ziel = \{ min: 200, half:/, "gleiche Mindesthöhe in CSS und Kartenpolsterung");
