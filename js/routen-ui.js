@@ -35,6 +35,7 @@
     get: (k, d) => C.store.get("sf.rt." + k, d),
     set: (k, v) => C.store.set("sf.rt." + k, v),
   };
+  const PS = window.PS;
   const consent = () => S.get("consent", {});
   const fmt = (v, d) => C.fmt(v, d || 0);
   const km = (m) => fmt(m / 1000, m < 10000 ? 2 : 1);
@@ -123,59 +124,22 @@
     el.innerHTML = `
       <div class="rp-grip" id="rp-grip" role="button" tabindex="0" aria-controls="planner" aria-label="Routenplaner: Höhe umschalten"><span></span></div>
       <div class="rp-scroll" id="rp-scroll">
-        <div class="rp-head">
-          <div class="rp-title"><h2>Route planen</h2><p class="hint" id="rp-sub"></p></div>
-          <div class="rp-hbtn">
-            <button class="btn" id="rp-add" aria-pressed="true" title="Tippen in die Karte setzt Punkte">＋ Punkt</button>
-            <button class="btn rp-ib" id="rp-undo-k" title="Letzten Schritt rückgängig" aria-label="Letzten Schritt rückgängig">${ic("rueckgaengig")}</button>
-            <button class="btn rp-ib" id="rp-clear" title="Alle Punkte löschen (mit ↶ zurückholen)" aria-label="Alle Punkte löschen">${ic("loeschen")}</button>
-            <button class="btn" id="rp-rev" title="Reihenfolge umdrehen und neu routen" aria-label="Route umkehren">⇄</button>
-            <button class="btn rp-x" id="pl-close" aria-label="Planer schliessen">✕</button>
-          </div>
+        <h2 class="sr-only">Route planen</h2>
+        <div class="rp-top">
+          <div class="rp-sport2" id="rp-sport2" role="radiogroup" aria-label="Sportart"></div>
+          <button class="btn rp-x" id="pl-close" aria-label="Planer schliessen">✕</button>
         </div>
-        <div class="rp-mini" id="rp-mini" aria-live="off"></div>
-        <div class="rp-train" id="rp-train" hidden></div>
-        <div class="chips rp-sports" id="rp-sports" role="radiogroup" aria-label="Sportart"></div>
-        <div class="rp-opts" id="rp-opts"></div>
+        <div class="chips rp-sports" id="rp-sports" role="radiogroup" aria-label="Genauere Sportart" hidden></div>
+        <div class="rp-line">
+          <p class="hint" id="rp-sub"></p>
+          <button class="btn rp-magnet" id="rp-magnet" aria-pressed="true" title="Linie rastet auf Wege bzw. Skitourenrouten ein; aus = gerade Linie von Hand">Magnet</button>
+        </div>
         <div class="rp-consent" id="rp-consent" hidden></div>
-        <div class="rp-search" id="rp-search">
-          <div class="row"><input type="search" id="rp-q" placeholder="Ort suchen, z. B. Paspels" aria-label="Ort suchen" autocomplete="off" enterkeyhint="search">
-            <select id="rp-qrole" aria-label="Nächster Punkt aus Karte oder Suche wird"><option value="auto">automatisch</option><option value="start">als Start</option><option value="ziel">als Ziel</option><option value="via">als Zwischenziel</option></select></div>
-          <ul class="rp-qres" id="rp-qres" role="listbox" aria-label="Suchergebnisse" hidden></ul>
-          <p class="hint rp-qhint">Suche über swisstopo (api3.geo.admin.ch); gesendet wird nur der eingegebene Text.</p>
-        </div>
-        <ol class="rp-vias" id="rp-vias" aria-label="Wegpunkte"></ol>
-        <div class="row rp-tools">
-          <button class="btn" id="rp-tr" title="Passende Route zu einer geplanten Einheit">Training → Route</button>
-          <button class="btn" id="rp-loop">Rundtour</button>
-          <button class="btn" id="rp-undo">Rückgängig</button>
-          <button class="btn" id="rp-new">Neu</button>
-        </div>
+        <div class="rp-train" id="rp-train" hidden></div>
         <div class="rp-status" id="rp-status" role="status" aria-live="polite"></div>
         <div class="rp-gap" id="rp-gap" hidden></div>
-        <div class="rp-ski" id="rp-ski" hidden></div>
         <div class="rp-gravel" id="rp-gravel" hidden></div>
-        <div class="rp-kpis" id="rp-kpis"></div>
-        <div class="row rp-when" id="rp-when" hidden></div>
-        <div class="rp-var" id="rp-var" hidden></div>
-        <div class="rp-mtb" id="rp-mtb" hidden></div>
-        <div class="rp-alt" id="rp-alt" hidden></div>
-        <div class="rp-winter" id="rp-winter" hidden></div>
-        <div class="rp-ana" id="rp-ana" hidden>
-          <div class="rp-tabs" id="rp-tabs" role="tablist" aria-label="Analyse"></div>
-          <div class="rp-chart" id="rp-chart" tabindex="0" role="slider" aria-label="Höhenprofil: Position auf der Route (Pfeiltasten)" aria-valuemin="0">
-            <svg id="rp-svg" aria-hidden="true"></svg>
-            <div class="rp-flag" id="rp-flag" hidden></div>
-          </div>
-          <div class="rp-info" id="rp-info"></div>
-          <div class="rp-legend" id="rp-legend"></div>
-        </div>
-        <div class="rp-int" id="rp-int" hidden></div>
-        <div class="rp-arr" id="rp-arr"></div>
-        <div class="rp-wx" id="rp-wx"></div>
         <div class="row rp-save" id="rp-saverow" hidden>
-          <input type="text" id="pl-name" placeholder="Name der Route" aria-label="Name der Route">
-          <button class="btn" id="pl-save">Speichern</button>
           <button class="btn primary" id="pl-gpx" title="Teilen-Menü des Geräts">GPX teilen</button>
           <button class="btn" id="pl-gpx-dl" title="Als Datei sichern (iPhone: Dateien → Downloads)">GPX in Dateien</button>
           <button class="btn" id="pl-garmin" title="Strecke in Garmin Connect anlegen (nur mit deinem Ja)">An Garmin senden</button>
@@ -194,8 +158,57 @@
             Browser: Training → Strecken → Importieren.</p>
           ${SG.UPLOAD_MOEGLICH ? `<p class="hint"><b>Kürzer:</b> «An Garmin senden» bereitet die Strecke nach deinem Ja vor; auf Zuruf im Chat («schick die Strecken») legt Claude sie in Garmin Connect an (nur dort, nie aufs Gerät). Dann in Garmin Connect bei der
             Strecke «An Gerät senden» tippen.</p>` : `<p class="hint">Direkt aus dem Notebook nach Garmin senden geht noch nicht: Der Garmin-Dienst kann die Datei nicht aus dem Notebook übernehmen (am 24.11.2026 geprüft). Bis dahin der Weg oben.</p>`}</details>
-        <details class="rp-src" id="rp-srcbox"><summary>Herkunft, Methode, Annahmen</summary><div id="rp-src"></div></details>
+        <div class="rp-details" id="rp-details" hidden>
+          <div class="rp-opts" id="rp-opts"></div>
+          <div class="rp-search" id="rp-search">
+            <div class="row"><input type="search" id="rp-q" placeholder="Ort suchen, z. B. Paspels" aria-label="Ort suchen" autocomplete="off" enterkeyhint="search">
+              <select id="rp-qrole" aria-label="Nächster Punkt aus Karte oder Suche wird"><option value="auto">automatisch</option><option value="start">als Start</option><option value="ziel">als Ziel</option><option value="via">als Zwischenziel</option></select></div>
+            <ul class="rp-qres" id="rp-qres" role="listbox" aria-label="Suchergebnisse" hidden></ul>
+            <p class="hint rp-qhint">Suche über swisstopo (api3.geo.admin.ch); gesendet wird nur der eingegebene Text.</p>
+          </div>
+          <ol class="rp-vias" id="rp-vias" aria-label="Wegpunkte"></ol>
+          <div class="row rp-namerow"><input type="text" id="pl-name" placeholder="Name der Route (sonst Sportart und Datum)" aria-label="Name der Route"><button class="btn" id="pl-save">Speichern</button></div>
+          <div class="rp-ski" id="rp-ski" hidden></div>
+          <div class="rp-kpis" id="rp-kpis"></div>
+          <div class="row rp-when" id="rp-when" hidden></div>
+          <div class="rp-var" id="rp-var" hidden></div>
+          <div class="rp-mtb" id="rp-mtb" hidden></div>
+          <div class="rp-alt" id="rp-alt" hidden></div>
+          <div class="rp-winter" id="rp-winter" hidden></div>
+          <div class="rp-ana" id="rp-ana" hidden>
+            <div class="rp-tabs" id="rp-tabs" role="tablist" aria-label="Analyse"></div>
+            <div class="rp-chart" id="rp-chart" tabindex="0" role="slider" aria-label="Höhenprofil: Position auf der Route (Pfeiltasten)" aria-valuemin="0">
+              <svg id="rp-svg" aria-hidden="true"></svg>
+              <div class="rp-flag" id="rp-flag" hidden></div>
+            </div>
+            <div class="rp-info" id="rp-info"></div>
+            <div class="rp-legend" id="rp-legend"></div>
+          </div>
+          <div class="rp-int" id="rp-int" hidden></div>
+          <div class="rp-arr" id="rp-arr"></div>
+          <div class="rp-wx" id="rp-wx"></div>
+          <div class="rp-dienste" id="rp-dienste"></div>
+          <details class="rp-src" id="rp-srcbox"><summary>Herkunft, Methode, Annahmen</summary><div id="rp-src"></div></details>
+        </div>
         <div class="sr-only" id="rp-live" aria-live="polite"></div>
+      </div>
+      <div class="rp-fuss" id="rp-bar">
+        <div class="rp-mini" id="rp-mini" aria-live="off"></div>
+        <div class="rp-menu" id="rp-menu" role="menu" aria-label="Weitere Werkzeuge" hidden>
+          <button class="btn" role="menuitem" id="rp-add" aria-pressed="true" title="Tippen in die Karte setzt Punkte">＋ Punkt</button>
+          <button class="btn" role="menuitem" id="rp-rev" title="Reihenfolge umdrehen und neu routen">Route umkehren</button>
+          <button class="btn" role="menuitem" id="rp-loop">Rundtour</button>
+          <button class="btn" role="menuitem" id="rp-tr" title="Passende Route zu einer geplanten Einheit">Training → Route</button>
+          <button class="btn" role="menuitem" id="rp-undo">Rückgängig</button>
+          <button class="btn" role="menuitem" id="rp-clear" title="Alle Punkte löschen (mit ↶ zurückholen)">Alle Punkte löschen</button>
+          <button class="btn" role="menuitem" id="rp-new">Neu</button>
+        </div>
+        <div class="rp-btns">
+          <button class="btn rp-ib" id="rp-undo-k" title="Letzten Schritt rückgängig" aria-label="Letzten Schritt rückgängig">${ic("rueckgaengig")}</button>
+          <button class="btn" id="rp-det-btn" aria-expanded="false" aria-controls="rp-details">Details ▾</button>
+          <button class="btn rp-ib" id="rp-more" aria-haspopup="menu" aria-expanded="false" aria-controls="rp-menu" aria-label="Weitere Werkzeuge" title="Weitere Werkzeuge">⋯</button>
+          <button class="btn primary rp-fertig" id="pl-fertig" title="Speichert unter «Sportart Datum»">Fertig</button>
+        </div>
       </div>`;
   }
 
@@ -203,13 +216,15 @@
     C = ctx; RT = window.RT; FK = window.FK; map = ctx.map;
     BF = RT.gate(window.fetch.bind(window), 2);
     skeleton();
-    ST.sport = S.get("sport", "rennrad");
-    if (!RT.SPORTS[ST.sport]) ST.sport = "rennrad";
+    // planer-schlank-1.0: zuletzt benutzte Sportart (Schlüssel sport2; der alte «sport» zählt nicht mehr), beim ersten Mal Skitour
+    ST.sport = PS.startSport(S.get("sport2", null), Object.keys(RT.SPORTS));
+    if (!RT.SPORTS[ST.sport]) ST.sport = "skitour";
+    ST.manual = PS.istNurHand(consent());                  // Magnet: je Sitzung an; bleibend aus nur nach «Nur von Hand»
     ST.opts = S.get("opts", {});
     loadEffort();
     ST.startUnix = defaultStart();
     bind();
-    renderSports(); renderOpts(); renderVias(); renderAll();
+    renderSports(); renderOpts(); renderDienste(); renderVias(); renderAll();
     if (map) { if (map.loaded()) layers(); else map.once("load", layers); }
     window.addEventListener("resize", () => { if (route) drawChart(); applySheet(); });
   }
@@ -544,11 +559,12 @@
   }
   async function reroute(fit) {
     const my = ++job;
-    ST.error = null; ST.legsOk = null; ST.wegende = null; ST.luecken = [];
+    ST.error = null; ST.legsOk = null; ST.wegende = null; ST.luecken = []; ST.fertig = false;
     route = null; sim = null; climbs = null; pieces = []; field = null; ST.wetter = { status: consent().wetter ? "warte" : "aus", msg: "" };
     ALT = { key: null, busy: false, list: null, chosen: null }; GRV = { key: null, ok: false, busy: false, umf: null }; ALTPOS.clear();
     if (MTB.key !== sigOf()) MTB = { key: null, busy: false, list: null, chosen: null, fehler: null };
     if (ST.vias.length < 2) { ST.busy = false; VAR = { key: null, rows: null, wahl: null }; renderAll(); return; }
+    if (!ST.manual && PS.buendelOffen(consent())) { ST.busy = false; VAR = { key: null, rows: null, wahl: null }; showConsent(); renderAll(); return; }   // planer-schlank: einmal gebündelt fragen
     if (ST.sport === "skitour" && !ST.manual) { VAR = { key: null, rows: null, wahl: null }; await buildSkitour(my, fit); return; }
     if (drawn()) { VAR = { key: null, rows: null, wahl: null }; await buildDrawnRoute(my); return; }
     const c = consent();
@@ -967,8 +983,30 @@
   }
 
   /* ---------------- Listen und Kennzahlen ---------------- */
+  /** Sportleiste: Skitour · Wandern · Laufen ▾ · Rad ▾; bei Laufen und Rad erscheinen darunter die genaueren Sportarten. */
   function renderSports() {
-    $("rp-sports").innerHTML = Object.entries(RT.SPORTS).map(([k, v]) => `<button class="chip" role="radio" aria-checked="${k === ST.sport}" aria-pressed="${k === ST.sport}" data-s="${k}">${esc(v.label)}</button>`).join("");
+    const g = PS.gruppeVon(ST.sport);
+    $("rp-sport2").innerHTML = PS.GRUPPEN.map((x) => `<button class="chip rp-g" role="radio" aria-checked="${!!g && x.id === g.id}" aria-pressed="${!!g && x.id === g.id}" data-g="${x.id}">${esc(x.label)}${PS.klappt(x) ? " ▾" : ""}</button>`).join("");
+    const sub = $("rp-sports");
+    sub.hidden = !PS.klappt(g);
+    sub.innerHTML = PS.klappt(g) ? g.sportarten.filter((k) => RT.SPORTS[k]).map((k) => `<button class="chip" role="radio" aria-checked="${k === ST.sport}" aria-pressed="${k === ST.sport}" data-s="${k}">${esc(RT.SPORTS[k].label)}</button>`).join("") : "";
+    renderMagnet();
+  }
+  function renderMagnet() {
+    const b = $("rp-magnet"); if (!b) return;
+    b.setAttribute("aria-pressed", String(!ST.manual));
+    b.classList.toggle("on", !ST.manual);
+    b.title = ST.manual ? "Magnet aus: gerade Linie von Hand zwischen deinen Punkten (nicht geprüft). Antippen schaltet den Magneten ein." : ST.sport === "skitour" ? "Magnet an: die Linie folgt den Skitourenrouten, wo es welche gibt. Antippen = gerade Linie von Hand." : "Magnet an: die Linie rastet auf erlaubte Wege ein. Antippen = gerade Linie von Hand.";
+  }
+  const gemerkt = () => S.get("sport2_gruppe", {});
+  /** Sportart wechseln (Leiste, Unterleiste): merkt sie für nächstes Mal und je Gruppe. */
+  function setSport(s) {
+    if (!RT.SPORTS[s]) return;
+    ST.sport = s; S.set("sport2", s); const g = PS.gruppeVon(s); if (g) S.set("sport2_gruppe", Object.assign(gemerkt(), { [g.id]: s }));
+    ST.manual = PS.istNurHand(consent()); ST.variantWahl = "auto";
+    loadEffort(); renderSports(); renderOpts(); renderDienste();
+    clearSel(true);
+    if (ST.vias.length >= 2) reroute(false); else renderAll();
   }
   function renderOpts() {
     const def = sportDef(), opts = def.optionen || {};
@@ -1010,6 +1048,7 @@
     if (ST.error) {
       const from = ST.error.punkt != null ? "" : ST.error.abschnitt != null ? `${viaLabel(ST.error.abschnitt, ST.vias.length)} → ${viaLabel(ST.error.abschnitt + 1, ST.vias.length)}` : "";
       box.className = "rp-status err";
+      blattMindestensHalb();
       const W = ST.wegende && ST.wegende.i === ST.error.abschnitt ? ST.wegende : null;
       const weTxt = !W ? "" : W.status === "sucht" ? `<p class="hint"><span class="spin" aria-hidden="true"></span> Wegende in Richtung ${viaLabel(W.i + 1, ST.vias.length)} wird gesucht …</p>`
         : W.status === "gefunden" ? `<p><b>Der Weg endet ${km(W.rest)} km vor Punkt ${viaLabel(W.i + 1, ST.vias.length)}.</b> Bis dort kann ich routen; den Rest musst du von Hand ergänzen (Punkte setzen) – er wird nicht geprüft.</p><div class="row"><button class="btn primary" id="rp-we-ok">Bis zum Wegende routen, Rest von Hand</button></div>`
@@ -1041,13 +1080,15 @@
     box.className = "rp-status" + (warn.length ? " warn" : " ok");
     box.innerHTML = warn.length ? `<b>Hinweise:</b> ${warn.map(esc).join(" · ")}` : `Route über laut OSM erlaubte Wege berechnet (${esc(route.prov.routing)}, Profil ${esc(RT.profilName(route.engine))}). Das hängt von den Kartendaten ab und ist keine rechtliche Garantie.`;
   }
+  /** Untere Leiste: km · ↑ · ↓ · Zeit (planer-leiste-1.0). */
   function renderMini() {
     const box = $("rp-mini"); if (!box) return;
     if (ST.busy) { box.innerHTML = `<span class="spin" aria-hidden="true"></span>Route wird berechnet …`; return; }
-    if (ST.error) { box.innerHTML = `<span class="bad-t">Routing nicht möglich – Details unten</span>`; return; }
-    if (!route) { box.textContent = ""; return; }
+    if (ST.error) { box.innerHTML = `<span class="bad-t">Routing nicht möglich – Meldung oben</span>`; return; }
+    if (!route) { box.textContent = ST.vias.length < 2 ? (ST.vias.length ? "Ziel antippen" : "Start antippen") : ""; return; }
     const ok = sim && !sim.unzureichend;
-    box.innerHTML = `<b>${km(route.L)} km</b> · ↑ ${fmt(route.profile.up)} m · ↓ ${fmt(route.profile.down)} m${ok ? ` · <b>${dur(sim.moving_s)} h</b>` : ""} · ${esc(sportDef().label)}${route.gezeichnet ? " · gezeichnet" : ""}`;
+    const l = PS.leiste({ laenge_m: route.L, auf_m: route.profile.up, ab_m: route.profile.down, zeit_s: ok ? sim.moving_s : null });
+    box.innerHTML = `<b>${esc(l.km)}</b> km · ↑ <b>${esc(l.auf)}</b> m · ↓ <b>${esc(l.ab)}</b> m · <b>${esc(l.zeit)}</b> h${route.gezeichnet ? " · von Hand" : ""}`;
   }
   function renderKpis() {
     const box = $("rp-kpis");
@@ -1612,9 +1653,9 @@
     renderSub(); renderStatus(ST.busy ? $("rp-status").textContent : null);
     renderKpis();
     $("rp-ana").hidden = !route;
-    $("rp-saverow").hidden = !route && !ST.vias.length;
+    $("rp-saverow").hidden = !ST.fertig || !route;
     $("pl-gpx").disabled = !route; $("pl-gpx").title = route ? "Teilen-Menü des Geräts" : "Erst nach erfolgreichem Routing";
-    $("pl-gpx-dl").disabled = !route; $("rp-garmin").hidden = !route;
+    $("pl-gpx-dl").disabled = !route; $("rp-garmin").hidden = !route || !ST.fertig;
     $("pl-garmin").style.display = SG.UPLOAD_MOEGLICH ? "" : "none"; $("pl-garmin").disabled = !route; renderGarminStand();
     renderGap(); renderSki(); renderGravel(); renderWhen(); renderVar(); renderMtb(); renderAlt(); renderWinter(); renderTabs(); renderLegend(); renderInt(); renderArr(); renderWx(); renderSrc();
     renderMap();
@@ -1625,14 +1666,83 @@
   function live(t) { const el = $("rp-live"); if (el) { el.textContent = ""; setTimeout(() => (el.textContent = t), 30); } }
 
   /* ---------------- Einwilligung ---------------- */
+  /** Handy: ein Hinweis, der entschieden werden muss (Einwilligung, Fehler), darf nicht im kleinsten Blatt versteckt sein. */
+  function blattMindestensHalb() { if (innerWidth <= 760 && ST.sheet === "min" && active()) setSheet("half"); }
   function showConsent() {
     const box = $("rp-consent");
+    blattMindestensHalb();
+    if (!PS.buendelOffen(consent())) { showConsentRouting(box); return; }
+    box.hidden = false;
+    const D = PS.DIENST_TEXT;
+    box.innerHTML = `<div class="rp-card"><b>Planen mit Wegnetz, Skitourenrouten und Wetter?</b>
+      <p class="hint">${esc(PS.SATZ)} Nie Namen oder ein Konto.</p>
+      <div class="row"><button class="btn primary" id="rp-ok">Erlauben</button><button class="btn" id="rp-manual">Nur von Hand</button></div>
+      <details class="rp-src"><summary>Was geht wohin?</summary><p class="hint">${PS.DIENSTE.map((k) => `${esc(D[k].name)}: ${esc(D[k].was)} an ${esc(D[k].wohin)}`).join("; ")}. Das Wegnetz kommt von OpenStreetMap, ohne Verfügbarkeitsgarantie; fürs Rennrad wird einmal das eigene Profil «ohne Gravel» hinterlegt (nur Text). «Nur von Hand» zeichnet gerade Linien, gekennzeichnet und nicht geprüft. Einzeln ändern: unter «Details».</p></details></div>`;
+    $("rp-ok").onclick = () => buendelErlauben();
+    $("rp-manual").onclick = () => buendelNurHand();
+  }
+  /** Einmal gebündelt erlauben (routing + skirouten + wetter). */
+  function buendelErlauben() {
+    S.set("consent", PS.erlauben(consent()));
+    $("rp-consent").hidden = true; ST.manual = false;
+    if (ST.sport === "skitour") overlay("skitouren", true);
+    renderMagnet(); renderDienste();
+    if (ST.vias.length >= 2) reroute(true); else renderAll();
+  }
+  /** «Nur von Hand»: alle drei Dienste widerrufen, Magnet aus (bleibend). */
+  function buendelNurHand() {
+    S.set("consent", PS.nurVonHand(consent()));
+    $("rp-consent").hidden = true; ST.manual = true; field = null;
+    renderMagnet(); renderDienste();
+    if (ST.vias.length >= 2) reroute(true); else renderAll();
+  }
+  /** Einwilligung nur für das Wegnetz (wenn schon etwas entschieden war, z. B. nach «Nur von Hand» oder früher einzeln erteilt). */
+  function showConsentRouting(box) {
     box.hidden = false;
     box.innerHTML = `<div class="rp-card"><b>Echtes Routing über das Wegnetz</b>
       <p class="hint">Die gesetzten Punkte (nur Koordinaten, ohne Namen oder Konto) werden an den öffentlichen BRouter-Server ${esc(S.get("endpoint", RT.ENDPOINT).replace(/^https?:\/\//, ""))} gesendet. Er berechnet die Route über erlaubte Wege (OpenStreetMap) – ohne Verfügbarkeitsgarantie. Fürs Rennrad wird einmal das eigene Profil «ohne Gravel» hinterlegt (nur Text, keine Koordinaten); für eine Umfahrung gehen zusätzlich Sperrpunkte auf den Gravel-Stücken mit. Ohne Zustimmung gibt es nur die von Hand gezeichnete Linie (Luftlinie).</p>
       <div class="row"><button class="btn primary" id="rp-ok">Zustimmen und routen</button><button class="btn" id="rp-manual">Nur Luftlinie zeichnen</button></div></div>`;
-    $("rp-ok").onclick = () => { S.set("consent", Object.assign(consent(), { routing: true, routing_am: new Date().toISOString() })); box.hidden = true; reroute(true); };
-    $("rp-manual").onclick = () => { ST.manual = true; box.hidden = true; reroute(true); };
+    $("rp-ok").onclick = () => { S.set("consent", PS.einzeln(consent(), "routing", true)); box.hidden = true; ST.manual = false; renderMagnet(); renderDienste(); reroute(true); };
+    $("rp-manual").onclick = () => { ST.manual = true; box.hidden = true; renderMagnet(); reroute(true); };
+  }
+  /** Magnet an/aus (je Sitzung). An ohne nötige Zustimmung → die Frage. Aus → gerade Linie von Hand (hand-1.0). */
+  function magnetUmschalten() {
+    if (ST.manual) {
+      if (PS.buendelOffen(consent()) || PS.magnetBrauchtZustimmung(ST.sport, consent())) {
+        if (PS.buendelOffen(consent())) { showConsent(); return; }
+        if (ST.sport === "skitour") { S.set("consent", PS.einzeln(consent(), "skirouten", true)); overlay("skitouren", true); }
+        else { showConsentRouting($("rp-consent")); return; }
+      }
+      ST.manual = false;
+    } else ST.manual = true;
+    renderMagnet(); renderDienste();
+    if (ST.vias.length >= 2) reroute(false); else renderAll();
+    live(ST.manual ? "Magnet aus: gerade Linie von Hand, nicht geprüft." : "Magnet an.");
+  }
+  /** Details: die drei Einwilligungen einzeln ansehen und widerrufen. */
+  function renderDienste() {
+    const box = $("rp-dienste"); if (!box) return;
+    const c = consent(), D = PS.DIENST_TEXT;
+    box.innerHTML = `<div class="rp-card"><b>Dienste</b>
+      <p class="hint">${esc(PS.SATZ)} ${PS.anzahlErlaubt(c)} von 3 erlaubt.</p>
+      <div class="row">${PS.DIENSTE.map((k) => `<button class="btn" data-dienst="${k}" aria-pressed="${!!c[k]}" title="${esc(D[k].was)} an ${esc(D[k].wohin)}">${esc(D[k].name)}: ${c[k] ? "an" : "aus"}</button>`).join("")}</div>
+      <div class="row"><button class="btn" id="rp-d-alle">Alle erlauben</button><button class="btn" id="rp-d-hand">Nur von Hand (alle widerrufen)</button></div></div>`;
+    box.onclick = (e) => {
+      const b = e.target.closest("[data-dienst]");
+      if (b) {
+        const k = b.dataset.dienst, an = !consent()[k];
+        S.set("consent", PS.einzeln(consent(), k, an));
+        if (k === "wetter" && !an) { field = null; ST.wetter = { status: "aus" }; }
+        if (k === "routing" && !an && !ST.manual && ST.sport !== "skitour") ST.manual = true;
+        if (k === "skirouten" && !an && !ST.manual && ST.sport === "skitour") ST.manual = true;
+        if ((k === "routing" && an && ST.sport !== "skitour") || (k === "skirouten" && an && ST.sport === "skitour")) ST.manual = false;
+        $("rp-consent").hidden = true; renderMagnet(); renderDienste();
+        if (ST.vias.length >= 2) reroute(false); else renderAll();
+        return;
+      }
+      if (e.target.id === "rp-d-alle") buendelErlauben();
+      if (e.target.id === "rp-d-hand") buendelNurHand();
+    };
   }
 
   /* ---------------- Ansicht ---------------- */
@@ -1662,8 +1772,8 @@
     if (wrap) wrap.classList.toggle("blatt-voll", !!(active() && mobile && ST.sheet === "full"));     // K7: ganz offen = Karte verdeckt
     if (!active()) { map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 }); if (wrap) wrap.style.removeProperty("--rp-h"); return; }
     if (mobile) {
-      // Zielhöhe statt der gerade animierten Höhe (gleiche Werte wie im CSS: min 172 px, halb 54 %, ganz 100 % − 6 px)
-      const H = wrap ? wrap.clientHeight : innerHeight, ziel = { min: 172, half: Math.round(H * 0.54), full: H - 6 }[ST.sheet];
+      // Zielhöhe statt der gerade animierten Höhe (gleiche Werte wie im CSS: min 200 px, halb 54 %, ganz 100 % − 6 px)
+      const H = wrap ? wrap.clientHeight : innerHeight, ziel = { min: 200, half: Math.round(H * 0.54), full: H - 6 }[ST.sheet];
       const hgt = (!el.classList.contains("dragging") && ziel) || el.getBoundingClientRect().height || 0;
       if (wrap) wrap.style.setProperty("--rp-h", Math.round(hgt) + "px");
       map.setPadding({ top: 0, left: 0, right: 0, bottom: Math.min(hgt, innerHeight * 0.6) });
@@ -1697,13 +1807,9 @@
   /* ---------------- Ereignisse ---------------- */
   function bind() {
     chartEvents(); gripEvents();
-    $("rp-sports").addEventListener("click", (e) => {
-      const b = e.target.closest("[data-s]"); if (!b) return;
-      ST.sport = b.dataset.s; S.set("sport", ST.sport); ST.manual = false; ST.variantWahl = "auto";
-      loadEffort(); renderSports(); renderOpts();
-      clearSel(true);
-      if (ST.vias.length >= 2) reroute(false); else renderAll();
-    });
+    $("rp-sport2").addEventListener("click", (e) => { const b = e.target.closest("[data-g]"); if (b) setSport(PS.nachGruppenTipp(b.dataset.g, ST.sport, gemerkt())); });
+    $("rp-sports").addEventListener("click", (e) => { const b = e.target.closest("[data-s]"); if (b) setSport(b.dataset.s); });
+    $("rp-magnet").onclick = () => magnetUmschalten();
     $("rp-opts").addEventListener("change", (e) => {
       const o = e.target.dataset.o; if (!o) return;
       ST.opts[o] = e.target.type === "checkbox" ? e.target.checked : e.target.value; S.set("opts", ST.opts);
@@ -1766,7 +1872,13 @@
       const c = e.target.closest("[data-c]"); if (c) selectClimb(c.dataset.c);
     });
     $("pl-close").onclick = () => C.close && C.close();
-    $("pl-save").onclick = save;
+    $("pl-save").onclick = () => { if (save()) { ST.fertig = !!route; renderAll(); } };
+    $("pl-fertig").onclick = fertig;
+    $("rp-det-btn").onclick = () => detailsUmschalten();
+    $("rp-more").onclick = (e) => { e.stopPropagation(); menuUmschalten(); };
+    $("rp-menu").addEventListener("click", () => setTimeout(menuZu, 0));
+    $("rp-menu").addEventListener("keydown", (e) => { if (e.key === "Escape") { menuZu(); $("rp-more").focus(); } });
+    document.addEventListener("click", (e) => { const m = $("rp-menu"); if (m && !m.hidden && !e.target.closest("#rp-bar")) menuZu(); });
     $("pl-gpx").onclick = () => gpx(false);
     $("pl-gpx-dl").onclick = () => gpx(true);
     $("pl-garmin").onclick = garminOeffnen; $("pl-gs-ja").onclick = garminSenden; $("pl-gs-nein").onclick = garminZu;
@@ -1812,15 +1924,39 @@
   }
   function save() {
     const msg = (t) => ($("pl-msg").textContent = t);
-    if (ST.vias.length < 2) { msg("Setze zuerst mindestens zwei Punkte."); return; }
-    const name = $("pl-name").value.trim() || `${sportDef().label} ${C.dateCH(C.iso(C.today))}`;
+    if (ST.vias.length < 2) { msg("Setze zuerst mindestens zwei Punkte."); return false; }
+    const name = PS.name($("pl-name").value, sportDef().label, C.dateCH(C.iso(C.today)));
     const rec = { id: ST.editId || "u-r" + Date.now(), v: RT.VERSIONS.route, name, sport: ST.sport, opts: ST.opts, vias: ST.vias.slice(), names: ST.names, hand: par("handNach").some(Boolean) ? par("handNach") : undefined,
       coords: route ? route.lon.map((x, i) => [+x.toFixed(5), +route.lat[i].toFixed(5)]).filter((_, i, a) => i % Math.max(1, Math.round(a.length / 1500)) === 0 || i === a.length - 1) : [],
       route: route ? packRoute() : null, gezeichnet: !!(route && route.gezeichnet), km: route ? +(route.L / 1000).toFixed(2) : null, hm: route ? Math.round(route.profile.up) : null };
-    if (!C.routes.save(rec)) { msg("Speichern nicht möglich (Speicher des Browsers voll?)."); return; }
+    if (!C.routes.save(rec)) { msg("Speichern nicht möglich (Speicher des Browsers voll?)."); return false; }
     ST.editId = rec.id;
-    msg(route ? `«${name}» ist unter «Meine Routen» gespeichert (mit Linie, auch offline).` : `«${name}» als Entwurf gespeichert (nur Wegpunkte, ${ST.error ? "Routing fehlgeschlagen" : "noch nicht geroutet"}).`);
+    msg(PS.fertigText(name, route, ST.error));
+    return true;
   }
+  /** Fertig (fertig-1.0): speichert sofort unter «Sportart Datum» (oder dem eigenen Namen aus «Details»), ohne Namensdialog; darunter GPX und Garmin. */
+  function fertig() {
+    if (!save()) return;
+    ST.fertig = !!route; menuZu();
+    renderAll(); renderGarminStand();
+    if (innerWidth <= 760 && ST.sheet === "min") setSheet("half");
+    const sr = $("rp-saverow"); if (sr && !sr.hidden && sr.scrollIntoView) sr.scrollIntoView({ block: "nearest" });
+  }
+  /** Details ▾: alles Bisherige (Einstellungen, Wegpunkte, Profil, Wetter …); zu Beginn zu. */
+  function detailsUmschalten(an) {
+    const d = $("rp-details"), b = $("rp-det-btn"); if (!d || !b) return;
+    an = an === undefined ? d.hidden : !!an;
+    d.hidden = !an; b.setAttribute("aria-expanded", String(an)); b.textContent = an ? "Details ▴" : "Details ▾"; b.classList.toggle("on", an);
+    if (an) menuZu();
+    if (an && innerWidth <= 760 && ST.sheet === "min") setSheet("half"); else nachSheet();
+    requestAnimationFrame(() => {
+      if (an) { const sc = $("rp-scroll"); sc.scrollTop += d.getBoundingClientRect().top - sc.getBoundingClientRect().top - 4; }      // Details beginnen am oberen Rand des Blatts
+      drawChart(); renderInfo();
+    });
+  }
+  /** ⋯: Punkte setzen, Route umkehren, Rundtour, Training → Route, Rückgängig, Alle Punkte löschen, Neu. */
+  function menuZu() { const m = $("rp-menu"); if (m) { m.hidden = true; $("rp-more").setAttribute("aria-expanded", "false"); } }
+  function menuUmschalten() { const m = $("rp-menu"), an = m.hidden; m.hidden = !an; $("rp-more").setAttribute("aria-expanded", String(an)); if (an) { const b = m.querySelector("button"); if (b) b.focus(); } }
   async function gpx(alsDatei) {
     const msg = (t) => ($("pl-msg").textContent = t);
     if (!route) { msg("GPX gibt es nur für eine erfolgreich berechnete Route – nie als Ersatzlinie."); return; }
@@ -1889,9 +2025,10 @@
     else if (rec.sport === "laufen" || rec.sport === "wandern" || rec.sport === "mtb" || rec.sport === "rennrad" || rec.sport === "skitour") ST.sport = rec.sport;
     ST.opts = rec.opts || {}; ST.names = rec.names || []; ST.handNach = rec.hand || []; ST.pausen = [];
     loadEffort(); renderSports(); renderOpts();
+    ST.fertig = false;
     if (rec.v && rec.route) {
       ST.vias = rec.vias.slice(); renderVias(); setAddMode(false);
-      try { route = unpackRoute(rec); ST.activeRouteId = route.id; ST.error = null; afterRoute(true); $("pl-msg").textContent = `Gespeicherte Route vom ${new Date(rec.route.created).toLocaleDateString("de-CH")} (offline aus dem Speicher).`; return; }
+      try { route = unpackRoute(rec); ST.activeRouteId = route.id; ST.error = null; ST.fertig = true; afterRoute(true); $("pl-msg").textContent = `Gespeicherte Route vom ${new Date(rec.route.created).toLocaleDateString("de-CH")} (offline aus dem Speicher).`; return; }
       catch (e) { route = null; }
     }
     const pts = rec.vias || (rec.coords || []).map((c) => [c[0], c[1]]);
@@ -1936,7 +2073,7 @@
   /** V5.7 Smart Training Routes: einen Vorschlag in den Planer laden (gleiche Wegpunkte, Variante fest, Workout-Intensität). */
   function loadTraining(cfg) {
     open();
-    ST.sport = cfg.sport; S.set("sport", ST.sport); ST.opts = Object.assign({}, cfg.opts || {}); ST.manual = false;
+    ST.sport = cfg.sport; S.set("sport2", ST.sport); ST.opts = Object.assign({}, cfg.opts || {}); ST.manual = false;
     ST.names = (cfg.names || []).slice(); ST.pausen = []; ST.handNach = []; ST.editId = null; $("pl-name").value = cfg.name || "";
     if (isNum(cfg.startUnix)) ST.startUnix = cfg.startUnix;
     ST.pause = isNum(cfg.pauseMin) ? String(cfg.pauseMin) : "auto";

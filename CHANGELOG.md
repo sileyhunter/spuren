@@ -1,5 +1,17 @@
 # Änderungen
 
+## V9.15.0 · 24.11.2026 · Planer schlank (planer-schlank-1.0; Outdoor O2, Routen 7.3)
+Der Planer öffnet schlank: eine Sportleiste, Tippen setzt Punkte, unten die Eckdaten und ein Knopf «Fertig». Alles Bisherige steht unverändert unter «Details». Neu gebaut auf dem Stand von GitHub (V9.14.1); der erste Bau war nie gepusht worden.
+- **Sportleiste:** Skitour · Wandern · Laufen ▾ (Laufen, Trail) · Rad ▾ (Rennrad, Gravel, MTB). Die zuletzt benutzte Sportart gilt beim nächsten Öffnen (`sf.rt.sport2`, je Gruppe gemerkt); beim ersten Mal Skitour, der alte Schlüssel `sf.rt.sport` zählt nicht mehr.
+- **Magnet:** an = Linie rastet auf Wege (BRouter) bzw. Skitourenrouten ein; aus = gerade Linie von Hand (`hand-1.0`, gekennzeichnet, nie als Weg ausgegeben). Gilt je Sitzung; bleibend ist nur «Nur von Hand».
+- **Einwilligung einmal gebündelt:** «Erlauben» (Wegnetz + Skitourenrouten + Wetter) oder «Nur von Hand» (widerruft alle drei, Magnet aus). Gefragt wird beim zweiten gesetzten Punkt, vorher geht keine Koordinate weg. Einzeln ansehen und widerrufen unter «Details → Dienste».
+- **Untere Leiste:** km · ↑ · ↓ · Zeit, darunter ↶ · Details ▾ · ⋯ · **Fertig**. «Fertig» speichert sofort unter «Sportart Datum» (ohne Namensdialog; ein eigener Name aus «Details» bleibt); danach erscheinen «GPX teilen», «GPX in Dateien» (und «An Garmin senden», solange `SG.UPLOAD_MOEGLICH` an ist – seit V9.14.1 verborgen).
+- **⋯-Menü:** Punkte setzen, Route umkehren, Rundtour, Training → Route, Rückgängig, Alle Punkte löschen, Neu (die Knöpfe behalten ihre Kennungen).
+- **Handy:** Mindesthöhe des Blatts 200 px (vorher 172); Einwilligung und Fehlermeldungen heben ein kleines Blatt von selbst auf halbe Höhe; «Details» springt an den oberen Blattrand.
+- Unverändert: Koordinaten nur nach Zustimmung, Rennrad nie mit Gravel, Profilwerte nur als Zahlen, keine Luftlinie als Weg, keine Lawinenaussage, keine Schneehöhe, keine Tourenauswahl. «Spuren» im Planer bleibt nur die Heatmap (Magnet auf eigene Spuren = O3).
+- Neu: `js/planer-schlank.js` (`PS`, rein), `tests/test_v9150.cjs` (14 Tests), `tools/durchklick_planer.py` (218 Schritte gegen die Demo: 390 px dunkel/hell, 1280 px; Sportleiste, Magnet, Einwilligung, Details, Menü, Fertig, Merken). `sw.js`-CACHE angehoben, Skript im SHELL.
+- Kennungen: `docs/versionsliste-v9.15.md` (245 → 251, nichts weggefallen).
+
 ## V9.14.1 · 24.11.2026 · «An Garmin senden» verborgen: der Garmin-Dienst kann die Datei nicht lesen (gpx-export-2.0)
 Erster echter Upload nach Silas' Ja (Teststrecke mit erfundenen Koordinaten): `upload_course` meldete «GPX file not found». Das Werkzeug liest die GPX-Datei von der Festplatte des Garmin-Dienstes, nicht aus der Sitzung von Claude; versucht wurden der Arbeitsordner, `/tmp`, `/mnt/user-data/outputs` und `/mnt/user-data/uploads`. In Garmin Connect ist nichts angelegt worden (`get_courses` danach: unverändert 74 Strecken). Darum:
 - `SG.UPLOAD_MOEGLICH = false` (`js/strecke-garmin.js`): Der Knopf «An Garmin senden» ist verborgen, der Hinweis im Planer sagt ehrlich, dass der Weg noch nicht geht; der Weg über «GPX in Dateien» und das Teilen-Menü bleibt unverändert.

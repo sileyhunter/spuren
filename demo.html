@@ -538,8 +538,32 @@ fieldset.seg2 label { flex-direction: row !important; align-items: center; gap: 
 .planner.rp { position: absolute; z-index: 7; top: 0; right: 0; bottom: 0; left: auto; width: 440px; max-width: none; margin: 0; padding: 0; gap: 0;
   background: var(--surface); border: 0; border-left: 1px solid var(--line); border-radius: 0; box-shadow: -6px 0 24px var(--panel-shadow); display: flex; flex-direction: column; }
 .rp-scroll > * { flex-shrink: 0; }
-.rp-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding: 14px 16px calc(28px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 12px; }
+.rp-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding: 14px 16px 14px; display: flex; flex-direction: column; gap: 12px; }
 .rp-grip { display: none; }
+/* V9.15.0 planer-schlank-1.0: Sportleiste oben, Leiste mit km · ↑ · ↓ · Zeit und Knöpfen unten, alles Bisherige unter «Details» */
+.rp-top { display: flex; align-items: center; gap: 8px; }
+.rp-sport2 { display: flex; gap: 6px; flex: 1; min-width: 0; }
+.rp-sport2 .rp-g { flex: 1 1 0; min-width: 0; min-height: 42px; padding: 0 6px; justify-content: center; white-space: nowrap; font-weight: 500; }
+.rp-sports[hidden], .rp-details[hidden], .rp-menu[hidden] { display: none; }
+.rp-line { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.rp-line .hint { margin: 0; flex: 1; min-width: 0; }
+.rp-magnet { min-height: 38px; flex: none; }
+.rp-magnet.on { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+.rp-details { display: flex; flex-direction: column; gap: 12px; padding-top: 4px; border-top: 1px solid var(--line); }
+.rp-details > * { flex-shrink: 0; }
+.rp-namerow { gap: 8px; }
+.rp-namerow input { flex: 1 1 160px; min-width: 0; }
+.rp-fuss { flex: none; position: relative; display: flex; flex-direction: column; gap: 6px; padding: 8px 16px calc(10px + env(safe-area-inset-bottom, 0px)); background: var(--surface); border-top: 1px solid var(--line); }
+.rp-fuss .rp-mini { font-size: 14px; }
+.rp-btns { display: flex; align-items: center; gap: 8px; }
+.rp-btns .btn { min-height: 44px; }
+.rp-btns .rp-ib { min-width: 46px; padding: 0 9px; display: inline-flex; align-items: center; justify-content: center; }
+.rp-btns .btn.on { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+.rp-btns .rp-fertig { margin-left: auto; min-width: 104px; }
+.rp-menu { position: absolute; right: 16px; bottom: 100%; margin-bottom: 6px; z-index: 3; min-width: 210px; display: flex; flex-direction: column; gap: 4px; padding: 6px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 6px 24px var(--panel-shadow); }
+.rp-menu .btn { justify-content: flex-start; text-align: left; min-height: 44px; }
+.rp-dienste .rp-card .row { gap: 6px; }
 .rp-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
 .rp-head h2 { margin: 0 0 2px; font: 600 20px/1.2 var(--f-body); }
 .rp-x { min-width: 40px; justify-content: center; }
@@ -750,7 +774,7 @@ table.t.tr-vt { table-layout: auto; } table.t.tr-vt th, table.t.tr-vt td { paddi
 @media (max-width: 760px) {
   .planner.rp { top: auto; left: 0; right: 0; bottom: 0; width: auto; border-left: 0; border-top: 1px solid var(--line); border-radius: 18px 18px 0 0;
     box-shadow: 0 -8px 26px var(--panel-shadow); transition: height .25s ease; height: 54%; }
-  .planner.rp[data-sheet="min"] { height: 172px; }     /* Höhen auch in applySheet (js/routen-ui.js) für die Kartenpolsterung */
+  .planner.rp[data-sheet="min"] { height: 200px; }     /* Höhen auch in applySheet (js/routen-ui.js) für die Kartenpolsterung */
   .planner.rp[data-sheet="half"] { height: 54%; }
   .planner.rp[data-sheet="full"] { height: calc(100% - 6px); }
   .planner.rp.dragging { transition: none; }
@@ -1803,6 +1827,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <script src="js/route.js"></script>
 <script src="js/karte-ebenen.js"></script>
 <script src="js/strecke-garmin.js"></script>
+<script src="js/planer-schlank.js"></script>
 <script src="js/routen-ui.js"></script>
 <script src="js/training-route.js"></script>
 <script src="js/training-ui.js"></script>
