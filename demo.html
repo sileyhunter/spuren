@@ -107,7 +107,6 @@ input[type=number], input[type=date], input[type=text], input[type=search], sele
 .legend .ends { display: flex; justify-content: space-between; }
 .status { position: absolute; left: 50%; bottom: 34px; transform: translateX(-50%); z-index: 3; background: rgba(20,24,27,.95); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font: 12px var(--f-mono); color: var(--fg); white-space: nowrap; }
 .mapmsg { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
-.mobile-filter { display: none; }
 .maplibregl-popup-content { background: var(--surface); color: var(--fg); font-family: var(--f-body); border-radius: 8px; border: 1px solid var(--line); }
 .maplibregl-popup-tip { border-top-color: var(--surface) !important; border-bottom-color: var(--surface) !important; }
 .maplibregl-popup-close-button { color: var(--muted); }
@@ -194,7 +193,6 @@ form.inline input, form.inline select { width: 132px; }
   aside.panel { position: absolute; left: 0; right: 0; bottom: 0; max-height: 72%; z-index: 6; border-right: 0; border-top: 1px solid var(--line);
     border-radius: 14px 14px 0 0; box-shadow: 0 -8px 24px rgba(0,0,0,.5); padding-bottom: max(28px, env(safe-area-inset-bottom, 0px)); }
   aside.panel.closed { display: none; }
-  .mobile-filter { display: inline-flex; position: absolute; right: 10px; z-index: 5; bottom: calc(env(safe-area-inset-bottom, 0px) + var(--unten-r, 34px) + 6px); }
   .legend { width: 150px; }
   /* Teil 0b (K7): Statuszeile über der Legende statt mittig unten; aufgeklappte Quellenangabe reicht nicht unter die Legende */
   .status { left: 10px; transform: none; bottom: calc(var(--unten-l, 28px) + 76px); }
@@ -229,7 +227,7 @@ html, body { touch-action: manipulation; }
 .idp .pre { white-space: pre-line; }
 .idp .lnk { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-size: 12.5px; cursor: pointer; text-decoration: underline; }
 #lay-msg a { color: var(--accent); }
-.wms-ov { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; opacity: .75; max-width: none; max-height: none; user-select: none; -webkit-user-select: none; }
+.wms-ov { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; opacity: var(--wms-op, .75); max-width: none; max-height: none; user-select: none; -webkit-user-select: none; }
 .panel-head { display: none; }
 @media (max-width: 760px) {
   .panel-head { display: flex; justify-content: space-between; align-items: center; position: sticky; top: -14px; margin: -14px -16px 0; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line); z-index: 2; border-radius: 14px 14px 0 0; }
@@ -240,6 +238,44 @@ html, body { touch-action: manipulation; }
 .layers { width: min(340px, 100%); background: rgba(20,24,27,.97); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; max-height: 60vh; overflow-y: auto; box-shadow: 0 6px 18px rgba(0,0,0,.45); }
 .lay-h { font: 600 12px var(--f-display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
 .chip[aria-disabled="true"] { opacity: .45; text-decoration: line-through; cursor: not-allowed; }
+/* V9.13.0 karte-einfach-1.0: Ortssuche, drei runde Knöpfe, Ebenen-Blatt mit Vorlagen und Deckkraft, Reiter in «Meine Daten» */
+.karte-suche { position: relative; width: min(340px, 100%); }
+.karte-suche input { width: 100%; box-sizing: border-box; border-radius: 999px; padding: 9px 16px; background: var(--panel-glass, rgba(20,24,27,.92)); border: 1px solid var(--line); box-shadow: 0 2px 8px rgba(0,0,0,.35); color: var(--fg); }
+.suche-liste { list-style: none; margin: 4px 0 0; padding: 4px; background: var(--panel-glass, rgba(20,24,27,.97)); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,.4); max-height: 40vh; overflow-y: auto; }
+.suche-liste li.hint { padding: 8px 10px; margin: 0; }
+.suche-liste button { width: 100%; text-align: left; background: none; border: 0; color: var(--fg); padding: 9px 10px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+.suche-liste button:hover { background: var(--surface-2); }
+.rund-leiste { display: flex; gap: 10px; }
+.rund { width: 58px; height: 58px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 0; cursor: pointer;
+  background: var(--panel-glass, rgba(20,24,27,.92)); border: 1px solid var(--line); color: var(--muted); box-shadow: 0 2px 8px rgba(0,0,0,.4); font: 600 9.5px/1.05 var(--f-body, inherit); text-align: center; }
+.rund span { display: block; max-width: 48px; }
+.rund:hover { color: var(--fg); }
+.rund[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.layers > * { flex-shrink: 0; }
+.layers { max-height: max(260px, calc(100vh - 390px)); max-height: max(260px, calc(100dvh - 390px)); }
+.lay-vorl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.vorl { border: 1px solid var(--line); background: var(--surface-2); color: var(--fg); border-radius: 12px; padding: 9px 4px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.vorl[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.lay-region { box-shadow: none; }
+.lay-aktiv { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.la-row { display: grid; grid-template-columns: minmax(0, 1fr) 84px 38px 32px; align-items: center; gap: 6px; font-size: 13px; min-height: 36px; }
+.la-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.la-op { width: 100%; min-width: 0; margin: 0; }
+.la-pct { font-size: 11px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.la-x { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 15px; min-height: 32px; padding: 0; }
+.la-x:hover { color: var(--fg); }
+.la-row .la-leer { display: block; }
+.lay-mehr summary, .lay-quellen summary { cursor: pointer; font: 600 12px var(--f-display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); padding: 6px 0; }
+.lay-quellen ul { margin: 4px 0 0; padding-left: 18px; font-size: 12.5px; display: flex; flex-direction: column; gap: 6px; }
+.lay-quellen a { color: var(--accent); }
+.daten-tabs { display: flex; gap: 4px; position: sticky; top: -14px; z-index: 1; background: var(--surface); padding: 2px 0 8px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+.daten-tabs button { flex: 1; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); border-radius: 999px; padding: 8px 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.daten-tabs button[aria-selected="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.daten-pane { display: flex; flex-direction: column; gap: 14px; }
+.daten-pane[hidden] { display: none; }
+#view-karte.daten-zu { grid-template-columns: minmax(0, 1fr); }
+#view-karte.daten-zu aside.panel { display: none; }
+@media (max-width: 760px) { .daten-tabs { top: 38px; } }
 .planner { position: absolute; z-index: 4; left: 10px; right: 10px; bottom: calc(env(safe-area-inset-bottom, 0px) + 30px); margin: 0 auto; max-width: 560px; background: var(--panel-glass); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 8px 24px var(--panel-shadow); }
 .pl-head { display: flex; align-items: center; gap: 10px; }
 .pl-head b { font: 700 17px var(--f-display); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
@@ -250,7 +286,7 @@ html, body { touch-action: manipulation; }
 .chart.pl-chart { height: 110px; }
 #pl-name { flex: 1; min-width: 120px; }
 #pl-sport { width: auto; }
-.map-wrap.planning .legend, .map-wrap.planning .mobile-filter { display: none; }
+.map-wrap.planning .legend { display: none; }
 .item .ed { background: none; border: 0; color: var(--muted); cursor: pointer; padding: 6px 4px; font-size: 12px; }
 .item .ed:hover { color: var(--fg); }
 /* Kalender */
@@ -705,7 +741,7 @@ table.t.tr-vt { table-layout: auto; } table.t.tr-vt th, table.t.tr-vt td { paddi
 .rp-save { flex-wrap: wrap; } .rp-save input { flex: 1 1 100%; }   /* V6.6: GPX teilen und GPX in Dateien */
 .rp-gs { margin: 6px 0; padding: 10px 12px; border: 1px solid var(--line-2); border-radius: 12px; background: var(--surface-2); font-size: 14px; } .rp-gs p { margin: 0 0 8px; } .rp-gs .row { display: flex; gap: 8px; flex-wrap: wrap; }   /* V9.14.0: Strecke an Garmin senden */
 .rp-garmin { margin: 4px 0 8px; font-size: 13px; } .rp-garmin summary { cursor: pointer; color: var(--accent-text, var(--accent)); } .rp-garmin ol { margin: 6px 0; padding-left: 20px; }
-.map-wrap.planning .legend, .map-wrap.planning .mobile-filter, .map-wrap.planning #heat-status { display: none !important; }
+.map-wrap.planning .legend, .map-wrap.planning #heat-status, .map-wrap.planning .karte-suche, .map-wrap.planning #btn-daten { display: none !important; }
 #view-karte.planning { grid-template-columns: minmax(0, 1fr); }
 #view-karte.planning aside.panel { display: none; }
 @media (min-width: 761px) {
@@ -931,7 +967,21 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
   <!-- ================= KARTE ================= -->
   <section class="view" id="view-karte" role="region" aria-label="Karte">
     <aside class="panel" id="panel">
-      <div class="panel-head"><b>Filter &amp; Punkte</b><button class="btn primary" id="panel-close">Karte zeigen</button></div>
+      <div class="panel-head"><b>Meine Daten</b><button class="btn primary" id="panel-close">Karte zeigen</button></div>
+      <div class="daten-tabs" role="tablist" aria-label="Meine Daten" id="daten-tabs">
+        <button type="button" role="tab" id="dt-spuren" data-dtab="spuren" aria-selected="true" aria-controls="dp-spuren">Spuren</button>
+        <button type="button" role="tab" id="dt-punkte" data-dtab="punkte" aria-selected="false" aria-controls="dp-punkte">Punkte</button>
+        <button type="button" role="tab" id="dt-routen" data-dtab="routen" aria-selected="false" aria-controls="dp-routen">Routen</button>
+      </div>
+      <div class="daten-pane" id="dp-spuren" role="tabpanel" aria-labelledby="dt-spuren">
+      <div>
+        <h3>Darstellung</h3>
+        <div class="seg" role="group" aria-label="Spuren">
+          <button id="mode-heat" aria-pressed="true">Heatmap</button>
+          <button id="mode-sport" aria-pressed="false">Nach Sport</button>
+          <button id="btn-3d" aria-pressed="false">3D</button>
+        </div>
+      </div>
       <div>
         <h3>Auswahl</h3>
         <div class="sum" id="sum"></div>
@@ -974,6 +1024,8 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
         <button class="btn" id="hits-weg" type="button" hidden style="margin-top:8px">Auswahl aufheben</button>
       </div>
 
+      </div>
+      <div class="daten-pane" id="dp-punkte" role="tabpanel" aria-labelledby="dt-punkte" hidden>
       <div>
         <h3>Meine Punkte</h3>
         <div class="row" style="margin-bottom:8px">
@@ -986,62 +1038,90 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
         <div class="chips" id="p-cats" style="margin-bottom:6px"></div>
         <div class="list" id="p-list"></div>
       </div>
+      </div>
+      <div class="daten-pane" id="dp-routen" role="tabpanel" aria-labelledby="dt-routen" hidden>
       <div>
         <h3 id="r-kopf" tabindex="-1">Meine Routen</h3>
         <div class="list" id="r-list"></div>
-        <p class="hint" id="r-hint">Plane eine Route mit «Route planen» in der Karte oder lade eine GPX-Datei.</p>
+        <p class="hint" id="r-hint">Plane eine Route mit «Planen» in der Karte oder lade eine GPX-Datei.</p>
+      </div>
       </div>
     </aside>
     <div class="map-wrap">
       <div id="map"></div>
       <div class="map-ctrl">
-        <div class="seg" role="group" aria-label="Spuren">
-          <button id="mode-heat" aria-pressed="true">Heatmap</button>
-          <button id="mode-sport" aria-pressed="false">Nach Sport</button>
-          <button id="btn-3d" aria-pressed="false">3D</button>
+        <div class="karte-suche" id="karte-suche-box">
+          <input type="search" id="karte-suche" placeholder="Ort suchen" aria-label="Ort suchen" autocomplete="off" autocapitalize="off" enterkeyhint="search" maxlength="80">
+          <ul class="suche-liste" id="karte-suche-liste" role="listbox" aria-label="Suchtreffer" hidden></ul>
         </div>
-        <div class="seg v7-outdoor" role="group" aria-label="Outdoor">
-          <button id="btn-layers" aria-pressed="false" aria-expanded="false" aria-controls="layers" aria-label="Karte entdecken: Karten und Ebenen">Entdecken</button>
-          <button id="btn-plan" aria-pressed="false">Route planen</button>
-          <button id="btn-routen" type="button">Meine Routen</button>
+        <div class="rund-leiste" role="group" aria-label="Karte">
+          <button class="rund" id="btn-layers" type="button" aria-pressed="false" aria-expanded="false" aria-controls="layers" aria-label="Ebenen: Karten und Ebenen wählen"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 12.5 9 5 9-5"/><path d="m3 17 9 5 9-5" opacity=".55"/></svg><span>Ebenen</span></button>
+          <button class="rund" id="btn-plan" type="button" aria-pressed="false" aria-label="Planen: Route planen"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="2.4"/><circle cx="18" cy="6" r="2.4"/><path d="M8 17c5-1 2-6 5-8 1.3-.9 2.6-1.4 3-2" stroke-dasharray="2.2 2.2"/></svg><span>Planen</span></button>
+          <button class="rund" id="btn-daten" type="button" aria-pressed="false" aria-expanded="false" aria-controls="panel" aria-label="Meine Daten: Spuren, Punkte, Routen"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18c3-6 5 0 8-6s5 0 8-6"/><circle cx="4" cy="18" r="1.3"/><circle cx="20" cy="6" r="1.3"/></svg><span>Meine Daten</span></button>
         </div>
         <div class="layers" id="layers" hidden>
+          <div class="lay-h">Vorlagen</div>
+          <div class="lay-vorl" id="lay-vorlagen" role="group" aria-label="Vorlagen">
+            <button class="vorl" type="button" data-vorlage="skitour" aria-pressed="false">Skitour</button>
+            <button class="vorl" type="button" data-vorlage="wandern" aria-pressed="false">Wandern</button>
+            <button class="vorl" type="button" data-vorlage="rad" aria-pressed="false">Rad</button>
+            <button class="vorl" type="button" data-vorlage="jagd" aria-pressed="false">Jagd</button>
+          </div>
           <div class="lay-h">Grundkarte</div>
+          <div class="seg lay-region" id="lay-region" role="group" aria-label="Region der Grundkarte">
+            <button type="button" data-region="ch" aria-pressed="true">Schweiz</button>
+            <button type="button" data-region="ausland" aria-pressed="false">Ausland</button>
+          </div>
           <div class="chips" id="lay-base">
-            <button class="chip" data-base="nacht" aria-pressed="true">Nacht</button>
-            <button class="chip" data-base="farbe" aria-pressed="false">Landeskarte</button>
-            <button class="chip" data-base="winter" aria-pressed="false">Winterkarte</button>
-            <button class="chip" data-base="grau" aria-pressed="false">Grau</button>
-            <button class="chip" data-base="luft" aria-pressed="false">Luftbild</button>
+            <button class="chip" data-base="nacht" data-region="ch" aria-pressed="true">Nacht</button>
+            <button class="chip" data-base="farbe" data-region="ch" aria-pressed="false">Landeskarte</button>
+            <button class="chip" data-base="winter" data-region="ch" aria-pressed="false">Winterkarte</button>
+            <button class="chip" data-base="grau" data-region="ch" aria-pressed="false">Grau</button>
+            <button class="chip" data-base="luft" data-region="ch" aria-pressed="false">Luftbild</button>
+            <button class="chip" data-base="ot" data-region="ausland" aria-pressed="false" hidden>OpenTopoMap</button>
+            <button class="chip" data-base="ignplan" data-region="ausland" aria-pressed="false" hidden>IGN Plan</button>
+            <button class="chip" data-base="igntopo" data-region="ausland" aria-pressed="false" hidden>IGN Topo</button>
+            <button class="chip" data-base="bmat" data-region="ausland" aria-pressed="false" hidden>basemap.at</button>
           </div>
-          <div class="lay-h">Sommer</div>
-          <div class="chips">
-            <button class="chip" data-ov="wander" aria-pressed="false">Wanderwege</button>
-            <button class="chip" data-ov="velo" aria-pressed="false">Veloland</button>
-            <button class="chip" data-ov="mtb" aria-pressed="false">MTB-Land</button>
-            <button class="chip" data-ov="wanderland" aria-pressed="false">Wanderland</button>
-          </div>
-          <div class="lay-h">Winter</div>
-          <div class="chips">
-            <button class="chip" data-ov="skitouren" aria-pressed="false">Skitouren</button>
-            <button class="chip" data-ov="schneeschuh" aria-pressed="false">Schneeschuhrouten</button>
-            <button class="chip" data-ov="hang30" aria-pressed="false">Hangneigung über 30°</button>
-          </div>
-          <div class="lay-h">Wild &amp; Jagd</div>
-          <div class="chips">
-            <button class="chip" data-pt="jagd" aria-pressed="false"><span class="dot" style="background:#c08a4a"></span>Jagdposten</button>
-            <button class="chip" data-ov="wrz" aria-pressed="false">Wildruhezonen</button>
-            <button class="chip" data-ov="jbg" aria-pressed="false">Eidg. Jagdbanngebiete</button>
-            <button class="chip" data-ov="wsg_gr" aria-pressed="false">Wildschutzgebiete GR</button>
-          </div>
+          <div class="lay-h">Aktive Ebenen</div>
+          <ul class="lay-aktiv" id="lay-aktiv" aria-live="polite"></ul>
+          <details class="lay-mehr" id="lay-mehr">
+            <summary>Weitere Ebenen</summary>
+            <div class="lay-h">Sommer</div>
+            <div class="chips">
+              <button class="chip" data-ov="wander" aria-pressed="false">Wanderwege</button>
+              <button class="chip" data-ov="velo" aria-pressed="false">Veloland</button>
+              <button class="chip" data-ov="mtb" aria-pressed="false">MTB-Land</button>
+              <button class="chip" data-ov="wanderland" aria-pressed="false">Wanderland</button>
+            </div>
+            <div class="lay-h">Winter</div>
+            <div class="chips">
+              <button class="chip" data-ov="skitouren" aria-pressed="false">Skitouren</button>
+              <button class="chip" data-ov="schneeschuh" aria-pressed="false">Schneeschuhrouten</button>
+              <button class="chip" data-ov="hang30" aria-pressed="false">Hangneigung über 30°</button>
+            </div>
+            <div class="lay-h">Wild &amp; Jagd</div>
+            <div class="chips">
+              <button class="chip" data-pt="jagd" aria-pressed="false"><span class="dot" style="background:#c08a4a"></span>Jagdposten</button>
+              <button class="chip" data-ov="wrz" aria-pressed="false">Wildruhezonen</button>
+              <button class="chip" data-ov="jbg" aria-pressed="false">Eidg. Jagdbanngebiete</button>
+              <button class="chip" data-ov="wsg_gr" aria-pressed="false">Wildschutzgebiete GR</button>
+            </div>
+            <div class="lay-h">Ausland (OpenStreetMap)</div>
+            <div class="chips">
+              <button class="chip" data-ov="wmt_wander" aria-pressed="false">Wanderwege</button>
+              <button class="chip" data-ov="wmt_rad" aria-pressed="false">Radrouten</button>
+              <button class="chip" data-ov="wmt_mtb" aria-pressed="false">MTB-Routen</button>
+            </div>
+          </details>
           <p class="hint" id="lay-msg">Karten: swisstopo und Kanton Graubünden. Wildruhezonen und Schutzgebiete bitte respektieren.</p>
+          <details class="lay-quellen" id="lay-quellen"><summary>Quellen und Lizenzen</summary><ul id="lay-quellen-liste"></ul></details>
         </div>
       </div>
       <section class="planner rp" id="planner" hidden></section>
       <div class="legend" id="legend">Häufigkeit<div class="bar"></div><div class="ends"><span>1×</span><span id="legend-max">oft</span></div></div>
       <div class="status" id="heat-status" hidden></div>
       <div class="pt-band" id="pt-band" role="status" aria-live="polite" hidden><span>Tippe auf die Karte</span><button class="btn" type="button" id="pt-band-ab">Abbrechen</button></div>
-      <button class="btn primary mobile-filter" id="mobile-filter">Filter &amp; Punkte</button>
     </div>
   </section>
 
@@ -1721,6 +1801,7 @@ nav.unter button[aria-pressed="true"] { background: var(--accent); border-color:
 <script src="js/eingang.js"></script>
 <script src="js/v59-logik.js"></script>
 <script src="js/route.js"></script>
+<script src="js/karte-ebenen.js"></script>
 <script src="js/strecke-garmin.js"></script>
 <script src="js/routen-ui.js"></script>
 <script src="js/training-route.js"></script>
@@ -2555,6 +2636,7 @@ function initMap() {
         wander: ras(WMTS("ch.swisstopo.swisstlm3d-wanderwege", "png")),
         velo: ras(WMTS("ch.astra.veloland", "png")),
         mtb: ras(WMTS("ch.astra.mountainbikeland", "png")),
+        ...KE.rasterQuellen(),      // V9.13.0 karte-einfach-1.0: OpenTopoMap, IGN, basemap.at, Waymarked Trails
         dem: { type: "raster-dem", tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"], tileSize: 256, maxzoom: 14, encoding: "terrarium", attribution: "Höhenmodell: Mapzen/AWS Terrain Tiles" },
         tracks: { type: "geojson", data: EMPTY, tolerance: 0.6 },
         sel: { type: "geojson", data: EMPTY },
@@ -2569,9 +2651,11 @@ function initMap() {
         { id: "grau", type: "raster", source: "grau", layout: { visibility: "none" } },
         { id: "farbe", type: "raster", source: "farbe", layout: { visibility: "none" } },
         { id: "luft", type: "raster", source: "luft", layout: { visibility: "none" } },
+        ...KE.grundLayer(),
         { id: "wander", type: "raster", source: "wander", layout: { visibility: "none" }, paint: { "raster-opacity": 0.9 } },
         { id: "velo", type: "raster", source: "velo", layout: { visibility: "none" }, paint: { "raster-opacity": 0.9 } },
         { id: "mtb", type: "raster", source: "mtb", layout: { visibility: "none" }, paint: { "raster-opacity": 0.9 } },
+        ...KE.ebenenLayer(),
         { id: "heat-glow", type: "line", source: "tracks", layout: { ...lineLayout, "line-sort-key": ["get", "h"] },
           paint: { "line-color": HEAT_RAMP, "line-opacity": ["interpolate", ["linear"], ["get", "h"], 0, 0.12, 1, 0.5],
             "line-width": ["interpolate", ["exponential", 1.4], ["zoom"], 6, 2, 10, 5, 14, 12, 17, 22],
@@ -2593,10 +2677,11 @@ function initMap() {
   // Teil 0b (K7): Massstab unten links unter der Legende, Quellenangabe unten rechts unter «Filter & Punkte» – nichts verdeckt sich
   map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
   kartenUnten();
-  map.on("load", () => { mapReady = true; initPlanLayers(); rebuildTracks(true); const m = store.get("sf.mode", "heat"); if (m !== "heat") setMode(m); });
+  map.on("load", () => { mapReady = true; initPlanLayers(); rebuildTracks(true); const m = store.get("sf.mode", "heat"); if (m !== "heat") setMode(m); for (const k of Object.keys(ebenenOp)) opAnwenden(k); aktivNeu(); });
   map.on("error", (e) => { if (e?.error && !String(e.error.message || "").match(/tile|Failed to fetch|404|400|AJAXError/i)) console.warn(e.error); });
 
   initLayerPanel();
+  initKartenSuche();
   initPlanner();
   document.getElementById("mode-heat").addEventListener("click", () => setMode(mode === "heat" ? "off" : "heat"));
   document.getElementById("mode-sport").addEventListener("click", () => setMode(mode === "sport" ? "off" : "sport"));
@@ -2649,16 +2734,30 @@ function initMap() {
     map.on("mouseleave", l, () => { map.getCanvas().style.cursor = addMode ? "crosshair" : ""; });
   }
 }
+/* V9.13.0 karte-einfach-1.0: Grundkarten Schweiz (swisstopo) und Ausland; Deckkraft je Ebene (deckkraft-1.0, nur Abweichungen gespeichert) */
+let ebenenOp = KE.opLesen(store.get("sf.ebenen.op", {}));
+function opAnwenden(key) {
+  if (!map) return;
+  const v = KE.opWert(ebenenOp, key) / 100;
+  if (WMS_EXTRA[key] && wmsS[key] && wmsS[key].mode === "overlay") { document.querySelector("#view-karte .map-wrap").style.setProperty("--wms-op", String(v)); return; }
+  if (map.getLayer(key)) map.setPaintProperty(key, "raster-opacity", v);
+}
+function regionZeigen(r) {
+  document.querySelectorAll("#lay-base [data-base]").forEach((c) => { c.hidden = c.dataset.region !== r; });
+  document.querySelectorAll("#lay-region [data-region]").forEach((c) => c.setAttribute("aria-pressed", String(c.dataset.region === r)));
+}
 async function setBase(b) {
   if (b === "winter" && !(await ensureExtra("winter"))) {
     const c = document.querySelector('#lay-base [data-base="winter"]'); c.setAttribute("aria-disabled", "true");
-    document.getElementById("lay-msg").textContent = "Die Winterkarte ist im Moment nicht verfügbar."; return;
+    document.getElementById("lay-msg").textContent = "Die Winterkarte ist im Moment nicht verfügbar."; return false;
   }
   base = b;
-  for (const k of ["nacht", "grau", "farbe", "luft", "winter"]) if (map.getLayer(k)) map.setLayoutProperty(k, "visibility", k === b ? "visible" : "none");
+  for (const k of KE.grundIds()) if (map.getLayer(k)) map.setLayoutProperty(k, "visibility", k === b ? "visible" : "none");
   map.setLayoutProperty("weltDunkel", "visibility", b === "nacht" ? "visible" : "none");
-  map.setLayoutProperty("weltHell", "visibility", b === "nacht" ? "none" : "visible");
+  map.setLayoutProperty("weltHell", "visibility", b !== "nacht" && KE.regionVon(b) === "ch" ? "visible" : "none");   // im Ausland deckt die Grundkarte die Welt allein ab
   document.querySelectorAll("#lay-base [data-base]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.base === b)));
+  regionZeigen(KE.regionVon(b)); opAnwenden(b); aktivNeu();
+  return true;
 }
 /* Teil 0b (K7): Höhe der Kartenknöpfe unten (links Massstab, rechts Quellenangabe) als CSS-Variablen --unten-l/--unten-r an der Karte:
    Legende, «Filter & Punkte» und die Statuszeile stehen darüber. Die Quellenangabe startet zugeklappt (nur «i»); aufklappen nur durch
@@ -2723,6 +2822,7 @@ function showHits(list) {
   document.getElementById("hits-weg").hidden = false;
   renderHits();
   const panel = document.getElementById("panel");
+  datenTab("spuren");
   if (panel.classList.contains("closed")) panelDurchAuswahl = true;      // auswahl-1.0: schliesst sich beim Aufheben wieder
   panel.classList.remove("closed");
   if (list.length === 1) selectActivity(list[0].id, false);
@@ -2776,6 +2876,7 @@ async function ensureExtra(key) {
       if (await probeTile(`https://wmts.geo.admin.ch/1.0.0/${L.id}/default/current/3857/8/134/90.${f}`)) {
         map.addSource(key, { type: "raster", tiles: [WMTS(L.id, f)], tileSize: 256, maxzoom: 18, attribution: SWISSTOPO });
         map.addLayer({ id: key, type: "raster", source: key, layout: { visibility: "none" }, paint: L.base ? {} : { "raster-opacity": 0.85 } }, L.base ? "wander" : "heat-glow");
+        opAnwenden(key);
         return true;
       }
     }
@@ -2795,34 +2896,110 @@ function focusPoints(cat) {      // keine dieser Punkte im Bild: zur grössten G
   const bb = boundsOfCoords([near.map((p) => [p.lon, p.lat])]);
   if (bb) map.fitBounds(bb, { padding: 60, maxZoom: 14 });
 }
+async function ovSchalten(b, on) {      // eine Ebene (data-ov) ein- oder ausschalten; false, wenn sie nicht verfügbar ist
+  if (b.getAttribute("aria-disabled") === "true") return false;
+  const k = b.dataset.ov;
+  if (WMTS_EXTRA[k] || WMS_EXTRA[k]) {
+    b.textContent = b.textContent.replace(/ …$/, "") + " …";
+    const ok = WMTS_EXTRA[k] ? await ensureExtra(k) : await ensureWms(k);
+    b.textContent = b.textContent.replace(/ …$/, "");
+    if (!ok) {
+      b.setAttribute("aria-disabled", "true"); b.setAttribute("aria-pressed", "false");
+      const m = document.getElementById("lay-msg");
+      if (WMS_EXTRA[k]) m.innerHTML = wmsFailMsg(k); else m.textContent = `«${b.textContent}» ist im Moment nicht verfügbar.`;
+      return false;
+    }
+  }
+  b.setAttribute("aria-pressed", String(on));
+  if (WMS_EXTRA[k]) wmsShow(k, on); else map.setLayoutProperty(k, "visibility", on ? "visible" : "none");
+  if (on) opAnwenden(k);
+  return true;
+}
+function ptSchalten(k, on) {
+  on ? pointCats.add(k) : pointCats.delete(k);
+  if (k === "jagd") store.set("sf.jagd", on);
+  renderPoints();
+  if (on) focusPoints(k);
+}
+function ebenenStand() {
+  const chips = [...document.querySelectorAll("#layers [data-ov]")], namen = {};
+  chips.forEach((b) => { namen[b.dataset.ov] = b.textContent.replace(/ …$/, "").trim(); });
+  return { grund: base, ebenen: chips.filter((b) => b.getAttribute("aria-pressed") === "true").map((b) => b.dataset.ov), namen, jagd: pointCats.has("jagd"), spuren: mode, op: ebenenOp };
+}
+let aktivPlan = 0;
+function aktivNeu() {
+  const ul = document.getElementById("lay-aktiv"); if (!ul) return;
+  const st = ebenenStand();
+  ul.innerHTML = KE.aktivHtml(KE.aktiveEbenen(st), esc);
+  const v = KE.vorlageErkannt(st);
+  document.querySelectorAll("#lay-vorlagen [data-vorlage]").forEach((b) => { const an = String(b.dataset.vorlage === v); if (b.getAttribute("aria-pressed") !== an) b.setAttribute("aria-pressed", an); });
+}
+async function vorlageAnwenden(id) {      // ebenen-vorlagen-1.0: ein Tipp setzt die ganze Kombination
+  const plan = KE.vorlagePlan(id, ebenenStand()); if (!plan || !map) return;
+  if (!(await setBase(plan.grund)) && plan.grund === "winter") await setBase("farbe");      // Winterkarte nicht erreichbar: Landeskarte statt gar keiner Karte
+  const chip = (k) => document.querySelector(`#layers [data-ov="${k}"]`);
+  for (const k of plan.aus) { const c = chip(k); if (c) await ovSchalten(c, false); }
+  for (const k of plan.an) { const c = chip(k); if (c) await ovSchalten(c, true); }
+  if (pointCats.has("jagd") !== plan.jagd) ptSchalten("jagd", plan.jagd);
+  if (mode !== plan.spuren) setMode(plan.spuren);
+  store.set("sf.vorlage", id);
+  document.getElementById("lay-msg").textContent = "Vorlage «" + KE.vorlage(id).label + "»: " + KE.vorlage(id).info + ".";
+  aktivNeu();
+}
 function initLayerPanel() {
   const panel = document.getElementById("layers"), btn = document.getElementById("btn-layers");
   btn.addEventListener("click", () => { const open = panel.hidden; panel.hidden = !open; btn.setAttribute("aria-pressed", String(open)); btn.setAttribute("aria-expanded", String(open)); });
   panel.querySelectorAll("[data-base]").forEach((b) => b.addEventListener("click", () => setBase(b.dataset.base)));
-  panel.querySelectorAll("[data-pt]").forEach((b) => b.addEventListener("click", () => {
-    const k = b.dataset.pt, on = !pointCats.has(k);
-    on ? pointCats.add(k) : pointCats.delete(k);
-    if (k === "jagd") store.set("sf.jagd", on);
-    renderPoints();
-    if (on) focusPoints(k);
-  }));
-  panel.querySelectorAll("[data-ov]").forEach((b) => b.addEventListener("click", async () => {
-    if (b.getAttribute("aria-disabled") === "true") return;
-    const k = b.dataset.ov, on = b.getAttribute("aria-pressed") !== "true";
-    if (WMTS_EXTRA[k] || WMS_EXTRA[k]) {
-      b.textContent = b.textContent.replace(/ …$/, "") + " …";
-      const ok = WMTS_EXTRA[k] ? await ensureExtra(k) : await ensureWms(k);
-      b.textContent = b.textContent.replace(/ …$/, "");
-      if (!ok) {
-        b.setAttribute("aria-disabled", "true"); b.setAttribute("aria-pressed", "false");
-        const m = document.getElementById("lay-msg");
-        if (WMS_EXTRA[k]) m.innerHTML = wmsFailMsg(k); else m.textContent = `«${b.textContent}» ist im Moment nicht verfügbar.`;
-        return;
-      }
-    }
-    b.setAttribute("aria-pressed", String(on));
-    if (WMS_EXTRA[k]) wmsShow(k, on); else map.setLayoutProperty(k, "visibility", on ? "visible" : "none");
-  }));
+  panel.querySelectorAll("[data-region]").forEach((b) => { if (b.closest("#lay-region")) b.addEventListener("click", () => regionZeigen(b.dataset.region)); });
+  panel.querySelectorAll("[data-pt]").forEach((b) => b.addEventListener("click", () => ptSchalten(b.dataset.pt, !pointCats.has(b.dataset.pt))));
+  panel.querySelectorAll("[data-ov]").forEach((b) => b.addEventListener("click", () => ovSchalten(b, b.getAttribute("aria-pressed") !== "true")));
+  panel.querySelectorAll("[data-vorlage]").forEach((b) => b.addEventListener("click", () => vorlageAnwenden(b.dataset.vorlage)));
+  const akt = document.getElementById("lay-aktiv");
+  akt.addEventListener("input", (e) => {
+    const r = e.target.closest("[data-op]"); if (!r) return;
+    ebenenOp = KE.opSetzen(ebenenOp, r.dataset.op, r.value); store.set("sf.ebenen.op", ebenenOp); opAnwenden(r.dataset.op);
+    const o = r.parentElement.querySelector(".la-pct"); if (o) o.textContent = KE.opWert(ebenenOp, r.dataset.op) + " %";
+  });
+  akt.addEventListener("click", (e) => {
+    const x = e.target.closest("[data-aus]"); if (!x) return;
+    const k = x.dataset.aus, art = x.dataset.art;
+    if (art === "ebene") { const c = document.querySelector(`#layers [data-ov="${k}"]`); if (c) ovSchalten(c, false); }
+    else if (art === "punkte") ptSchalten(k, false);
+    else if (art === "spuren") setMode("off");
+    aktivNeu();
+  });
+  document.getElementById("lay-quellen-liste").innerHTML = KE.quellenHtml(esc);
+  regionZeigen(KE.regionVon(base));
+  // Stand der Ebenen im Blatt «Aktive Ebenen» immer aktuell halten (Chips, Spuren-Knöpfe, Vorlagen)
+  if (window.MutationObserver) new MutationObserver((ms) => {
+    if (!ms.some((m) => !m.target.classList.contains("vorl") && !m.target.closest("#lay-region"))) return;
+    cancelAnimationFrame(aktivPlan); aktivPlan = requestAnimationFrame(aktivNeu);
+  }).observe(document.getElementById("view-karte"), { subtree: true, attributes: true, attributeFilter: ["aria-pressed"] });
+  aktivNeu();
+}
+/* Ortssuche oben links (kartensuche-1.0): gesendet wird nur der eingegebene Text an swisstopo (nur Orte in der Schweiz) */
+function initKartenSuche() {
+  const inp = document.getElementById("karte-suche"), liste = document.getElementById("karte-suche-liste"); if (!inp) return;
+  let t = null, job = 0;
+  const zu = () => { liste.hidden = true; liste.innerHTML = ""; };
+  inp.addEventListener("input", () => {
+    clearTimeout(t); const q = inp.value.trim();
+    if (q.length < 2) { job++; zu(); return; }
+    t = setTimeout(async () => {
+      const my = ++job; liste.hidden = false; liste.innerHTML = `<li class="hint">Suche …</li>`;
+      let res = [];
+      try { const r = await fetch(RT.sucheUrl(q)); if (!r.ok) throw new Error("HTTP " + r.status); res = RT.sucheErgebnisse(await r.json()); }
+      catch (e) { if (my === job) liste.innerHTML = `<li class="hint">Die Suche ist im Moment nicht erreichbar.</li>`; return; }
+      if (my !== job) return;
+      liste.innerHTML = res.length ? res.map((o, i) => `<li role="option"><button type="button" data-q="${i}">${esc(o.label)}</button></li>`).join("") : `<li class="hint">Nichts gefunden (nur Orte in der Schweiz).</li>`;
+      liste.querySelectorAll("[data-q]").forEach((b) => (b.onclick = () => {
+        const o = res[+b.dataset.q]; zu(); inp.value = o.label.replace(/\s*\(.*?\)\s*$/, "").slice(0, 60);
+        if (map) map.easeTo({ center: [o.lon, o.lat], zoom: Math.max(map.getZoom(), 12), duration: 500 });
+      }));
+    }, 350);
+  });
+  inp.addEventListener("keydown", (e) => { if (e.key === "Escape") { zu(); inp.blur(); } else if (e.key === "Enter") { const b = liste.querySelector("[data-q]"); if (b) { e.preventDefault(); b.click(); } } });
+  document.addEventListener("click", (e) => { if (!e.target.closest("#karte-suche-box")) zu(); });
 }
 /* ---------- Objekt-Infos von geo.admin.ch ---------- */
 const IDENT = { skitouren: ["ch.swisstopo-karto.skitouren", "Skitour"], schneeschuh: ["ch.swisstopo-karto.schneeschuhrouten", "Schneeschuhroute"],
@@ -3436,13 +3613,24 @@ function initKarte() {
     savePoints(); saveRoutes(); renderPoints(); renderRoutes(); e.target.value = "";
     document.getElementById("imp-msg").textContent = bad ? `${bad} Datei(en) konnten nicht gelesen werden. ${np} Punkte, ${nr} Routen geladen.` : `${np} Punkte und ${nr} Routen geladen.`;
   });
-  document.getElementById("mobile-filter").addEventListener("click", () => { panelDurchAuswahl = false; document.getElementById("panel").classList.toggle("closed"); });
-  document.getElementById("panel-close").addEventListener("click", () => { panelDurchAuswahl = false; document.getElementById("panel").classList.add("closed"); });
-  // V7 (Outdoor): «Meine Routen» öffnet das Blatt bei den gespeicherten Routen
-  document.getElementById("btn-routen")?.addEventListener("click", () => { panelDurchAuswahl = false; const pn = document.getElementById("panel"); pn.classList.remove("closed");
-    setTimeout(() => { const k = document.getElementById("r-kopf"); if (k) { k.scrollIntoView({ behavior: "smooth", block: "start" }); k.focus({ preventScroll: true }); } }, 120); });
+  // V9.13.0 meine-daten-1.0: ein Knopf «Meine Daten» öffnet und schliesst das Blatt mit den Reitern Spuren · Punkte · Routen
+  const pnl = document.getElementById("panel"), karteView = document.getElementById("view-karte");
+  const syncDaten = () => { const zu = pnl.classList.contains("closed"); karteView.classList.toggle("daten-zu", zu);
+    const bd = document.getElementById("btn-daten"); bd.setAttribute("aria-pressed", String(!zu)); bd.setAttribute("aria-expanded", String(!zu)); if (map) setTimeout(() => map.resize(), 60); };
+  if (window.MutationObserver) new MutationObserver(syncDaten).observe(pnl, { attributes: true, attributeFilter: ["class"] });
+  document.querySelectorAll("#daten-tabs [data-dtab]").forEach((b) => b.addEventListener("click", () => datenTab(b.dataset.dtab)));
+  datenTab(store.get("sf.datenTab", "spuren"));
+  document.getElementById("btn-daten").addEventListener("click", () => { panelDurchAuswahl = false; pnl.classList.toggle("closed"); });
+  document.getElementById("panel-close").addEventListener("click", () => { panelDurchAuswahl = false; pnl.classList.add("closed"); });
   document.getElementById("hits-weg").addEventListener("click", () => auswahlWeg());
   if (innerWidth <= 760) document.getElementById("panel").classList.add("closed");
+  syncDaten();
+}
+
+function datenTab(t) {      // Reiter im Blatt «Meine Daten»; ein Treffer aus der Karte springt zu «Spuren»
+  t = KE.tab(t); store.set("sf.datenTab", t);
+  document.querySelectorAll("#daten-tabs [data-dtab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.dtab === t)));
+  for (const k of ["spuren", "punkte", "routen"]) { const pn = document.getElementById("dp-" + k); if (pn) pn.hidden = k !== t; }
 }
 
 /* =====================================================================

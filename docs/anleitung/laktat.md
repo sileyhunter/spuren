@@ -80,7 +80,7 @@ Wegpunkte, z. B. Jagdposten aus Garmin Explore: GPX in einen eigenen, leeren Ord
 `python3 -I tools/import_points.py data.json <datei.gpx>` (ersetzt früher importierte Punkte), verschlüsseln, nur `data.enc.json` committen.
 Kategorie nach Name (Post, Hochsitz, Ansitz … → Jagdposten, sonst «Sonstiges» usw.). **punkte-1.1:** Kategorien von Hand (`cat_hand`, seit 14.11.2026
 die Punkte im Jagdgebiet als Jagdposten, im Audit vermerkt) bleiben beim neuen Import (gleicher Name, höchstens 50 m entfernt). Jagdposten sind auf
-der Karte ausgeblendet, bis Silas sie unter «Karten & Ebenen» → «Jagdposten» (oder «Filter & Punkte») einblendet; die anderen Kategorien sind an.
+der Karte ausgeblendet, bis Silas sie unter «Ebenen» → «Weitere Ebenen» → «Jagdposten» (oder Vorlage «Jagd»; die Punkte stehen unter «Meine Daten» → Punkte) einblendet; die anderen Kategorien sind an.
 Neue Punkte ohne erkennbare Art im Jagdgebiet landen unter «Sonstiges»: Silas fragen, nie selbst raten.
 
 ## Testkalender

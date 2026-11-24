@@ -56,3 +56,10 @@
 ## GPX direkt zu Garmin (V9.14.0, gpx-export-2.0, Routen 7.2)
 Planer → «An Garmin senden»: Auftrag nach Bestätigung («Ja, senden»), hochgeladen als Garmin-Strecke im Nacht-Update oder im Chat; nur Garmin Connect, nie aufs Gerät, nie automatisch. «GPX teilen» und «GPX in Dateien» bleiben
 als Rückfall. Regeln und Ablauf: `garmin.md`, Abschnitt «Strecken an Garmin Connect». Routing-Regeln unverändert (Rennrad nie mit Gravel, keine Luftlinie als Weg, `hand-1.0`).
+
+## Karte einfach (V9.13.0, karte-einfach-1.0, Outdoor O1)
+- Karte: drei runde Knöpfe **Ebenen · Planen · Meine Daten**, oben links die Ortssuche (`kartensuche-1.0`; nur der Suchtext geht an swisstopo, nur Schweiz). Alles Reine steht in `js/karte-ebenen.js` (`KE`), die Verdrahtung mit MapLibre in `index.html` (`initLayerPanel`, `vorlageAnwenden`, `ovSchalten`, `setBase`, `opAnwenden`).
+- **Ebenen-Blatt:** Vorlagen (`ebenen-vorlagen-1.0`: Skitour, Wandern, Rad, Jagd), Grundkarte Schweiz | Ausland, «Aktive Ebenen» mit Deckkraft-Regler (`deckkraft-1.0`, Speicher `sf.ebenen.op`, nur Abweichungen), «Weitere Ebenen», «Quellen und Lizenzen» (`KE.QUELLEN`). Neue Dienste immer in `KE.GRUND` / `KE.EBENEN_NEU` eintragen **mit Quellenangabe und Eintrag in `KE.QUELLEN`**; keine Dienste mit Schlüssel im öffentlichen Code (Mapy-Schlüssel gehört in die verschlüsselte Konfiguration, O4).
+- Grundkarten Ausland (`grundkarten-ausland-1.0`): OpenTopoMap, IGN Plan, IGN Topo, basemap.at; Ebenen Waymarked Trails. Im Ausland deckt die Grundkarte die Welt allein ab (die Weltkarte darunter wird abgeschaltet).
+- **«Meine Daten»** (`meine-daten-1.0`): Blatt mit den Reitern Spuren · Punkte · Routen (`datenTab`); ein Treffer in der Karte öffnet «Spuren».
+- Prüfen: `node --test tests/test_v9130.cjs`; Bedienung: `python3 -I tools/durchklick_karte.py` (Chrome, Demo, Karten-Attrappe). Die echte Karte und die Dienste sind in der Umgebung nicht prüfbar – nie behaupten, sie live geprüft zu haben.

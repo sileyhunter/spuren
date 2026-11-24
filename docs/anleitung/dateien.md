@@ -167,6 +167,7 @@
 - **V9.12.0 (Schwimm-Datenseiten, schwimmseiten-1.0, schwimmzonen-1.0; 23.11.2026):** `js/v55-schwimmen.js` (`V.zonen`, `V.zonenHTML`, `V.testHTML`, `V.cssAktuell`, Feld «Schätzung»), `js/schwimmen.js`
   (`SW.cssZonen`, `SW.zoneText`, `SW.ZONEN_ANTEIL`), `js/v59-logik.js` und `js/v82.js` und `js/formkurve.js` (Schätzung erledigt keinen Test, ist nur Vorschau), `index.html` (Karten «CSS und Zonen im Wasser»,
   «Test-Einheit»; Kalender, Jahresübersicht, Testplan), `js/v5-ui.js` (Pille «geschätzt»), `css/v6.css`, `tests/sim/seite.cjs`, `tests/test_v9120.cjs`
+- **V9.13.0 (Karte einfach, karte-einfach-1.0; 24.11.2026):** `js/karte-ebenen.js` (neu, `KE`: Grundkarten, Vorlagen, Deckkraft, aktive Ebenen, Quellen, Reiter), `index.html` (Kartenknöpfe, Ebenen-Blatt, Reiter in «Meine Daten», Ortssuche, Stil), `sw.js`, `tests/test_v9130.cjs`, `tools/durchklick_karte.py`.
 - **V9.14.0 (Strecke an Garmin senden, gpx-export-2.0, strecken-senden-1.0; 24.11.2026):** `js/strecke-garmin.js` (neu, `SG`: `pruefenGpx`, `auftrag`, `stand`, `typFuer`, `beschreibung`), `js/routen-ui.js` (Knopf «An Garmin senden»,
   Bestätigungsfeld, Stand), `js/eingang.js` und `js/v5-ui.js` (Eingabe `strecke_senden`), `tools/strecken_senden.py` (neu: Prüfung, `plan`, `eintragen`), `tools/merge_daily.py` und `tools/eingaben_lib.mjs`
   (`strecke_senden_add` → `strecken_auftraege`, `strecken_abgelehnt`), `index.html` (Skript, Stil `.rp-gs`), `sw.js`, `tests/test_v9140.cjs`, `tests/test_tools.py` (Abschnitt V9.14)
