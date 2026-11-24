@@ -192,8 +192,8 @@
             <li>Streckentyp wählen (z. B. Rennrad) und speichern; in Garmin Connect bei der Strecke «An Gerät senden».</li></ol>
           <p class="hint">Fehlt Garmin Connect im Teilen-Menü, verdrängt es oft eine andere App, die GPX öffnet. Sonst geht es in Garmin Connect im
             Browser: Training → Strecken → Importieren.</p>
-          <p class="hint"><b>Kürzer:</b> «An Garmin senden» bereitet die Strecke nach deinem Ja vor; auf Zuruf im Chat («schick die Strecken») legt Claude sie in Garmin Connect an (nur dort, nie aufs Gerät). Dann in Garmin Connect bei der
-            Strecke «An Gerät senden» tippen.</p></details>
+          ${SG.UPLOAD_MOEGLICH ? `<p class="hint"><b>Kürzer:</b> «An Garmin senden» bereitet die Strecke nach deinem Ja vor; auf Zuruf im Chat («schick die Strecken») legt Claude sie in Garmin Connect an (nur dort, nie aufs Gerät). Dann in Garmin Connect bei der
+            Strecke «An Gerät senden» tippen.</p>` : `<p class="hint">Direkt aus dem Notebook nach Garmin senden geht noch nicht: Der Garmin-Dienst kann die Datei nicht aus dem Notebook übernehmen (am 24.11.2026 geprüft). Bis dahin der Weg oben.</p>`}</details>
         <details class="rp-src" id="rp-srcbox"><summary>Herkunft, Methode, Annahmen</summary><div id="rp-src"></div></details>
         <div class="sr-only" id="rp-live" aria-live="polite"></div>
       </div>`;
@@ -1615,7 +1615,7 @@
     $("rp-saverow").hidden = !route && !ST.vias.length;
     $("pl-gpx").disabled = !route; $("pl-gpx").title = route ? "Teilen-Menü des Geräts" : "Erst nach erfolgreichem Routing";
     $("pl-gpx-dl").disabled = !route; $("rp-garmin").hidden = !route;
-    $("pl-garmin").disabled = !route; renderGarminStand();
+    $("pl-garmin").style.display = SG.UPLOAD_MOEGLICH ? "" : "none"; $("pl-garmin").disabled = !route; renderGarminStand();
     renderGap(); renderSki(); renderGravel(); renderWhen(); renderVar(); renderMtb(); renderAlt(); renderWinter(); renderTabs(); renderLegend(); renderInt(); renderArr(); renderWx(); renderSrc();
     renderMap();
     requestAnimationFrame(() => { drawChart(); renderInfo(); });

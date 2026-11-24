@@ -1,5 +1,11 @@
 # Änderungen
 
+## V9.14.1 · 24.11.2026 · «An Garmin senden» verborgen: der Garmin-Dienst kann die Datei nicht lesen (gpx-export-2.0)
+Erster echter Upload nach Silas' Ja (Teststrecke mit erfundenen Koordinaten): `upload_course` meldete «GPX file not found». Das Werkzeug liest die GPX-Datei von der Festplatte des Garmin-Dienstes, nicht aus der Sitzung von Claude; versucht wurden der Arbeitsordner, `/tmp`, `/mnt/user-data/outputs` und `/mnt/user-data/uploads`. In Garmin Connect ist nichts angelegt worden (`get_courses` danach: unverändert 74 Strecken). Darum:
+- `SG.UPLOAD_MOEGLICH = false` (`js/strecke-garmin.js`): Der Knopf «An Garmin senden» ist verborgen, der Hinweis im Planer sagt ehrlich, dass der Weg noch nicht geht; der Weg über «GPX in Dateien» und das Teilen-Menü bleibt unverändert.
+- Aufträge, Prüfung und `tools/strecken_senden.py` bleiben im Code (getestet, ohne Wirkung ohne Knopf); sobald ein Weg bekannt ist, die Datei zum Garmin-Dienst zu bringen, genügt `UPLOAD_MOEGLICH = true`.
+- Test `tests/test_v9140.cjs` (jetzt 10) prüft, dass Knopf und «Kürzer»-Hinweis nur bei `UPLOAD_MOEGLICH` erscheinen. `sw.js`-CACHE angehoben.
+
 ## V9.14.0 · 24.11.2026 · Strecke an Garmin senden (gpx-export-2.0, strecken-senden-1.0, Routen 7.2)
 Silas (13.11.): GPX direkt zu Garmin, `upload_course` nur mit ausdrücklichem Ja. Gebaut auf dem Stand von GitHub; **V9.13.0 und die Nummern 176–179 in `offen-nach-v55.md` bleiben für «Karte einfach» (O1) frei**, das in einer anderen Sitzung gebaut, aber noch nicht gepusht ist.
 - **Planer:** neuer Knopf «An Garmin senden» (nur bei berechneter Route) → Feld mit Name, Typ, Länge, Hm und «Ja, senden» / «Abbrechen»; Stand unter dem Speichern-Block (Auftrag liegt bereit · in Garmin Connect seit … · nicht übernommen · Fehler).

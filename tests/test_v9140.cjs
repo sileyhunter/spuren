@@ -130,6 +130,15 @@ test("Nur mit Ja: kein automatischer Weg – «Alle Tage senden», Tag- und Coac
   assert.match(ui, /nur dort, nie aufs Gerät/);
 });
 
+test("24.11.2026: Upload nicht möglich (Garmin-Dienst liest die Datei nicht) → Knopf verborgen, Seite verspricht nichts", () => {
+  const SGm = require("../js/strecke-garmin.js");
+  assert.equal(SGm.UPLOAD_MOEGLICH, false, "solange kein Weg zum Dienst bekannt ist, bleibt der Knopf verborgen");
+  const ui = R("js/routen-ui.js");
+  assert.match(ui, /\$\("pl-garmin"\)\.style\.display = SG\.UPLOAD_MOEGLICH \? "" : "none"/, "Knopf nur bei UPLOAD_MOEGLICH sichtbar");
+  assert.match(ui, /SG\.UPLOAD_MOEGLICH \? `<p class="hint"><b>Kürzer:<\/b>/, "der Hinweis «Kürzer» erscheint nur bei UPLOAD_MOEGLICH");
+  assert.match(ui, /geht noch nicht: Der Garmin-Dienst kann die Datei nicht/, "sonst steht dort die ehrliche Auskunft");
+});
+
 test("Python-Werkzeug und Update-Beschreibung nennen die Regeln: nur Garmin Connect, nur mit Ja, nie löschen", () => {
   const py = R("tools/strecken_senden.py");
   assert.match(py, /nie aufs Gerät schicken/); assert.match(py, /Nur mit Ja je Strecke/); assert.match(py, /Nie löschen/);

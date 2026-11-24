@@ -9,7 +9,11 @@
   else root.SG = factory();
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
-  const SG = { VERSION: "gpx-export-2.0", FORMAT: "strecke-senden-1.0", MAX_NAME: 128, MAX_BESCHR: 512, MAX_BYTES: 2 * 1024 * 1024, MIN_PUNKTE: 2, MAX_PUNKTE: 25000,
+  /* 24.11.2026 geprüft: `upload_course` des Garmin-Dienstes liest die GPX-Datei von der Festplatte des Dienstes, nicht aus der Sitzung von Claude
+   * («GPX file not found», Pfade in der Sitzung, /tmp und den gemeinsamen Ordnern versucht). Solange kein Weg bekannt ist, die Datei dorthin zu bringen,
+   * bleibt der Knopf «An Garmin senden» verborgen (false) und die Seite verspricht nichts. Siehe docs/anleitung/garmin.md, docs/offen-nach-v55.md Nr. 185. */
+  const UPLOAD_MOEGLICH = false;
+  const SG = { UPLOAD_MOEGLICH, VERSION: "gpx-export-2.0", FORMAT: "strecke-senden-1.0", MAX_NAME: 128, MAX_BESCHR: 512, MAX_BYTES: 2 * 1024 * 1024, MIN_PUNKTE: 2, MAX_PUNKTE: 25000,
     HOEHEN_MIN: 0.9 };
   /** Streckentypen von Garmin Connect (upload_course) und ihr Text. */
   SG.TYP_TEXT = { road_biking: "Rennrad", gravel_cycling: "Gravel", mountain_biking: "MTB", cycling: "Rad", running: "Laufen", trail_running: "Trail", hiking: "Wandern", walking: "Gehen" };
