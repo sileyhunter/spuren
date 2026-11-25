@@ -34,9 +34,10 @@
   const ZCHIP = { z1: ["z1", "Z1·Erholung"], pause: ["z1", "Z1·Erholung"], z2: ["z2", "Z2·Grundlage"], fatmax: ["fatmax", "Z2·FatMax"], renntempo: ["fatmax", "Z2·Renntempo"], z3: ["z3", "Z3·Tempo"],
     z3o: ["sweet", "Z3·unter LT2"], css: ["z4", "Z4·CSS"], vo2: ["vo2", "Z5·VO2max"], test: ["offen", "Test"], abc: ["z1", "Lauf-ABC"] };
   /** Schlüssel der Zonenfarben (V6.ZONEN) eines Schritts: Abschnittsart (Mein Plan) oder Zone des Workouts (Bibliothek). */
-  const v6Key = (s) => (s.key ? (ZCHIP[s.key] || ["offen"])[0] : s.zone && V6().ZONEN[s.zone] ? s.zone : "offen");
+  const v6Key = (s) => (s.ramp ? "z1" : s.key ? (ZCHIP[s.key] || ["offen"])[0] : s.zone && V6().ZONEN[s.zone] ? s.zone : "offen");
   const farbe = (k) => (V6().ZONEN[k] || V6().ZONEN.offen).farbe;
   function chip(s) {
+    if (s.ramp) { const f = farbe("z1"); return `<span class="zchip" style="--zc:${f};background:${V6().rgba(f, 0.2)}">Z1·${s.ramp === "aus" ? "Abwärmen" : "Aufwärmen"}</span>`; }      // Rampe liegt im Bereich von Z1 (Zeit zählt weiter in der Zone des Abschnitts)
     if (s.key) { const [k, t] = ZCHIP[s.key] || ["offen", "ohne Ziel"]; const f = farbe(k); return `<span class="zchip" style="--zc:${f};background:${V6().rgba(f, 0.2)}">${esc(t)}</span>`; }
     return s.zone && s.zone !== "pause" ? V6().zchip(s.zone) : "";
   }
@@ -357,6 +358,10 @@
   function zielVon(s) {
     if (s.ziel) return { text: s.ziel, icon: /bpm/.test(s.ziel) ? "herz" : X.sport === "rad" ? "energie" : "tacho" };
     if (X.art !== "plan" || X.wo) return null;
+    if (s.ramp && !X.swim) {                                            // rampen-1.0 auf der Seite (V9.24.0): Einfahren/Ausfahren mit Bereich wie enduco («70–200 W»), gleich wie im Export
+      const B = V64().rampeBereich(X.sport, X.metrik, X.sk);
+      return B ? { text: B.text, icon: metIcon(X.metrik) } : X.metrik === "rpe" ? { text: "RPE 1–2", icon: "kopf" } : null;
+    }
     if (X.swim) {
       if (s.art === "pause" || s.art === "bahn") return null;
       if (X.metrik === "rpe") return s.rpe ? { text: s.rpe, icon: "kopf" } : null;

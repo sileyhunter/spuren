@@ -1433,7 +1433,7 @@
      Nicht gesendet (mit Grund): Schwimmkurs, Tests, Kraft, Mobility. Bibliothek = Enduco-Workout, wird nur eingeplant. */
   V66.VERSIONS.garmin = "garmin-senden-1.2";
   V66.GARMIN_PREFIX = V64.EIGEN_PREFIX;
-  V66.GARMIN_OFFEN = 1.15;
+  V66.GARMIN_OFFEN = V64.Z5_OBEN;      // 1,15, seit V9.24.0 gemeinsam mit der Einheit-Seite (js/v64.js)
   V66.GARMIN_OFFEN_PULS = 1.1;
   V66.GARMIN_MAX_SCHRITTE = 50;
   const gz = (L, nr) => (Array.isArray(L) ? L.find((z) => z && z.z === "Z" + nr) || null : null);
@@ -1457,7 +1457,7 @@
         case "z3": return voll(z3) ? w(z3.von, z3.bis) : null;
         case "z3o": return voll(z3) ? w(W5(z3.von + (2 / 3) * (z3.bis - z3.von)), z3.bis) : null;
         case "renntempo": return z3 && isNum(z3.von) ? w(W5(0.95 * z3.von), z3.von) : null;
-        case "vo2": return z5 && isNum(z5.von) ? w(z5.von, isNum(z5.bis) ? z5.bis : z5.von * V66.GARMIN_OFFEN, !isNum(z5.bis)) : null;
+        case "vo2": return z5 && isNum(z5.von) ? w(z5.von, isNum(z5.bis) ? z5.bis : V64.z5Oben("rad", z5.von), !isNum(z5.bis)) : null;     // V9.24.0: auf 5 W gerundet wie die Anzeige (315–360 W)
         default: return null;
       }
     }
@@ -1633,41 +1633,27 @@
   /** Einfahren/Ausfahren wie enduco: Rad von 35,5 % bis 100 % der Obergrenze von Z1 (Ausfahren zurück; Beispiel Obergrenze 190 W: 65→190 W und 190→65 W), Puls von 76 % bis 100 % des
    *  Beginns von Z2, Pace von 1,52× langsamer als der langsame Rand von Z2 bis zu diesem. Ausfahren/Auslaufen durchläuft denselben Bereich rückwärts. Garmin kennt keine Rampen: Der Schritt
    *  bekommt den ganzen Bereich als Ziel, der Text nennt die Richtung. */
-  V66.RAMPE = { watt_von: 0.355, watt_aus: 1, puls_von: 0.76, pace_langsamer: 1.52, anteil: 0.075, ein_max_s: 600, aus_max_s: 600, min_s: 300 };   // Verhältnisse wie enduco «Langsam aufwärmen / Locker ausrollen»: Rad 35,5 %–100 % der Obergrenze von Z1, Puls 76 %–100 % von Beginn Z2, Pace 1,52× langsamer als der langsame Rand von Z2 bis dorthin; je 7,5 % der Einheit
+  V66.RAMPE = V64.RAMPE;   // Zahlen stehen seit V9.24.0 in js/v64.js (Anzeige und Export rechnen mit denselben): Verhältnisse wie enduco «Langsam aufwärmen / Locker ausrollen»
   V66.garminRampe = function (art, sport, metrik, skalen) {
-    const R = V66.RAMPE, S = skalen || {}, ein = art === "ein", W5 = (x) => Math.round(x / 5) * 5;
+    const ein = art === "ein";
     const wort = sport === "lauf" ? (ein ? "Einlaufen" : "Auslaufen") : ein ? "Einfahren" : "Ausfahren";
     if (metrik === "rpe") return { ziel: null, text: `${wort} langsam ${ein ? "steigern" : "ausklingen lassen"}: RPE 1–2` };
-    if (metrik === "puls") {
-      const z2 = gz(S[sport === "rad" ? "rad_hf" : "lauf_hf"], 2), top = z2 && isNum(z2.von) ? z2.von : null;
-      if (!top) return { ziel: null, text: wort };
-      const lo = Math.round(R.puls_von * top), hi = Math.round(top);
-      return lo > 0 && hi > lo ? { ziel: { art: "puls", lo, hi, offen: false }, text: `${wort} Puls ${ein ? lo + "→" + hi : hi + "→" + lo}` } : { ziel: null, text: wort };
-    }
-    if (sport === "rad") {
-      const z1 = gz(S.rad_w, 1), z2 = gz(S.rad_w, 2), top = z1 && isNum(z1.bis) ? z1.bis : z2 && isNum(z2.von) ? z2.von : null;
-      if (!top) return { ziel: null, text: wort };
-      const lo = W5(R.watt_von * top), hi = W5(R.watt_aus * top);
-      return hi > lo ? { ziel: { art: "watt", lo, hi, offen: false }, text: `${wort} ${ein ? lo + "→" + hi : hi + "→" + lo} W` } : { ziel: null, text: wort };
-    }
-    if (sport === "lauf") {
-      const z2 = gz(S.lauf_pace, 2), langsamRand = z2 && isNum(z2.von) && z2.von > 0 ? z2.von : null;
-      if (!langsamRand) return { ziel: null, text: wort };
-      const langsam = langsamRand * R.pace_langsamer, schnell = langsamRand;
-      return { ziel: { art: "tempo", lo: r3(1000 / langsam), hi: r3(1000 / schnell), offen: false },
-        text: `${wort} ${ein ? mmssG(langsam) + "→" + mmssG(schnell) : mmssG(schnell) + "→" + mmssG(langsam)} /km` };
-    }
-    return { ziel: null, text: wort };
+    const B = V64.rampeBereich(sport, metrik, skalen);
+    if (!B) return { ziel: null, text: wort };
+    const lr = (a, b) => (ein ? a + "→" + b : b + "→" + a);
+    if (metrik === "puls") return { ziel: { art: "puls", lo: B.lo, hi: B.hi, offen: false }, text: `${wort} Puls ${lr(B.lo, B.hi)}` };
+    if (sport === "rad") return { ziel: { art: "watt", lo: B.lo, hi: B.hi, offen: false }, text: `${wort} ${lr(B.lo, B.hi)} W` };
+    return { ziel: { art: "tempo", lo: r3(1000 / B.lo), hi: r3(1000 / B.hi), offen: false }, text: `${wort} ${lr(mmssG(B.lo), mmssG(B.hi))} /km` };
   };
   /** Folge (V66.garminFolge) → Folge, in der der erste und der letzte einfache Schritt als Rampe «ein» bzw. «aus» markiert sind, wenn er locker ist (Z1 oder Z2).
    *  Ein langer lockerer Schritt wird geteilt: Einfahren und Ausfahren je 7,5 % der Einheit (5–10 min; bei 90 min 6:45, wie bei enduco). Besteht die Einheit nur aus einem lockeren Abschnitt,
    *  bekommt sie vorn und hinten ebenso viel; sehr kurze Einheiten bleiben unverändert. Die Gesamtdauer bleibt gleich. */
   V66.rampenFolge = function (folge) {
-    const R = V66.RAMPE, locker = (x) => x && !x.wdh && (x.key === "z1" || x.key === "z2"), rund = (s) => Math.round(s / 60) * 60;
+    const locker = (x) => x && !x.wdh && (x.key === "z1" || x.key === "z2");
     const out = (folge || []).map((x) => (x.wdh ? x : Object.assign({}, x)));
     if (!out.length) return out;
     const ges = out.reduce((a, x) => a + (x.wdh ? x.wdh * x.teile.reduce((b, y) => b + y.s, 0) : x.s), 0);
-    const capE = Math.min(R.ein_max_s, Math.max(R.min_s, Math.round((R.anteil * ges) / 15) * 15)), capA = Math.min(R.aus_max_s, Math.max(R.min_s, Math.round((R.anteil * ges) / 15) * 15));
+    const D = V64.rampeDauern(ges), capE = D.ein, capA = D.aus;
     if (out.length === 1) {
       const x = out[0];
       if (!locker(x)) return out;

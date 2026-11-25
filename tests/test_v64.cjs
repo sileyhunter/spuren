@@ -158,7 +158,7 @@ test("Ziele aus dem Zonenprofil: Watt, Pace, Puls; ohne Skala bzw. CSS nichts ge
   assert.equal(V64.ziel("z2", "rad", SK), "160–200 W · Puls 120–138");
   assert.equal(V64.ziel("renntempo", "rad", SK), "190–200 W (LT1 200 W) · Puls bis 138");
   assert.equal(V64.ziel("z3o", "rad", SK), "225–240 W, nicht über LT2 (240 W)");
-  assert.equal(V64.ziel("vo2", "rad", SK), "über 257 W · Puls über 165 (steigt verzögert)");
+  assert.equal(V64.ziel("vo2", "rad", SK), "257–295 W · Puls über 165 (steigt verzögert)");     // V9.24.0: Z5 mit Obergrenze (115 %, auf 5 W)
   assert.equal(V64.ziel("z2", "lauf", SK), "6:20–5:30/km · Puls 128–146");
   assert.equal(V64.ziel("renntempo", "lauf", SK), "5:40–5:30/km (LT1 5:30/km) · Puls bis 146");
   assert.equal(V64.ziel("z3o", "lauf", SK), "5:03–4:50/km, nicht über LT2 (4:50/km)");

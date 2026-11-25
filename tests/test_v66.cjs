@@ -221,7 +221,7 @@ test("garmin-senden-1.0: Rad-Workout – Wiederholungen als Gruppe, Reihenfolge,
   assert.equal(S[S.length - 1].stepType.stepTypeKey, "cooldown"); assert.deepEqual([S[S.length - 1].targetValueOne, S[S.length - 1].targetValueTwo], [55, 160]);
   const z2 = S[1]; assert.equal(z2.targetType.workoutTargetTypeKey, "power.between"); assert.deepEqual([z2.targetValueOne, z2.targetValueTwo], [160, 200]);
   const vo2 = F.find((s) => s.description && /VO2max/.test(s.description));
-  assert.deepEqual([vo2.targetValueOne, vo2.targetValueTwo], [257, Math.round(257 * 1.15)], "Z5 nach oben offen: +15 % (eigene Festlegung)");
+  assert.deepEqual([vo2.targetValueOne, vo2.targetValueTwo], [257, Math.round(257 * 1.15 / 5) * 5], "Z5 nach oben offen: +15 %, auf 5 W (eigene Festlegung, wie die Anzeige)");
   assert.equal(g.offen, true); assert.ok(g.schritte <= V66.GARMIN_MAX_SCHRITTE);
   assert.match(W.description, /\[IN e-1 [0-9a-f]{16}\]$/);
 });

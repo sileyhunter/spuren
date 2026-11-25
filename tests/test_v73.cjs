@@ -31,7 +31,7 @@ test("schritte-1.0: jede Vorlage ergibt dieselbe Dauer und dieselbe Zeit je Zone
 
 test("schritte-1.0: Wiederholungen mit Namen, verschachtelt und ohne letzte Erholung", () => {
   const vo2 = V73.ausTeilen(V64.einheit("rad_vo2", {}));
-  assert.deepEqual(vo2.map((n) => n.typ === "s" ? n.art : n.name), ["ein", "ein", "Serien", "aus"]);
+  assert.deepEqual(vo2.map((n) => n.typ === "s" ? n.art : n.name), ["ein", "ein", "Serien", "aus", "aus"], "V9.24.0: Ausfahren = Rest + Rampe (wie im Export)");
   const serien = vo2[2];
   assert.equal(serien.wdh, 3); assert.equal(serien.ohneLetzte, true);
   assert.equal(serien.schritte[0].typ, "b"); assert.equal(serien.schritte[0].wdh, 13); assert.equal(serien.schritte[0].name, "30 s hart / 15 s locker");
@@ -42,7 +42,7 @@ test("schritte-1.0: Wiederholungen mit Namen, verschachtelt und ohne letzte Erho
   assert.equal(V73.ausTeilen(V64.einheit("rad_laktat", {})).find((n) => n.typ === "b").name, "Schwelle mit Laktat");
   assert.equal(V73.ausTeilen(V64.einheit("aktivierung", {})).find((n) => n.typ === "b").name, "Kurz zügig");
   const locker = V73.ausTeilen(V64.einheit("rad_locker", { d: 60 }));
-  assert.deepEqual(locker.map((n) => n.art), ["ein", "belastung"]);
+  assert.deepEqual(locker.map((n) => n.art), ["ein", "ein", "belastung", "aus"], "V9.24.0: Rampe vorn (Rest Z1 bleibt Einfahren), Hauptteil, Rampe hinten");
   assert.deepEqual(V73.ausTeilen({ teile: [["ohne", 30]] }), []);
 });
 
@@ -161,7 +161,7 @@ test("einheit-anpassen-1.0: Einfahren und Intervall-Intensität ändern nur die 
   const p = V66.teileAnpassen(V64.einheit("rad_vo2", {}).teile, { pausen: 0 });
   assert.ok(p.filter(([k]) => k === "pause").every(([, m]) => Math.abs(m * 60 - 25) < 0.01), "15 s × 1,5 → 25 s (auf 5 s gerundet), auch nach der letzten Wiederholung");
   const vb = V73.ausTeilen({ id: "rad_vo2", sport: "rad", teile: V66.teileAnpassen(V64.einheit("rad_vo2", {}).teile, { pausen: 80 }) });
-  assert.deepEqual(vb.map((n) => n.typ === "s" ? n.art : `${n.wdh} × ${n.name}`), ["ein", "ein", "3 × Serien", "aus"], "Serien bleiben nach dem Anpassen erkennbar");
+  assert.deepEqual(vb.map((n) => n.typ === "s" ? n.art : `${n.wdh} × ${n.name}`), ["ein", "ein", "3 × Serien", "aus", "aus"], "Serien bleiben nach dem Anpassen erkennbar");
   assert.equal(vb[2].schritte[0].name, "30 s hart / 10 s locker");
   assert.deepEqual(V66.teileAnpassen(V64.einheit("rad_locker", { d: 60 }).teile, { ein_min: 20, pausen: 0 }), V64.einheit("rad_locker", { d: 60 }).teile, "lockere Einheit ohne Belastung bleibt");
   const u = V66.einheit({ uid: "x", vorlage: "lauf_vo2", dauer: 50, quelle: "eigen", ein_min: 25, pausen: 20 }, {});

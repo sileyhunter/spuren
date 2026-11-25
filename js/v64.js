@@ -481,6 +481,46 @@
   /* ---------------- Ziele aus dem aktiven Zonenprofil ---------------- */
   const zone = (L, nr) => (Array.isArray(L) ? L.find((z) => z && z.z === "Z" + nr) || null : null);
   const W5 = (x) => Math.round(x / 5) * 5;
+  /** Z5 (VO2max) hat im Profil keine Obergrenze. Für Anzeige und Export (Garmin, Zwift) gilt dieselbe: Rad 115 % der Leistung, Laufen 115 % der Geschwindigkeit
+   *  (am 25.11.2026 an den eigenen 4–5-min-Intervallen geprüft: die Mitte des Bereichs liegt dort, wo die Wiederholungen tatsächlich gelingen; gefahren/gelaufen wird die Mitte). */
+  V64.Z5_OBEN = 1.15;
+  /** Obergrenze von Z5 aus dem Beginn: Rad Watt (auf 5 W), Laufen Pace in s/km (schneller); sonst null. */
+  V64.z5Oben = function (sport, von) {
+    if (!isNum(von) || von <= 0) return null;
+    return sport === "rad" ? W5(von * V64.Z5_OBEN) : sport === "lauf" ? Math.round(von / V64.Z5_OBEN) : null;
+  };
+  /* Einfahren und Ausfahren als Rampe (rampen-1.0, V9.23.0; auf der Einheit-Seite seit V9.24.0): gemeinsame Zahlen für Export und Anzeige. */
+  V64.RAMPE = { watt_von: 0.355, watt_aus: 1, puls_von: 0.76, pace_langsamer: 1.52, anteil: 0.075, ein_max_s: 600, aus_max_s: 600, min_s: 300 };
+  /** Dauer von Einfahren und Ausfahren (Sekunden) für eine Einheit von ges Sekunden: je 7,5 % (auf 15 s), mindestens 5, höchstens 10 min. */
+  V64.rampeDauern = function (ges) {
+    const R = V64.RAMPE, roh = Math.round((R.anteil * ges) / 15) * 15;
+    return { ein: Math.min(R.ein_max_s, Math.max(R.min_s, roh)), aus: Math.min(R.aus_max_s, Math.max(R.min_s, roh)) };
+  };
+  /** Bereich der Rampe → { lo, hi, einheit: "W"|"bpm"|"/km", text } oder null (Metrik RPE und fehlende Skala: kein Bereich). Rad: 35,5 %–100 % der Obergrenze von Z1;
+   *  Puls: 76 %–100 % des Beginns von Z2; Pace: 1,52× langsamer als der langsame Rand von Z2 bis zu diesem (lo = langsam, hi = schnell). Ein- und Ausfahren gleicher Bereich. */
+  V64.rampeBereich = function (sport, metrik, skalen) {
+    const R = V64.RAMPE, S = skalen || {};
+    if (metrik === "rpe") return null;
+    if (metrik === "puls") {
+      const z2 = zone(S[sport === "rad" ? "rad_hf" : sport === "lauf" ? "lauf_hf" : ""], 2), top = z2 && isNum(z2.von) ? z2.von : null;
+      if (!top) return null;
+      const lo = Math.round(R.puls_von * top), hi = Math.round(top);
+      return hi > lo ? { lo, hi, einheit: "bpm", text: `Puls ${lo}–${hi}` } : null;
+    }
+    if (sport === "rad") {
+      const z1 = zone(S.rad_w, 1), z2 = zone(S.rad_w, 2), top = z1 && isNum(z1.bis) ? z1.bis : z2 && isNum(z2.von) ? z2.von : null;
+      if (!top) return null;
+      const lo = W5(R.watt_von * top), hi = W5(R.watt_aus * top);
+      return hi > lo ? { lo, hi, einheit: "W", text: `${lo}–${hi} W` } : null;
+    }
+    if (sport === "lauf") {
+      const z2 = zone(S.lauf_pace, 2), rand = z2 && isNum(z2.von) && z2.von > 0 ? z2.von : null;
+      if (!rand) return null;
+      const lo = rand * R.pace_langsamer, hi = rand;
+      return { lo, hi, einheit: "/km", text: `${mmss(lo)}–${mmss(hi)}/km` };
+    }
+    return null;
+  };
   /** Zieltext für einen Abschnitt; skalen = TR.zonen(D.zonen).skalen. Ohne passende Skala: null (nie geraten). */
   V64.ziel = function (key, sport, skalen, css_s) {
     const S = skalen || {};
@@ -517,7 +557,9 @@
       case "vo2": {
         if (!(z5 && isNum(z5.von))) return null;
         const mx = hf && isNum(hf.hfmax) && h5 && isNum(h5.von) && hf.hfmax > h5.von ? hf.hfmax : null;      // V9.9.2: Z5 «bis Max»
-        return `${sport === "rad" ? "über" : "schneller als"} ${wert(z5.von)}${puls(h5 && isNum(h5.von) ? (mx ? `${h5.von}–${mx} (bis Max, steigt verzögert)` : `über ${h5.von} (steigt verzögert)`) : null)}`;
+        const oben = isNum(z5.bis) && z5.bis > 0 ? z5.bis : V64.z5Oben(sport, z5.von);                         // V9.24.0: Obergrenze wie im Export, gefahren wird die Mitte
+        const w = oben ? band(z5.von, oben) : `${sport === "rad" ? "über" : "schneller als"} ${wert(z5.von)}`;
+        return `${w}${puls(h5 && isNum(h5.von) ? (mx ? `${h5.von}–${mx} (bis Max, steigt verzögert)` : `über ${h5.von} (steigt verzögert)`) : null)}`;
       }
       default: return null;
     }

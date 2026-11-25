@@ -31,10 +31,11 @@
   const T = {
     rad: { ein_z1: "Locker einrollen", ein_z2: "Gleichmässig treten, Puls ruhig", z2: "Gleichmässig in der Grundlage", erh_z1: "Locker treten",
       erh_pause: "Locker weitertreten", fatmax: "Gleichmässig im oberen Z2, nahe an LT1", aus: "Locker ausfahren", z3: "Zügig und gleichmässig", z3o: "Knapp unter der Schwelle, nicht darüber",
-      vo2: "Hart – alle Wiederholungen gleich stark", renntempo: "Renntempo, Verpflegung wie im Rennen", test: "Test laut Protokoll", nach_z2: "Locker weiterfahren" },
+      vo2: "Hart – alle Wiederholungen gleich stark", renntempo: "Renntempo, Verpflegung wie im Rennen", test: "Test laut Protokoll", nach_z2: "Locker weiterfahren",
+      ramp_ein: "Langsam aufwärmen", ramp_aus: "Locker ausrollen" },
     lauf: { ein_z1: "Locker einlaufen", ein_z2: "Ruhig weiterlaufen", z2: "Locker und gleichmässig", erh_z1: "Traben", erh_pause: "Locker traben", fatmax: "Gleichmässig im oberen Z2, nahe an LT1",
       aus: "Locker auslaufen", z3: "Zügig und gleichmässig", z3o: "Knapp unter der Schwelle, nicht darüber", vo2: "Hart, aber kontrolliert",
-      renntempo: "Renntempo", test: "Test laut Protokoll", nach_z2: "Locker weiterlaufen" },
+      renntempo: "Renntempo", test: "Test laut Protokoll", nach_z2: "Locker weiterlaufen", ramp_ein: "Langsam einlaufen", ramp_aus: "Langsam auslaufen" },
     schwimm: { ein_z1: "Locker einschwimmen", ein_z2: "Ruhig schwimmen", z2: "Ruhig und gleichmässig", erh_z1: "Locker schwimmen", erh_pause: "Pause",
       aus: "Locker ausschwimmen", css: "CSS-Tempo halten", test: "Test laut Protokoll", nach_z2: "Locker weiterschwimmen" },
   };
@@ -131,6 +132,31 @@
     if (n.key === "z2") return vorher ? t.nach_z2 : t.z2;
     return t[n.key] || V64.ZNAME[n.key] || n.key;
   }
+  /** Einfahren und Ausfahren als Rampe auch auf der Einheit-Seite (rampen-1.0 auf der Seite, V9.24.0): gleiche Aufteilung wie im Export (V66.rampenFolge, Zahlen aus V64.RAMPE) – der erste
+   *  und der letzte lockere Schritt (Z1/Z2) beginnen bzw. enden mit einer Rampe von 7,5 % der Einheit (5–10 min); der Schritt behält seine Zone (Zeiten je Zone bleiben gleich), der Bereich kommt
+   *  aus dem Zonenprofil (V64.rampeBereich). Nur Rad und Laufen; ohne bekannte Dauer, sehr kurze Einheiten und Bibliothek-Workouts bleiben unverändert. Gesamtdauer bleibt gleich. */
+  V73.rampen = function (baum, sport) {
+    if (sport !== "rad" && sport !== "lauf") return baum;
+    const ges = V73.dauer(baum);
+    if (!isNum(ges) || ges <= 0) return baum;
+    const D = V64.rampeDauern(ges), locker = (n) => n && n.typ === "s" && (n.key === "z1" || n.key === "z2"), out = baum.slice();
+    if (out.length === 1) {
+      const x = out[0];
+      if (!locker(x) || !isNum(x.s) || D.ein + D.aus > 0.6 * x.s) return out;
+      return [Object.assign({}, x, { s: D.ein, ramp: "ein" }), Object.assign({}, x, { s: x.s - D.ein - D.aus }), Object.assign({}, x, { s: D.aus, ramp: "aus" })];
+    }
+    if (locker(out[0]) && isNum(out[0].s)) {
+      const a = out[0];
+      if (a.s > D.ein) out.splice(0, 1, Object.assign({}, a, { s: D.ein, ramp: "ein" }), Object.assign({}, a, { s: a.s - D.ein, nach: "ein" }));
+      else out[0] = Object.assign({}, a, { ramp: "ein" });
+    }
+    const z = out[out.length - 1];
+    if (locker(z) && !z.ramp && isNum(z.s)) {
+      if (z.s > D.aus) out.splice(out.length - 1, 1, Object.assign({}, z, { s: z.s - D.aus, nach: "aus" }), Object.assign({}, z, { s: D.aus, ramp: "aus" }));
+      else out[out.length - 1] = Object.assign({}, z, { ramp: "aus" });
+    }
+    return out;
+  };
   /** Einheit (V64.einheit/V66.einheit) → Baum aus Schritten und Blöcken (schritte-1.0). Ohne Abschnitte (Kraft, Mobility, Bibliothek): []. */
   V73.ausTeilen = function (e) {
     if (!e || !Array.isArray(e.teile) || !e.teile.length || e.teile[0][0] === "ohne") return [];
@@ -140,7 +166,7 @@
       const s = Math.round(m * 60), l = flach[flach.length - 1];
       if (l && l.key === k) l.s += s; else flach.push({ typ: "s", key: k, s });
     }
-    const baum = V73.gruppieren(V73.gruppieren(flach));
+    const baum = V73.rampen(V73.gruppieren(V73.gruppieren(flach)), e.sport);
     const istArbeit = (n) => n.typ === "b" || ARBEIT.has(n.key);
     const erste = baum.findIndex(istArbeit);
     let letzte = -1; for (let i = baum.length - 1; i >= 0; i--) if (istArbeit(baum[i])) { letzte = i; break; }
@@ -158,6 +184,7 @@
         const A = V64.LAUF_ABC && V64.LAUF_ABC[e.abc] || null;
         n.art = "abc"; n.text = A ? A.titel : "Lauf-ABC"; n.uebungen = A ? A.uebungen.map((u) => Object.assign({}, u)) : []; return;
       }
+      if (n.ramp) { n.art = n.ramp; n.text = tx(e.sport)[n.ramp === "ein" ? "ramp_ein" : "ramp_aus"]; return; }        // rampen-1.0: Rampe vorn bzw. hinten
       let art;
       if (n.key === "test") art = "test";
       else if (ARBEIT.has(n.key)) art = "belastung";
@@ -165,6 +192,7 @@
       else if (i < erste) art = "ein";
       else if (i > letzte) art = n.key === "z1" && i === baum.length - 1 ? "aus" : istRuhe(n) ? "erholung" : "belastung";
       else art = istRuhe(n) ? "erholung" : "belastung";
+      if (n.nach && n.key === "z1") art = n.nach;                                           // Rest des Schritts hinter der Rampe vorn bleibt Einfahren, vor der Rampe hinten Ausfahren
       n.art = art; n.text = stepText(n, e, art, erste >= 0 && i > letzte);
     });
     return baum;

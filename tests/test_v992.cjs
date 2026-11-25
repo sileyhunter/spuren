@@ -27,7 +27,7 @@ test("Briefing-Text: «180–190 (bis Max …)», ohne Maximalpuls wie bisher", 
   const mit = V64.ziel("vo2", "lauf", TR.zonen(profil(190)).skalen), ohne = V64.ziel("vo2", "lauf", TR.zonen(profil(null)).skalen);
   assert.match(mit, /Puls 180–190 \(bis Max, steigt verzögert\)/);
   assert.match(ohne, /Puls über 180 \(steigt verzögert\)/);
-  assert.match(mit, /^schneller als 4:30\/km/, "die Pace bleibt offen nach oben");
+  assert.match(mit, /^4:30–3:55\/km/, "die Pace hat seit V9.24.0 eine Obergrenze (115 % der Geschwindigkeit), gelaufen wird die Mitte");
 });
 
 test("Intensitätszonen (V73): Puls «180–190 (Max)»", () => {
