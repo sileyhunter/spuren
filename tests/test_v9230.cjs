@@ -46,21 +46,22 @@ test("rampen-1.0 V66.rampenFolge: Einheit aus einem einzigen lockeren Abschnitt 
   assert.equal(V66.rampenFolge([{ key: "z2", s: 900 }]).length, 1, "zu kurz: unverändert");
 });
 
-test("rampen-1.0 Puls: Einfahren von Beginn Z2 − 20 bis Beginn Z2, Ausfahren zurück (Rad und Laufen)", () => {
+test("rampen-1.0 Puls: Einfahren von 76 % bis 100 % des Beginns von Z2 (wie enduco), Ausfahren zurück (Rad und Laufen)", () => {
   const r = wo("rad_locker", 90, "puls"), a = r.S[0], z = r.S[r.S.length - 1];
-  assert.equal(a.targetType.workoutTargetTypeKey, "heart.rate.zone"); assert.deepEqual([a.targetValueOne, a.targetValueTwo], [115, 135]); assert.equal(a.description, "Einfahren Puls 115→135");
-  assert.deepEqual([z.targetValueOne, z.targetValueTwo], [115, 130]); assert.equal(z.description, "Ausfahren Puls 130→115");
+  assert.equal(a.targetType.workoutTargetTypeKey, "heart.rate.zone"); assert.deepEqual([a.targetValueOne, a.targetValueTwo], [103, 135]); assert.equal(a.description, "Einfahren Puls 103→135");
+  assert.deepEqual([z.targetValueOne, z.targetValueTwo], [103, 135]); assert.equal(z.description, "Ausfahren Puls 135→103");
   const l = wo("lauf_locker", 50, "puls");
-  assert.equal(l.S[0].description, "Einlaufen Puls 115→135"); assert.equal(l.S[l.S.length - 1].description, "Auslaufen Puls 130→115");
+  assert.equal(l.S[0].description, "Einlaufen Puls 103→135"); assert.equal(l.S[l.S.length - 1].description, "Auslaufen Puls 135→103");
 });
 
-test("rampen-1.0 Lauf nach Pace: Einlaufen von 12 % langsamer als der langsame Rand von Z2 bis dorthin; Ziele sind aufsteigende Geschwindigkeiten", () => {
+test("rampen-1.0 Lauf nach Pace: Einlaufen 1,52× langsamer als der langsame Rand von Z2 bis dorthin; Ziele sind aufsteigende Geschwindigkeiten", () => {
   const { e, S } = wo("lauf_locker", 50);
   assert.equal(sek(S), e.dauer * 60);
   const a = S[0], z = S[S.length - 1];
   assert.equal(a.targetType.workoutTargetTypeKey, "pace.zone"); assert.ok(a.targetValueOne < a.targetValueTwo && z.targetValueOne < z.targetValueTwo);
+  assert.deepEqual([a.targetValueOne, a.targetValueTwo], [z.targetValueOne, z.targetValueTwo], "Auslaufen durchläuft denselben Bereich");
   assert.equal(a.targetValueTwo, Math.round((1000 / 400) * 1000) / 1000, "Ende der Rampe = langsamer Rand von Z2");
-  assert.match(a.description, /^Einlaufen 7:28→6:40 \/km$/); assert.match(z.description, /^Auslaufen 6:52→7:28 \/km$/);
+  assert.match(a.description, /^Einlaufen 10:08→6:40 \/km$/); assert.match(z.description, /^Auslaufen 6:40→10:08 \/km$/);
 });
 
 test("rampen-1.0 RPE und ohne Zonenprofil: Rampe nur im Text, kein Ziel, nichts geraten", () => {

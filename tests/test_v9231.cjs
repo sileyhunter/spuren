@@ -28,7 +28,7 @@ test("zwift-export-1.0: ohne FTP, ohne Rad oder Bibliothek kein Text – nichts 
 test("zwift-export-1.0: Intervalle mit Wiederholung stehen als «Intervalle Nx» im Kopf, Dauer = Einheit", () => {
   const r = V66.zwiftText(E("rad_vo2_4x5", 60), SK, { ftp: 250 });
   assert.ok(!r.fehler, r.fehler);
-  assert.match(r.text, /Intervalle 3x\n- 5m 142%\n- 2m30s 51%/);
+  assert.match(r.text, /Intervalle 3x\n- 5m 142% 90-120rpm\n- 2m30s 51% 80-100rpm/);
   assert.equal(r.dauer_s, 60 * 60);
 });
 

@@ -9,6 +9,8 @@
 ## V9.23.0 · 25.11.2026 · Einfahren und Ausfahren als Rampe (rampen-1.0)
 Auftrag Silas: Jede Einheit soll langsam beginnen und langsam enden, mit Bereich; beim Laufen nach Puls oder Pace dasselbe.
 - **Rad nach Leistung (wie enduco «Langsam aufwärmen / Locker ausrollen»: 71–200 W bei Z1 bis 200 W, 6:44 bei 90 min):** Einfahren von 35,5 % bis 100 % der Obergrenze von Z1, Ausfahren zurück (bei 190 W: 65→190 W und 190→65 W), je 7,5 % der Einheit (5–10 min). Garmin kennt keine Rampen: Ziel ist der ganze Bereich, der Text nennt die Richtung. Z1-Pausen und lockere Z1-Abschnitte im Zwift-Export: Mitte des Bereichs.
+- **Puls und Pace ebenfalls wie enduco** (Laufeinheit «Fatmax Intervalle» und Rad nach Puls): Einfahren/Einlaufen von 76 % bis 100 % des Beginns von Z2 (Puls) bzw. von 1,52× langsamer als der langsame Rand von Z2 bis zu diesem (Pace); Ausfahren/Auslaufen durchläuft denselben Bereich rückwärts (nicht mehr «−5»/«+3 %»).
+- **Zwift-Text mit Trittfrequenz wie enduco:** VO2max 90–120, Erholung zwischen Intervallen 80–100, Tempo 90–110 U/min.
 - **Puls:** Einfahren von (Beginn Z2 − 20) bis Beginn Z2, Ausfahren von (Beginn Z2 − 5) auf (Beginn Z2 − 20). **Pace:** Einlaufen von 12 % langsamer als der langsame Rand von Z2 bis dorthin, Auslaufen von 3 % langsamer zurück auf 12 % langsamer. **RPE oder ohne Zonenprofil:** nur Text.
 - Lange erste/letzte Schritte werden geteilt (je 7,5 % der Einheit, 5–10 min); kurze Einheiten bleiben unverändert. Zahlen in `V66.RAMPE` sind Claudes Festlegung. Test: `tests/test_v9230.cjs`. **Offen:** Einheit-Seite zeigt Einfahren/Ausfahren noch ohne Bereich.
 

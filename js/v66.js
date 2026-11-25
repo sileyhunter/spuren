@@ -1630,11 +1630,10 @@
   };
 
   /* ----- Einfahren und Ausfahren als Rampe (rampen-1.0, Auftrag Silas 24.11.2026) ----- */
-  /** Einfahren: langsam von 60 % der Obergrenze von Z1 bis zu ihr; Ausfahren: von 90 % zurück auf 60 % (Beispiel Obergrenze 190 W: Einfahren 115→190 W,
-   *  Ausfahren 170→115 W). Puls: Einfahren von (Beginn Z2 − 20) bis Beginn Z2, Ausfahren von (Beginn Z2 − 5) auf (Beginn Z2 − 20). Pace: Einlaufen von 12 %
-   *  langsamer als der langsame Rand von Z2 bis zu diesem, Auslaufen von 3 % langsamer zurück auf 12 % langsamer. Garmin kennt keine Rampen: Der Schritt bekommt
-   *  den ganzen Bereich als Ziel, der Text nennt die Richtung. Eigene Festlegung von Claude (trainingstechnisch Claudes Entscheid). */
-  V66.RAMPE = { watt_von: 0.355, watt_aus: 1, puls_unter: 20, puls_aus: 5, pace_langsamer: 1.12, pace_aus: 1.03, anteil: 0.075, ein_max_s: 600, aus_max_s: 600, min_s: 300 };   // Rad wie enduco: 71–200 W bei Z1 bis 200 W (35,5 %–100 %), 6:44 bei 90 min (7,5 %)
+  /** Einfahren/Ausfahren wie enduco: Rad von 35,5 % bis 100 % der Obergrenze von Z1 (Ausfahren zurück; Beispiel Obergrenze 190 W: 65→190 W und 190→65 W), Puls von 76 % bis 100 % des
+   *  Beginns von Z2, Pace von 1,52× langsamer als der langsame Rand von Z2 bis zu diesem. Ausfahren/Auslaufen durchläuft denselben Bereich rückwärts. Garmin kennt keine Rampen: Der Schritt
+   *  bekommt den ganzen Bereich als Ziel, der Text nennt die Richtung. */
+  V66.RAMPE = { watt_von: 0.355, watt_aus: 1, puls_von: 0.76, pace_langsamer: 1.52, anteil: 0.075, ein_max_s: 600, aus_max_s: 600, min_s: 300 };   // Verhältnisse wie enduco «Langsam aufwärmen / Locker ausrollen»: Rad 35,5 %–100 % der Obergrenze von Z1, Puls 76 %–100 % von Beginn Z2, Pace 1,52× langsamer als der langsame Rand von Z2 bis dorthin; je 7,5 % der Einheit
   V66.garminRampe = function (art, sport, metrik, skalen) {
     const R = V66.RAMPE, S = skalen || {}, ein = art === "ein", W5 = (x) => Math.round(x / 5) * 5;
     const wort = sport === "lauf" ? (ein ? "Einlaufen" : "Auslaufen") : ein ? "Einfahren" : "Ausfahren";
@@ -1642,7 +1641,7 @@
     if (metrik === "puls") {
       const z2 = gz(S[sport === "rad" ? "rad_hf" : "lauf_hf"], 2), top = z2 && isNum(z2.von) ? z2.von : null;
       if (!top) return { ziel: null, text: wort };
-      const lo = Math.round(top - R.puls_unter), hi = Math.round(ein ? top : top - R.puls_aus);
+      const lo = Math.round(R.puls_von * top), hi = Math.round(top);
       return lo > 0 && hi > lo ? { ziel: { art: "puls", lo, hi, offen: false }, text: `${wort} Puls ${ein ? lo + "→" + hi : hi + "→" + lo}` } : { ziel: null, text: wort };
     }
     if (sport === "rad") {
@@ -1654,7 +1653,7 @@
     if (sport === "lauf") {
       const z2 = gz(S.lauf_pace, 2), langsamRand = z2 && isNum(z2.von) && z2.von > 0 ? z2.von : null;
       if (!langsamRand) return { ziel: null, text: wort };
-      const langsam = langsamRand * R.pace_langsamer, schnell = langsamRand * (ein ? 1 : R.pace_aus);
+      const langsam = langsamRand * R.pace_langsamer, schnell = langsamRand;
       return { ziel: { art: "tempo", lo: r3(1000 / langsam), hi: r3(1000 / schnell), offen: false },
         text: `${wort} ${ein ? mmssG(langsam) + "→" + mmssG(schnell) : mmssG(schnell) + "→" + mmssG(langsam)} /km` };
     }
@@ -1696,6 +1695,8 @@
    *  Einfahren und Ausfahren als Rampe (rampen-1.0); ein Abschnitt ist ein fester Wert in der Mitte seines Bereichs (Rolle, ERG; wie Zwift selbst bei «200–240» 220 nimmt), Z5 nach oben offen: Obergrenze 115 % des Beginns;
    *  lockere Z1-Abschnitte und Pausen die Mitte von 35,5–100 % der Obergrenze von Z1 (enduco: «71–200 W»). Immer nach Leistung (Zwift kennt keine Pulsziele), auch wenn die Einheit nach Puls oder RPE läuft.
    *  → { text, schritte, dauer_s } oder { fehler }. Ohne passende Zone: Fehler, nichts geraten. */
+  /** Trittfrequenz wie bei enduco: VO2max 90–120, Erholung 80–100, Tempo 90–110 U/min (nur im Zwift-Text; Garmin-Workouts ohne). */
+  V66.ZWIFT_RPM = { vo2: "90-120rpm", pause: "80-100rpm", z3: "90-110rpm", z3o: "90-110rpm" };
   V66.zwiftText = function (e, skalen, opt) {
     const o = opt || {}, ftp = isNum(o.ftp) && o.ftp > 0 ? o.ftp : null;
     if (!e || e.sport !== "rad") return { fehler: "Zwift: nur Rad" };
@@ -1715,7 +1716,8 @@
     const zeile = (x, k) => {
       const z = ziel(x); if (!z) return false;
       n++; sek += x.s * (k || 1);
-      zeilen.push(z.w != null ? `- ${dauerI(x.s)} ${pct(z.w)}%` : `- ${dauerI(x.s)} ramp ${pct(z.von)}-${pct(z.bis)}%`);
+      const rk = k && x.key === "z1" ? "pause" : x.key, rpm = V66.ZWIFT_RPM[rk] ? " " + V66.ZWIFT_RPM[rk] : "";   // Z1 zwischen Intervallen = Erholung
+      zeilen.push(z.w != null ? `- ${dauerI(x.s)} ${pct(z.w)}%${rpm}` : `- ${dauerI(x.s)} ramp ${pct(z.von)}-${pct(z.bis)}%`);
       return true;
     };
     for (const x of V66.rampenFolge(V66.garminFolge(e.teile))) {
