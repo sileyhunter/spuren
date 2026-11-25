@@ -1,5 +1,12 @@
 # Änderungen
 
+## V9.24.5 · 25.11.2026 · Notiz im gesendeten Garmin-Workout wie bei Enduco: Zweck und Ablauf mit Watt, Puls oder Pace (notiz-1.0)
+Silas (mit zwei Bildschirmfotos aus Garmin Connect): «Unterschied auf Garmin zwischen Enduco und Notebook – vielleicht machst du die Notiz auch gleich in der exportierten Einheit, HF, Pace oder Watt.»
+- **Notiz (`V66.garminWorkout`, Rad und Laufen):** zuerst der Zweck der Einheit (wie Enduco), dann «Ablauf:» mit einer Zeile je Schritt und dem Ziel in der gewählten Metrik (z. B. «45 min Z2 Grundlage: 200–240 W», Pace «5:03–4:50/km», Puls als Bereich); Wiederholungen als «5×» mit eingerückten Zeilen; bei Metrik Puls/RPE steht der Hinweis davor. Zu lang (über 430 Zeichen): ganze Zeilen fallen weg, am Ende «…». Der Kopfsatz «Ironman Notebook · Mein Plan · Datum» entfällt; die Kennung `[IN uid Fassung]` bleibt. Schwimmen unverändert.
+- **Fassung unverändert** (Prüfsumme der Schritte, nicht der Notiz): schon gesendete Einheiten gelten nicht als «geändert»; die neue Notiz gilt für alles, was ab jetzt gesendet wird.
+- **Hinweis zum Vergleich auf Garmin:** der Eintrag «IN · Grundlage (FatMax)» mit Quelle «Intervals.icu Training» stammt nicht vom Notebook-Export, sondern vom Zwift-Export (Intervals.icu gibt geplante Workouts selbst an Garmin weiter; dort in Prozent der FTP).
+- **Tests:** neu `tests/test_v9245.cjs` (4).
+
 ## V9.24.4 · 25.11.2026 · «Heute senden»: Einheiten von heute von Hand an Garmin (heute-senden-1.0)
 Silas: «kann man keine Schaltfläche einfügen, die man für heute auch senden kann?» – bisher ging heute nur im Chat; «Senden» (Nacht-Update) gilt ab morgen. Entscheid Silas: ja, das Tag-Update darf dafür nach Garmin schreiben.
 - **Seite (Einheit-Seite → Export → Garmin):** für die Einheiten von heute (bis 22:30) der Knopf **«Heute senden»** (danach «Nochmals heute senden», «Nicht senden» / «Aus Garmin austragen»). Er legt den Auftrag «gs-<heute>» mit Modus **«heute»** an; die Seite sagt «Wird gesendet: mit dem nächsten Update (um 13, 15, 17, 19, 21 oder 23 Uhr)». Auf die Uhr kommt es beim nächsten Synchronisieren. Nach 22:30 wie bisher nur im Chat. Ab morgen unverändert «Senden». Die Automatik («Aus») ändert daran nichts.

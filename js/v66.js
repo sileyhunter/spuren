@@ -1787,7 +1787,22 @@
     const fassung = V66.fassung(JSON.stringify(kern));
     const ablauf = (e.ablauf || []).join("; ");
     const mt = metrik === "puls" ? "Ziele nach Puls." : metrik === "rpe" ? "Nach Anstrengung (RPE), ohne Ziele auf der Uhr." : "";
-    const besch = [`Ironman Notebook · Mein Plan${o.date ? " · " + o.date : ""}.`, mt, ablauf ? ablauf + "." : "", e.zweck || ""].filter(Boolean).join(" ").slice(0, 440) + tag(fassung);   // V8.4.1: Metrik vor dem Ablauf, damit sie nie abgeschnitten wird
+    // notiz-1.0 (V9.24.5): Notiz wie bei Enduco – zuerst der Zweck der Einheit, dann der Ablauf mit den Zielen (Watt, Puls oder Pace) je Schritt in einer Zeile;
+    // zu lang: ganze Zeilen weglassen («…»). Die Fassung (Prüfsumme der Schritte) bleibt gleich, schon gesendete Einheiten gelten nicht als geändert.
+    const dau = (s) => (s >= 120 ? `${Math.round(s / 60)} min` : `${s} s`);
+    const zeile = (st) => `${dau(st.endConditionValue)} ${st.description || ""}`.trim();
+    const zeilen = [];
+    for (const st of steps) {
+      if (st.workoutSteps) { zeilen.push(`${st.numberOfIterations}×`); for (const y of st.workoutSteps) zeilen.push(`  ${zeile(y)}`); } else zeilen.push(zeile(st));
+    }
+    let notiz = [mt, e.zweck || ""].filter(Boolean).join(" ").slice(0, 300), abgeschnitten = false;
+    if (!zeilen.length) notiz = [notiz, ablauf ? ablauf + "." : ""].filter(Boolean).join(" ");
+    else {
+      notiz += (notiz ? "\n" : "") + "Ablauf:";
+      for (const l of zeilen) { if ((notiz + "\n" + l).length > 430) { abgeschnitten = true; break; } notiz += "\n" + l; }
+      if (abgeschnitten) notiz += "\n…";
+    }
+    const besch = notiz.slice(0, 440) + tag(fassung);
     return { workout: Object.assign({ workoutName: name, description: besch }, { sportType: sport, workoutSegments: kern.workoutSegments }), fassung, schritte: n, ohneZiel, offen };
   };
   /** Auftrag «An Garmin senden» für einen Tag (Eingabe garmin_senden): modus «senden» (nächstes Nacht-Update), «auto» (am Vortag ab 23 Uhr)
