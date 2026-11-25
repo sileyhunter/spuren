@@ -123,6 +123,7 @@
    *  sendbaren Einheiten einen Auftrag «auto» anlegen bzw. erneuern – nur, wenn sich die Fassung ändert. Ein Tag mit «aus» bleibt aus, ein Auftrag
    *  «senden» (von Hand) bleibt, wie er ist. Grenze: Aufträge entstehen im Browser – ohne geöffnete Seite bleibt der zuletzt angelegte Stand. */
   M.alleTage = async function () {
+    try { await M.zwiftAuto(); } catch (e) { console.warn(e); }                          // V9.25.0 zwift-auto-1.0
     if (!bereit() || garminAuto().modus !== "alle" || (P().entwurf && P().entwurf.aktiv())) return 0;
     const fp = (L) => (L || []).map((u) => `${u.uid}:${u.fassung}:${(u.ampel && u.ampel.fassung) || ""}`).sort().join("|");
     let n = 0;
@@ -931,6 +932,7 @@
         ${feld("API-Schlüssel von Intervals.icu", "type=\"password\" data-zwkey", cfg.key || "")}
         ${feld("FTP in Zwift (Watt)", "type=\"number\" data-zwftp", cfg.ftp || "", "inputmode=\"numeric\" min=\"50\" max=\"600\"")}
         ${feld("Athleten-ID (leer = dein Konto)", "type=\"text\" data-zwid", cfg.id || "", "inputmode=\"text\"")}
+        <label class="mp-zwf mp-zwa"><input type="checkbox" data-zwauto ${cfg.auto === false ? "" : "checked"}><span>Heute und morgen automatisch senden (wenn die Seite offen ist)</span></label>
         <button type="button" class="btn" data-zwsave>Speichern</button>
         <p class="hint">Einmalig: auf intervals.icu ein Konto anlegen, unter Settings → Zwift «Connect» tippen, unter Settings → Developer Settings den API-Schlüssel erzeugen. Die FTP in Zwift muss auch dort stimmen. Das Workout erscheint in Zwift unter «Custom → Intervals.icu» (nächste rund 7 Tage).</p></details>`;
   }
@@ -955,7 +957,7 @@
           const ftp = Math.round(+q("[data-zwftp]"));
           if (!(ftp >= 50 && ftp <= 600)) return st("FTP in Zwift: Zahl zwischen 50 und 600.");
           if (!q("[data-zwkey]")) return st("API-Schlüssel von Intervals.icu fehlt.");
-          neu(zwiftSpeichern({ key: q("[data-zwkey]"), id: q("[data-zwid]"), ftp }) ? "Gespeichert." : "Speichern auf diesem Gerät nicht möglich.");
+          neu(zwiftSpeichern({ key: q("[data-zwkey]"), id: q("[data-zwid]"), ftp, auto: !(box.querySelector("[data-zwauto]") && !box.querySelector("[data-zwauto]").checked) }) ? "Gespeichert." : "Speichern auf diesem Gerät nicht möglich.");
         };
         if (b2) b2.onclick = () => zwiftSenden(ds, liste, st, neu);
         if (b3) b3.onclick = async () => {
@@ -967,17 +969,40 @@
       binden();
     });
   }
+  /** Eine Anfrage an Intervals.icu (Upsert über die feste external_id); Intervals.icu kennt das Feld «indoor» nicht → ohne es noch einmal. */
+  async function zwiftPost(L, cfg) {
+    const senden = (mitIndoor) => fetch(`https://intervals.icu/api/v1/athlete/${encodeURIComponent(cfg.id || "0")}/events/bulk?upsert=true`, { method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Basic " + btoa("API_KEY:" + String(cfg.key).trim()) },
+      body: JSON.stringify(L.map((x) => { const e = Object.assign({}, x.r.eintrag); if (!mitIndoor) delete e.indoor; return e; })) });
+    let rsp = await senden(true), ohneIndoor = false;
+    if (rsp.status === 400 || rsp.status === 422) { rsp = await senden(false); ohneIndoor = rsp.ok; }   // zwift-export-2.0
+    return { rsp, ohneIndoor };
+  }
+  /** V9.25.0 zwift-auto-1.0: Rad-Einheiten von heute und morgen gehen von selbst an Intervals.icu (und damit nach Zwift), sobald die Seite offen ist und sich etwas
+   *  geändert hat (Upsert, nie doppelt). Aus Claudes Umgebung ist Intervals.icu gesperrt: es geht nur im Browser. Abstellen: «Einrichten» → Haken. */
+  M.zwiftAuto = async function () {
+    const cfg = zwiftCfg();
+    if (!bereit() || cfg.auto === false || !(cfg.key && +cfg.ftp > 0) || (P().entwurf && P().entwurf.aktiv())) return 0;
+    let n = 0;
+    for (const ds of [heute(), add(heute(), 1)]) {
+      const x = tagVon(ds); if (!x || x.t.rennen) continue;
+      const L = zwiftEintraege(ds, zwiftListe(x.t)).filter((y) => y.r.eintrag && (!zwiftStand(y) || zwiftStand(y).art !== "gesendet"));
+      if (!L.length) continue;
+      try {
+        const { rsp } = await zwiftPost(L, cfg);
+        if (!rsp.ok) { console.warn("zwift-auto: Intervals.icu antwortet mit " + rsp.status); continue; }
+        zwiftMerken(L); n += L.length;
+      } catch (e) { console.warn("zwift-auto: kein Netz zu Intervals.icu"); }
+    }
+    return n;
+  };
   async function zwiftSenden(ds, liste, status, neu) {
     const cfg = zwiftCfg(), L = zwiftEintraege(ds, liste).filter((x) => x.r.eintrag);
     if (!L.length) return status("Keine Rad-Einheit mit Watt-Zielen.");
     if (!(cfg.key && +cfg.ftp > 0)) return status("Erst einrichten: Schlüssel von Intervals.icu und FTP in Zwift.");
     status("Sende …");
-    const senden = (mitIndoor) => fetch(`https://intervals.icu/api/v1/athlete/${encodeURIComponent(cfg.id || "0")}/events/bulk?upsert=true`, { method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Basic " + btoa("API_KEY:" + String(cfg.key).trim()) },
-      body: JSON.stringify(L.map((x) => { const e = Object.assign({}, x.r.eintrag); if (!mitIndoor) delete e.indoor; return e; })) });
     try {
-      let rsp = await senden(true), ohneIndoor = false;
-      if (rsp.status === 400 || rsp.status === 422) { rsp = await senden(false); ohneIndoor = rsp.ok; }   // zwift-export-2.0: Intervals.icu kennt das Feld «indoor» nicht → ohne es noch einmal
+      const { rsp, ohneIndoor } = await zwiftPost(L, cfg);
       if (rsp.status === 401 || rsp.status === 403) return status("Intervals.icu lehnt den Schlüssel ab – Schlüssel und Athleten-ID prüfen.");
       if (!rsp.ok) return status(`Intervals.icu antwortet mit Fehler ${rsp.status}.`);
       zwiftMerken(L);

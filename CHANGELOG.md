@@ -1,5 +1,12 @@
 # Änderungen
 
+## V9.25.0 · 25.11.2026 · Rad-Einheiten gehen von selbst an Zwift (zwift-auto-1.0)
+Silas: «kannst du diese Einheiten auch jeweils auf Zwift schicken … um 23 via Intervals? Dann kann ich aussuchen, ob ich mit der Garmin Edge draussen oder indoor mache. Nur Rad.»
+- **Grenze:** Intervals.icu ist aus Claudes Umgebung (Sitzung und geplante Updates) gesperrt – ein Senden um 23 Uhr durch das Nacht-Update geht deshalb nicht. Der Weg geht über den Browser.
+- **Neu (`M.zwiftAuto`, `js/v66-ui.js`):** Beim Öffnen der Seite und nach jeder Änderung (Anlass wie «Alle Tage», `M.alleTage`) werden die Rad-Einheiten von **heute und morgen** (nur Rad, nicht aus der Bibliothek) an Intervals.icu gesendet, **wenn sie dort noch nicht oder in anderer Fassung stehen** (Upsert über feste `external_id`, nie doppelt; Merker nur auf dem Gerät). Voraussetzung: Zugang eingerichtet (Schlüssel, FTP). Abstellen: Export → Zwift → Einrichten → Haken «Heute und morgen automatisch senden» (Standard an). Fehler (kein Netz, 4xx) bleiben still; beim nächsten Öffnen neuer Versuch.
+- Das Senden von Hand ist unverändert; `zwiftPost` gemeinsam genutzt.
+- **Tests:** `tests/test_v9250.cjs` (3); `tools/durchklick_zwift.py` (65 Schritte: Öffnen am Vorabend sendet, zweites Öffnen nicht, Haken aus = nichts).
+
 ## V9.24.5 · 25.11.2026 · Notiz im gesendeten Garmin-Workout wie bei Enduco: Zweck und Ablauf mit Watt, Puls oder Pace (notiz-1.0)
 Silas (mit zwei Bildschirmfotos aus Garmin Connect): «Unterschied auf Garmin zwischen Enduco und Notebook – vielleicht machst du die Notiz auch gleich in der exportierten Einheit, HF, Pace oder Watt.»
 - **Notiz (`V66.garminWorkout`, Rad und Laufen):** zuerst der Zweck der Einheit (wie Enduco), dann «Ablauf:» mit einer Zeile je Schritt und dem Ziel in der gewählten Metrik (z. B. «45 min Z2 Grundlage: 200–240 W», Pace «5:03–4:50/km», Puls als Bereich); Wiederholungen als «5×» mit eingerückten Zeilen; bei Metrik Puls/RPE steht der Hinweis davor. Zu lang (über 430 Zeichen): ganze Zeilen fallen weg, am Ende «…». Der Kopfsatz «Ironman Notebook · Mein Plan · Datum» entfällt; die Kennung `[IN uid Fassung]` bleibt. Schwimmen unverändert.

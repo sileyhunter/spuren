@@ -1897,5 +1897,8 @@ label.css-schaetz { display: flex; gap: 8px; align-items: flex-start; font-size:
 .mp-zwf { display: block; margin: 12px 0; }
 .mp-zwf span { display: block; margin-bottom: 4px; font-size: 13px; color: var(--muted); }
 .mp-zwf input { display: block; width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); color: var(--fg); font: inherit; font-size: 16px; }
+.mp-zwa { display: flex; align-items: flex-start; gap: 10px; }
+.mp-zwa input { width: 22px; height: 22px; padding: 0; margin: 2px 0 0; flex: none; }
+.mp-zwa span { margin: 0; font-size: 14px; }
 .mp-zw summary { cursor: pointer; font-weight: 600; margin: 10px 0; }
 

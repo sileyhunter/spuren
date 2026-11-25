@@ -8,7 +8,7 @@ ein zweites Senden ersetzt statt zu verdoppeln (gleicher external_id); lehnt Int
 401 meldet den Schlüssel; ohne Netz bleibt «Text kopieren» als Ersatz; eine Lauf-Einheit hat im Export-Blatt keinen Zwift-Abschnitt; nichts läuft seitlich über;
 keine Konsolenfehler (ausser fehlenden Fremddiensten). Erfundene Daten der Demo und ein erfundener Schlüssel, nichts Echtes. Fehler: Exit-Code 1 und Liste der Schritte."""
 import importlib.util
-import json
+import datetime, json
 import pathlib
 import socketserver
 import sys
@@ -197,7 +197,27 @@ def main():
                 seite.keyboard.press("Escape")
                 seite.wait_for_timeout(300)
 
+            # V9.25.0 zwift-auto-1.0: Seite mit eingerichtetem Zugang am Vorabend öffnen → Rad-Einheiten von heute und morgen gehen von selbst
             seite.close()
+            vor = datetime.datetime.fromisoformat(rad["ds"]) - datetime.timedelta(days=1)
+            ctx.clock.set_fixed_time(vor.replace(hour=20, minute=0))
+            auto = ctx.new_page()
+            auto.on("pageerror", lambda e, n=name: konsole.append(f"[{n}] Seitenfehler: {e}"))
+            auto.route(lambda u: not u.startswith(f"http://127.0.0.1:{port}"), fremd)
+            auto.add_init_script("if (!localStorage.getItem('in-zwift')) localStorage.setItem('in-zwift', JSON.stringify({key: '%s', ftp: 250}))" % KEY)
+            anfragen.clear(); modus["m"] = "ok"
+            auto.goto(f"http://127.0.0.1:{port}/demo.html")
+            auto.wait_for_selector("#map canvas", state="attached", timeout=15000)
+            auto.wait_for_timeout(2500)
+            tage = {e["start_date_local"][:10] for a in anfragen for e in a["body"]}
+            pruefe(f"{name}: automatisch gesendet beim Öffnen (nur heute und morgen)", len(anfragen) >= 1 and tage <= {vor.date().isoformat(), rad["ds"]}, str(len(anfragen)) + " " + str(tage))
+            n1 = len(anfragen)
+            auto.reload(); auto.wait_for_selector("#map canvas", state="attached", timeout=15000); auto.wait_for_timeout(2000)
+            pruefe(f"{name}: zweites Öffnen sendet nichts nochmals (Fassung schon gesendet)", len(anfragen) == n1, f"{n1} → {len(anfragen)}")
+            auto.evaluate("() => { const c = JSON.parse(localStorage.getItem('in-zwift')); c.auto = false; localStorage.setItem('in-zwift', JSON.stringify(c)); localStorage.removeItem('in-zwift-gesendet'); }")
+            auto.reload(); auto.wait_for_selector("#map canvas", state="attached", timeout=15000); auto.wait_for_timeout(2000)
+            pruefe(f"{name}: mit abgestelltem Haken wird nichts gesendet", len(anfragen) == n1, f"{n1} → {len(anfragen)}")
+            auto.close()
             ctx.close()
         br.close()
     srv.shutdown()
