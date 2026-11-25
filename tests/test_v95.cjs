@@ -144,7 +144,7 @@ test("Zeit als Ziel: längste lockere Einheit länger, nie über die Zeit des Ta
   assert.equal(r.tage[4].einheiten[0].dauer, 45, "Laufen wird nie länger (Aufbau-Grenze)");
   assert.equal(r.tage[2].einheiten.find((x) => x.id === "schwimm_locker").dauer, 30, "die längste lockere Einheit, nicht die kürzere");
   assert.ok(r.protokoll.laenger.some((x) => x.date === d(2) && x.von === 60));
-  assert.match(V66.zielText("laenger", r.protokoll.laenger.find((x) => x.date === d(2))), /^Mittwoch: Rad \+ \d+ min, die Zeit war da$/);
+  assert.match(V66.zielText("laenger", r.protokoll.laenger.find((x) => x.date === d(2))), /^Mittwoch: Rad \+ (\d+ min|\d+ h( \d\d)?), die Zeit war da$/);
   // Obergrenze schon erreicht: nichts
   assert.equal(V66.zeitZiel(T, v, { tl, tlMax: vor, minuten: {} }).geaendert, false);
   // ohne Zeitgrenze (offen) oder ohne Last: nichts
@@ -208,7 +208,7 @@ test("Abnahme W4 Zeit als Ziel (Simulator): Tag mit viel Zeit → längste locke
   assert.ok(summe(mi) <= 180, "nie über die Zeit des Tages");
   assert.ok(tlPlan(sim) <= K(sim).ziel.tlMax, `Wochenlast ${tlPlan(sim)} ≤ Obergrenze ${K(sim).ziel.tlMax}`);
   const B = U.bericht();
-  assert.ok(B.zeilen.some((z) => /^Mittwoch: Rad \+ \d+ min, die Zeit war da$/.test(z)), JSON.stringify(B.zeilen));
+  assert.ok(B.zeilen.some((z) => /^Mittwoch: Rad \+ (\d+ min|\d+ h( \d\d)?), die Zeit war da$/.test(z)), JSON.stringify(B.zeilen));
   assert.ok(!B.zeilen.some((z) => /«Grundlage» am Mi .* statt/.test(z)), "keine zweite Zeile für dieselbe Verlängerung");
   const ids = new Set(((sim.S.inbox.data || {}).verfuegbarkeit || []).map((x) => x.id));
   assert.equal((sim.D.plan_verfuegbarkeit || []).length + ids.size, nVf, "nichts Neues «von Hand» eingetragen");
@@ -251,23 +251,24 @@ test("Abnahme W4 (Simulator): Erholungswoche und gesperrter Tag bleiben unverän
 test("Abnahme W4 Verdichten (Simulator): knappe Woche → Bericht nennt die Verdichtung mit Grund; ↶ und «Neu berechnen» nehmen sie zurück", async () => {
   const sim = await neu(), U = sim.win.V66UI;
   const start = zeig(sim);
-  assert.equal(await planen(sim, { vf: [vf(sim, w(5), 150)] }), null);
+  const ZEIT = K(sim).w0roh.tage[5].einheiten.find((x) => x.id === "rad_lang").dauer - 30;   // V9.21.0: knapp = 30 min unter der geplanten langen Ausfahrt (deren Länge hängt vom Plan der Woche ab)
+  assert.equal(await planen(sim, { vf: [vf(sim, w(5), ZEIT)] }), null);
   const sa = plan(sim, w(5)), lang = sa.find((x) => x.id === "rad_lang");
   assert.ok(lang && lang.dicht, zeig(sim));
-  assert.ok(summe(sa) <= 150, "nie über die Zeit des Tages");
+  assert.ok(summe(sa) <= ZEIT, "nie über die Zeit des Tages");
   const k = K(sim), BZ = sim.win.V66.bezug(k.skalen, k.css ? k.css.s : null);
   const voll = sim.win.V66.schaetzung(V64.einheit("rad_lang", { d: K(sim).w0roh.tage[5].einheiten.find((x) => x.id === "rad_lang").dauer }), BZ).tl;
   const dicht = sim.win.V66.schaetzung(lang, BZ).tl;
   assert.ok(dicht >= 0.9 * voll && dicht <= 1.1 * voll, `TL ${dicht} gegen ${voll} (± 10 %)`);
   const B = U.bericht();
-  assert.ok(B.zeilen.some((z) => /^Samstag Rad: 2 h 30 statt 3 h( \d\d)?, dafür mit Anteilen Tempo – gleiche Last/.test(z)), JSON.stringify(B.zeilen));
+  assert.ok(B.zeilen.some((z) => /^Samstag Rad: \d h( \d\d)? statt \d h( \d\d)?, dafür mit Anteilen Tempo – gleiche Last/.test(z)), JSON.stringify(B.zeilen));
   assert.ok(!B.fehlt, "nichts fehlt – darum keine Frage");
   const mitDicht = zeig(sim);
   // ↶
   assert.equal(await U.rueckgaengig(), null); sim.S.neu();
   assert.equal(zeig(sim), start, "↶: Ausgangswoche");
   // wieder knapp, dann «Neu berechnen»: ohne Verdichten und ohne Zeit als Ziel, bis sich die Eingaben ändern
-  assert.equal(await planen(sim, { vf: [vf(sim, w(5), 150)] }), null);
+  assert.equal(await planen(sim, { vf: [vf(sim, w(5), ZEIT)] }), null);
   assert.equal(zeig(sim), mitDicht, "gleiche Eingaben, gleiche Woche");
   assert.equal(await planen(sim, { aktionen: [{ art: "neuberechnen" }], ohneUmplanen: true }), null);
   assert.ok(!plan(sim, w(5)).some((x) => x.dicht), "nach «Neu berechnen» nicht verdichtet: " + zeig(sim));

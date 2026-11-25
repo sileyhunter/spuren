@@ -143,7 +143,7 @@
     const o = { phase: ctx.phase, css_s: ctx.css_s };
     let e;
     if (b.fix) e = V64.einheit(s.vorlage, o);
-    else if (DYN.has(b.art) || b.dyn) e = V64.einheit(s.vorlage, Object.assign({ d: s.dauer }, o));   // dyn: Sweet Spot (V9.18.0) – Dauer frei, Art bleibt Schlüsseleinheit
+    else if (DYN.has(b.art) || b.dyn) e = V64.einheit(s.vorlage, Object.assign({ d: s.dauer, fatmax: s.fatmax === true }, o));   // dyn: Sweet Spot (V9.18.0) – Dauer frei, Art bleibt Schlüsseleinheit
     else {
       const voll = V64.einheit(s.vorlage, o), kurz = V64.einheit(s.vorlage, Object.assign({ kurz: true }, o));
       e = isNum(s.dauer) && s.dauer >= voll.dauer ? voll : kurz;
@@ -164,7 +164,7 @@
       mehr.ein_min = einOk ? s.ein_min : null; mehr.pausen = pOk ? s.pausen : 50;
     }
     // V9.5 zeit-intensitaet-1.0: verdichtete Einheit (Anteile Tempo) und zusätzliche lockere Einheit (Zeit als Ziel) – beides von der Seite gesetzt
-    if (s.dicht && DYN.has(b.art)) dichtAnwenden(e, s.dicht.z3);         // ungültig: bleibt die gewöhnliche Fassung
+    if (s.dicht && DYN.has(b.art) && !e.fatmax) dichtAnwenden(e, s.dicht.z3);         // ungültig: bleibt die gewöhnliche Fassung
     if (s.zusatz === true) mehr.zusatz = true;
     if (s.drinnen) e.titel += " (drinnen)";
     return Object.assign(e, mehr);
@@ -806,7 +806,7 @@
     const Zd = opt.ziel;
     if (Zd && !Zd.aus && !Zd.vorsichtig && typeof Zd.tl === "function") {
       const Z = V66.ZIEL, tlZ = (e) => { try { const x = Zd.tl(e); return isNum(x) ? x : null; } catch (err) { return null; } };
-      const dichtbar = (e) => !!e && !!DICHT_TITEL[e.id] && !istEigen(e) && !istOrtsfest(e) && !e.dicht && land(e);
+      const dichtbar = (e) => !!e && !!DICHT_TITEL[e.id] && !istEigen(e) && !istOrtsfest(e) && !e.dicht && !e.fatmax && land(e);
       const ruhig = (j) => !T[j].fest && !testTag.has(j) && !aktTag(j) && ![j - 1, j, j + 1].some((k) => !!B(k) && B(k).some(hartLand))
         && !kraftAm(j - 1) && !aktLang(j - 1) && !aktLang(j + 1);
       // die kleinste Menge Tempo (in Blöcken), mit der die Last wieder bei tl0 ± 10 % liegt
@@ -1071,7 +1071,8 @@
       E.tage[t.date].einheiten = t.einheiten.map((e, k) => {
         if (e.spec && bleibt[i].includes(e.spec)) return e.spec;                                    // Anker bleibt, wie er ist
         const s = Object.assign({}, e.spec || {}, { vorlage: e.id, dauer: e.dauer, quelle: e.spec && e.spec.quelle ? e.spec.quelle : "vorschlag" });
-        delete s.uid; delete s.dicht; delete s.zusatz;
+        delete s.uid; delete s.dicht; delete s.zusatz; delete s.fatmax;
+        if (e.fatmax === true) s.fatmax = true;                                                   // V9.21.0: Rad-Ausfahrt mit FatMax bleibt es auch nach dem Verschieben
         if (e.dicht && isNum(e.dicht.z3)) s.dicht = { z3: e.dicht.z3 };                          // V9.5: verdichtet bzw. zusätzlich (von der Seite gesetzt)
         if (e.zusatz === true) s.zusatz = true;
         const v = altFuer(e.id, i);
@@ -1152,14 +1153,14 @@
   /** Einheit derselben Vorlage mit Dauer d neu bauen (Merkmale bleiben wie bei kuerzer); null, wenn es nicht geht (feste Dauer, Schlüssel, eigene). */
   function neuBauen(e, d, o) {
     const b = V64.BAUSTEINE[e.id]; if (!b || b.fix || !DYN.has(b.art) || istEigen(e)) return null;
-    const n = V64.einheit(e.id, Object.assign({}, o, { d: Math.max(5, Math.round(d / 5) * 5) })); if (!n) return null;
+    const n = V64.einheit(e.id, Object.assign({}, o, { d: Math.max(5, Math.round(d / 5) * 5), fatmax: e.fatmax === true })); if (!n) return null;
     for (const k of ["check", "gekappt", "uid", "quelle", "vorlage", "drinnen", "drinnen_fest", "vorTest", "spec", "zusatz", "uhrzeit", "metrik", "pool"]) if (e[k] != null) n[k] = e[k];
     if (e.drinnen && !/drinnen/.test(n.titel)) n.titel += " (drinnen)";
     return n;
   }
   /** Verdichtete Fassung einer Einheit mit Dauer d und z3 min Tempo – oder null. */
   function dichtFassung(e, d, z3, o) {
-    const n = neuBauen(e, d, o); if (!n || !dichtAnwenden(n, z3)) return null;
+    const n = neuBauen(Object.assign({}, e, { fatmax: false }), d, o); if (!n || !dichtAnwenden(n, z3)) return null;
     if (n.drinnen && !/drinnen/.test(n.titel)) n.titel += " (drinnen)";
     return n;
   }

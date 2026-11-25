@@ -23,7 +23,7 @@
   if (root) root.V64 = V64;
 })(typeof window !== "undefined" ? window : null, function (V62) {
   "use strict";
-  const V64 = { VERSIONS: { vorlagen: "vorlagen-enduco-1.0", modell: "modell-1.0", woche: "wochenplan-1.2", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.1", aufbau: "aufbau-1.2", vergleich: "vergleich-1.4", abwechslung: "abwechslung-1.0", abc: "lauf-abc-1.0", sportart: "sportart-1.0", automatisch: "automatisch-1.0" } };
+  const V64 = { VERSIONS: { fatmaxwoche: "fatmax-woche-1.0", vorlagen: "vorlagen-enduco-1.0", modell: "modell-1.0", woche: "wochenplan-1.2", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.1", aufbau: "aufbau-1.2", vergleich: "vergleich-1.4", abwechslung: "abwechslung-1.0", abc: "lauf-abc-1.0", sportart: "sportart-1.0", automatisch: "automatisch-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const T = (iso) => Date.parse(iso + "T12:00:00Z");
   const add = (iso, n) => new Date(T(iso) + n * 864e5).toISOString().slice(0, 10);
@@ -419,6 +419,11 @@
     const e = { id, sport: b.sport, titel: b.titel, art: b.art, dauer: Math.round(dauer), teile, minuten, ablauf, zweck: b.zweck,
       quellen: b.quellen.slice(), wissen: b.wissen, kurz: !!oo.kurz, schluessel: b.art === "schluessel" };
     if (abc) { e.abc = abc; if (!e.quellen.includes("mcgowan2015")) e.quellen.push("mcgowan2015"); }
+    // V9.21.0 fatmax-woche-1.0: die lockere Rad-Ausfahrt (Vorlage bleibt «rad_locker», damit Verlängern, Coach und Ersatz sie weiter kennen) mit der Hauptstrecke in FatMax statt breitem Z2
+    if (oo.fatmax === true && id === "rad_locker" && isNum(oo.d) && oo.d >= 60) {
+      const f = V64.einheit("rad_fatmax", { d: oo.d });
+      Object.assign(e, { teile: f.teile, minuten: f.minuten, ablauf: f.ablauf, zweck: f.zweck, titel: "Grundlage (FatMax)", dauer: f.dauer, fatmax: true });
+    }
     return e;
   };
 
@@ -615,7 +620,9 @@
     // V7.6.2 kurs-1.0: der Schwimmkurs nur bis zum letzten Kurstag (Planeinstellungen); danach am Dienstag lockeres Schwimmen
     const kursDi = !c.kurs_bis || add(woche, 1) <= c.kurs_bis;
     tag("Di").einheiten.push(laufK, V64.einheit(kursDi ? "schwimm_kurs" : "schwimm_locker", o(sw)));
-    if (radL) tag("Mi").einheiten.push(V64.einheit("rad_locker", o(radL)));
+    // V9.21.0 fatmax-woche-1.0: die lockere Rad-Ausfahrt unter der Woche (mindestens 60 min) hat ihre Hauptstrecke in FatMax (obere Hälfte von Z2, nahe LT1); nicht in Erholungs- und Taperwochen. Gleiche Dauer, zählt weiter als locker.
+    const mittwochFatmax = !!radL && radL >= 60 && !erh && !taper;
+    if (radL) tag("Mi").einheiten.push(V64.einheit("rad_locker", o(radL, mittwochFatmax ? { fatmax: true } : null)));
     tag("Do").einheiten.push(radK);
     if (N.schwimm >= 2) tag("Do").einheiten.push(erh ? V64.einheit("schwimm_locker", o(sw)) : gewaehlt("schwimm", "schwimm_css", sw));   // B14: Erholung = eine Schlüsseleinheit
     if (laufL) tag("Fr").einheiten.push(V64.einheit("lauf_locker", o(laufL)));
@@ -623,6 +630,7 @@
     if (koppel) tag("Sa").einheiten.push(V64.einheit("lauf_koppel", o(koppel)));
     tag("So").einheiten.push(V64.einheit(pauseVor(add(woche, 6)) ? "lauf_locker" : langId, o(laufLang)));
     if (N.schwimm >= 3) tag("So").einheiten.push(V64.einheit("schwimm_locker", o(sw)));
+    if (mittwochFatmax) hinweise.push("Mittwoch: Rad mit FatMax (oberes Z2, nahe LT1) statt breitem Z2 – gleiche Dauer, zählt weiter als locker");
     if (erh) hinweise.push("Erholungswoche: nur eine Schlüsseleinheit (Rad, gekürzt); Laufen und Schwimmen locker");
     }
     const SPW = { schwimm: "Schwimmen", rad: "Rad", lauf: "Laufen" };

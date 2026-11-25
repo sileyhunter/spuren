@@ -67,11 +67,11 @@ test("Schritte: FatMax-Blöcke mit Z2-Erholung als Wiederholung, Namen und Texte
   assert.equal(V73.ZNR.fatmax, 2); assert.match(V73.RPE.fatmax, /RPE/);
 });
 
-test("Wochenplanung unverändert: die automatische Planung wählt FatMax und Sweet Spot nicht von selbst", () => {
+test("Wochenplanung: Sweet Spot und die Lauf-Vorlagen werden nicht von selbst gewählt (FatMax nur am Mittwoch-Rad, V9.21.0)", () => {
   const nur = (s) => /fatmax|sweet/.test(s);
   assert.ok(!Object.keys(V64.FAMILIEN || {}).some(nur) && !(Object.values(V64.FAMILIEN || {}).flat().some(nur)), "keine Familie enthält die neuen Vorlagen");
   const src = R("js/v64.js"); const wochen = src.slice(src.indexOf("V64.woche = "), src.indexOf("V64.woche = ") + 20000);
-  assert.ok(!/rad_fatmax|lauf_fatmax|rad_sweet|lauf_sweet/.test(wochen), "V64.woche nennt sie nicht");
+  assert.ok(!/lauf_fatmax|rad_sweet|lauf_sweet|rad_fatmax_int|rad_fatmax_pyr/.test(wochen), "V64.woche nennt sie nicht");
 });
 
 test("Blatt «Intensität»: Unterstufen eingerückt (Markup und CSS), Farben aus der Zonenpalette", () => {

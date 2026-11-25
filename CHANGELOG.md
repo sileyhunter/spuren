@@ -1,5 +1,13 @@
 # Änderungen
 
+## V9.21.0 · 25.11.2026 · FatMax im Wochenplan (fatmax-woche-1.0; Auftrag FatMax · Zonen · enduco, Nachtrag)
+Silas' Frage «was macht trainingstechnisch sinn?» – er wollte FatMax-Einheiten, im Wochenplan gab es nur das breite Z2. Entscheid (Claude, mit «ja» bestätigt):
+- **Mittwoch-Rad mit FatMax:** die lockere Rad-Ausfahrt unter der Woche (ab 60 min; nicht in Erholungs- und Taperwochen) hat ihre Hauptstrecke in FatMax (obere Hälfte von Z2, nahe LT1), vorne und hinten kurz Z1/Z2. Gleiche Dauer, zählt weiter als locker (keine Schlüsseleinheit, keine neue Last-Klasse). Die Vorlage heisst intern weiter `rad_locker`, damit Verlängern (W4), Coach, Ersatz und Familienwechsel sie weiter kennen; neu ist ein Merkmal `fatmax` (`V64.einheit(id, {fatmax:true})`, in `js/v66.js` beim Speichern/Verschieben mitgeführt, beim Verlängern erhalten, wird nicht verdichtet).
+- **Lange Ausfahrt und langer Lauf bleiben breites Z2** (Fettstoffwechsel-Dauer, Verpflegung üben); Sweet Spot und die Lauf-Vorlagen kommen weiter nur von Hand.
+- Der Plan-Bericht nennt den Mittwoch («Mittwoch: Rad mit FatMax …»). Wer lieber breites Z2 will, tauscht die Vorlage in «Training planen».
+- **Tests:** neu `tests/test_v9210.cjs` (5); angepasst: `test_v9180` (Wochenplan-Abgrenzung), `test_v95` #12 (Zeit der knappen Woche relativ zur geplanten langen Ausfahrt statt fest 150 min) und #10 (Zeitformat «1 h»), `test_v80` H2 (Toleranz 0,9 statt 0,95, FatMax zählt etwas mehr Last).
+- **Daten (ohne Zahlen im Repository):** Maximalpuls Lauf im aktiven Profil auf Silas' Auftrag angepasst (Rad unverändert), Garmin-Zonen nicht berührt; Alt-Wert im Profil unter «vorher», Audit-Eintrag.
+
 ## V9.20.0 · 24.11.2026 · Mapy als Grundkarte Ausland (mapy-1.0; Outdoor O4)
 - **Mapy Outdoor und Mapy Winter** unter Ebenen → Grundkarte → Ausland (`js/karte-ebenen.js`, `KE.MAPY`; Verdrahtung in `index.html`: `MAPY_KEY`, `setBase`, `mapyLogo`). Kachel-Adresse `https://api.mapy.com/v1/maptiles/<outdoor|winter>/256/{z}/{x}/{y}?apikey=…` nach der Mapy-Dokumentation; **nicht live geprüft**.
 - **Schlüssel nur verschlüsselt:** Er steht nie im Code, sondern in der Konfiguration (`config.mapy_key` in `data.enc.json`) und wird erst nach dem Entschlüsseln gelesen (`KE.mapySchluessel`: nur `A–Z a–z 0–9 - _`, 20–100 Zeichen). Ohne Schlüssel gibt es keine Mapy-Quelle, keine Schicht und keine Anfrage an Mapy; ein Tipp auf die Knöpfe zeigt «Mapy braucht einen eigenen Schlüssel». Der Service Worker speichert Mapy-Kacheln nie (Schlüssel steht in der Adresse). Dass sich der Schlüssel bei Mapy auf eine Domain beschränken lässt, ist **nicht verifiziert**; die Kachel-Adresse im Browser ist für jeden sichtbar, der die Seite entschlüsselt hat.

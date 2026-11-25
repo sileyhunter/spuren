@@ -390,7 +390,8 @@ test("H · Seite ohne neue Garmin-Daten", async (t) => {
     assert.ok(B.rad.fitness > roh.rad.fitness, `${B.rad.fitness} > ${roh.rad.fitness}`);
     assert.deepEqual(sim.win.V75UI.basisDaten(nW).luecke, B.luecke, "die Seite rechnet mit dem Datenstand");
     // nicht weniger, weil Daten fehlen: höchstens so viel tiefer wie das Training nach dem letzten Datentag an Fitness gebracht hätte
-    assert.ok(sim.wochenMinuten(nW) >= 0.95 * kontrolle.wochenMinuten(nW), `nächste Woche ${sim.wochenMinuten(nW)} gegen ${kontrolle.wochenMinuten(nW)} min`);
+    assert.ok(sim.wochenMinuten(nW) >= 0.9 * kontrolle.wochenMinuten(nW),   // V9.21.0: 0,9 statt 0,95 – FatMax am Mittwoch zählt etwas mehr Last, die Wochenstufen springen in 5-min-Schritten
+       `nächste Woche ${sim.wochenMinuten(nW)} gegen ${kontrolle.wochenMinuten(nW)} min`);
   });
   await t.test("H3 Heute zeigt den eingeschränkten Datenstand durchgängig (Empfehlung, Ampel, Form)", { todo: "V8.6 Coach-Dashboard" }, () => {
     assert.ok(sim.win.V86 && typeof sim.win.V86.datenstand === "function", "Datenstand auf Heute (V8.6) fehlt");
