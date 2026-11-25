@@ -830,16 +830,27 @@
       cssHinweis = cssT;
     }
     const kann = !grund && fenster && !zuSpaet;
-    // zwift-export-2.0: Rad-Einheiten haben im Export-Blatt auch «Zwift (Rolle)» (über Intervals.icu, von Hand, nur diese Einheit)
-    const zwift = e.sport === "rad" && U66().zwiftAbschnitt && U66().zwiftTauglich(e) ? U66().zwiftAbschnitt(ds, [e]) : "";
-    const haupt = kann && (stand !== "wartet" || (a && a.modus === "auto")) ? `<button type="button" class="btn primary gross" data-v73gs>${stand === "gesendet" ? (zwift ? "Nochmals an Garmin" : "Nochmals senden") : (zwift ? "An Garmin senden" : "Senden")} ${ic("play", 18)}</button>` : "";
+    // zwift-export-2.1: Rad-Einheiten (Rolle) haben im Export-Blatt oben nur die Wahl «Garmin | Zwift», darunter steht nur das Gewählte
+    const zwift = e.sport === "rad" && U66().zwiftAbschnitt && U66().zwiftTauglich(e) ? U66().zwiftAbschnitt(ds, [e], { ohneKopf: true }) : "";
+    const haupt = kann && (stand !== "wartet" || (a && a.modus === "auto")) ? `<button type="button" class="btn primary gross" data-v73gs>${stand === "gesendet" ? "Nochmals senden" : "Senden"} ${ic("play", 18)}</button>` : "";
     const weg = kann && (g || stand === "wartet") ? `<button type="button" class="btn" data-v73gweg>${g ? "Aus Garmin austragen" : "Nicht senden"}</button>` : "";
     const gKnoepfe = `${weg}${haupt}`;
+    const gemerkt = (() => { try { return localStorage.getItem("in-export-ziel"); } catch (err) { return null; } })();
+    const ziel = zwift && (!kann || gemerkt === "zwift") ? "zwift" : "garmin";
+    const gTeil = `${zeilen.join("")}${knoepfe}<p class="hint">${esc(hinweis)}</p>${cssHinweis ? `<p class="hint keep">${esc(cssHinweis)}</p>` : ""}<p class="warn-t" data-v73f hidden></p>${zwift && gKnoepfe ? `<div class="row mp-akt">${gKnoepfe}</div>` : ""}`;
+    const wahl = zwift ? `<div class="v73-ziel" role="group" aria-label="Wohin exportieren">${[["garmin", "Garmin"], ["zwift", "Zwift"]].map(([k, l]) => `<button type="button" data-v73z="${k}" aria-pressed="${ziel === k}">${l}</button>`).join("")}</div>` : "";
     const ov = blatt("v73-export", `<div class="blatt-titel">${ic("play", 34)}<h2 id="v59-ov-h" tabindex="-1">${zwift ? "Export" : "An Garmin senden"}</h2><p class="sub">${esc(e.titel)} · ${esc(tagText(ds))}</p></div>
-      ${zwift ? `<h3 class="abschnitt">Garmin</h3>` : ""}${zeilen.join("")}${knoepfe}<p class="hint">${esc(hinweis)}</p>${cssHinweis ? `<p class="hint keep">${esc(cssHinweis)}</p>` : ""}<p class="warn-t" data-v73f hidden></p>
-      ${zwift && gKnoepfe ? `<div class="row mp-akt">${gKnoepfe}</div>` : ""}${zwift}
+      ${wahl}${zwift ? `<div data-v73pan="garmin" ${ziel === "garmin" ? "" : "hidden"}>${gTeil}</div><div data-v73pan="zwift" ${ziel === "zwift" ? "" : "hidden"}>${zwift}</div>` : gTeil}
       ${fuss(zwift ? "" : gKnoepfe)}`);
-    if (zwift) U66().zwiftBinden(ov, ds, [e]);
+    if (zwift) {
+      U66().zwiftBinden(ov, ds, [e], { ohneKopf: true });
+      ov.querySelectorAll("[data-v73z]").forEach((b) => (b.onclick = () => {
+        const z = b.getAttribute("data-v73z");
+        ov.querySelectorAll("[data-v73z]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+        ov.querySelectorAll("[data-v73pan]").forEach((p) => { p.hidden = p.getAttribute("data-v73pan") !== z; });
+        try { localStorage.setItem("in-export-ziel", z); } catch (err) { /* nur eine Erinnerung */ }
+      }));
+    }
     const los = async (weg) => {
       const modus = weg ? (a && a.modus === "auto" ? "auto" : "senden") : ((ov.querySelector("input[name=v73g]:checked") || {}).value || "senden");
       const f = await U66().einheitSenden(ds, e.uid, modus, !!weg);

@@ -22,7 +22,7 @@ test("zwift-export-2.0: Eintrag für Intervals.icu ist als Indoor markiert (Zwif
 test("zwift-export-2.0: Einheit-Seite → Export zeigt für Rad-Einheiten «Zwift (Rolle)» über denselben Abschnitt wie das Tagesblatt", () => {
   const ui = R("js/v66-ui.js"), e = R("js/v73-ui.js");
   for (const m of ["M.zwiftTauglich = zwiftTauglich", "M.zwiftAbschnitt = zwiftAbschnitt", "M.zwiftBinden = zwiftBinden", "data-zwabschnitt", "function zwiftHTML(ds, t)", "zwiftAbschnitt(ds, zwiftListe(t))"]) assert.ok(ui.includes(m), m);
-  for (const m of ["U66().zwiftAbschnitt(ds, [e])", "U66().zwiftBinden(ov, ds, [e])", `"Export" : "An Garmin senden"`, "zwiftTauglich(e)"]) assert.ok(e.includes(m), m);
+  for (const m of ["U66().zwiftAbschnitt(ds, [e], { ohneKopf: true })", "U66().zwiftBinden(ov, ds, [e], { ohneKopf: true })", `"Export" : "An Garmin senden"`, "zwiftTauglich(e)"]) assert.ok(e.includes(m), m);
   assert.ok(e.includes('e.sport === "rad"'), "nur Rad");
 });
 
@@ -45,7 +45,7 @@ test("zwift-export-2.0: Erinnerung «gesendet» / «seither geändert» nur im G
   const ui = R("js/v66-ui.js");
   assert.ok(ui.includes('ZW_SENT = "in-zwift-gesendet"') && ui.includes("localStorage.setItem(ZW_SENT"));
   assert.match(ui, /\.slice\(0, 60\)/);
-  assert.ok(ui.includes("Seit dem Senden geändert") && ui.includes("Nochmals an Zwift senden"));
+  assert.ok(ui.includes("seit dem Senden geändert") && ui.includes("Nochmals an Zwift senden"));
   assert.ok(!/API_KEY:[A-Za-z0-9]{8,}/.test(ui), "kein fester Schlüssel im Code");
   assert.ok(!/Bearer [A-Za-z0-9]{16,}/.test(ui));
 });

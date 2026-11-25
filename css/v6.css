@@ -1888,3 +1888,14 @@ label.css-schaetz { display: flex; gap: 8px; align-items: flex-start; font-size:
 /* V9.18.0 Unterstufen (FatMax unter Grundlage, Sweet Spot unter Tempo · Schwelle) im Blatt «Intensität», eingerückt wie in enduco */
 .mp-stufen .mp-unter { margin-left: 22px; }
 .mp-stufen .mp-unter .mp-st-kachel { width: 26px; height: 26px; border-radius: 8px; }
+
+/* zwift-export-2.1: Export-Blatt der Einheit-Seite – oben nur «Garmin | Zwift», Einrichten-Felder einheitlich */
+.v73-ziel { display: flex; gap: 4px; padding: 3px; margin: 12px 0 16px; background: var(--surface-2); border-radius: 12px; }
+.v73-ziel button { flex: 1; min-height: 44px; border: 0; border-radius: 9px; background: none; color: var(--muted); font: inherit; font-weight: 600; cursor: pointer; }
+.v73-ziel button[aria-pressed="true"] { background: var(--sheet); color: var(--fg); box-shadow: 0 0 0 1px var(--line-2); }
+.mp-zwz { margin: 4px 0 10px; font-weight: 600; }
+.mp-zwf { display: block; margin: 12px 0; }
+.mp-zwf span { display: block; margin-bottom: 4px; font-size: 13px; color: var(--muted); }
+.mp-zwf input { display: block; width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); color: var(--fg); font: inherit; font-size: 16px; }
+.mp-zw summary { cursor: pointer; font-weight: 600; margin: 10px 0; }
+

@@ -1,8 +1,8 @@
-"""Durchklick-Test «Zwift-Export» (V9.24.1, zwift-export-2.0): Chrome headless gegen demo.html, Intervals.icu wird abgefangen.
+"""Durchklick-Test «Zwift-Export» (V9.24.1 und V9.24.3, zwift-export-2.0/2.1): Chrome headless gegen demo.html, Intervals.icu wird abgefangen.
 
 Aufruf im Repository: python3 -I tools/durchklick_zwift.py [Ordner für Bilder]
-Gerüst (Server, Karten-Attrappe) wie tools/durchklick_zonen.py. Geprüft wird: Einheit-Seite einer Rad-Einheit öffnen → «Export» → Abschnitt «Zwift (Rolle)» ist da;
-ohne Einrichtung ist «An Zwift senden» gesperrt und das Einrichten offen; Schlüssel und FTP speichern (nur im Gerät); Senden schickt eine Anfrage an
+Gerüst (Server, Karten-Attrappe) wie tools/durchklick_zonen.py. Geprüft wird: Einheit-Seite einer Rad-Einheit öffnen → «Export» → oben nur die Wahl Garmin | Zwift, darunter nur das Gewählte (Wahl bleibt gemerkt);
+ohne Einrichtung steht im Zwift-Teil nur das offene Einrichten; Schlüssel und FTP speichern (nur im Gerät); Senden schickt eine Anfrage an
 intervals.icu mit genau einem Eintrag (Kategorie WORKOUT, Ride, indoor, fester external_id, Workout-Text in Prozent) und danach steht «Gesendet» in der Zeile;
 ein zweites Senden ersetzt statt zu verdoppeln (gleicher external_id); lehnt Intervals.icu das Feld «indoor» ab (400), geht es ohne und die Seite sagt es;
 401 meldet den Schlüssel; ohne Netz bleibt «Text kopieren» als Ersatz; eine Lauf-Einheit hat im Export-Blatt keinen Zwift-Abschnitt; nichts läuft seitlich über;
@@ -111,9 +111,13 @@ def main():
 
             export_oeffnen(rad)
             ov = seite.locator("#v59-ov")
-            pruefe(f"{name}: Export-Blatt heisst «Export» und hat Garmin und Zwift", ov.locator("h2").first.inner_text().strip() == "Export" and ov.locator("[data-zwabschnitt]").count() == 1, ov.inner_text()[:120])
-            pruefe(f"{name}: ohne Einrichtung ist «An Zwift senden» gesperrt, Einrichten offen", ov.locator("[data-zwsend]").is_disabled() and ov.locator("details.mp-zw").get_attribute("open") is not None)
-            pruefe(f"{name}: Hinweis «Einmal einrichten»", "einrichten" in status().lower(), status())
+            pruefe(f"{name}: Export-Blatt heisst «Export» und bietet oben nur Garmin | Zwift an", ov.locator("h2").first.inner_text().strip() == "Export" and ov.locator("[data-v73z]").count() == 2 and ov.locator("[data-zwabschnitt]").count() == 1, ov.inner_text()[:120])
+            pruefe(f"{name}: genau ein Teil ist sichtbar", seite.locator("#v59-ov [data-v73pan]:not([hidden])").count() == 1)
+            ov.locator("[data-v73z='garmin']").click()
+            pruefe(f"{name}: Wahl Garmin zeigt Garmin und blendet Zwift aus", seite.locator("#v59-ov [data-v73pan='garmin']").is_visible() and not seite.locator("#v59-ov [data-v73pan='zwift']").is_visible())
+            ov.locator("[data-v73z='zwift']").click()
+            pruefe(f"{name}: Wahl Zwift zeigt Zwift und blendet Garmin aus", seite.locator("#v59-ov [data-v73pan='zwift']").is_visible() and not seite.locator("#v59-ov [data-v73pan='garmin']").is_visible())
+            pruefe(f"{name}: ohne Einrichtung kein «An Zwift senden»-Knopf, nur das Einrichten (offen)", ov.locator("[data-zwsend]").count() == 0 and ov.locator("details.mp-zw").get_attribute("open") is not None and "Einmal einrichten" in ov.locator("[data-zwabschnitt]").inner_text())
             seite.screenshot(path=str(BILDER / f"{name}-1-export-ungesetzt.png"))
 
             # FTP ohne Schlüssel → Meldung, nichts gespeichert
@@ -150,6 +154,7 @@ def main():
             seite.keyboard.press("Escape")
             seite.wait_for_timeout(300)
             export_oeffnen(rad)
+            pruefe(f"{name}: die Wahl Zwift bleibt beim Neuöffnen", seite.locator("#v59-ov [data-v73z='zwift']").get_attribute("aria-pressed") == "true" and seite.locator("#v59-ov [data-v73pan='zwift']").is_visible())
             pruefe(f"{name}: nach dem Neuöffnen steht noch «Gesendet»", "Gesendet" in seite.locator("#v59-ov [data-zwz]").first.inner_text())
 
             # zweites Senden: gleicher external_id (ersetzt statt doppelt)
@@ -188,7 +193,7 @@ def main():
             seite.wait_for_timeout(300)
             if fund["lauf"]:
                 export_oeffnen(fund["lauf"])
-                pruefe(f"{name}: Lauf hat keinen Zwift-Abschnitt und heisst weiter «An Garmin senden»", seite.locator("#v59-ov [data-zwabschnitt]").count() == 0 and "An Garmin senden" in seite.locator("#v59-ov h2").first.inner_text())
+                pruefe(f"{name}: Lauf hat keine Wahl und keinen Zwift-Abschnitt und heisst weiter «An Garmin senden»", seite.locator("#v59-ov [data-zwabschnitt]").count() == 0 and seite.locator("#v59-ov [data-v73z]").count() == 0 and "An Garmin senden" in seite.locator("#v59-ov h2").first.inner_text())
                 seite.keyboard.press("Escape")
                 seite.wait_for_timeout(300)
 

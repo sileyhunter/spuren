@@ -906,39 +906,41 @@
   const zwiftZeit = (iso) => { try { return new Date(iso).toLocaleString("de-CH", { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }); } catch (e) { return ""; } };
   const zwiftZeile = (x) => {
     const s = zwiftStand(x);
-    return `<p class="hint" data-zwz="${esc(x.r.eintrag ? x.r.eintrag.external_id : "")}">${esc(x.e.titel)}: ${x.r.eintrag
-      ? `${x.r.schritte} Schritte, ${Math.round(x.r.dauer_s / 60)} min – Einfahren und Ausfahren als Rampe, Watt als Prozent der Zwift-FTP.${s && s.art === "gesendet" ? ` ✓ Gesendet ${esc(zwiftZeit(s.t))}.` : s ? " Seit dem Senden geändert – nochmals senden." : ""}`
-      : /FTP/.test(x.r.fehler || "") ? `geht, sobald unten die FTP in Zwift eingetragen ist.` : `nicht möglich (${esc(x.r.fehler)}).`}</p>`;
+    return `<p class="mp-zwz" data-zwz="${esc(x.r.eintrag ? x.r.eintrag.external_id : "")}">${esc(x.e.titel)}${x.r.eintrag
+      ? ` · ${Math.round(x.r.dauer_s / 60)} min${s && s.art === "gesendet" ? ` · ✓ Gesendet ${esc(zwiftZeit(s.t))}` : s ? " · seit dem Senden geändert – nochmals senden" : ""}`
+      : ` · nicht möglich (${esc(x.r.fehler)})`}</p>`;
   };
-  function zwiftInnen(ds, liste, meldung) {
+  /** zwift-export-2.1: ohne Einrichtung nur das Einrichten (kein grauer Knopf); danach Zeile, zwei Knöpfe, Meldung; das Einrichten klappt zu. */
+  function zwiftInnen(ds, liste, meldung, o) {
     const cfg = zwiftCfg(), W = V6(), L = zwiftEintraege(ds, liste), ok = L.filter((x) => x.r.eintrag), bereit = !!(cfg.key && +cfg.ftp > 0);
     const alle = ok.length && ok.every((x) => { const s = zwiftStand(x); return s && s.art === "gesendet"; });
-    return `<h3 class="abschnitt">Zwift (Rolle)</h3>
-      ${L.map(zwiftZeile).join("")}
-      ${ds > add(heute(), 7) ? `<p class="hint">Zwift holt von Intervals.icu nur die nächsten rund 7 Tage; dieses Workout erscheint dort erst kurz davor.</p>` : ""}
-      <div class="row mp-akt"><button type="button" class="btn" data-zwsend ${ok.length && bereit ? "" : "disabled"}>${W.icon("weiter", 15)} ${alle ? "Nochmals an Zwift senden" : "An Zwift senden"}</button>
-        <button type="button" class="btn" data-zwcopy ${ok.length && +cfg.ftp > 0 ? "" : "disabled"}>Text kopieren</button></div>
-      <p class="hint" data-zwstatus role="status" ${meldung || !bereit ? "" : "hidden"}>${esc(meldung || (bereit ? "" : "Einmal einrichten (unten): Schlüssel von Intervals.icu und deine FTP in Zwift."))}</p>
+    const feld = (txt, attr, wert, extra) => `<label class="mp-zwf"><span>${txt}</span><input ${attr} value="${esc(wert)}" autocomplete="off" ${extra || ""}></label>`;
+    return `${o && o.ohneKopf ? "" : `<h3 class="abschnitt">Zwift (Rolle)</h3>`}
+      ${bereit ? L.map(zwiftZeile).join("") : `<p class="hint">Einmal einrichten, dann geht «An Zwift senden».</p>`}
+      ${bereit && ds > add(heute(), 7) ? `<p class="hint">Zwift holt von Intervals.icu nur die nächsten rund 7 Tage; das Workout erscheint dort erst kurz davor.</p>` : ""}
+      ${bereit ? `<div class="row mp-akt"><button type="button" class="btn primary gross" data-zwsend ${ok.length ? "" : "disabled"}>${alle ? "Nochmals an Zwift senden" : "An Zwift senden"} ${W.icon("weiter", 18)}</button>
+        <button type="button" class="btn" data-zwcopy ${ok.length ? "" : "disabled"}>Text kopieren</button></div>` : ""}
+      <p class="hint" data-zwstatus role="status" ${meldung ? "" : "hidden"}>${esc(meldung || "")}</p>
       <details class="mp-zw" ${bereit ? "" : "open"}><summary>Einrichten (nur auf diesem Gerät)</summary>
-        <label>API-Schlüssel (Intervals.icu → Settings → Developer Settings)<input type="password" data-zwkey value="${esc(cfg.key || "")}" autocomplete="off"></label>
-        <label>Athleten-ID (leer = 0, dein eigenes Konto)<input type="text" data-zwid value="${esc(cfg.id || "")}" inputmode="text" autocomplete="off"></label>
-        <label>FTP in Zwift (Watt)<input type="number" data-zwftp value="${esc(cfg.ftp || "")}" inputmode="numeric" min="50" max="600"></label>
+        ${feld("API-Schlüssel von Intervals.icu", "type=\"password\" data-zwkey", cfg.key || "")}
+        ${feld("FTP in Zwift (Watt)", "type=\"number\" data-zwftp", cfg.ftp || "", "inputmode=\"numeric\" min=\"50\" max=\"600\"")}
+        ${feld("Athleten-ID (leer = dein Konto)", "type=\"text\" data-zwid", cfg.id || "", "inputmode=\"text\"")}
         <button type="button" class="btn" data-zwsave>Speichern</button>
-        <p class="hint">Einmalig: auf intervals.icu ein Konto anlegen, unter Settings → Zwift «Connect» antippen und unter Settings → Developer Settings den API-Schlüssel erzeugen. Die FTP in Zwift muss dort auch stimmen. Intervals.icu legt das Workout in Zwift unter «Custom → Intervals.icu» ab (die nächsten rund 7 Tage). Zwift kennt nur Leistung, keine Pulsziele.</p></details>`;
+        <p class="hint">Einmalig: auf intervals.icu ein Konto anlegen, unter Settings → Zwift «Connect» tippen, unter Settings → Developer Settings den API-Schlüssel erzeugen. Die FTP in Zwift muss auch dort stimmen. Das Workout erscheint in Zwift unter «Custom → Intervals.icu» (nächste rund 7 Tage).</p></details>`;
   }
   /** Abschnitt «Zwift (Rolle)» für eine Liste von Rad-Einheiten eines Tages (Tagesblatt und Export-Blatt der Einheit-Seite). Leer ausserhalb von heute bis 14 Tage voraus. */
-  function zwiftAbschnitt(ds, liste) {
+  function zwiftAbschnitt(ds, liste, o) {
     if (!liste || !liste.length || ds < heute() || ds > add(heute(), 14)) return "";
-    return `<div data-zwabschnitt>${zwiftInnen(ds, liste)}</div>`;
+    return `<div data-zwabschnitt>${zwiftInnen(ds, liste, "", o)}</div>`;
   }
   function zwiftHTML(ds, t) {
     if (P().entwurf && P().entwurf.aktiv()) return "";
     return zwiftAbschnitt(ds, zwiftListe(t));
   }
   /** Knöpfe des Abschnitts verdrahten; jede Änderung zeichnet nur den Abschnitt neu (kein Blatt schliessen). */
-  function zwiftBinden(root, ds, liste) {
+  function zwiftBinden(root, ds, liste, o) {
     root.querySelectorAll("[data-zwabschnitt]").forEach((box) => {
-      const neu = (meldung) => { box.innerHTML = zwiftInnen(ds, liste, meldung); binden(); };
+      const neu = (meldung) => { box.innerHTML = zwiftInnen(ds, liste, meldung, o); binden(); };
       const st = (x) => { const p = box.querySelector("[data-zwstatus]"); if (p) { p.textContent = x; p.hidden = !x; } };
       function binden() {
         const b1 = box.querySelector("[data-zwsave]"), b2 = box.querySelector("[data-zwsend]"), b3 = box.querySelector("[data-zwcopy]");

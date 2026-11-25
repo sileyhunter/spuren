@@ -1,5 +1,12 @@
 # Änderungen
 
+## V9.24.3 · 25.11.2026 · Export-Blatt einfacher: oben nur «Garmin | Zwift» zur Auswahl (zwift-export-2.1)
+Silas (mit Bildschirmfoto): «kannst du das vereinfachen? dass dort nur steht Garmin oder Zwift zur Auswahl?»
+- **Einheit-Seite → Export bei Rad-Einheiten:** oben nur die Wahl «Garmin | Zwift»; darunter steht nur der gewählte Teil. Voreinstellung: Garmin; Zwift, wenn Garmin nicht senden kann (heute, zu spät, kein Fenster, Grund) oder zuletzt Zwift gewählt war (nur im Gerät, `in-export-ziel`). Lauf/Schwimmen/Bibliothek bleiben «An Garmin senden» ohne Wahl.
+- **Zwift-Teil aufgeräumt:** ohne Einrichtung nur ein kurzer Satz und das offene Einrichten (kein grauer, gesperrter Knopf, kein doppelter Hinweis); danach Einheit-Zeile, «An Zwift senden», «Text kopieren», Meldung; das Einrichten klappt zu. Felder einheitlich (Beschriftung oben, volle Breite, 16 px gegen das Zoomen am iPhone).
+- **Dateien:** `js/v73-ui.js` (`exportBlatt`), `js/v66-ui.js` (`zwiftInnen`/`zwiftAbschnitt`/`zwiftBinden` mit Option `ohneKopf`), `css/v6.css` (`.v73-ziel`, `.mp-zwf`), `sw.js` (Zwischenspeicher).
+- **Tests:** neu `tests/test_v9243.cjs` (4); `tests/test_v9241.cjs` nachgeführt; `tools/durchklick_zwift.py` (Chrome, Demo): 59 Schritte, 0 Fehler (Wahl, Voreinstellung, Merken, kein Knopf ohne Einrichtung).
+
 ## V9.24.2 · 25.11.2026 · Metrik, Uhrzeit und Bahnlänge einer Vorschlags-Einheit gehen nicht mehr verloren (einheit-felder-1.2)
 Silas: «ich kann Pace, HF und RPE auswählen, die Einheit wird jedoch nicht mit der gewählten Variante angezeigt, es bleibt zum Beispiel bei Pace.»
 - **Ursache:** Jede Änderung an einer Einheit rechnet die Woche neu (umplanen-1.0). Eine Vorschlags-Einheit mit nur einer Festlegung (Metrik, Uhrzeit, Bahnlänge) galt dabei nicht als «Eigenes»; die Woche fiel auf den automatischen Vorschlag zurück (`E.tage = {}`), der die Festlegung nicht kennt. Die Meldung «Metrik: Herzfrequenz.» kam trotzdem, Kachel und Schritte blieben bei PACE/PWR. Betroffen waren auch Uhrzeit und Bahnlänge, und damit der Export.
