@@ -444,6 +444,8 @@ def _text(x):
 
 def _ziel_key(t):
     k = (t or {}).get("workoutTargetTypeKey")
+    if k in ("power.between", "pace.zone"):
+        return "bereich"                                            # V9.25.1: Garmin legt Watt-Bereiche unter Typ 6 «pace.zone» ab – gleiche Ziel-Art, die Werte werden weiter einzeln verglichen
     return None if k in (None, "no.target") else k                 # ohne Ziel: null oder «no.target» (Garmin speichert beides)
 
 

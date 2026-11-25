@@ -1,5 +1,11 @@
 # Änderungen
 
+## V9.25.1 · 26.11.2026 · Rücklese erkennt Garmins Ablage von Watt-Zielen (garmin-senden 1.2, Rücklese)
+Das erste echte automatische Senden am Vorabend (Nacht-Update 25.11., Einheit vom 26.11.) schlug fehl: «RÜCKLESEN: abweichend – Ziel pace.zone statt power.between». Garmin legt Watt-Bereiche unter Zieltyp 6 als «pace.zone» ab (Werte bleiben gleich); die Rücklese verglich die Schlüsselnamen und lehnte die korrekt gespeicherte Einheit ab.
+- **Fix (`tools/garmin_senden.py`, `_ziel_key`):** `power.between` und `pace.zone` gelten als dieselbe Ziel-Art («bereich»); die Zielwerte werden weiter einzeln verglichen (andere Werte = Abweichung).
+- Einheit vom 26.11. danach von Hand im Chat gesendet (Rücklese: Werte gleich), Auftrag «erledigt». Hinweis: in Garmin liegt für den 26.11. zusätzlich der Eintrag von Intervals.icu (Zwift-Weg).
+- Test: `tests/test_tools.py` (+1: gleiche Werte als «pace.zone» = gleich, andere Werte erkannt).
+
 ## V9.25.0 · 25.11.2026 · Rad-Einheiten gehen von selbst an Zwift (zwift-auto-1.0)
 Silas: «kannst du diese Einheiten auch jeweils auf Zwift schicken … um 23 via Intervals? Dann kann ich aussuchen, ob ich mit der Garmin Edge draussen oder indoor mache. Nur Rad.»
 - **Grenze:** Intervals.icu ist aus Claudes Umgebung (Sitzung und geplante Updates) gesperrt – ein Senden um 23 Uhr durch das Nacht-Update geht deshalb nicht. Der Weg geht über den Browser.

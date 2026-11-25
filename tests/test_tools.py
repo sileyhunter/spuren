@@ -1457,6 +1457,19 @@ for _s in _ist3["workoutSegments"][0]["workoutSteps"]:
         _s["targetValueOne"], _s["targetValueTwo"] = _s["targetValueTwo"], _s["targetValueOne"]
 check("Garmin senden: Rücklese erkennt andere Zielwerte und vertauschte Tempo-Grenzen",
       GS.rueck(_soll, _ist2) and GS.rueck(_GA["lauf_vo2"]["einheiten"][0]["workout"], _ist3), str(GS.rueck(_soll, _ist2)))
+_ist4 = copy.deepcopy(_w0)
+_n4 = 0
+for _s in _ist4["workoutSegments"][0]["workoutSteps"]:
+    for _x in ([_s] + (_s.get("workoutSteps") or [])):
+        if (_x.get("targetType") or {}).get("workoutTargetTypeKey") == "power.between":
+            _x["targetType"] = {"workoutTargetTypeId": 6, "workoutTargetTypeKey": "pace.zone"}; _n4 += 1
+_ist5 = copy.deepcopy(_ist4)
+for _s in _ist5["workoutSegments"][0]["workoutSteps"]:
+    for _x in ([_s] + (_s.get("workoutSteps") or [])):
+        if _x.get("targetValueOne") is not None and _x["targetType"]["workoutTargetTypeKey"] == "pace.zone":
+            _x["targetValueOne"] += 40; break
+check("Garmin senden (V9.25.1): Rücklese – Garmin legt Watt-Bereiche als «pace.zone» ab: gleiche Werte gelten als gleich, andere Werte werden weiter erkannt",
+      _n4 > 0 and GS.rueck(_soll, _ist4) == [] and GS.rueck(_soll, _ist5), f"{_n4} {GS.rueck(_soll, _ist4)} {GS.rueck(_soll, _ist5)}")
 _tc = tempfile.mkdtemp()
 json.dump({"garmin_auftraege": [dict(_GA["rad_vo2"], status="offen")], "plan_garmin": []}, open(os.path.join(_tc, "d.json"), "w"))
 _r1 = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "tools", "garmin_senden.py"), "plan", os.path.join(_tc, "d.json"), "--jetzt", "2026-03-04T23:10"],
