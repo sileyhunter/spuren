@@ -606,7 +606,7 @@
     let ampel = ""; try { ampel = window.V74UI ? window.V74UI.banner(ds, t) + window.V74UI.erholungKarte(ds, K) : ""; } catch (err) { console.error(err); }
     try { if (window.V83UI && window.V83UI.tag) ampel += window.V83UI.tag(ds); } catch (err) { console.error(err); }   // V8.3 Vorschläge des Coaches für diesen Tag
     return `${woche}${formHTML(ds)}${ampel}<h3 class="abschnitt mp-kopf">Mein Plan ${status}</h3><div class="mp-liste tb-liste4">${karten}</div>${aufbau}${zeilen}
-      ${vorbei ? "" : vfInline(ds, K)}${kraftHTML(ds, K)}<div class="tb-unten">${akt}${garminHTML(ds, t)}</div><p class="warn-t" data-mpfehler hidden></p>`;
+      ${vorbei ? "" : vfInline(ds, K)}${kraftHTML(ds, K)}<div class="tb-unten">${akt}${garminHTML(ds, t)}${zwiftHTML(ds, t)}</div><p class="warn-t" data-mpfehler hidden></p>`;
   };
 
   /* ---------- V7.2: Form zu Tagesbeginn und Verfügbarkeit im Tagesblatt ---------- */
@@ -876,6 +876,46 @@
     const L = uhrNochListe(ds, t); if (!L.length) return "";
     return `<p class="warn-t">Auf der Uhr steht noch ${L.map((x) => `«${esc(x)}»`).join(", ")} – heute nicht mehr im Plan. Die Uhr wird für heute nicht automatisch geändert: dort löschen oder einfach nicht starten.</p>`;
   }
+  /* ---------- An Zwift senden (zwift-export-1.0): Rad-Einheit von Hand über Intervals.icu nach Zwift ---------- */
+  const ZW_KEY = "in-zwift";
+  /** Zugang nur auf diesem Gerät (localStorage), nie im Repository und nie in den Daten: { key, id, ftp }. */
+  const zwiftCfg = () => { try { return JSON.parse(localStorage.getItem(ZW_KEY) || "{}") || {}; } catch (e) { return {}; } };
+  const zwiftSpeichern = (c) => { try { localStorage.setItem(ZW_KEY, JSON.stringify(c)); return true; } catch (e) { return false; } };
+  const zwiftEintraege = (ds, t) => {
+    const cfg = zwiftCfg(), U = t && !t.rennen ? t.einheiten.filter((e) => e && e.sport === "rad" && !V66().garminGrund(e)) : [];
+    return U.map((e) => ({ e, r: V66().zwiftEintrag(e, ds, skalen(), { ftp: +cfg.ftp }) }));
+  };
+  function zwiftHTML(ds, t) {
+    if (ds < heute() || ds > add(heute(), 14) || (P().entwurf && P().entwurf.aktiv())) return "";
+    const L = zwiftEintraege(ds, t); if (!L.length) return "";
+    const cfg = zwiftCfg(), W = V6(), ok = L.filter((x) => x.r.eintrag), bereit = cfg.key && +cfg.ftp > 0;
+    return `<h3 class="abschnitt">Zwift (Rolle)</h3>
+      ${L.map((x) => `<p class="hint">${esc(x.e.titel)}: ${x.r.eintrag ? `${x.r.schritte} Schritte, ${Math.round(x.r.dauer_s / 60)} min – Einfahren und Ausfahren als Rampe, Watt als Prozent der Zwift-FTP.` : `nicht möglich (${esc(x.r.fehler)}).`}</p>`).join("")}
+      <div class="row mp-akt"><button type="button" class="btn" data-zwsend ${ok.length && bereit ? "" : "disabled"}>${W.icon("weiter", 15)} An Zwift senden</button>
+        <button type="button" class="btn" data-zwcopy ${ok.length && +cfg.ftp > 0 ? "" : "disabled"}>Text kopieren</button></div>
+      <p class="hint" data-zwstatus role="status" ${bereit ? "hidden" : ""}>${bereit ? "" : "Einmal einrichten (unten): Schlüssel von Intervals.icu und deine FTP in Zwift."}</p>
+      <details class="mp-zw"><summary>Einrichten (nur auf diesem Gerät)</summary>
+        <label>API-Schlüssel (Intervals.icu → Einstellungen → Entwicklereinstellungen)<input type="password" data-zwkey value="${esc(cfg.key || "")}" autocomplete="off"></label>
+        <label>Athleten-ID (leer = 0, dein eigenes Konto)<input type="text" data-zwid value="${esc(cfg.id || "")}" inputmode="text" autocomplete="off"></label>
+        <label>FTP in Zwift (Watt)<input type="number" data-zwftp value="${esc(cfg.ftp || "")}" inputmode="numeric" min="50" max="600"></label>
+        <button type="button" class="btn" data-zwsave>Speichern</button>
+        <p class="hint">Intervals.icu legt das Workout in Zwift unter «Custom → Intervals.icu» ab (die nächsten rund 7 Tage). Zwift kennt nur Leistung, keine Pulsziele.</p></details>`;
+  }
+  async function zwiftSenden(ds, t, status) {
+    const cfg = zwiftCfg(), ok = zwiftEintraege(ds, t).filter((x) => x.r.eintrag).map((x) => x.r.eintrag);
+    if (!ok.length) return status("Keine Rad-Einheit mit Watt-Zielen.");
+    status("Sende …");
+    try {
+      const rsp = await fetch(`https://intervals.icu/api/v1/athlete/${encodeURIComponent(cfg.id || "0")}/events/bulk?upsert=true`, { method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Basic " + btoa("API_KEY:" + cfg.key) }, body: JSON.stringify(ok) });
+      if (rsp.status === 401 || rsp.status === 403) return status("Intervals.icu lehnt den Schlüssel ab – Schlüssel und Athleten-ID prüfen.");
+      if (!rsp.ok) return status(`Intervals.icu antwortet mit Fehler ${rsp.status}.`);
+      status(`Gesendet (${ok.length}). In Intervals.icu am ${ds} prüfen; Zwift holt es von dort (Workouts → Custom → Intervals.icu).`);
+    } catch (err) {
+      console.error(err);
+      status("Der Browser kommt nicht an Intervals.icu heran (Netz oder Sperre). Ersatz: «Text kopieren» und in Intervals.icu am " + ds + " als Workout einfügen.");
+    }
+  }
   /** Abschnitt «Garmin» im Tagesblatt: Stand des Auftrags, «An Garmin senden», «am Vortag um 23 Uhr automatisch». */
   function garminHTML(ds, t) {
     if (ds < heute()) return "";
@@ -930,6 +970,23 @@
       const f = await aendern(montag(ds), { art: x.t.gesperrt ? "entsperren" : "sperren", date: ds });
       if (f) fehler(f); else if (zurueck) zurueck();
     }));
+    {                                                                                  // zwift-export-1.0
+      const st = (x) => { const p = ov.querySelector("[data-zwstatus]"); if (p) { p.textContent = x; p.hidden = !x; } };
+      const tg = tagVon(ds), tt = tg && tg.t;
+      ov.querySelectorAll("[data-zwsave]").forEach((b) => (b.onclick = () => {
+        const q = (a) => { const i = ov.querySelector(a); return i ? i.value.trim() : ""; };
+        const ftp = Math.round(+q("[data-zwftp]"));
+        if (!(ftp >= 50 && ftp <= 600)) return st("FTP in Zwift: Zahl zwischen 50 und 600.");
+        st(zwiftSpeichern({ key: q("[data-zwkey]"), id: q("[data-zwid]"), ftp }) ? "Gespeichert." : "Speichern auf diesem Gerät nicht möglich.");
+        if (zurueck) setTimeout(zurueck, 600);
+      }));
+      ov.querySelectorAll("[data-zwsend]").forEach((b) => (b.onclick = () => tt && zwiftSenden(ds, tt, st)));
+      ov.querySelectorAll("[data-zwcopy]").forEach((b) => (b.onclick = async () => {
+        const L = tt ? zwiftEintraege(ds, tt).filter((x) => x.r.eintrag) : [];
+        try { await navigator.clipboard.writeText(L.map((x) => x.r.text).join("\n\n")); st("Text kopiert – in Intervals.icu am " + ds + " ein Workout anlegen und einfügen."); }
+        catch (e) { st("Kopieren nicht möglich."); }
+      }));
+    }
     ov.querySelectorAll("[data-mpgs]").forEach((b) => (b.onclick = async () => {        // garmin-senden-1.1: von Hand (nächstes Nacht-Update)
       const f = await garminAuftragSpeichern(ds, "senden");
       if (f) fehler(f); else if (zurueck) zurueck();

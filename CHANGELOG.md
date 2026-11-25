@@ -1,5 +1,17 @@
 # Änderungen
 
+## V9.23.1 · 25.11.2026 · Zwift-Export von Hand über Intervals.icu (zwift-export-1.0)
+- Im Tagesblatt, Abschnitt «Zwift (Rolle)» für jede Rad-Einheit von heute bis 14 Tage voraus: «An Zwift senden» schickt das Workout in den Kalender von Intervals.icu (Upsert über feste `external_id`, nie doppelt); Zwift holt es von dort (Workouts → Custom → Intervals.icu). «Text kopieren» als Ersatz zum Einfügen in Intervals.icu.
+- `V66.zwiftText` / `V66.zwiftEintrag`: Watt als Prozent der FTP *in Zwift*; Einfahren/Ausfahren als echte Rampe; ein Abschnitt = Mitte seines Bereichs (wie Zwift bei «200–240» 220 nimmt), Z5 mit Obergrenze 115 % des Beginns; immer nach Leistung. Ohne Zonenprofil oder FTP: Fehler statt geraten.
+- Zugang (API-Schlüssel, Athleten-ID, Zwift-FTP) nur im Gerät (localStorage), nie im Repository und nie in den Daten.
+- Offen: CORS von intervals.icu aus dem Browser nicht prüfbar – fällt der Knopf aus, meldet es die Seite, «Text kopieren» geht trotzdem. Test: `tests/test_v9231.cjs`.
+
+## V9.23.0 · 25.11.2026 · Einfahren und Ausfahren als Rampe (rampen-1.0)
+Auftrag Silas: Jede Einheit soll langsam beginnen und langsam enden, mit Bereich; beim Laufen nach Puls oder Pace dasselbe.
+- **Rad nach Leistung (wie enduco «Langsam aufwärmen / Locker ausrollen»: 71–200 W bei Z1 bis 200 W, 6:44 bei 90 min):** Einfahren von 35,5 % bis 100 % der Obergrenze von Z1, Ausfahren zurück (bei 190 W: 65→190 W und 190→65 W), je 7,5 % der Einheit (5–10 min). Garmin kennt keine Rampen: Ziel ist der ganze Bereich, der Text nennt die Richtung. Z1-Pausen und lockere Z1-Abschnitte im Zwift-Export: Mitte des Bereichs.
+- **Puls:** Einfahren von (Beginn Z2 − 20) bis Beginn Z2, Ausfahren von (Beginn Z2 − 5) auf (Beginn Z2 − 20). **Pace:** Einlaufen von 12 % langsamer als der langsame Rand von Z2 bis dorthin, Auslaufen von 3 % langsamer zurück auf 12 % langsamer. **RPE oder ohne Zonenprofil:** nur Text.
+- Lange erste/letzte Schritte werden geteilt (je 7,5 % der Einheit, 5–10 min); kurze Einheiten bleiben unverändert. Zahlen in `V66.RAMPE` sind Claudes Festlegung. Test: `tests/test_v9230.cjs`. **Offen:** Einheit-Seite zeigt Einfahren/Ausfahren noch ohne Bereich.
+
 ## V9.22.0 · 25.11.2026 · Kalorien-Schätzung und weitere enduco-Vorlagen (kalorien-schaetzung-1.0, vorlagen-enduco-2.0)
 Silas: «stelle Annahmen drin, ich lasse das mit meinen Daten in einem anderen Chat validieren.» Beides ist darum **mit offen angezeigten Annahmen** gebaut.
 - **Schalter «Kalorien» in den Intensitätszonen** (Laktat und Zonen, neben Puls · Leistung · Pace): je Zone und Unterstufe (FatMax, Sweet Spot …) ≈ kcal/h, Fett g/h, Kohlenhydrate g/h. Rad aus der Leistung (Mitte der Zone, Wirkungsgrad 23 %), Laufen aus Pace und Körpergewicht (1 kcal je kg und km; Gewicht = letzte Wägung). Fettanteil je Zone als Richtwert (Z1 65 %, Z2 55 %, FatMax 60 %, Z3 35 %, Sweet Spot 25 %, Z4 15 %, Z5 5 %). Unter der Liste steht «Schätzung, keine Messung» mit allen Annahmen; ohne Leistungs-/Pace-Skala bzw. ohne Körpergewicht sagt die Seite warum. Die Annahmen stehen in `ZA.ANNAHMEN` (`js/zonen-ansicht.js`) und sind an einer Stelle änderbar – zum Prüfen gegen Atemgas-/Laktatdaten.

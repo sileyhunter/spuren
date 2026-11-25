@@ -216,8 +216,9 @@ test("garmin-senden-1.0: Rad-Workout – Wiederholungen als Gruppe, Reihenfolge,
   assert.deepEqual(F.map((s) => s.stepOrder), F.map((_, i) => i + 1), "Reihenfolge über alle Schritte, Gruppe vor ihren Schritten");
   const sek = (L, k = 1) => L.reduce((a, s) => a + (s.type === "RepeatGroupDTO" ? sek(s.workoutSteps, s.numberOfIterations) : s.endConditionValue) * k, 0);
   assert.equal(sek(S), e.dauer * 60, "Dauer bleibt gleich");
-  assert.equal(S[0].stepType.stepTypeKey, "warmup"); assert.equal(S[0].targetType.workoutTargetTypeKey, "no.target");
-  assert.equal(S[S.length - 1].stepType.stepTypeKey, "cooldown");
+  assert.equal(S[0].stepType.stepTypeKey, "warmup"); assert.equal(S[0].targetType.workoutTargetTypeKey, "power.between");   // rampen-1.0: Einfahren als Rampe 35,5 %→100 % von Z1 (160 W)
+  assert.deepEqual([S[0].targetValueOne, S[0].targetValueTwo], [55, 160]); assert.match(S[0].description, /^Einfahren 55→160 W$/);
+  assert.equal(S[S.length - 1].stepType.stepTypeKey, "cooldown"); assert.deepEqual([S[S.length - 1].targetValueOne, S[S.length - 1].targetValueTwo], [55, 160]);
   const z2 = S[1]; assert.equal(z2.targetType.workoutTargetTypeKey, "power.between"); assert.deepEqual([z2.targetValueOne, z2.targetValueTwo], [160, 200]);
   const vo2 = F.find((s) => s.description && /VO2max/.test(s.description));
   assert.deepEqual([vo2.targetValueOne, vo2.targetValueTwo], [257, Math.round(257 * 1.15)], "Z5 nach oben offen: +15 % (eigene Festlegung)");

@@ -1629,6 +1629,115 @@
     return { steps, schritte: n, meter, pool, css, aufbau: aufbau.join(", ") };
   };
 
+  /* ----- Einfahren und Ausfahren als Rampe (rampen-1.0, Auftrag Silas 24.11.2026) ----- */
+  /** Einfahren: langsam von 60 % der Obergrenze von Z1 bis zu ihr; Ausfahren: von 90 % zurück auf 60 % (Beispiel Obergrenze 190 W: Einfahren 115→190 W,
+   *  Ausfahren 170→115 W). Puls: Einfahren von (Beginn Z2 − 20) bis Beginn Z2, Ausfahren von (Beginn Z2 − 5) auf (Beginn Z2 − 20). Pace: Einlaufen von 12 %
+   *  langsamer als der langsame Rand von Z2 bis zu diesem, Auslaufen von 3 % langsamer zurück auf 12 % langsamer. Garmin kennt keine Rampen: Der Schritt bekommt
+   *  den ganzen Bereich als Ziel, der Text nennt die Richtung. Eigene Festlegung von Claude (trainingstechnisch Claudes Entscheid). */
+  V66.RAMPE = { watt_von: 0.355, watt_aus: 1, puls_unter: 20, puls_aus: 5, pace_langsamer: 1.12, pace_aus: 1.03, anteil: 0.075, ein_max_s: 600, aus_max_s: 600, min_s: 300 };   // Rad wie enduco: 71–200 W bei Z1 bis 200 W (35,5 %–100 %), 6:44 bei 90 min (7,5 %)
+  V66.garminRampe = function (art, sport, metrik, skalen) {
+    const R = V66.RAMPE, S = skalen || {}, ein = art === "ein", W5 = (x) => Math.round(x / 5) * 5;
+    const wort = sport === "lauf" ? (ein ? "Einlaufen" : "Auslaufen") : ein ? "Einfahren" : "Ausfahren";
+    if (metrik === "rpe") return { ziel: null, text: `${wort} langsam ${ein ? "steigern" : "ausklingen lassen"}: RPE 1–2` };
+    if (metrik === "puls") {
+      const z2 = gz(S[sport === "rad" ? "rad_hf" : "lauf_hf"], 2), top = z2 && isNum(z2.von) ? z2.von : null;
+      if (!top) return { ziel: null, text: wort };
+      const lo = Math.round(top - R.puls_unter), hi = Math.round(ein ? top : top - R.puls_aus);
+      return lo > 0 && hi > lo ? { ziel: { art: "puls", lo, hi, offen: false }, text: `${wort} Puls ${ein ? lo + "→" + hi : hi + "→" + lo}` } : { ziel: null, text: wort };
+    }
+    if (sport === "rad") {
+      const z1 = gz(S.rad_w, 1), z2 = gz(S.rad_w, 2), top = z1 && isNum(z1.bis) ? z1.bis : z2 && isNum(z2.von) ? z2.von : null;
+      if (!top) return { ziel: null, text: wort };
+      const lo = W5(R.watt_von * top), hi = W5(R.watt_aus * top);
+      return hi > lo ? { ziel: { art: "watt", lo, hi, offen: false }, text: `${wort} ${ein ? lo + "→" + hi : hi + "→" + lo} W` } : { ziel: null, text: wort };
+    }
+    if (sport === "lauf") {
+      const z2 = gz(S.lauf_pace, 2), langsamRand = z2 && isNum(z2.von) && z2.von > 0 ? z2.von : null;
+      if (!langsamRand) return { ziel: null, text: wort };
+      const langsam = langsamRand * R.pace_langsamer, schnell = langsamRand * (ein ? 1 : R.pace_aus);
+      return { ziel: { art: "tempo", lo: r3(1000 / langsam), hi: r3(1000 / schnell), offen: false },
+        text: `${wort} ${ein ? mmssG(langsam) + "→" + mmssG(schnell) : mmssG(schnell) + "→" + mmssG(langsam)} /km` };
+    }
+    return { ziel: null, text: wort };
+  };
+  /** Folge (V66.garminFolge) → Folge, in der der erste und der letzte einfache Schritt als Rampe «ein» bzw. «aus» markiert sind, wenn er locker ist (Z1 oder Z2).
+   *  Ein langer lockerer Schritt wird geteilt: Einfahren und Ausfahren je 7,5 % der Einheit (5–10 min; bei 90 min 6:45, wie bei enduco). Besteht die Einheit nur aus einem lockeren Abschnitt,
+   *  bekommt sie vorn und hinten ebenso viel; sehr kurze Einheiten bleiben unverändert. Die Gesamtdauer bleibt gleich. */
+  V66.rampenFolge = function (folge) {
+    const R = V66.RAMPE, locker = (x) => x && !x.wdh && (x.key === "z1" || x.key === "z2"), rund = (s) => Math.round(s / 60) * 60;
+    const out = (folge || []).map((x) => (x.wdh ? x : Object.assign({}, x)));
+    if (!out.length) return out;
+    const ges = out.reduce((a, x) => a + (x.wdh ? x.wdh * x.teile.reduce((b, y) => b + y.s, 0) : x.s), 0);
+    const capE = Math.min(R.ein_max_s, Math.max(R.min_s, Math.round((R.anteil * ges) / 15) * 15)), capA = Math.min(R.aus_max_s, Math.max(R.min_s, Math.round((R.anteil * ges) / 15) * 15));
+    if (out.length === 1) {
+      const x = out[0];
+      if (!locker(x)) return out;
+      const ein = capE, aus = capA;
+      if (ein + aus > 0.6 * x.s) return out;
+      return [Object.assign({}, x, { s: ein, ramp: "ein" }), Object.assign({}, x, { s: x.s - ein - aus }), Object.assign({}, x, { s: aus, ramp: "aus" })];
+    }
+    if (locker(out[0])) {
+      const a = out[0];
+      if (a.s > capE) out.splice(0, 1, Object.assign({}, a, { s: capE, ramp: "ein" }), Object.assign({}, a, { s: a.s - capE }));
+      else a.ramp = "ein";
+    }
+    const z = out[out.length - 1];
+    if (locker(z) && !z.ramp) {
+      if (z.s > capA) out.splice(out.length - 1, 1, Object.assign({}, z, { s: z.s - capA }), Object.assign({}, z, { s: capA, ramp: "aus" }));
+      else z.ramp = "aus";
+    }
+    return out;
+  };
+  /* ----- Zwift über Intervals.icu (zwift-export-1.0, Auftrag Silas 24.11.2026) ----- */
+  /** Dauer im Text von Intervals.icu: 600 → «10m», 4200 → «1h10m», 90 → «1m30s». */
+  const dauerI = (sek) => { const x = Math.max(1, Math.round(sek)), h = Math.floor(x / 3600), m = Math.floor((x % 3600) / 60), r = x % 60; return (h ? h + "h" : "") + (m ? m + "m" : "") + (r ? r + "s" : ""); };
+  /** Rad-Einheit → Workout-Text für Intervals.icu (Workout Builder), das Zwift über die Training-API erhält. Zwift rechnet in Prozent der FTP *in Zwift*: opt.ftp = diese
+   *  FTP (Pflicht, kein Standardwert); die Watt der Seite werden als Prozent davon geschrieben, auf der Rolle ergeben sie wieder dieselben Watt. Gleich wie der Garmin-Export:
+   *  Einfahren und Ausfahren als Rampe (rampen-1.0); ein Abschnitt ist ein fester Wert in der Mitte seines Bereichs (Rolle, ERG; wie Zwift selbst bei «200–240» 220 nimmt), Z5 nach oben offen: Obergrenze 115 % des Beginns;
+   *  lockere Z1-Abschnitte und Pausen die Mitte von 35,5–100 % der Obergrenze von Z1 (enduco: «71–200 W»). Immer nach Leistung (Zwift kennt keine Pulsziele), auch wenn die Einheit nach Puls oder RPE läuft.
+   *  → { text, schritte, dauer_s } oder { fehler }. Ohne passende Zone: Fehler, nichts geraten. */
+  V66.zwiftText = function (e, skalen, opt) {
+    const o = opt || {}, ftp = isNum(o.ftp) && o.ftp > 0 ? o.ftp : null;
+    if (!e || e.sport !== "rad") return { fehler: "Zwift: nur Rad" };
+    if (e.art === "bibliothek") return { fehler: "Bibliothek: nur einplanen" };
+    const grund = V66.garminGrund(e); if (grund) return { fehler: grund };
+    if (!ftp) return { fehler: "FTP in Zwift fehlt" };
+    const S = skalen || {}, z1 = gz(S.rad_w, 1), z2 = gz(S.rad_w, 2), top = z1 && isNum(z1.bis) ? z1.bis : z2 && isNum(z2.von) ? z2.von : null;
+    const pct = (w) => Math.max(1, Math.round((w / ftp) * 100));
+    const ziel = (x) => {
+      if (x.ramp) { const r = V66.garminRampe(x.ramp, "rad", "leistung", S).ziel; return r ? (x.ramp === "ein" ? { von: r.lo, bis: r.hi } : { von: r.hi, bis: r.lo }) : null; }
+      if (x.key === "pause" || x.key === "z1") return top ? { w: ((V66.RAMPE.watt_von + V66.RAMPE.watt_aus) / 2) * top } : null;
+      const g = V66.garminZiel(x.key, "rad", S);
+      return g ? { w: (g.lo + g.hi) / 2 } : null;      // Zwift nimmt bei einem Bereich die Mitte; Z5 ohne Obergrenze: Obergrenze = 115 % (V66.GARMIN_OFFEN)
+    };
+    const zeilen = []; let n = 0, sek = 0, cur = null;
+    const kopf = (name) => { if (zeilen.length) zeilen.push(""); zeilen.push(name); };
+    const zeile = (x, k) => {
+      const z = ziel(x); if (!z) return false;
+      n++; sek += x.s * (k || 1);
+      zeilen.push(z.w != null ? `- ${dauerI(x.s)} ${pct(z.w)}%` : `- ${dauerI(x.s)} ramp ${pct(z.von)}-${pct(z.bis)}%`);
+      return true;
+    };
+    for (const x of V66.rampenFolge(V66.garminFolge(e.teile))) {
+      if (x.wdh) {
+        kopf(`Intervalle ${x.wdh}x`); cur = null;
+        for (const y of x.teile) if (!zeile(y, x.wdh)) return { fehler: `Abschnitt «${y.key}» ohne Watt-Ziel (Zonenprofil) – nichts geraten` };
+        continue;
+      }
+      const sektion = x.ramp === "ein" ? "Warmup" : x.ramp === "aus" ? "Cooldown" : "Hauptteil";
+      if (sektion !== cur) { kopf(sektion); cur = sektion; }
+      if (!zeile(x)) return { fehler: `Abschnitt «${x.key}» ohne Watt-Ziel (Zonenprofil) – nichts geraten` };
+    }
+    if (!n) return { fehler: "ohne Ablauf" };
+    return { text: zeilen.join("\n"), schritte: n, dauer_s: sek };
+  };
+  /** Einträge für den Kalender von Intervals.icu (POST /api/v1/athlete/0/events/bulk?upsert=true): ein Workout je Einheit, gleiche Einheit = gleicher external_id (ersetzt statt doppelt). */
+  V66.zwiftEintrag = function (e, ds, skalen, opt) {
+    const t = V66.zwiftText(e, skalen, opt);
+    if (t.fehler) return { fehler: t.fehler };
+    return { eintrag: { category: "WORKOUT", start_date_local: ds + "T00:00:00", type: "Ride", name: (V66.GARMIN_PREFIX + String(e.titel || "Training")).slice(0, 60),
+      external_id: "in-" + (e.uid || ds), description: t.text }, text: t.text, dauer_s: t.dauer_s, schritte: t.schritte, fassung: V66.fassung(t.text) };
+  };
   /** Einheit (V66.einheit/V64.einheit) → { workout (upload_workout), fassung, schritte, ohneZiel, offen } oder { fehler }.
    *  opt = { date, uid, schwimm(e) → SW.einheit(...) (nur Schwimmen; dieselbe Einheit wie auf der Einheit-Seite) }. */
   V66.garminWorkout = function (e, skalen, opt) {
@@ -1650,16 +1759,17 @@
       const besch = [`Ironman Notebook · Mein Plan${o.date ? " · " + o.date : ""}.`, `${r.meter} m im ${r.pool}-m-Becken: ${r.aufbau}.`, ziel].join(" ").slice(0, 440) + tag(fassung);
       return { workout: Object.assign({ workoutName: name, description: besch }, kern), fassung, schritte: r.schritte, ohneZiel: 0, offen: false, css: !!r.css, meter: r.meter };
     }
-    const folge = V66.garminFolge(e.teile);
+    const folge = V66.rampenFolge(V66.garminFolge(e.teile));            // rampen-1.0: Einfahren und Ausfahren als Rampe
     let nr = 0, ohneZiel = 0, offen = false, n = 0;
     const flachN = folge.reduce((s, x) => s + (x.wdh ? x.teile.length : 1), 0);
     let pos = 0;
     const schritt = (x, typ) => {
+      const ramp = x.ramp ? V66.garminRampe(x.ramp, e.sport, metrik, skalen) : null;                    // rampen-1.0: Bereich und Richtung im Text
       const ohne = x.key === "z1" || x.key === "pause" || x.key === "test" || x.key === "abc" || metrik === "rpe";
-      const z = ohne ? null : metrik === "puls" ? V66.garminPuls(x.key, e.sport, skalen) : V66.garminZiel(x.key, e.sport, skalen);
-      if (!z && x.key !== "z1" && x.key !== "pause" && x.key !== "abc" && metrik !== "rpe") ohneZiel++;
+      const z = ramp ? ramp.ziel : ohne ? null : metrik === "puls" ? V66.garminPuls(x.key, e.sport, skalen) : V66.garminZiel(x.key, e.sport, skalen);
+      if (!ramp && !z && x.key !== "z1" && x.key !== "pause" && x.key !== "abc" && metrik !== "rpe") ohneZiel++;
       if (z && z.offen) offen = true;
-      const text = x.key === "abc" ? V64.abcText(e.abc) : garminText(x.key, e.sport, skalen, metrik);   // lauf-abc-1.0: Übungen im Text, ohne Ziel
+      const text = ramp ? ramp.text.slice(0, 100) : x.key === "abc" ? V64.abcText(e.abc) : garminText(x.key, e.sport, skalen, metrik);   // lauf-abc-1.0: Übungen im Text, ohne Ziel
       const st = { type: "ExecutableStepDTO", stepOrder: ++nr, stepType: { stepTypeId: GTYP[typ], stepTypeKey: typ }, description: text,
         endCondition: { conditionTypeId: 2, conditionTypeKey: "time" }, endConditionValue: x.s };
       if (!z) st.targetType = KEIN_ZIEL;
@@ -1672,7 +1782,7 @@
     const typVon = (x, erste, letzte) => x.key === "pause" ? "recovery" : x.key === "abc" ? "warmup" : (x.key === "z1" || x.key === "z2") && erste && flachN > 1 ? "warmup"
       : x.key === "z1" && letzte && flachN > 1 ? "cooldown" : x.key === "z1" ? "recovery" : "interval";
     const steps = folge.map((x) => {
-      if (!x.wdh) { const st = schritt(x, typVon(x, pos === 0, pos === flachN - 1)); pos++; return st; }
+      if (!x.wdh) { const st = schritt(x, x.ramp === "ein" ? "warmup" : x.ramp === "aus" ? "cooldown" : typVon(x, pos === 0, pos === flachN - 1)); pos++; return st; }
       const g = { type: "RepeatGroupDTO", stepOrder: ++nr, stepType: { stepTypeId: 6, stepTypeKey: "repeat" }, numberOfIterations: x.wdh,
         endCondition: { conditionTypeId: 7, conditionTypeKey: "iterations" }, endConditionValue: x.wdh, smartRepeat: false, workoutSteps: [] };
       n++;
