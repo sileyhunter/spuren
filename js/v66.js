@@ -71,6 +71,8 @@
   const ZU = {
     rad_fatmax: ["fatmax", 30, 300, 90], rad_fatmax_int: ["fatmax", 60, 300, 120], rad_fatmax_pyr: ["fatmax", 60, 240, 120],     // V9.18.0 intensitaet-stufen-1.0 (V9.19.0 vorlagen-enduco-1.0)
     rad_sweet: ["sweet", 45, 150, 60], rad_sweet_int: ["sweet", 65, 150, 75], lauf_fatmax: ["fatmax", 30, 150, 60], lauf_fatmax_int: ["fatmax", 45, 150, 75], lauf_sweet: ["sweet", 50, 100, 60],
+    lauf_gleichmaessig: ["tempo", 40, 120, 60], lauf_tempo_2x: ["tempo", 50, 100, 55], lauf_tempo_3x: ["tempo", 60, 110, 65], lauf_trio: ["tempo", 50, 90, 60], rad_ueberunter: ["tempo", 60, 180, 105],   // V9.22.0 vorlagen-enduco-2.0
+    lauf_vo2_tempo: ["vo2max", 76, 110, 88], lauf_sweet_vo2: ["vo2max", 65, 120, 85],
     rad_locker: ["grundlage", 30, 300, 60], rad_lang: ["lang", 90, 360, 180], rad_lang_rt: ["renntempo", 120, 360, 180],
     rad_tempo: ["tempo"], rad_schwelle: ["schwelle"], rad_laktat: ["schwelle"], rad_vo2: ["vo2max"], aktivierung: ["aktivierung"], test_rad: ["test"],
     lauf_locker: ["grundlage", 20, 120, 45], lauf_lang: ["lang", 60, 210, 90], lauf_lang_rt: ["renntempo", 75, 210, 100], lauf_tempo: ["tempo"],

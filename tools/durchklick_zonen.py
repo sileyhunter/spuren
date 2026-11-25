@@ -77,6 +77,9 @@ def main():
                     n_li = seite.locator("#iz-box .iz-liste > li:not(.unter)").count()
                     pruefe(f"{name}: {sports[sp]}/{mets[mi]} Balken und Liste gleich viele Zonen", n_bar == n_li and n_bar >= 2, f"{n_bar} vs {n_li}")
                     pruefe(f"{name}: {sports[sp]}/{mets[mi]} gedrückt", seite.locator("#iz-metrik button[aria-pressed='true']").count() == 1)
+                    if mets[mi] == "Kalorien":
+                        pruefe(f"{name}: {sports[sp]}/Kalorien Annahmen sichtbar", seite.locator("#iz-box .iz-annahmen").count() == 1 and "Schätzung, keine Messung" in seite.locator("#iz-box .iz-annahmen").inner_text())
+                        pruefe(f"{name}: {sports[sp]}/Kalorien Zeilen oder Grund", seite.locator("#iz-box .iz-kcal").count() >= 5 or "Körpergewicht" in seite.locator("#iz-box .iz-annahmen").inner_text(), "weder Zahlen noch Grund")
                     ueber = seite.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
                     pruefe(f"{name}: {sports[sp]}/{mets[mi]} kein seitliches Überlaufen", ueber <= 1, f"{ueber} px")
                     ticks = seite.evaluate("(() => { const L = [...document.querySelectorAll('#iz-box .iz-t')].map(e => e.getBoundingClientRect()); const bar = document.querySelector('#iz-box .iz-bar').getBoundingClientRect(); return L.every(r => r.left >= bar.left - 2 && r.right <= bar.right + 2); })()")

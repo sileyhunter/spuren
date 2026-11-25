@@ -23,7 +23,7 @@
   if (root) root.V64 = V64;
 })(typeof window !== "undefined" ? window : null, function (V62) {
   "use strict";
-  const V64 = { VERSIONS: { fatmaxwoche: "fatmax-woche-1.0", vorlagen: "vorlagen-enduco-1.0", modell: "modell-1.0", woche: "wochenplan-1.2", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.1", aufbau: "aufbau-1.2", vergleich: "vergleich-1.4", abwechslung: "abwechslung-1.0", abc: "lauf-abc-1.0", sportart: "sportart-1.0", automatisch: "automatisch-1.0" } };
+  const V64 = { VERSIONS: { vorlagen2: "vorlagen-enduco-2.0", kalorien: "kalorien-schaetzung-1.0", fatmaxwoche: "fatmax-woche-1.0", vorlagen: "vorlagen-enduco-1.0", modell: "modell-1.0", woche: "wochenplan-1.2", tid: "tid-1.0", aufteilung: "aufteilung-1.0", intensitaet: "intensitaet-1.1", aufbau: "aufbau-1.2", vergleich: "vergleich-1.4", abwechslung: "abwechslung-1.0", abc: "lauf-abc-1.0", sportart: "sportart-1.0", automatisch: "automatisch-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const T = (iso) => Date.parse(iso + "T12:00:00Z");
   const add = (iso, n) => new Date(T(iso) + n * 864e5).toISOString().slice(0, 10);
@@ -210,6 +210,41 @@
       form(o) { const d = Math.max(50, o.d || 60), L = 12, R = 3, a = this.abcMin(o), amax = this.abcMin({}), n = Math.min(4, Math.max(2, Math.floor((d - 15 - amax + R) / (L + R)))); return { n, L, R, a, rest: Math.max(0, d - 15 - n * L - (n - 1) * R - a) }; },
       teile(o) { const f = this.form(o); return [["z1", 5], ["z2", 5]].concat(wdh(f.n, [["z3o", f.L]], [["z1", f.R]]), [["z2", f.rest], ["z1", 5 + f.a]]); },
       ablauf(o) { const f = this.form(o); return ["10 min einlaufen", `${f.n} × ${f.L} min Sweet Spot, ${f.R} min Trab dazwischen`, "gleichmässig laufen, nicht über die Schwelle", `${f.rest > 0 ? f.rest + " min Z2, " : ""}5 min auslaufen`]; } },
+    /* V9.22.0 vorlagen-enduco-2.0: weitere Vorlagen nach den enduco-Einheiten in Garmin Connect (nur Aufbau und Anteile; alle Ziele aus dem aktiven Zonenprofil).
+       Gleichmässiges Tempo, 2×/3× Tempo Blöcke, Progressives Trio, Kurze VO2max & Tempo, Sweet Spot & VO2max (Lauf), Tempo Über-Unter (Rad). Dauer frei (Summe stimmt immer). */
+    lauf_gleichmaessig: { sport: "lauf", titel: "Gleichmässiges Tempo", art: "schluessel", dyn: true, wissen: "modelle", quellen: ["stoeggl2015", "seiler2010"],
+      zweck: "Ein langer gleichmässiger Block im Tempo-Bereich (Z3), nach enduco: Tempo halten lernen, ohne Pausen. Anfangs gerne kürzer.",
+      teile: (o) => [["z1", 5], ["z2", 10], ["z3", Math.max(10, o.d - 25)], ["z1", 10]],
+      ablauf: (o) => ["15 min einlaufen", `${Math.max(10, o.d - 25)} min gleichmässig im Tempo-Bereich (Z3)`, "10 min auslaufen"] },
+    lauf_tempo_2x: { sport: "lauf", titel: "2 × Tempo Blöcke", art: "schluessel", dyn: true, wissen: "modelle", quellen: ["stoeggl2015", "seiler2010"],
+      zweck: "Zwei Tempo-Blöcke (Z3) mit lockerer Pause: Tempozeit in zwei Stücken, besser zu halten als ein langer Block.",
+      form(o) { const R = Math.max(25, (o.d || 50) - 21), P = 10, L = Math.floor((R - P) / 2); return { L, P, vorne: R - P - 2 * L }; },
+      teile(o) { const f = this.form(o); return [["z1", 5], ["z2", 10 + f.vorne], ["z3", f.L], ["z2", f.P], ["z3", f.L], ["z1", 6]]; },
+      ablauf(o) { const f = this.form(o); return ["15 min einlaufen" + (f.vorne ? `, dazu ${f.vorne} min Z2` : ""), `2 × ${f.L} min Tempo (Z3), ${f.P} min Z2 dazwischen`, "6 min auslaufen"]; } },
+    lauf_tempo_3x: { sport: "lauf", titel: "3 × Tempo Blöcke", art: "schluessel", dyn: true, wissen: "modelle", quellen: ["stoeggl2015", "seiler2010"],
+      zweck: "Drei Tempo-Blöcke (Z3) mit kurzer lockerer Pause: mehr Tempozeit, in Stücken, die gut zu halten sind.",
+      form(o) { const R = Math.max(35, (o.d || 60) - 21), P = 5, L = Math.floor((R - 2 * P) / 3); return { L, P, vorne: R - 2 * P - 3 * L }; },
+      teile(o) { const f = this.form(o); return [["z1", 5], ["z2", 10 + f.vorne]].concat(wdh(3, [["z3", f.L]], [["z2", f.P]]), [["z1", 6]]); },
+      ablauf(o) { const f = this.form(o); return ["15 min einlaufen" + (f.vorne ? `, dazu ${f.vorne} min Z2` : ""), `3 × ${f.L} min Tempo (Z3), ${f.P} min Z2 dazwischen`, "6 min auslaufen"]; } },
+    lauf_trio: { sport: "lauf", titel: "Progressives Trio", art: "schluessel", dyn: true, wissen: "modelle", quellen: ["stoeggl2015", "seiler2010"],
+      zweck: "Drei Blöcke ohne Pause, jeder etwas schneller: Tempo (Z3), dann knapp unter LT2, zuletzt am oberen Rand davon. Die Schwelle nie überschreiten.",
+      form(o) { const R = Math.max(25, (o.d || 60) - 21), a = Math.round((R * 0.38) / 5) * 5, b = Math.round((R * 0.31) / 5) * 5; return { a, b, c: R - a - b }; },
+      teile(o) { const f = this.form(o); return [["z1", 5], ["z2", 10], ["z3", f.a], ["z3o", f.b], ["z3o", f.c], ["z1", 6]]; },
+      ablauf(o) { const f = this.form(o); return ["15 min einlaufen", `${f.a} min Tempo (Z3), dann ${f.b} min knapp unter LT2, zuletzt ${f.c} min am oberen Rand davon`, "keine Pausen; jeder Block etwas schneller als der vorige", "6 min auslaufen"]; } },
+    lauf_vo2_tempo: { sport: "lauf", titel: "Kurze VO2max & Tempo", art: "schluessel", dyn: true, wissen: "intervalle", quellen: ["buchheit2013a", "stoeggl2015"],
+      zweck: "Drei kurze VO2max-Intervalle zwischen zwei Tempo-Abschnitten, danach ein langer Block knapp unter LT2: VO2max und Schwellenausdauer in einer Einheit. Hart – nur in einer Woche ohne andere Schlüsseleinheit.",
+      teile: (o) => [["z1", 5], ["z2", 10], ["z3", 8]].concat(wdh(3, [["vo2", 5]], [["z1", 4]]), [["z1", 4], ["z3", 6], ["z3o", Math.max(8, o.d - 68)], ["z3", 6], ["z1", 6]]),
+      ablauf: (o) => ["15 min einlaufen, 8 min Tempo (Z3)", "3 × 5 min VO2max, 4 min Trab dazwischen", `6 min Tempo, ${Math.max(8, o.d - 68)} min knapp unter LT2, 6 min Tempo`, "6 min auslaufen"] },
+    lauf_sweet_vo2: { sport: "lauf", titel: "Sweet Spot & VO2max", art: "schluessel", dyn: true, wissen: "intervalle", quellen: ["buchheit2013a", "stoeggl2015"],
+      zweck: "Sweet-Spot-Blöcke (knapp unter LT2), am Ende jedes Blocks 30 s VO2max: den Übergang von der Schwelle zum harten Einsatz trainieren. Pausen (3 min Trab) sind eine Annahme: in der enduco-Einheit sind sie offen (Lap-Taste).",
+      form(o) { const d = Math.max(65, o.d || 80), n = Math.max(2, Math.min(5, Math.floor((d - 38 + 3) / 13.5))); return { n, rest: Math.max(0, d - 38 - n * 10.5 - (n - 1) * 3) }; },
+      teile(o) { const f = this.form(o); return [["z1", 15], ["z3", 8]].concat(f.rest > 0 ? [["z2", f.rest]] : [], wdh(f.n, [["z3o", 10], ["vo2", 0.5]], [["z1", 3]]), [["z1", 15]]); },
+      ablauf(o) { const f = this.form(o); return ["15 min einlaufen, 8 min Tempo (Z3)" + (f.rest > 0 ? `, ${Math.round(f.rest)} min Z2` : ""), `${f.n} × (10 min knapp unter LT2, danach 30 s VO2max), 3 min Trab dazwischen`, "VO2max = kurzer, kontrollierter Antritt, nicht ein Sprint", "15 min auslaufen"]; } },
+    rad_ueberunter: { sport: "rad", titel: "Tempo Über-Unter", art: "schluessel", dyn: true, wissen: "modelle", quellen: ["stoeggl2015", "seiler2010"],
+      zweck: "Pyramide aus FatMax, Tempo (Z3) und Sweet Spot, dazwischen locker: wechselnder Druck um die Schwelle herum, ohne sie zu überschreiten. Verbessert den Fettstoffwechsel und die nachhaltige Leistung.",
+      form(o) { const d = Math.max(60, o.d || 105), n = Math.max(1, Math.min(3, Math.floor((d - 15 + 10) / 42))); return { n, rest: Math.max(0, d - 15 - n * 32 - (n - 1) * 10) }; },
+      teile(o) { const f = this.form(o); return [["z1", 5], ["fatmax", 5]].concat(f.rest > 0 ? [["z2", f.rest]] : [], wdh(f.n, [["fatmax", 12], ["z3", 10], ["z3o", 10]], [["z2", 10]]), [["z1", 5]]); },
+      ablauf(o) { const f = this.form(o); return ["5 min einrollen, 5 min FatMax" + (f.rest > 0 ? `, ${f.rest} min Z2` : ""), `${f.n} × (12 min FatMax, 10 min Tempo, 10 min Sweet Spot)${f.n > 1 ? ", 10 min Z2 dazwischen" : ""}`, "Trittfrequenz 90–110", "5 min ausrollen"]; } },
     /* V8.4 abwechslung-1.0: gleicher Reiz in anderer Form (Familien in V64.FAMILIEN; die erste Form ist die Vergleichseinheit) */
     rad_vo2_4x5: { sport: "rad", titel: "VO2max 4 × 5 min", art: "schluessel", wissen: "intervalle", quellen: ["roennestad2015", "buchheit2013a"],
       zweck: "Gleicher Reiz wie 30/15 in langen Stücken: Zeit nahe der maximalen Sauerstoffaufnahme. Diese Form war in der Studie zu 30/15 die Vergleichsgruppe.",
@@ -288,12 +323,15 @@
   const RANG = (V64.RANG = { locker: 0, schwelle: 1, alles: 2 });
   V64.INTENSITAET_STANDARD = { schwimm: "alles", rad: "alles", lauf: "alles" };
   V64.STUFE_BAUSTEIN = { rad_vo2: "alles", lauf_vo2: "alles", rad_schwelle: "schwelle", rad_laktat: "schwelle", rad_tempo: "schwelle",
-    lauf_tempo: "schwelle", lauf_laktat: "schwelle", schwimm_css: "schwelle", rad_sweet: "schwelle", rad_sweet_int: "schwelle", lauf_sweet: "schwelle" };
+    lauf_tempo: "schwelle", lauf_laktat: "schwelle", schwimm_css: "schwelle", rad_sweet: "schwelle", rad_sweet_int: "schwelle", lauf_sweet: "schwelle",
+    lauf_gleichmaessig: "schwelle", lauf_tempo_2x: "schwelle", lauf_tempo_3x: "schwelle", lauf_trio: "schwelle", rad_ueberunter: "schwelle", lauf_vo2_tempo: "alles", lauf_sweet_vo2: "alles" };
   /** Ersatz derselben Sportart, wenn ein Baustein über der gewählten Stufe liegt. */
   V64.ERSATZ = { rad_vo2: { schwelle: "rad_schwelle", locker: "rad_locker" }, lauf_vo2: { schwelle: "lauf_tempo", locker: "lauf_locker" },
     rad_schwelle: { locker: "rad_locker" }, rad_laktat: { locker: "rad_locker" }, rad_tempo: { locker: "rad_locker" },
     lauf_tempo: { locker: "lauf_locker" }, lauf_laktat: { locker: "lauf_locker" }, schwimm_css: { locker: "schwimm_locker" },
-    rad_sweet: { locker: "rad_locker" }, rad_sweet_int: { locker: "rad_locker" }, lauf_sweet: { locker: "lauf_locker" } };
+    rad_sweet: { locker: "rad_locker" }, rad_sweet_int: { locker: "rad_locker" }, lauf_sweet: { locker: "lauf_locker" },
+    lauf_gleichmaessig: { locker: "lauf_locker" }, lauf_tempo_2x: { locker: "lauf_locker" }, lauf_tempo_3x: { locker: "lauf_locker" }, lauf_trio: { locker: "lauf_locker" }, rad_ueberunter: { locker: "rad_locker" },
+    lauf_vo2_tempo: { schwelle: "lauf_trio", locker: "lauf_locker" }, lauf_sweet_vo2: { schwelle: "lauf_sweet", locker: "lauf_locker" } };
   /* ---------------- Abwechslung (abwechslung-1.0, V8.4) ---------------- */
   /** Familien desselben Reizes: die erste Form ist die Vergleichseinheit, die anderen sind Varianten mit ähnlicher Zeit im selben Bereich. */
   V64.FAMILIEN = { rad_vo2: ["rad_vo2", "rad_vo2_4x5", "rad_vo2_4020"], lauf_vo2: ["lauf_vo2", "lauf_vo2_5x3", "lauf_vo2_3030"],
@@ -407,7 +445,20 @@
     let ablauf = b.ablauf.call(b, oo);
     const abc = oo.abc === false ? null : V64.abcVon(id);
     if (abc) {
+      const vorher = teile.reduce((s, t) => s + t[1], 0);
       teile = V64.mitAbc(teile, abc);
+      // V9.22.0: Dauer frei – das Lauf-ABC steckt in der gewählten Dauer; den Unterschied trägt der grösste Abschnitt Z2/Tempo/knapp unter LT2 (mindestens 5 min bleiben)
+      if (b.dyn && !b.abcMin && isNum(oo.d) && Math.abs(vorher - oo.d) < 0.6) {
+        const diff = teile.reduce((s, t) => s + t[1], 0) - oo.d, ia = teile.findIndex((t) => t[0] === "abc");
+        if (Math.abs(diff) > 1e-9 && ia >= 0) {
+          if (diff < 0) teile[teile.length - 1][1] -= diff;     // zu kurz: das Auslaufen trägt den Rest
+          else {                                                // zu lang: zuerst Z2 nach dem Lauf-ABC, sonst der grösste Tempo-Abschnitt
+            const aus = (L) => teile.map((t, i) => [t, i]).filter(([t, i]) => i > ia && L.includes(t[0])).sort((a, c) => c[0][1] - a[0][1])[0];
+            const k = aus(["z2"]) || aus(["z3", "z3o"]);
+            if (k) teile[k[1]][1] = Math.max(5, teile[k[1]][1] - diff);
+          }
+        }
+      }
       const A = V64.LAUF_ABC[abc], j = ablauf.findIndex((x) => /^15 min einlaufen/.test(x));
       const zeile = `${A.titel} (${A.dauer === Math.round(A.dauer) ? A.dauer + " min" : Math.floor(A.dauer) + ":30 min"}, ${A.uebungen.length} Übungen, je ${A.uebungen[0].saetze} Sätze)`;
       if (j >= 0) ablauf = ablauf.slice(0, j).concat([ablauf[j].replace(/^15 min/, "10 min"), zeile], ablauf.slice(j + 1));

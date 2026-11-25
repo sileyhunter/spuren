@@ -434,17 +434,23 @@
     const leer = (t) => { sp.innerHTML = ""; mt.innerHTML = ""; meta.textContent = ""; box.innerHTML = `<p class="hint">${t}</p>`; };
     if (!ZA || !W) return leer("Ansicht nicht verfügbar.");
     if (!ck) return leer("Noch kein Zonenprofil.");
-    const angebot = ZA.angebot(ck.skalen.map((k) => k.skala)), w = ZA.waehle(angebot, IZ.sport, IZ.metrik);
-    if (!w) return leer("Keine Zonen für Rad oder Laufen im Profil.");
-    IZ.sport = w.sport; IZ.metrik = w.metrik;
+    const angebot = ZA.angebot(ck.skalen.map((k) => k.skala)), kal = IZ.metrik === "kalorien";
+    const w0 = ZA.waehle(angebot, IZ.sport, kal ? null : IZ.metrik);
+    if (!w0) return leer("Keine Zonen für Rad oder Laufen im Profil.");
+    // V9.22.0 kalorien-schaetzung-1.0: «Kalorien» rechnet aus Leistung (Rad) bzw. Pace (Laufen); ohne diese Skala kein Schalter
+    const kalM = w0.angebot.metriken.find((m) => m.k === (w0.sport === "rad" ? "leistung" : "pace"));
+    const w = kal && kalM ? ZA.waehle(angebot, w0.sport, kalM.k) : w0;
+    IZ.sport = w.sport; IZ.metrik = kal && kalM ? "kalorien" : w.metrik;
     sp.innerHTML = angebot.map((a) => `<button type="button" data-izs="${a.sport}" aria-pressed="${a.sport === w.sport}">${esc(a.name)}</button>`).join("");
-    mt.innerHTML = w.angebot.metriken.map((m) => `<button type="button" data-izm="${m.k}" aria-pressed="${m.k === w.metrik}">${esc(m.name)}</button>`).join("");
+    mt.innerHTML = w.angebot.metriken.map((m) => `<button type="button" data-izm="${m.k}" aria-pressed="${m.k === w.metrik && IZ.metrik !== "kalorien"}">${esc(m.name)}</button>`).join("")
+      + (kalM ? `<button type="button" data-izm="kalorien" aria-pressed="${IZ.metrik === "kalorien"}">Kalorien</button>` : "");
     sp.querySelectorAll("[data-izs]").forEach((b) => b.addEventListener("click", () => { IZ.sport = b.dataset.izs; V.intensitaetszonen(ck); }));
     mt.querySelectorAll("[data-izm]").forEach((b) => b.addEventListener("click", () => { IZ.metrik = b.dataset.izm; V.intensitaetszonen(ck); }));
     const fmt = w.skala.metrik === "pace" ? (v) => FK().pace(v) : (v) => num(v);
     const m = ZA.modell(w.skala, W, { ruhe: ZA.ruhepuls((C.D && C.D.days) || [], isoToday(), 14), fmt });
     meta.textContent = `${ck.profil.name} · gültig ab ${dch(ck.profil.gueltig_ab)}`;
-    box.innerHTML = ZA.html(m, { esc, fmt });
+    const kgW = (() => { let b = null; for (const x of (C.D && C.D.weights) || []) if (x && typeof x.kg === "number" && (!b || x.date > b.date)) b = x; return b ? b.kg : null; })();
+    box.innerHTML = ZA.html(m, { esc, fmt, kcal: IZ.metrik === "kalorien" ? ZA.kalorien(m, { kg: kgW }) : null });
   };
   function scaleHTML(k, si, P) {
     const s = k.skala, F = FK();

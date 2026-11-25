@@ -428,3 +428,6 @@ Tests, Eigenes, Gesperrtes) bleibt, wie es ist. Entschieden von Claude nach «ja
 
 ### FatMax im Wochenplan (V9.21.0, fatmax-woche-1.0)
 Die lockere Rad-Ausfahrt am Mittwoch (≥ 60 min, nicht in Erholungs- und Taperwochen) hat ihre Hauptstrecke in FatMax (obere Hälfte von Z2); gleiche Dauer, zählt als locker. Id bleibt `rad_locker`, Merkmal `fatmax` (V64.einheit, Spec in v66). Lange Ausfahrt, langer Lauf, Freitags-Lauf bleiben breites Z2. Zahlen kommen nur aus dem aktiven Zonenprofil. Tests `tests/test_v9210.cjs`.
+
+### Weitere Vorlagen und Kalorien-Schätzung (V9.22.0, vorlagen-enduco-2.0, kalorien-schaetzung-1.0)
+Lauf: Gleichmässiges Tempo, 2×/3× Tempo Blöcke, Progressives Trio (Stufe Tempo), Kurze VO2max & Tempo, Sweet Spot & VO2max (Stufe VO2max); Rad: Tempo Über-Unter (Stufe Tempo). Aufbau nach enduco, Ziele nur aus dem Profil, Dauer frei, Lauf-ABC bei harten Läufen. Die Wochenplanung wählt sie nicht. «Kalorien» in den Intensitätszonen ist eine Schätzung mit offenen Annahmen (`ZA.ANNAHMEN`), keine Messung. Tests `tests/test_v9220.cjs`.

@@ -1881,6 +1881,9 @@ label.css-schaetz { display: flex; gap: 8px; align-items: flex-start; font-size:
 .iz-t { position: absolute; transform: translateX(-50%); white-space: nowrap; } .iz-t.erste { transform: none; } .iz-t.letzte { transform: translateX(-100%); } .iz-t.tief { top: 14px; }
 .iz-rand { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 2px; min-height: 14px; }
 .iz-liste { margin-top: 12px; }
+.iz-kcal { font-size: 11px; color: var(--muted); }
+.iz-annahmen { margin-top: 10px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+.iz-annahmen ul { margin: 4px 0 4px 16px; padding: 0; }
 
 /* V9.18.0 Unterstufen (FatMax unter Grundlage, Sweet Spot unter Tempo · Schwelle) im Blatt «Intensität», eingerückt wie in enduco */
 .mp-stufen .mp-unter { margin-left: 22px; }
