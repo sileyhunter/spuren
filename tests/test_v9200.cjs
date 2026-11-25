@@ -81,5 +81,5 @@ test("Datenschutz: kein Schlüssel im Code, in Tests, Doku oder Demo; Service Wo
   }
   const sw = R("sw.js");
   assert.ok(!/api\.mapy\./.test(sw), "Mapy-Kacheln (mit Schlüssel in der Adresse) werden nicht gespeichert");
-  assert.ok(/notebook-v9200-mapy/.test(sw), "neue Cache-Fassung");
+  assert.ok(/const CACHE = "notebook-v9(2\d\d|\d{3,})-/.test(sw), "Cache-Fassung ab V9.20");
 });
