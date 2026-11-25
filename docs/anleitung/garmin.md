@@ -64,9 +64,14 @@ und (V6.5) unverändert im privaten Archiv ablegen (Abschnitt «Archiv», Art `g
   Export-Blatt. Die CSS nie nach Garmin schreiben. Die Schwimm-Einheit kommt immer aus `V66UI.schwimmEinheit` (dieselbe wie auf der Einheit-Seite,
   `opt.schwimm`), sonst gleiche Fassung nicht möglich. Bibliothek nur als `wid` (Enduco-Workout, wird nur eingeplant). Tests, Schwimmkurs,
   Kraft, Mobility: nicht gesendet, mit Grund.
+- **V9.24.4 heute-senden-1.0 («Heute senden», Silas 25.11.2026, Entscheid: Tag-Update darf senden):** Auf der Einheit-Seite → Export → Garmin steht für die Einheiten von **heute**
+  (bis 22:30 Ortszeit, `V66UI.garminHeute`) der Knopf «Heute senden» (Auftrag «gs-<heute>», Modus «heute»; Auswahl wie bei «Senden» ohne die Wahl Nacht-Update/Vortag; «Aus Garmin
+  austragen» geht auch). Das nächste Update sendet ihn: Tag-Update 13, 15, 17, 19, 21 Uhr (Schritt 1b/3b, `garmin_senden.py heute_filtern` und `plan --heute`, nur diese Aufträge),
+  sonst das Nacht-Update (22:56, noch heute); am nächsten Morgen ist er «verpasst». `pruefen`: Modus «heute» nur mit dem Datum des Erstellens. Die Automatik («Aus») ändert nichts daran.
+  Auf die Uhr kommt die Einheit beim nächsten Synchronisieren. Nach 22:30 gilt wie vorher: nur im Chat.
 - `tools/garmin_senden.py plan` vergleicht offene Aufträge mit den Vermerken in `plan_garmin` (uid, Tag, Fassung, workout_id, scheduled_id):
   gleiche Fassung = nichts; andere Fassung = neue Fassung senden, danach die alte austragen (`nach`); nicht mehr im Plan = austragen; verschoben
-  (neuerer Auftrag an einem anderen Tag) = nur am neuen Tag. Tag schon da = «verpasst» (für heute nur im Chat).
+  (neuerer Auftrag an einem anderen Tag) = nur am neuen Tag. Tag schon da = «verpasst» (für heute nur im Chat; seit V9.24.4 gilt das nicht für den Modus «heute», siehe oben).
 - Aktionen im Nacht-Update (genau diese, nichts anderes; Ergebnis je `nr` in `work/garmin_ergebnis.json` als `{"garmin_ergebnis": [...]}`):
   - `hochladen`: `upload_workout(workout)` unverändert → `workout_id`. `get_workout_by_id(workout_id, raw=true)` unverändert als
     `work/garmin_rueck_<nr>.json` speichern (speichert das Werkzeug die Antwort selbst als Datei: deren Pfad nehmen), dann

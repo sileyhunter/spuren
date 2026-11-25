@@ -189,13 +189,18 @@ Enduco-Workouts werden nie geändert. Jeder Abruf, der fehlschlägt, wird weggel
    kurz informieren. Klappt alles: keine Nachricht.
 Das Nacht-Update danach ersetzt dieselben Tage, Workouts und `workouts_neu` (nichts doppelt).
 
-## Tag-Update (V9.7, tag-update-1.0, Silas 22.11.2026: Belastung tagsüber aktuell; täglich 13, 15, 17, 19 und 21 Uhr; nur lesend auf Garmin)
+## Tag-Update (V9.7, tag-update-1.0, Silas 22.11.2026: Belastung tagsüber aktuell; täglich 13, 15, 17, 19 und 21 Uhr; lesend auf Garmin, ausser dem Schritt «Heute senden» seit V9.24.4)
 Zweck: die Ringe (Erholung, Schlaf, Belastung) und das Widget tagsüber aktuell halten. Bis V9.6 stand die Belastung bis zum Nacht-Update auf «offen».
 Das Tag-Update spielt die Einheiten von heute **ohne FIT-Sekundenwerte** ein (Dauer, Distanz, Höhenmeter, Puls, Leistung, Zonen, daraus die Last); das
-Nacht-Update danach ergänzt dieselben Einheiten (gleiche Garmin-ID, nichts doppelt) mit FIT, Wetter und Ernährung. **Nach Garmin wird nichts geschrieben**,
-auch nicht der Schritt «Ampel» (der gehört zum Morgen-Update), und es gibt keine Eingaben vom Handy (`eingang/` bleibt für Morgen- und Nacht-Update liegen).
+Nacht-Update danach ergänzt dieselben Einheiten (gleiche Garmin-ID, nichts doppelt) mit FIT, Wetter und Ernährung. **Nach Garmin wird nur im Schritt «Heute senden»
+(Schritt 1b und 3b, V9.24.4, von Silas am 25.11.2026 freigegeben) geschrieben**, sonst nichts; auch nicht der Schritt «Ampel» (der gehört zum Morgen-Update). Von den Eingaben
+vom Handy wird einzig der Auftrag «heute» von heute übernommen; `eingang/` bleibt unberührt (Morgen- und Nacht-Update räumen auf).
 Jeder Abruf, der fehlschlägt, wird weggelassen: kein Abbruch.
 1. `SPUREN_PW=… node tools/crypt.mjs decrypt data.enc.json data.json`
+1b. **Heute senden (V9.24.4, heute-senden-1.0):** `SPUREN_PW=… node tools/eingang.mjs einlesen` (nur lesen, nichts löschen). Gibt es `work/eingang_a.json`:
+   `python3 -I tools/garmin_senden.py heute_filtern work/eingang_a.json work/eingang_heute.json`. Meldet es «HEUTE-AUFTRÄGE: 1» (oder mehr):
+   `python3 -I tools/merge_daily.py data.json work/eingang_heute.json` – das spielt nur diese Aufträge ein (Modus «heute», Datum heute, geprüft wie jeder Auftrag), sonst
+   nichts aus dem Eingang. Dieselbe Eingabe spielt das Nacht-Update später nochmals ein: der erledigte Auftrag bleibt, nichts wird doppelt gesendet.
 2. Über die Garmin-Verbindung, Zuordnung der Felder wie im Nacht-Update:
    - `get_activities_by_date` von heute bis heute (alle Seiten); je Einheit `get_activity` (Leistung, NP, Höhenmeter, Dauer, `description` als `notiz`, `workout_rpe`,
      `workout_feel`) und `get_activity_hr_in_timezones` (Zeit in Zone 1–5). Keine FIT-Daten, kein Wetter, keine Ernährung.
@@ -203,9 +208,16 @@ Jeder Abruf, der fehlschlägt, wird weggelassen: kein Abbruch.
      `bbSleep`), `get_sleep_data(heute)` als Datei → `python3 -I tools/wellness.py nacht <pfad>`.
 3. `work/new.json` mit `"lauf": "tag"` und nur diesen Feldern schreiben, dann `python3 -I tools/merge_daily.py data.json work/new.json` (ohne fit.jsonl). Die Seite zeigt
    «Stand hh:mm (Tag-Update)», die Belastung als «Bisher heute» (der Tag läuft noch) statt «offen».
+3b. **Heute senden:** `python3 -I tools/garmin_senden.py plan data.json --heute > work/garmin_plan.json`. Stehen dort `aktionen`, genau diese ausführen wie im Abschnitt
+   «An Garmin senden» in `garmin.md` (hochladen mit Rücklese, einplanen, austragen; nie etwas anderes, nie ein anderer Tag als heute, nie Enduco), das Ergebnis je `nr` in
+   `work/garmin_ergebnis.json`, dann `python3 -I tools/garmin_senden.py eintragen data.json work/garmin_plan.json work/garmin_ergebnis.json`. Keine Aktionen: nichts tun.
+   Ein Fehler beim Senden bricht das Tag-Update nicht ab (der Auftrag steht dann auf «fehler», die Seite zeigt es; das nächste Update versucht es nicht von selbst nochmals –
+   Silas sendet neu oder sagt es im Chat).
 4. `SPUREN_PW=… node tools/crypt.mjs encrypt data.json data.enc.json`. Commit «Tag-Update JJJJ-MM-TT hh:mm» mit **nur** `data.enc.json`, auf `main` pushen. Scheitert der Push:
-   einmal `git pull --rebase`, erneut pushen; bei einem Konflikt in `data.enc.json` wie beim Morgen-Update (`git rebase --abort`, `git reset --hard origin/main`, Schritte 1, 3
-   und 4 mit dem schon geschriebenen `work/new.json` wiederholen).
+   einmal `git pull --rebase`, erneut pushen; bei einem Konflikt in `data.enc.json` wie beim Morgen-Update (`git rebase --abort`, `git reset --hard origin/main`, Schritte 1, 1b (mit der
+   schon geschriebenen `work/eingang_heute.json`, ohne nochmals zu lesen), 3 und 4 mit dem schon geschriebenen `work/new.json` wiederholen). **Wurde in 3b schon gesendet:** nichts
+   nochmals an Garmin schicken, sondern `python3 -I tools/garmin_senden.py eintragen data.json work/garmin_plan.json work/garmin_ergebnis.json` mit den schon vorhandenen
+   Dateien erneut ausführen (sonst stünde die Einheit doppelt in Garmin).
 5. Fehler: nichts committen (`data.enc.json` bleibt unverändert); das nächste Tag-Update holt nach. Eine kurze Nachricht an Silas nur beim Lauf um 21 Uhr und nur, wenn
    Entschlüsseln, Einspielen oder der zweite Push dabei scheitert. Klappt alles: keine Nachricht.
 Das Morgen-Update am nächsten Tag und das Nacht-Update ersetzen dieselben Tage und Einheiten (nichts doppelt).

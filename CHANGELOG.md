@@ -1,5 +1,13 @@
 # Änderungen
 
+## V9.24.4 · 25.11.2026 · «Heute senden»: Einheiten von heute von Hand an Garmin (heute-senden-1.0)
+Silas: «kann man keine Schaltfläche einfügen, die man für heute auch senden kann?» – bisher ging heute nur im Chat; «Senden» (Nacht-Update) gilt ab morgen. Entscheid Silas: ja, das Tag-Update darf dafür nach Garmin schreiben.
+- **Seite (Einheit-Seite → Export → Garmin):** für die Einheiten von heute (bis 22:30) der Knopf **«Heute senden»** (danach «Nochmals heute senden», «Nicht senden» / «Aus Garmin austragen»). Er legt den Auftrag «gs-<heute>» mit Modus **«heute»** an; die Seite sagt «Wird gesendet: mit dem nächsten Update (um 13, 15, 17, 19, 21 oder 23 Uhr)». Auf die Uhr kommt es beim nächsten Synchronisieren. Nach 22:30 wie bisher nur im Chat. Ab morgen unverändert «Senden». Die Automatik («Aus») ändert daran nichts.
+- **Werkzeug (`tools/garmin_senden.py`):** `pruefen` nimmt «heute» nur mit dem Datum des Erstellens an; `plan` sendet «heute» am selben Tag (Nacht-Update 22:56), später «verpasst»; neu `plan data.json --heute` (nur diese Aufträge, fürs Tag-Update) und `heute_filtern work/eingang_a.json work/eingang_heute.json` (aus dem Eingang nur den Auftrag «heute» von heute, nie anderes).
+- **Tag-Update** (`docs/anleitung/updates.md`, Schritt 1b und 3b; die geplante Aufgabe «Tag-Update» wurde entsprechend angepasst): übernimmt aus dem Eingang nur diesen Auftrag, sendet ihn (hochladen mit Rücklese, einplanen, austragen – nur eigene Einträge, nur heute, nie Enduco) und trägt das Ergebnis ein; `eingang/` bleibt unberührt, das Nacht-Update spielt dieselbe Eingabe später nochmals ein, ohne etwas doppelt zu senden. Bei einem Push-Konflikt wird nichts nochmals an Garmin geschickt, sondern nur `eintragen` wiederholt.
+- **Tests:** neu `tests/test_v9244.cjs` (5), `tests/test_tools.py` (+12, Werkzeug: Prüfung, Plan Tag-/Nacht-Update, Austragen, Filter, Befehle, nochmaliges Einspielen), `tools/durchklick_heute.py` (Chrome, Demo, Uhr fest auf 14:00 und 23:00; 23 Schritte, 0 Fehler).
+- **Nicht prüfbar von hier:** der erste echte Lauf des Tag-Updates mit einem Auftrag «heute» (Garmin-Aufrufe); die Aufrufe sind dieselben wie im Nacht-Update.
+
 ## V9.24.3 · 25.11.2026 · Export-Blatt einfacher: oben nur «Garmin | Zwift» zur Auswahl (zwift-export-2.1)
 Silas (mit Bildschirmfoto): «kannst du das vereinfachen? dass dort nur steht Garmin oder Zwift zur Auswahl?»
 - **Einheit-Seite → Export bei Rad-Einheiten:** oben nur die Wahl «Garmin | Zwift»; darunter steht nur der gewählte Teil. Voreinstellung: Garmin; Zwift, wenn Garmin nicht senden kann (heute, zu spät, kein Fenster, Grund) oder zuletzt Zwift gewählt war (nur im Gerät, `in-export-ziel`). Lauf/Schwimmen/Bibliothek bleiben «An Garmin senden» ohne Wahl.

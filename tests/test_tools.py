@@ -1396,6 +1396,56 @@ check("Garmin senden: verschoben, alter Tag auch im Auftrag – trotzdem erst na
       [(x["art"], x["date"], x.get("nach")) for x in _Pm2["aktionen"]] == [("hochladen", "2026-03-06", None), ("austragen", "2026-03-05", 1)], str(_Pm2["aktionen"]))
 _ip2 = {"garmin_auftraege": [dict(_GA["rad_vo2"], status="offen")], "plan_garmin": []}
 check("Garmin senden: Tag schon da → verpasst (nicht mehr senden)", GS.plan(_ip2, _jz("2026-03-05T22:58"))["abschluesse"][0]["status"] == "verpasst")
+# ---------- V9.24.4 heute-senden-1.0: Knopf «Heute senden» (Modus «heute», Tag-Update 13–21 Uhr, Nacht-Update) ----------
+_hz = lambda d, w=5001: {"id": "gs-" + d, "date": d, "modus": "heute", "erstellt": d + "T12:10:00+01:00", "v": "garmin-senden-1.2", "ohne": [],  # noqa: E731
+                         "einheiten": [{"uid": "h-1", "quelle": "bibliothek", "titel": "Beispiel Rad", "sport": "rad", "wid": w, "fassung": f"bib-{w}"}]}
+check("Heute senden: Prüfung nimmt «heute» am Tag des Erstellens an, lehnt anderes Datum ab",
+      GS.pruefen(_hz("2026-03-05")) is None and GS.pruefen(dict(_hz("2026-03-06"), erstellt="2026-03-05T12:10:00+01:00")) and GS.pruefen(dict(_hz("2026-03-04"), erstellt="2026-03-05T12:10:00+01:00")),
+      str(GS.pruefen(dict(_hz("2026-03-06"), erstellt="2026-03-05T12:10:00+01:00"))))
+_hd = {"garmin_auftraege": [dict(_hz("2026-03-05"), status="offen"), dict(_GA["weiter"], date="2026-03-06", id="gs-2026-03-06", status="offen")], "plan_garmin": []}
+_h1 = GS.plan(_hd, _jz("2026-03-05T14:58"), nur_heute=True)
+check("Heute senden: Tag-Update (nur_heute) plant nur den Auftrag «heute» von heute – der Auftrag für morgen bleibt liegen",
+      [(x["art"], x["date"], x["uid"]) for x in _h1["aktionen"]] == [("einplanen", "2026-03-05", "h-1")] and not _h1["abschluesse"], str(_h1)[:300])
+_h2 = GS.plan(_hd, _jz("2026-03-05T22:56"))
+check("Heute senden: das Nacht-Update (22:56, noch heute) sendet ihn mit den Aufträgen für morgen; am nächsten Morgen ist er «verpasst»",
+      [x["date"] for x in _h2["aktionen"]] == ["2026-03-05", "2026-03-06"]
+      and [s["status"] for s in GS.plan(_hd, _jz("2026-03-06T07:00"))["abschluesse"] if s["auftrag"] == "gs-2026-03-05"] == ["verpasst"], str(_h2)[:300])
+check("Heute senden: ein Auftrag «senden» für heute bleibt «verpasst» (nur «heute» gilt am selben Tag); «Aus» der Automatik ändert am Knopf nichts",
+      GS.plan({"garmin_auftraege": [dict(_hz("2026-03-05"), modus="senden", status="offen")], "plan_garmin": []}, _jz("2026-03-05T14:58"))["abschluesse"][0]["status"] == "verpasst"
+      and GS.plan({"garmin_auftraege": [dict(_hz("2026-03-05"), status="offen")], "plan_garmin": [], "planeinstellung": [{"id": "pe-garmin", "modus": "aus"}]}, _jz("2026-03-05T14:58"), nur_heute=True)["aktionen"])
+_hz_e = {"garmin_auftraege": [dict(_hz("2026-03-05"), status="offen")], "plan_garmin": []}
+_hm, _hf = GS.eintragen(_hz_e, GS.plan(_hz_e, _jz("2026-03-05T14:58"), nur_heute=True), [{"nr": 1, "ok": True, "scheduled_id": 9001, "vorhanden": False}], _jz("2026-03-05T15:00"))
+check("Heute senden: Ergebnis eingetragen (Vermerk heute, Auftrag erledigt); danach nichts nochmals und keine Aktion im Nacht-Update",
+      _hz_e["plan_garmin"][0]["date"] == "2026-03-05" and _hz_e["garmin_auftraege"][0]["status"] == "erledigt" and not _hf
+      and not GS.plan(_hz_e, _jz("2026-03-05T22:56"))["aktionen"], str(_hz_e)[:300])
+_hw = {"garmin_auftraege": [dict(_hz("2026-03-05"), einheiten=[], erstellt="2026-03-05T16:00:00+01:00", status="offen")], "plan_garmin": _hz_e["plan_garmin"]}
+check("Heute senden: «Aus Garmin austragen» (Auftrag ohne die Einheit) trägt im nächsten Update den eigenen Vermerk aus",
+      [(x["art"], x["date"]) for x in GS.plan(_hw, _jz("2026-03-05T16:58"), nur_heute=True)["aktionen"]] == [("austragen", "2026-03-05")], str(GS.plan(_hw, _jz("2026-03-05T16:58"), nur_heute=True)))
+_N = {"garmin_senden_add": [_hz("2026-03-05"), dict(_hz("2026-03-05"), erstellt="2026-03-05T13:00:00+01:00"), _hz("2026-03-06"), dict(_GA["weiter"], date="2026-03-05", id="gs-2026-03-05"), "x"], "planwahl_add": [{"id": "z"}]}
+_hl = GS.heute_filtern(_N, _jz("2026-03-05T14:58"))
+check("Heute senden: aus dem Eingang kommt nur der Auftrag «heute» von heute (neueste Fassung), nie anderes",
+      len(_hl) == 1 and _hl[0]["erstellt"] == "2026-03-05T13:00:00+01:00" and _hl[0]["modus"] == "heute" and not GS.heute_filtern({"garmin_senden_add": [_hz("2026-03-06")]}, _jz("2026-03-05T14:58")),
+      str(_hl)[:200])
+_th = tempfile.mkdtemp()
+json.dump(_N, open(os.path.join(_th, "a.json"), "w"))
+json.dump({"activities": [], "days": []}, open(os.path.join(_th, "d.json"), "w"))
+_hc = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "tools", "garmin_senden.py"), "heute_filtern", os.path.join(_th, "a.json"), os.path.join(_th, "h.json"), "--jetzt", "2026-03-05T14:58"],
+                     capture_output=True, text=True)
+_hn = json.load(open(os.path.join(_th, "h.json")))
+check("Heute senden: Befehl heute_filtern schreibt nur «garmin_senden_add» (nichts anderes aus dem Eingang)",
+      _hc.returncode == 0 and "HEUTE-AUFTRÄGE: 1" in _hc.stdout and list(_hn) == ["garmin_senden_add"] and len(_hn["garmin_senden_add"]) == 1, _hc.stdout + _hc.stderr)
+merge_daily.main(os.path.join(_th, "d.json"), os.path.join(_th, "h.json"))
+_Dh = json.load(open(os.path.join(_th, "d.json")))
+_ph = GS.plan(_Dh, _jz("2026-03-05T14:58"), nur_heute=True)
+GS.eintragen(_Dh, _ph, [{"nr": 1, "ok": True, "scheduled_id": 9002, "vorhanden": False}], _jz("2026-03-05T15:00"))
+json.dump(_Dh, open(os.path.join(_th, "d.json"), "w"))
+merge_daily.main(os.path.join(_th, "d.json"), os.path.join(_th, "h.json"))                 # das Nacht-Update spielt dieselbe Eingabe nochmals ein
+_Dh = json.load(open(os.path.join(_th, "d.json")))
+check("Heute senden: wird dieselbe Eingabe später nochmals eingespielt, bleibt der Auftrag «erledigt» und nichts wird doppelt gesendet",
+      [(a["id"], a["status"]) for a in _Dh["garmin_auftraege"]] == [("gs-2026-03-05", "erledigt")] and len(_Dh["plan_garmin"]) == 1
+      and not GS.plan(_Dh, _jz("2026-03-05T22:56"))["aktionen"], str(_Dh.get("garmin_auftraege"))[:200])
+_hr = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "tools", "garmin_senden.py"), "plan", os.path.join(_th, "d.json"), "--heute", "--jetzt", "2026-03-05T16:58"], capture_output=True, text=True)
+check("Heute senden: Befehl «plan --heute» läuft und liefert eine leere Liste, wenn nichts offen ist", _hr.returncode == 0 and json.loads(_hr.stdout)["aktionen"] == [], _hr.stdout[:200] + _hr.stderr[:200])
 _soll = _w0
 _ist = copy.deepcopy(_w0)
 check("Garmin senden: Rücklese gleich", GS.rueck(_soll, _ist) == [])

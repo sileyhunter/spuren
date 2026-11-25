@@ -78,6 +78,10 @@
     return d ? { a: d, lokal: false } : null;
   }
   const garminFenster = (ds) => ds > heute() && ds <= add(heute(), 7);          // von Hand und automatisch: morgen bis eine Woche voraus
+  /** V9.24.4 heute-senden-1.0: «Heute senden» (Auftrag «heute») – das nächste Update sendet ihn: Tag-Update 13, 15, 17, 19, 21 Uhr, Nacht-Update 23 Uhr.
+   *  Danach (ab 22:30) kommt kein Update mehr rechtzeitig: nur noch im Chat. */
+  const HEUTE_WANN = "mit dem nächsten Update (um 13, 15, 17, 19, 21 oder 23 Uhr)";
+  const garminHeute = (ds) => { const d = new Date(); return ds === heute() && d.getHours() * 60 + d.getMinutes() < 22 * 60 + 30; };
   /** V9.6 garmin-auto-1.0: Planeinstellung «Automatisch senden» ({ modus: aus | haekchen | alle, ab: "23:00" }); ohne Eintrag wie bis V9.5. */
   const garminAuto = () => { try { const E = window.V75UI && window.V75UI.einstellungen(); if (E && E.garmin) return E.garmin; } catch (e) { console.error(e); } return { modus: "haekchen", ab: "23:00" }; };
   M.garminAuto = () => garminAuto();
@@ -162,6 +166,8 @@
     return garminAuftragSpeichern(ds, modus, uids);
   };
   M.garminFenster = (ds) => bereit() && garminFenster(ds);
+  M.garminHeute = (ds) => bereit() && garminHeute(ds);
+  M.heuteWann = HEUTE_WANN;
   M.nachtGelaufen = () => bereit() && nachtGelaufen();
   M.gesendet = () => (bereit() ? gesendet() : []);
 
@@ -991,8 +997,8 @@
     const zeit = (iso) => { try { return new Date(iso).toLocaleString("de-CH", { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }); } catch (e) { return iso; } };
     let stand = "";
     if (a && A.lokal) stand = a.modus === "aus" ? "Automatisch senden abgestellt (wird mit dem nächsten Update übernommen)."
-      : a.modus === "auto" ? `Wird am Vortag ab ${GA.ab} Uhr automatisch gesendet (die Fassung von jetzt; Änderungen hier werden mitgenommen).` : "Wird mit dem nächsten Nacht-Update gesendet (gegen 23 Uhr).";
-    else if (a && a.status === "offen") stand = a.modus === "auto" ? `Wird am Vortag ab ${GA.ab} Uhr automatisch gesendet.` : "Wird mit dem nächsten Nacht-Update gesendet (gegen 23 Uhr).";
+      : a.modus === "auto" ? `Wird am Vortag ab ${GA.ab} Uhr automatisch gesendet (die Fassung von jetzt; Änderungen hier werden mitgenommen).` : a.modus === "heute" ? `Wird ${HEUTE_WANN} gesendet.` : "Wird mit dem nächsten Nacht-Update gesendet (gegen 23 Uhr).";
+    else if (a && a.status === "offen") stand = a.modus === "auto" ? `Wird am Vortag ab ${GA.ab} Uhr automatisch gesendet.` : a.modus === "heute" ? `Wird ${HEUTE_WANN} gesendet.` : "Wird mit dem nächsten Nacht-Update gesendet (gegen 23 Uhr).";
     if (GA.modus === "aus" && a && a.modus === "auto" && (A.lokal || a.status === "offen")) stand = "Automatisch senden ist abgestellt (Planeinstellungen) – dieser Tag geht nicht automatisch.";
     else if (a && a.status === "erledigt") stand = `Gesendet ${esc(zeit(a.erledigt))}.`;
     else if (a && a.status === "verpasst") stand = "Nicht gesendet: der Tag war schon da.";

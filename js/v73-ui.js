@@ -811,14 +811,20 @@
     const zeilen = [];
     if (stand === "gesendet") zeilen.push(`<p class="v73-stand ok" role="status">${ic("haken", 18)}In Garmin${g && g.gesendet ? ` · gesendet ${esc(zeit(g.gesendet))}` : ""}.</p>`);
     if (stand === "geaendert") zeilen.push(`<p class="v73-stand warn" role="status">${ic("trend", 18)}In Garmin, aber seither geändert – die neue Fassung ersetzt die alte beim nächsten Senden.</p>`);
-    if (stand === "wartet") zeilen.push(`<p class="v73-stand" role="status">${ic("uhr", 18)}Wird gesendet: ${a.modus === "auto" ? "am Vortag ab 23 Uhr (Änderungen bis dahin kommen mit)" : "mit dem nächsten Nacht-Update (gegen 23 Uhr)"}.</p>`);
+    if (stand === "wartet") zeilen.push(`<p class="v73-stand" role="status">${ic("uhr", 18)}Wird gesendet: ${a.modus === "auto" ? "am Vortag ab 23 Uhr (Änderungen bis dahin kommen mit)" : a.modus === "heute" ? U66().heuteWann : "mit dem nächsten Nacht-Update (gegen 23 Uhr)"}.</p>`);
     if (a && !A.lokal && a.status === "fehler") { const fe = (a.fehler || []).filter((x) => String(x).startsWith(e.titel) || String(x).includes(e.uid)); if (fe.length) zeilen.push(`<p class="warn-t">Nicht gesendet: ${esc(fe.join("; "))}</p>`); }
     const ab = (C.D.garmin_abgelehnt || []).filter((x) => x && x.id === "gs-" + ds && (!a || String(x.erstellt || "") >= String(a.erstellt || ""))).pop();
     if (ab) zeilen.push(`<p class="warn-t">Auftrag abgelehnt: ${esc(ab.grund)}</p>`);
     let knoepfe = "", hinweis = "", cssHinweis = "";
     const fenster = G.garminFenster(ds), zuSpaet = ds === heute() || (ds === V64().addDays(heute(), 1) && G.nachtGelaufen() && stand !== "gesendet");
+    const heuteOk = !grund && !!(G.garminHeute && G.garminHeute(ds));      // V9.24.4 heute-senden-1.0: «Heute senden» bis 22:30, das nächste Update sendet es
     if (grund) hinweis = `Diese Einheit geht nicht an Garmin: ${grund}.`;
-    else if (ds === heute()) hinweis = "Für heute geht es nur noch im Chat («schick die Einheit von heute an Garmin»).";
+    else if (heuteOk) {
+      const [was, cssT] = exportText(e, ds);
+      hinweis = `${V.VERSIONS.garmin}: ${was}. Heute: gesendet wird ${U66().heuteWann}; auf die Uhr kommt es beim nächsten Synchronisieren. Andere Einheiten des Tages bleiben, wie sie in Garmin sind. Enduco bleibt unberührt.`;
+      cssHinweis = cssT;
+    }
+    else if (ds === heute()) hinweis = "Für heute geht es jetzt nur noch im Chat («schick die Einheit von heute an Garmin»).";
     else if (zuSpaet) hinweis = "Das Nacht-Update ist heute schon gelaufen – für morgen geht es nur noch im Chat.";
     else if (!fenster) hinweis = "Senden geht ab einer Woche vorher.";
     else {
@@ -829,10 +835,10 @@
       hinweis = `${V.VERSIONS.garmin}: ${was}. Andere Einheiten des Tages bleiben, wie sie in Garmin sind. Enduco bleibt unberührt.`;
       cssHinweis = cssT;
     }
-    const kann = !grund && fenster && !zuSpaet;
+    const kann = !grund && ((fenster && !zuSpaet) || heuteOk);
     // zwift-export-2.1: Rad-Einheiten (Rolle) haben im Export-Blatt oben nur die Wahl «Garmin | Zwift», darunter steht nur das Gewählte
     const zwift = e.sport === "rad" && U66().zwiftAbschnitt && U66().zwiftTauglich(e) ? U66().zwiftAbschnitt(ds, [e], { ohneKopf: true }) : "";
-    const haupt = kann && (stand !== "wartet" || (a && a.modus === "auto")) ? `<button type="button" class="btn primary gross" data-v73gs>${stand === "gesendet" ? "Nochmals senden" : "Senden"} ${ic("play", 18)}</button>` : "";
+    const haupt = kann && (stand !== "wartet" || (a && a.modus === "auto")) ? `<button type="button" class="btn primary gross" data-v73gs>${heuteOk ? (stand === "gesendet" ? "Nochmals heute senden" : "Heute senden") : stand === "gesendet" ? "Nochmals senden" : "Senden"} ${ic("play", 18)}</button>` : "";
     const weg = kann && (g || stand === "wartet") ? `<button type="button" class="btn" data-v73gweg>${g ? "Aus Garmin austragen" : "Nicht senden"}</button>` : "";
     const gKnoepfe = `${weg}${haupt}`;
     const gemerkt = (() => { try { return localStorage.getItem("in-export-ziel"); } catch (err) { return null; } })();
@@ -852,11 +858,11 @@
       }));
     }
     const los = async (weg) => {
-      const modus = weg ? (a && a.modus === "auto" ? "auto" : "senden") : ((ov.querySelector("input[name=v73g]:checked") || {}).value || "senden");
+      const modus = heuteOk ? "heute" : weg ? (a && a.modus === "auto" ? "auto" : "senden") : ((ov.querySelector("input[name=v73g]:checked") || {}).value || "senden");
       const f = await U66().einheitSenden(ds, e.uid, modus, !!weg);
       if (f) return fehlerIn(ov, f);
       V59().schliessen(); zeichnen();
-      melden(weg ? "Wird aus Garmin ausgetragen (nächstes Nacht-Update)." : modus === "auto" ? "Wird am Vortag um 23 Uhr gesendet." : "Wird mit dem nächsten Nacht-Update gesendet.", true);
+      melden(modus === "heute" ? (weg ? "Wird aus Garmin ausgetragen (nächstes Update)." : `Wird ${U66().heuteWann} gesendet.`) : weg ? "Wird aus Garmin ausgetragen (nächstes Nacht-Update)." : modus === "auto" ? "Wird am Vortag um 23 Uhr gesendet." : "Wird mit dem nächsten Nacht-Update gesendet.", true);
     };
     const b1 = ov.querySelector("[data-v73gs]"); if (b1) b1.onclick = () => los(false);
     const b2 = ov.querySelector("[data-v73gweg]"); if (b2) b2.onclick = () => los(true);

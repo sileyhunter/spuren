@@ -1,4 +1,4 @@
-"""garmin-senden-1.2 (V6.6, Etappe 6.7, Entscheid E3 von Silas am 13.11.2026; 1.1 = V7.3 Etappe 2; 1.2 = V7.5.1): Einheiten aus «Mein Plan» an Garmin senden.
+"""garmin-senden-1.2 (V6.6, Etappe 6.7, Entscheid E3 von Silas am 13.11.2026; 1.1 = V7.3 Etappe 2; 1.2 = V7.5.1; dazu heute-senden-1.0 = V9.24.4 «Heute senden»): Einheiten aus «Mein Plan» an Garmin senden.
 
 Die Seite legt je Tag einen Auftrag an (Eingabe garmin_senden → merge_daily.py → garmin_auftraege), mit einer Momentaufnahme je Einheit:
 fertiges Garmin-Workout (Format von upload_workout, Name «IN · …») bzw. bei der Bibliothek nur die Workout-ID (Enduco-Workout, wird nur
@@ -18,6 +18,8 @@ geplant», wird jedes eigene Workout des Tages mit lockerer Fassung im Auftrag d
 harte austragen und löschen; Bibliothek nur austragen). Nur heute, nur eigene Vermerke, nie härter; Enduco bleibt unberührt.
 
   python3 -I tools/garmin_senden.py plan data.json [--jetzt 2026-11-14T23:05] > work/garmin_plan.json
+  python3 -I tools/garmin_senden.py plan data.json --heute [--jetzt …] > work/garmin_plan.json        # Tag-Update: nur Aufträge «heute» (V9.24.4)
+  python3 -I tools/garmin_senden.py heute_filtern work/eingang_a.json work/eingang_heute.json        # Tag-Update: nur Aufträge «heute» von heute aus dem Eingang
   python3 -I tools/garmin_senden.py ampel data.json [--jetzt 2026-11-17T07:05] > work/garmin_plan.json      # Morgen-Update (A7)
   python3 -I tools/garmin_senden.py rueck work/garmin_plan.json <nr> <antwort.json>      # nach upload_workout: Rücklese mit get_workout_by_id(raw)
   python3 -I tools/garmin_senden.py eintragen data.json work/garmin_plan.json work/garmin_ergebnis.json
@@ -214,7 +216,7 @@ def pruefen(a):
         return "kein Datum"
     if a.get("id") != "gs-" + d.isoformat():
         return "ID passt nicht zum Datum"
-    if a.get("modus") not in ("senden", "auto", "aus"):
+    if a.get("modus") not in ("senden", "auto", "aus", "heute"):
         return f"unbekannter Modus {a.get('modus')!r}"
     t = _zeit(a.get("erstellt"))
     if not t:
@@ -222,6 +224,8 @@ def pruefen(a):
     e0 = t.astimezone(TZ).date()
     if a["modus"] != "aus" and not e0 <= d <= e0 + dt.timedelta(days=MAX_TAGE):
         return "Tag liegt zurück oder mehr als eine Woche voraus"
+    if a["modus"] == "heute" and d != e0:                        # V9.24.4 heute-senden-1.0: «Heute senden» gilt nur für den Tag des Erstellens
+        return "«heute» nur für den Tag, an dem der Auftrag erstellt wurde"
     E = a.get("einheiten")
     if not isinstance(E, list) or len(E) > 12:
         return "Einheiten ungültig"
@@ -283,9 +287,11 @@ def einstellung(D):
     return best["modus"], dt.time(int(ab[:2]), int(ab[3:]))
 
 
-def plan(D, jetzt):
+def plan(D, jetzt, nur_heute=False):
     """Was zu tun ist. → {v, jetzt, aktionen [{nr, art, auftrag, date, uid, …}], abschluesse [{auftrag, status, grund}], warten_bis}
-    V9.6 garmin-auto-1.0: «Senden ab» aus der Planeinstellung (statt fest 23:00); «Aus» schliesst offene automatische Aufträge ab (von Hand «senden» bleibt)."""
+    V9.6 garmin-auto-1.0: «Senden ab» aus der Planeinstellung (statt fest 23:00); «Aus» schliesst offene automatische Aufträge ab (von Hand «senden» bleibt).
+    V9.24.4 heute-senden-1.0: Modus «heute» (Knopf «Heute senden») gilt für den Tag des Erstellens und wird im nächsten Update gesendet (Tag-, Nacht-Update);
+    später ist er «verpasst». nur_heute (Tag-Update): nur offene Aufträge «heute» von heute, sonst nichts."""
     jetzt = jetzt.astimezone(TZ)
     modus_auto, ab_uhr = einstellung(D)
     heute, morgen = jetzt.date(), jetzt.date() + dt.timedelta(days=1)
@@ -307,6 +313,8 @@ def plan(D, jetzt):
 
     erledigt = set()
     offen = [x for x in D.get("garmin_auftraege") or [] if isinstance(x, dict) and x.get("status") == "offen"]
+    if nur_heute:
+        offen = [x for x in offen if x.get("modus") == "heute" and _datum(x.get("date")) == heute]
     neuester = {}                                         # Einheit → Tag laut dem neuesten Auftrag (verschoben: der neue Tag gilt)
     for a in sorted(offen, key=lambda x: str(x.get("erstellt") or "")):
         for u in a.get("einheiten") or []:
@@ -314,7 +322,8 @@ def plan(D, jetzt):
                 neuester[u["uid"]] = a.get("date")
     def faellig(a):
         d = _datum(a.get("date"))
-        return bool(d) and d > heute and (a.get("modus") == "senden" or (a.get("modus") == "auto" and modus_auto != "aus" and d == morgen and jetzt.time() >= ab_uhr))
+        return bool(d) and ((d > heute and (a.get("modus") == "senden" or (a.get("modus") == "auto" and modus_auto != "aus" and d == morgen and jetzt.time() >= ab_uhr)))
+                            or (d == heute and a.get("modus") == "heute"))
     jetzt_dran = {a.get("date") for a in offen if faellig(a)}   # Tage, die in diesem Lauf gesendet werden
     for a in sorted(offen, key=lambda x: x.get("date") or ""):
         d = _datum(a.get("date"))
@@ -323,7 +332,7 @@ def plan(D, jetzt):
         if a.get("modus") == "aus" or (a.get("modus") == "auto" and modus_auto == "aus"):
             abschluesse.append({"auftrag": a["id"], "status": "aus", "grund": "automatisch senden abgestellt"})
             continue
-        if d <= heute:
+        if d < heute or (d == heute and a.get("modus") != "heute"):
             abschluesse.append({"auftrag": a["id"], "status": "verpasst", "grund": "Tag schon da – im Chat senden"})
             continue
         if a.get("modus") == "auto":
@@ -363,6 +372,18 @@ def plan(D, jetzt):
         if not any(x["auftrag"] == a["id"] for x in aktionen):
             abschluesse.append({"auftrag": a["id"], "status": "erledigt", "grund": "schon so in Garmin"})
     return {"v": V, "jetzt": jetzt.isoformat(timespec="seconds"), "aktionen": aktionen, "abschluesse": abschluesse, "warten_bis": warten}
+
+
+def heute_filtern(N, jetzt):
+    """V9.24.4 heute-senden-1.0 (Tag-Update): aus den Eingaben vom Handy (work/eingang_a.json, Feld garmin_senden_add) nur die Aufträge
+    «heute» mit dem Datum von heute – nie andere Aufträge, nie andere Eingaben. → Liste (neueste Fassung je ID)."""
+    heute = jetzt.astimezone(TZ).date().isoformat()
+    neu = {}
+    for g in (N.get("garmin_senden_add") if isinstance(N, dict) else None) or []:
+        if isinstance(g, dict) and g.get("modus") == "heute" and g.get("date") == heute and g.get("id") == "gs-" + heute:
+            if g["id"] not in neu or str(g.get("erstellt") or "") >= str(neu[g["id"]].get("erstellt") or ""):
+                neu[g["id"]] = g
+    return list(neu.values())
 
 
 def _ampel_neu(E):
@@ -546,7 +567,19 @@ def main(argv):
     if len(argv) >= 3 and argv[1] in ("plan", "ampel"):
         jetzt = _jetzt(argv[argv.index("--jetzt") + 1] if "--jetzt" in argv else None)
         D = json.load(open(argv[2], encoding="utf-8"))
-        print(json.dumps((plan if argv[1] == "plan" else ampel)(D, jetzt), ensure_ascii=False, indent=1))
+        if argv[1] == "plan":
+            print(json.dumps(plan(D, jetzt, nur_heute="--heute" in argv), ensure_ascii=False, indent=1))
+        else:
+            print(json.dumps(ampel(D, jetzt), ensure_ascii=False, indent=1))
+        return 0
+    if len(argv) >= 4 and argv[1] == "heute_filtern":     # V9.24.4: aus work/eingang_a.json nur die Aufträge «heute» von heute (Tag-Update)
+        jetzt = _jetzt(argv[argv.index("--jetzt") + 1] if "--jetzt" in argv else None)
+        N = json.load(open(argv[2], encoding="utf-8"))
+        L = heute_filtern(N, jetzt)
+        if L:
+            with open(argv[3], "w", encoding="utf-8") as f:
+                json.dump({"garmin_senden_add": L}, f, ensure_ascii=False, indent=1)
+        print(f"HEUTE-AUFTRÄGE: {len(L)}")
         return 0
     if len(argv) == 5 and argv[1] == "rueck":
         P = json.load(open(argv[2], encoding="utf-8"))
