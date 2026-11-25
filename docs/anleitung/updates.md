@@ -93,6 +93,11 @@
    `python3 -I tools/garmin_senden.py plan data.json > work/garmin_plan.json` und die `aktionen` der Reihe nach ausführen, wie im Abschnitt
    «An Garmin senden» beschrieben; danach `python3 -I tools/garmin_senden.py eintragen data.json work/garmin_plan.json work/garmin_ergebnis.json`
    (auch ohne Aktionen). Meldet es «GARMIN FEHLER …»: Silas kurz informieren (Titel und Grund). Fehler beim Senden brechen das Update nie ab.
+   **Rad an Zwift über Intervals.icu (V9.26.0, zwift-nacht-1.0; Silas 26.11.2026):** direkt danach, gleiche Wartezeit «Senden ab». Nur wenn die Umgebungsvariable
+   `INTERVALS_API_KEY` gesetzt ist (Silas trägt den Schlüssel in den Anweisungen der geplanten Aufgabe ein; nie ins Repository, nie in den Chat, nie in Meldungen):
+   `python3 -I tools/zwift_senden.py lauf data.json` (nur Aufträge von heute und morgen mit Zwift-Eintrag; `plan_zwift` merkt Tag und Fassung, Upsert über `external_id`,
+   nichts doppelt; entfernte Einheiten werden nicht in Intervals.icu gelöscht). Meldet es «ZWIFT FEHLER …»: Silas kurz informieren (Grund). Fehler brechen das Update nie ab;
+   ist Intervals.icu aus der Umgebung gesperrt («nicht erreichbar»), die Netzfreigabe der Umgebung prüfen lassen. `data.json` danach wie gewohnt verschlüsseln.
    **Strecken an Garmin Connect (V9.14.0, strecken-senden-1.0; Abschnitt «Strecken an Garmin Connect» in `garmin.md`):** nur wenn die Aufgabenbeschreibung des Updates ihn ausdrücklich nennt (Freigabe von Silas;
    sonst auf Zuruf im Chat), danach `python3 -I tools/strecken_senden.py plan data.json work/strecken > work/strecken_plan.json`. Je Aktion `upload_course` und `get_courses` zum Zurücklesen,
    `python3 -I tools/strecken_senden.py eintragen data.json work/strecken_plan.json work/strecken_ergebnis.json`, `work/strecken/` löschen. Nur Garmin Connect, nie aufs Gerät, nie löschen; Fehler brechen das Update nie ab

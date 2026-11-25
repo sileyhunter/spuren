@@ -1,5 +1,13 @@
 # Änderungen
 
+## V9.26.0 · 26.11.2026 · Rad-Einheiten gehen nachts von selbst an Zwift (zwift-nacht-1.0)
+Silas: Rad-Einheiten einmal auf Zwift und einmal auf Garmin, alles andere nur auf Garmin, jeden Abend um 23 Uhr, ohne dass die Seite offen sein muss.
+- **Seite (`js/v66.js`, `js/v66-ui.js`):** jeder Garmin-Auftrag trägt für Rad-Einheiten den fertigen Eintrag für Intervals.icu mit (`zwift`: `eintrag`, `fassung`), solange Zugang, FTP und der Haken «automatisch senden» gesetzt sind; die Fassung gehört zum Fingerabdruck (Änderung erneuert den Auftrag).
+- **Neu `tools/zwift_senden.py` (zwift-nacht-1.0):** `plan`/`lauf` für Aufträge von heute und morgen, ein Upsert-Aufruf an Intervals.icu (bei 400/422 nochmals ohne `indoor`), Vermerk in `plan_zwift`; Schlüssel nur aus `INTERVALS_API_KEY`.
+- **`tools/garmin_senden.py`:** `pruefen` prüft den `zwift`-Eintrag (Felder, Tag, Name «IN · », `external_id`).
+- Tests: `tests/test_v9260.cjs` (3), `tests/test_tools.py` (+8), `tools/durchklick_zwift.py` (69 Schritte; Vermerk «gesendet» vor dem Auto-Schritt zurückgesetzt).
+- Offen: erster echter Lauf im Nacht-Update; Intervals.icu muss von der Umgebung erreichbar sein; in Intervals.icu die Übertragung geplanter Workouts an Garmin abstellen (sonst doppelt).
+
 ## V9.25.1 · 26.11.2026 · Rücklese erkennt Garmins Ablage von Watt-Zielen (garmin-senden 1.2, Rücklese)
 Das erste echte automatische Senden am Vorabend (Nacht-Update 25.11., Einheit vom 26.11.) schlug fehl: «RÜCKLESEN: abweichend – Ziel pace.zone statt power.between». Garmin legt Watt-Bereiche unter Zieltyp 6 als «pace.zone» ab (Werte bleiben gleich); die Rücklese verglich die Schlüsselnamen und lehnte die korrekt gespeicherte Einheit ab.
 - **Fix (`tools/garmin_senden.py`, `_ziel_key`):** `power.between` und `pace.zone` gelten als dieselbe Ziel-Art («bereich»); die Zielwerte werden weiter einzeln verglichen (andere Werte = Abweichung).

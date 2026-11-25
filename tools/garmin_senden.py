@@ -206,6 +206,31 @@ def workout_pruefen(w):
     return None
 
 
+ZWIFT_FELDER = {"category", "start_date_local", "type", "indoor", "name", "external_id", "description"}
+
+
+def zwift_pruefen(z, d):
+    """V9.26.0 zwift-nacht-1.0: Zwift-Eintrag einer Rad-Einheit (Seite → Auftrag) → Fehlertext oder None. Nur bekannte Felder, Tag = Tag des Auftrags."""
+    if not isinstance(z, dict) or set(z) - {"eintrag", "fassung"}:
+        return "unbekannte Felder"
+    if not isinstance(z.get("fassung"), str) or not 1 <= len(z["fassung"]) <= 40:
+        return "Fassung ungültig"
+    e = z.get("eintrag")
+    if not isinstance(e, dict) or set(e) - ZWIFT_FELDER:
+        return "Eintrag mit unbekannten Feldern"
+    if e.get("category") != "WORKOUT" or e.get("type") != "Ride" or ("indoor" in e and e["indoor"] is not True):
+        return "nur Rad-Workouts (indoor)"
+    if e.get("start_date_local") != d.isoformat() + "T00:00:00":
+        return "Tag passt nicht zum Auftrag"
+    if not isinstance(e.get("name"), str) or not e["name"].startswith(PREFIX) or len(e["name"]) > 80:
+        return "Name ohne «IN · »"
+    if not isinstance(e.get("external_id"), str) or not re.fullmatch(r"in-\S{1,60}", e["external_id"]):
+        return "external_id ungültig"
+    if not isinstance(e.get("description"), str) or not 1 <= len(e["description"]) <= 4000:
+        return "Workout-Text ungültig"
+    return None
+
+
 def pruefen(a):
     """Eingabe «garmin_senden» von der Seite → Fehlertext oder None. ID «gs-<Datum>», modus senden/auto/aus, Tag heute bis eine Woche nach dem
     Erstellen (nie zurück), Einheiten mit eindeutiger Kennung, bekannter Quelle und gültigem Workout bzw. Workout-ID der Bibliothek."""
@@ -248,6 +273,10 @@ def pruefen(a):
             f = workout_pruefen(alt.get("workout"))
             if f:
                 return f"{u.get('titel') or u['uid']} (locker): {f}"
+        if "zwift" in u:                                            # V9.26.0 zwift-nacht-1.0: fertiger Eintrag für Intervals.icu (tools/zwift_senden.py)
+            f = zwift_pruefen(u["zwift"], d)
+            if f:
+                return f"{u.get('titel') or u['uid']} (Zwift): {f}"
         if u["quelle"] == "bibliothek":
             if not isinstance(u.get("wid"), int) or isinstance(u.get("wid"), bool) or u["wid"] <= 0 or "workout" in u:
                 return "Bibliothek ohne Workout-ID"

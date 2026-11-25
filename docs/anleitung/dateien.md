@@ -21,6 +21,7 @@
   einheit-2.0 mit Blättern für Datum, Uhrzeit, Sperre, Indoor, Metrik, Workout bearbeiten, Bahnlänge, Block, Zone, Export), `tests/test_v73.cjs`,
   `logo-einheit.jpg` (Kopfbild, Ausschnitt aus logo.jpg), `docs/v73-zuordnung.md` (Zuordnung ohne Werte); Felder je Einheit einheit-felder-1.0 und
   Einfahren/Intervall-Intensität einheit-anpassen-1.0 in `js/v66.js` (`V66.feldPruefen`, `V66.teileAnpassen`, `V66.aendern` Art «einheit»)
+- **V9.26.0 (zwift-nacht-1.0):** `tools/zwift_senden.py` (Rad-Einträge nachts über Intervals.icu, `plan_zwift`), `zwift` im Garmin-Auftrag (`V66.garminAuftrag` opt.zwift, `V66UI.zwiftFuer`), `zwift_pruefen` in `tools/garmin_senden.py`, `tests/test_v9260.cjs`.
 - **V7.3 Etappe 2 (Schwimmen an Garmin):** garmin-senden-1.1 in `js/v66.js` (`V66.garminSchwimm`, `V66.garminPuls`, `V66.metrikVon`), `tools/garmin_senden.py`
   (Prüfung und Rücklese für Schwimmen, Puls, RPE), `V66UI.schwimmEinheit`/`V66UI.swOpt` (dieselbe Schwimm-Einheit für Seite, Auftrag und Stand),
   Export-Blatt in `js/v73-ui.js`; Tests in `tests/test_v73.cjs` und `tests/test_tools.py`

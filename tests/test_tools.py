@@ -2042,5 +2042,55 @@ check("V9.14 Strecken senden: Befehlszeile plan → eintragen (Datei atomar zur�
       _c1.returncode == 0 and _c2.returncode == 0 and "4713" in _c2.stdout and "4711" in _c2.stdout
       and next(a for a in _DC["strecken_auftraege"] if a["id"] == "sg-u-r1")["garmin_id"] == "4713" and not os.path.exists(os.path.join(_tc, "d.json.tmp")), _c1.stderr[-200:] + _c2.stdout[-200:] + _c2.stderr[-200:])
 
+# ---------- V9.26.0 zwift-nacht-1.0: Rad-Einheiten gehen im Nacht-Update über Intervals.icu nach Zwift ----------
+import zwift_senden as ZS  # noqa: E402
+_zj = GS._jetzt("2026-03-05T23:00")
+_ze = lambda uid, tag, t="Test": {"category": "WORKOUT", "start_date_local": tag + "T00:00:00", "type": "Ride", "indoor": True, "name": "IN · " + t, "external_id": "in-" + uid,
+                                  "description": "Warmup\n- 5m ramp 23-67%"}
+def _zo(tag, uid="zu1", fassung="f1", modus="auto", zwift=True):
+    u = {"uid": uid, "quelle": "vorschlag", "titel": "Test", "sport": "rad", "fassung": "g1", "workout": _w0}
+    if zwift:
+        u["zwift"] = {"eintrag": _ze(uid, tag), "fassung": fassung}
+    return {"id": "gs-" + tag, "date": tag, "modus": modus, "erstellt": "2026-03-05T12:00:00+01:00", "einheiten": [u] if modus != "aus" else [], "ohne": [], "status": "offen"}
+_Dz = {"garmin_auftraege": [_zo("2026-03-06"), _zo("2026-03-09", "zu2")]}
+_Pz = ZS.plan(_Dz, _zj)
+check("V9.26 Zwift nachts: geplant wird nur heute und morgen (nicht in drei Tagen)", [x["date"] for x in _Pz["aktionen"]] == ["2026-03-06"] and _Pz["aktionen"][0]["external_id"] == "in-zu1", str(_Pz)[:200])
+_Dz2 = {"garmin_auftraege": [_zo("2026-03-06", modus="aus"), _zo("2026-03-05", "zu3", zwift=False)]}
+check("V9.26 Zwift nachts: Tag mit «aus» und Einheit ohne Zwift-Eintrag (Lauf, Schwimmen, Bibliothek) werden nie gesendet", ZS.plan(_Dz2, _zj)["aktionen"] == [])
+_S = []
+def _post_ok(url, key, body):
+    _S.append((url, key, body)); return 200, "[]"
+_Ez = ZS.senden(_Pz, "KEY", "0", post=_post_ok)
+check("V9.26 Zwift nachts: eine Anfrage an Intervals.icu mit Upsert und dem Eintrag", _Ez["ok"] and len(_S) == 1 and _S[0][0].endswith("/athlete/0/events/bulk?upsert=true") and _S[0][2][0]["external_id"] == "in-zu1" and _S[0][2][0]["indoor"] is True)
+_msg = ZS.eintragen(_Dz, _Pz, _Ez, _zj)
+check("V9.26 Zwift nachts: Eintragen merkt Tag und Fassung; danach nichts mehr zu senden, bei neuer Fassung wieder, bei verschobenem Tag wieder",
+      _msg == ["2026-03-06 Test"] and _Dz["plan_zwift"][0]["fassung"] == "f1" and ZS.plan(_Dz, _zj)["aktionen"] == []
+      and len(ZS.plan({"garmin_auftraege": [_zo("2026-03-06", fassung="f2")], "plan_zwift": _Dz["plan_zwift"]}, _zj)["aktionen"]) == 1
+      and len(ZS.plan({"garmin_auftraege": [_zo("2026-03-05")], "plan_zwift": _Dz["plan_zwift"]}, _zj)["aktionen"]) == 1, str(_Dz.get("plan_zwift")))
+_S2 = []
+def _post_400(url, key, body):
+    _S2.append(body); return (400, "unknown field") if "indoor" in body[0] else (200, "[]")
+_E400 = ZS.senden(_Pz, "KEY", "0", post=_post_400)
+check("V9.26 Zwift nachts: lehnt Intervals.icu «indoor» ab (400), geht es nochmals ohne das Feld", _E400["ok"] and len(_S2) == 2 and "indoor" not in _S2[1][0])
+_Dz3 = {"garmin_auftraege": [_zo("2026-03-06")]}
+_E401 = ZS.senden(_Pz, "KEY", "0", post=lambda u, k, b: (401, "no"))
+_Eneg = ZS.senden(_Pz, "KEY", "0", post=lambda u, k, b: (0, "Netz"))
+_m401 = ZS.eintragen(_Dz3, _Pz, _E401, _zj)
+check("V9.26 Zwift nachts: bei 401 und ohne Netz wird nichts eingetragen und der Grund gemeldet",
+      not _E401["ok"] and "Schlüssel" in _E401["meldung"] and not _Eneg["ok"] and "nicht erreichbar" in _Eneg["meldung"] and "plan_zwift" not in _Dz3 and "Schlüssel" in _m401[0])
+_tz = tempfile.mkdtemp()
+json.dump({"garmin_auftraege": [_zo("2026-03-06")]}, open(os.path.join(_tz, "d.json"), "w"))
+_env = {k: v for k, v in os.environ.items() if k != "INTERVALS_API_KEY"}
+_r1 = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "tools", "zwift_senden.py"), "lauf", os.path.join(_tz, "d.json"), "--jetzt", "2026-03-05T23:00"], capture_output=True, text=True, env=_env)
+_r2 = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "tools", "zwift_senden.py"), "plan", os.path.join(_tz, "d.json"), "--jetzt", "2026-03-05T23:00"], capture_output=True, text=True)
+check("V9.26 Zwift nachts: Befehl «lauf» ohne Schlüssel meldet den Fehler und lässt die Daten unberührt; «plan» liefert die Aktion",
+      _r1.returncode == 1 and "Schlüssel fehlt" in _r1.stdout and "plan_zwift" not in json.load(open(os.path.join(_tz, "d.json"))) and len(json.loads(_r2.stdout)["aktionen"]) == 1, _r1.stdout + _r1.stderr[-200:])
+_ok_o = _zo("2026-03-06"); _ok_o["erstellt"] = "2026-03-05T12:00:00+01:00"
+_bad = lambda f: (lambda o: (f(o["einheiten"][0]["zwift"]), o)[1])(copy.deepcopy(_ok_o))
+check("V9.26 Zwift nachts: der Auftrag mit Zwift-Eintrag wird geprüft (gültig; falscher Tag, fremdes Feld, Name ohne «IN · », Lauf-Typ werden abgelehnt)",
+      GS.pruefen(_ok_o) is None and GS.pruefen(_bad(lambda z: z["eintrag"].update(start_date_local="2026-03-07T00:00:00")))
+      and GS.pruefen(_bad(lambda z: z["eintrag"].update(foo=1))) and GS.pruefen(_bad(lambda z: z["eintrag"].update(name="Test")))
+      and GS.pruefen(_bad(lambda z: z["eintrag"].update(type="Run"))) and GS.pruefen(_bad(lambda z: z.update(extra=1))), str(GS.pruefen(_ok_o)))
+
 print(f"\n{'ALLE BESTANDEN' if not FAILS else str(len(FAILS)) + ' FEHLGESCHLAGEN'}")
 sys.exit(1 if FAILS else 0)

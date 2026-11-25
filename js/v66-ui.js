@@ -65,7 +65,14 @@
         woche: window.SWUI.woche(ds) }, window.V75UI ? window.V75UI.schwimmOpt() : {}));
     } catch (err) { console.error(err); return null; }
   }
-  const swOpt = (ds, K) => ({ schwimm: (e) => schwimmEinheit(e, ds, K) });
+  /** V9.26.0 zwift-nacht-1.0: Zwift-Eintrag für Intervals.icu zu einer Rad-Einheit (nur mit eingerichtetem Zugang und eingeschaltetem Haken «automatisch senden»). */
+  const zwiftFuer = (e, ds) => {
+    const cfg = zwiftCfg();
+    if (cfg.auto === false || !(cfg.key && +cfg.ftp > 0) || !zwiftTauglich(e)) return null;
+    const r = V66().zwiftEintrag(e, ds, skalen(), { ftp: +cfg.ftp });
+    return r && r.eintrag ? { eintrag: r.eintrag, fassung: r.fassung } : null;
+  };
+  const swOpt = (ds, K) => ({ schwimm: (e) => schwimmEinheit(e, ds, K), zwift: (e) => zwiftFuer(e, ds) });
   /** V7.4 ampel-plan-1.0: lockere Fassung je Einheit (V74.locker) – der Auftrag trägt sie mit, damit das Morgen-Update bei «vorsichtig» ersetzen kann. */
   const ampelOpt = (ds, K) => ({ ampel: (e) => (window.V74 ? window.V74.locker(e, (K || kontext(montag(ds)) || {}).ctxE || {}) : null) });
   M.schwimmEinheit = (e, ds, K) => (bereit() ? schwimmEinheit(e, ds, K) : null);
@@ -125,7 +132,7 @@
   M.alleTage = async function () {
     try { await M.zwiftAuto(); } catch (e) { console.warn(e); }                          // V9.25.0 zwift-auto-1.0
     if (!bereit() || garminAuto().modus !== "alle" || (P().entwurf && P().entwurf.aktiv())) return 0;
-    const fp = (L) => (L || []).map((u) => `${u.uid}:${u.fassung}:${(u.ampel && u.ampel.fassung) || ""}`).sort().join("|");
+    const fp = (L) => (L || []).map((u) => `${u.uid}:${u.fassung}:${(u.ampel && u.ampel.fassung) || ""}:${(u.zwift && u.zwift.fassung) || ""}`).sort().join("|");
     let n = 0;
     for (let i = 1; i <= 7; i++) {
       const d = add(heute(), i), A = auftrag(d);
@@ -146,7 +153,7 @@
    *  kommenden Tag, «Trotzdem wie geplant»). Gleicher Modus, gleiche Auswahl; unveränderte Aufträge bleiben, wie sie sind. */
   M.auftraegeAbgleichen = async function (mo) {
     if (!bereit()) return;
-    const fp = (L) => (L || []).map((u) => `${u.uid}:${u.fassung}:${(u.ampel && u.ampel.fassung) || ""}`).sort().join("|");
+    const fp = (L) => (L || []).map((u) => `${u.uid}:${u.fassung}:${(u.ampel && u.ampel.fassung) || ""}:${(u.zwift && u.zwift.fassung) || ""}`).sort().join("|");
     for (let i = 0; i < 7; i++) {
       const d = add(mo, i), A = auftrag(d);
       if (!(istAktiv(A) && garminFenster(d))) continue;
@@ -244,7 +251,7 @@
       for (const [u, modus] of vorAuswahl) neu.set(Z.get(u) || u, modus);
       vorAuswahl = neu;
     }
-    const fp = (L) => (L || []).map((u) => `${u.uid}:${u.fassung}:${(u.ampel && u.ampel.fassung) || ""}`).sort().join("|");
+    const fp = (L) => (L || []).map((u) => `${u.uid}:${u.fassung}:${(u.ampel && u.ampel.fassung) || ""}:${(u.zwift && u.zwift.fassung) || ""}`).sort().join("|");
     for (const d of wochenTage(mo)) {
       if (!garminFenster(d)) continue;
       const t = K.w.tage.find((x) => x.date === d), hier = t ? t.einheiten.map((e) => e.uid) : [], A = auftrag(d);

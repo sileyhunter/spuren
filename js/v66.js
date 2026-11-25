@@ -1811,6 +1811,7 @@
    *  opt.schwimm(e) (1.1): Schwimm-Einheit wie auf der Einheit-Seite. */
   V66.garminAuftrag = function (date, einheiten, skalen, modus, jetzt, opt) {
     const E = [], ohne = [], sw = opt && opt.schwimm, lo = opt && typeof opt.ampel === "function" ? opt.ampel : null;
+    const zwiftFuer = opt && typeof opt.zwift === "function" ? opt.zwift : null;
     // V7.4 ampel-plan-1.0 (Entscheid A7): zu jeder Einheit mit harten, mittleren oder langen Abschnitten auch die lockere Fassung (V74.locker);
     // damit ersetzt das Morgen-Update bei «vorsichtig» das harte Workout des Tages (tools/garmin_senden.py ampel)
     const locker = (e) => {
@@ -1823,7 +1824,9 @@
       if (e.art === "bibliothek") { if (isNum(e.wid)) E.push(Object.assign({ uid: e.uid, quelle: "bibliothek", titel: e.titel, sport: e.sport, wid: e.wid, fassung: "bib-" + e.wid }, locker(e))); else ohne.push({ uid: e.uid, titel: e.titel, grund: "Workout fehlt" }); continue; }
       const g = V66.garminWorkout(e, skalen, { date, uid: e.uid, schwimm: sw });
       if (g.fehler) { ohne.push({ uid: e.uid, titel: e.titel, grund: g.fehler }); continue; }
-      E.push(Object.assign({ uid: e.uid, quelle: e.quelle || "vorschlag", titel: e.titel, sport: e.sport, fassung: g.fassung, workout: g.workout, ohneZiel: g.ohneZiel || 0, offen: !!g.offen }, locker(e)));
+      // V9.26.0 zwift-nacht-1.0: Rad-Einheiten tragen den fertigen Eintrag für Intervals.icu (und damit Zwift) mit; das Nacht-Update sendet ihn (tools/zwift_senden.py)
+      let zw = null; try { zw = zwiftFuer ? zwiftFuer(e) : null; } catch (err) { zw = null; }
+      E.push(Object.assign({ uid: e.uid, quelle: e.quelle || "vorschlag", titel: e.titel, sport: e.sport, fassung: g.fassung, workout: g.workout, ohneZiel: g.ohneZiel || 0, offen: !!g.offen }, zw && zw.eintrag ? { zwift: { eintrag: zw.eintrag, fassung: zw.fassung } } : {}, locker(e)));
     }
     const out = { id: "gs-" + date, date, modus, erstellt: jetzt, v: V66.VERSIONS.garmin, einheiten: modus === "aus" ? [] : E, ohne: modus === "aus" ? [] : ohne };
     // V7.3: «Export» einer einzelnen Einheit – der Auftrag enthält nur die gewählten Einheiten (diese und die schon in Garmin); beim Nachführen
