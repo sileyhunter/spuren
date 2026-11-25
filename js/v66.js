@@ -35,7 +35,7 @@
 })(typeof window !== "undefined" ? window : null, function (V64) {
   "use strict";
   const V66 = { VERSIONS: { eigenplan: "eigenplan-1.3", vorlagen: "vorlagen-1.0", tl: "tl-plan-1.1", wochenblatt: "wochenblatt-1.0", kalender: "kalender-2.0",
-    verfuegbarkeit: "verfuegbarkeit-1.3", felder: "einheit-felder-1.1", anpassen: "einheit-anpassen-1.0", eigen: "eigene-aktivitaet-1.0",
+    verfuegbarkeit: "verfuegbarkeit-1.3", felder: "einheit-felder-1.2", anpassen: "einheit-anpassen-1.0", eigen: "eigene-aktivitaet-1.0",
     umplanen: "umplanen-1.1", grenzen: "grenzen-1.0", ziel: "zeit-intensitaet-1.0", tagesregel: "tagesregel-1.0" } };
   const isNum = (x) => typeof x === "number" && isFinite(x);
   const add = (iso, n) => V64.addDays(iso, n);
@@ -1014,6 +1014,7 @@
   }
   const tageAbstand = (a, b) => (typeof a === "string" && typeof b === "string" ? Math.round((Date.parse(a + "T12:00:00Z") - Date.parse(b + "T12:00:00Z")) / 864e5) : 99);
   const FELD_MIT = ["uhrzeit", "metrik", "pool"];                         // Festlegungen, die eine Vorschlags-Einheit beim Umplanen behält (gleiche Kennung)
+  const hatFestlegung = (s) => !!s && FELD_MIT.some((k) => s[k] != null);
   /**
    * Die ganze Woche aus ihren Eingaben neu (umplanen-1.0, grenzen-1.0): Vorschlag ctx.roh(d) (unverteilt, mit Kraft, Tests, Kurs, Aktivitäten draussen),
    * Grenzen ctx.verf (Zeit = harte Obergrenze, Sportarten), Festes: vergangene Tage, gesperrte Tage und Tage mit gesperrter Einheit (ganz), heute, wenn
@@ -1100,7 +1101,9 @@
     if (!E.gestrichen || !E.gestrichen.length) delete E.gestrichen;
     E.ganz = true;
     // Ohne Eigenes folgt die Woche wieder von selbst (dieselben Regeln, derselbe Kern) – nur wenn die festen Tage genau so stehen wie im automatischen Vorschlag
-    const eigenes = !!E.gestrichen || !!E.erholung || !!E.zielAus || tageW.some((d) => { const t = E.tage[d]; return !!t.gesperrt || t.einheiten.some(istAnkerSpec); });
+    // V9.24.2 einheit-felder-1.2: auch eine Festlegung auf einer Vorschlags-Einheit (Metrik, Uhrzeit, Bahnlänge) ist Eigenes – sonst fiele die Woche auf den
+    // automatischen Vorschlag zurück und die Wahl ginge verloren (Silas 25.11.: «Pace, HF, RPE auswählen, angezeigt bleibt Pace»)
+    const eigenes = !!E.gestrichen || !!E.erholung || !!E.zielAus || tageW.some((d) => { const t = E.tage[d]; return !!t.gesperrt || t.einheiten.some((x) => istAnkerSpec(x) || hatFestlegung(x)); });
     const wieAuto = !!ctx.vorschlag && tageW.filter(fest).every((d) => JSON.stringify(E.tage[d].einheiten.map(kern)) === JSON.stringify(vorschlagGespeichert(d, ctx.vorschlag(d)).map(kern)));
     if (!eigenes && !fehlt && wieAuto && ctx.vorschlag && !opt.behalten) {
       const zuvor = E.verteilung; E.tage = {}; delete E.ganz; E.verteilung = Object.assign({}, zuvor, { auto: true });

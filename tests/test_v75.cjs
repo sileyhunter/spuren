@@ -208,7 +208,7 @@ test("indoor-phase-1.0: Rad und Laufen in der Phase drinnen, ausser ausdrücklic
 });
 
 test("einheit-felder-1.1: Bahnlänge je Schwimm-Einheit, drinnen = false bleibt gespeichert", () => {
-  assert.equal(V66.VERSIONS.felder, "einheit-felder-1.1");
+  assert.equal(V66.VERSIONS.felder, "einheit-felder-1.2");
   assert.equal(V66.feldPruefen("pool", 50), null); assert.ok(V66.feldPruefen("pool", 33)); assert.ok(V66.feldPruefen("pool", "50"));
   const mo = "2026-11-16", heute = "2026-11-17";
   const vorschlag = (d) => (d === "2026-11-19" ? [V64.einheit("schwimm_locker", { d: 45 }), V64.einheit("rad_locker", { d: 60 })] : []);

@@ -1,5 +1,11 @@
 # Änderungen
 
+## V9.24.2 · 25.11.2026 · Metrik, Uhrzeit und Bahnlänge einer Vorschlags-Einheit gehen nicht mehr verloren (einheit-felder-1.2)
+Silas: «ich kann Pace, HF und RPE auswählen, die Einheit wird jedoch nicht mit der gewählten Variante angezeigt, es bleibt zum Beispiel bei Pace.»
+- **Ursache:** Jede Änderung an einer Einheit rechnet die Woche neu (umplanen-1.0). Eine Vorschlags-Einheit mit nur einer Festlegung (Metrik, Uhrzeit, Bahnlänge) galt dabei nicht als «Eigenes»; die Woche fiel auf den automatischen Vorschlag zurück (`E.tage = {}`), der die Festlegung nicht kennt. Die Meldung «Metrik: Herzfrequenz.» kam trotzdem, Kachel und Schritte blieben bei PACE/PWR. Betroffen waren auch Uhrzeit und Bahnlänge, und damit der Export.
+- **Korrektur (`js/v66.js`, `V66.umplanenRein`):** eine Festlegung (`uhrzeit`, `metrik`, `pool`) auf einer Vorschlags-Einheit zählt als Eigenes; die Woche bleibt gespeichert, die Einheit behält Kennung und Festlegung (wie `FELD_MIT` es vorsah), bleibt aber Vorschlag (kein Anker, wird weiter verteilt). Wird die Festlegung zurückgenommen (Standard gewählt) und ist sonst nichts Eigenes da, folgt die Woche wieder von selbst. «Neu berechnen» setzt wie bisher alles zurück.
+- **Tests:** neu `tests/test_v9242.cjs` (4, Simulator, erfundener Athlet); vorher alle 4 rot. `tests/test_v75.cjs` führt die Version nach. Im Browser (Demo) Rad und Lauf durchgespielt: Kachel und Schritte wechseln auf Puls, RPE und zurück.
+
 ## V9.24.1 · 25.11.2026 · Zwift-Export auch auf der Einheit-Seite (zwift-export-2.0)
 Silas: «zwift export ist noch nicht vorhanden auf der webseite» – der Knopf aus V9.23.1 stand nur im Tagesblatt; unter «Export» der Einheit-Seite (wie bei enduco «Starten / Export») gab es nur Garmin.
 - **Einheit-Seite → Export:** Bei Rad-Einheiten (nicht Enduco-Bibliothek) heisst das Blatt «Export» mit zwei Abschnitten, «Garmin» (wie bisher, eigene Knöpfe) und «Zwift (Rolle)»: «An Zwift senden» (nur diese Einheit, auch für heute – Garmin geht für heute nur im Chat), «Text kopieren», «Einrichten». Läufe, Schwimmen und alle anderen Einheiten bleiben bei «An Garmin senden». Das Tagesblatt zeigt denselben Abschnitt.
