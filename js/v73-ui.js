@@ -830,11 +830,16 @@
       cssHinweis = cssT;
     }
     const kann = !grund && fenster && !zuSpaet;
-    const haupt = kann && (stand !== "wartet" || (a && a.modus === "auto")) ? `<button type="button" class="btn primary gross" data-v73gs>${stand === "gesendet" ? "Nochmals senden" : "Senden"} ${ic("play", 18)}</button>` : "";
+    // zwift-export-2.0: Rad-Einheiten haben im Export-Blatt auch «Zwift (Rolle)» (über Intervals.icu, von Hand, nur diese Einheit)
+    const zwift = e.sport === "rad" && U66().zwiftAbschnitt && U66().zwiftTauglich(e) ? U66().zwiftAbschnitt(ds, [e]) : "";
+    const haupt = kann && (stand !== "wartet" || (a && a.modus === "auto")) ? `<button type="button" class="btn primary gross" data-v73gs>${stand === "gesendet" ? (zwift ? "Nochmals an Garmin" : "Nochmals senden") : (zwift ? "An Garmin senden" : "Senden")} ${ic("play", 18)}</button>` : "";
     const weg = kann && (g || stand === "wartet") ? `<button type="button" class="btn" data-v73gweg>${g ? "Aus Garmin austragen" : "Nicht senden"}</button>` : "";
-    const ov = blatt("v73-export", `<div class="blatt-titel">${ic("play", 34)}<h2 id="v59-ov-h" tabindex="-1">An Garmin senden</h2><p class="sub">${esc(e.titel)} · ${esc(tagText(ds))}</p></div>
-      ${zeilen.join("")}${knoepfe}<p class="hint">${esc(hinweis)}</p>${cssHinweis ? `<p class="hint keep">${esc(cssHinweis)}</p>` : ""}<p class="warn-t" data-v73f hidden></p>
-      ${fuss(`${weg}${haupt}`)}`);
+    const gKnoepfe = `${weg}${haupt}`;
+    const ov = blatt("v73-export", `<div class="blatt-titel">${ic("play", 34)}<h2 id="v59-ov-h" tabindex="-1">${zwift ? "Export" : "An Garmin senden"}</h2><p class="sub">${esc(e.titel)} · ${esc(tagText(ds))}</p></div>
+      ${zwift ? `<h3 class="abschnitt">Garmin</h3>` : ""}${zeilen.join("")}${knoepfe}<p class="hint">${esc(hinweis)}</p>${cssHinweis ? `<p class="hint keep">${esc(cssHinweis)}</p>` : ""}<p class="warn-t" data-v73f hidden></p>
+      ${zwift && gKnoepfe ? `<div class="row mp-akt">${gKnoepfe}</div>` : ""}${zwift}
+      ${fuss(zwift ? "" : gKnoepfe)}`);
+    if (zwift) U66().zwiftBinden(ov, ds, [e]);
     const los = async (weg) => {
       const modus = weg ? (a && a.modus === "auto" ? "auto" : "senden") : ((ov.querySelector("input[name=v73g]:checked") || {}).value || "senden");
       const f = await U66().einheitSenden(ds, e.uid, modus, !!weg);

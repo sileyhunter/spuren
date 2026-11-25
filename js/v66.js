@@ -1719,11 +1719,12 @@
     if (!n) return { fehler: "ohne Ablauf" };
     return { text: zeilen.join("\n"), schritte: n, dauer_s: sek };
   };
-  /** Einträge für den Kalender von Intervals.icu (POST /api/v1/athlete/0/events/bulk?upsert=true): ein Workout je Einheit, gleiche Einheit = gleicher external_id (ersetzt statt doppelt). */
+  /** Einträge für den Kalender von Intervals.icu (POST /api/v1/athlete/0/events/bulk?upsert=true): ein Workout je Einheit, gleiche Einheit = gleicher external_id (ersetzt statt doppelt).
+   *  zwift-export-2.0: `indoor: true` – Intervals.icu reicht nur Rolleneinheiten an Zwift weiter (Hinweis aus dem Intervals.icu-Forum, Feldname nicht aus der Dokumentation belegt; lehnt der Dienst das Feld ab, sendet die Seite ohne und sagt es). */
   V66.zwiftEintrag = function (e, ds, skalen, opt) {
     const t = V66.zwiftText(e, skalen, opt);
     if (t.fehler) return { fehler: t.fehler };
-    return { eintrag: { category: "WORKOUT", start_date_local: ds + "T00:00:00", type: "Ride", name: (V66.GARMIN_PREFIX + String(e.titel || "Training")).slice(0, 60),
+    return { eintrag: { category: "WORKOUT", start_date_local: ds + "T00:00:00", type: "Ride", indoor: true, name: (V66.GARMIN_PREFIX + String(e.titel || "Training")).slice(0, 60),
       external_id: "in-" + (e.uid || ds), description: t.text }, text: t.text, dauer_s: t.dauer_s, schritte: t.schritte, fassung: V66.fassung(t.text) };
   };
   /** Einheit (V66.einheit/V64.einheit) → { workout (upload_workout), fassung, schritte, ohneZiel, offen } oder { fehler }.
