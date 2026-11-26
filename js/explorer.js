@@ -3,6 +3,7 @@
  * Reihe: serien/<Name>.bin (Name aus serien_salz und ID, AES-GCM mit dem Seitenschlüssel, gzip), nur bei Bedarf geladen. Rechnen: js/analyse.js (AN).
  * Auswahl: waagrecht über die Grafiken ziehen (senkrecht scrollt die Seite), Tippen setzt den Cursor.
  * Eingaben (RPE, Intervall-Korrekturen, Laktatpunkte) bleiben verschlüsselt auf dem Gerät bis «Exportieren».
+ * V9.26.2 (laktat-aendern-1.0): «Zeit oder Wert ändern» in der Laktat-Karte (Vorschau-Einträge; gleiche ID ersetzt den Eintrag).
  * V9.26.1 (laktat-eingabe-1.0): Laktat-Zeit als h:mm:ss lesbar und eindeutig, Laktat-Liste ohne seitliches Wischen; der Abschnittsvergleich mit zwei Knöpfen entfällt (Entscheid Silas 26.11.). */
 (function () {
   "use strict";
@@ -248,18 +249,19 @@
     const srv = (C().D.laktat_punkte || []).filter((p) => p.act === id);
     const m = new Map(srv.concat(lok).map((p) => [p.id, p])); return [...m.values()];
   }
-  function laktatDialog(vor) {
+  function laktatDialog(vor, idFix) {
     const S = ST.S, tEnde = S.t[S.n - 1], ts = vor && isNum(vor.t) ? vor.t : ST.cur != null ? S.t[ST.cur] : S.t[ST.sel[1]];
     // V7.6.2 laktat-hf-1.0: Einheiten nach Puls (nicht Rad oder Laufen) nehmen den Puls der 10 min davor; sonst wie bisher das Intervall bzw. 5 min
-    const fe0 = vor && vor.fenster ? String(vor.fenster) : ["rad", "lauf"].includes(ST.a.sport) ? "auto" : "10";
+    const fs0 = vor && vor.abschnitt && isNum(vor.abschnitt.fenster_s) ? String(Math.round(vor.abschnitt.fenster_s / 60)) : null;     // V9.26.2: beim Ändern das gespeicherte Fenster
+    const fe0 = vor && vor.fenster ? String(vor.fenster) : ["10", "15", "20"].includes(fs0) ? fs0 : ["rad", "lauf"].includes(ST.a.sport) ? "auto" : "10";
     // V9.26.1 laktat-eingabe-1.0: Zeit immer h:mm:ss (vorher «min:s»: «1:10» wurde als 1 min 10 s gelesen und das Fenster am Start abgeschnitten)
-    $("ex-lak").innerHTML = `<form class="css-form ex-lf" id="ex-lf"><h3 class="mini-h">Laktat bei ${hmsL(ts)}</h3><div class="css-grid">
+    $("ex-lak").innerHTML = `<form class="css-form ex-lf" id="ex-lf"><h3 class="mini-h">${idFix ? "Laktat ändern: " : ""}Laktat bei ${hmsL(ts)}</h3><div class="css-grid">
       <label>Laktat (mmol/l)<input name="la" inputmode="decimal" placeholder="1.8" required value="${vor && isNum(vor.la) ? String(vor.la).replace(".", ",") : ""}"></label><label>Zeit seit Start (h:mm:ss)<input name="t" value="${hmsL(ts)}" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
       <label class="span2">Puls aus<select name="fe">${[["auto", "Intervall bzw. letzte 5 min (automatisch)"], ["10", "den 10 min vor der Messung"], ["15", "den 15 min vor der Messung"], ["20", "den 20 min vor der Messung"]]
         .map(([k, t]) => `<option value="${k}"${k === fe0 ? " selected" : ""}>${t}</option>`).join("")}</select></label>
       <label class="span2">Notiz<input name="n" placeholder="z. B. Ohrläppchen, Lactate Scout" value="${vor && vor.notiz ? esc(vor.notiz) : ""}"></label></div>
       <p class="hint" id="ex-lf-hf" aria-live="polite"></p>
-      <div class="row"><button class="btn primary" type="submit">Zuordnen</button><button class="btn" type="button" id="ex-lf-x">Abbrechen</button></div></form>`;
+      <div class="row"><button class="btn primary" type="submit">${idFix ? "Speichern" : "Zuordnen"}</button><button class="btn" type="button" id="ex-lf-x">Abbrechen</button></div></form>`;
     $("ex-lf-x").onclick = () => laktat();
     const fenster = (f, t) => { const ab = f.fe.value === "auto" ? AN.laktatAbschnitt(S, t, ST.ints.liste) : AN.laktatFenster(S, t, +f.fe.value); return { t, ab, st: AN.stats(S, ab.i0, ab.i1) }; };
     const zeigen = () => {                                                 // V7.6.2: Puls im gewählten Fenster schon vor dem Speichern sehen
@@ -267,7 +269,7 @@
       const h = f.querySelector("h3"), r = AN.zeitLesen(f.t.value, tEnde);
       if (!r) { o.innerHTML = `<span class="warn-t">Zeit nicht lesbar. Bitte als Stunden:Minuten:Sekunden schreiben, z. B. 1:10:00, oder nur die Minute (70).</span>`; return; }
       const { t, ab, st } = fenster(f, r.t), an = AN.pulsAnstieg(S, ab.i0, ab.i1), tt = AN.idxAt(S, t) * S.dt, warn = [];
-      if (h) h.textContent = `Laktat bei ${hmsL(t)}`;
+      if (h) h.textContent = `${idFix ? "Laktat ändern: " : ""}Laktat bei ${hmsL(t)}`;
       if (t > tEnde + S.dt) warn.push(`Die Aufzeichnung endet schon bei ${hmsL(tEnde)}`);
       else if (ab.fenster_s && t - ab.fenster_s < S.t[0] - 1) warn.push(`Vor der Messung sind nur ${hmsL(S.t[ab.i1] + S.dt - S.t[ab.i0])} aufgezeichnet, gewählt waren ${ab.fenster_s / 60} min. Stimmt die Zeit?`);
       o.innerHTML = `Messung bei <b>${hmsL(t)}</b> seit Start${t - tt >= 30 ? ` (Timer-Zeit ohne Pausen ${hmsL(tt)})` : ""}.`
@@ -280,7 +282,7 @@
       if (!isNum(la) || la <= 0 || la > 25) { f.la.focus(); return; }
       if (!r) { zeigen(); f.t.focus(); return; }                         // nie mit einer Zeit speichern, die nicht gelesen wurde
       const { t, ab, st } = fenster(f, r.t);
-      await UI().Inbox.upsert("laktat_punkte", { id: `lp-${ST.a.id}-${Math.round(t)}`, act: ST.a.id, datum: ST.a.date, sport: ST.a.sport, t: Math.round(t), la,
+      await UI().Inbox.upsert("laktat_punkte", { id: idFix || `lp-${ST.a.id}-${Math.round(t)}`, act: ST.a.id, datum: ST.a.date, sport: ST.a.sport, t: Math.round(t), la,
         abschnitt: { von: S.t[ab.i0], bis: S.t[ab.i1] + S.dt, grund: ab.grund, w: st.w != null ? Math.round(st.w) : null, np: st.np != null ? Math.round(st.np) : null,
           hr: st.hr != null ? Math.round(st.hr) : null, pace: st.pace != null ? Math.round(st.pace) : null,
           hr_max: st.hrmax != null ? Math.round(st.hrmax) : null, hr_anstieg: AN.pulsAnstieg(S, ab.i0, ab.i1), ...(ab.fenster_s ? { fenster_s: ab.fenster_s } : {}) },
@@ -300,9 +302,10 @@
       const stat = best.has(p.id) ? UI().badge("bestätigt", "kommt mit dem nächsten Update") : vorschau && window.V59 && !C().IS_DEMO ? `${UI().badge("vorschau")} <button class="btn" type="button" data-lpb="${esc(p.id)}">Bestätigen</button>` : UI().badge(p.status || "vorschau");
       return `<div class="ex-lp"><div class="ex-lp-kopf"><b>${f1(p.la)} mmol/l</b><span>bei ${hmsL(p.t)}</span><span class="ex-lp-st">${stat}</span></div>
         <dl class="ex-kv ex-lp-kv"><div><dt>Abschnitt</dt><dd>${hmsL(ab.von)}–${hmsL(ab.bis)}</dd></div><div><dt>${lauf ? "Pace" : "Ø Leistung"}</dt><dd>${lauf ? (isNum(ab.pace) ? pace(ab.pace) + " /km" : "–") : isNum(ab.w) ? f0(ab.w) + " W" : "–"}</dd></div><div><dt>Ø Puls</dt><dd>${isNum(ab.hr) ? f0(ab.hr) + " bpm" : "–"}</dd></div></dl>
-        <p class="hint ex-lp-grund">Zuordnung: ${esc(ab.grund || "–")}</p>${kurz ? `<p class="verdict warn ex-lp-warn">Nur ${hmsL(ab.bis - ab.von)} vor der Messung aufgezeichnet, gewählt waren ${ab.fenster_s / 60} min. Stimmt die Zeit (${hmsL(p.t)})?</p>` : ""}</div>`;
+        <p class="hint ex-lp-grund">Zuordnung: ${esc(ab.grund || "–")}</p>${kurz ? `<p class="verdict warn ex-lp-warn">Nur ${hmsL(ab.bis - ab.von)} vor der Messung aufgezeichnet, gewählt waren ${ab.fenster_s / 60} min. Stimmt die Zeit (${hmsL(p.t)})?</p>` : ""}${vorschau && !best.has(p.id) ? `<div class="row ex-lp-akt"><button class="btn" type="button" data-lpk="${esc(p.id)}">Zeit oder Wert ändern</button></div>` : ""}</div>`;
     }).join("")}</div>
       <p class="hint">Bleibt Vorschau: zählt weder für Schwellen noch für «Meine Entwicklung», bis du den Wert bestätigst (dann übernimmt ihn das nächste Update als Kurzcheck).</p>` : "";
+    $("ex-lak").querySelectorAll("[data-lpk]").forEach((b) => (b.onclick = () => { const p = P.find((x) => x.id === b.dataset.lpk); if (p) laktatDialog(p, p.id); }));   // V9.26.2 laktat-aendern-1.0
     $("ex-lak").querySelectorAll("[data-lpb]").forEach((b) => (b.onclick = () => { const p = P.find((x) => x.id === b.dataset.lpb); if (p) window.V59.punktBestaetigen(p, laktat); }));
   }
 

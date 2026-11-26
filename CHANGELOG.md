@@ -1,5 +1,12 @@
 # Änderungen
 
+## V9.26.2 · 26.11.2026 · Laktat: Eintrag auf der Seite ändern (laktat-aendern-1.0)
+Silas (26.11. morgens, mit Bildschirmfoto): Die Karte zeigt weiter den alten Eintrag mit der falschen Zeit (Minuten als Sekunden gelesen und so gespeichert) samt Warnung. Der neue Code kann einen schon gespeicherten Eintrag nicht umrechnen, und es gab keinen Weg, ihn zu ändern.
+- **Neu:** Jede Karte eines Vorschau-Eintrags, der noch nicht bestätigt ist, hat «Zeit oder Wert ändern» (44 px). Der Dialog öffnet sich mit Wert, Zeit, Fenster und Notiz des Eintrags, die Warnung steht schon da. Beim Speichern **bleibt die ID**: der Eintrag wird ersetzt (auf der Seite, im Eingang und beim Einspielen gilt «gleiche ID ersetzt, spätere gewinnt»), es entsteht kein zweiter Eintrag, der Status bleibt «vorschau».
+- Das gespeicherte Fenster (10/15/20 min) ist beim Ändern vorgewählt.
+- **Nicht geändert:** Daten, `eingang/`, Bestätigungen. Bestätigte Einträge lassen sich so nicht mehr ändern.
+- Tests: neu `tests/test_v9262.cjs` (4); `tools/durchklick_laktat.py` +12 Schritte (Ändern auf iPhone und Desktop: Vorbelegung, gleiche ID, kein dritter Eintrag, Warnung weg); `sw.js`-Cache erneuert.
+
 ## V9.26.1 · 26.11.2026 · Laktat im Explorer: Zeit eindeutig, Liste ohne Wischen, «Bestätigen» wieder sichtbar; Block A entfernt (laktat-eingabe-1.0, blatt-stapel-1.0)
 Silas (26.11. nachts, mit Bildschirmfoto): Die Laktat-Vorschau einer Zwift-Einheit zeigte einen Abschnitt ganz am Anfang der Fahrt (gut eine Minute) statt «20 min vor der Messung», dazu die Spalte «mmol/l» nur mit der Endziffer, und «Bestätigen» reagierte am iPhone nicht. Dazu: die Knöpfe «Als Block A merken» und «Mit A vergleichen» sollen weg.
 - **Ursache 1 (nicht `laktat-hf-1.0`):** Die Rechnung stimmt (Fenster, Messzeit, Timer-Pausen nach der Messung ändern nichts; mit den Sekundendaten nachgerechnet). Falsch war die **Eingabe**: das Feld hiess «Zeit (min:s)», und «1:15» (gemeint 1 h 15 min) wurde als 1 min 15 s gelesen. Das Fenster von 20 min wurde am Start abgeschnitten (nur das Einfahren), und die Anzeige zeigte «1:15» für beides, weil Zeiten unter 1 h ohne Stundenteil stehen.
