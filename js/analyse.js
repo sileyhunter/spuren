@@ -89,15 +89,6 @@
       pace: vm && vm > 0.3 ? 1000 / vm : null, mproschlag: vm && hrm ? vm * 60 / hrm : null, cad: S.cad ? mean(cad.map((x) => (x > 0 ? x : null))) : null,
       hm_auf: S.alt ? H.up : null, hm_ab: S.alt ? H.down : null };
   };
-  /** Zwei Abschnitte vergleichen: Differenz B − A je Kennzahl (nur, wo beide Werte vorhanden). */
-  AN.vergleich = function (A, B) {
-    const out = {};
-    for (const k of ["dauer", "w", "np", "hr", "hrmax", "dhr", "wproschlag", "drift", "v", "pace", "mproschlag", "cad", "hm_auf"]) {
-      out[k] = isNum(A[k]) && isNum(B[k]) ? B[k] - A[k] : null;
-    }
-    return out;
-  };
-
   /* ---------------- Intervalle und Pausen (intervalle-1.0) ---------------- */
   /** Automatisch: Runden mit Workout-Schritt, sonst Abschnitte über 115 % des Medians (30-s-Mittel), ≥ 60 s,
    *  Lücken < 20 s überbrückt. Pausen: Zeitlücken ≥ 30 s (Timer gestoppt) und Stillstand ≥ 30 s. */
@@ -150,6 +141,21 @@
     if (!S.hr || i1 - i0 < 2) return null;
     const h = S.hr.slice(i0, i1 + 1), m = h.length >> 1, a = mean(h.slice(0, m)), b = mean(h.slice(m));
     return isNum(a) && isNum(b) && a > 0 ? Math.round(1000 * (b / a - 1)) / 10 : null;
+  };
+  /** V9.26.1 laktat-eingabe-1.0: Zeit der Messung aus dem Eingabefeld lesen (Sekunden seit Start der Aufzeichnung, mit Timer-Pausen wie die Zeitachse).
+   *  Drei Teile = h:mm:ss; eine Zahl = Minuten («70»); zwei Teile = h:mm, wenn die Aufzeichnung mindestens 1 h dauert und die Zeit darin liegt (1:10 bei einer Fahrt von 1:30 h = 1 h 10 min),
+   *  sonst min:s (12:30 = 12 min 30 s). Vorher las die Seite «1:10» immer als 1 min 10 s und nahm dann das Einfahren statt der 20 min vor Minute 70.
+   *  Gibt { t, art } zurück oder null (nicht lesbar: Buchstaben, Minuten oder Sekunden ab 60 ausser im ersten Teil, leer). Die Seite zeigt die gelesene Zeit immer als h:mm:ss. */
+  AN.zeitLesen = function (text, dauer_s) {
+    const s = String(text == null ? "" : text).replace(/\s+/g, "");
+    if (!/^\d{1,3}(:\d{1,2}){0,2}$/.test(s)) return null;
+    const p = s.split(":").map(Number);
+    if (p.length === 1) return { t: p[0] * 60, art: "min" };
+    if (p.length === 3) return p[1] < 60 && p[2] < 60 ? { t: p[0] * 3600 + p[1] * 60 + p[2], art: "h:mm:ss" } : null;
+    if (p[1] >= 60) return null;
+    const hm = p[0] * 3600 + p[1] * 60;
+    if (isNum(dauer_s) && dauer_s >= 3600 && hm <= dauer_s + 60) return { t: hm, art: "h:mm" };
+    return { t: p[0] * 60 + p[1], art: "min:s" };
   };
   AN.laktatAbschnitt = function (S, ts, liste) {
     const hit = (liste || []).find((x) => S.t[x.i0] <= ts && ts <= S.t[x.i1] + S.dt) || (liste || []).filter((x) => S.t[x.i1] <= ts && ts - S.t[x.i1] <= 60).pop();

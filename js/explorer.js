@@ -2,7 +2,8 @@
  * Öffnet sich über jedem Tab (kein neuer Haupttab): data-ex="<Aktivitäts-ID>" an Knöpfen in Kalender, Karte, Heute.
  * Reihe: serien/<Name>.bin (Name aus serien_salz und ID, AES-GCM mit dem Seitenschlüssel, gzip), nur bei Bedarf geladen. Rechnen: js/analyse.js (AN).
  * Auswahl: waagrecht über die Grafiken ziehen (senkrecht scrollt die Seite), Tippen setzt den Cursor.
- * Eingaben (RPE, Intervall-Korrekturen, Laktatpunkte) bleiben verschlüsselt auf dem Gerät bis «Exportieren». */
+ * Eingaben (RPE, Intervall-Korrekturen, Laktatpunkte) bleiben verschlüsselt auf dem Gerät bis «Exportieren».
+ * V9.26.1 (laktat-eingabe-1.0): Laktat-Zeit als h:mm:ss lesbar und eindeutig, Laktat-Liste ohne seitliches Wischen; der Abschnittsvergleich mit zwei Knöpfen entfällt (Entscheid Silas 26.11.). */
 (function () {
   "use strict";
   const EX = (window.EX = window.EX || {});
@@ -12,9 +13,11 @@
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const f0 = (x) => (isNum(x) ? Math.round(x).toLocaleString("de-CH") : "–"), f1 = (x) => (isNum(x) ? (Math.round(x * 10) / 10).toFixed(1) : "–");
   const hms = (s) => { if (!isNum(s)) return "–"; s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return h ? `${h}:${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}` : `${m}:${String(x).padStart(2, "0")}`; };
+  /** V9.26.1: Zeit immer als h:mm:ss – «1:10» heisst bei hms() 1 min 10 s, in den Laktat-Angaben wurde das als 1 h 10 gelesen. */
+  const hmsL = (s) => { if (!isNum(s)) return "–"; s = Math.round(s); return `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`; };
   const pace = (sPerKm) => (isNum(sPerKm) ? `${Math.floor(sPerKm / 60)}:${String(Math.round(sPerKm % 60)).padStart(2, "0")}` : "–");
   const meter = (m) => (!isNum(m) ? "–" : m >= 2000 ? `${f1(m / 1000)} km` : `${f0(m)} m`);
-  const ST = { a: null, S: null, sel: null, cur: null, A: null, ints: null, plan: null };
+  const ST = { a: null, S: null, sel: null, cur: null, ints: null, plan: null };
 
   /* ---------------- Laden ---------------- */
   async function gunzip(u8) {
@@ -105,8 +108,8 @@
     ST.kan = KANAELE(S, a.sport);
     ST.ints = AN.mitKorrektur(S, AN.intervalle(S), korrektur(a.id));
     $("ex-body").innerHTML = `<div class="ex-selbox"><div id="ex-sel"></div>
-        <div class="row ex-acts"><button class="btn" id="ex-all">Ganze Einheit</button><button class="btn" id="ex-a">Als Block A merken</button><button class="btn" id="ex-cmp-b" ${ST.A ? "" : "disabled"}>Mit A vergleichen</button>
-        <button class="btn" id="ex-int-add">Als Intervall</button><button class="btn" id="ex-la">Laktat hier</button></div><div id="ex-cmp"></div></div>
+        <div class="row ex-acts"><button class="btn" id="ex-all">Ganze Einheit</button>
+        <button class="btn" id="ex-int-add">Als Intervall</button><button class="btn" id="ex-la">Laktat hier</button></div></div>
       <p class="hint ex-tip">Waagrecht über die Grafik ziehen markiert einen Abschnitt; tippen zeigt die Werte an dieser Stelle.</p>
       <div class="ex-read" id="ex-read" aria-live="polite"></div>
       <div class="ex-charts" id="ex-charts">${ST.kan.map((k) => `<div class="ex-ch"><span class="ex-lab">${k.label} <small>${k.unit}</small></span><canvas data-k="${k.k}" aria-label="${k.label} über die Zeit"></canvas></div>`).join("")}<div class="ex-x" id="ex-x"></div></div>
@@ -115,8 +118,6 @@
       <div id="ex-lak"></div>
       <details class="layer"><summary>Daten &amp; Methode</summary><div class="hint">${methode(S)}</div></details>`;
     $("ex-all").onclick = () => { ST.sel = [0, S.n - 1]; zeichne(); sel(); };
-    $("ex-a").onclick = () => { ST.A = { act: a, von: S.t[ST.sel[0]], bis: S.t[ST.sel[1]], s: AN.stats(S, ST.sel[0], ST.sel[1]) }; sel(); $("ex-cmp-b").disabled = false; };
-    $("ex-cmp-b").onclick = () => vergleich();
     $("ex-int-add").onclick = () => intervallAus();
     $("ex-la").onclick = () => laktatDialog();
     bindCharts();
@@ -213,18 +214,10 @@
     return r.filter((x) => x[1] != null);
   }
   function sel() {
-    const S = ST.S, s = AN.stats(S, ST.sel[0], ST.sel[1]); ST.selStats = s;
+    const S = ST.S, s = AN.stats(S, ST.sel[0], ST.sel[1]);
     const ganz = ST.sel[0] === 0 && ST.sel[1] === S.n - 1;
-    $("ex-sel").innerHTML = `<div class="ex-selhead"><b>${ganz ? "Ganze Einheit" : `Auswahl ${hms(S.t[ST.sel[0]])}–${hms(S.t[ST.sel[1]] + S.dt)}`}</b>${ST.A ? `<span class="hint">Block A: ${esc(ST.A.act.name)} ${hms(ST.A.von)}–${hms(ST.A.bis)}</span>` : ""}</div>
+    $("ex-sel").innerHTML = `<div class="ex-selhead"><b>${ganz ? "Ganze Einheit" : `Auswahl ${hms(S.t[ST.sel[0]])}–${hms(S.t[ST.sel[1]] + S.dt)}`}</b></div>
       <dl class="ex-kv">${zeilen(s, ST.a.sport).map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>`;
-  }
-  function vergleich() {
-    const A = ST.A, B = ST.selStats; if (!A || !B) return;
-    const sp = ST.a.sport, ra = new Map(zeilen(A.s, A.act.sport)), rb = new Map(zeilen(B, sp)), d = AN.vergleich(A.s, B);
-    const keys = [...new Set([...ra.keys(), ...rb.keys()])];
-    const dtxt = { "Ø Leistung <small>(2-s-Werte)</small>": d.w, "NP": d.np, "Ø Puls": d.hr, "Drift": d.drift, "W pro Schlag": d.wproschlag };
-    $("ex-cmp").innerHTML = `<div class="tablewrap"><table class="t ex-cmpt"><tr><th>Kennzahl</th><th>A</th><th>B (Auswahl)</th><th>B − A</th></tr>${keys.map((k) => `<tr><td>${k}</td><td>${ra.get(k) || "–"}</td><td>${rb.get(k) || "–"}</td><td>${isNum(dtxt[k]) ? (dtxt[k] > 0 ? "+" : "") + (k === "W pro Schlag" ? dtxt[k].toFixed(2) : f1(dtxt[k])) : ""}</td></tr>`).join("")}</table></div>
-      <p class="hint">A: ${esc(A.act.name)} (${C().dateCH(A.act.date)}), ${hms(A.von)}–${hms(A.bis)}. Vergleichbar nur bei ähnlicher Belastung, Gelände, Temperatur und gleichem Leistungsmesser.</p>`;
   }
 
   /* ---------------- Intervalle (mit Korrektur) ---------------- */
@@ -256,30 +249,37 @@
     const m = new Map(srv.concat(lok).map((p) => [p.id, p])); return [...m.values()];
   }
   function laktatDialog(vor) {
-    const S = ST.S, ts = vor && isNum(vor.t) ? vor.t : ST.cur != null ? S.t[ST.cur] : S.t[ST.sel[1]];
+    const S = ST.S, tEnde = S.t[S.n - 1], ts = vor && isNum(vor.t) ? vor.t : ST.cur != null ? S.t[ST.cur] : S.t[ST.sel[1]];
     // V7.6.2 laktat-hf-1.0: Einheiten nach Puls (nicht Rad oder Laufen) nehmen den Puls der 10 min davor; sonst wie bisher das Intervall bzw. 5 min
     const fe0 = vor && vor.fenster ? String(vor.fenster) : ["rad", "lauf"].includes(ST.a.sport) ? "auto" : "10";
-    $("ex-lak").innerHTML = `<form class="css-form ex-lf" id="ex-lf"><h3 class="mini-h">Laktat bei ${hms(ts)}</h3><div class="css-grid">
-      <label>Laktat (mmol/l)<input name="la" inputmode="decimal" placeholder="1.8" required value="${vor && isNum(vor.la) ? String(vor.la).replace(".", ",") : ""}"></label><label>Zeit (min:s)<input name="t" value="${hms(ts)}"></label>
+    // V9.26.1 laktat-eingabe-1.0: Zeit immer h:mm:ss (vorher «min:s»: «1:10» wurde als 1 min 10 s gelesen und das Fenster am Start abgeschnitten)
+    $("ex-lak").innerHTML = `<form class="css-form ex-lf" id="ex-lf"><h3 class="mini-h">Laktat bei ${hmsL(ts)}</h3><div class="css-grid">
+      <label>Laktat (mmol/l)<input name="la" inputmode="decimal" placeholder="1.8" required value="${vor && isNum(vor.la) ? String(vor.la).replace(".", ",") : ""}"></label><label>Zeit seit Start (h:mm:ss)<input name="t" value="${hmsL(ts)}" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
       <label class="span2">Puls aus<select name="fe">${[["auto", "Intervall bzw. letzte 5 min (automatisch)"], ["10", "den 10 min vor der Messung"], ["15", "den 15 min vor der Messung"], ["20", "den 20 min vor der Messung"]]
         .map(([k, t]) => `<option value="${k}"${k === fe0 ? " selected" : ""}>${t}</option>`).join("")}</select></label>
       <label class="span2">Notiz<input name="n" placeholder="z. B. Ohrläppchen, Lactate Scout" value="${vor && vor.notiz ? esc(vor.notiz) : ""}"></label></div>
       <p class="hint" id="ex-lf-hf" aria-live="polite"></p>
       <div class="row"><button class="btn primary" type="submit">Zuordnen</button><button class="btn" type="button" id="ex-lf-x">Abbrechen</button></div></form>`;
     $("ex-lf-x").onclick = () => laktat();
-    const zeit = (v) => { const p = String(v).split(":").map(Number); const t = p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p.length === 2 ? p[0] * 60 + p[1] : NaN; return isNum(t) ? t : ts; };
-    const fenster = (f) => { const t = zeit(f.t.value), ab = f.fe.value === "auto" ? AN.laktatAbschnitt(S, t, ST.ints.liste) : AN.laktatFenster(S, t, +f.fe.value); return { t, ab, st: AN.stats(S, ab.i0, ab.i1) }; };
+    const fenster = (f, t) => { const ab = f.fe.value === "auto" ? AN.laktatAbschnitt(S, t, ST.ints.liste) : AN.laktatFenster(S, t, +f.fe.value); return { t, ab, st: AN.stats(S, ab.i0, ab.i1) }; };
     const zeigen = () => {                                                 // V7.6.2: Puls im gewählten Fenster schon vor dem Speichern sehen
       const f = $("ex-lf"), o = $("ex-lf-hf"); if (!f || !o) return;
-      const { t, ab, st } = fenster(f), an = AN.pulsAnstieg(S, ab.i0, ab.i1), h = f.querySelector("h3");
-      if (h) h.textContent = `Laktat bei ${hms(t)}`;
-      o.textContent = st ? `${hms(S.t[ab.i0])}–${hms(S.t[ab.i1] + S.dt)}: Ø Puls ${f0(st.hr)}, max ${f0(st.hrmax)}${isNum(an) ? `, Anstieg ${f1(an)} %` : ""}${isNum(st.w) && st.w > 0 ? ` · Ø ${f0(st.w)} W` : ""}.` : "";
+      const h = f.querySelector("h3"), r = AN.zeitLesen(f.t.value, tEnde);
+      if (!r) { o.innerHTML = `<span class="warn-t">Zeit nicht lesbar. Bitte als Stunden:Minuten:Sekunden schreiben, z. B. 1:10:00, oder nur die Minute (70).</span>`; return; }
+      const { t, ab, st } = fenster(f, r.t), an = AN.pulsAnstieg(S, ab.i0, ab.i1), tt = AN.idxAt(S, t) * S.dt, warn = [];
+      if (h) h.textContent = `Laktat bei ${hmsL(t)}`;
+      if (t > tEnde + S.dt) warn.push(`Die Aufzeichnung endet schon bei ${hmsL(tEnde)}`);
+      else if (ab.fenster_s && t - ab.fenster_s < S.t[0] - 1) warn.push(`Vor der Messung sind nur ${hmsL(S.t[ab.i1] + S.dt - S.t[ab.i0])} aufgezeichnet, gewählt waren ${ab.fenster_s / 60} min. Stimmt die Zeit?`);
+      o.innerHTML = `Messung bei <b>${hmsL(t)}</b> seit Start${t - tt >= 30 ? ` (Timer-Zeit ohne Pausen ${hmsL(tt)})` : ""}.`
+        + (st ? `<br>Abschnitt ${hmsL(S.t[ab.i0])}–${hmsL(S.t[ab.i1] + S.dt)}: Ø Puls ${f0(st.hr)}, max ${f0(st.hrmax)}${isNum(an) ? `, Anstieg ${f1(an)} %` : ""}${isNum(st.w) && st.w > 0 ? ` · Ø ${f0(st.w)} W` : ""}.` : "")
+        + (warn.length ? `<br><span class="warn-t">${esc(warn.join(". "))}</span>` : "");
     };
     $("ex-lf").fe.onchange = zeigen; $("ex-lf").t.oninput = zeigen; zeigen();
     $("ex-lf").onsubmit = async (e) => {
-      e.preventDefault(); const f = e.target, la = parseFloat(String(f.la.value).replace(",", "."));
+      e.preventDefault(); const f = e.target, la = parseFloat(String(f.la.value).replace(",", ".")), r = AN.zeitLesen(f.t.value, tEnde);
       if (!isNum(la) || la <= 0 || la > 25) { f.la.focus(); return; }
-      const { t, ab, st } = fenster(f);
+      if (!r) { zeigen(); f.t.focus(); return; }                         // nie mit einer Zeit speichern, die nicht gelesen wurde
+      const { t, ab, st } = fenster(f, r.t);
       await UI().Inbox.upsert("laktat_punkte", { id: `lp-${ST.a.id}-${Math.round(t)}`, act: ST.a.id, datum: ST.a.date, sport: ST.a.sport, t: Math.round(t), la,
         abschnitt: { von: S.t[ab.i0], bis: S.t[ab.i1] + S.dt, grund: ab.grund, w: st.w != null ? Math.round(st.w) : null, np: st.np != null ? Math.round(st.np) : null,
           hr: st.hr != null ? Math.round(st.hr) : null, pace: st.pace != null ? Math.round(st.pace) : null,
@@ -289,12 +289,20 @@
       zeichne(); laktat();
     };
   }
+  /** V9.26.1: Laktat-Liste als Karten statt Tabelle – nichts verdeckt, nichts zum Wischen; «Bestätigen» steht in der Karte (Tippen am iPhone). */
   function laktat() {
-    const P = laktatPunkte();
+    const P = laktatPunkte(), lauf = ST.a.sport === "lauf";
     const best = new Set((UI() && UI().Inbox.data && UI().Inbox.data.laktat_punkte_bestaetigt) || []);       // V5.9.3 (3c)
-    $("ex-lak").innerHTML = P.length ? `<h3 class="mini-h">Laktat in dieser Einheit</h3><div class="tablewrap"><table class="t"><tr><th>Zeit</th><th>mmol/l</th><th>Abschnitt</th><th>${ST.a.sport === "lauf" ? "Pace" : "Ø W"}</th><th>Ø Puls</th><th>Status</th></tr>${P.sort((a, b) => a.t - b.t).map((p) =>
-      `<tr><td>${hms(p.t)}</td><td>${f1(p.la)}</td><td>${hms(p.abschnitt.von)}–${hms(p.abschnitt.bis)}</td><td>${ST.a.sport === "lauf" ? pace(p.abschnitt.pace) : f0(p.abschnitt.w)}</td><td>${f0(p.abschnitt.hr)}</td><td>${best.has(p.id) ? UI().badge("bestätigt", "kommt mit dem nächsten Update") : (p.status || "vorschau") === "vorschau" && window.V59 && !C().IS_DEMO ? `${UI().badge("vorschau")} <button class="btn" type="button" data-lpb="${esc(p.id)}">Bestätigen</button>` : UI().badge(p.status || "vorschau")}</td></tr>`).join("")}</table></div>
-      <p class="hint">Zuordnung: ${esc(P[0].abschnitt.grund)}. Bleibt Vorschau: zählt weder für Schwellen noch für «Meine Entwicklung», bis du den Wert bestätigst (dann übernimmt ihn das nächste Update als Kurzcheck).</p>` : "";
+    P.sort((a, b) => a.t - b.t);
+    $("ex-lak").innerHTML = P.length ? `<h3 class="mini-h">Laktat in dieser Einheit</h3><div class="ex-lps">${P.map((p) => {
+      const ab = p.abschnitt || {}, vorschau = (p.status || "vorschau") === "vorschau";
+      const kurz = isNum(ab.fenster_s) && isNum(ab.von) && isNum(ab.bis) && ab.bis - ab.von < ab.fenster_s * 0.9 && ab.von < 5 && isNum(p.t) && p.t - ab.fenster_s < 0;
+      const stat = best.has(p.id) ? UI().badge("bestätigt", "kommt mit dem nächsten Update") : vorschau && window.V59 && !C().IS_DEMO ? `${UI().badge("vorschau")} <button class="btn" type="button" data-lpb="${esc(p.id)}">Bestätigen</button>` : UI().badge(p.status || "vorschau");
+      return `<div class="ex-lp"><div class="ex-lp-kopf"><b>${f1(p.la)} mmol/l</b><span>bei ${hmsL(p.t)}</span><span class="ex-lp-st">${stat}</span></div>
+        <dl class="ex-kv ex-lp-kv"><div><dt>Abschnitt</dt><dd>${hmsL(ab.von)}–${hmsL(ab.bis)}</dd></div><div><dt>${lauf ? "Pace" : "Ø Leistung"}</dt><dd>${lauf ? (isNum(ab.pace) ? pace(ab.pace) + " /km" : "–") : isNum(ab.w) ? f0(ab.w) + " W" : "–"}</dd></div><div><dt>Ø Puls</dt><dd>${isNum(ab.hr) ? f0(ab.hr) + " bpm" : "–"}</dd></div></dl>
+        <p class="hint ex-lp-grund">Zuordnung: ${esc(ab.grund || "–")}</p>${kurz ? `<p class="verdict warn ex-lp-warn">Nur ${hmsL(ab.bis - ab.von)} vor der Messung aufgezeichnet, gewählt waren ${ab.fenster_s / 60} min. Stimmt die Zeit (${hmsL(p.t)})?</p>` : ""}</div>`;
+    }).join("")}</div>
+      <p class="hint">Bleibt Vorschau: zählt weder für Schwellen noch für «Meine Entwicklung», bis du den Wert bestätigst (dann übernimmt ihn das nächste Update als Kurzcheck).</p>` : "";
     $("ex-lak").querySelectorAll("[data-lpb]").forEach((b) => (b.onclick = () => { const p = P.find((x) => x.id === b.dataset.lpb); if (p) window.V59.punktBestaetigen(p, laktat); }));
   }
 

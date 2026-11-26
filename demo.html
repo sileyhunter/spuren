@@ -868,6 +868,13 @@ body.ex-offen { overflow: hidden; }
 .ex-kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 6px 12px; margin: 0; }
 .ex-kv div { display: flex; flex-direction: column; } .ex-kv dt { font-size: 11.5px; color: var(--muted); } .ex-kv dd { margin: 0; font-weight: 650; font-variant-numeric: tabular-nums; }
 .ex-acts { flex-wrap: wrap; gap: 6px; } .ex-acts .btn { min-height: 44px; }
+/* V9.26.1 laktat-eingabe-1.0: Laktat-Liste als Karten (kein seitliches Wischen, nichts unter einer festen Spalte), «Bestätigen» in der Karte */
+.ex-lps { display: flex; flex-direction: column; gap: 8px; }
+.ex-lp { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ex-lp-kopf { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; } .ex-lp-kopf b { font-size: 16px; font-variant-numeric: tabular-nums; } .ex-lp-kopf > span { font-variant-numeric: tabular-nums; }
+.ex-lp-st { margin-left: auto; display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; } .ex-lp-st .btn { min-height: 44px; }
+.ex-lp-kv { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 1fr); } .ex-lp-kv dd { white-space: nowrap; }
+.ex-lp-grund, .ex-lp-warn { margin: 0; }
 .ex-charts { display: flex; flex-direction: column; gap: 2px; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
 .ex-ch { position: relative; } .ex-ch canvas { width: 100%; height: 92px; display: block; }
 .ex-lab { position: absolute; left: 44px; top: 2px; font-size: 11px; font-weight: 650; color: var(--muted); pointer-events: none; background: rgba(255,255,255,.7); padding: 0 4px; border-radius: 4px; }

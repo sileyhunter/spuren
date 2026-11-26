@@ -255,6 +255,9 @@
   // kehrt der Fokus zum auslösenden Knopf zurück. Mehrere Blätter übereinander: nur das oberste ist bedienbar.
   const MODAL = [];
   function modalSetzen() {
+    // V9.26.1 (blatt-stapel-1.0): das zuletzt geöffnete Blatt liegt oben. Vorher hatten #v59-ov und der Explorer beide z-index 70, der Explorer steht später im Dokument und deckte
+    // «Laktat bestätigen» zu – das Blatt war da, aber unsichtbar, und der Explorer darunter war gesperrt (am iPhone «reagiert nicht»).
+    MODAL.forEach((m, i) => { if (m.ov.classList && m.ov.classList.contains("v5-overlay")) m.ov.style.zIndex = String(70 + i); });
     const top = MODAL.length ? MODAL[MODAL.length - 1].ov : null;
     for (const el of document.body.children) {
       if (el.tagName === "SCRIPT" || el.tagName === "STYLE") continue;
@@ -266,7 +269,7 @@
   V.modalAuf = function (ov) { if (!ov || MODAL.some((m) => m.ov === ov)) return; MODAL.push({ ov, vorher: document.activeElement }); modalSetzen(); };
   V.modalZu = function (ov) {
     const i = MODAL.findIndex((m) => m.ov === ov); if (i < 0) return;
-    const m = MODAL.splice(i, 1)[0]; modalSetzen();
+    const m = MODAL.splice(i, 1)[0]; if (m.ov.style) m.ov.style.zIndex = ""; modalSetzen();
     if (m.vorher && m.vorher !== document.body && document.contains(m.vorher) && typeof m.vorher.focus === "function") { try { m.vorher.focus({ preventScroll: true }); } catch (e) {} }
   };
   function oeffne(art, html) {
@@ -446,10 +449,12 @@
   /** «Laktat hier» aus dem Explorer: als Kurzcheck bestätigen. */
   V.punktBestaetigen = function (p, fertig) {
     const I = UI().Inbox, a = (C.ACT_BY_ID && C.ACT_BY_ID.get(p.act)) || {};
-    const hms = (s) => { s = Math.round(s || 0); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); };
+    const hms = (s) => { s = Math.round(s || 0); return Math.floor(s / 3600) + ":" + String(Math.floor((s % 3600) / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };   // V9.26.1: immer h:mm:ss (1:15 hiess 1 min 15 s)
     const ab = p.abschnitt || {}, lauf = p.sport === "lauf";
+    const kurz = isNum(ab.fenster_s) && isNum(ab.von) && isNum(ab.bis) && ab.bis - ab.von < ab.fenster_s * 0.9 && ab.von < 5 && isNum(p.t) && p.t - ab.fenster_s < 0;
     const ov = oeffne("best", `<div class="te-head"><h2 id="v59-ov-h" tabindex="-1">Laktat bestätigen · ${esc(C.dateCH(p.datum))}</h2><button class="btn" data-x>Abbrechen</button></div>
       <p>${esc(a.name || "Einheit")}: <b>${C.fmt(p.la, 1)} mmol/l</b> bei ${hms(p.t)} · Abschnitt ${hms(ab.von)}–${hms(ab.bis)} · ${lauf ? (isNum(ab.pace) ? "Pace " + Math.floor(ab.pace / 60) + ":" + String(Math.round(ab.pace % 60)).padStart(2, "0") + " /km" : "Pace –") : !isNum(ab.w) && !["rad", "lauf"].includes(p.sport) ? "nach Puls" : `Ø ${isNum(ab.w) ? ab.w + " W" : "–"}${isNum(ab.np) ? ` · NP ${ab.np} W` : ""}`} · Puls Ø ${isNum(ab.hr) ? ab.hr : "–"}${isNum(ab.hr_max) ? ` · max ${ab.hr_max}` : ""}${isNum(ab.hr_anstieg) ? ` · Anstieg ${C.fmt(ab.hr_anstieg, 1)} %` : ""}</p>
+      ${kurz ? `<p class="verdict warn">Nur ${hms(ab.bis - ab.von)} vor der Messung aufgezeichnet, gewählt waren ${Math.round(ab.fenster_s / 60)} min. Stimmt die Zeit (${hms(p.t)})?</p>` : ""}
       <p class="hint">Zuordnung: ${esc(ab.grund || "–")}. Bestätigst du, übernimmt das nächste Update den Wert als Kurzcheck (Quelle «aus Explorer»). Zonen ändern sich dadurch nicht.</p>
       <div class="row"><button class="btn primary" type="button" data-ok>Als Kurzcheck bestätigen</button><button class="btn" type="button" data-x>Abbrechen</button></div>`);
     ov.querySelector("[data-ok]").onclick = async () => {
