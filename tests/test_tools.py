@@ -1056,6 +1056,14 @@ check("V9.2 Mein Plan: Streichungen, Anker und ersetzte Vorlage gültig; falsche
       merge_daily.planwoche_pruefen(_ST, None) is None and all(merge_daily.planwoche_pruefen(w, None) for w in _st_bad),
       str([merge_daily.planwoche_pruefen(_ST, None)] + [merge_daily.planwoche_pruefen(w, None) for w in _st_bad]))
 
+# V9.26.3 loeschen-endgueltig-1.0: gelöschte zusätzliche Einheit (Zeit als Ziel) trägt optional zusatz: true
+_st_zu = dict(_ST, gestrichen=[{"vorlage": "rad_locker", "date": "2026-03-05", "zusatz": True}])
+check("V9.26.3 Mein Plan: Streichung einer zusätzlichen Einheit trägt zusatz: true; zusatz «ja»/false in der Streichung wird abgelehnt",
+      merge_daily.planwoche_pruefen(_st_zu, None) is None
+      and merge_daily.planwoche_pruefen(dict(_ST, gestrichen=[{"vorlage": "rad_locker", "date": "2026-03-05", "zusatz": "ja"}]), None)
+      and merge_daily.planwoche_pruefen(dict(_ST, gestrichen=[{"vorlage": "rad_locker", "date": "2026-03-05", "zusatz": False}]), None),
+      str([merge_daily.planwoche_pruefen(_st_zu, None)]))
+
 # ---------- V9.5 zeit-intensitaet-1.0: verdichtet (dicht), zusätzlich (zusatz), «Neu berechnen» (zielAus) ----------
 _ZI = dict(_WO, zielAus={"fp": "zf-1a2b3c", "am": "2026-03-04T19:00:00Z"}, tage={"2026-03-05": {"gesperrt": False, "einheiten": [
     {"uid": "v-2026-03-05-0", "vorlage": "rad_locker", "dauer": 95, "quelle": "vorschlag", "dicht": {"z3": 30}},

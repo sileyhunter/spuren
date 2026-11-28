@@ -21,6 +21,9 @@
      Streichungen (E.gestrichen) bleiben gestrichen. eigenplan-1.3: neue optionale Felder gestrichen, anker, statt, verteilung.fehlt/frage.
      grenzen-1.0: die Zeit eines Tages (Standard des Wochentags oder von Hand gesetzt) ist für alles, was die Seite selbst setzt, eine harte Obergrenze;
      an von Hand gesetzten Tagen auch die Sportarten. verfuegbarkeit-1.3: V66.verteilen nimmt auch Einheiten, deren Tag fest ist (opt.extra).
+   - V9.26.3 loeschen-endgueltig-1.0 (Silas 28.11.2026): «Löschen» wirkt sofort und endgültig. Eine umbenannte Einheit (lange → «Grundlage», harte Kraft → locker)
+     trägt in `statt` die Einheit des Vorschlags, für die sie steht (Streichung gilt dieser; ältere Wochen: `ursprungVon` per Probelauf). Eine gelöschte zusätzliche
+     Einheit (Zeit als Ziel) steht als Streichung mit `zusatz: true`; `zeitZiel` setzt sie an diesem Tag in dieser Sportart nicht wieder ein («Ausgleichen» und «Neu berechnen» vergessen es).
    - V9.5 zeit-intensitaet-1.0 (Auftrag «Woche wie Enduco», Etappe W4; Silas' Entscheide vom 22.11.2026, Zahlen eigene Festlegungen in plan.md):
      Verdichten (in V66.verteilen, opt.ziel): bleibt nach Verschieben und Kürzen Last übrig, dieselbe Last (± 10 % TL) in weniger Zeit mit Anteilen Tempo
      (Z3, unter LT2), höchstens zwei je Woche. Zeit als Ziel (V66.zeitZiel, nach dem Verteilen): hat ein Tag mehr Zeit, als der Plan braucht, wird die
@@ -331,9 +334,13 @@
         f = darf(a.date); if (f) break;
         const i = finde(a.date, a.uid); if (i < 0) { f = "Einheit nicht gefunden"; break; }
         if (liste(a.date)[i].gesperrt) { f = GESPERRT_E; break; }
+        const herkunft = liste(a.date)[i].zusatz === true ? null : ursprungVon(E, ctx, a.date, liste(a.date)[i]);   // V9.26.3: vor dem Entfernen bestimmen
         const [x] = liste(a.date).splice(i, 1);
-        const id = stehtFuer(x);                                           // V9.2 umplanen-1.0: bewusst gelöscht – bleibt gestrichen (kein heimlicher Ersatz)
-        if (id) { if (!Array.isArray(E.gestrichen)) E.gestrichen = []; if (E.gestrichen.length < 40) E.gestrichen.push({ vorlage: id, date: a.date }); }
+        const id = herkunft || stehtFuer(x);                               // V9.2 umplanen-1.0: bewusst gelöscht – bleibt gestrichen (kein heimlicher Ersatz)
+        if (!Array.isArray(E.gestrichen)) E.gestrichen = [];
+        if (x.zusatz === true && typeof x.vorlage === "string") { if (E.gestrichen.length < 40) E.gestrichen.push({ vorlage: x.vorlage, date: a.date, zusatz: true }); }   // V9.26.3: Zeit als Ziel setzt sie nicht wieder ein
+        else if (id) { if (E.gestrichen.length < 40) E.gestrichen.push({ vorlage: id, date: a.date }); }
+        if (!E.gestrichen.length) delete E.gestrichen;
         break;
       }
       case "dauer": {
@@ -416,7 +423,13 @@
         // V9.2: was aus dem Vorschlag kam, gilt als gestrichen – sonst füllte das nächste Umplanen die Tage wieder (zurück mit «Neu berechnen» oder «Ausgleichen»)
         for (let i = 0; i < 7; i++) {
           const d = add(E.montag, i); if (d < ctx.heute || (E.tage[d] && E.tage[d].gesperrt)) continue;
-          for (const s of liste(d)) { const id = stehtFuer(s); if (id) { if (!Array.isArray(E.gestrichen)) E.gestrichen = []; if (E.gestrichen.length < 40) E.gestrichen.push({ vorlage: id, date: d }); } }
+          for (const s of liste(d)) {
+            if (!Array.isArray(E.gestrichen)) E.gestrichen = [];
+            if (s.zusatz === true && typeof s.vorlage === "string") { if (E.gestrichen.length < 40) E.gestrichen.push({ vorlage: s.vorlage, date: d, zusatz: true }); continue; }   // V9.26.3: Zeit als Ziel setzt sie nicht wieder ein
+            const id = ursprungVon(E, ctx, d, s);                                                          // V9.26.3: umbenannte Einheit → Streichung gilt der Einheit des Vorschlags
+            if (id && E.gestrichen.length < 40) E.gestrichen.push({ vorlage: id, date: d });
+          }
+          if (E.gestrichen && !E.gestrichen.length) delete E.gestrichen;
           tag(d).einheiten = [];
         }
         break;
@@ -537,7 +550,7 @@
     if (b.art === "schluessel") { n = V64.einheit(e.id, Object.assign({}, o, { kurz: true })); if (!n || n.dauer > d) return null; }
     else n = V64.einheit(e.id, Object.assign({}, o, { d: Math.max(5, Math.floor(d / 5) * 5) }));
     if (!n) return null;
-    for (const k of ["check", "gekappt", "uid", "quelle", "vorlage", "drinnen", "vorTest", "spec"]) if (e[k] != null) n[k] = e[k];
+    for (const k of ["check", "gekappt", "uid", "quelle", "vorlage", "drinnen", "vorTest", "spec", "statt"]) if (e[k] != null) n[k] = e[k];
     if (e.check) n.ablauf = n.ablauf.concat((e.ablauf || []).filter((x) => /Kurzcheck/.test(x)));
     if (e.drinnen && !/drinnen/.test(n.titel)) n.titel += " (drinnen)";
     return n;
@@ -728,6 +741,7 @@
           const l = d >= V66.LANG_UMBENENNEN * p.e.dauer ? V66.einheit({ uid: p.e.uid || "lang-locker-" + T[p.von].date, vorlage: lk, dauer: d, quelle: "vorschlag" }, opt.ctxE || {}) : null;       // darunter fragt die Seite lieber (grosse Lücke)
           if (l && l.dauer <= rest(jj)) {
             if (ORD.has(p.e)) ORD.set(l, ORD.get(p.e));
+            l.statt = p.e.statt || p.e.id;                                      // V9.26.3 loeschen-endgueltig-1.0: steht für die lange Einheit des Vorschlags (Löschen merkt sich diese)
             setzen(p, jj, l, false); KURZ.delete(l);
             P.gekuerzt[P.gekuerzt.length - 1].umbenannt = l.titel;
             continue;
@@ -739,6 +753,7 @@
         const l = V66.einheit({ uid: p.e.uid || "kraft-locker-" + T[p.von].date, vorlage: sp === "rad" ? "rad_locker" : "lauf_locker", dauer: p.e.dauer, quelle: "vorschlag" }, opt.ctxE || {});
         if (l) {
           if (ORD.has(p.e)) ORD.set(l, ORD.get(p.e));
+          l.statt = p.e.statt || p.e.id;                                        // V9.26.3: steht für die harte Einheit des Vorschlags
           VON.set(l, p.von); belegt[p.von].push(l);
           const g = schonGrund(p.von);
           P.hinweise.push(g === "Tag nach dem Krafttraining" ? `«${p.e.titel}» am ${wtK(T[p.von].date)}: am Tag nach dem Krafttraining locker statt hart (kraft-plan-1.1)`
@@ -1001,6 +1016,22 @@
     return null;
   }
   V66.stehtFuer = stehtFuer;
+  /** V9.26.3 loeschen-endgueltig-1.0: für welche Einheit des Vorschlags steht eine Vorschlags-Einheit (Name der Vorlage)? Eine umbenannte Einheit
+   *  («Grundlage» statt der zu kurzen langen Ausfahrt) kennt ihre Herkunft in `statt`; ältere gespeicherte Wochen kennen sie noch nicht – dort zeigt ein
+   *  Probelauf des Umplanens (auf einer Kopie), wofür sie steht. Ohne Ergebnis: die eigene Vorlage wie bisher. */
+  function ursprungVon(E, ctx, d, x) {
+    const id = stehtFuer(x);
+    if (!x || x.quelle !== "vorschlag" || x.statt || x.zusatz === true) return id;
+    try {
+      const m = /^v-(\d{4}-\d{2}-\d{2})-(\d+)$/.exec(String(x.uid || ""));
+      if (m && typeof ctx.vorschlag === "function") { const q = (ctx.vorschlag(m[1]) || [])[+m[2]]; if (q && q.id === x.vorlage && typeof q.statt === "string" && q.statt) return q.statt; }
+      if (typeof ctx.roh !== "function") return id;
+      const K = JSON.parse(JSON.stringify(E));
+      if (umplanen(K, ctx, { behalten: true })) return id;
+      const hit = (((K.tage || {})[d] || {}).einheiten || []).find((s) => s && s.statt && s.vorlage === x.vorlage && s.dauer === x.dauer);
+      return hit ? hit.statt : id;
+    } catch (err) { return id; }
+  }
   /** Anker: was Silas selbst gesetzt hat (eigene oder Bibliothek, Dauer oder Inhalt geändert, ersetzt, Coach angenommen, verschoben) oder gesperrt ist. */
   const istAnkerSpec = (s) => !!s && (s.quelle === "eigen" || s.quelle === "bibliothek" || !!s.gesperrt || s.anker === true);
   V66.istAnker = istAnkerSpec;
@@ -1048,11 +1079,14 @@
     tageW.forEach((d, i) => rohAm(d).forEach((e) => pool.push({ e, i, weg: false })));
     const naechste = (id, i) => { let best = null; for (const p of pool) if (!p.weg && p.e.id === id && (!best || Math.abs(p.i - i) < Math.abs(best.i - i))) best = p; return best; };
     bleibt.forEach((L, i) => L.forEach((s) => { const id = stehtFuer(s), p = id ? naechste(id, i) : null; if (p) p.weg = true; }));
-    for (const x of Array.isArray(E.gestrichen) ? E.gestrichen : []) { const p = x && naechste(x.vorlage, Math.max(0, tageW.indexOf(x.date))); if (p) { p.weg = true; p.gestrichen = true; } }
+    for (const x of Array.isArray(E.gestrichen) ? E.gestrichen : []) { const p = x && x.zusatz !== true && naechste(x.vorlage, Math.max(0, tageW.indexOf(x.date))); if (p) { p.weg = true; p.gestrichen = true; } }
     // V9.5 zeit-intensitaet-1.0: Verdichten und Zeit als Ziel (ctx.ziel aus dem Kontext der Woche); nicht in der Erholungswoche der Ampel, nicht nach «Neu berechnen».
     // Gestrichenes bleibt gestrichen: die Obergrenze sinkt um seine Last, Zeit als Ziel füllt sie nicht heimlich wieder auf.
     const Zc = ctx.ziel || null;
-    const ZZ = Zc ? Object.assign({}, Zc, { aus: Zc.aus || (E.zielAus ? "neu" : null) || (erh ? "Erholungswoche" : null) }) : null;
+    // V9.26.3 loeschen-endgueltig-1.0: eine gelöschte zusätzliche Einheit (Streichung mit zusatz) setzt Zeit als Ziel an diesem Tag in dieser Sportart nicht wieder ein
+    const keinZusatz = (Array.isArray(E.gestrichen) ? E.gestrichen : []).filter((x) => x && x.zusatz === true && typeof x.date === "string")
+      .map((x) => ({ date: x.date, sport: Object.keys(ZUSATZ).find((k) => ZUSATZ[k] === x.vorlage) || null })).filter((x) => x.sport);
+    const ZZ = Zc ? Object.assign({}, Zc, { aus: Zc.aus || (E.zielAus ? "neu" : null) || (erh ? "Erholungswoche" : null), keinZusatz }) : null;
     let tlGestr = 0;
     if (ZZ && typeof ZZ.tl === "function") for (const p of pool) if (p.gestrichen && (["rad", "lauf", "schwimm"].includes(p.e.sport) || p.e.art === "draussen")) { try { const x = ZZ.tl(p.e); if (isNum(x)) tlGestr += x; } catch (err) { /* ohne Last */ } }
     // Eingänge für den Rechenkern: feste Tage ganz, sonst Anker und der Vorschlag des Tages; was vom Vorschlag an festen Tagen übrig ist, kommt dazu
@@ -1074,7 +1108,8 @@
       E.tage[t.date].einheiten = t.einheiten.map((e, k) => {
         if (e.spec && bleibt[i].includes(e.spec)) return e.spec;                                    // Anker bleibt, wie er ist
         const s = Object.assign({}, e.spec || {}, { vorlage: e.id, dauer: e.dauer, quelle: e.spec && e.spec.quelle ? e.spec.quelle : "vorschlag" });
-        delete s.uid; delete s.dicht; delete s.zusatz; delete s.fatmax;
+        delete s.uid; delete s.dicht; delete s.zusatz; delete s.fatmax; delete s.statt;
+        if (typeof e.statt === "string" && e.statt && e.statt !== e.id) s.statt = e.statt;                // V9.26.3: umbenannte Einheit merkt sich ihre Herkunft
         if (e.fatmax === true) s.fatmax = true;                                                   // V9.21.0: Rad-Ausfahrt mit FatMax bleibt es auch nach dem Verschieben
         if (e.dicht && isNum(e.dicht.z3)) s.dicht = { z3: e.dicht.z3 };                          // V9.5: verdichtet bzw. zusätzlich (von der Seite gesetzt)
         if (e.zusatz === true) s.zusatz = true;
@@ -1159,7 +1194,7 @@
   function neuBauen(e, d, o) {
     const b = V64.BAUSTEINE[e.id]; if (!b || b.fix || !DYN.has(b.art) || istEigen(e)) return null;
     const n = V64.einheit(e.id, Object.assign({}, o, { d: Math.max(5, Math.round(d / 5) * 5), fatmax: e.fatmax === true })); if (!n) return null;
-    for (const k of ["check", "gekappt", "uid", "quelle", "vorlage", "drinnen", "drinnen_fest", "vorTest", "spec", "zusatz", "uhrzeit", "metrik", "pool"]) if (e[k] != null) n[k] = e[k];
+    for (const k of ["check", "gekappt", "uid", "quelle", "vorlage", "drinnen", "drinnen_fest", "vorTest", "spec", "zusatz", "uhrzeit", "metrik", "pool", "statt"]) if (e[k] != null) n[k] = e[k];
     if (e.drinnen && !/drinnen/.test(n.titel)) n.titel += " (drinnen)";
     return n;
   }
@@ -1258,6 +1293,7 @@
       const total = plan.schwimm + plan.rad + plan.lauf;
       const rueck = (sp) => ((isNum(M[sp]) ? M[sp] : 0) / mSum) * total - plan[sp];
       const L = ["rad", "schwimm", "lauf"].filter((sp) => erlaubt(z.i, sp) && !T[z.i].einheiten.some((e) => e.sport === sp) && rueck(sp) > 0
+        && !(Z.keinZusatz || []).some((k) => k.date === T[z.i].date && k.sport === sp)
         && (sp !== "lauf" || plan.lauf < (M.lauf || 0))).sort((a, b) => rueck(b) - rueck(a));
       for (const sp of L) {
         const id = ZUSATZ[sp], B = V66.bereich(id);

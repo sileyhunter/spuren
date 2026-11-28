@@ -820,6 +820,8 @@ def planwoche_pruefen(w, vorher=None):
         for x in g:
             if not isinstance(x, dict) or not re.fullmatch(r"[a-z0-9_]{1,40}", str(x.get("vorlage") or "")):
                 return "Streichung ohne Vorlage"
+            if x.get("zusatz") is not None and x.get("zusatz") is not True:   # V9.26.3 loeschen-endgueltig-1.0: gelöschte zusätzliche Einheit (Zeit als Ziel)
+                return "Streichung: zusätzliche Einheit ungültig"
             try:
                 gd = dt.date.fromisoformat(str(x.get("date")))
             except ValueError:

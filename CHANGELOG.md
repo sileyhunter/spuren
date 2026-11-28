@@ -1,5 +1,14 @@
 # Änderungen
 
+## V9.26.3 · 28.11.2026 · Löschen wirkt endgültig (loeschen-endgueltig-1.0)
+Silas (28.11. mit Bildschirmaufnahme): Das Löschen einer «Grundlage» an einem künftigen Sonntag bewirkte nichts («Nichts zu verschieben», Wochenlast unverändert); nur über die Tageszeit liess sich der Tag leeren.
+- **Ursache 1 (umbenannte Einheit):** Passt eine lange Einheit an keinem Tag zu drei Vierteln, wird sie «Grundlage» (`tagesregel-1.0`). Die Streichung merkte sich «Grundlage», der Vorschlag enthielt aber noch die lange Einheit: eine andere Grundlage der Woche fiel weg, die lange Ausfahrt kam zurück.
+- **Fix:** Die umbenannte Einheit trägt `statt` = die Einheit des Vorschlags, für die sie steht (`verteilen`, `neuBauen`, `kuerzer`, Ausgabe von `umplanen`); die Streichung gilt dieser. Ältere gespeicherte Wochen: `ursprungVon` ermittelt die Herkunft per Probelauf auf einer Kopie.
+- **Ursache 2 (zusätzliche Einheit):** Eine zusätzliche Einheit aus «Zeit als Ziel» kannte keine Streichung und kam beim nächsten Planerlauf zurück. Jetzt Streichung `{ vorlage, date, zusatz: true }`; `zeitZiel` setzt in dieser Sportart an diesem Tag nichts mehr ein. «Woche leeren» merkt sich beides ebenso.
+- **Nicht geändert:** Garmin-Aufträge folgen wie bisher dem Plan; die Uhr für heute ändert sich nie von selbst. «Ausgleichen» und «Neu berechnen» holen Gestrichenes bewusst zurück (Silas-Entscheid 26.11.).
+- **Hinweis:** «Auf der Uhr steht noch «Langer Lauf»» im Bericht betrifft die heutige Uhr-Einheit, nicht die gelöschte; das war richtig, aber missverständlich.
+- Tests: neu `tests/test_v9263.cjs` (6: Herkunft, Löschen wirkt, bleibt, ↶/Neu berechnen/Ausgleichen, zusätzliche Einheit, Woche leeren), `tests/test_tools.py` (+1: `zusatz` in `gestrichen`); `sw.js`-Cache erneuert.
+
 ## V9.26.2 · 26.11.2026 · Laktat: Eintrag auf der Seite ändern (laktat-aendern-1.0)
 Silas (26.11. morgens, mit Bildschirmfoto): Die Karte zeigt weiter den alten Eintrag mit der falschen Zeit (Minuten als Sekunden gelesen und so gespeichert) samt Warnung. Der neue Code kann einen schon gespeicherten Eintrag nicht umrechnen, und es gab keinen Weg, ihn zu ändern.
 - **Neu:** Jede Karte eines Vorschau-Eintrags, der noch nicht bestätigt ist, hat «Zeit oder Wert ändern» (44 px). Der Dialog öffnet sich mit Wert, Zeit, Fenster und Notiz des Eintrags, die Warnung steht schon da. Beim Speichern **bleibt die ID**: der Eintrag wird ersetzt (auf der Seite, im Eingang und beim Einspielen gilt «gleiche ID ersetzt, spätere gewinnt»), es entsteht kein zweiter Eintrag, der Status bleibt «vorschau».
